@@ -1,0 +1,61 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes",
+  "module": "docx4j_py.docprops.variant_types",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 35,
+    "simple_type_elements": 0,
+    "scoped_names": 0,
+    "keyword_renames": 2,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {
+    "bool": "bool_",
+    "int": "int_"
+  },
+  "collisions": {},
+  "elements": {
+    "array": "Array",
+    "blob": "Blob",
+    "bool": "Bool",
+    "bstr": "Bstr",
+    "cf": "Cf",
+    "clsid": "Clsid",
+    "cy": "Cy",
+    "date": "Date",
+    "decimal": "DecimalType",
+    "empty": "Empty",
+    "error": "Error",
+    "filetime": "Filetime",
+    "i1": "I1",
+    "i2": "I2",
+    "i4": "I4",
+    "i8": "I8",
+    "int": "Int",
+    "lpstr": "Lpstr",
+    "lpwstr": "Lpwstr",
+    "null": "Null",
+    "oblob": "Oblob",
+    "ostorage": "Ostorage",
+    "ostream": "Ostream",
+    "r4": "R4",
+    "r8": "R8",
+    "storage": "Storage",
+    "stream": "Stream",
+    "ui1": "Ui1",
+    "ui2": "Ui2",
+    "ui4": "Ui4",
+    "ui8": "Ui8",
+    "uint": "Uint",
+    "variant": "Variant",
+    "vector": "Vector",
+    "vstream": "Vstream"
+  }
+}

@@ -1,0 +1,324 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/diagram",
+  "module": "docx4j_py.dml.diagram",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 65,
+    "simple_type_elements": 0,
+    "scoped_names": 13,
+    "keyword_renames": 3,
+    "collisions": 9
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {
+    "dir": "dir_",
+    "else": "else_",
+    "if": "if_"
+  },
+  "collisions": {
+    "cat": {
+      "default": {
+        "name": "cat",
+        "class": "CTCTCategory",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTCTCategories"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "category",
+          "class": "CTCategory",
+          "scopes": [
+            "CTCategories"
+          ]
+        },
+        {
+          "name": "sd_category",
+          "class": "CTSDCategory",
+          "scopes": [
+            "CTSDCategories"
+          ]
+        }
+      ]
+    },
+    "catLst": {
+      "default": {
+        "name": "catLst",
+        "class": "CTCTCategories",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTColorTransform",
+          "CTColorTransformHeader",
+          "ColorsDef",
+          "ColorsDefHdr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "categories",
+          "class": "CTCategories",
+          "scopes": [
+            "CTDiagramDefinition",
+            "CTDiagramDefinitionHeader",
+            "LayoutDef",
+            "LayoutDefHdr"
+          ]
+        },
+        {
+          "name": "sd_categories",
+          "class": "CTSDCategories",
+          "scopes": [
+            "CTStyleDefinition",
+            "CTStyleDefinitionHeader",
+            "StyleDef",
+            "StyleDefHdr"
+          ]
+        }
+      ]
+    },
+    "colorsDefHdr": {
+      "default": {
+        "name": "colorsDefHdr",
+        "class": "ColorsDefHdr",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "color_transform_header",
+          "class": "CTColorTransformHeader",
+          "scopes": [
+            "CTColorTransformHeaderLst",
+            "ColorsDefHdrLst"
+          ]
+        }
+      ]
+    },
+    "dataModel": {
+      "default": {
+        "name": "dataModel",
+        "class": "DataModel",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "data_model",
+          "class": "CTDataModel",
+          "scopes": [
+            "CTSampleData"
+          ]
+        }
+      ]
+    },
+    "desc": {
+      "default": {
+        "name": "desc",
+        "class": "CTCTDescription",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTColorTransform",
+          "CTColorTransformHeader",
+          "ColorsDef",
+          "ColorsDefHdr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "description",
+          "class": "CTDescription",
+          "scopes": [
+            "CTDiagramDefinition",
+            "CTDiagramDefinitionHeader",
+            "LayoutDef",
+            "LayoutDefHdr"
+          ]
+        },
+        {
+          "name": "sd_description",
+          "class": "CTSDDescription",
+          "scopes": [
+            "CTStyleDefinition",
+            "CTStyleDefinitionHeader",
+            "StyleDef",
+            "StyleDefHdr"
+          ]
+        }
+      ]
+    },
+    "layoutDefHdr": {
+      "default": {
+        "name": "layoutDefHdr",
+        "class": "LayoutDefHdr",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "diagram_definition_header",
+          "class": "CTDiagramDefinitionHeader",
+          "scopes": [
+            "CTDiagramDefinitionHeaderLst",
+            "LayoutDefHdrLst"
+          ]
+        }
+      ]
+    },
+    "styleDefHdr": {
+      "default": {
+        "name": "styleDefHdr",
+        "class": "StyleDefHdr",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "style_definition_header",
+          "class": "CTStyleDefinitionHeader",
+          "scopes": [
+            "CTStyleDefinitionHeaderLst",
+            "StyleDefHdrLst"
+          ]
+        }
+      ]
+    },
+    "styleLbl": {
+      "default": {
+        "name": "styleLbl",
+        "class": "CTCTStyleLabel",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTColorTransform",
+          "ColorsDef"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "style_label",
+          "class": "CTStyleLabel",
+          "scopes": [
+            "CTStyleDefinition",
+            "StyleDef"
+          ]
+        }
+      ]
+    },
+    "title": {
+      "default": {
+        "name": "title",
+        "class": "CTCTName",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTColorTransform",
+          "CTColorTransformHeader",
+          "ColorsDef",
+          "ColorsDefHdr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "name",
+          "class": "CTName",
+          "scopes": [
+            "CTDiagramDefinition",
+            "CTDiagramDefinitionHeader",
+            "LayoutDef",
+            "LayoutDefHdr"
+          ]
+        },
+        {
+          "name": "sd_name",
+          "class": "CTSDName",
+          "scopes": [
+            "CTStyleDefinition",
+            "CTStyleDefinitionHeader",
+            "StyleDef",
+            "StyleDefHdr"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "adj": "CTAdj",
+    "adjLst": "CTAdjLst",
+    "alg": "CTAlgorithm",
+    "animLvl": "CTAnimLvl",
+    "animOne": "CTAnimOne",
+    "bg": "CTBackgroundFormatting",
+    "bulletEnabled": "CTBulletEnabled",
+    "cat": "CTCTCategory",
+    "catLst": "CTCTCategories",
+    "chMax": "CTChildMax",
+    "chPref": "CTChildPref",
+    "choose": "CTChoose",
+    "clrData": "CTSampleData",
+    "colorsDef": "ColorsDef",
+    "colorsDefHdr": "ColorsDefHdr",
+    "colorsDefHdrLst": "ColorsDefHdrLst",
+    "constr": "CTConstraint",
+    "constrLst": "CTConstraints",
+    "cxn": "CTCxn",
+    "cxnLst": "CTCxnList",
+    "dataModel": "DataModel",
+    "desc": "CTCTDescription",
+    "dir": "CTDirection",
+    "effectClrLst": "CTColors",
+    "else": "CTOtherwise",
+    "extLst": "CTOfficeArtExtensionList",
+    "fillClrLst": "CTColors",
+    "forEach": "CTForEach",
+    "hierBranch": "CTHierBranchStyle",
+    "if": "CTWhen",
+    "layoutDef": "LayoutDef",
+    "layoutDefHdr": "LayoutDefHdr",
+    "layoutDefHdrLst": "LayoutDefHdrLst",
+    "layoutNode": "CTLayoutNode",
+    "linClrLst": "CTColors",
+    "orgChart": "CTOrgChart",
+    "param": "CTParameter",
+    "prSet": "CTElemPropSet",
+    "presLayoutVars": "CTLayoutVariablePropertySet",
+    "presOf": "CTPresentationOf",
+    "pt": "CTPt",
+    "ptLst": "CTPtList",
+    "relIds": "RelIds",
+    "resizeHandles": "CTResizeHandles",
+    "rule": "CTNumericRule",
+    "ruleLst": "CTRules",
+    "sampData": "CTSampleData",
+    "scene3d": "CTScene3D",
+    "shape": "CTShape",
+    "sp3d": "CTShape3D",
+    "spPr": "CTShapeProperties",
+    "style": "CTShapeStyle",
+    "styleData": "CTSampleData",
+    "styleDef": "StyleDef",
+    "styleDefHdr": "StyleDefHdr",
+    "styleDefHdrLst": "StyleDefHdrLst",
+    "styleLbl": "CTCTStyleLabel",
+    "t": "CTTextBody",
+    "title": "CTCTName",
+    "txEffectClrLst": "CTColors",
+    "txFillClrLst": "CTColors",
+    "txLinClrLst": "CTColors",
+    "txPr": "CTTextProps",
+    "varLst": "CTLayoutVariablePropertySet",
+    "whole": "CTWholeE2OFormatting"
+  }
+}

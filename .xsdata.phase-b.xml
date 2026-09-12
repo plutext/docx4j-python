@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CR-001 Phase B generator configuration: WML as one module per namespace, under
+  short docx4j-style package names, every class a docx4j_py.child.Child, every
+  list a docx4j_py.child.ChildList.
+
+      .venv-fork/bin/docx4j-xsdata generate -c .xsdata.phase-b.xml schemas/wml/wml.xsd
+
+  See codegen/README.md. The old .xsdata.xml is kept as-is: it is the clusters
+  layout that produced the unmodified-xsdata baseline in baseline/docx4j_py/generated.
+-->
+<Config xmlns="http://pypi.org/project/xsdata" version="26.2">
+  <Output maxLineLength="99" genericCollections="false">
+    <Package>docx4j_py</Package>
+    <Format repr="true" eq="true" order="false" unsafeHash="false" frozen="false" slots="true">dataclasses</Format>
+    <Structure>namespaces</Structure>
+    <DocstringStyle>Blank</DocstringStyle>
+    <RelativeImports>false</RelativeImports>
+    <CompoundFields defaultName="content" useSubstitutionGroups="true" forceDefaultName="false" maxNameParts="3">true</CompoundFields>
+    <WrapperFields>false</WrapperFields>
+    <UnnestClasses>true</UnnestClasses>
+    <IgnorePatterns>false</IgnorePatterns>
+    <IncludeHeader>false</IncludeHeader>
+    <AllOptional>true</AllOptional>
+    <SchemaDefaults>metadata</SchemaDefaults>
+    <ListFactory>docx4j_py.child.ChildList</ListFactory>
+    <DeferredImports>true</DeferredImports>
+    <ClassNames>codegen/names</ClassNames>
+  </Output>
+  <Conventions>
+    <ClassName case="pascalCase" safePrefix="type"/>
+    <FieldName case="snakeCase" safePrefix="value"/>
+    <ConstantName case="screamingSnakeCase" safePrefix="value"/>
+    <ModuleName case="snakeCase" safePrefix="mod"/>
+    <PackageName case="snakeCase" safePrefix="pkg"/>
+  </Conventions>
+  <Substitutions>
+    <!--
+      One entry per namespace in WML's import closure. The search must fullmatch
+      the namespace URI; the replacement is a dotted path appended to <Package>,
+      whose LAST segment becomes the module name and the rest the package. So
+      "dml.main" is docx4j_py/dml/main.py and "wml" is docx4j_py/wml.py.
+
+      Names follow org.docx4j.* where that reads well in Python (wml, dml, math,
+      mce, relationships, w14, w15), and the ECMA/docx4j prefix where the Java
+      package is the machine-generated com.microsoft.schemas.* form (wps, wpg,
+      wpc, wne, cx, a14, ...). The Microsoft drawing extension namespaces are
+      collected under docx4j_py.oart, as docx4j collects their schemas in
+      xsd/odrawxml.
+
+      This table also disposes of the namespaces-layout shadowing bug (fork
+      CHANGES.md, upstream report 4): .../2018/animation is a prefix of
+      .../2018/animation/model3d, which without a substitution produces
+      oart/animation.py next to oart/animation/, and the package hides the
+      module. They are named animation_2018 and animation_model3d_2018 here, so
+      no module and package can collide and no module-name substitution is
+      needed.
+    -->
+    <Substitution type="package" search="http://www.w3.org/2001/XMLSchema" replace="xs"/>
+    <Substitution type="package" search="http://www.w3.org/2001/XMLSchema-instance" replace="xsi"/>
+    <Substitution type="package" search="http://www.w3.org/XML/1998/namespace" replace="xml_ns"/>
+    <Substitution type="package" search="http://www.w3.org/1998/Math/MathML" replace="mathml"/>
+    <Substitution type="package" search="http://www.w3.org/2003/InkML" replace="inkml"/>
+
+    <!-- ECMA-376 -->
+    <Substitution type="package" search="http://schemas.openxmlformats.org/wordprocessingml/2006/main" replace="wml"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/officeDocument/2006/math" replace="math"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/officeDocument/2006/relationships" replace="relationships_r"/>
+
+    <!--
+      CR-002 section 9: the package relationships part and the three docProps
+      parts. docx4j calls them org.docx4j.relationships, org.docx4j.docProps.core
+      (with .core.dc.elements, .core.dc.terms), .extended, .custom and
+      .variantTypes; the Dublin Core packages are flattened one level here
+      because in Python `docprops.core` cannot be both a module and a package.
+    -->
+    <Substitution type="package" search="http://schemas.openxmlformats.org/package/2006/relationships" replace="relationships"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" replace="docprops.core"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" replace="docprops.extended"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" replace="docprops.custom"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes" replace="docprops.variant_types"/>
+    <Substitution type="package" search="http://purl.org/dc/elements/1.1/" replace="docprops.dc"/>
+    <Substitution type="package" search="http://purl.org/dc/terms/" replace="docprops.dcterms"/>
+    <Substitution type="package" search="http://purl.org/dc/dcmitype/" replace="docprops.dcmitype"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes" replace="shared_types"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/markup-compatibility/2006" replace="mce"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/schemaLibrary/2006/main" replace="customxml"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/main" replace="dml.main"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/picture" replace="dml.picture"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" replace="dml.wordprocessing_drawing"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/chart" replace="dml.chart"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/chartDrawing" replace="dml.chart_drawing"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/diagram" replace="dml.diagram"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/lockedCanvas" replace="dml.locked_canvas"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" replace="dml.spreadsheet_drawing"/>
+    <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/compatibility" replace="dml.compatibility"/>
+
+    <!-- Microsoft word extensions -->
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2006/wordml" replace="wne"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordml" replace="w14"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2012/wordml" replace="w15"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" replace="word.wpc"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" replace="word.wp14"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" replace="word.wpg"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" replace="word.wps"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing" replace="word.wp15"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/ink/2010/main" replace="word.msink"/>
+
+    <!-- Microsoft drawing extensions, docx4j's xsd/odrawxml -->
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2007/8/2/chart" replace="oart.chart_2007"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2008/diagram" replace="oart.diagram_2008"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2010/main" replace="oart.main_2010"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2010/picture" replace="oart.picture_2010"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2010/diagram" replace="oart.diagram_2010"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2010/chartDrawing" replace="oart.chart_drawing_2010"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2012/main" replace="oart.main_2012"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2012/chart" replace="oart.chart_2012"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2012/chartStyle" replace="oart.chart_style_2012"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2013/main/command" replace="oart.command_2013"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2014/main" replace="oart.main_2014"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2014/chart" replace="oart.chart_2014"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2014/chart/ac" replace="oart.chart_ac_2014"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2014/chartex" replace="oart.chartex_2014"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2016/ink" replace="oart.ink_2016"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2016/SVG/main" replace="oart.svg_2016"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2016/11/main" replace="oart.main_2016_11"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2016/11/diagram" replace="oart.diagram_2016_11"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2016/12/diagram" replace="oart.diagram_2016_12"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2017/03/chart" replace="oart.chart_2017_03"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2017/decorative" replace="oart.decorative_2017"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2017/model3d" replace="oart.model3d_2017"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2018/animation" replace="oart.animation_2018"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2018/animation/model3d" replace="oart.animation_model3d_2018"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor" replace="oart.hyperlink_color_2018"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing" replace="oart.spreadsheet_drawing_2010"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/powerpoint/2014/inkAction" replace="oart.ink_action_2014"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/thememl/2012/main" replace="oart.theme_2012"/>
+  </Substitutions>
+  <Extensions>
+    <!--
+      CR-001 section 5: every generated dataclass gets the parent pointer.
+      applyIfDerived is left off on purpose, so a class that already extends a
+      generated class (RunIns over CT_RunTrackChange) inherits Child from its
+      base instead of listing it twice. Enumerations use a different template
+      and are not touched.
+    -->
+    <Extension type="class" class=".*" import="docx4j_py.child.Child"/>
+  </Extensions>
+</Config>

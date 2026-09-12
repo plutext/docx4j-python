@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from docx4j_py.child import Child
+
+__NAMESPACE__ = "http://schemas.microsoft.com/office/drawing/2018/animation/model3d"
+
+
+@dataclass(slots=True, kw_only=True)
+class CTPosterFrame(Child):
+    class Meta:
+        name = "CT_PosterFrame"
+
+    anim_id: None | int = field(
+        default=None,
+        metadata={
+            "name": "animId",
+            "type": "Attribute",
+        },
+    )
+    frame: None | int = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "schema_default": "0",
+            "min_inclusive": 0,
+            "max_inclusive": 100000,
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class CTEmbeddedAnimation(Child):
+    class Meta:
+        name = "CT_EmbeddedAnimation"
+
+    anim_pr: None | CTAnimationProperties = field(
+        default=None,
+        metadata={
+            "name": "animPr",
+            "type": "Element",
+            "namespace": "http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+        },
+    )
+    ext_lst: None | CTOfficeArtExtensionList = field(
+        default=None,
+        metadata={
+            "name": "extLst",
+            "type": "Element",
+            "namespace": "http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+        },
+    )
+    anim_id: None | int = field(
+        default=None,
+        metadata={
+            "name": "animId",
+            "type": "Attribute",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PosterFrame(CTPosterFrame):
+    class Meta:
+        name = "posterFrame"
+        namespace = "http://schemas.microsoft.com/office/drawing/2018/animation/model3d"
+
+
+@dataclass(slots=True, kw_only=True)
+class EmbedAnim(CTEmbeddedAnimation):
+    class Meta:
+        name = "embedAnim"
+        namespace = "http://schemas.microsoft.com/office/drawing/2018/animation/model3d"
+
+
+# Imported below the classes, not above them: these names are only needed
+# once the classes exist, and importing them earlier would not be possible
+# where two modules depend on each other.
+from docx4j_py.dml.main import CTOfficeArtExtensionList
+from docx4j_py.oart.animation_2018 import CTAnimationProperties
+
+
+# CR-001 Phase C: el, the fragment helpers and the text sugar, reached
+# through this package as CR-001 section 6.2 writes them
+# (``from docx4j_py.oart.animation_model3d_2018 import el, p, r, t, wml, to_xml, text_of, walk, find``).
+# Lazily, because the hand-written modules import the classes above and an
+# eager import here would be a cycle.
+_PHASE_C: dict[str, str] = {
+    "FragmentError": "docx4j_py.fragments",
+    "deep_copy": "docx4j_py.child",
+    "el": "docx4j_py.oart.animation_model3d_2018.el",
+    "element_name": "docx4j_py.traversal",
+    "find": "docx4j_py.traversal",
+    "iter_nodes": "docx4j_py.traversal",
+    "link_parents": "docx4j_py.child",
+    "text_of": "docx4j_py.traversal",
+    "to_xml": "docx4j_py.fragments",
+    "walk": "docx4j_py.traversal",
+    "warm_up": "docx4j_py.runtime",
+    "wml": "docx4j_py.fragments"
+}
+
+
+def __getattr__(name: str) -> object:
+    """Import a Phase C helper, or the ``el`` submodule, on first use."""
+    target = _PHASE_C.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from importlib import import_module
+
+    value = import_module(target) if name == "el" else getattr(import_module(target), name)
+    globals()[name] = value
+    return value

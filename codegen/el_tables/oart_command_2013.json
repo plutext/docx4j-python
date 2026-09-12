@@ -1,0 +1,128 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2013/main/command",
+  "module": "docx4j_py.oart.command_2013",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 9,
+    "simple_type_elements": 0,
+    "scoped_names": 5,
+    "keyword_renames": 0,
+    "collisions": 5
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {},
+  "collisions": {
+    "cxnSpMkLst": {
+      "default": {
+        "name": "cxnSpMkLst",
+        "class": "CxnSpMkLst",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "connector_moniker_list",
+          "class": "CTConnectorMonikerList",
+          "scopes": [
+            "CTConnectorChanges"
+          ]
+        }
+      ]
+    },
+    "graphicFrameMkLst": {
+      "default": {
+        "name": "graphicFrameMkLst",
+        "class": "GraphicFrameMkLst",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "graphic_frame_moniker_list",
+          "class": "CTGraphicFrameMonikerList",
+          "scopes": [
+            "CTGraphicFrameChanges"
+          ]
+        }
+      ]
+    },
+    "inkMkLst": {
+      "default": {
+        "name": "inkMkLst",
+        "class": "InkMkLst",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ink_moniker_list",
+          "class": "CTInkMonikerList",
+          "scopes": [
+            "CTInkChanges"
+          ]
+        }
+      ]
+    },
+    "picMkLst": {
+      "default": {
+        "name": "picMkLst",
+        "class": "PicMkLst",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "picture_moniker_list",
+          "class": "CTPictureMonikerList",
+          "scopes": [
+            "CTPictureChanges"
+          ]
+        }
+      ]
+    },
+    "spMkLst": {
+      "default": {
+        "name": "spMkLst",
+        "class": "SpMkLst",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "shape_moniker_list",
+          "class": "CTShapeMonikerList",
+          "scopes": [
+            "CTShapeChanges"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "chgData": "CTChangesData",
+    "cxnSpMkLst": "CxnSpMkLst",
+    "extLst": "CTOfficeArtExtensionList",
+    "graphicFrameMkLst": "GraphicFrameMkLst",
+    "grpMkLst": "GrpMkLst",
+    "grpSpMkLst": "CTGroupShapeMonikerList",
+    "inkMkLst": "InkMkLst",
+    "picMkLst": "PicMkLst",
+    "spMkLst": "SpMkLst"
+  }
+}

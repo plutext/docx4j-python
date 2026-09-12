@@ -1,0 +1,101 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2006/wordml",
+  "module": "docx4j_py.wne",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 18,
+    "simple_type_elements": 13,
+    "scoped_names": 1,
+    "keyword_renames": 0,
+    "collisions": 1
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "eventDocBuildingBlockAfterInsert": [
+      "object"
+    ],
+    "eventDocClose": [
+      "object"
+    ],
+    "eventDocContentControlAfterInsert": [
+      "object"
+    ],
+    "eventDocContentControlBeforeDelete": [
+      "object"
+    ],
+    "eventDocContentControlContentUpdate": [
+      "object"
+    ],
+    "eventDocContentControlOnEnter": [
+      "object"
+    ],
+    "eventDocContentControlOnExit": [
+      "object"
+    ],
+    "eventDocNew": [
+      "object"
+    ],
+    "eventDocOpen": [
+      "object"
+    ],
+    "eventDocStoreUpdate": [
+      "object"
+    ],
+    "eventDocSync": [
+      "object"
+    ],
+    "eventDocXmlAfterInsert": [
+      "object"
+    ],
+    "eventDocXmlBeforeDelete": [
+      "object"
+    ]
+  },
+  "keyword_renames": {},
+  "collisions": {
+    "acd": {
+      "default": {
+        "name": "acd",
+        "class": "CTAcd",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTAcds"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "acd_keymap",
+          "class": "CTAcdKeymap",
+          "scopes": [
+            "CTKeymap"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "acd": "CTAcd",
+    "acdEntry": "CTAcdKeymap",
+    "acdManifest": "CTAcdManifest",
+    "acds": "CTAcds",
+    "docEvents": "CTDocEvents",
+    "fci": "CTFci",
+    "keymap": "CTKeymap",
+    "keymaps": "CTKeymaps",
+    "keymapsBad": "CTKeymaps",
+    "macro": "Macro",
+    "mcd": "CTMcd",
+    "mcds": "CTMcds",
+    "tcg": "Tcg",
+    "toolbarData": "CTRel",
+    "toolbars": "CTToolbars",
+    "vbaSuppData": "VbaSuppData",
+    "wch": "CTLongHexNumber",
+    "wll": "Wll"
+  }
+}

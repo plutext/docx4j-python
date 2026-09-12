@@ -1,0 +1,117 @@
+{
+  "namespace": "http://www.w3.org/2003/InkML",
+  "module": "docx4j_py.inkml",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 23,
+    "simple_type_elements": 0,
+    "scoped_names": 3,
+    "keyword_renames": 0,
+    "collisions": 3
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {},
+  "collisions": {
+    "definitions": {
+      "default": {
+        "name": "definitions",
+        "class": "Definitions",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "Actions",
+          "CTActions"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "definitions_type",
+          "class": "DefinitionsType",
+          "scopes": [
+            "Ink",
+            "InkType"
+          ]
+        }
+      ]
+    },
+    "trace": {
+      "default": {
+        "name": "trace",
+        "class": "Trace",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "CTActionData"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "trace_type",
+          "class": "TraceType",
+          "scopes": [
+            "Definitions",
+            "DefinitionsType",
+            "Ink",
+            "InkType",
+            "TraceGroupType"
+          ]
+        }
+      ]
+    },
+    "traceView": {
+      "default": {
+        "name": "traceView",
+        "class": "TraceView",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "CTActionData"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "trace_view_type",
+          "class": "TraceViewType",
+          "scopes": [
+            "Definitions",
+            "DefinitionsType",
+            "Ink",
+            "InkType",
+            "TraceGroupType"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "activeArea": "ActiveAreaType",
+    "annotation": "AnnotationType",
+    "annotationXML": "AnnotationXMLType",
+    "brush": "BrushType",
+    "brushProperty": "BrushPropertyType",
+    "canvas": "CanvasType",
+    "canvasTransform": "CanvasTransformType",
+    "channel": "ChannelType",
+    "channelProperties": "ChannelPropertiesType",
+    "channelProperty": "ChannelPropertiesTypeChannelProperty",
+    "context": "ContextType",
+    "definitions": "Definitions",
+    "ink": "Ink",
+    "inkSource": "InkSourceType",
+    "intermittentChannels": "IntermittentChannelsType",
+    "latency": "LatencyType",
+    "sampleRate": "SampleRateType",
+    "sourceProperty": "SourcePropertyType",
+    "timestamp": "TimestampType",
+    "trace": "Trace",
+    "traceFormat": "TraceFormatType",
+    "traceGroup": "TraceGroupType",
+    "traceView": "TraceView"
+  }
+}

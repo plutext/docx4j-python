@@ -1,0 +1,12 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2018.animation.model3d",
+  "types": {
+    "CT_EmbeddedAnimation": "CTEmbeddedAnimation",
+    "CT_PosterFrame": "CTPosterFrame"
+  },
+  "elements": {
+    "embedAnim": "CTEmbeddedAnimation",
+    "posterFrame": "CTPosterFrame"
+  }
+}

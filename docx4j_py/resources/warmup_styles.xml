@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- docx4j-python CR-001 section 8: the styles half of what warm_up() parses. -->
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+          xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+          xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"
+          mc:Ignorable="w14 w15">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:eastAsiaTheme="minorHAnsi" w:cstheme="minorBidi"/>
+      <w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-AU" w:eastAsia="en-US" w:bidi="ar-SA"/>
+    </w:rPr></w:rPrDefault>
+    <w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr></w:pPrDefault>
+  </w:docDefaults>
+  <w:latentStyles w:defLockedState="0" w:defUIPriority="99" w:defSemiHidden="0" w:defUnhideWhenUsed="0" w:defQFormat="0" w:count="371">
+    <w:lsdException w:name="Normal" w:uiPriority="0" w:qFormat="1"/>
+    <w:lsdException w:name="heading 1" w:uiPriority="9" w:qFormat="1"/>
+    <w:lsdException w:name="Table Grid" w:uiPriority="39"/>
+  </w:latentStyles>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/><w:qFormat/>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:link w:val="Heading1Char"/>
+    <w:uiPriority w:val="9"/><w:qFormat/>
+    <w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="0"/><w:outlineLvl w:val="0"/></w:pPr>
+    <w:rPr><w:rFonts w:asciiTheme="majorHAnsi" w:hAnsiTheme="majorHAnsi"/><w:color w:val="2F5496"/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr>
+  </w:style>
+  <w:style w:type="character" w:styleId="Strong"><w:name w:val="Strong"/><w:uiPriority w:val="22"/><w:qFormat/><w:rPr><w:b/><w:bCs/></w:rPr></w:style>
+  <w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:uiPriority w:val="99"/><w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style>
+  <w:style w:type="table" w:styleId="TableGrid">
+    <w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:uiPriority w:val="39"/>
+    <w:tblPr>
+      <w:tblBorders>
+        <w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        <w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      </w:tblBorders>
+    </w:tblPr>
+  </w:style>
+  <w:style w:type="numbering" w:default="1" w:styleId="NoList"><w:name w:val="No List"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/></w:style>
+</w:styles>

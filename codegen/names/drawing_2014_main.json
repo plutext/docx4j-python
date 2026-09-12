@@ -1,0 +1,17 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2014/main",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2014.main",
+  "types": {
+    "CT_ConnectableReferences": "CTConnectableReferences",
+    "CT_CreationId": "CTCreationId",
+    "CT_Identifier": "CTIdentifier",
+    "CT_PredecessorDrawingElementReference": "CTPredecessorDrawingElementReference"
+  },
+  "elements": {
+    "colId": "CTIdentifier",
+    "creationId": "CTCreationId",
+    "cxnDERefs": "CTConnectableReferences",
+    "predDERef": "CTPredecessorDrawingElementReference",
+    "rowId": "CTIdentifier"
+  }
+}

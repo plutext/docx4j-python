@@ -1,0 +1,13 @@
+# virtual environments
+.venv/
+.venv-fork/
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+# generated at run time
+out/
+.claude/
+# the unmodified-xsdata output of the first experiment; reproducible from .xsdata.xml with upstream xsdata 26.2
+baseline/

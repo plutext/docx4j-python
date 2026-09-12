@@ -1,0 +1,1056 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/main",
+  "module": "docx4j_py.dml.main",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 310,
+    "simple_type_elements": 2,
+    "scoped_names": 33,
+    "keyword_renames": 1,
+    "collisions": 29
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "t": [
+      "str"
+    ],
+    "tableStyleId": [
+      "str"
+    ]
+  },
+  "keyword_renames": {
+    "round": "round_"
+  },
+  "collisions": {
+    "alpha": {
+      "default": {
+        "name": "alpha",
+        "class": "Alpha1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "alpha2",
+          "class": "Alpha2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "alphaMod": {
+      "default": {
+        "name": "alphaMod",
+        "class": "AlphaMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "alpha_mod2",
+          "class": "AlphaMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        },
+        {
+          "name": "alpha_modulate_effect",
+          "class": "CTAlphaModulateEffect",
+          "scopes": [
+            "Blip",
+            "CTBlip",
+            "CTEffectContainer"
+          ]
+        }
+      ]
+    },
+    "bevel": {
+      "default": {
+        "name": "bevel",
+        "class": "CTLineJoinBevel",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTLineProperties"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "bevel_bevel",
+          "class": "CTBevel",
+          "scopes": [
+            "CTCell3D"
+          ]
+        }
+      ]
+    },
+    "blip": {
+      "default": {
+        "name": "blip",
+        "class": "Blip",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "blip_blip",
+          "class": "CTBlip",
+          "scopes": [
+            "CTBlipFillProperties",
+            "CTTextBlipBullet"
+          ]
+        }
+      ]
+    },
+    "blue": {
+      "default": {
+        "name": "blue",
+        "class": "Blue1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "blue2",
+          "class": "Blue2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "blueMod": {
+      "default": {
+        "name": "blueMod",
+        "class": "BlueMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "blue_mod2",
+          "class": "BlueMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "blueOff": {
+      "default": {
+        "name": "blueOff",
+        "class": "BlueOff1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "blue_off2",
+          "class": "BlueOff2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "effect": {
+      "default": {
+        "name": "effect",
+        "class": "CTEffectReference",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTEffectContainer"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "effect_properties",
+          "class": "CTEffectProperties",
+          "scopes": [
+            "CTTableBackgroundStyle"
+          ]
+        }
+      ]
+    },
+    "ext": {
+      "default": {
+        "name": "ext",
+        "class": "CTOfficeArtExtension",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTOfficeArtExtensionList",
+          "ExtLst"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "positive_size2_d",
+          "class": "CTPositiveSize2D",
+          "scopes": [
+            "CTGroupTransform2D",
+            "CTTransform2D"
+          ]
+        }
+      ]
+    },
+    "fill": {
+      "default": {
+        "name": "fill",
+        "class": "CTFillEffect",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTEffectContainer"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "fill_properties",
+          "class": "CTFillProperties",
+          "scopes": [
+            "CTTableBackgroundStyle",
+            "CTTableStyleCellStyle"
+          ]
+        }
+      ]
+    },
+    "font": {
+      "default": {
+        "name": "font",
+        "class": "CtFontCollectionFont",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "FontCollection"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "font_collection",
+          "class": "FontCollection",
+          "scopes": [
+            "CTTableStyleTextStyle"
+          ]
+        }
+      ]
+    },
+    "fontScheme": {
+      "default": {
+        "name": "fontScheme",
+        "class": "CtBaseStylesFontScheme",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "BaseStyles"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "base_styles_override_font_scheme",
+          "class": "CtBaseStylesOverrideFontScheme",
+          "scopes": [
+            "CTBaseStylesOverride",
+            "ThemeOverride"
+          ]
+        }
+      ]
+    },
+    "green": {
+      "default": {
+        "name": "green",
+        "class": "Green1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "green2",
+          "class": "Green2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "greenMod": {
+      "default": {
+        "name": "greenMod",
+        "class": "GreenMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "green_mod2",
+          "class": "GreenMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "greenOff": {
+      "default": {
+        "name": "greenOff",
+        "class": "GreenOff1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "green_off2",
+          "class": "GreenOff2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "hueMod": {
+      "default": {
+        "name": "hueMod",
+        "class": "HueMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "hue_mod2",
+          "class": "HueMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "lum": {
+      "default": {
+        "name": "lum",
+        "class": "Lum1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "lum2",
+          "class": "Lum2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        },
+        {
+          "name": "luminance_effect",
+          "class": "CTLuminanceEffect",
+          "scopes": [
+            "Blip",
+            "CTBlip",
+            "CTEffectContainer"
+          ]
+        }
+      ]
+    },
+    "lumMod": {
+      "default": {
+        "name": "lumMod",
+        "class": "LumMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "lum_mod2",
+          "class": "LumMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "lumOff": {
+      "default": {
+        "name": "lumOff",
+        "class": "LumOff1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "lum_off2",
+          "class": "LumOff2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "path": {
+      "default": {
+        "name": "path",
+        "class": "CTPathShadeProperties",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTGradientFillProperties"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "path2_d",
+          "class": "CTPath2D",
+          "scopes": [
+            "CTPath2DList"
+          ]
+        }
+      ]
+    },
+    "red": {
+      "default": {
+        "name": "red",
+        "class": "Red1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "red2",
+          "class": "Red2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "redMod": {
+      "default": {
+        "name": "redMod",
+        "class": "RedMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "red_mod2",
+          "class": "RedMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "redOff": {
+      "default": {
+        "name": "redOff",
+        "class": "RedOff1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "red_off2",
+          "class": "RedOff2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "sat": {
+      "default": {
+        "name": "sat",
+        "class": "Sat1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sat2",
+          "class": "Sat2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "satMod": {
+      "default": {
+        "name": "satMod",
+        "class": "SatMod1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sat_mod2",
+          "class": "SatMod2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "satOff": {
+      "default": {
+        "name": "satOff",
+        "class": "SatOff1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sat_off2",
+          "class": "SatOff2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "shade": {
+      "default": {
+        "name": "shade",
+        "class": "Shade1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "shade2",
+          "class": "Shade2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        }
+      ]
+    },
+    "tint": {
+      "default": {
+        "name": "tint",
+        "class": "Tint1",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTHslColor",
+          "CTPresetColor",
+          "CTSRgbColor",
+          "CTScRgbColor",
+          "CTSchemeColor",
+          "CTSystemColor"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tint2",
+          "class": "Tint2",
+          "scopes": [
+            "CTColorStyleVariation",
+            "CTStyleColor"
+          ]
+        },
+        {
+          "name": "tint_effect",
+          "class": "CTTintEffect",
+          "scopes": [
+            "Blip",
+            "CTBlip",
+            "CTEffectContainer"
+          ]
+        }
+      ]
+    },
+    "xfrm": {
+      "default": {
+        "name": "xfrm",
+        "class": "CTTransform2D",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTGvmlGraphicalObjectFrame",
+          "CTGvmlTextShape",
+          "CTShapeProperties",
+          "SpPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "group_transform2_d",
+          "class": "CTGroupTransform2D",
+          "scopes": [
+            "CTGroupShapeProperties"
+          ]
+        },
+        {
+          "name": "transform_effect",
+          "class": "CTTransformEffect",
+          "scopes": [
+            "CTEffectContainer"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "accent1": "CTColor",
+    "accent2": "CTColor",
+    "accent3": "CTColor",
+    "accent4": "CTColor",
+    "accent5": "CTColor",
+    "accent6": "CTColor",
+    "ahLst": "CTAdjustHandleList",
+    "ahPolar": "CTPolarAdjustHandle",
+    "ahXY": "CTXYAdjustHandle",
+    "alpha": "Alpha1",
+    "alphaBiLevel": "CTAlphaBiLevelEffect",
+    "alphaCeiling": "CTAlphaCeilingEffect",
+    "alphaFloor": "CTAlphaFloorEffect",
+    "alphaInv": "CTAlphaInverseEffect",
+    "alphaMod": "AlphaMod1",
+    "alphaModFix": "CTAlphaModulateFixedEffect",
+    "alphaOff": "CTFixedPercentage",
+    "alphaOutset": "CTAlphaOutsetEffect",
+    "alphaRepl": "CTAlphaReplaceEffect",
+    "anchor": "CTPoint3D",
+    "arcTo": "CTPath2DArcTo",
+    "avLst": "CTGeomGuideList",
+    "backdrop": "CTBackdrop",
+    "band1H": "CTTablePartStyle",
+    "band1V": "CTTablePartStyle",
+    "band2H": "CTTablePartStyle",
+    "band2V": "CTTablePartStyle",
+    "bevel": "CTLineJoinBevel",
+    "bevelB": "CTBevel",
+    "bevelT": "CTBevel",
+    "bgClr": "CTColor",
+    "bgFillStyleLst": "CTBackgroundFillStyleList",
+    "biLevel": "CTBiLevelEffect",
+    "bldChart": "CTAnimationChartBuildProperties",
+    "bldDgm": "CTAnimationDgmBuildProperties",
+    "blend": "CTBlendEffect",
+    "blip": "Blip",
+    "blipFill": "CTBlipFillProperties",
+    "blue": "Blue1",
+    "blueMod": "BlueMod1",
+    "blueOff": "BlueOff1",
+    "blur": "CTBlurEffect",
+    "bodyPr": "CTTextBodyProperties",
+    "bottom": "CTThemeableLineStyle",
+    "br": "CTTextLineBreak",
+    "buAutoNum": "CTTextAutonumberBullet",
+    "buBlip": "CTTextBlipBullet",
+    "buChar": "CTTextCharBullet",
+    "buClr": "CTColor",
+    "buClrTx": "CTTextBulletColorFollowText",
+    "buFont": "TextFont",
+    "buFontTx": "CTTextBulletTypefaceFollowText",
+    "buNone": "CTTextNoBullet",
+    "buSzPct": "CTTextBulletSizePercent",
+    "buSzPts": "CTTextBulletSizePoint",
+    "buSzTx": "CTTextBulletSizeFollowText",
+    "cNvCxnSpPr": "CTNonVisualConnectorProperties",
+    "cNvGraphicFramePr": "CTNonVisualGraphicFrameProperties",
+    "cNvGrpSpPr": "CTNonVisualGroupDrawingShapeProps",
+    "cNvPicPr": "CTNonVisualPictureProperties",
+    "cNvPr": "CTNonVisualDrawingProps",
+    "cNvSpPr": "CTNonVisualDrawingShapeProps",
+    "camera": "CTCamera",
+    "cell3D": "CTCell3D",
+    "chExt": "CTPositiveSize2D",
+    "chOff": "CTPoint2D",
+    "chart": "CTAnimationChartElement",
+    "close": "CTPath2DClose",
+    "clrChange": "CTColorChangeEffect",
+    "clrFrom": "CTColor",
+    "clrMap": "CTColorMapping",
+    "clrRepl": "CTColorReplaceEffect",
+    "clrScheme": "CTColorScheme",
+    "clrTo": "CTColor",
+    "comp": "CTComplementTransform",
+    "cont": "CTEffectContainer",
+    "contourClr": "CTColor",
+    "cs": "TextFont",
+    "cubicBezTo": "CTPath2DCubicBezierTo",
+    "custClr": "CTCustomColor",
+    "custClrLst": "CTCustomColorList",
+    "custDash": "CTDashStopList",
+    "custGeom": "CTCustomGeometry2D",
+    "cxn": "CTConnectionSite",
+    "cxnLst": "CTConnectionSiteList",
+    "cxnSp": "CTGvmlConnector",
+    "cxnSpLocks": "CTConnectorLocking",
+    "defPPr": "CTTextParagraphProperties",
+    "defRPr": "CTTextCharacterProperties",
+    "dgm": "CTAnimationDgmElement",
+    "dk1": "CTColor",
+    "dk2": "CTColor",
+    "ds": "CTDashStop",
+    "duotone": "CTDuotoneEffect",
+    "ea": "TextFont",
+    "effect": "CTEffectReference",
+    "effectDag": "CTEffectContainer",
+    "effectLst": "CTEffectList",
+    "effectRef": "CTStyleMatrixReference",
+    "effectStyle": "CTEffectStyleItem",
+    "effectStyleLst": "CTEffectStyleList",
+    "end": "CTAudioCDTime",
+    "endCxn": "CTConnection",
+    "endParaRPr": "CTTextCharacterProperties",
+    "ext": "CTOfficeArtExtension",
+    "extLst": "CTOfficeArtExtensionList",
+    "extraClrScheme": "CTColorSchemeAndMapping",
+    "extraClrSchemeLst": "CTColorSchemeList",
+    "extrusionClr": "CTColor",
+    "fgClr": "CTColor",
+    "fill": "CTFillEffect",
+    "fillOverlay": "CTFillOverlayEffect",
+    "fillRect": "CTRelativeRect",
+    "fillRef": "CTStyleMatrixReference",
+    "fillStyleLst": "CTFillStyleList",
+    "fillToRect": "CTRelativeRect",
+    "firstCol": "CTTablePartStyle",
+    "firstRow": "CTTablePartStyle",
+    "flatTx": "CTFlatText",
+    "fld": "CTTextField",
+    "fmtScheme": "CTStyleMatrix",
+    "folHlink": "CTColor",
+    "font": "CtFontCollectionFont",
+    "fontRef": "CTFontReference",
+    "fontScheme": "CtBaseStylesFontScheme",
+    "gamma": "CTGammaTransform",
+    "gd": "CTGeomGuide",
+    "gdLst": "CTGeomGuideList",
+    "glow": "CTGlowEffect",
+    "gradFill": "CTGradientFillProperties",
+    "graphic": "Graphic",
+    "graphicData": "GraphicData",
+    "graphicFrame": "CTGvmlGraphicalObjectFrame",
+    "graphicFrameLocks": "CTGraphicalObjectFrameLocking",
+    "gray": "CTGrayscaleTransform",
+    "grayscl": "CTGrayscaleEffect",
+    "green": "Green1",
+    "greenMod": "GreenMod1",
+    "greenOff": "GreenOff1",
+    "gridCol": "CTTableCol",
+    "grpFill": "CTGroupFillProperties",
+    "grpSp": "CTGvmlGroupShape",
+    "grpSpLocks": "CTGroupLocking",
+    "grpSpPr": "CTGroupShapeProperties",
+    "gs": "CTGradientStop",
+    "gsLst": "CTGradientStopList",
+    "headEnd": "CTLineEndProperties",
+    "highlight": "CTColor",
+    "hlink": "CTColor",
+    "hlinkClick": "CTHyperlink",
+    "hlinkHover": "CTHyperlink",
+    "hlinkMouseOver": "CTHyperlink",
+    "hsl": "CTHSLEffect",
+    "hslClr": "CTHslColor",
+    "hue": "CTPositiveFixedAngle",
+    "hueMod": "HueMod1",
+    "hueOff": "CTAngle",
+    "innerShdw": "CTInnerShadowEffect",
+    "insideH": "CTThemeableLineStyle",
+    "insideV": "CTThemeableLineStyle",
+    "inv": "CTInverseTransform",
+    "invGamma": "CTInverseGammaTransform",
+    "lastCol": "CTTablePartStyle",
+    "lastRow": "CTTablePartStyle",
+    "latin": "TextFont",
+    "left": "CTThemeableLineStyle",
+    "lightRig": "CTLightRig",
+    "lin": "CTLinearShadeProperties",
+    "ln": "CTLineProperties",
+    "lnB": "CTLineProperties",
+    "lnBlToTr": "CTLineProperties",
+    "lnDef": "CTDefaultShapeDefinition",
+    "lnL": "CTLineProperties",
+    "lnR": "CTLineProperties",
+    "lnRef": "CTStyleMatrixReference",
+    "lnSpc": "CTTextSpacing",
+    "lnStyleLst": "CTLineStyleList",
+    "lnT": "CTLineProperties",
+    "lnTlToBr": "CTLineProperties",
+    "lnTo": "CTPath2DLineTo",
+    "lstStyle": "CTTextListStyle",
+    "lt1": "CTColor",
+    "lt2": "CTColor",
+    "lum": "Lum1",
+    "lumMod": "LumMod1",
+    "lumOff": "LumOff1",
+    "lvl1pPr": "CTTextParagraphProperties",
+    "lvl2pPr": "CTTextParagraphProperties",
+    "lvl3pPr": "CTTextParagraphProperties",
+    "lvl4pPr": "CTTextParagraphProperties",
+    "lvl5pPr": "CTTextParagraphProperties",
+    "lvl6pPr": "CTTextParagraphProperties",
+    "lvl7pPr": "CTTextParagraphProperties",
+    "lvl8pPr": "CTTextParagraphProperties",
+    "lvl9pPr": "CTTextParagraphProperties",
+    "majorFont": "FontCollection",
+    "masterClrMapping": "CTEmptyElement",
+    "minorFont": "FontCollection",
+    "miter": "CTLineJoinMiterProperties",
+    "moveTo": "CTPath2DMoveTo",
+    "neCell": "CTTablePartStyle",
+    "noAutofit": "CTTextNoAutofit",
+    "noFill": "CTNoFillProperties",
+    "norm": "CTVector3D",
+    "normAutofit": "CTTextNormalAutofit",
+    "nvCxnSpPr": "CTGvmlConnectorNonVisual",
+    "nvGraphicFramePr": "CTGvmlGraphicFrameNonVisual",
+    "nvGrpSpPr": "CTGvmlGroupShapeNonVisual",
+    "nvPicPr": "CTGvmlPictureNonVisual",
+    "nvSpPr": "CTGvmlShapeNonVisual",
+    "nwCell": "CTTablePartStyle",
+    "objectDefaults": "CTObjectStyleDefaults",
+    "off": "CTPoint2D",
+    "outerShdw": "CTOuterShadowEffect",
+    "overrideClrMapping": "CTColorMapping",
+    "p": "CTTextParagraph",
+    "pPr": "CTTextParagraphProperties",
+    "path": "CTPathShadeProperties",
+    "pathLst": "CTPath2DList",
+    "pattFill": "CTPatternFillProperties",
+    "pic": "CTGvmlPicture",
+    "picLocks": "CTPictureLocking",
+    "pos": "CTAdjPoint2D",
+    "prstClr": "CTPresetColor",
+    "prstDash": "CTPresetLineDashProperties",
+    "prstGeom": "CTPresetGeometry2D",
+    "prstShdw": "CTPresetShadowEffect",
+    "prstTxWarp": "CTPresetTextShape",
+    "pt": "CTAdjPoint2D",
+    "quadBezTo": "CTPath2DQuadBezierTo",
+    "r": "CTRegularTextRun",
+    "rPr": "CTTextCharacterProperties",
+    "rect": "CTGeomRect",
+    "red": "Red1",
+    "redMod": "RedMod1",
+    "redOff": "RedOff1",
+    "reflection": "CTReflectionEffect",
+    "relOff": "CTRelativeOffsetEffect",
+    "right": "CTThemeableLineStyle",
+    "rot": "CTSphereCoords",
+    "round": "CTLineJoinRound",
+    "sat": "Sat1",
+    "satMod": "SatMod1",
+    "satOff": "SatOff1",
+    "scene3d": "CTScene3D",
+    "schemeClr": "CTSchemeColor",
+    "scrgbClr": "CTScRgbColor",
+    "seCell": "CTTablePartStyle",
+    "shade": "Shade1",
+    "snd": "CTEmbeddedWAVAudioFile",
+    "softEdge": "CTSoftEdgesEffect",
+    "solidFill": "CTSolidColorFillProperties",
+    "sp": "CTGvmlShape",
+    "sp3d": "CTShape3D",
+    "spAutoFit": "CTTextShapeAutofit",
+    "spDef": "CTDefaultShapeDefinition",
+    "spLocks": "CTShapeLocking",
+    "spPr": "CTShapeProperties",
+    "spcAft": "CTTextSpacing",
+    "spcBef": "CTTextSpacing",
+    "spcPct": "CTTextSpacingPercent",
+    "spcPts": "CTTextSpacingPoint",
+    "srcRect": "CTRelativeRect",
+    "srgbClr": "CTSRgbColor",
+    "st": "CTAudioCDTime",
+    "stCxn": "CTConnection",
+    "stretch": "CTStretchInfoProperties",
+    "style": "CTShapeStyle",
+    "swCell": "CTTablePartStyle",
+    "sx": "CTRatio",
+    "sy": "CTRatio",
+    "sym": "TextFont",
+    "sysClr": "CTSystemColor",
+    "tab": "CTTextTabStop",
+    "tabLst": "CTTextTabStopList",
+    "tableStyle": "CTTableStyle",
+    "tailEnd": "CTLineEndProperties",
+    "tbl": "Tbl",
+    "tblBg": "CTTableBackgroundStyle",
+    "tblGrid": "CTTableGrid",
+    "tblPr": "CTTableProperties",
+    "tblStyle": "CTTableStyle",
+    "tblStyleLst": "TblStyleLst",
+    "tc": "CTTableCell",
+    "tcBdr": "CTTableCellBorderStyle",
+    "tcPr": "CTTableCellProperties",
+    "tcStyle": "CTTableStyleCellStyle",
+    "tcTxStyle": "CTTableStyleTextStyle",
+    "theme": "Theme",
+    "themeElements": "BaseStyles",
+    "themeManager": "ThemeManager",
+    "themeOverride": "ThemeOverride",
+    "tile": "CTTileInfoProperties",
+    "tileRect": "CTRelativeRect",
+    "tint": "Tint1",
+    "tl2br": "CTThemeableLineStyle",
+    "top": "CTThemeableLineStyle",
+    "tr": "CTTableRow",
+    "tr2bl": "CTThemeableLineStyle",
+    "txBody": "CTTextBody",
+    "txDef": "CTDefaultShapeDefinition",
+    "txSp": "CTGvmlTextShape",
+    "uFill": "CTTextUnderlineFillGroupWrapper",
+    "uFillTx": "CTTextUnderlineFillFollowText",
+    "uLn": "CTLineProperties",
+    "uLnTx": "CTTextUnderlineLineFollowText",
+    "up": "CTVector3D",
+    "useSpRect": "CTGvmlUseShapeRectangle",
+    "wholeTbl": "CTTablePartStyle",
+    "xfrm": "CTTransform2D"
+  }
+}

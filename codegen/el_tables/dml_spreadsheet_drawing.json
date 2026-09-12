@@ -1,0 +1,109 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+  "module": "docx4j_py.dml.spreadsheet_drawing",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 31,
+    "simple_type_elements": 4,
+    "scoped_names": 2,
+    "keyword_renames": 1,
+    "collisions": 2
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "col": [
+      "int"
+    ],
+    "colOff": [
+      "int"
+    ],
+    "row": [
+      "int"
+    ],
+    "rowOff": [
+      "int"
+    ]
+  },
+  "keyword_renames": {
+    "from": "from_"
+  },
+  "collisions": {
+    "from": {
+      "default": {
+        "name": "from_",
+        "class": "From",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "from_marker",
+          "class": "CTMarker",
+          "scopes": [
+            "CTOneCellAnchor",
+            "CTTwoCellAnchor"
+          ]
+        }
+      ]
+    },
+    "to": {
+      "default": {
+        "name": "to",
+        "class": "To",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "to_marker",
+          "class": "CTMarker",
+          "scopes": [
+            "CTTwoCellAnchor"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "absoluteAnchor": "CTAbsoluteAnchor",
+    "blipFill": "CTBlipFillProperties",
+    "cNvCxnSpPr": "CTNonVisualConnectorProperties",
+    "cNvGraphicFramePr": "CTNonVisualGraphicFrameProperties",
+    "cNvGrpSpPr": "CTNonVisualGroupDrawingShapeProps",
+    "cNvPicPr": "CTNonVisualPictureProperties",
+    "cNvPr": "CTNonVisualDrawingProps",
+    "cNvSpPr": "CTNonVisualDrawingShapeProps",
+    "clientData": "CTAnchorClientData",
+    "cxnSp": "CTConnector",
+    "ext": "CTPositiveSize2D",
+    "from": "From",
+    "graphicFrame": "CTGraphicalObjectFrame",
+    "grpSp": "CTGroupShape",
+    "grpSpPr": "CTGroupShapeProperties",
+    "nvCxnSpPr": "CTConnectorNonVisual",
+    "nvGraphicFramePr": "CTGraphicalObjectFrameNonVisual",
+    "nvGrpSpPr": "CTGroupShapeNonVisual",
+    "nvPicPr": "CTPictureNonVisual",
+    "nvSpPr": "CTShapeNonVisual",
+    "oneCellAnchor": "CTOneCellAnchor",
+    "pic": "CTPicture",
+    "pos": "CTPoint2D",
+    "sp": "CTShape",
+    "spPr": "CTShapeProperties",
+    "style": "CTShapeStyle",
+    "to": "To",
+    "twoCellAnchor": "CTTwoCellAnchor",
+    "txBody": "CTTextBody",
+    "wsDr": "WsDr",
+    "xfrm": "CTTransform2D"
+  }
+}

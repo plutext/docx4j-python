@@ -1,0 +1,8 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+  "java_package": "org.docx4j.docProps.core",
+  "types": {},
+  "elements": {
+    "coreProperties": "CoreProperties"
+  }
+}

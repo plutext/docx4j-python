@@ -1,0 +1,28 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2014/chart",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2014.chart",
+  "types": {
+    "CT_BooleanFalse": "CTBooleanFalse",
+    "CT_CategoryFilterException": "CTCategoryFilterException",
+    "CT_CategoryFilterExceptions": "CTCategoryFilterExceptions",
+    "CT_ChartDataPointUniqueIDMap": "CTChartDataPointUniqueIDMap",
+    "CT_ChartDataPointUniqueIDMapEntry": "CTChartDataPointUniqueIDMapEntry",
+    "CT_ChartUniqueID": "CTChartUniqueID",
+    "CT_LiteralDataChart": "CTLiteralDataChart",
+    "CT_MultiLvlStrFilteredLiteralCache": "CTMultiLvlStrFilteredLiteralCache",
+    "CT_NumFilteredLiteralCache": "CTNumFilteredLiteralCache",
+    "CT_PivotOptions16": "CTPivotOptions16",
+    "CT_StrFilteredLiteralCache": "CTStrFilteredLiteralCache"
+  },
+  "elements": {
+    "bubble3D": "CTBoolean",
+    "categoryFilterExceptions": "CTCategoryFilterExceptions",
+    "dLbl": "CTDLbl",
+    "datapointuniqueidmap": "CTChartDataPointUniqueIDMap",
+    "explosion": "CTUnsignedInt",
+    "invertIfNegative": "CTBoolean",
+    "marker": "CTMarker",
+    "pivotOptions16": "CTPivotOptions16",
+    "spPr": "CTShapeProperties"
+  }
+}

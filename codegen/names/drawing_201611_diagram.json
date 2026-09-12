@@ -1,0 +1,13 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2016/11/diagram",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x201611.diagram",
+  "types": {
+    "CT_DiagramAutoBullet": "CTDiagramAutoBullet",
+    "CT_NumberDiagramInfo": "CTNumberDiagramInfo",
+    "CT_NumberDiagramInfoList": "CTNumberDiagramInfoList",
+    "ST_STorageType": "STSTorageType"
+  },
+  "elements": {
+    "autoBuNodeInfoLst": "CTNumberDiagramInfoList"
+  }
+}

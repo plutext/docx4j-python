@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  docx4j-python: the one entry point codegen/generate.sh hands the generator.
+
+  Not a docx4j schema. docx4j's build runs XJC once per part family with its own
+  <jaxb:package> binding; the Python generator takes a single SOURCE, so the
+  entry points are collected here instead. Everything below is reached by
+  import, and each import's own closure comes with it.
+
+    wml/wml.xsd                                 WordprocessingML and its 91-file closure
+    relationships.xsd                           the .rels parts             (CR-002 section 9)
+    docProps/opc-coreProperties.xsd             docProps/core.xml, and Dublin Core with it
+    docProps/shared-documentPropertiesExtended.xsd   docProps/app.xml
+    docProps/shared-documentPropertiesCustom.xsd     docProps/custom.xml
+
+  The two docProps property schemas both import the variant types, which is
+  where vt:vector and friends come from.
+-->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	elementFormDefault="qualified" attributeFormDefault="qualified"
+	blockDefault="#all">
+
+	<xsd:import id="w" namespace="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+		schemaLocation="wml/wml.xsd"/>
+
+	<xsd:import id="rel" namespace="http://schemas.openxmlformats.org/package/2006/relationships"
+		schemaLocation="relationships.xsd"/>
+
+	<xsd:import id="cp" namespace="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+		schemaLocation="docProps/opc-coreProperties.xsd"/>
+
+	<xsd:import id="properties" namespace="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+		schemaLocation="docProps/shared-documentPropertiesExtended.xsd"/>
+
+	<xsd:import id="prop" namespace="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
+		schemaLocation="docProps/shared-documentPropertiesCustom.xsd"/>
+
+</xsd:schema>

@@ -1,0 +1,15 @@
+{
+  "namespace": "http://schemas.microsoft.com/ink/2010/main",
+  "java_package": "org.docx4j.com.microsoft.schemas.ink.x2010.main",
+  "types": {
+    "CT_CtxLink": "CTCtxLink",
+    "CT_CtxNode": "CTCtxNode",
+    "CT_Property": "CTProperty",
+    "ST_Dir": "STDir",
+    "ST_KnownCtxNodeType": "STKnownCtxNodeType",
+    "ST_KnownSemanticType": "STKnownSemanticType"
+  },
+  "elements": {
+    "context": "CTCtxNode"
+  }
+}

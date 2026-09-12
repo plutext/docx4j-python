@@ -1,0 +1,9 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/package/2006/relationships",
+  "java_package": "org.docx4j.relationships",
+  "types": {},
+  "elements": {
+    "Relationship": "Relationship",
+    "Relationships": "Relationships"
+  }
+}

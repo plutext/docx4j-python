@@ -1,0 +1,12 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.word.x2010.wordprocessingShape",
+  "types": {
+    "CT_LinkedTextboxInformation": "CTLinkedTextboxInformation",
+    "CT_TextboxInfo": "CTTextboxInfo",
+    "CT_WordprocessingShape": "CTWordprocessingShape"
+  },
+  "elements": {
+    "wsp": "CTWordprocessingShape"
+  }
+}

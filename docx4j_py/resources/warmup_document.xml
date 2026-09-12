@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- docx4j-python CR-001 section 8: the part warm_up() parses so that the
+     XmlContext has built the metadata of the classes a real document touches
+     before the first real document arrives. Hand written, deliberately small,
+     and deliberately varied: paragraph and run properties, a style reference,
+     a hyperlink, a field, a bookmark, a tracked insertion and deletion, a
+     table with a grid, a drawing, w14 attributes, an mc:AlternateContent, a
+     symbol, a break and a tab. -->
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+            xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"
+            xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+            xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+            xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
+            mc:Ignorable="w14 w15 wp14">
+  <w:body>
+    <w:p w14:paraId="11111111" w14:textId="22222222" w:rsidR="00AA00AA">
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:spacing w:before="240" w:after="120" w:line="276" w:lineRule="auto"/>
+        <w:ind w:left="720" w:firstLine="360"/>
+        <w:jc w:val="both"/>
+        <w:tabs><w:tab w:val="left" w:pos="1440"/></w:tabs>
+        <w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>
+        <w:rPr><w:b/><w:i/><w:color w:val="FF0000"/></w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:id="1" w:name="warm"/>
+      <w:r>
+        <w:rPr>
+          <w:rStyle w:val="Strong"/>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Arial"/>
+          <w:b/><w:bCs/><w:i/><w:iCs/><w:strike/><w:dstrike/>
+          <w:sz w:val="24"/><w:szCs w:val="24"/>
+          <w:u w:val="single"/><w:highlight w:val="yellow"/>
+          <w:color w:val="0000FF"/><w:vertAlign w:val="superscript"/>
+          <w:lang w:val="en-AU"/>
+          <w:shd w:val="clear" w:color="auto" w:fill="FFFF00"/>
+        </w:rPr>
+        <w:t xml:space="preserve">  Hello, world  </w:t>
+        <w:tab/><w:br w:type="page"/><w:cr/>
+        <w:sym w:font="Wingdings" w:char="F0E0"/>
+        <w:noBreakHyphen/><w:softHyphen/>
+        <w:lastRenderedPageBreak/>
+      </w:r>
+      <w:hyperlink r:id="rId4" w:history="1">
+        <w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>a link</w:t></w:r>
+      </w:hyperlink>
+      <w:fldSimple w:instr=" PAGE ">
+        <w:r><w:t>1</w:t></w:r>
+      </w:fldSimple>
+      <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+      <w:r><w:instrText xml:space="preserve"> REF warm \h </w:instrText></w:r>
+      <w:r><w:fldChar w:fldCharType="end"/></w:r>
+      <w:ins w:id="2" w:author="a" w:date="2026-01-01T00:00:00Z">
+        <w:r><w:t>inserted</w:t></w:r>
+      </w:ins>
+      <w:del w:id="3" w:author="a" w:date="2026-01-01T00:00:00Z">
+        <w:r><w:delText>deleted</w:delText></w:r>
+      </w:del>
+      <w:bookmarkEnd w:id="1"/>
+    </w:p>
+    <w:sdt>
+      <w:sdtPr>
+        <w:alias w:val="control"/>
+        <w:tag w:val="t"/>
+        <w:id w:val="123"/>
+        <w:text/>
+      </w:sdtPr>
+      <w:sdtContent>
+        <w:p><w:r><w:t>in a content control</w:t></w:r></w:p>
+      </w:sdtContent>
+    </w:sdt>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:w="9026" w:type="dxa"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+          <w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+          <w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+          <w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+        </w:tblBorders>
+        <w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="1" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/>
+      </w:tblPr>
+      <w:tblGrid><w:gridCol w:w="4513"/><w:gridCol w:w="4513"/></w:tblGrid>
+      <w:tr>
+        <w:trPr><w:trHeight w:val="300"/></w:trPr>
+        <w:tc>
+          <w:tcPr><w:tcW w:w="4513" w:type="dxa"/><w:gridSpan w:val="1"/><w:vAlign w:val="center"/></w:tcPr>
+          <w:p><w:r><w:t>cell one</w:t></w:r></w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr><w:tcW w:w="4513" w:type="dxa"/><w:vMerge w:val="restart"/></w:tcPr>
+          <w:p><w:r><w:t>cell two</w:t></w:r></w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:r>
+        <mc:AlternateContent>
+          <mc:Choice Requires="wps">
+            <w:drawing>
+              <wp:inline distT="0" distB="0" distL="0" distR="0">
+                <wp:extent cx="914400" cy="914400"/>
+                <wp:docPr id="1" name="Shape"/>
+                <a:graphic>
+                  <a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                    <wps:wsp>
+                      <wps:cNvSpPr/>
+                      <wps:spPr>
+                        <a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm>
+                        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                        <a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>
+                      </wps:spPr>
+                      <wps:bodyPr/>
+                    </wps:wsp>
+                  </a:graphicData>
+                </a:graphic>
+              </wp:inline>
+            </w:drawing>
+          </mc:Choice>
+          <mc:Fallback>
+            <w:pict/>
+          </mc:Fallback>
+        </mc:AlternateContent>
+      </w:r>
+      <w:r>
+        <w:drawing>
+          <wp:inline distT="0" distB="0" distL="0" distR="0">
+            <wp:extent cx="914400" cy="914400"/>
+            <wp:effectExtent l="0" t="0" r="0" b="0"/>
+            <wp:docPr id="2" name="Picture"/>
+            <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                <pic:pic>
+                  <pic:nvPicPr><pic:cNvPr id="0" name="i.png"/><pic:cNvPicPr/></pic:nvPicPr>
+                  <pic:blipFill><a:blip r:embed="rId5"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
+                  <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm>
+                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+                </pic:pic>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+    <w:p>
+      <m:oMathPara>
+        <m:oMath>
+          <m:r><m:t>x</m:t></m:r>
+        </m:oMath>
+      </m:oMathPara>
+    </w:p>
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
+      <w:cols w:space="708"/>
+      <w:docGrid w:linePitch="360"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

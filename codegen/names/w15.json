@@ -1,0 +1,30 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2012/wordml",
+  "java_package": "org.docx4j.w15",
+  "types": {
+    "CT_CommentEx": "CTCommentEx",
+    "CT_CommentsEx": "CTCommentsEx",
+    "CT_Guid": "CTGuid",
+    "CT_People": "CTPeople",
+    "CT_Person": "CTPerson",
+    "CT_PresenceInfo": "CTPresenceInfo",
+    "CT_SdtAppearance": "CTSdtAppearance",
+    "CT_SdtRepeatedSection": "CTSdtRepeatedSection",
+    "ST_SdtAppearance": "STSdtAppearance"
+  },
+  "elements": {
+    "appearance": "CTSdtAppearance",
+    "chartTrackingRefBased": "BooleanDefaultTrue",
+    "collapsed": "BooleanDefaultTrue",
+    "color": "CTColor",
+    "commentsEx": "CTCommentsEx",
+    "dataBinding": "CTDataBinding",
+    "docId": "CTGuid",
+    "footnoteColumns": "CTDecimalNumber",
+    "people": "CTPeople",
+    "repeatingSection": "CTSdtRepeatedSection",
+    "repeatingSectionItem": "CTEmpty",
+    "webExtensionCreated": "BooleanDefaultTrue",
+    "webExtensionLinked": "BooleanDefaultTrue"
+  }
+}

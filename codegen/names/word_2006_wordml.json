@@ -1,0 +1,26 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2006/wordml",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.word.x2006.wordml",
+  "types": {
+    "CT_Acd": "CTAcd",
+    "CT_AcdKeymap": "CTAcdKeymap",
+    "CT_AcdManifest": "CTAcdManifest",
+    "CT_Acds": "CTAcds",
+    "CT_DocEvents": "CTDocEvents",
+    "CT_Fci": "CTFci",
+    "CT_Keymap": "CTKeymap",
+    "CT_Keymaps": "CTKeymaps",
+    "CT_LongHexNumber": "CTLongHexNumber",
+    "CT_MacroWll": "CTMacroWll",
+    "CT_Mcd": "CTMcd",
+    "CT_Mcds": "CTMcds",
+    "CT_Rel": "CTRel",
+    "CT_Tcg": "CTTcg",
+    "CT_Toolbars": "CTToolbars",
+    "CT_VbaSuppData": "CTVbaSuppData"
+  },
+  "elements": {
+    "tcg": "CTTcg",
+    "vbaSuppData": "CTVbaSuppData"
+  }
+}

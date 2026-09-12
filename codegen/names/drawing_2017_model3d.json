@@ -1,0 +1,25 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2017/model3d",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2017.model3d",
+  "types": {
+    "CT_AmbientLight": "CTAmbientLight",
+    "CT_DirectionalLight": "CTDirectionalLight",
+    "CT_Model3D": "CTModel3D",
+    "CT_Model3DCamera": "CTModel3DCamera",
+    "CT_Model3DRaster": "CTModel3DRaster",
+    "CT_Model3DTransform": "CTModel3DTransform",
+    "CT_ObjectViewport": "CTObjectViewport",
+    "CT_OrthographicProjection": "CTOrthographicProjection",
+    "CT_PerspectiveProjection": "CTPerspectiveProjection",
+    "CT_PointLight": "CTPointLight",
+    "CT_PositiveRatio": "CTPositiveRatio",
+    "CT_Rotate3D": "CTRotate3D",
+    "CT_Scale3D": "CTScale3D",
+    "CT_SpotLight": "CTSpotLight",
+    "CT_UnknownLight": "CTUnknownLight",
+    "CT_WindowViewport": "CTWindowViewport"
+  },
+  "elements": {
+    "model3D": "CTModel3D"
+  }
+}

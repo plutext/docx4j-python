@@ -1,0 +1,42 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+  "java_package": "org.docx4j.wml",
+  "_comment": [
+    "The one hand written file in this directory. derive_names.py writes one",
+    "<prefix>.json per namespace and never touches this one; the fork's",
+    "<ClassNames> option merges every *.json of the directory, and a scoped",
+    "key cannot collide with the derived unscoped key it refines.",
+    "",
+    "These are the classes the generator invents for w:t, w:instrText and",
+    "w:delInstrText inside w:r: all three have the type CT_Text, so a compound",
+    "field needs one class per element name to tell them apart, and there is no",
+    "docx4j name to take because JAXB used one Text class with a JAXBElement",
+    "per name. Left alone they come out T2, InstrText2 and DelInstrText2, and",
+    "w:t is the most used element in the model. They are named here the way the",
+    "generator already names the sibling classes of the same field, R.Cr as RCr",
+    "and R.Tab as RTab, which is how docx4j names them too: R.T is RT. Each is",
+    "a subclass of Text, so isinstance(x, Text) holds, as CR-001 section 11",
+    "question 2 requires.",
+    "",
+    "The scope is the enclosing class as the generator holds it when it invents",
+    "the class, which is the schema type name (CT_P) unless the type is used by",
+    "exactly one global element and has been reduced into it, which is the case",
+    "here: CT_R is w:r. It is read in this file's namespace, so it is wml's w:r",
+    "and not OMML's CT_R, which also carries a w:t.",
+    "",
+    "CT_StylePaneFilter is the second hand entry (CR-002 section 5.7): the type",
+    "does not exist in docx4j's schema copy at all --- the schema patch in",
+    "schemas/wml/wml.xsd adds it --- so derive_names.py has no docx4j name to",
+    "give it and xsdata would call it CtStylePaneFilter. Named here the way",
+    "docx4j names every CT_ type it did not rename, CTShortHexNumber and",
+    "CTSignedTwipsMeasure being its neighbours."
+  ],
+  "types": {
+    "CT_StylePaneFilter": "CTStylePaneFilter"
+  },
+  "elements": {
+    "t@r": "RT",
+    "instrText@r": "RInstrText",
+    "delInstrText@r": "RDelInstrText"
+  }
+}

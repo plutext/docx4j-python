@@ -1,0 +1,28 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+  "java_package": "org.docx4j.dml.spreadsheetdrawing",
+  "types": {
+    "CT_AbsoluteAnchor": "CTAbsoluteAnchor",
+    "CT_AnchorClientData": "CTAnchorClientData",
+    "CT_Connector": "CTConnector",
+    "CT_ConnectorNonVisual": "CTConnectorNonVisual",
+    "CT_Drawing": "CTDrawing",
+    "CT_GraphicalObjectFrame": "CTGraphicalObjectFrame",
+    "CT_GraphicalObjectFrameNonVisual": "CTGraphicalObjectFrameNonVisual",
+    "CT_GroupShape": "CTGroupShape",
+    "CT_GroupShapeNonVisual": "CTGroupShapeNonVisual",
+    "CT_Marker": "CTMarker",
+    "CT_OneCellAnchor": "CTOneCellAnchor",
+    "CT_Picture": "CTPicture",
+    "CT_PictureNonVisual": "CTPictureNonVisual",
+    "CT_Shape": "CTShape",
+    "CT_ShapeNonVisual": "CTShapeNonVisual",
+    "CT_TwoCellAnchor": "CTTwoCellAnchor",
+    "ST_EditAs": "STEditAs"
+  },
+  "elements": {
+    "from": "CTMarker",
+    "to": "CTMarker",
+    "wsDr": "CTDrawing"
+  }
+}

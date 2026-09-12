@@ -1,0 +1,74 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2017/model3d",
+  "module": "docx4j_py.oart.model3d_2017",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 31,
+    "simple_type_elements": 0,
+    "scoped_names": 1,
+    "keyword_renames": 0,
+    "collisions": 1
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {},
+  "collisions": {
+    "sz": {
+      "default": {
+        "name": "sz",
+        "class": "CTPositiveRatio",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTOrthographicProjection"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ratio",
+          "class": "CTRatio",
+          "scopes": [
+            "CTScale3D"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "ambientLight": "CTAmbientLight",
+    "attrSrcUrl": "CTPictureAttributionSourceURL",
+    "blip": "CTBlip",
+    "camera": "CTModel3DCamera",
+    "clr": "CTColor",
+    "dirLight": "CTDirectionalLight",
+    "extLst": "CTOfficeArtExtensionList",
+    "illuminance": "CTPositiveRatio",
+    "intensity": "CTPositiveRatio",
+    "lookAt": "CTPoint3D",
+    "meterPerModelUnit": "CTPositiveRatio",
+    "model3D": "Model3D",
+    "objViewport": "CTObjectViewport",
+    "orthographic": "CTOrthographicProjection",
+    "perspective": "CTPerspectiveProjection",
+    "pos": "CTPoint3D",
+    "postTrans": "CTVector3D",
+    "preTrans": "CTVector3D",
+    "ptLight": "CTPointLight",
+    "raster": "CTModel3DRaster",
+    "rot": "CTRotate3D",
+    "scale": "CTScale3D",
+    "spPr": "CTShapeProperties",
+    "spotLight": "CTSpotLight",
+    "sx": "CTRatio",
+    "sy": "CTRatio",
+    "sz": "CTPositiveRatio",
+    "trans": "CTModel3DTransform",
+    "unkLight": "CTUnknownLight",
+    "up": "CTVector3D",
+    "winViewport": "CTWindowViewport"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.word.x2010.wordprocessingGroup",
+  "types": {
+    "CT_GraphicFrame": "CTGraphicFrame",
+    "CT_WordprocessingGroup": "CTWordprocessingGroup"
+  },
+  "elements": {
+    "wgp": "CTWordprocessingGroup"
+  }
+}

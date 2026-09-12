@@ -1,0 +1,11 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2010/diagram",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2010.diagram",
+  "types": {
+    "CT_Boolean": "CTBoolean"
+  },
+  "elements": {
+    "cNvPr": "CTNonVisualDrawingProps",
+    "recolorImg": "CTBoolean"
+  }
+}

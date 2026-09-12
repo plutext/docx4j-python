@@ -1,0 +1,16 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2008/diagram",
+  "java_package": "org.docx4j.dml.diagram2008",
+  "types": {
+    "CT_DataModelExtBlock": "CTDataModelExtBlock",
+    "CT_Drawing": "CTDrawing",
+    "CT_GroupShape": "CTGroupShape",
+    "CT_GroupShapeNonVisual": "CTGroupShapeNonVisual",
+    "CT_Shape": "CTShape",
+    "CT_ShapeNonVisual": "CTShapeNonVisual"
+  },
+  "elements": {
+    "dataModelExt": "CTDataModelExtBlock",
+    "drawing": "CTDrawing"
+  }
+}

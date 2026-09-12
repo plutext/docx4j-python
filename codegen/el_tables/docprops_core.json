@@ -1,0 +1,49 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+  "module": "docx4j_py.docprops.core",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 1,
+    "simple_type_elements": 8,
+    "scoped_names": 0,
+    "keyword_renames": 0,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "category": [
+      "str"
+    ],
+    "contentStatus": [
+      "str"
+    ],
+    "contentType": [
+      "str"
+    ],
+    "keywords": [
+      "str"
+    ],
+    "lastModifiedBy": [
+      "str"
+    ],
+    "lastPrinted": [
+      "XmlDateTime"
+    ],
+    "revision": [
+      "str"
+    ],
+    "version": [
+      "str"
+    ]
+  },
+  "keyword_renames": {},
+  "collisions": {},
+  "elements": {
+    "coreProperties": "CoreProperties"
+  }
+}

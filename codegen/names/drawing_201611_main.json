@@ -1,0 +1,10 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2016/11/main",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x201611.main",
+  "types": {
+    "CT_PictureAttributionSourceURL": "CTPictureAttributionSourceURL"
+  },
+  "elements": {
+    "picAttrSrcUrl": "CTPictureAttributionSourceURL"
+  }
+}

@@ -1,0 +1,549 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/chart",
+  "module": "docx4j_py.dml.chart",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 210,
+    "simple_type_elements": 11,
+    "scoped_names": 16,
+    "keyword_renames": 2,
+    "collisions": 10
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "evenFooter": [
+      "str"
+    ],
+    "evenHeader": [
+      "str"
+    ],
+    "f": [
+      "str"
+    ],
+    "firstFooter": [
+      "str"
+    ],
+    "firstHeader": [
+      "str"
+    ],
+    "formatCode": [
+      "str"
+    ],
+    "name": [
+      "str"
+    ],
+    "oddFooter": [
+      "str"
+    ],
+    "oddHeader": [
+      "str"
+    ],
+    "separator": [
+      "str"
+    ],
+    "v": [
+      "str"
+    ]
+  },
+  "keyword_renames": {
+    "max": "max_",
+    "min": "min_"
+  },
+  "collisions": {
+    "chart": {
+      "default": {
+        "name": "chart",
+        "class": "Chart",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "chart_chart",
+          "class": "CTChart",
+          "scopes": [
+            "CTChartSpace",
+            "ChartSpace"
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "default": {
+        "name": "delete",
+        "class": "Delete",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDLbl",
+          "CTDLbls"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "delete_boolean",
+          "class": "CTBoolean",
+          "scopes": [
+            "CTCatAx",
+            "CTDateAx",
+            "CTLegendEntry",
+            "CTSerAx",
+            "CTValAx"
+          ]
+        }
+      ]
+    },
+    "grouping": {
+      "default": {
+        "name": "grouping",
+        "class": "CTGrouping",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTArea3DChart",
+          "CTAreaChart",
+          "CTLine3DChart",
+          "CTLineChart"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "bar_grouping",
+          "class": "CTBarGrouping",
+          "scopes": [
+            "CTBar3DChart",
+            "CTBarChart"
+          ]
+        }
+      ]
+    },
+    "marker": {
+      "default": {
+        "name": "marker",
+        "class": "CTMarker",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDPt",
+          "CTLineSer",
+          "CTPivotFmt",
+          "CTRadarSer",
+          "CTScatterSer"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "marker_boolean",
+          "class": "CTBoolean",
+          "scopes": [
+            "CTLineChart"
+          ]
+        }
+      ]
+    },
+    "order": {
+      "default": {
+        "name": "order",
+        "class": "CTUnsignedInt",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTAreaSer",
+          "CTBarSer",
+          "CTBubbleSer",
+          "CTLineSer",
+          "CTPieSer",
+          "CTRadarSer",
+          "CTScatterSer",
+          "CTSurfaceSer"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "order_order",
+          "class": "CTOrder",
+          "scopes": [
+            "CTTrendline"
+          ]
+        }
+      ]
+    },
+    "pt": {
+      "default": {
+        "name": "pt",
+        "class": "CTStrVal",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTLvl",
+          "CTStrData"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "num_val",
+          "class": "CTNumVal",
+          "scopes": [
+            "CTNumData"
+          ]
+        }
+      ]
+    },
+    "ser": {
+      "default": {
+        "name": "ser",
+        "class": "CTPieSer",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDoughnutChart",
+          "CTOfPieChart",
+          "CTPie3DChart",
+          "CTPieChart"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "area_ser",
+          "class": "CTAreaSer",
+          "scopes": [
+            "CTArea3DChart",
+            "CTAreaChart"
+          ]
+        },
+        {
+          "name": "bar_ser",
+          "class": "CTBarSer",
+          "scopes": [
+            "CTBar3DChart",
+            "CTBarChart"
+          ]
+        },
+        {
+          "name": "bubble_ser",
+          "class": "CTBubbleSer",
+          "scopes": [
+            "CTBubbleChart"
+          ]
+        },
+        {
+          "name": "line_ser",
+          "class": "CTLineSer",
+          "scopes": [
+            "CTLine3DChart",
+            "CTLineChart",
+            "CTStockChart"
+          ]
+        },
+        {
+          "name": "radar_ser",
+          "class": "CTRadarSer",
+          "scopes": [
+            "CTRadarChart"
+          ]
+        },
+        {
+          "name": "scatter_ser",
+          "class": "CTScatterSer",
+          "scopes": [
+            "CTScatterChart"
+          ]
+        },
+        {
+          "name": "surface_ser",
+          "class": "CTSurfaceSer",
+          "scopes": [
+            "CTSurface3DChart",
+            "CTSurfaceChart"
+          ]
+        }
+      ]
+    },
+    "tx": {
+      "default": {
+        "name": "tx",
+        "class": "CTSerTx",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTAreaSer",
+          "CTBarSer",
+          "CTBubbleSer",
+          "CTLineSer",
+          "CTPieSer",
+          "CTRadarSer",
+          "CTScatterSer",
+          "CTSurfaceSer"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tx_tx",
+          "class": "CTTx",
+          "scopes": [
+            "CTDLbl",
+            "CTDispUnitsLbl",
+            "CTTitle",
+            "CTTrendlineLbl"
+          ]
+        }
+      ]
+    },
+    "userShapes": {
+      "default": {
+        "name": "userShapes",
+        "class": "CTDrawing",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "rel_id",
+          "class": "CTRelId",
+          "scopes": [
+            "CTChartSpace",
+            "ChartSpace"
+          ]
+        }
+      ]
+    },
+    "val": {
+      "default": {
+        "name": "val",
+        "class": "CTNumDataSource",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTAreaSer",
+          "CTBarSer",
+          "CTLineSer",
+          "CTPieSer",
+          "CTRadarSer",
+          "CTSurfaceSer"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "double",
+          "class": "CTDouble",
+          "scopes": [
+            "CTErrBars"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "applyToEnd": "CTBoolean",
+    "applyToFront": "CTBoolean",
+    "applyToSides": "CTBoolean",
+    "area3DChart": "CTArea3DChart",
+    "areaChart": "CTAreaChart",
+    "auto": "CTBoolean",
+    "autoTitleDeleted": "CTBoolean",
+    "autoUpdate": "CTBoolean",
+    "axId": "CTUnsignedInt",
+    "axPos": "CTAxPos",
+    "backWall": "CTSurface",
+    "backward": "CTDouble",
+    "bandFmt": "CTBandFmt",
+    "bandFmts": "CTBandFmts",
+    "bar3DChart": "CTBar3DChart",
+    "barChart": "CTBarChart",
+    "barDir": "CTBarDir",
+    "baseTimeUnit": "CTTimeUnit",
+    "bubble3D": "CTBoolean",
+    "bubbleChart": "CTBubbleChart",
+    "bubbleScale": "CTBubbleScale",
+    "bubbleSize": "CTNumDataSource",
+    "builtInUnit": "CTBuiltInUnit",
+    "cat": "CTAxDataSource",
+    "catAx": "CTCatAx",
+    "chart": "Chart",
+    "chartObject": "CTBoolean",
+    "chartSpace": "ChartSpace",
+    "clrMapOvr": "CTColorMapping",
+    "crossAx": "CTUnsignedInt",
+    "crossBetween": "CTCrossBetween",
+    "crosses": "CTCrosses",
+    "crossesAt": "CTDouble",
+    "custSplit": "CTCustSplit",
+    "custUnit": "CTDouble",
+    "dLbl": "CTDLbl",
+    "dLblPos": "CTDLblPos",
+    "dLbls": "CTDLbls",
+    "dPt": "CTDPt",
+    "dTable": "CTDTable",
+    "data": "CTBoolean",
+    "date1904": "CTBoolean",
+    "dateAx": "CTDateAx",
+    "delete": "Delete",
+    "depthPercent": "CTDepthPercent",
+    "dispBlanksAs": "CTDispBlanksAs",
+    "dispEq": "CTBoolean",
+    "dispRSqr": "CTBoolean",
+    "dispUnits": "CTDispUnits",
+    "dispUnitsLbl": "CTDispUnitsLbl",
+    "doughnutChart": "CTDoughnutChart",
+    "downBars": "CTUpDownBar",
+    "dropLines": "CTChartLines",
+    "errBarType": "CTErrBarType",
+    "errBars": "CTErrBars",
+    "errDir": "CTErrDir",
+    "errValType": "CTErrValType",
+    "explosion": "CTUnsignedInt",
+    "ext": "CTExtension",
+    "extLst": "CTExtensionList",
+    "externalData": "CTExternalData",
+    "firstSliceAng": "CTFirstSliceAng",
+    "floor": "CTSurface",
+    "fmtId": "CTUnsignedInt",
+    "formatting": "CTBoolean",
+    "forward": "CTDouble",
+    "gapDepth": "CTGapAmount",
+    "gapWidth": "CTGapAmount",
+    "grouping": "CTGrouping",
+    "h": "CTDouble",
+    "hMode": "CTLayoutMode",
+    "hPercent": "CTHPercent",
+    "headerFooter": "CTHeaderFooter",
+    "hiLowLines": "CTChartLines",
+    "holeSize": "CTHoleSize",
+    "idx": "CTUnsignedInt",
+    "intercept": "CTDouble",
+    "invertIfNegative": "CTBoolean",
+    "lang": "CTTextLanguageID",
+    "layout": "CTLayout",
+    "layoutTarget": "CTLayoutTarget",
+    "lblAlgn": "CTLblAlgn",
+    "lblOffset": "CTLblOffset",
+    "leaderLines": "CTChartLines",
+    "legacyDrawingHF": "CTRelId",
+    "legend": "CTLegend",
+    "legendEntry": "CTLegendEntry",
+    "legendPos": "CTLegendPos",
+    "line3DChart": "CTLine3DChart",
+    "lineChart": "CTLineChart",
+    "logBase": "CTLogBase",
+    "lvl": "CTLvl",
+    "majorGridlines": "CTChartLines",
+    "majorTickMark": "CTTickMark",
+    "majorTimeUnit": "CTTimeUnit",
+    "majorUnit": "CTAxisUnit",
+    "manualLayout": "CTManualLayout",
+    "marker": "CTMarker",
+    "max": "CTDouble",
+    "min": "CTDouble",
+    "minorGridlines": "CTChartLines",
+    "minorTickMark": "CTTickMark",
+    "minorTimeUnit": "CTTimeUnit",
+    "minorUnit": "CTAxisUnit",
+    "minus": "CTNumDataSource",
+    "multiLvlStrCache": "CTMultiLvlStrData",
+    "multiLvlStrRef": "CTMultiLvlStrRef",
+    "noEndCap": "CTBoolean",
+    "noMultiLvlLbl": "CTBoolean",
+    "numCache": "CTNumData",
+    "numFmt": "CTNumFmt",
+    "numLit": "CTNumData",
+    "numRef": "CTNumRef",
+    "ofPieChart": "CTOfPieChart",
+    "ofPieType": "CTOfPieType",
+    "order": "CTUnsignedInt",
+    "orientation": "CTOrientation",
+    "overlap": "CTOverlap",
+    "overlay": "CTBoolean",
+    "pageMargins": "CTPageMargins",
+    "pageSetup": "CTPageSetup",
+    "period": "CTPeriod",
+    "perspective": "CTPerspective",
+    "pictureFormat": "CTPictureFormat",
+    "pictureOptions": "CTPictureOptions",
+    "pictureStackUnit": "CTPictureStackUnit",
+    "pie3DChart": "CTPie3DChart",
+    "pieChart": "CTPieChart",
+    "pivotFmt": "CTPivotFmt",
+    "pivotFmts": "CTPivotFmts",
+    "pivotSource": "CTPivotSource",
+    "plotArea": "CTPlotArea",
+    "plotVisOnly": "CTBoolean",
+    "plus": "CTNumDataSource",
+    "printSettings": "CTPrintSettings",
+    "protection": "CTProtection",
+    "pt": "CTStrVal",
+    "ptCount": "CTUnsignedInt",
+    "rAngAx": "CTBoolean",
+    "radarChart": "CTRadarChart",
+    "radarStyle": "CTRadarStyle",
+    "rich": "CTTextBody",
+    "rotX": "CTRotX",
+    "rotY": "CTRotY",
+    "roundedCorners": "CTBoolean",
+    "scaling": "CTScaling",
+    "scatterChart": "CTScatterChart",
+    "scatterStyle": "CTScatterStyle",
+    "secondPiePt": "CTUnsignedInt",
+    "secondPieSize": "CTSecondPieSize",
+    "selection": "CTBoolean",
+    "ser": "CTPieSer",
+    "serAx": "CTSerAx",
+    "serLines": "CTChartLines",
+    "shape": "CTShape",
+    "showBubbleSize": "ShowBubbleSize",
+    "showCatName": "ShowCatName",
+    "showDLblsOverMax": "CTBoolean",
+    "showHorzBorder": "CTBoolean",
+    "showKeys": "CTBoolean",
+    "showLeaderLines": "ShowLeaderLines",
+    "showLegendKey": "ShowLegendKey",
+    "showNegBubbles": "CTBoolean",
+    "showOutline": "CTBoolean",
+    "showPercent": "ShowPercent",
+    "showSerName": "ShowSerName",
+    "showVal": "ShowVal",
+    "showVertBorder": "CTBoolean",
+    "sideWall": "CTSurface",
+    "size": "CTMarkerSize",
+    "sizeRepresents": "CTSizeRepresents",
+    "smooth": "CTBoolean",
+    "spPr": "CTShapeProperties",
+    "splitPos": "CTDouble",
+    "splitType": "CTSplitType",
+    "stockChart": "CTStockChart",
+    "strCache": "CTStrData",
+    "strLit": "CTStrData",
+    "strRef": "CTStrRef",
+    "style": "CTStyle",
+    "surface3DChart": "CTSurface3DChart",
+    "surfaceChart": "CTSurfaceChart",
+    "symbol": "CTMarkerStyle",
+    "thickness": "CTUnsignedInt",
+    "tickLblPos": "CTTickLblPos",
+    "tickLblSkip": "CTSkip",
+    "tickMarkSkip": "CTSkip",
+    "title": "CTTitle",
+    "trendline": "CTTrendline",
+    "trendlineLbl": "CTTrendlineLbl",
+    "trendlineType": "CTTrendlineType",
+    "tx": "CTSerTx",
+    "txPr": "CTTextBody",
+    "upBars": "CTUpDownBar",
+    "upDownBars": "CTUpDownBars",
+    "userInterface": "CTBoolean",
+    "userShapes": "CTDrawing",
+    "val": "CTNumDataSource",
+    "valAx": "CTValAx",
+    "varyColors": "CTBoolean",
+    "view3D": "CTView3D",
+    "w": "CTDouble",
+    "wMode": "CTLayoutMode",
+    "wireframe": "CTBoolean",
+    "x": "CTDouble",
+    "xMode": "CTLayoutMode",
+    "xVal": "CTAxDataSource",
+    "y": "CTDouble",
+    "yMode": "CTLayoutMode",
+    "yVal": "CTNumDataSource"
+  }
+}

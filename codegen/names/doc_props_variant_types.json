@@ -1,0 +1,22 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes",
+  "java_package": "org.docx4j.docProps.variantTypes",
+  "types": {
+    "CT_Array": "Array",
+    "CT_Cf": "Cf",
+    "CT_Empty": "Empty",
+    "CT_Null": "Null",
+    "CT_Variant": "Variant",
+    "CT_Vector": "Vector",
+    "CT_Vstream": "Vstream"
+  },
+  "elements": {
+    "array": "Array",
+    "cf": "Cf",
+    "empty": "Empty",
+    "null": "Null",
+    "variant": "Variant",
+    "vector": "Vector",
+    "vstream": "Vstream"
+  }
+}

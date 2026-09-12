@@ -1,0 +1,10 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/thememl/2012/main",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.thememl.x2012.main",
+  "types": {
+    "CT_ThemeFamily": "CTThemeFamily"
+  },
+  "elements": {
+    "themeFamily": "CTThemeFamily"
+  }
+}

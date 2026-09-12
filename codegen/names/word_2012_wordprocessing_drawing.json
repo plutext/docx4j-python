@@ -1,0 +1,10 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.word.x2012.wordprocessingDrawing",
+  "types": {
+    "CT_WebVideoPr": "CTWebVideoPr"
+  },
+  "elements": {
+    "webVideoPr": "CTWebVideoPr"
+  }
+}

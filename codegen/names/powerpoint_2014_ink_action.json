@@ -1,0 +1,19 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/powerpoint/2014/inkAction",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.powerpoint.x2014.inkAction",
+  "types": {
+    "CT_Action": "CTAction",
+    "CT_ActionData": "CTActionData",
+    "CT_ActionDataGroup": "CTActionDataGroup",
+    "CT_ActionGroup": "CTActionGroup",
+    "CT_ActionProperty": "CTActionProperty",
+    "CT_Actions": "CTActions",
+    "ST_ActionTypeReserved": "STActionTypeReserved",
+    "ST_DataNameReserved": "STDataNameReserved",
+    "ST_PropertyNameReserved": "STPropertyNameReserved",
+    "ST_PropertyValueReserved": "STPropertyValueReserved"
+  },
+  "elements": {
+    "actions": "CTActions"
+  }
+}

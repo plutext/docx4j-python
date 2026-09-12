@@ -1,0 +1,42 @@
+[project]
+name = "docx4j-py"
+version = "0.0.1"
+description = "Feasibility experiment: xsdata-generated WordprocessingML bindings for Python (a docx4j analogue)"
+requires-python = ">=3.12"
+dependencies = [
+    # the runtime the generated bindings in docx4j_py/* import (CR-001 section 4);
+    # installed editable from ~/git/docx4j-xsdata into .venv-fork
+    "docx4j-xsdata[lxml]==26.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "docx4j-xsdata[cli,lxml]==26.2",
+    "pytest",
+]
+# baseline/docx4j_py/generated is the pre-Phase-B baseline: the output of
+# unmodified xsdata, kept so Phase B's numbers can be compared against it. It
+# imports upstream `xsdata`, which only .venv has.
+baseline = [
+    "xsdata[cli,lxml]==26.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["docx4j_py"]
+
+[tool.hatch.build.targets.wheel.force-include]
+# nothing from baseline/ or codegen/ ships
+
+[tool.pytest.ini_options]
+# .venv-fork/bin/python -m pytest            everything
+# .venv-fork/bin/python -m pytest -m "not slow"    without the corpus round trip
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: runs the whole samples/ corpus through scripts/roundtrip.py (~20 s)",
+]
+filterwarnings = ["error::DeprecationWarning"]

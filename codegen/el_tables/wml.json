@@ -1,0 +1,3379 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+  "module": "docx4j_py.wml",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {
+      "hyperlink": "PHyperlink",
+      "name": "StyleName",
+      "spacing": "CtPprBaseSpacing",
+      "customXml": "CTCustomXmlBlock"
+    },
+    "aliases": {
+      "t:T": "t_math",
+      "ins:Ins1": "ins_math",
+      "ins:Ins2": "ins_ctrl_pr",
+      "del:Del1": "del_math",
+      "del:Del2": "del_ctrl_pr"
+    }
+  },
+  "counts": {
+    "element_names": 604,
+    "simple_type_elements": 1,
+    "scoped_names": 135,
+    "keyword_renames": 7,
+    "collisions": 83
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "uniqueTag": [
+      "bytes"
+    ]
+  },
+  "keyword_renames": {
+    "del": "del_",
+    "dir": "dir_",
+    "format": "format_",
+    "id": "id_",
+    "next": "next_",
+    "object": "object_",
+    "type": "type_"
+  },
+  "collisions": {
+    "annotationRef": {
+      "default": {
+        "name": "annotationRef",
+        "class": "RAnnotationRef",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_annotation_ref",
+          "class": "CtMathRunTrackChangeAnnotationRef",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_annotation_ref",
+          "class": "CtRAnnotationRef",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "bottom": {
+      "default": {
+        "name": "bottom",
+        "class": "CTBorder",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDivBdr",
+          "CtPprBasePBdr",
+          "CtSectPrBasePgBorders",
+          "CtSectPrPgBorders",
+          "CtTcPrInnerTcBorders",
+          "TblBorders"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "bottom_tbl_width",
+          "class": "TblWidth",
+          "scopes": [
+            "CTTblCellMar",
+            "TcMar"
+          ]
+        }
+      ]
+    },
+    "color": {
+      "default": {
+        "name": "color",
+        "class": "Color",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "CTParaRPrOriginal",
+          "CtRprChangeRPr",
+          "ParaRPr",
+          "RPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "frameset_splitbar_color",
+          "class": "CtFramesetSplitbarColor",
+          "scopes": [
+            "CTFramesetSplitbar"
+          ]
+        }
+      ]
+    },
+    "column": {
+      "default": {
+        "name": "column",
+        "class": "CtRecipientDataColumn",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTRecipientData"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "odso_field_map_data_column",
+          "class": "CtOdsoFieldMapDataColumn",
+          "scopes": [
+            "CTOdsoFieldMapData"
+          ]
+        }
+      ]
+    },
+    "commentReference": {
+      "default": {
+        "name": "commentReference",
+        "class": "RCommentReference",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_comment_reference",
+          "class": "CtMathRunTrackChangeCommentReference",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_comment_reference",
+          "class": "CtRCommentReference",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "continuationSeparator": {
+      "default": {
+        "name": "continuationSeparator",
+        "class": "RContinuationSeparator",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_continuation_separator",
+          "class": "CtMathRunTrackChangeContinuationSeparator",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_continuation_separator",
+          "class": "CtRContinuationSeparator",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "cr": {
+      "default": {
+        "name": "cr",
+        "class": "RCr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_cr",
+          "class": "CtMathRunTrackChangeCr",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_cr",
+          "class": "CtRCr",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "customXml": {
+      "default": {
+        "name": "customXml",
+        "class": "CTCustomXmlBlock",
+        "chosen_by": "override",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTFtnEdn",
+          "CTTxbxContent",
+          "CommentsComment",
+          "Ftr",
+          "Hdr",
+          "SdtContentBlock",
+          "Tc",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_cell",
+          "class": "CTCustomXmlCell",
+          "scopes": [
+            "CTCustomXmlCell",
+            "CTSdtContentCell",
+            "Tr"
+          ]
+        },
+        {
+          "name": "custom_xml_row",
+          "class": "CTCustomXmlRow",
+          "scopes": [
+            "CTCustomXmlRow",
+            "CTSdtContentRow",
+            "Tbl"
+          ]
+        },
+        {
+          "name": "custom_xml_run",
+          "class": "CTCustomXmlRun",
+          "scopes": [
+            "CTCustomXmlRun",
+            "CTSdtContentRun",
+            "CTSimpleField",
+            "CTSmartTagRun",
+            "CtBdo",
+            "CtBdoHyperlink",
+            "CtCustomXmlRunHyperlink",
+            "CtDir",
+            "CtDirHyperlink",
+            "CtSdtContentRunHyperlink",
+            "CtSimpleFieldHyperlink",
+            "CtSmartTagRunHyperlink",
+            "MoveFrom1",
+            "MoveFrom2",
+            "MoveTo1",
+            "MoveTo2",
+            "P",
+            "PHyperlink",
+            "RunDel",
+            "RunIns",
+            "RunTrackChange"
+          ]
+        }
+      ]
+    },
+    "customXmlDelRangeEnd": {
+      "default": {
+        "name": "customXmlDelRangeEnd",
+        "class": "CustomXmlDelRangeEnd2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_del_range_end1",
+          "class": "CustomXmlDelRangeEnd1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlDelRangeStart": {
+      "default": {
+        "name": "customXmlDelRangeStart",
+        "class": "CustomXmlDelRangeStart2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_del_range_start1",
+          "class": "CustomXmlDelRangeStart1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlInsRangeEnd": {
+      "default": {
+        "name": "customXmlInsRangeEnd",
+        "class": "CustomXmlInsRangeEnd2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_ins_range_end1",
+          "class": "CustomXmlInsRangeEnd1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlInsRangeStart": {
+      "default": {
+        "name": "customXmlInsRangeStart",
+        "class": "CustomXmlInsRangeStart2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_ins_range_start1",
+          "class": "CustomXmlInsRangeStart1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlMoveFromRangeEnd": {
+      "default": {
+        "name": "customXmlMoveFromRangeEnd",
+        "class": "CustomXmlMoveFromRangeEnd2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_move_from_range_end1",
+          "class": "CustomXmlMoveFromRangeEnd1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlMoveFromRangeStart": {
+      "default": {
+        "name": "customXmlMoveFromRangeStart",
+        "class": "CustomXmlMoveFromRangeStart2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_move_from_range_start1",
+          "class": "CustomXmlMoveFromRangeStart1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlMoveToRangeEnd": {
+      "default": {
+        "name": "customXmlMoveToRangeEnd",
+        "class": "CustomXmlMoveToRangeEnd2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_move_to_range_end1",
+          "class": "CustomXmlMoveToRangeEnd1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "customXmlMoveToRangeStart": {
+      "default": {
+        "name": "customXmlMoveToRangeStart",
+        "class": "CustomXmlMoveToRangeStart2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_move_to_range_start1",
+          "class": "CustomXmlMoveToRangeStart1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "dayLong": {
+      "default": {
+        "name": "dayLong",
+        "class": "RDayLong",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_day_long",
+          "class": "CtMathRunTrackChangeDayLong",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_day_long",
+          "class": "CtRDayLong",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "dayShort": {
+      "default": {
+        "name": "dayShort",
+        "class": "RDayShort",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_day_short",
+          "class": "CtMathRunTrackChangeDayShort",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_day_short",
+          "class": "CtRDayShort",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "default": {
+      "default": {
+        "name": "default",
+        "class": "BooleanDefaultTrue",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTFFCheckBox"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ffddlist_default",
+          "class": "CtFfddlistDefault",
+          "scopes": [
+            "CTFFDDList"
+          ]
+        },
+        {
+          "name": "fftext_input_default",
+          "class": "CtFftextInputDefault",
+          "scopes": [
+            "CTFFTextInput"
+          ]
+        }
+      ]
+    },
+    "del": {
+      "default": {
+        "name": "del_",
+        "class": "RunDel",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTOMath",
+          "CTOMathArg",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "OMath",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "del_ctrl_pr",
+          "class": "Del2",
+          "scopes": [
+            "CTCtrlPr"
+          ]
+        },
+        {
+          "name": "del_math",
+          "class": "Del1",
+          "scopes": [
+            "CTR"
+          ]
+        },
+        {
+          "name": "del_track_change",
+          "class": "CTTrackChange",
+          "scopes": [
+            "CTParaRPrOriginal",
+            "ParaRPr",
+            "TrPr"
+          ]
+        }
+      ]
+    },
+    "delInstrText": {
+      "default": {
+        "name": "delInstrText",
+        "class": "RDelInstrText",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTMathRunTrackChange",
+          "Del1",
+          "Ins1",
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "del_instr_text",
+          "class": "DelInstrText",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "divId": {
+      "default": {
+        "name": "divId",
+        "class": "CtPprBaseDivId",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "PPr",
+          "PPrBase"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tr_pr_base_div_id",
+          "class": "CtTrPrBaseDivId",
+          "scopes": [
+            "CTTrPrBase",
+            "TrPr"
+          ]
+        }
+      ]
+    },
+    "docPart": {
+      "default": {
+        "name": "docPart",
+        "class": "CTDocPart",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDocParts"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "placeholder_doc_part",
+          "class": "CtPlaceholderDocPart",
+          "scopes": [
+            "CTPlaceholder"
+          ]
+        }
+      ]
+    },
+    "end": {
+      "default": {
+        "name": "end",
+        "class": "TblWidth",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTTblCellMar"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "end_border",
+          "class": "CTBorder",
+          "scopes": [
+            "CtTcPrInnerTcBorders"
+          ]
+        }
+      ]
+    },
+    "endnote": {
+      "default": {
+        "name": "endnote",
+        "class": "CTFtnEdnSepRef",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTEdnDocProps"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "endnote_ftn_edn",
+          "class": "CTFtnEdn",
+          "scopes": [
+            "CTEndnotes",
+            "Endnotes"
+          ]
+        }
+      ]
+    },
+    "endnotePr": {
+      "default": {
+        "name": "endnotePr",
+        "class": "CTEdnProps",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SectPr",
+          "SectPrBase"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "edn_doc_props",
+          "class": "CTEdnDocProps",
+          "scopes": [
+            "CTSettings",
+            "Settings"
+          ]
+        }
+      ]
+    },
+    "endnoteRef": {
+      "default": {
+        "name": "endnoteRef",
+        "class": "REndnoteRef",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_endnote_ref",
+          "class": "CtMathRunTrackChangeEndnoteRef",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_endnote_ref",
+          "class": "CtREndnoteRef",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "endnoteReference": {
+      "default": {
+        "name": "endnoteReference",
+        "class": "EndnoteReference2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTMathRunTrackChange",
+          "Del1",
+          "Ins1",
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "endnote_reference1",
+          "class": "EndnoteReference1",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "footnote": {
+      "default": {
+        "name": "footnote",
+        "class": "CTFtnEdnSepRef",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTFtnDocProps"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "footnote_ftn_edn",
+          "class": "CTFtnEdn",
+          "scopes": [
+            "CTFootnotes",
+            "Footnotes"
+          ]
+        }
+      ]
+    },
+    "footnotePr": {
+      "default": {
+        "name": "footnotePr",
+        "class": "CTFtnProps",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SectPr",
+          "SectPrBase"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ftn_doc_props",
+          "class": "CTFtnDocProps",
+          "scopes": [
+            "CTSettings",
+            "Settings"
+          ]
+        }
+      ]
+    },
+    "footnoteRef": {
+      "default": {
+        "name": "footnoteRef",
+        "class": "RFootnoteRef",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_footnote_ref",
+          "class": "CtMathRunTrackChangeFootnoteRef",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_footnote_ref",
+          "class": "CtRFootnoteRef",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "footnoteReference": {
+      "default": {
+        "name": "footnoteReference",
+        "class": "FootnoteReference2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTMathRunTrackChange",
+          "Del1",
+          "Ins1",
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "footnote_reference1",
+          "class": "FootnoteReference1",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "hidden": {
+      "default": {
+        "name": "hidden",
+        "class": "Hidden",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTTrPrBase",
+          "TrPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "boolean_default_true",
+          "class": "BooleanDefaultTrue",
+          "scopes": [
+            "Style"
+          ]
+        }
+      ]
+    },
+    "hyperlink": {
+      "default": {
+        "name": "hyperlink",
+        "class": "PHyperlink",
+        "chosen_by": "override",
+        "scopes": [
+          "P",
+          "PHyperlink"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "bdo_hyperlink",
+          "class": "CtBdoHyperlink",
+          "scopes": [
+            "CtBdo",
+            "CtBdoHyperlink"
+          ]
+        },
+        {
+          "name": "custom_xml_run_hyperlink",
+          "class": "CtCustomXmlRunHyperlink",
+          "scopes": [
+            "CTCustomXmlRun",
+            "CtCustomXmlRunHyperlink"
+          ]
+        },
+        {
+          "name": "dir_hyperlink",
+          "class": "CtDirHyperlink",
+          "scopes": [
+            "CtDir",
+            "CtDirHyperlink"
+          ]
+        },
+        {
+          "name": "sdt_content_run_hyperlink",
+          "class": "CtSdtContentRunHyperlink",
+          "scopes": [
+            "CTSdtContentRun",
+            "CtSdtContentRunHyperlink"
+          ]
+        },
+        {
+          "name": "simple_field_hyperlink",
+          "class": "CtSimpleFieldHyperlink",
+          "scopes": [
+            "CTSimpleField",
+            "CtSimpleFieldHyperlink"
+          ]
+        },
+        {
+          "name": "smart_tag_run_hyperlink",
+          "class": "CtSmartTagRunHyperlink",
+          "scopes": [
+            "CTSmartTagRun",
+            "CtSmartTagRunHyperlink"
+          ]
+        }
+      ]
+    },
+    "ins": {
+      "default": {
+        "name": "ins",
+        "class": "RunIns",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTOMath",
+          "CTOMathArg",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "OMath",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ins_ctrl_pr",
+          "class": "Ins2",
+          "scopes": [
+            "CTCtrlPr"
+          ]
+        },
+        {
+          "name": "ins_math",
+          "class": "Ins1",
+          "scopes": [
+            "CTR"
+          ]
+        },
+        {
+          "name": "ins_track_change",
+          "class": "CTTrackChange",
+          "scopes": [
+            "CTParaRPrOriginal",
+            "CtPprBaseNumPr",
+            "ParaRPr",
+            "TrPr"
+          ]
+        }
+      ]
+    },
+    "instrText": {
+      "default": {
+        "name": "instrText",
+        "class": "RInstrText",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTMathRunTrackChange",
+          "Del1",
+          "Ins1",
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "instr_text",
+          "class": "InstrText",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "lastRenderedPageBreak": {
+      "default": {
+        "name": "lastRenderedPageBreak",
+        "class": "RLastRenderedPageBreak",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_last_rendered_page_break",
+          "class": "CtMathRunTrackChangeLastRenderedPageBreak",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_last_rendered_page_break",
+          "class": "CtRLastRenderedPageBreak",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "left": {
+      "default": {
+        "name": "left",
+        "class": "CTBorder",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDivBdr",
+          "CtPprBasePBdr",
+          "CtSectPrBasePgBorders",
+          "CtSectPrPgBorders",
+          "CtTcPrInnerTcBorders",
+          "TblBorders"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "left_tbl_width",
+          "class": "TblWidth",
+          "scopes": [
+            "CTTblCellMar",
+            "TcMar"
+          ]
+        }
+      ]
+    },
+    "monthLong": {
+      "default": {
+        "name": "monthLong",
+        "class": "RMonthLong",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_month_long",
+          "class": "CtMathRunTrackChangeMonthLong",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_month_long",
+          "class": "CtRMonthLong",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "monthShort": {
+      "default": {
+        "name": "monthShort",
+        "class": "RMonthShort",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_month_short",
+          "class": "CtMathRunTrackChangeMonthShort",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_month_short",
+          "class": "CtRMonthShort",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "moveFrom": {
+      "default": {
+        "name": "moveFrom",
+        "class": "MoveFrom2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "move_from1",
+          "class": "MoveFrom1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        },
+        {
+          "name": "move_from_track_change",
+          "class": "CTTrackChange",
+          "scopes": [
+            "CTParaRPrOriginal",
+            "ParaRPr"
+          ]
+        }
+      ]
+    },
+    "moveFromRangeStart": {
+      "default": {
+        "name": "moveFromRangeStart",
+        "class": "MoveFromRangeStart2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "move_from_range_start1",
+          "class": "MoveFromRangeStart1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "moveTo": {
+      "default": {
+        "name": "moveTo",
+        "class": "MoveTo2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "move_to1",
+          "class": "MoveTo1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        },
+        {
+          "name": "move_to_track_change",
+          "class": "CTTrackChange",
+          "scopes": [
+            "CTParaRPrOriginal",
+            "ParaRPr"
+          ]
+        }
+      ]
+    },
+    "moveToRangeStart": {
+      "default": {
+        "name": "moveToRangeStart",
+        "class": "MoveToRangeStart2",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTCustomXmlCell",
+          "CTCustomXmlRow",
+          "CTCustomXmlRun",
+          "CTFtnEdn",
+          "CTRubyContent",
+          "CTSdtContentCell",
+          "CTSdtContentRow",
+          "CTSdtContentRun",
+          "CTSimpleField",
+          "CTSmartTagRun",
+          "CTTxbxContent",
+          "CommentsComment",
+          "CtBdo",
+          "CtBdoHyperlink",
+          "CtCustomXmlRunHyperlink",
+          "CtDir",
+          "CtDirHyperlink",
+          "CtSdtContentRunHyperlink",
+          "CtSimpleFieldHyperlink",
+          "CtSmartTagRunHyperlink",
+          "Ftr",
+          "Hdr",
+          "MoveFrom1",
+          "MoveFrom2",
+          "MoveTo1",
+          "MoveTo2",
+          "P",
+          "PHyperlink",
+          "RunDel",
+          "RunIns",
+          "RunTrackChange",
+          "SdtContentBlock",
+          "Tbl",
+          "Tc",
+          "Tr",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "move_to_range_start1",
+          "class": "MoveToRangeStart1",
+          "scopes": [
+            "CTOMath",
+            "CTOMathArg",
+            "OMath"
+          ]
+        }
+      ]
+    },
+    "name": {
+      "default": {
+        "name": "name",
+        "class": "StyleName",
+        "chosen_by": "override",
+        "scopes": [
+          "Style"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "doc_part_category_name",
+          "class": "CtDocPartCategoryName",
+          "scopes": [
+            "CTDocPartCategory"
+          ]
+        },
+        {
+          "name": "doc_part_name",
+          "class": "CTDocPartName",
+          "scopes": [
+            "CTDocPartPr"
+          ]
+        },
+        {
+          "name": "ff_name",
+          "class": "CTFFName",
+          "scopes": [
+            "CTFFData"
+          ]
+        },
+        {
+          "name": "frame_name",
+          "class": "CtFrameName",
+          "scopes": [
+            "CTFrame"
+          ]
+        },
+        {
+          "name": "numbering_abstract_num_name",
+          "class": "NumberingAbstractNumName",
+          "scopes": [
+            "NumberingAbstractNum"
+          ]
+        },
+        {
+          "name": "odso_field_map_data_name",
+          "class": "CtOdsoFieldMapDataName",
+          "scopes": [
+            "CTOdsoFieldMapData"
+          ]
+        }
+      ]
+    },
+    "noBreakHyphen": {
+      "default": {
+        "name": "noBreakHyphen",
+        "class": "RNoBreakHyphen",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_no_break_hyphen",
+          "class": "CtMathRunTrackChangeNoBreakHyphen",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_no_break_hyphen",
+          "class": "CtRNoBreakHyphen",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "numStart": {
+      "default": {
+        "name": "numStart",
+        "class": "CtEdnPropsNumStart",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTEdnDocProps",
+          "CTEdnProps"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ftn_props_num_start",
+          "class": "CtFtnPropsNumStart",
+          "scopes": [
+            "CTFtnDocProps",
+            "CTFtnProps"
+          ]
+        }
+      ]
+    },
+    "pPr": {
+      "default": {
+        "name": "pPr",
+        "class": "PPr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTPPrDefault",
+          "CTTblStylePr",
+          "DocDefaultsPPrDefault",
+          "Lvl",
+          "P",
+          "Style"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "p_pr_base",
+          "class": "PPrBase",
+          "scopes": [
+            "CTPPrChange"
+          ]
+        }
+      ]
+    },
+    "pStyle": {
+      "default": {
+        "name": "pStyle",
+        "class": "CtPprBasePStyle",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "PPr",
+          "PPrBase"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "lvl_p_style",
+          "class": "CtLvlPStyle",
+          "scopes": [
+            "Lvl"
+          ]
+        }
+      ]
+    },
+    "pgBorders": {
+      "default": {
+        "name": "pgBorders",
+        "class": "CtSectPrPgBorders",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SectPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sect_pr_base_pg_borders",
+          "class": "CtSectPrBasePgBorders",
+          "scopes": [
+            "SectPrBase"
+          ]
+        }
+      ]
+    },
+    "pgMar": {
+      "default": {
+        "name": "pgMar",
+        "class": "CtSectPrPgMar",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SectPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sect_pr_base_pg_mar",
+          "class": "CtSectPrBasePgMar",
+          "scopes": [
+            "SectPrBase"
+          ]
+        }
+      ]
+    },
+    "pgNum": {
+      "default": {
+        "name": "pgNum",
+        "class": "RPgNum",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_pg_num",
+          "class": "CtMathRunTrackChangePgNum",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_pg_num",
+          "class": "CtRPgNum",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "pgSz": {
+      "default": {
+        "name": "pgSz",
+        "class": "CtSectPrPgSz",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SectPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sect_pr_base_pg_sz",
+          "class": "CtSectPrBasePgSz",
+          "scopes": [
+            "SectPrBase"
+          ]
+        }
+      ]
+    },
+    "placeholder": {
+      "default": {
+        "name": "placeholder",
+        "class": "CTPlaceholder",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SdtPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "custom_xml_pr_placeholder",
+          "class": "CtCustomXmlPrPlaceholder",
+          "scopes": [
+            "CTCustomXmlPr"
+          ]
+        }
+      ]
+    },
+    "pos": {
+      "default": {
+        "name": "pos",
+        "class": "CTEdnPos",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTEdnDocProps",
+          "CTEdnProps"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "ftn_pos",
+          "class": "CTFtnPos",
+          "scopes": [
+            "CTFtnDocProps",
+            "CTFtnProps"
+          ]
+        }
+      ]
+    },
+    "ptab": {
+      "default": {
+        "name": "ptab",
+        "class": "RPtab",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_ptab",
+          "class": "CtMathRunTrackChangePtab",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_ptab",
+          "class": "CtRPtab",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "rPr": {
+      "default": {
+        "name": "rPr",
+        "class": "RPr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTCtrlPr",
+          "CTMathRunTrackChange",
+          "CTR",
+          "CTRPrDefault",
+          "CTSdtEndPr",
+          "CTTblStylePr",
+          "Del1",
+          "DocDefaultsRPrDefault",
+          "Ins1",
+          "Lvl",
+          "R",
+          "SdtPr",
+          "Style"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "para_r_pr",
+          "class": "ParaRPr",
+          "scopes": [
+            "PPr"
+          ]
+        },
+        {
+          "name": "para_r_pr_original",
+          "class": "CTParaRPrOriginal",
+          "scopes": [
+            "ParaRPrChange"
+          ]
+        },
+        {
+          "name": "rpr_change_r_pr",
+          "class": "CtRprChangeRPr",
+          "scopes": [
+            "CTRPrChange",
+            "Del2",
+            "Ins2"
+          ]
+        }
+      ]
+    },
+    "rPrChange": {
+      "default": {
+        "name": "rPrChange",
+        "class": "CTRPrChange",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "RPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "para_r_pr_change",
+          "class": "ParaRPrChange",
+          "scopes": [
+            "ParaRPr"
+          ]
+        }
+      ]
+    },
+    "recipientData": {
+      "default": {
+        "name": "recipientData",
+        "class": "CTRecipientData",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTRecipients",
+          "Recipients"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "rel",
+          "class": "CTRel",
+          "scopes": [
+            "CTOdso"
+          ]
+        }
+      ]
+    },
+    "right": {
+      "default": {
+        "name": "right",
+        "class": "CTBorder",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDivBdr",
+          "CtPprBasePBdr",
+          "CtSectPrBasePgBorders",
+          "CtSectPrPgBorders",
+          "CtTcPrInnerTcBorders",
+          "TblBorders"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "right_tbl_width",
+          "class": "TblWidth",
+          "scopes": [
+            "CTTblCellMar",
+            "TcMar"
+          ]
+        }
+      ]
+    },
+    "sdt": {
+      "default": {
+        "name": "sdt",
+        "class": "SdtBlock",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "Body",
+          "Body1",
+          "CTCustomXmlBlock",
+          "CTFtnEdn",
+          "CTTxbxContent",
+          "CommentsComment",
+          "Ftr",
+          "Hdr",
+          "SdtContentBlock",
+          "Tc",
+          "TxbxContent"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sdt_cell",
+          "class": "CTSdtCell",
+          "scopes": [
+            "CTCustomXmlCell",
+            "CTSdtContentCell",
+            "Tr"
+          ]
+        },
+        {
+          "name": "sdt_row",
+          "class": "CTSdtRow",
+          "scopes": [
+            "CTCustomXmlRow",
+            "CTSdtContentRow",
+            "Tbl"
+          ]
+        },
+        {
+          "name": "sdt_run",
+          "class": "SdtRun",
+          "scopes": [
+            "CTCustomXmlRun",
+            "CTSdtContentRun",
+            "CTSimpleField",
+            "CTSmartTagRun",
+            "CtBdo",
+            "CtBdoHyperlink",
+            "CtCustomXmlRunHyperlink",
+            "CtDir",
+            "CtDirHyperlink",
+            "CtSdtContentRunHyperlink",
+            "CtSimpleFieldHyperlink",
+            "CtSmartTagRunHyperlink",
+            "MoveFrom1",
+            "MoveFrom2",
+            "MoveTo1",
+            "MoveTo2",
+            "P",
+            "PHyperlink",
+            "RunDel",
+            "RunIns",
+            "RunTrackChange"
+          ]
+        }
+      ]
+    },
+    "sdtContent": {
+      "default": {
+        "name": "sdtContent",
+        "class": "CTSdtContentRun",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SdtRun"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sdt_content_block",
+          "class": "SdtContentBlock",
+          "scopes": [
+            "SdtBlock"
+          ]
+        },
+        {
+          "name": "sdt_content_cell",
+          "class": "CTSdtContentCell",
+          "scopes": [
+            "CTSdtCell"
+          ]
+        },
+        {
+          "name": "sdt_content_row",
+          "class": "CTSdtContentRow",
+          "scopes": [
+            "CTSdtRow"
+          ]
+        }
+      ]
+    },
+    "sectPr": {
+      "default": {
+        "name": "sectPr",
+        "class": "SectPr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Body",
+          "Body1",
+          "PPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "sect_pr_base",
+          "class": "SectPrBase",
+          "scopes": [
+            "CTSectPrChange"
+          ]
+        }
+      ]
+    },
+    "separator": {
+      "default": {
+        "name": "separator",
+        "class": "RSeparator",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_separator",
+          "class": "CtMathRunTrackChangeSeparator",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_separator",
+          "class": "CtRSeparator",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "softHyphen": {
+      "default": {
+        "name": "softHyphen",
+        "class": "RSoftHyphen",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_soft_hyphen",
+          "class": "CtMathRunTrackChangeSoftHyphen",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_soft_hyphen",
+          "class": "CtRSoftHyphen",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "spacing": {
+      "default": {
+        "name": "spacing",
+        "class": "CtPprBaseSpacing",
+        "chosen_by": "override",
+        "scopes": [
+          "PPr",
+          "PPrBase"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "signed_twips_measure",
+          "class": "CTSignedTwipsMeasure",
+          "scopes": [
+            "CTParaRPrOriginal",
+            "CtRprChangeRPr",
+            "ParaRPr",
+            "RPr"
+          ]
+        }
+      ]
+    },
+    "start": {
+      "default": {
+        "name": "start",
+        "class": "TblWidth",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTTblCellMar"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "lvl_start",
+          "class": "CtLvlStart",
+          "scopes": [
+            "Lvl"
+          ]
+        },
+        {
+          "name": "start_border",
+          "class": "CTBorder",
+          "scopes": [
+            "CtTcPrInnerTcBorders"
+          ]
+        }
+      ]
+    },
+    "style": {
+      "default": {
+        "name": "style",
+        "class": "Style",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)",
+          "Styles"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "doc_part_pr_style",
+          "class": "CtDocPartPrStyle",
+          "scopes": [
+            "CTDocPartPr"
+          ]
+        }
+      ]
+    },
+    "sym": {
+      "default": {
+        "name": "sym",
+        "class": "RSym",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_sym",
+          "class": "CtMathRunTrackChangeSym",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_sym",
+          "class": "CtRSym",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "sz": {
+      "default": {
+        "name": "sz",
+        "class": "HpsMeasure",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTParaRPrOriginal",
+          "CtRprChangeRPr",
+          "ParaRPr",
+          "RPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "frame_sz",
+          "class": "CtFrameSz",
+          "scopes": [
+            "CTFrame"
+          ]
+        },
+        {
+          "name": "frameset_sz",
+          "class": "CtFramesetSz",
+          "scopes": [
+            "CTFrameset"
+          ]
+        }
+      ]
+    },
+    "t": {
+      "default": {
+        "name": "t",
+        "class": "RT",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTMathRunTrackChange",
+          "Del1",
+          "Ins1",
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "t_math",
+          "class": "T",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "tab": {
+      "default": {
+        "name": "tab",
+        "class": "RTab",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_tab",
+          "class": "CtMathRunTrackChangeTab",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_tab",
+          "class": "CtRTab",
+          "scopes": [
+            "CTR"
+          ]
+        },
+        {
+          "name": "tab_stop",
+          "class": "CTTabStop",
+          "scopes": [
+            "Tabs"
+          ]
+        }
+      ]
+    },
+    "tblCellSpacing": {
+      "default": {
+        "name": "tblCellSpacing",
+        "class": "TblWidth",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTTblPrBase",
+          "CTTblPrEx",
+          "CTTblPrExBase",
+          "TblPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tbl_cell_spacing",
+          "class": "TblCellSpacing",
+          "scopes": [
+            "CTTrPrBase",
+            "TrPr"
+          ]
+        }
+      ]
+    },
+    "tblGrid": {
+      "default": {
+        "name": "tblGrid",
+        "class": "TblGrid",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Tbl"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tbl_grid_base",
+          "class": "TblGridBase",
+          "scopes": [
+            "CTTblGridChange"
+          ]
+        }
+      ]
+    },
+    "tblPr": {
+      "default": {
+        "name": "tblPr",
+        "class": "TblPr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Tbl"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tbl_pr_base",
+          "class": "CTTblPrBase",
+          "scopes": [
+            "CTTblPrChange",
+            "CTTblStylePr",
+            "Style"
+          ]
+        }
+      ]
+    },
+    "tblPrEx": {
+      "default": {
+        "name": "tblPrEx",
+        "class": "CTTblPrEx",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "Tr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tbl_pr_ex_base",
+          "class": "CTTblPrExBase",
+          "scopes": [
+            "CTTblPrExChange"
+          ]
+        }
+      ]
+    },
+    "tcPr": {
+      "default": {
+        "name": "tcPr",
+        "class": "TcPr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTTblStylePr",
+          "Style",
+          "Tc"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tc_pr_inner",
+          "class": "TcPrInner",
+          "scopes": [
+            "CTTcPrChange"
+          ]
+        }
+      ]
+    },
+    "top": {
+      "default": {
+        "name": "top",
+        "class": "CTBorder",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDivBdr",
+          "CtPprBasePBdr",
+          "CtSectPrBasePgBorders",
+          "CtSectPrPgBorders",
+          "CtTcPrInnerTcBorders",
+          "TblBorders"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "top_tbl_width",
+          "class": "TblWidth",
+          "scopes": [
+            "CTTblCellMar",
+            "TcMar"
+          ]
+        }
+      ]
+    },
+    "trPr": {
+      "default": {
+        "name": "trPr",
+        "class": "TrPr",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTTblStylePr",
+          "Style",
+          "Tr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tr_pr_base",
+          "class": "CTTrPrBase",
+          "scopes": [
+            "CTTrPrChange"
+          ]
+        }
+      ]
+    },
+    "type": {
+      "default": {
+        "name": "type_",
+        "class": "CtSectPrType",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "SectPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "doc_part_type",
+          "class": "CTDocPartType",
+          "scopes": [
+            "CTDocPartTypes"
+          ]
+        },
+        {
+          "name": "ff_text_type",
+          "class": "CTFFTextType",
+          "scopes": [
+            "CTFFTextInput"
+          ]
+        },
+        {
+          "name": "mail_merge_odso_fmd_field_type",
+          "class": "CTMailMergeOdsoFMDFieldType",
+          "scopes": [
+            "CTOdsoFieldMapData"
+          ]
+        },
+        {
+          "name": "mail_merge_source_type",
+          "class": "CTMailMergeSourceType",
+          "scopes": [
+            "CTOdso"
+          ]
+        },
+        {
+          "name": "sect_pr_base_type",
+          "class": "CtSectPrBaseType",
+          "scopes": [
+            "SectPrBase"
+          ]
+        }
+      ]
+    },
+    "w": {
+      "default": {
+        "name": "w",
+        "class": "CTTextScale",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTParaRPrOriginal",
+          "CtRprChangeRPr",
+          "ParaRPr",
+          "RPr"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "twips_measure",
+          "class": "CTTwipsMeasure",
+          "scopes": [
+            "CTFramesetSplitbar"
+          ]
+        }
+      ]
+    },
+    "yearLong": {
+      "default": {
+        "name": "yearLong",
+        "class": "RYearLong",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_year_long",
+          "class": "CtMathRunTrackChangeYearLong",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_year_long",
+          "class": "CtRYearLong",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    },
+    "yearShort": {
+      "default": {
+        "name": "yearShort",
+        "class": "RYearShort",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "R"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "math_run_track_change_year_short",
+          "class": "CtMathRunTrackChangeYearShort",
+          "scopes": [
+            "CTMathRunTrackChange",
+            "Del1",
+            "Ins1"
+          ]
+        },
+        {
+          "name": "r_year_short",
+          "class": "CtRYearShort",
+          "scopes": [
+            "CTR"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "abstractNum": "NumberingAbstractNum",
+    "abstractNumId": "NumberingNumAbstractNumId",
+    "active": "BooleanDefaultTrue",
+    "activeRecord": "CtMailMergeActiveRecord",
+    "activeWritingStyle": "CTWritingStyle",
+    "addressFieldName": "CtMailMergeAddressFieldName",
+    "adjustLineHeightInTable": "BooleanDefaultTrue",
+    "adjustRightInd": "BooleanDefaultTrue",
+    "alias": "CtSdtPrAlias",
+    "aliases": "StyleAliases",
+    "alignBordersAndEdges": "BooleanDefaultTrue",
+    "alignTablesRowByRow": "BooleanDefaultTrue",
+    "allowPNG": "BooleanDefaultTrue",
+    "allowSpaceOfSameStyleInTable": "BooleanDefaultTrue",
+    "altChunk": "CTAltChunk",
+    "altChunkPr": "CTAltChunkPr",
+    "altName": "FontsFontAltName",
+    "alwaysMergeEmptyNamespace": "BooleanDefaultTrue",
+    "alwaysShowPlaceholderText": "BooleanDefaultTrue",
+    "annotationRef": "RAnnotationRef",
+    "applyBreakingRules": "BooleanDefaultTrue",
+    "attachedSchema": "CtSettingsAttachedSchema",
+    "attachedTemplate": "CTRel",
+    "attr": "CTAttr",
+    "autoCaption": "CTAutoCaption",
+    "autoCaptions": "CTAutoCaptions",
+    "autoFormatOverride": "BooleanDefaultTrue",
+    "autoHyphenation": "BooleanDefaultTrue",
+    "autoRedefine": "BooleanDefaultTrue",
+    "autoSpaceDE": "BooleanDefaultTrue",
+    "autoSpaceDN": "BooleanDefaultTrue",
+    "autoSpaceLikeWord95": "BooleanDefaultTrue",
+    "autofitToFirstFixedWidthCell": "BooleanDefaultTrue",
+    "b": "BooleanDefaultTrue",
+    "bCs": "BooleanDefaultTrue",
+    "background": "CTBackground",
+    "balanceSingleByteDoubleByteWidth": "BooleanDefaultTrue",
+    "bar": "CTBorder",
+    "basedOn": "StyleBasedOn",
+    "bdo": "CtBdo",
+    "bdr": "CTBorder",
+    "behavior": "CTDocPartBehavior",
+    "behaviors": "CTDocPartBehaviors",
+    "between": "CTBorder",
+    "bibliography": "CtSdtPrBibliography",
+    "bidi": "BooleanDefaultTrue",
+    "bidiVisual": "BooleanDefaultTrue",
+    "blockQuote": "BooleanDefaultTrue",
+    "body": "Body",
+    "bodyDiv": "BooleanDefaultTrue",
+    "bookFoldPrinting": "BooleanDefaultTrue",
+    "bookFoldPrintingSheets": "CtSettingsBookFoldPrintingSheets",
+    "bookFoldRevPrinting": "BooleanDefaultTrue",
+    "bookmarkEnd": "CTMarkupRange",
+    "bookmarkStart": "CTBookmark",
+    "bordersDoNotSurroundFooter": "BooleanDefaultTrue",
+    "bordersDoNotSurroundHeader": "BooleanDefaultTrue",
+    "bottom": "CTBorder",
+    "br": "Br",
+    "cachedColBalance": "BooleanDefaultTrue",
+    "calcOnExit": "CalcOnExit",
+    "calendar": "CTCalendarType",
+    "cantSplit": "CantSplit",
+    "caps": "BooleanDefaultTrue",
+    "caption": "CTCaption",
+    "captions": "CTCaptions",
+    "category": "CTDocPartCategory",
+    "cellDel": "CellDel",
+    "cellIns": "CellIns",
+    "cellMerge": "CTCellMergeTrackChange",
+    "characterSpacingControl": "CTCharacterSpacing",
+    "charset": "CTUcharHexNumber",
+    "checkBox": "CTFFCheckBox",
+    "checkErrors": "CtMailMergeCheckErrors",
+    "checked": "BooleanDefaultTrue",
+    "citation": "CtSdtPrCitation",
+    "clickAndTypeStyle": "CtSettingsClickAndTypeStyle",
+    "clrSchemeMapping": "CTColorSchemeMapping",
+    "cnfStyle": "CTCnf",
+    "col": "CTColumn",
+    "colDelim": "CtOdsoColDelim",
+    "color": "Color",
+    "cols": "CTColumns",
+    "column": "CtRecipientDataColumn",
+    "comboBox": "CTSdtComboBox",
+    "comment": "CommentsComment",
+    "commentRangeEnd": "CommentRangeEnd",
+    "commentRangeStart": "CommentRangeStart",
+    "commentReference": "RCommentReference",
+    "comments": "Comments",
+    "compat": "CTCompat",
+    "compatSetting": "CTCompatSetting",
+    "connectString": "CtMailMergeConnectString",
+    "consecutiveHyphenLimit": "CtSettingsConsecutiveHyphenLimit",
+    "contextualSpacing": "BooleanDefaultTrue",
+    "continuationSeparator": "RContinuationSeparator",
+    "control": "CTControl",
+    "convMailMergeEsc": "BooleanDefaultTrue",
+    "cr": "RCr",
+    "cs": "BooleanDefaultTrue",
+    "customXml": "CTCustomXmlBlock",
+    "customXmlDelRangeEnd": "CustomXmlDelRangeEnd2",
+    "customXmlDelRangeStart": "CustomXmlDelRangeStart2",
+    "customXmlInsRangeEnd": "CustomXmlInsRangeEnd2",
+    "customXmlInsRangeStart": "CustomXmlInsRangeStart2",
+    "customXmlMoveFromRangeEnd": "CustomXmlMoveFromRangeEnd2",
+    "customXmlMoveFromRangeStart": "CustomXmlMoveFromRangeStart2",
+    "customXmlMoveToRangeEnd": "CustomXmlMoveToRangeEnd2",
+    "customXmlMoveToRangeStart": "CustomXmlMoveToRangeStart2",
+    "customXmlPr": "CTCustomXmlPr",
+    "dataBinding": "CTDataBinding",
+    "dataSource": "CTRel",
+    "dataType": "CTMailMergeDataType",
+    "date": "CTSdtDate",
+    "dateFormat": "CtSdtDateDateFormat",
+    "dayLong": "RDayLong",
+    "dayShort": "RDayShort",
+    "ddList": "CTFFDDList",
+    "decimalSymbol": "CtSettingsDecimalSymbol",
+    "default": "BooleanDefaultTrue",
+    "defaultTabStop": "CTTwipsMeasure",
+    "defaultTableStyle": "CtSettingsDefaultTableStyle",
+    "del": "RunDel",
+    "delInstrText": "RDelInstrText",
+    "delText": "DelText",
+    "description": "CtDocPartPrDescription",
+    "destination": "CTMailMergeDest",
+    "dir": "CtDir",
+    "dirty": "BooleanDefaultTrue",
+    "displayBackgroundShape": "BooleanDefaultTrue",
+    "displayHangulFixedWidth": "BooleanDefaultTrue",
+    "displayHorizontalDrawingGridEvery": "CtSettingsDisplayHorizontalDrawingGridEvery",
+    "displayVerticalDrawingGridEvery": "CtSettingsDisplayVerticalDrawingGridEvery",
+    "div": "CTDiv",
+    "divBdr": "CTDivBdr",
+    "divId": "CtPprBaseDivId",
+    "divs": "CTDivs",
+    "divsChild": "CTDivs",
+    "doNotAutoCompressPictures": "BooleanDefaultTrue",
+    "doNotAutofitConstrainedTables": "BooleanDefaultTrue",
+    "doNotBreakConstrainedForcedTable": "BooleanDefaultTrue",
+    "doNotBreakWrappedTables": "BooleanDefaultTrue",
+    "doNotDemarcateInvalidXml": "BooleanDefaultTrue",
+    "doNotDisplayPageBoundaries": "BooleanDefaultTrue",
+    "doNotEmbedSmartTags": "BooleanDefaultTrue",
+    "doNotExpandShiftReturn": "BooleanDefaultTrue",
+    "doNotHyphenateCaps": "BooleanDefaultTrue",
+    "doNotIncludeSubdocsInStats": "BooleanDefaultTrue",
+    "doNotLeaveBackslashAlone": "BooleanDefaultTrue",
+    "doNotOrganizeInFolder": "BooleanDefaultTrue",
+    "doNotRelyOnCSS": "BooleanDefaultTrue",
+    "doNotSaveAsSingleFile": "BooleanDefaultTrue",
+    "doNotShadeFormData": "BooleanDefaultTrue",
+    "doNotSnapToGridInCell": "BooleanDefaultTrue",
+    "doNotSuppressBlankLines": "BooleanDefaultTrue",
+    "doNotSuppressIndentation": "BooleanDefaultTrue",
+    "doNotSuppressParagraphBorders": "BooleanDefaultTrue",
+    "doNotTrackFormatting": "BooleanDefaultTrue",
+    "doNotTrackMoves": "BooleanDefaultTrue",
+    "doNotUseEastAsianBreakRules": "BooleanDefaultTrue",
+    "doNotUseHTMLParagraphAutoSpacing": "BooleanDefaultTrue",
+    "doNotUseIndentAsNumberingTabStop": "BooleanDefaultTrue",
+    "doNotUseLongFileNames": "BooleanDefaultTrue",
+    "doNotUseMarginsForDrawingGridOrigin": "BooleanDefaultTrue",
+    "doNotValidateAgainstSchema": "BooleanDefaultTrue",
+    "doNotVertAlignCellWithSp": "BooleanDefaultTrue",
+    "doNotVertAlignInTxbx": "BooleanDefaultTrue",
+    "doNotWrapTextWithPunct": "BooleanDefaultTrue",
+    "docDefaults": "DocDefaults",
+    "docGrid": "CTDocGrid",
+    "docPart": "CTDocPart",
+    "docPartBody": "Body1",
+    "docPartCategory": "CtSdtDocPartDocPartCategory",
+    "docPartGallery": "CtSdtDocPartDocPartGallery",
+    "docPartList": "DocPartList",
+    "docPartObj": "DocPartObj",
+    "docPartPr": "CTDocPartPr",
+    "docPartUnique": "BooleanDefaultTrue",
+    "docParts": "CTDocParts",
+    "docVar": "CTDocVar",
+    "docVars": "CTDocVars",
+    "document": "Document",
+    "documentProtection": "CTDocProtect",
+    "documentType": "CTDocType",
+    "drawing": "Drawing",
+    "drawingGridHorizontalOrigin": "CTTwipsMeasure",
+    "drawingGridHorizontalSpacing": "CTTwipsMeasure",
+    "drawingGridVerticalOrigin": "CTTwipsMeasure",
+    "drawingGridVerticalSpacing": "CTTwipsMeasure",
+    "dropDownList": "CTSdtDropDownList",
+    "dstrike": "BooleanDefaultTrue",
+    "dynamicAddress": "BooleanDefaultTrue",
+    "eastAsianLayout": "CTEastAsianLayout",
+    "effect": "CTTextEffect",
+    "em": "CTEm",
+    "embedBold": "FontRel",
+    "embedBoldItalic": "FontRel",
+    "embedItalic": "FontRel",
+    "embedRegular": "FontRel",
+    "embedSystemFonts": "BooleanDefaultTrue",
+    "embedTrueTypeFonts": "BooleanDefaultTrue",
+    "emboss": "BooleanDefaultTrue",
+    "enabled": "Enabled",
+    "encoding": "CtWebSettingsEncoding",
+    "end": "TblWidth",
+    "endnote": "CTFtnEdnSepRef",
+    "endnotePr": "CTEdnProps",
+    "endnoteRef": "REndnoteRef",
+    "endnoteReference": "EndnoteReference2",
+    "endnotes": "Endnotes",
+    "entryMacro": "EntryMacro",
+    "equation": "CtSdtPrEquation",
+    "evenAndOddHeaders": "BooleanDefaultTrue",
+    "exitMacro": "ExitMacro",
+    "fHdr": "BooleanDefaultTrue",
+    "family": "FontFamily",
+    "ffData": "CTFFData",
+    "fieldMapData": "CTOdsoFieldMapData",
+    "fitText": "CTFitText",
+    "flatBorders": "BooleanDefaultTrue",
+    "fldChar": "FldChar",
+    "fldData": "Text",
+    "fldSimple": "CTSimpleField",
+    "font": "FontsFont",
+    "fonts": "Fonts",
+    "footerReference": "FooterReference",
+    "footnote": "CTFtnEdnSepRef",
+    "footnoteLayoutLikeWW8": "BooleanDefaultTrue",
+    "footnotePr": "CTFtnProps",
+    "footnoteRef": "RFootnoteRef",
+    "footnoteReference": "FootnoteReference2",
+    "footnotes": "Footnotes",
+    "forceUpgrade": "CtSettingsForceUpgrade",
+    "forgetLastTabAlignment": "BooleanDefaultTrue",
+    "formProt": "BooleanDefaultTrue",
+    "format": "CtFftextInputFormat",
+    "formsDesign": "BooleanDefaultTrue",
+    "frame": "CTFrame",
+    "frameLayout": "CTFrameLayout",
+    "framePr": "CTFramePr",
+    "frameset": "CTFrameset",
+    "framesetSplitbar": "CTFramesetSplitbar",
+    "ftr": "Ftr",
+    "gallery": "CTDocPartGallery",
+    "glossaryDocument": "GlossaryDocument",
+    "gridAfter": "CtTrPrBaseGridAfter",
+    "gridBefore": "CtTrPrBaseGridBefore",
+    "gridCol": "TblGridCol",
+    "gridSpan": "CtTcPrInnerGridSpan",
+    "group": "CtSdtPrGroup",
+    "growAutofit": "BooleanDefaultTrue",
+    "guid": "CTGuid",
+    "gutterAtTop": "BooleanDefaultTrue",
+    "hMerge": "CtTcPrInnerHMerge",
+    "hdr": "Hdr",
+    "hdrShapeDefaults": "CTShapeDefaults",
+    "headerReference": "HeaderReference",
+    "headerSource": "CTRel",
+    "helpText": "CTFFHelpText",
+    "hidden": "Hidden",
+    "hideGrammaticalErrors": "BooleanDefaultTrue",
+    "hideMark": "BooleanDefaultTrue",
+    "hideSpellingErrors": "BooleanDefaultTrue",
+    "highlight": "Highlight",
+    "hps": "HpsMeasure",
+    "hpsBaseText": "HpsMeasure",
+    "hpsRaise": "HpsMeasure",
+    "hyperlink": "PHyperlink",
+    "hyphenationZone": "CTTwipsMeasure",
+    "i": "BooleanDefaultTrue",
+    "iCs": "BooleanDefaultTrue",
+    "id": "Id",
+    "ignoreMixedContent": "BooleanDefaultTrue",
+    "ilvl": "CtPprBaseNumPrIlvl",
+    "imprint": "BooleanDefaultTrue",
+    "ind": "CtPprBaseInd",
+    "ins": "RunIns",
+    "insideH": "CTBorder",
+    "insideV": "CTBorder",
+    "instrText": "RInstrText",
+    "isLgl": "BooleanDefaultTrue",
+    "jc": "Jc",
+    "keepLines": "BooleanDefaultTrue",
+    "keepNext": "BooleanDefaultTrue",
+    "kern": "HpsMeasure",
+    "kinsoku": "BooleanDefaultTrue",
+    "lang": "CTLanguage",
+    "lastRenderedPageBreak": "RLastRenderedPageBreak",
+    "latentStyles": "StylesLatentStyles",
+    "layoutRawTableWidth": "BooleanDefaultTrue",
+    "layoutTableRowsApart": "BooleanDefaultTrue",
+    "left": "CTBorder",
+    "legacy": "CtLvlLegacy",
+    "lid": "CTLang",
+    "lineWrapLikeWord6": "BooleanDefaultTrue",
+    "link": "StyleLink",
+    "linkStyles": "BooleanDefaultTrue",
+    "linkToQuery": "BooleanDefaultTrue",
+    "linkedToFile": "BooleanDefaultTrue",
+    "listEntry": "CtFfddlistListEntry",
+    "listItem": "CTSdtListItem",
+    "listSeparator": "CtSettingsListSeparator",
+    "lnNumType": "CTLineNumber",
+    "lock": "CTLock",
+    "locked": "BooleanDefaultTrue",
+    "lsdException": "StylesLatentStylesLsdException",
+    "lvl": "Lvl",
+    "lvlJc": "Jc",
+    "lvlOverride": "NumberingNumLvlOverride",
+    "lvlPicBulletId": "CtLvlLvlPicBulletId",
+    "lvlRestart": "CtLvlLvlRestart",
+    "lvlText": "CtLvlLvlText",
+    "mailAsAttachment": "BooleanDefaultTrue",
+    "mailMerge": "CTMailMerge",
+    "mailSubject": "CtMailMergeMailSubject",
+    "mainDocumentType": "CTMailMergeDocType",
+    "mappedName": "CtOdsoFieldMapDataMappedName",
+    "marBottom": "CTSignedTwipsMeasure",
+    "marH": "CTPixelsMeasure",
+    "marLeft": "CTSignedTwipsMeasure",
+    "marRight": "CTSignedTwipsMeasure",
+    "marTop": "CTSignedTwipsMeasure",
+    "marW": "CTPixelsMeasure",
+    "matchSrc": "BooleanDefaultTrue",
+    "maxLength": "CtFftextInputMaxLength",
+    "mirrorIndents": "BooleanDefaultTrue",
+    "mirrorMargins": "BooleanDefaultTrue",
+    "monthLong": "RMonthLong",
+    "monthShort": "RMonthShort",
+    "moveFrom": "MoveFrom2",
+    "moveFromRangeEnd": "CTMoveFromRangeEnd",
+    "moveFromRangeStart": "MoveFromRangeStart2",
+    "moveTo": "MoveTo2",
+    "moveToRangeEnd": "CTMoveToRangeEnd",
+    "moveToRangeStart": "MoveToRangeStart2",
+    "movie": "CTRel",
+    "multiLevelType": "NumberingAbstractNumMultiLevelType",
+    "mwSmallCaps": "BooleanDefaultTrue",
+    "name": "StyleName",
+    "next": "StyleNext",
+    "noBorder": "BooleanDefaultTrue",
+    "noBreakHyphen": "RNoBreakHyphen",
+    "noColumnBalance": "BooleanDefaultTrue",
+    "noEndnote": "BooleanDefaultTrue",
+    "noExtraLineSpacing": "BooleanDefaultTrue",
+    "noLeading": "BooleanDefaultTrue",
+    "noLineBreaksAfter": "CTKinsoku",
+    "noLineBreaksBefore": "CTKinsoku",
+    "noProof": "BooleanDefaultTrue",
+    "noPunctuationKerning": "BooleanDefaultTrue",
+    "noResizeAllowed": "BooleanDefaultTrue",
+    "noSpaceRaiseLower": "BooleanDefaultTrue",
+    "noTabHangInd": "BooleanDefaultTrue",
+    "noWrap": "BooleanDefaultTrue",
+    "notTrueType": "BooleanDefaultTrue",
+    "nsid": "CTLongHexNumber",
+    "num": "NumberingNum",
+    "numFmt": "NumFmt",
+    "numId": "CtPprBaseNumPrNumId",
+    "numIdMacAtCleanup": "NumberingNumIdMacAtCleanup",
+    "numPicBullet": "NumberingNumPicBullet",
+    "numPr": "CtPprBaseNumPr",
+    "numRestart": "CTNumRestart",
+    "numStart": "CtEdnPropsNumStart",
+    "numStyleLink": "NumberingAbstractNumNumStyleLink",
+    "numbering": "Numbering",
+    "numberingChange": "CTTrackChangeNumbering",
+    "oMath": "BooleanDefaultTrue",
+    "object": "CTObject",
+    "odso": "CTOdso",
+    "optimizeForBrowser": "BooleanDefaultTrue",
+    "outline": "BooleanDefaultTrue",
+    "outlineLvl": "CtPprBaseOutlineLvl",
+    "overflowPunct": "BooleanDefaultTrue",
+    "p": "P",
+    "pBdr": "CtPprBasePBdr",
+    "pPr": "PPr",
+    "pPrChange": "CTPPrChange",
+    "pPrDefault": "DocDefaultsPPrDefault",
+    "pStyle": "CtPprBasePStyle",
+    "pageBreakBefore": "BooleanDefaultTrue",
+    "panose1": "FontPanose",
+    "paperSrc": "CTPaperSource",
+    "permEnd": "CTPerm",
+    "permStart": "RangePermissionStart",
+    "personal": "BooleanDefaultTrue",
+    "personalCompose": "BooleanDefaultTrue",
+    "personalReply": "BooleanDefaultTrue",
+    "pgBorders": "CtSectPrPgBorders",
+    "pgMar": "CtSectPrPgMar",
+    "pgNum": "RPgNum",
+    "pgNumType": "CTPageNumber",
+    "pgSz": "CtSectPrPgSz",
+    "pict": "Pict",
+    "picture": "CtSdtPrPicture",
+    "pitch": "FontPitch",
+    "pixelsPerInch": "CtWebSettingsPixelsPerInch",
+    "placeholder": "CTPlaceholder",
+    "pos": "CTEdnPos",
+    "position": "CTSignedHpsMeasure",
+    "printBodyTextBeforeHeader": "BooleanDefaultTrue",
+    "printColBlack": "BooleanDefaultTrue",
+    "printFormsData": "BooleanDefaultTrue",
+    "printFractionalCharacterWidth": "BooleanDefaultTrue",
+    "printPostScriptOverText": "BooleanDefaultTrue",
+    "printTwoOnOne": "BooleanDefaultTrue",
+    "printerSettings": "CTRel",
+    "proofErr": "ProofErr",
+    "proofState": "CTProof",
+    "ptab": "RPtab",
+    "qFormat": "BooleanDefaultTrue",
+    "query": "CtMailMergeQuery",
+    "r": "R",
+    "rFonts": "RFonts",
+    "rPr": "RPr",
+    "rPrChange": "CTRPrChange",
+    "rPrDefault": "DocDefaultsRPrDefault",
+    "rStyle": "RStyle",
+    "readModeInkLockDown": "CTReadingModeInkLockDown",
+    "recipientData": "CTRecipientData",
+    "recipients": "Recipients",
+    "relyOnVML": "BooleanDefaultTrue",
+    "removeDateAndTime": "BooleanDefaultTrue",
+    "removePersonalInformation": "BooleanDefaultTrue",
+    "result": "CtFfddlistResult",
+    "revisionView": "CTTrackChangesView",
+    "richText": "CtSdtPrRichText",
+    "right": "CTBorder",
+    "rsid": "CTLongHexNumber",
+    "rsidRoot": "CTLongHexNumber",
+    "rsids": "CTDocRsids",
+    "rt": "CTRubyContent",
+    "rtl": "BooleanDefaultTrue",
+    "rtlGutter": "BooleanDefaultTrue",
+    "ruby": "CTRuby",
+    "rubyAlign": "CTRubyAlign",
+    "rubyBase": "CTRubyContent",
+    "rubyPr": "CTRubyPr",
+    "saveFormsData": "BooleanDefaultTrue",
+    "saveInvalidXml": "BooleanDefaultTrue",
+    "savePreviewPicture": "BooleanDefaultTrue",
+    "saveSmartTagsAsXml": "BooleanDefaultTrue",
+    "saveSubsetFonts": "BooleanDefaultTrue",
+    "saveThroughXslt": "CTSaveThroughXslt",
+    "saveXmlDataOnly": "BooleanDefaultTrue",
+    "scrollbar": "CTFrameScrollbar",
+    "sdt": "SdtBlock",
+    "sdtContent": "CTSdtContentRun",
+    "sdtEndPr": "CTSdtEndPr",
+    "sdtPr": "SdtPr",
+    "sectPr": "SectPr",
+    "sectPrChange": "CTSectPrChange",
+    "selectFldWithFirstOrLastChar": "BooleanDefaultTrue",
+    "semiHidden": "BooleanDefaultTrue",
+    "separator": "RSeparator",
+    "settings": "Settings",
+    "shadow": "BooleanDefaultTrue",
+    "shapeDefaults": "CTShapeDefaults",
+    "shapeLayoutLikeWW8": "BooleanDefaultTrue",
+    "shd": "CTShd",
+    "showBreaksInFrames": "BooleanDefaultTrue",
+    "showEnvelope": "BooleanDefaultTrue",
+    "showXMLTags": "BooleanDefaultTrue",
+    "showingPlcHdr": "ShowingPlcHdr",
+    "sig": "FontSig",
+    "size": "HpsMeasure",
+    "sizeAuto": "BooleanDefaultTrue",
+    "smallCaps": "BooleanDefaultTrue",
+    "smartTag": "CTSmartTagRun",
+    "smartTagPr": "CTSmartTagPr",
+    "smartTagType": "CTSmartTagType",
+    "snapToGrid": "BooleanDefaultTrue",
+    "softHyphen": "RSoftHyphen",
+    "sourceFileName": "CTRel",
+    "spaceForUL": "BooleanDefaultTrue",
+    "spacing": "CtPprBaseSpacing",
+    "spacingInWholePoints": "BooleanDefaultTrue",
+    "specVanish": "BooleanDefaultTrue",
+    "splitPgBreakAndParaMark": "BooleanDefaultTrue",
+    "src": "CTRel",
+    "start": "TblWidth",
+    "startOverride": "NumberingNumLvlOverrideStartOverride",
+    "statusText": "CTFFStatusText",
+    "storeMappedDataAs": "CTSdtDateMappingType",
+    "strictFirstAndLastChars": "BooleanDefaultTrue",
+    "strike": "BooleanDefaultTrue",
+    "style": "Style",
+    "styleLink": "NumberingAbstractNumStyleLink",
+    "styleLockQFSet": "BooleanDefaultTrue",
+    "styleLockTheme": "BooleanDefaultTrue",
+    "stylePaneFormatFilter": "CTStylePaneFilter",
+    "stylePaneSortMethod": "CTShortHexNumber",
+    "styles": "Styles",
+    "subDoc": "CTRel",
+    "subFontBySize": "BooleanDefaultTrue",
+    "suff": "CtLvlSuff",
+    "summaryLength": "CtSettingsSummaryLength",
+    "suppressAutoHyphens": "BooleanDefaultTrue",
+    "suppressBottomSpacing": "BooleanDefaultTrue",
+    "suppressLineNumbers": "BooleanDefaultTrue",
+    "suppressOverlap": "BooleanDefaultTrue",
+    "suppressSpBfAfterPgBrk": "BooleanDefaultTrue",
+    "suppressSpacingAtTopOfPage": "BooleanDefaultTrue",
+    "suppressTopSpacing": "BooleanDefaultTrue",
+    "suppressTopSpacingWP": "BooleanDefaultTrue",
+    "swapBordersFacingPages": "BooleanDefaultTrue",
+    "sym": "RSym",
+    "sz": "HpsMeasure",
+    "szCs": "HpsMeasure",
+    "t": "RT",
+    "tab": "RTab",
+    "table": "CtOdsoTable",
+    "tabs": "Tabs",
+    "tag": "Tag",
+    "targetScreenSz": "CTTargetScreenSz",
+    "tbl": "Tbl",
+    "tblBorders": "TblBorders",
+    "tblCaption": "CTString",
+    "tblCellMar": "CTTblCellMar",
+    "tblCellSpacing": "TblWidth",
+    "tblDescription": "CTString",
+    "tblGrid": "TblGrid",
+    "tblGridChange": "CTTblGridChange",
+    "tblHeader": "TblHeader",
+    "tblInd": "TblWidth",
+    "tblLayout": "CTTblLayoutType",
+    "tblLook": "CTTblLook",
+    "tblOverlap": "CTTblOverlap",
+    "tblPr": "TblPr",
+    "tblPrChange": "CTTblPrChange",
+    "tblPrEx": "CTTblPrEx",
+    "tblPrExChange": "CTTblPrExChange",
+    "tblStyle": "CtTblPrBaseTblStyle",
+    "tblStyleColBandSize": "CtTblPrBaseTblStyleColBandSize",
+    "tblStylePr": "CTTblStylePr",
+    "tblStyleRowBandSize": "CtTblPrBaseTblStyleRowBandSize",
+    "tblW": "TblWidth",
+    "tblpPr": "CTTblPPr",
+    "tc": "Tc",
+    "tcBorders": "CtTcPrInnerTcBorders",
+    "tcFitText": "BooleanDefaultTrue",
+    "tcMar": "TcMar",
+    "tcPr": "TcPr",
+    "tcPrChange": "CTTcPrChange",
+    "tcW": "TblWidth",
+    "temporary": "Temporary",
+    "text": "CTSdtText",
+    "textAlignment": "CtPprBaseTextAlignment",
+    "textDirection": "TextDirection",
+    "textInput": "CTFFTextInput",
+    "textboxTightWrap": "CTTextboxTightWrap",
+    "themeFontLang": "CTLanguage",
+    "titlePg": "BooleanDefaultTrue",
+    "tl2br": "CTBorder",
+    "tmpl": "CTLongHexNumber",
+    "top": "CTBorder",
+    "topLinePunct": "BooleanDefaultTrue",
+    "tr": "Tr",
+    "tr2bl": "CTBorder",
+    "trHeight": "CTHeight",
+    "trPr": "TrPr",
+    "trPrChange": "CTTrPrChange",
+    "trackRevisions": "BooleanDefaultTrue",
+    "truncateFontHeightsLikeWP6": "BooleanDefaultTrue",
+    "txbxContent": "TxbxContent",
+    "type": "CtSectPrType",
+    "types": "CTDocPartTypes",
+    "u": "U",
+    "udl": "CtOdsoUdl",
+    "uiCompat97To2003": "BooleanDefaultTrue",
+    "uiPriority": "StyleUiPriority",
+    "ulTrailSpace": "BooleanDefaultTrue",
+    "underlineTabInNumList": "BooleanDefaultTrue",
+    "unhideWhenUsed": "BooleanDefaultTrue",
+    "updateFields": "BooleanDefaultTrue",
+    "useAltKinsokuLineBreakRules": "BooleanDefaultTrue",
+    "useAnsiKerningPairs": "BooleanDefaultTrue",
+    "useFELayout": "BooleanDefaultTrue",
+    "useNormalStyleForList": "BooleanDefaultTrue",
+    "usePrinterMetrics": "BooleanDefaultTrue",
+    "useSingleBorderforContiguousCells": "BooleanDefaultTrue",
+    "useWord2002TableStyleRules": "BooleanDefaultTrue",
+    "useWord97LineBreakRules": "BooleanDefaultTrue",
+    "useXSLTWhenSaving": "BooleanDefaultTrue",
+    "vAlign": "CTVerticalJc",
+    "vMerge": "CtTcPrInnerVMerge",
+    "vanish": "BooleanDefaultTrue",
+    "vertAlign": "CTVerticalAlignRun",
+    "view": "CTView",
+    "viewMergedData": "BooleanDefaultTrue",
+    "w": "CTTextScale",
+    "wAfter": "WAfter",
+    "wBefore": "WBefore",
+    "webHidden": "BooleanDefaultTrue",
+    "webSettings": "WebSettings",
+    "widowControl": "BooleanDefaultTrue",
+    "wordWrap": "BooleanDefaultTrue",
+    "wpJustification": "BooleanDefaultTrue",
+    "wpSpaceWidth": "BooleanDefaultTrue",
+    "wrapTrailSpaces": "BooleanDefaultTrue",
+    "writeProtection": "CTWriteProtection",
+    "yearLong": "RYearLong",
+    "yearShort": "RYearShort",
+    "zoom": "CTZoom"
+  }
+}

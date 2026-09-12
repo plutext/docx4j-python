@@ -1,0 +1,23 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2012/chartStyle",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2012.chartStyle",
+  "types": {
+    "CT_ChartStyle": "CTChartStyle",
+    "CT_ColorStyle": "CTColorStyle",
+    "CT_ColorStyleVariation": "CTColorStyleVariation",
+    "CT_FontReference": "CTFontReference",
+    "CT_MarkerLayout": "CTMarkerLayout",
+    "CT_StyleColor": "CTStyleColor",
+    "CT_StyleEntry": "CTStyleEntry",
+    "CT_StyleReference": "CTStyleReference",
+    "ST_ColorStyleMethodEnum": "STColorStyleMethodEnum",
+    "ST_MarkerStyle": "STMarkerStyle",
+    "ST_StyleColorEnum": "STStyleColorEnum",
+    "ST_StyleEntryModifierEnum": "STStyleEntryModifierEnum",
+    "ST_StyleReferenceModifierEnum": "STStyleReferenceModifierEnum"
+  },
+  "elements": {
+    "chartStyle": "CTChartStyle",
+    "colorStyle": "CTColorStyle"
+  }
+}

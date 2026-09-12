@@ -1,0 +1,21 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing",
+  "java_package": "org.docx4j.dml.chartDrawing",
+  "types": {
+    "CT_AbsSizeAnchor": "CTAbsSizeAnchor",
+    "CT_Connector": "CTConnector",
+    "CT_ConnectorNonVisual": "CTConnectorNonVisual",
+    "CT_Drawing": "CTDrawing",
+    "CT_GraphicFrame": "CTGraphicFrame",
+    "CT_GraphicFrameNonVisual": "CTGraphicFrameNonVisual",
+    "CT_GroupShape": "CTGroupShape",
+    "CT_GroupShapeNonVisual": "CTGroupShapeNonVisual",
+    "CT_Marker": "CTMarker",
+    "CT_Picture": "CTPicture",
+    "CT_PictureNonVisual": "CTPictureNonVisual",
+    "CT_RelSizeAnchor": "CTRelSizeAnchor",
+    "CT_Shape": "CTShape",
+    "CT_ShapeNonVisual": "CTShapeNonVisual"
+  },
+  "elements": {}
+}

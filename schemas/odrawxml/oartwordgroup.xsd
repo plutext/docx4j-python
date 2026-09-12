@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema elementFormDefault="qualified"
+	targetNamespace="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+	xmlns="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+	xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+	xmlns:oxsd="http://oxsdSchemaUri"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+	xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+	xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+    xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
+    xmlns:xjc="https://jakarta.ee/xml/ns/jaxb/xjc" jaxb:version="3.0">
+    
+    <!-- 
+    
+        2019 0429: added for docx4j 8.0.1; to generate this, use ../dml/dml__ROOT.xsd
+    
+     -->
+    
+  <xsd:annotation>
+    <xsd:documentation xml:lang="en">
+    </xsd:documentation>
+        <xsd:appinfo>
+            <xsd:appinfo>
+                <jaxb:globalBindings>
+                </jaxb:globalBindings>
+            </xsd:appinfo>
+            <jaxb:schemaBindings>
+                <jaxb:package name="org.docx4j.com.microsoft.schemas.office.word.x2010.wordprocessingGroup"/>
+            </jaxb:schemaBindings>
+        </xsd:appinfo>
+  </xsd:annotation>
+  
+  <xsd:import schemaLocation="../dml/dml-picture.xsd" namespace="http://schemas.openxmlformats.org/drawingml/2006/picture"/>
+
+  <xsd:import schemaLocation="../dml/dml-documentProperties.xsd" namespace="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+  <xsd:import schemaLocation="../dml/dml-shapeProperties.xsd" namespace="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+  <xsd:import schemaLocation="../dml/dml-baseStylesheet.xsd" namespace="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+  
+	
+<!--   <xsd:import schemaLocation="oarte2o.xsd" namespace="http://schemas.openxmlformats.org/drawingml/2006/main"/>  -->
+  
+  <xsd:import schemaLocation="oartwordshape.xsd" namespace="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"/>
+    
+  <xsd:import schemaLocation="../wml/w14_word_2010_wordml.xsd" namespace="http://schemas.microsoft.com/office/word/2010/wordml"/>
+  
+  <xsd:complexType name="CT_GraphicFrame">
+    <xsd:sequence>
+      <xsd:element name="cNvPr" type="a:CT_NonVisualDrawingProps" minOccurs="1" maxOccurs="1"/>
+      <xsd:element name="cNvFrPr" type="a:CT_NonVisualGraphicFrameProperties" minOccurs="1" maxOccurs="1"/>
+      <xsd:element name="xfrm" type="a:CT_Transform2D" minOccurs="1" maxOccurs="1"/>
+      <xsd:element ref="a:graphic" minOccurs="1" maxOccurs="1"/>
+      <xsd:element name="extLst" type="a:CT_OfficeArtExtensionList" minOccurs="0" maxOccurs="1"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="CT_WordprocessingGroup">
+    <xsd:sequence minOccurs="1" maxOccurs="1">
+      <xsd:element name="cNvPr" type="a:CT_NonVisualDrawingProps" minOccurs="0" maxOccurs="1"/>
+      <xsd:element name="cNvGrpSpPr" type="a:CT_NonVisualGroupDrawingShapeProps" minOccurs="1" maxOccurs="1"/>
+      <xsd:element name="grpSpPr" type="a:CT_GroupShapeProperties" minOccurs="1" maxOccurs="1"/>
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element ref="wps:wsp"/>
+        <xsd:element name="grpSp" type="CT_WordprocessingGroup"/>
+        <xsd:element name="graphicFrame" type="CT_GraphicFrame"/>
+        <xsd:element ref="pic:pic"/>
+        <!-- not in v2 or v11 of [MS-DOCX] <xsd:element ref="w14:contentPart"/>
+        What to replace with???
+         -->
+      </xsd:choice>
+      <xsd:element name="extLst" type="a:CT_OfficeArtExtensionList" minOccurs="0" maxOccurs="1"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:element name="wgp" type="CT_WordprocessingGroup"/>
+</xsd:schema>

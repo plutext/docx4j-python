@@ -1,0 +1,179 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2012/chart",
+  "module": "docx4j_py.oart.chart_2012",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 37,
+    "simple_type_elements": 3,
+    "scoped_names": 9,
+    "keyword_renames": 0,
+    "collisions": 3
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "f": [
+      "str"
+    ],
+    "sqref": [
+      "str"
+    ],
+    "txfldGUID": [
+      "str"
+    ]
+  },
+  "keyword_renames": {},
+  "collisions": {
+    "ser": {
+      "default": {
+        "name": "ser",
+        "class": "CTAreaSer",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTFilteredAreaSer",
+          "FilteredAreaSeries"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "bar_ser",
+          "class": "CTBarSer",
+          "scopes": [
+            "CTFilteredBarSer",
+            "FilteredBarSeries"
+          ]
+        },
+        {
+          "name": "bubble_ser",
+          "class": "CTBubbleSer",
+          "scopes": [
+            "CTFilteredBubbleSer",
+            "FilteredBubbleSeries"
+          ]
+        },
+        {
+          "name": "line_ser",
+          "class": "CTLineSer",
+          "scopes": [
+            "CTFilteredLineSer",
+            "FilteredLineSeries"
+          ]
+        },
+        {
+          "name": "pie_ser",
+          "class": "CTPieSer",
+          "scopes": [
+            "CTFilteredPieSer",
+            "FilteredPieSeries"
+          ]
+        },
+        {
+          "name": "radar_ser",
+          "class": "CTRadarSer",
+          "scopes": [
+            "CTFilteredRadarSer",
+            "FilteredRadarSeries"
+          ]
+        },
+        {
+          "name": "scatter_ser",
+          "class": "CTScatterSer",
+          "scopes": [
+            "CTFilteredScatterSer",
+            "FilteredScatterSeries"
+          ]
+        },
+        {
+          "name": "surface_ser",
+          "class": "CTSurfaceSer",
+          "scopes": [
+            "CTFilteredSurfaceSer",
+            "FilteredSurfaceSeries"
+          ]
+        }
+      ]
+    },
+    "spPr": {
+      "default": {
+        "name": "spPr",
+        "class": "CTShapeProperties",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "shape_properties",
+          "class": "CTShapeProperties",
+          "scopes": [
+            "CTCategoryFilterException"
+          ]
+        }
+      ]
+    },
+    "tx": {
+      "default": {
+        "name": "tx",
+        "class": "CTTx",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "tx_tx",
+          "class": "CTTx",
+          "scopes": [
+            "CTFilteredSeriesTitle",
+            "FilteredSeriesTitle"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "autoCat": "AutoCat",
+    "bubble3D": "CTBoolean",
+    "cat": "CTAxDataSource",
+    "categoryFilterException": "CTCategoryFilterException",
+    "categoryFilterExceptions": "CategoryFilterExceptions",
+    "dLbl": "CTDLbl",
+    "datalabelsRange": "DatalabelsRange",
+    "dlblFTEntry": "CTDataLabelFieldTableEntry",
+    "dlblFieldTable": "DlblFieldTable",
+    "dlblFieldTableCache": "CTStrData",
+    "dlblRangeCache": "CTStrData",
+    "explosion": "CTUnsignedInt",
+    "filteredAreaSeries": "FilteredAreaSeries",
+    "filteredBarSeries": "FilteredBarSeries",
+    "filteredBubbleSeries": "FilteredBubbleSeries",
+    "filteredCategoryTitle": "FilteredCategoryTitle",
+    "filteredLineSeries": "FilteredLineSeries",
+    "filteredPieSeries": "FilteredPieSeries",
+    "filteredRadarSeries": "FilteredRadarSeries",
+    "filteredScatterSeries": "FilteredScatterSeries",
+    "filteredSeriesTitle": "FilteredSeriesTitle",
+    "filteredSurfaceSeries": "FilteredSurfaceSeries",
+    "formulaRef": "FormulaRef",
+    "fullRef": "FullRef",
+    "invertIfNegative": "CTBoolean",
+    "layout": "CTLayout",
+    "leaderLines": "CTChartLines",
+    "levelRef": "LevelRef",
+    "marker": "CTMarker",
+    "numFmt": "CTNumFmt",
+    "pivotSource": "CTPivotSource",
+    "ser": "CTAreaSer",
+    "showDataLabelsRange": "ShowDataLabelsRange",
+    "showLeaderLines": "ShowLeaderLines",
+    "spPr": "CTShapeProperties",
+    "tx": "CTTx",
+    "xForSave": "CTBoolean"
+  }
+}

@@ -1,0 +1,285 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2014/chartex",
+  "module": "docx4j_py.oart.chartex_2014",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 98,
+    "simple_type_elements": 14,
+    "scoped_names": 6,
+    "keyword_renames": 2,
+    "collisions": 6
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "binCount": [
+      "int"
+    ],
+    "binSize": [
+      "float"
+    ],
+    "binary": [
+      "bytes"
+    ],
+    "copyright": [
+      "str"
+    ],
+    "entityType": [
+      "STEntityType"
+    ],
+    "evenFooter": [
+      "str"
+    ],
+    "evenHeader": [
+      "str"
+    ],
+    "firstFooter": [
+      "str"
+    ],
+    "firstHeader": [
+      "str"
+    ],
+    "geoHierarchyEntity": [
+      "str"
+    ],
+    "oddFooter": [
+      "str"
+    ],
+    "oddHeader": [
+      "str"
+    ],
+    "separator": [
+      "str"
+    ],
+    "v": [
+      "str"
+    ]
+  },
+  "keyword_renames": {
+    "max": "max_",
+    "min": "min_"
+  },
+  "collisions": {
+    "chart": {
+      "default": {
+        "name": "chart",
+        "class": "Chart",
+        "chosen_by": "global element declaration",
+        "scopes": [
+          "(global element)"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "chart_chart",
+          "class": "CTChart",
+          "scopes": [
+            "CTChartSpace",
+            "ChartSpace"
+          ]
+        }
+      ]
+    },
+    "f": {
+      "default": {
+        "name": "f",
+        "class": "F",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTNumericDimension",
+          "CTStringDimension"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "formula",
+          "class": "CTFormula",
+          "scopes": [
+            "CTTextData"
+          ]
+        }
+      ]
+    },
+    "lvl": {
+      "default": {
+        "name": "lvl",
+        "class": "CTNumericLevel",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTNumericDimension"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "string_level",
+          "class": "CTStringLevel",
+          "scopes": [
+            "CTStringDimension"
+          ]
+        }
+      ]
+    },
+    "pt": {
+      "default": {
+        "name": "pt",
+        "class": "CTNumericValue",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTNumericLevel"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "string_value",
+          "class": "CTStringValue",
+          "scopes": [
+            "CTStringLevel"
+          ]
+        }
+      ]
+    },
+    "title": {
+      "default": {
+        "name": "title",
+        "class": "CTChartTitle",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTChart"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "axis_title",
+          "class": "CTAxisTitle",
+          "scopes": [
+            "CTAxis"
+          ]
+        }
+      ]
+    },
+    "visibility": {
+      "default": {
+        "name": "visibility",
+        "class": "CTDataLabelVisibilities",
+        "chosen_by": "most reachable scope",
+        "scopes": [
+          "CTDataLabel",
+          "CTDataLabels"
+        ]
+      },
+      "scoped": [
+        {
+          "name": "series_element_visibilities",
+          "class": "CTSeriesElementVisibilities",
+          "scopes": [
+            "CTSeriesLayoutProperties"
+          ]
+        }
+      ]
+    }
+  },
+  "elements": {
+    "address": "CTAddress",
+    "aggregation": "CTAggregation",
+    "axis": "CTAxis",
+    "axisId": "CTAxisId",
+    "binning": "CTBinning",
+    "catScaling": "CTCategoryAxisScaling",
+    "chart": "Chart",
+    "chartData": "CTChartData",
+    "chartSpace": "ChartSpace",
+    "clear": "CTClear",
+    "clrMapOvr": "CTColorMapping",
+    "copyrights": "CTCopyrights",
+    "data": "CTData",
+    "dataId": "CTDataId",
+    "dataLabel": "CTDataLabel",
+    "dataLabelHidden": "CTDataLabelHidden",
+    "dataLabels": "CTDataLabels",
+    "dataPt": "CTDataPoint",
+    "ext": "CTExtension",
+    "extLst": "CTExtensionList",
+    "externalData": "CTExternalData",
+    "extremeValue": "CTExtremeValueColorPosition",
+    "f": "F",
+    "fmtOvr": "CTFormatOverride",
+    "fmtOvrs": "CTFormatOverrides",
+    "geoCache": "CTGeoCache",
+    "geoChildEntities": "CTGeoChildEntities",
+    "geoChildEntitiesQuery": "CTGeoChildEntitiesQuery",
+    "geoChildEntitiesQueryResult": "CTGeoChildEntitiesQueryResult",
+    "geoChildEntitiesQueryResults": "CTGeoChildEntitiesQueryResults",
+    "geoChildTypes": "CTGeoChildTypes",
+    "geoData": "CTGeoData",
+    "geoDataEntityQuery": "CTGeoDataEntityQuery",
+    "geoDataEntityQueryResult": "CTGeoDataEntityQueryResult",
+    "geoDataEntityQueryResults": "CTGeoDataEntityQueryResults",
+    "geoDataPointQuery": "CTGeoDataPointQuery",
+    "geoDataPointToEntityQuery": "CTGeoDataPointToEntityQuery",
+    "geoDataPointToEntityQueryResult": "CTGeoDataPointToEntityQueryResult",
+    "geoDataPointToEntityQueryResults": "CTGeoDataPointToEntityQueryResults",
+    "geoEntity": "CTGeoEntity",
+    "geoLocation": "CTGeoLocation",
+    "geoLocationQuery": "CTGeoLocationQuery",
+    "geoLocationQueryResult": "CTGeoLocationQueryResult",
+    "geoLocationQueryResults": "CTGeoLocationQueryResults",
+    "geoLocations": "CTGeoLocations",
+    "geoParentEntitiesQuery": "CTGeoParentEntitiesQuery",
+    "geoParentEntitiesQueryResult": "CTGeoParentEntitiesQueryResult",
+    "geoParentEntitiesQueryResults": "CTGeoParentEntitiesQueryResults",
+    "geoParentEntity": "CTGeoParentEntity",
+    "geoPolygon": "CTGeoPolygon",
+    "geoPolygons": "CTGeoPolygons",
+    "geography": "CTGeography",
+    "headerFooter": "CTHeaderFooter",
+    "idx": "CTSubtotalIndex",
+    "layoutPr": "CTSeriesLayoutProperties",
+    "legend": "CTLegend",
+    "lvl": "CTNumericLevel",
+    "majorGridlines": "CTGridlines",
+    "majorTickMarks": "CTTickMarks",
+    "max": "CTValueColorEndPosition",
+    "maxColor": "CTSolidColorFillProperties",
+    "mid": "CTValueColorMiddlePosition",
+    "midColor": "CTSolidColorFillProperties",
+    "min": "CTValueColorEndPosition",
+    "minColor": "CTSolidColorFillProperties",
+    "minorGridlines": "CTGridlines",
+    "minorTickMarks": "CTTickMarks",
+    "nf": "Nf",
+    "numDim": "CTNumericDimension",
+    "numFmt": "CTNumberFormat",
+    "number": "CTNumberColorPosition",
+    "pageMargins": "CTPageMargins",
+    "pageSetup": "CTPageSetup",
+    "parentLabelLayout": "CTParentLabelLayout",
+    "percent": "CTPercentageColorPosition",
+    "plotArea": "CTPlotArea",
+    "plotAreaRegion": "CTPlotAreaRegion",
+    "plotSurface": "CTPlotSurface",
+    "printSettings": "CTPrintSettings",
+    "pt": "CTNumericValue",
+    "regionLabelLayout": "CTRegionLabelLayout",
+    "rich": "CTTextBody",
+    "series": "CTSeries",
+    "spPr": "CTShapeProperties",
+    "statistics": "CTStatistics",
+    "strDim": "CTStringDimension",
+    "subtotals": "CTSubtotals",
+    "tickLabels": "CTTickLabels",
+    "title": "CTChartTitle",
+    "tx": "CTText",
+    "txData": "CTTextData",
+    "txPr": "CTTextBody",
+    "units": "CTAxisUnits",
+    "unitsLabel": "CTAxisUnitsLabel",
+    "valScaling": "CTValueAxisScaling",
+    "valueColorPositions": "CTValueColorPositions",
+    "valueColors": "CTValueColors",
+    "visibility": "CTDataLabelVisibilities"
+  }
+}

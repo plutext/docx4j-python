@@ -1,0 +1,43 @@
+{
+  "namespace": "http://purl.org/dc/elements/1.1/",
+  "module": "docx4j_py.docprops.dc",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 16,
+    "simple_type_elements": 0,
+    "scoped_names": 0,
+    "keyword_renames": 3,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {
+    "any": "any_",
+    "format": "format_",
+    "type": "type_"
+  },
+  "collisions": {},
+  "elements": {
+    "any": "AnyType",
+    "contributor": "Contributor",
+    "coverage": "Coverage",
+    "creator": "Creator",
+    "date": "Date",
+    "description": "Description",
+    "format": "Format",
+    "identifier": "Identifier",
+    "language": "Language",
+    "publisher": "Publisher",
+    "relation": "Relation",
+    "rights": "Rights",
+    "source": "Source",
+    "subject": "Subject",
+    "title": "Title",
+    "type": "Type"
+  }
+}

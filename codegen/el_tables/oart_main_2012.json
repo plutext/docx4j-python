@@ -1,0 +1,27 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2012/main",
+  "module": "docx4j_py.oart.main_2012",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 4,
+    "simple_type_elements": 0,
+    "scoped_names": 0,
+    "keyword_renames": 0,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {},
+  "keyword_renames": {},
+  "collisions": {},
+  "elements": {
+    "backgroundPr": "BackgroundPr",
+    "nonVisualGroupProps": "NonVisualGroupProps",
+    "objectPr": "ObjectPr",
+    "signatureLine": "SignatureLine"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+  "java_package": "org.docx4j.mce",
+  "types": {},
+  "elements": {
+    "AlternateContent": "AlternateContent"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/schemaLibrary/2006/main",
+  "java_package": "org.docx4j.customxml",
+  "types": {},
+  "elements": {
+    "schemaLibrary": "SchemaLibrary"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2013/main/command",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2013.main.command",
+  "types": {
+    "CT_ChangesData": "CTChangesData",
+    "CT_ConnectorChanges": "CTConnectorChanges",
+    "CT_ConnectorMoniker": "CTConnectorMoniker",
+    "CT_ConnectorMonikerList": "CTConnectorMonikerList",
+    "CT_GraphicFrameChanges": "CTGraphicFrameChanges",
+    "CT_GraphicFrameMoniker": "CTGraphicFrameMoniker",
+    "CT_GraphicFrameMonikerList": "CTGraphicFrameMonikerList",
+    "CT_GroupShapeChanges": "CTGroupShapeChanges",
+    "CT_GroupShapeMoniker": "CTGroupShapeMoniker",
+    "CT_GroupShapeMonikerList": "CTGroupShapeMonikerList",
+    "CT_InkChanges": "CTInkChanges",
+    "CT_InkMoniker": "CTInkMoniker",
+    "CT_InkMonikerList": "CTInkMonikerList",
+    "CT_PictureChanges": "CTPictureChanges",
+    "CT_PictureMoniker": "CTPictureMoniker",
+    "CT_PictureMonikerList": "CTPictureMonikerList",
+    "CT_ShapeChanges": "CTShapeChanges",
+    "CT_ShapeMoniker": "CTShapeMoniker",
+    "CT_ShapeMonikerList": "CTShapeMonikerList",
+    "ST_ConnectorChangeBit": "STConnectorChangeBit",
+    "ST_GraphicFrameChangeBit": "STGraphicFrameChangeBit",
+    "ST_GroupShapeChangeBit": "STGroupShapeChangeBit",
+    "ST_InkChangeBit": "STInkChangeBit",
+    "ST_PictureChangeBit": "STPictureChangeBit",
+    "ST_ShapeChangeBit": "STShapeChangeBit"
+  },
+  "elements": {
+    "cxnSpMkLst": "CTConnectorMonikerList",
+    "graphicFrameMkLst": "CTGraphicFrameMonikerList",
+    "grpMkLst": "CTGroupShapeMonikerList",
+    "inkMkLst": "CTInkMonikerList",
+    "picMkLst": "CTPictureMonikerList",
+    "spMkLst": "CTShapeMonikerList"
+  }
+}

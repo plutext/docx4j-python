@@ -1,0 +1,10 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/compatibility",
+  "java_package": "org.docx4j.dml.compatibility",
+  "types": {
+    "CT_Compat": "CTCompat"
+  },
+  "elements": {
+    "legacyDrawing": "CTCompat"
+  }
+}

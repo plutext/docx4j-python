@@ -1,0 +1,12 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2010/chartDrawing",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2010.chartDrawing",
+  "types": {
+    "CT_ApplicationNonVisualDrawingProps": "CTApplicationNonVisualDrawingProps",
+    "CT_ContentPart": "CTContentPart",
+    "CT_ContentPartNonVisual": "CTContentPartNonVisual"
+  },
+  "elements": {
+    "contentPart": "CTContentPart"
+  }
+}

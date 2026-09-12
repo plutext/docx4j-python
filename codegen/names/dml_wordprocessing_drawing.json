@@ -1,0 +1,26 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+  "java_package": "org.docx4j.dml.wordprocessingDrawing",
+  "types": {
+    "CT_Anchor": "Anchor",
+    "CT_EffectExtent": "CTEffectExtent",
+    "CT_Inline": "Inline",
+    "CT_PosH": "CTPosH",
+    "CT_PosV": "CTPosV",
+    "CT_WrapNone": "CTWrapNone",
+    "CT_WrapPath": "CTWrapPath",
+    "CT_WrapSquare": "CTWrapSquare",
+    "CT_WrapThrough": "CTWrapThrough",
+    "CT_WrapTight": "CTWrapTight",
+    "CT_WrapTopBottom": "CTWrapTopBottom",
+    "ST_AlignH": "STAlignH",
+    "ST_AlignV": "STAlignV",
+    "ST_RelFromH": "STRelFromH",
+    "ST_RelFromV": "STRelFromV",
+    "ST_WrapText": "STWrapText"
+  },
+  "elements": {
+    "anchor": "Anchor",
+    "inline": "Inline"
+  }
+}

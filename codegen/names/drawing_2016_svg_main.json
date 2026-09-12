@@ -1,0 +1,10 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2016/SVG/main",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2016.SVG.main",
+  "types": {
+    "CT_SVGBlip": "CTSVGBlip"
+  },
+  "elements": {
+    "svgBlip": "CTSVGBlip"
+  }
+}

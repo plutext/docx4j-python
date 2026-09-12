@@ -1,0 +1,26 @@
+{
+  "namespace": "http://purl.org/dc/elements/1.1/",
+  "java_package": "org.docx4j.docProps.core.dc.elements",
+  "types": {
+    "SimpleLiteral": "SimpleLiteral",
+    "elementContainer": "ElementContainer"
+  },
+  "elements": {
+    "any": "SimpleLiteral",
+    "contributor": "SimpleLiteral",
+    "coverage": "SimpleLiteral",
+    "creator": "SimpleLiteral",
+    "date": "SimpleLiteral",
+    "description": "SimpleLiteral",
+    "format": "SimpleLiteral",
+    "identifier": "SimpleLiteral",
+    "language": "SimpleLiteral",
+    "publisher": "SimpleLiteral",
+    "relation": "SimpleLiteral",
+    "rights": "SimpleLiteral",
+    "source": "SimpleLiteral",
+    "subject": "SimpleLiteral",
+    "title": "SimpleLiteral",
+    "type": "SimpleLiteral"
+  }
+}

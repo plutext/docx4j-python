@@ -1,0 +1,14 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.word.x2010.wordprocessingDrawing",
+  "types": {
+    "CT_SizeRelH": "CTSizeRelH",
+    "CT_SizeRelV": "CTSizeRelV",
+    "ST_SizeRelFromH": "STSizeRelFromH",
+    "ST_SizeRelFromV": "STSizeRelFromV"
+  },
+  "elements": {
+    "sizeRelH": "CTSizeRelH",
+    "sizeRelV": "CTSizeRelV"
+  }
+}

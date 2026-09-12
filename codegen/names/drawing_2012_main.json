@@ -1,0 +1,16 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2012/main",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2012.main",
+  "types": {
+    "CT_BackgroundPr": "CTBackgroundPr",
+    "CT_NonVisualGroupProps": "CTNonVisualGroupProps",
+    "CT_ObjectPr": "CTObjectPr",
+    "CT_SignatureLine": "CTSignatureLine"
+  },
+  "elements": {
+    "backgroundPr": "CTBackgroundPr",
+    "nonVisualGroupProps": "CTNonVisualGroupProps",
+    "objectPr": "CTObjectPr",
+    "signatureLine": "CTSignatureLine"
+  }
+}

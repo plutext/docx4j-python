@@ -1,0 +1,16 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2007/8/2/chart",
+  "java_package": "org.docx4j.dml.chart.x2007",
+  "types": {
+    "CT_BooleanFalse": "CTBooleanFalse",
+    "CT_BooleanTrue": "CTBooleanTrue",
+    "CT_InvertSolidFillFmt": "CTInvertSolidFillFmt",
+    "CT_PivotOptions": "CTPivotOptions",
+    "CT_Style": "CTStyle"
+  },
+  "elements": {
+    "invertSolidFillFmt": "CTInvertSolidFillFmt",
+    "pivotOptions": "CTPivotOptions",
+    "style": "CTStyle"
+  }
+}

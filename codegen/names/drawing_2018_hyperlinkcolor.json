@@ -1,0 +1,11 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x2018.hyperlinkcolor",
+  "types": {
+    "CT_HyperlinkColor": "CTHyperlinkColor",
+    "ST_HyperlinkColor": "STHyperlinkColor"
+  },
+  "elements": {
+    "hlinkClr": "CTHyperlinkColor"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+  "module": "docx4j_py.dml.wordprocessing_drawing",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 17,
+    "simple_type_elements": 2,
+    "scoped_names": 0,
+    "keyword_renames": 0,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "align": [
+      "STAlignH",
+      "STAlignV"
+    ],
+    "posOffset": [
+      "int"
+    ]
+  },
+  "keyword_renames": {},
+  "collisions": {},
+  "elements": {
+    "anchor": "Anchor",
+    "cNvGraphicFramePr": "CTNonVisualGraphicFrameProperties",
+    "docPr": "CTNonVisualDrawingProps",
+    "effectExtent": "CTEffectExtent",
+    "extent": "CTPositiveSize2D",
+    "inline": "Inline",
+    "lineTo": "CTPoint2D",
+    "positionH": "CTPosH",
+    "positionV": "CTPosV",
+    "simplePos": "CTPoint2D",
+    "start": "CTPoint2D",
+    "wrapNone": "CTWrapNone",
+    "wrapPolygon": "CTWrapPath",
+    "wrapSquare": "CTWrapSquare",
+    "wrapThrough": "CTWrapThrough",
+    "wrapTight": "CTWrapTight",
+    "wrapTopAndBottom": "CTWrapTopBottom"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
+  "java_package": "org.docx4j.docProps.custom",
+  "types": {},
+  "elements": {
+    "Properties": "Properties"
+  }
+}

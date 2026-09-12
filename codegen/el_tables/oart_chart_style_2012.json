@@ -1,0 +1,70 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2012/chartStyle",
+  "module": "docx4j_py.oart.chart_style_2012",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 43,
+    "simple_type_elements": 1,
+    "scoped_names": 0,
+    "keyword_renames": 0,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "lineWidthScale": [
+      "float"
+    ]
+  },
+  "keyword_renames": {},
+  "collisions": {},
+  "elements": {
+    "axisTitle": "CTStyleEntry",
+    "bodyPr": "CTTextBodyProperties",
+    "categoryAxis": "CTStyleEntry",
+    "chartArea": "CTStyleEntry",
+    "chartStyle": "ChartStyle",
+    "colorStyle": "ColorStyle",
+    "dataLabel": "CTStyleEntry",
+    "dataLabelCallout": "CTStyleEntry",
+    "dataPoint": "CTStyleEntry",
+    "dataPoint3D": "CTStyleEntry",
+    "dataPointLine": "CTStyleEntry",
+    "dataPointMarker": "CTStyleEntry",
+    "dataPointMarkerLayout": "CTMarkerLayout",
+    "dataPointWireframe": "CTStyleEntry",
+    "dataTable": "CTStyleEntry",
+    "defRPr": "CTTextCharacterProperties",
+    "downBar": "CTStyleEntry",
+    "dropLine": "CTStyleEntry",
+    "effectRef": "CTStyleReference",
+    "errorBar": "CTStyleEntry",
+    "extLst": "CTOfficeArtExtensionList",
+    "fillRef": "CTStyleReference",
+    "floor": "CTStyleEntry",
+    "fontRef": "CTFontReference",
+    "gridlineMajor": "CTStyleEntry",
+    "gridlineMinor": "CTStyleEntry",
+    "hiLoLine": "CTStyleEntry",
+    "leaderLine": "CTStyleEntry",
+    "legend": "CTStyleEntry",
+    "lnRef": "CTStyleReference",
+    "plotArea": "CTStyleEntry",
+    "plotArea3D": "CTStyleEntry",
+    "seriesAxis": "CTStyleEntry",
+    "seriesLine": "CTStyleEntry",
+    "spPr": "CTShapeProperties",
+    "styleClr": "CTStyleColor",
+    "title": "CTStyleEntry",
+    "trendline": "CTStyleEntry",
+    "trendlineLabel": "CTStyleEntry",
+    "upBar": "CTStyleEntry",
+    "valueAxis": "CTStyleEntry",
+    "variation": "CTColorStyleVariation",
+    "wall": "CTStyleEntry"
+  }
+}

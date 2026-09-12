@@ -1,0 +1,12 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing",
+  "java_package": "org.xlsx4j.schemas.microsoft.com.office.excel.x2010.spreadsheetDrawing",
+  "types": {
+    "CT_ApplicationNonVisualDrawingProps": "CTApplicationNonVisualDrawingProps",
+    "CT_ContentPart": "CTContentPart",
+    "CT_ContentPartNonVisual": "CTContentPartNonVisual"
+  },
+  "elements": {
+    "contentPart": "CTContentPart"
+  }
+}

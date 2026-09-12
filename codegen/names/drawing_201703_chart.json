@@ -1,0 +1,11 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
+  "java_package": "org.docx4j.com.microsoft.schemas.office.drawing.x201703.chart",
+  "types": {
+    "CT_BooleanFalse": "CTBooleanFalse",
+    "CT_DataDisplayOptions16": "CTDataDisplayOptions16"
+  },
+  "elements": {
+    "dataDisplayOptions16": "CTDataDisplayOptions16"
+  }
+}

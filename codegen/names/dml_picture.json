@@ -1,0 +1,11 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/drawingml/2006/picture",
+  "java_package": "org.docx4j.dml.picture",
+  "types": {
+    "CT_Picture": "Pic",
+    "CT_PictureNonVisual": "CTPictureNonVisual"
+  },
+  "elements": {
+    "pic": "Pic"
+  }
+}
