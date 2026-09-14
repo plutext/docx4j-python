@@ -3,6 +3,8 @@ name = "docx4j-py"
 version = "0.0.1"
 description = "Feasibility experiment: xsdata-generated WordprocessingML bindings for Python (a docx4j analogue)"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
     # the runtime the generated bindings in docx4j_py/* import (CR-001 section 4);
     # installed editable from ~/git/docx4j-xsdata into .venv-fork
@@ -22,7 +24,8 @@ baseline = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+# 1.27 is the first hatchling to accept the SPDX license and license-files fields (PEP 639)
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

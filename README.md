@@ -295,4 +295,5 @@ docs/change-requests/ the design: CR-001 the object model, CR-002 the engine
 
 ## Licence
 
-Apache-2.0, as docx4j is. The forked generator and runtime are MIT, as xsdata is.
+Apache-2.0, as docx4j is (see [LICENSE](LICENSE)). The forked generator and runtime are MIT, as xsdata is.
+The schemas under `schemas/` are derived from ECMA-376 and keep the terms stated in their own headers.
