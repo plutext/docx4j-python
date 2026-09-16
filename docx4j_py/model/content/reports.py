@@ -55,6 +55,7 @@ __all__ = [
     "OutlineStats",
     "SearchHit",
     "TextExcerpt",
+    "container_prefix",
     "find_in",
     "heading_level_of",
     "outline_of",
@@ -840,6 +841,11 @@ class ChangeRecorder:
         "text_before",
     )
 
+    #: True: this one is collecting. A verb that can compute an address cheaply
+    #: --- an insert knows the index it used --- tests this before doing work
+    #: the null recorder would throw away.
+    active = True
+
     def __init__(self, operation: str, body: Body) -> None:
         """Start a report for one call."""
         self.operation = operation
@@ -903,6 +909,9 @@ class _NullRecorder:
     """What a nested call, or a body with no package, gets. Every method is a no-op."""
 
     __slots__ = ()
+
+    #: False: nothing is collecting, so a caller may skip the work entirely.
+    active = False
 
     def touched(self, *targets: Any) -> None:
         """Nothing."""
@@ -973,7 +982,7 @@ def moved_by_insert(body: Body, container: list, index: int, count: int) -> list
     """
     if count <= 0 or index >= len(container) - count:
         return []
-    prefix = _container_prefix(body, container)
+    prefix = container_prefix(body, container)
     if prefix is None:
         return []
     return [
@@ -989,7 +998,7 @@ def moved_by_delete(body: Body, container: list, index: int) -> list[tuple[str, 
     """
     if index < 0 or index >= len(container) - 1:
         return []
-    prefix = _container_prefix(body, container)
+    prefix = container_prefix(body, container)
     if prefix is None:
         return []
     return [
@@ -998,8 +1007,13 @@ def moved_by_delete(body: Body, container: list, index: int) -> list[tuple[str, 
     ]
 
 
-def _container_prefix(body: Body, container: list) -> str | None:
-    """The address a container's children are numbered under."""
+def container_prefix(body: Body, container: list) -> str | None:
+    """The address a container's children are numbered under.
+
+    ``"body"`` for the body's own list --- free --- and the container's own
+    ordinal otherwise, which costs its nesting depth. With it, a verb that
+    knows the index it inserted at has the address without a scan.
+    """
     if container is body.content:
         return body.prefix
     owner = getattr(container, "owner", None)

@@ -9,8 +9,7 @@ import datetime
 import json
 import time
 
-import pytest
-from conftest import SEED, sample
+from conftest import SEED, WITHOUT_PARA_IDS, sample
 
 from docx4j_py.model.content import ChangeReport
 
@@ -165,22 +164,53 @@ def test_a_detached_body_records_nothing():
     assert body.text == "no package, no report"
 
 
-@pytest.mark.parametrize("_run", range(1))
-def test_the_report_costs_a_few_microseconds_a_call(_run):
-    """CR-003 section 3.4: "cheap (a few fields per call)". Measured."""
-    package = sample("2010-sample1.docx")
+def test_the_report_costs_a_few_microseconds_and_does_not_grow(report):
+    """CR-003 section 3.4: "cheap (a few fields per call)". Measured.
+
+    Two things are asserted. The call is fast --- about 40 us for an
+    ``insert_paragraph``, of which the report is roughly 5 --- and, which
+    matters more, the report does **not** make a loop of inserts quadratic: an
+    insert knows the index it chose, so the address costs nothing to compute
+    and the last five hundred calls take about what the first five hundred did.
+    """
+    package = sample(WITHOUT_PARA_IDS)
     package.id_seed = SEED
     body = package.body
     body.insert_paragraph("warm up")
     package.changes.clear()
 
-    count = 2000
-    start = time.perf_counter()
-    for index in range(count):
-        body.insert_paragraph(f"paragraph {index}")
-    with_report = (time.perf_counter() - start) / count
+    def block(count: int) -> float:
+        start = time.perf_counter()
+        for index in range(count):
+            body.insert_paragraph(f"paragraph {index}")
+        return (time.perf_counter() - start) / count
 
-    assert len(package.changes) == count
-    # the whole call, report and all, is well under a millisecond; the report
-    # itself is one object, one datetime and a list append
-    assert with_report < 1e-3, f"{with_report * 1e6:.1f} us per insert_paragraph"
+    first = block(500)
+    for _ in range(2):
+        block(500)
+    last = block(500)
+
+    assert len(package.changes) == 2000
+    assert first < 1e-3, f"{first * 1e6:.1f} us per insert_paragraph"
+    assert last < 4 * first, (
+        f"the report must not be quadratic: {first * 1e6:.1f} us at the start, "
+        f"{last * 1e6:.1f} us two thousand paragraphs in"
+    )
+    assert package.last_change.moved == (), "and appending still moves nothing"
+
+
+def test_moved_is_the_only_part_of_a_report_that_grows(report):
+    """Inserting at the start of a long body reports every ordinal that shifted.
+
+    That is the honest answer and it is what an agent needs; it is also the one
+    report that is not a few fields, so a server that inserts at the start of a
+    long document should expect a long ``moved``. Appending --- the default
+    location --- reports none at all.
+    """
+    body = report.body
+    for index in range(200):
+        body.insert_paragraph(f"p{index}")
+    assert report.last_change.moved == ()
+
+    body.insert_paragraph("first", location="Start")
+    assert len(report.last_change.moved) == 207

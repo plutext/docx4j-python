@@ -30,6 +30,7 @@ from docx4j_py.model.content.addresses import (
     assign_para_id,
     element_at,
     ensure_para_ids,
+    para_id_address,
     paragraph_at,
     prefix_for_part,
 )
@@ -47,6 +48,7 @@ from docx4j_py.model.content.reports import (
     DEFAULT_ENTRY_LIMIT,
     Outline,
     TextExcerpt,
+    container_prefix,
     find_in,
     moved_by_insert,
     outline_of,
@@ -500,10 +502,20 @@ class Body(Sequence):
             item.parent = owner
             if isinstance(item, P):
                 change.created(assign_para_id(self, item))
-        change.shifted(moved_by_insert(self, container, index, len(elements)))
-        views = [self.view_for(item) for item in elements]
-        change.touched(*views)
-        return views[0]
+        if change.active:
+            # the address is known: this call chose the index. Asking
+            # ``address_of`` for it instead would scan the container, which is
+            # what makes a loop of inserts quadratic.
+            prefix = container_prefix(self, container)
+            for offset, item in enumerate(elements):
+                para_id = getattr(item, "para_id", None)
+                change.touched(
+                    para_id_address(para_id)
+                    if para_id
+                    else (f"{prefix}/{index + offset}" if prefix else None)
+                )
+            change.shifted(moved_by_insert(self, container, index, len(elements)))
+        return self.view_for(elements[0])
 
     def _check(self, elements: list, owner: Any) -> None:
         """Refuse an element the owner's block list cannot hold."""
