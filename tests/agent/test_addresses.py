@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 from conftest import WITH_PARA_IDS, WITHOUT_PARA_IDS, reloaded, sample
 
-from docx4j_py.model.content import AddressError, Block, ContentError, Paragraph, Table
+from docx4j_py.model.content import AddressError, ContentError, Paragraph, Table
 
 
 def test_the_ordinal_is_one_index_per_block_step(report):

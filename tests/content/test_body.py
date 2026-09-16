@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 from conftest import reloaded, sample
 
-from docx4j_py.model.content import Block, Body, ContentError, Paragraph, Table
+from docx4j_py.model.content import Body, ContentError, Paragraph, Table
 from docx4j_py.wml import el
 
 
