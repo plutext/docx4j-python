@@ -40,7 +40,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from docx4j_py.child import ChildList, deep_copy
+from docx4j_py.child import ChildList, deep_copy, link_parents
 from docx4j_py.wml import (
     RT,
     P,
@@ -500,6 +500,7 @@ def tc(blocks: Any = "", *, width: int | None = None, span: int | None = None) -
             cell.tc_pr.tc_w = el.tcW(w=width, type_value="dxa")
         if span is not None:
             cell.tc_pr.grid_span = el.gridSpan(val=span)
+        link_parents(cell)
     return cell
 
 
@@ -525,6 +526,7 @@ def tr(cells: list[Any], *, widths: list[int] | None = None, header: bool = Fals
     )
     if header:
         row.tr_pr = el.trPr(content=ChildList([el.tblHeader()]))
+        row.tr_pr.parent = row
     return row
 
 
@@ -576,6 +578,7 @@ def tbl(
         table.content.append(
             tr([row[i] if i < len(row) else "" for i in range(columns)], widths=resolved)
         )
+    link_parents(table)
     return table
 
 

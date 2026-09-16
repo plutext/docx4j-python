@@ -32,7 +32,7 @@ import dataclasses
 import struct
 from typing import Any, Literal
 
-from docx4j_py.child import ChildList
+from docx4j_py.child import ChildList, link_parents
 from docx4j_py.dml import main as _a
 from docx4j_py.dml import picture as _pic
 from docx4j_py.dml import wordprocessing_drawing as _wp
@@ -268,6 +268,7 @@ def inline_picture(
     descr: str = "",
     title: str | None = None,
     pic_id: int = 0,
+    pic_name: str | None = None,
     link: bool = False,
 ) -> Drawing:
     """A ``w:drawing`` holding one ``wp:inline`` for an image part.
@@ -299,6 +300,9 @@ def inline_picture(
             the attribute for this (``schemas/PATCHES.md`` 5).
         pic_id: ``pic:cNvPr/@id``, docx4j's ``id2``, a second id Word does not
             show. 0 by default, which is what Word itself writes.
+        pic_name: ``pic:cNvPr/@name``. docx4j writes its one ``filenameHint``
+            in both places, which is the default here too; Word writes the file
+            name here and ``Picture N`` above, so the two can differ.
         link: write ``r:link`` rather than ``r:embed``, for an image that is
             linked rather than embedded (docx4j's ``link``).
 
@@ -313,9 +317,11 @@ def inline_picture(
         )
     if name is None:
         name = f"Picture {id}"
+    if pic_name is None:
+        pic_name = name
 
-    def doc_props(props_id: int, *, described: bool) -> Any:
-        props = _a.CTNonVisualDrawingProps(id=props_id, name=name)
+    def doc_props(props_id: int, props_name: str, *, described: bool) -> Any:
+        props = _a.CTNonVisualDrawingProps(id=props_id, name=props_name)
         if described:
             props.descr = descr
             if title is not None:
@@ -324,7 +330,7 @@ def inline_picture(
 
     picture = pic_el.pic(
         nv_pic_pr=pic_el.nvPicPr(
-            c_nv_pr=doc_props(pic_id, described=False),
+            c_nv_pr=doc_props(pic_id, pic_name, described=False),
             c_nv_pic_pr=pic_el.cNvPicPr(),
         ),
         blip_fill=pic_el.blipFill(
@@ -347,7 +353,7 @@ def inline_picture(
         dist_r=0,
         extent=wp_el.extent(cx=cx, cy=cy),
         effect_extent=wp_el.effectExtent(l=0, t=0, r=0, b=0),
-        doc_pr=doc_props(id, described=True),
+        doc_pr=doc_props(id, name, described=True),
         c_nv_graphic_frame_pr=wp_el.cNvGraphicFramePr(
             graphic_frame_locks=a_el.graphicFrameLocks(no_change_aspect=True)
         ),
@@ -355,7 +361,9 @@ def inline_picture(
             graphic_data=a_el.graphicData(uri=PICTURE_URI, any_element=ChildList([picture]))
         ),
     )
-    return el.drawing(anchor_or_inline=ChildList([inline]))
+    drawing = el.drawing(anchor_or_inline=ChildList([inline]))
+    link_parents(drawing)
+    return drawing
 
 
 # ``_pic`` and ``_wp`` are imported for the module's type names to resolve in

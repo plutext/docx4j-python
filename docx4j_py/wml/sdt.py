@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from docx4j_py.child import ChildList
+from docx4j_py.child import ChildList, link_parents
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.w14 import el as w14_el
 from docx4j_py.w15 import el as w15_el
@@ -348,7 +348,7 @@ def sdt(
             hint="wrap paragraphs, a table or rows, or pass form='block'",
         )
     sdt_class, content_class = SDT_FORMS[resolved]
-    return sdt_class(
+    control = sdt_class(
         sdt_pr=sdt_pr(
             kind=kind,
             tag=tag,
@@ -360,6 +360,8 @@ def sdt(
         ),
         sdt_content=content_class(content=ChildList(content)),
     )
+    link_parents(control)
+    return control
 
 
 def _properties(pr: Any) -> Any:
