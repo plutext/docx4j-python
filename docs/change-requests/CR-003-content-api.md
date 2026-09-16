@@ -1,7 +1,8 @@
 # CR-003: A content API for Python, for agents and MCP, in the vocabulary of Office JS
 
 **Status:** Proposed 2026-09-16; revised the same day to follow Python conventions throughout
-and to be designed for AI projects and MCP servers first.
+and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
+(section 9).
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -669,7 +670,9 @@ edit it and see what changed, which is the MCP server's whole first release. G b
 TypeScript engine found (tracking has to hoist comment markers). J after E so the facade sits on
 a complete core. Each phase ships as a minor version.
 
-## 9. Open questions
+## 9. Open questions (decided 2026-09-16)
+
+All eleven recommendations below were accepted on 2026-09-16 and are now decisions.
 
 1. **`snake_case` with Office JS values, or camelCase members for literal parity.** Recommendation:
    `snake_case`, Office JS string values, `StrEnum`s beside them; no camelCase aliases.
