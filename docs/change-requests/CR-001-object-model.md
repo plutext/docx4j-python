@@ -300,6 +300,18 @@ All six recommendations below were accepted on 2026-09-12 and are now decisions.
 6. **Whether `el` functions accept positional text** (`el.t("x")`) or only keywords.
    Recommendation: positional for the text-carrying element classes only (`Text`, `DelText`,
    `w:instrText`), keywords everywhere else.
+7. **(added 2026-09-16, undecided) One repository or two.** docx4j-core-ts keeps the generated
+   objects and the engine in separate repositories (and jsonix in a third); here the model, the
+   engine (CR-002) and the content API (CR-003) share one repository and one distribution, which
+   was assumed rather than decided. The TypeScript reasons that do not carry over: add-in bundle
+   size (no Python equivalent) and a separate runtime (the xsdata fork already is one). The one
+   that does: regeneration churn in the history, which Phase D will roughly triple. Against a
+   split: the TypeScript CR-002 notes record seven tree-layer builders written in core-ts and
+   later moved to the objects package with releases on both sides; that seam (`child.py`,
+   `traversal.py`, `fragments.py`, the builders, CR-003 Phase A) is where work lands first and
+   settles later, and in one repository the move is a rename. Recommendation: one repository;
+   revisit at Phase D and, if churn or wheel size warrants it, split into two *distributions*
+   (`docx4j-objects`, `docx4j-py`) within it rather than two repositories.
 
 ## 12. Phase A implementation notes (2026-09-12)
 

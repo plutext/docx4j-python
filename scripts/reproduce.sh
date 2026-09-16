@@ -12,7 +12,7 @@ export PATH="$PWD/.venv/bin:$PATH"      # xsdata shells out to `ruff`
   print(sys.version.split()[0], xsdata.__version__, e.__version__)"
 
 # 2. generate --------------------------------------------------------------
-rm -rf docx4j_py
+#rm -rf docx4j_py
 time .venv/bin/xsdata generate -c .xsdata.xml schemas/wml/wml.xsd
 
 # 3. import cost -----------------------------------------------------------
