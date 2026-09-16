@@ -23,8 +23,10 @@ Four files, each testing a different half of the save path:
     run. Nothing came from a container at all.
 ``4-created-with-image.docx``
     as 3, plus an image part added through ``add_target_part`` and placed in the
-    body with a ``w:drawing``, so the relationship, the content type and the
-    stored (not deflated) media entry are all exercised.
+    body with the ``w:drawing`` CR-003 Phase A's ``inline_picture`` builds,
+    sized by ``image_size`` and ``emu_for`` from the image's own header, so the
+    relationship, the content type and the stored (not deflated) media entry
+    are all exercised.
 """
 
 from __future__ import annotations
@@ -41,13 +43,14 @@ from docx4j_py.openpackaging import (  # noqa: E402
     ImagePart,
     WordprocessingMLPackage,
 )
-from docx4j_py.wml import el, p, r  # noqa: E402
+from docx4j_py.wml import el, emu_for, image_size, inline_picture, p, r  # noqa: E402
 
 SOURCE = ROOT / "samples" / "2016_image_with_text_effects.docx"
 IMAGE_SOURCE = ROOT / "samples" / "Images.docx"
 
-#: The English Metric Units of a 4 cm by 3 cm picture.
-EMU_W, EMU_H = 1440000, 1080000
+#: The width of the text column on A4 with 2.54 cm margins, in EMU: what an
+#: image wider than the page is scaled down to (docx4j's ``CxCy.scale``).
+TEXT_WIDTH_EMU = 5731510
 
 
 def untouched(out: Path) -> Path:
@@ -117,57 +120,28 @@ def created_with_image(out: Path) -> Path:
     image.set_bytes(png)
     rel = main.add_target_part(image)
 
-    body.content.append(_drawing_paragraph(rel.id))
+    # CR-003 Phase A: the size comes from the image's own header and the
+    # drawing from the builder, where both used to be a hand-written fragment
+    # with the numbers guessed.
+    size = emu_for(image_size(png), max_width_emu=TEXT_WIDTH_EMU)
+    body.content.append(
+        el.p(
+            content=[
+                r(
+                    inline_picture(
+                        rel.id,
+                        cx=size.cx,
+                        cy=size.cy,
+                        id=1,
+                        name="image1.png",
+                        descr="A pangolin, from samples/Images.docx",
+                    )
+                )
+            ]
+        )
+    )
     pkg.save(target)
     return target
-
-
-def _drawing_paragraph(rel_id: str):
-    """A ``w:p`` holding an inline ``w:drawing`` that references `rel_id`.
-
-    Written as a fragment, because that is the shortest honest way to say it and
-    it exercises ``wml(...)`` on the way in.
-    """
-    from docx4j_py.wml import wml
-
-    return wml(
-        f"""
-        <w:p>
-          <w:r>
-            <w:drawing>
-              <wp:inline distT="0" distB="0" distL="0" distR="0">
-                <wp:extent cx="{EMU_W}" cy="{EMU_H}"/>
-                <wp:effectExtent l="0" t="0" r="0" b="0"/>
-                <wp:docPr id="1" name="Picture 1"/>
-                <wp:cNvGraphicFramePr/>
-                <a:graphic>
-                  <a:graphicData
-                      uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-                    <pic:pic>
-                      <pic:nvPicPr>
-                        <pic:cNvPr id="1" name="image1.png"/>
-                        <pic:cNvPicPr/>
-                      </pic:nvPicPr>
-                      <pic:blipFill>
-                        <a:blip r:embed="{rel_id}"/>
-                        <a:stretch><a:fillRect/></a:stretch>
-                      </pic:blipFill>
-                      <pic:spPr>
-                        <a:xfrm>
-                          <a:off x="0" y="0"/>
-                          <a:ext cx="{EMU_W}" cy="{EMU_H}"/>
-                        </a:xfrm>
-                        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-                      </pic:spPr>
-                    </pic:pic>
-                  </a:graphicData>
-                </a:graphic>
-              </wp:inline>
-            </w:drawing>
-          </w:r>
-        </w:p>
-        """
-    )
 
 
 def main(argv: list[str] | None = None) -> int:

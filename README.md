@@ -7,12 +7,15 @@ carry docx4j's names (`P`, `R`, `Text`, `PPr`, `Tbl`, `Document`, `Styles`), so 
 docx4j documentation and examples read across. The design is the same as
 [docx4j-core-ts](https://github.com/plutext/docx4j-core-ts), so the two read across too.
 
-Status: the object model ([CR-001](docs/change-requests/CR-001-object-model.md) Phases A to C)
-and the Open Packaging engine ([CR-002](docs/change-requests/CR-002-engine.md) Phase A) are
-implemented. Over 16 real documents, every part not touched is written back byte for byte, all
-141 typed WordprocessingML parts unmarshal and re-serialise canonically identical to the source,
-and nothing is dropped. Saved output opens in Word. The resolution utilities (`PropertyResolver`,
-list numbering, fonts: CR-002 Phase B) are next, then the content API (CR-003).
+Status: the object model ([CR-001](docs/change-requests/CR-001-object-model.md) Phases A to C),
+the Open Packaging engine ([CR-002](docs/change-requests/CR-002-engine.md) Phase A) and the
+tree-layer builders of the content API ([CR-003](docs/change-requests/CR-003-content-api.md)
+Phase A, implemented 2026-09-16: `tr`, `tc`, `inline_picture`, the `sdt` family,
+`rpr_to_elements`, `deep_copy_as`, `walk_all`, `run_items_of`) are implemented. Over 16 real
+documents, every part not touched is written back byte for byte, all 141 typed WordprocessingML
+parts unmarshal and re-serialise canonically identical to the source, and nothing is dropped.
+Saved output opens in Word. The resolution utilities (`PropertyResolver`, list numbering, fonts:
+CR-002 Phase B) are next, then the content API's views (CR-003 Phase B).
 
 ```python
 from docx4j_py import load
@@ -56,33 +59,27 @@ pkg.save("hello.docx")
 ### Adding an image
 
 An image is a part related from the main document part; the picture in the body refers to it by
-relationship id. The fragment is the shortest honest way to write the `w:drawing`, and it goes in
-through `wml(...)`, which declares docx4j's prefix table for you:
+relationship id. `inline_picture` writes the `w:drawing` exactly as docx4j's
+`BinaryPartAbstractImage.createImageInline` does, and `image_size` reads the size and the density
+out of the image's own header (PNG, JPEG, GIF and BMP, no Pillow), so the picture comes out the
+size it really is:
 
 ```python
 from docx4j_py.openpackaging import ImagePart, AddPartBehaviour
-from docx4j_py.wml import wml
+from docx4j_py.wml import el, r, emu_for, image_size, inline_picture
 
 image = ImagePart("/word/media/image1.png")
 image.set_bytes(png_bytes)
 rel = main.add_target_part(image, AddPartBehaviour.RENAME_IF_NAME_EXISTS)   # rel.id is the r:embed
 
-body.content.append(wml(f"""
-  <w:p><w:r><w:drawing>
-    <wp:inline distT="0" distB="0" distL="0" distR="0">
-      <wp:extent cx="2857500" cy="1905000"/>
-      <wp:docPr id="1" name="Picture 1"/>
-      <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-        <pic:pic>
-          <pic:nvPicPr><pic:cNvPr id="0" name="image1.png"/><pic:cNvPicPr/></pic:nvPicPr>
-          <pic:blipFill><a:blip r:embed="{rel.id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-          <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="2857500" cy="1905000"/></a:xfrm>
-                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
-        </pic:pic>
-      </a:graphicData></a:graphic>
-    </wp:inline>
-  </w:drawing></w:r></w:p>"""))
+size = emu_for(image_size(png_bytes), max_width_emu=5731510)   # scaled to the text column
+body.content.append(el.p(content=[
+    r(inline_picture(rel.id, cx=size.cx, cy=size.cy, id=1, name="image1.png", descr="A pangolin"))
+]))
 ```
+
+`wml("<w:p><w:r><w:drawing>…")` still takes the whole thing as a fragment when you want to write
+the XML yourself; it declares docx4j's prefix table for you.
 
 `scripts/acceptance.py` builds exactly this, and three other documents, for the manual Word
 checklist in [`tests/README.md`](tests/README.md).
@@ -90,8 +87,8 @@ checklist in [`tests/README.md`](tests/README.md).
 ### The object model
 
 Every element name has a constructor in the namespace's `el` module, generated from the class
-metadata so it always returns the right class for that element; `p`, `r`, `t`, `tbl`, `br` and
-`tab` are the hand-written sugar on top:
+metadata so it always returns the right class for that element; `p`, `r`, `t`, `tbl`, `tr`, `tc`,
+`br` and `tab` are the hand-written sugar on top:
 
 ```python
 from docx4j_py.wml import el, p, r, t, P, R, Text, Tbl, Drawing
@@ -169,15 +166,30 @@ repr(second)                                        # the dataclass: P(p_pr=None
 Traversal is metadata-driven, so it needs no per-class code and covers every namespace:
 
 ```python
-from docx4j_py.wml import text_of, walk, find, iter_nodes, deep_copy
+from docx4j_py.wml import (text_of, walk, walk_all, find, iter_nodes, run_items_of,
+                           deep_copy, deep_copy_as, PPrBase)
 
 text_of(document)                          # w:t, w:tab, w:br, w:sym; w:delText and fields excluded, as docx4j
 find(document, P)                          # docx4j ClassFinder; isinstance, so subclasses match
 find(document, (Tbl, Drawing))
 walk(document, lambda node, parent, name: print(name))   # docx4j TraversalUtil; return False to stop descending
 for node in iter_nodes(document): ...
+walk_all(document, on_node, on_wildcard)   # and into the xs:any content, where a stray r:embed hides
+run_items_of(para)                         # the run list of a w:p, w:hyperlink, w:ins, w:sdt, ...
 
 copy = deep_copy(para)                     # the subtree, not the document; copy.parent is None until placed
+base = deep_copy_as(para.p_pr, PPrBase)    # a copy re-typed as a base class, so no xsi:type is written
+```
+
+Content controls have their own builders, over a `w:sdtPr` the model keeps as one choice list, as
+docx4j does:
+
+```python
+from docx4j_py.wml import p, sdt, sdt_property, sdt_kind_of, next_sdt_id
+
+control = sdt([p("Acme Ltd")], kind="RichText", tag="customer", id=next_sdt_id(document))
+sdt_kind_of(control.sdt_pr)                # Office JS Word.ContentControlType: 'RichText'
+sdt_property(control, "dataBinding")       # looks in w: and w15:, because Word writes w15:dataBinding
 ```
 
 Every object is a `Child`: it knows its parent (`node.parent`), and appending to a content list
@@ -272,14 +284,16 @@ lists every change to docx4j's schema copy.
 docx4j_py/            one package per XML namespace, generated; codegen/generate.sh owns it
   wml/__init__.py       the classes: P, R, Text, PPr, Tbl, Document, Styles, ...
   wml/el.py             the object factory: el.p, el.r, el.t, el.sdt_run, ...
-  wml/builders.py       hand written: p, r, t, tbl, br, tab and the run options
+  wml/builders.py       hand written: p, r, t, tbl, tr, tc, br, tab, the run options, rpr_to_elements
+  wml/pictures.py       hand written: inline_picture, image_size, emu_for (CR-003 Phase A)
+  wml/sdt.py            hand written: sdt, sdt_pr, sdt_property, sdt_kind_of, next_sdt_id
   dml/ math/ mce/ w14/ w15/ ...   the namespaces WordprocessingML embeds, the same shape
   relationships/ docprops/        the .rels classes and the three properties parts
-  child.py              hand written: Child, ChildList, link_parents, iter_children, deep_copy
+  child.py              hand written: Child, ChildList, link_parents, iter_children, deep_copy(_as)
   namespaces.py         hand written: docx4j's prefix table; UNDERSTOOD is generated
   runtime.py            hand written: the shared XmlContext, warm_up()
   fragments.py          hand written: wml(...) and to_xml(...)
-  traversal.py          hand written: walk, iter_nodes, find, text_of, with the mce mode
+  traversal.py          hand written: walk, walk_all, iter_nodes, find, text_of, run_items_of
   openpackaging/        hand written, all of it: the engine (CR-002)
     part_name.py content_types.py stores.py load.py save.py mce.py resources.py api.py
     parts/              Part, BinaryPart, XmlPart, RelationshipsPart, the registry, the typed parts
@@ -290,7 +304,8 @@ schemas/              docx4j's xsd tree with marked patches (schemas/PATCHES.md)
 scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, threads.py, acceptance.py
 samples/              16 documents from docx4j (Apache-2.0): 13 .docx, a .dotm, a .pptx, an .xlsx
 out/acceptance/       the four documents for the manual Word checklist
-docs/change-requests/ the design: CR-001 the object model, CR-002 the engine
+docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
+                      CR-003 the content API (Phase A implemented 2026-09-16)
 ```
 
 ## Licence
