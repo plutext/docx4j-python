@@ -453,6 +453,73 @@ pkg.element_at("body/99")
 #               (use 'body/6', or call outline() to list current addresses)
 ```
 
+### The audit trail
+
+An agent that edits a document should say why, in the document, where the human who opens it in
+Word will see it — not in a chat log they will never read. That is what `pkg.author` and
+`insert_comment` are for, and CR-003 calls it the single most useful thing this API does for an
+AI workflow. (Tracked changes are the other half, and read the same `pkg.author`; they are
+Phase F.)
+
+```python
+from docx4j_py import load
+from docx4j_py.model.content import Author
+
+pkg = load("in.docx")
+pkg.author = Author("Claude", initials="C", email="claude@example.com")
+
+hit = pkg.find("first")[0]                    # the range the agent is about to change
+comment = hit.range(pkg.body).insert_comment("Changed 'first' because the source says 'red'.")
+
+pkg.last_change.parts_touched
+# ('/word/document.xml', '/word/styles.xml', '/word/comments.xml',
+#  '/word/commentsExtended.xml', '/word/commentsIds.xml', '/word/people.xml')
+
+comment.reply("Checked against the source; agreed.")   # a reply in the same thread
+comment.resolved = True                                # w15:done, which Word shows as Resolved
+
+pkg.body.get_comments()
+# [<Comment 0 body/0 'Claude' "Changed 'first' because the so…" resolved>]
+pkg.save("out.docx")
+```
+
+The document had **no comment parts at all**; `insert_comment` created four of them — `w:comments`,
+`w15:commentsEx`, `w16cid:commentsIds` and `w:people` — with their relationships and content
+types, and added `CommentText`, `CommentTextChar` and `CommentReference` to `styles.xml`, because
+Word renders a style it cannot resolve as Normal. A `w16cex:commentsExtensible` is kept in step
+when the document already has one and is never created, which is what Word does.
+
+A comment is a `Comment` whether it is a comment or a reply, as it is in the file; `parent` and
+`replies` thread them through `w15:paraIdParent`. The whole thing is one JSON object for a tool
+result:
+
+```python
+comment.to_dict()
+# {'id': 0,
+#  'author_name': 'Claude', 'initials': 'C', 'author_email': 'claude@example.com',
+#  'content': "Changed 'first' because the source says 'red'.",
+#  'creation_date': '2026-09-16T23:45:54+00:00',
+#  'para_id': '7C98CE4D', 'address': 'body/0', 'resolved': True,
+#  'replies': [{'id': 1, 'author_name': 'Claude', 'initials': 'C',
+#               'author_email': 'claude@example.com',
+#               'content': 'Checked against the source; agreed.',
+#               'creation_date': '2026-09-16T23:45:54+00:00',
+#               'para_id': '4CD9291E', 'address': 'body/0'}]}
+
+comment.get_range()[0].text                   # exactly what the markers surround
+# 'first'
+pkg.body.to_markdown(view="markup")           # the same comments as CriticMarkup
+# "My first{>>Changed 'first' because the source says 'red'.<<}{>>Checked against the source;
+#  agreed.<<} 2010 document."
+```
+
+`get_comments()` is on `Body`, `Paragraph`, `Range` and `ContentControl`; `insert_comment(text)`
+on `Paragraph` (the whole paragraph) and `Range` (a span, with the runs split at its boundaries).
+Reading comments unmarshals three parts, writing touches five, and a document whose comments are
+never read keeps all five byte for byte. A comment is **not** a revision: its markers are hoisted
+out of a `w:ins` or `w:del` the anchored run sits in, so accepting that revision in Word leaves
+the comment where it was.
+
 ### Markdown, coarse and fine
 
 Markdown is what models read and write best, and it is the exchange format docx4j-mcp settled on.

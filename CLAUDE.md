@@ -12,12 +12,12 @@ docx4j is the behavioural oracle: names, defaults and quirks are docx4j's unless
 departure.
 
 The design lives in `docs/change-requests/`. Each CR's implementation-notes sections (CR-001
-sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 14) record what was actually built,
+sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 15) record what was actually built,
 the numbers and every deliberate departure; read them before changing the area they cover.
 Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phase A
 implemented, B (resolution utilities, the Java parity harness and golden files) and C (PML, SML,
-flat OPC, less the flat OPC read half) proposed; CR-003 (content API) Phases A, B, C, D and K
-implemented, E to J proposed.
+flat OPC, less the flat OPC read half) proposed; CR-003 (content API) Phases A, B, C, D, G and K
+implemented, E, F, H, I and J proposed.
 `REPORT.md` is the original xsdata feasibility experiment.
 
 ## Environments and commands
@@ -82,9 +82,9 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 - `wml/builders.py`: the `p` / `r` / `t` / `tbl` / `br` / `tab` sugar (with `wml/pictures.py`
   and `wml/sdt.py` beside it)
 - `model/`: CR-003's content API — `model/content/` (the `Body`, `Paragraph`, `Range`, `Font`,
-  `Table`, `TableRow`, `TableCell`, `InlinePicture` and `ContentControl` views, `insert_ooxml`,
-  addresses, `Outline`, `describe()`, `ChangeReport`, `dry_run`), `model/markdown/` (markdown out
-  and in) and `model/sessions.py` (`DocumentSession`)
+  `Table`, `TableRow`, `TableCell`, `InlinePicture`, `ContentControl` and `Comment` views,
+  `insert_ooxml`, addresses, `Outline`, `describe()`, `ChangeReport`, `dry_run`, `Author`),
+  `model/markdown/` (markdown out and in) and `model/sessions.py` (`DocumentSession`)
 - `resources/`: the parts `warm_up()` parses, and docx4j's default styles, numbering and fontTable
 - `openpackaging/`: the whole engine
 
@@ -159,7 +159,8 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 `PartStore` / `PartSink` (zip, directory, memory) in `stores.py`; `PartName`; `ContentTypeManager`;
 `parts/` (`Part`, `BinaryPart`, `XmlPart[T]` with lazy `contents`, `DefaultXmlPart` as an lxml tree,
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
-docProps parts); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
+docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
+Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
 `load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `api.py`, `load()`
 and `create_package()`. Everything is synchronous. Departures from docx4j are listed in CR-002
 section 12.3.

@@ -4,7 +4,8 @@
 and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
 (section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
 (section 11); **Phase D implemented 2026-09-16** (section 12); **Phase K implemented 2026-09-17**
-(section 13); **Phase C implemented 2026-09-17** (section 14). Phases E to J proposed.
+(section 13); **Phase C implemented 2026-09-17** (section 14); **Phase G implemented
+2026-09-17** (section 15). Phases E, F, H, I and J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -660,7 +661,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests — **implemented 2026-09-16, section 12** | 4 days |
 | K | Markdown out, with addresses, then in (3.5) --- **implemented 2026-09-17, section 13** | 3 days |
 | C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` --- **implemented 2026-09-17, section 14** | 4 days |
-| G | Comments (3.9) | 3 days |
+| G | Comments (3.9) --- **implemented 2026-09-17, section 15** | 3 days |
 | F | Change tracking and `replace_text` (3.8); the README's audit-trail example | 4 days |
 | E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) | 4 days |
 | J | The python-docx facade (3.6) and its subset test | 3 days |
@@ -1816,3 +1817,235 @@ not read it as the same defect.
   about `w:ins` and `w:del`; a tracked delete should wrap rather than prune.
 - **A comment anchored in a cell** gets its `Range` from `cell.body`, which is an ordinary `Body`
   with the cell's address prefix, so nothing in Phase G has to know about tables.
+
+## 15. Phase G implementation notes (2026-09-17)
+
+Phase G is done: comments as section 3.9 specifies them and section 4's "Comments" bullet rules
+them --- `get_comments()` on a body, a paragraph, a range and a content control,
+`insert_comment(text)` on a paragraph and a range, `Comment` with its replies, its `resolved`
+flag and its `delete()`, `WordprocessingMLPackage.author`, the five parts kept in step --- with
+the tests of section 7, acceptance artefact 7 and the README's "The audit trail". The suite is
+**1,067 tests** (1,066 passing plus one `xfail`; 1,058 of them fast, 53.7 s, and 60.0 s for the
+whole), against 1,020 at the end of Phase C; **47** of the new ones are
+`tests/content/test_comments.py` (39) and `tests/agent/test_comment_workflows.py` (8). Nothing in
+`~/git/docx4j-xsdata` changed, no schema patch was needed, the model was not regenerated and
+`codegen/generate_el.py` did not change at all.
+
+```python
+from docx4j_py import load
+from docx4j_py.model.content import Author
+
+pkg = load("in.docx")
+pkg.author = Author("Claude", initials="C", email="claude@example.com")
+comment = pkg.find("first")[0].range(pkg.body).insert_comment("Changed because the source says 'red'.")
+comment.reply("Checked against the source; agreed.")
+comment.resolved = True
+```
+
+### 15.1 What landed
+
+| Piece | Where | Signature |
+|---|---|---|
+| the part half | `docx4j_py/openpackaging/parts/wml/comments.py` (335 lines) | `CommentParts(main, comments_part, comments)` with `comments_ex`, `people`, `ids_part`, `extensible_part`, `added`, `part_names`; `comment_parts_of(main) -> CommentParts | None`, `create_comment_parts(main) -> CommentParts`; the lxml accessors `durable_ids_in_use`, `durable_id_for`, `set_comment_id`, `remove_comment_id`, `set_extensible`, `remove_extensible`; `COMMENTS_IDS_NS`, `COMMENTS_EXTENSIBLE_NS`, `NEW_COMMENTS_IGNORABLE` |
+| the view half | `docx4j_py/model/content/comments.py` (1,255 lines) | `Author(name, initials=None, email=None)` and `initials_of`, `DEFAULT_AUTHOR`, `author_of`; `CommentMarker(id, kind, item, owner, run, run_owner, paragraph, paragraph_container, offset)`, `markers_of`, `markers_of_paragraph`, `comment_ids_of`; `next_comment_id`; `ensure_comment_styles(package) -> tuple[str, ...]`; `Comment(element, parts, body)` with `id`, `author_name`, `initials`, `author_email`, `creation_date`, `para_id`, `comment_body`, `paragraphs`, `content` (get and set), `resolved` (get and set), `replies`, `parent`, `anchor_address`, `reply(text)`, `delete()`, `get_range() -> list[Range]`, `get_xml()`, `to_dict()`; `insert_comment_into(range, text)`, `comments_of(scope)` |
+| on the views | `.body`, `.paragraph`, `.range`, `.controls` | `Body.get_comments`, `Paragraph.get_comments` / `insert_comment`, `Range.get_comments` / `insert_comment`, `ContentControl.get_comments` |
+| on the package | `.__init__`'s `register()`, and `OpcPackage` | `pkg.author` (a property installed by `register()`), over the `_author` slot |
+| the trial | `.trial` | `TrialPart` copies an lxml part as well as a typed one (`tree`, `set_tree`), and answers `comments_extended_part`, `comments_ids_part`, `comments_extensible_part` and `people_part`; `TrialPackage.author`; `discard_added_parts` clears the part shortcut an un-added part left behind |
+| the fixture | `tests/fixtures/comments-modern.docx` | docx4j's `loadAndSave.docx`, the one document in any of the three checkouts with all five comment parts |
+
+The **`parts/wml.py` module became a `parts/wml/` package**, which is the only structural change
+outside the content layer: `__init__.py` is what `wml.py` was, character for character, so every
+import path, `wml.__all__` and `test_every_typed_part_names_a_model_class_that_exists` are
+unchanged. `codegen/clean.py`'s `KEEP` lists `openpackaging` whole, so it needed nothing.
+
+**No registries.** docx4j-core-ts needed two (`setCommentPartsAccess`, `setCommentApi`) to keep
+its import graph acyclic. Here the direction was already settled by section 5 --- the content
+layer imports the parts layer and never the other way round --- so
+`model/content/comments.py` simply imports `openpackaging/parts/wml/comments.py`, and the part
+module knows nothing of `Comment`. That is 60 lines of seam the Python port does not have.
+
+### 15.2 Departures from sections 3.9 and 4, all deliberate
+
+1. **The comment ids come from the document's own state, not from `pkg.id_generator()`.**
+   Section 3.9's "comment ids are their own space" is kept exactly --- `next_comment_id` is one
+   above the highest `w:comment/@w:id` **and** the highest id on any marker in the body, and
+   revision ids (Phase F) will be a different counter --- but the number is *derived*, as Phase C
+   decided for part names and relationship ids (14.2 item 10). A random generator is the wrong
+   tool for a counter that has a natural order. The `w14:paraId` of a comment's paragraphs and
+   the `w16cid:durableId` **do** come from `pkg.id_generator()`, because those have no natural
+   order; a test runs the whole audit-trail sequence twice under one seed and compares the saved
+   bytes, every part but `word/comments.xml` exactly and that one with `w:date` masked, since the
+   date a comment is written is the wall clock and not a property of the agent surface (12.6
+   made the same exception for `dcterms:created`).
+2. **Three styles are defined, not two.** Section 3.9 and section 4 both say "the two comment
+   styles". `CommentText` and `CommentReference` are the two that are *referred to*; docx4j's
+   `KnownStyles.xml` gives `CommentText` a `w:link w:val="CommentTextChar"`, and 14.9's whole
+   point is that a definition should not dangle, so `CommentTextChar` goes in with them.
+   `CommentSubject` and `CommentSubjectChar` are **not** added: Word stopped writing the subject
+   line years ago, and nothing this phase writes refers to them. `ensure_comment_styles` returns
+   the part names it touched, and reads the ids out of the part's *bytes* first
+   (`style_ids_of`), so a document that already has the three keeps `/word/styles.xml` byte for
+   byte --- which a test pins over `comments-modern.docx`.
+3. **`Author` lives in the content layer; its storage is on `OpcPackage`.** 12.1 put state on
+   `OpcPackage` "because it needs no import from this layer", and `pkg.author` breaks that rule:
+   its *value* is a content-layer class. So the split is the same one `body` uses --- an
+   `_author` slot on `OpcPackage`, and an `author` property installed on
+   `WordprocessingMLPackage` by `register()`, through a new `_PACKAGE_PROPERTIES` table beside
+   `_PACKAGE_MEMBERS` (a property is not a function, so it could not go in the old one). The
+   setter also accepts a bare string (`pkg.author = "Claude"`), and refuses anything else with
+   `code="author.invalid"`. `Author` is **not** a top-level `docx4j_py` export: that would mean
+   regenerating `docx4j_py/__init__.py`'s footer for one name, and
+   `from docx4j_py.model.content import Author` is where every other view comes from.
+4. **`delete()` reads the thread from `w15:paraIdParent`, not from `replies`.** The TypeScript
+   engine walks its in-memory reply list, so deleting a `Comment` built any way but through
+   `getComments()` leaves its replies behind. `Comment._thread()` walks the w15 entries instead,
+   which is the document's own answer and is correct for a view built anywhere. A test deletes a
+   comment whose reply this view was never told about.
+5. **A reply's `w:commentRangeEnd` goes *after* its parent's, not before.** Word nests the starts
+   outward (`<start 0/><start 1/>`) and the ends inward (`<end 1/><end 0/>`); this writes
+   `<end 0/><end 1/>`, as docx4j-core-ts does. Both anchor exactly the same text, and Word shows
+   the thread correctly either way; keeping the two engines identical is worth more than
+   matching Word's own byte order here. The three insertions are made **last first** --- the
+   reference run, the end, the start --- because all three are usually in one list.
+6. **`ContentControl.get_comments()` is implemented**, though `tests/office_js_subset.json` has
+   no such member: Office JS's `ContentControl` has no `getComments`, but section 3.2 lists it,
+   and a bound control an agent has just filled in is where a comment about it belongs. Marked an
+   extension in the docstring, as section 3.13 requires.
+7. **`Comment.anchor_address` is an extension section 3.9 does not list**, and it is what
+   `repr`, `to_dict()` and `change.touched()` report: a comment's address is the address of the
+   paragraph its first marker is in. `comment_body`, `paragraphs`, `para_id`, `element`,
+   `get_xml()` and `to_dict()` are the other extensions, as they are in the TypeScript engine.
+8. **`Comment.id` is `-1` for a `w:comment` with no `w:id`** rather than raising. `w:id` is
+   required by the schema and Word always writes it; a document that has lost one should still
+   be readable, and `-1` matches no marker, so such a comment is simply never in scope.
+9. **A comment in a header or a footer is accepted**, as the TypeScript engine accepts it, and
+   the `w:comment` goes into the *document's* comments part, which is the only one there is.
+   Word does not write comments in headers and will not show them; a test pins the behaviour and
+   says so rather than refusing, because refusing would cost an error code an agent has to learn
+   for a case it will not meet.
+10. **A newly created `w:comments` carries `mc:Ignorable="w14 w15"`, and the two w15 parts carry
+    none.** Word writes `mc:Ignorable` on every part; on `w15:commentsEx` and `w15:people` it
+    names prefixes that are not the root's own, and naming `w15` there would ask Word to ignore
+    the root element. `w:comments` gets it because its paragraphs carry `w14:paraId`; both
+    prefixes are in docx4j's prefix table, so `XmlPart.xml` declares them (the check section 3.9
+    asked for).
+11. **`w16cid` and `w16cex` are edited as lxml**, because the registry gives them
+    `DefaultXmlPart` (CR-001 section 13.5). That is three small accessors per part rather than a
+    schema patch, and the alternative --- adding the two namespaces to the schema closure --- is
+    a CR-001 decision, not this phase's.
+12. **`tests/agent/test_comments.py` is `tests/agent/test_comment_workflows.py`.** pytest cannot
+    collect two test modules with the same basename without turning the test directories into
+    packages, and every other pair in this repository already avoids it
+    (`content/test_markdown.py` and `agent/test_markdown_workflows.py`).
+
+### 15.3 The trial, and the parts a comment adds
+
+`insert_comment` creates up to four parts, so 14.4's undo log is what makes a dry run honest, and
+two things had to be added to it:
+
+- **`TrialPart` now copies an lxml part.** `w16cid:commentsIds` is a `DefaultXmlPart`, which has
+  a `tree` and no `contents`; a trial that did not copy it would write its entries into the real
+  document. The copy is `copy.deepcopy` of the element, and parsing the real part to make it
+  costs **nothing in bytes**: a test in CR-002's round trip already shows that lxml writes back
+  what it read, and this phase measured both Word-written parts of `comments-modern.docx` as
+  byte-identical after a parse and a serialise.
+- **`discard_added_parts` clears the shortcut.** A picture part has no shortcut on the document
+  part; a comments part has five of them (`main.comments_part` and its siblings). Removing the
+  part without clearing `main.comments_part` left the next real call holding a part the package
+  no longer had. One `set_part_shortcut(None, relationship_type)` per un-added part.
+- `TrialPackage.author` is **trial-local**: reading it falls through to the real package, setting
+  it does not reach back. A trial is a preview, not a place to change the document's identity.
+
+`test_a_dry_run_of_insert_comment_leaves_the_package_byte_for_byte` runs the whole verb on
+`2010-sample1.docx`, then asserts that all four parts are gone, their content-type overrides with
+them, `main.comments_part` is None again, `pkg.body.get_comments()` is empty and the saved bytes
+--- the relationship parts included --- are what they were. 12.5's **first** limitation is
+unchanged and the second test says so in a comment: a trial's first look at `/word/styles.xml`
+unmarshals the real part, so a caller who wants the bytes compared must read that part first, as
+the caller would have anyway.
+
+### 15.4 The numbers, measured
+
+Against `samples/2010-sample1.docx` loaded and its body read, and against the 200-page document
+of section 7 (2,000 paragraphs, 20 tables) with a comment on every tenth paragraph:
+
+| call | |
+|---|---:|
+| `insert_comment`, first one on a document with **no** comment parts | **577 µs** |
+| `insert_comment`, second one (the parts are there) | **167 µs** |
+| `insert_paragraph`, for comparison (12.4) | 17 µs |
+| `get_comments()` on `comments-modern.docx`, one comment, three parts unmarshalled | **1.04 ms** |
+| `insert_comment` on the 200-page document, 200 of them | **3.5 ms** each |
+| of which `next_comment_id`, a marker walk of the whole body | **2.9 ms** |
+| of which `_para_ids_taken`, a walk of the comments part | 0.04 ms |
+| `get_comments()` over 205 comments on the 200-page document | **6.0 ms** |
+| of which the same marker walk | 2.9 ms |
+| a two-comment thread's `to_dict()` as compact JSON | **461 bytes** |
+
+The first call's 577 µs is the four parts, their relationships, their content types and the three
+style definitions; the second call's 167 µs is the real cost of a comment, and two thirds of that
+is splitting the runs at the span's boundaries (`segments_of` twice, `split_at` twice), which is
+the same work `Range.font` does.
+
+**`next_comment_id` is this phase's `next_drawing_id`** (14.5): a walk of the whole body, 2.9 ms
+at 200 pages and rising, and it is *both* verbs' cost, because `get_comments` walks the markers
+too. The same fix applies --- cache the highest id and the marker index per body on the package,
+as `_para_ids_taken` caches the paraIds --- and the same judgement: one comment in a 200-page
+document at 3.5 ms did not justify it, and a phase that comments in a loop should. The 200-comment
+run above took 0.70 s in all, which is the honest shape of the quadratic.
+
+The thread's 461 bytes is well inside the 2 KB a tool result should cost, and a test pins it.
+Nothing here changes the budgets of 12.3: `outline()` gained no field, and `stats.comments` was
+already counted with lxml from the comments part's bytes (12.2 item 5), which a test now shows
+agrees with `len(get_comments())` counting replies.
+
+### 15.5 The fixture decision
+
+Section 7 asks for "a document with comments and replies, copied from docx4j's samples". There
+is **no such document**. Every `.docx` in `~/git/docx4j`, `~/git/docx4j-core-ts` and this
+repository was checked: fourteen have a `w:comments` part, exactly one ---
+`docx4j-core-tests/src/test/resources/loadAndSave.docx` --- has all five, and it has a single
+comment and no reply. docx4j-core-ts's own Phase G fixture, `comments-two.docx`, is two
+*unrelated* comments in a `w:comments` part alone.
+
+So the phase uses two:
+
+- **`tests/fixtures/comments-modern.docx`**, `loadAndSave.docx` copied verbatim (Apache-2.0,
+  55 KB). It is what Word writes: `mc:Ignorable` on every part, a `w15:commentEx` with
+  `w15:done="0"`, a `w15:person` whose `w15:userId` is Word's Active-Directory
+  `S::address::guid` form, a `w16cid:durableId` and a `w16cex:dateUtc`. It is what the
+  byte-for-byte tests and the email, paraId and done-flag reads run against.
+- **`conftest.threaded_package()`**, built here from XML written in the open. Two comments on one
+  range, the second a **reply** through `w15:paraIdParent`, and a third **resolved** on another
+  paragraph, with all five parts. It is declared as hand-built in `tests/README.md` and in its
+  own comment; it is not presented as a Word document, because it is not one. If a genuine
+  Word-written thread turns up it should replace it, and the tests would not change.
+
+### 15.6 What Phase F needs
+
+- **The marker hoist is written and tested, and is the piece Phase F inherits.**
+  `_marker_site(paragraph, segment, after=)` answers "where does a marker for this run go": beside
+  the run, but **outside** the `w:ins` / `w:del` / `w:moveTo` / `w:moveFrom` the run sits in,
+  found through `segment.run.parent` and that holder's own parent. It is why
+  `test_the_markers_are_hoisted_out_of_a_tracked_insertion` passes over
+  `samples/sample-docx.docx`. What Phase F must not do is undo it: when tracking is on, a
+  `w:commentRangeStart` must still be written **outside** any `w:ins` the anchor is in, and the
+  reference run must not itself be wrapped in a `w:ins`, or accepting the revision would take the
+  comment with it. The cost, recorded so it is not read as a bug: a comment on *part* of an
+  insertion widens to the whole of it, which is what Word shows once the insertion is accepted.
+- **`pkg.author` is the shared setting**, already installed and documented as such
+  (`Author.name` / `initials` / `email`; `initials_of` derives the initials). Phase F should read
+  `author_of(package)` from `model/content/comments.py` rather than add a second setting, and
+  `pkg.tracked_change_date` (section 3.8) is the only identity field still missing.
+- **The two id spaces are separate and stay separate** (section 4). `next_comment_id` is over
+  `w:comment/@w:id` and the comment markers only; Phase F's revision counter is over every
+  `CTMarkup` `w:id` in the parts unmarshalled, **excluding** `w:comment/@w:id`. Nothing in this
+  phase touches a revision id.
+- **The text model already hides deleted content from the markers.** `_visit_runs` enters a
+  `w:ins` and a `w:moveTo` and not a `w:del` or a `w:moveFrom`, so a marker's offset is an
+  offset into the *accepted* view, which is what `Range` uses. A `get_comments()` over the
+  original view is not offered and should not be: a `Range`'s original view is refused already
+  (section 4).
+- **`Comment.delete()` is not tracked**, as `ContentControl.delete` is not (section 4, 14.7). A
+  comment is not content; deleting one leaves no revision markup, and Phase F should leave that
+  as it is.
