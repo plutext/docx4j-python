@@ -8,7 +8,8 @@ and so that the generator's own import check sees only what it just wrote.
 Everything hand written under ``docx4j_py/`` is listed in :data:`KEEP`, by path
 rather than by name: after CR-001 Phase C a namespace is a *package*
 (``docx4j_py/wml/``) whose ``__init__.py`` and ``el.py`` are generated and
-whose ``builders.py`` is not, so whole-directory deletion is no longer enough.
+whose ``builders.py``, ``pictures.py`` and ``sdt.py`` are not, so
+whole-directory deletion is no longer enough.
 """
 
 from pathlib import Path
@@ -22,7 +23,9 @@ KEEP = {
     "fragments.py",  # section 6.2: wml(...) and to_xml(...)
     "traversal.py",  # section 6.2: walk, find, text_of
     "resources",  # the parts warm_up parses, and docx4j's default styles etc.
-    "wml/builders.py",  # section 6.2: the p/r/t/tbl sugar
+    "wml/builders.py",  # section 6.2: the p/r/t/tbl/tr/tc sugar
+    "wml/pictures.py",  # CR-003 Phase A: inline_picture, image_size, emu_for
+    "wml/sdt.py",  # CR-003 Phase A: the w:sdt family
     "openpackaging",  # CR-002: the engine, all of it hand written
 }
 

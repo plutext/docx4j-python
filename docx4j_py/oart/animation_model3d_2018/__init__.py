@@ -89,14 +89,17 @@ from docx4j_py.oart.animation_2018 import CTAnimationProperties
 _PHASE_C: dict[str, str] = {
     "FragmentError": "docx4j_py.fragments",
     "deep_copy": "docx4j_py.child",
+    "deep_copy_as": "docx4j_py.child",
     "el": "docx4j_py.oart.animation_model3d_2018.el",
     "element_name": "docx4j_py.traversal",
     "find": "docx4j_py.traversal",
     "iter_nodes": "docx4j_py.traversal",
     "link_parents": "docx4j_py.child",
+    "run_items_of": "docx4j_py.traversal",
     "text_of": "docx4j_py.traversal",
     "to_xml": "docx4j_py.fragments",
     "walk": "docx4j_py.traversal",
+    "walk_all": "docx4j_py.traversal",
     "warm_up": "docx4j_py.runtime",
     "wml": "docx4j_py.fragments"
 }

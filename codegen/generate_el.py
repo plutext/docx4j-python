@@ -107,6 +107,27 @@ def identifier(name: str) -> str:
 # the model
 # ---------------------------------------------------------------------------
 
+#: The hand-written modules that sit beside the generated ones, by file name:
+#: the runtime of CR-001 sections 5 to 7 and the builders of section 6.2, which
+#: CR-003 Phase A split into ``builders.py``, ``pictures.py`` and ``sdt.py``.
+#: ``codegen/clean.py`` keeps the same files (by path, since it has to know
+#: which package each lives in); this list is what the generator must not treat
+#: as a namespace module and must not import while it is building ``el``.
+HAND_WRITTEN: frozenset[str] = frozenset(
+    {
+        "__init__.py",
+        "child.py",
+        "el.py",
+        "builders.py",
+        "pictures.py",
+        "sdt.py",
+        "namespaces.py",
+        "runtime.py",
+        "fragments.py",
+        "traversal.py",
+    }
+)
+
 
 def modules_to_packages(package: Path) -> list[str]:
     """Turn every generated namespace *module* into a package of that name.
@@ -115,7 +136,7 @@ def modules_to_packages(package: Path) -> list[str]:
     """
     converted = []
     for path in sorted(package.rglob("*.py")):
-        if path.name in ("__init__.py", "child.py", "el.py", "builders.py"):
+        if path.name in HAND_WRITTEN:
             continue
         if "__NAMESPACE__" not in path.read_text(encoding="utf-8")[:4000]:
             continue
@@ -149,9 +170,7 @@ def load_model(module_names: list[str]) -> tuple[dict[type, str], dict[str, str]
         importlib.import_module(name)
     # everything else the package holds, so that no class is missed
     for info in pkgutil.walk_packages(docx4j_py.__path__, "docx4j_py."):
-        if info.name.endswith(
-            (".child", ".el", ".builders", ".namespaces", ".runtime")
-        ):
+        if info.name.rpartition(".")[2] + ".py" in HAND_WRITTEN:
             continue
         try:
             importlib.import_module(info.name)
@@ -613,6 +632,10 @@ PHASE_C_EXPORTS: dict[str, str] = {
     "warm_up": "docx4j_py.runtime",
     "link_parents": "docx4j_py.child",
     "deep_copy": "docx4j_py.child",
+    # CR-003 Phase A
+    "walk_all": "docx4j_py.traversal",
+    "run_items_of": "docx4j_py.traversal",
+    "deep_copy_as": "docx4j_py.child",
 }
 
 _FOOTER_MARKER = "# CR-001 Phase C: el, the fragment helpers and the text sugar"
@@ -654,13 +677,19 @@ def append_footer(init: Path, module: str) -> int:
         text = text[: text.index(_FOOTER_MARKER)].rstrip("\n# ") + "\n"
     exports = dict(PHASE_C_EXPORTS)
     exports["el"] = f"{module}.el"
-    builders = init.parent / "builders.py"
-    if builders.exists():
-        source = builders.read_text(encoding="utf-8")
+    # every hand-written module of the namespace package (docx4j_py/wml/ has
+    # builders.py, pictures.py and sdt.py after CR-003 Phase A): its __all__
+    # is re-exported from the package, so a user writes
+    # ``from docx4j_py.wml import inline_picture`` and never has to know which
+    # of them it lives in. codegen/clean.py keeps the same files.
+    for hand_written in sorted(init.parent.glob("*.py")):
+        if hand_written.name in ("__init__.py", "el.py"):
+            continue
+        source = hand_written.read_text(encoding="utf-8")
         match = re.search(r"^__all__ = \[(.*?)^\]", source, re.S | re.M)
         if match:
             for name in re.findall(r'"([^"]+)"', match.group(1)):
-                exports[name] = f"{module}.builders"
+                exports[name] = f"{module}.{hand_written.stem}"
     init.write_text(
         text
         + FOOTER.format(

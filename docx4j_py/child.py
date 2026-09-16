@@ -43,6 +43,8 @@ __all__ = [
     "Child",
     "ChildList",
     "deep_copy",
+    "deep_copy_as",
+    "is_any_element",
     "iter_children",
     "iter_tree",
     "link_parents",
@@ -471,13 +473,25 @@ def _qname_of(item: Any, choices: dict[type, str] | None, fallback: str | None) 
 # ---------------------------------------------------------------------------
 
 
-def _is_any_element(value: Any) -> bool:
-    """True for an xsdata ``AnyElement`` wildcard node."""
+def is_any_element(value: Any) -> bool:
+    """True for an xsdata ``AnyElement`` wildcard node.
+
+    A wildcard node is what the parser builds for content the schema declares
+    as ``xsd:any``: an ``mc:Choice``'s shape, a ``pic:pic`` inside
+    ``a:graphicData``, a custom XML part's tree. It carries ``qname``,
+    ``attributes``, ``children`` and ``text`` rather than fields, so anything
+    that rewrites references (CR-003 section 4's ``insert_ooxml``) has to know
+    the difference; :func:`docx4j_py.traversal.walk_all` is the walk that does.
+    """
     return (
         not isinstance(value, Child)
         and getattr(value, "qname", _UNSET) is not _UNSET
         and isinstance(getattr(value, "children", None), list)
     )
+
+
+#: The name this module used before CR-003 Phase A made it public.
+_is_any_element = is_any_element
 
 
 _understood: frozenset[str] | None = None
@@ -761,6 +775,70 @@ def deep_copy[T](obj: T, parent: Any = None) -> T:
     alone copied.
     """
     new = copy.deepcopy(obj)
+    if isinstance(new, Child):
+        new.parent = parent
+    return new
+
+
+def deep_copy_as[T](obj: Any, cls: type[T], parent: Any = None) -> T:
+    """Copy a subtree and re-type the copy as `cls`, keeping what `cls` declares.
+
+    The reason this exists is ``xsi:type``. xsdata writes it whenever the class
+    of the value in a field differs from the class the field declares, which is
+    valid XML Schema and is not what Word writes: ``w:pPrChange/w:pPr`` is
+    declared ``CT_PPrBase``, so putting a ``PPr`` (which extends it, adding
+    ``w:rPr``, ``w:sectPr`` and ``w:pPrChange``) in there marshals
+
+    .. code-block:: xml
+
+        <w:pPr xsi:type="w:CT_PPr">
+
+    where Word writes a plain ``<w:pPr>``. Copying *as* ``PPrBase`` gives the
+    plain element, and drops the three fields a ``w:pPrChange`` must not hold
+    anyway. It is the Python form of docx4j-generated-objects-ts's
+    ``deepCopyAs`` (its CR-003 section 2) and of docx4j's habit of building a
+    ``PPrBase`` by hand.
+
+    `cls` is normally a base class of `obj`'s, but a sibling works too: the
+    copy keeps every field `cls` declares that `obj` has a value for, and
+    nothing else. Parents inside the copy are linked, and the copy's own parent
+    is `parent`, as :func:`deep_copy`'s is.
+
+    Args:
+        obj: the subtree to copy.
+        cls: the class to build. Every generated class takes keyword
+            arguments and every field is optional (CR-001 section 3), so this
+            is always possible.
+        parent: what to attach the copy to; None leaves it detached.
+
+    Raises:
+        TypeError: if `cls` is not a dataclass, or declares no field that
+            `obj` has --- which would silently return an empty element.
+    """
+    try:
+        fields = dataclasses.fields(cls)
+    except TypeError:
+        raise TypeError(
+            f"deep_copy_as needs a generated class, not {cls!r} "
+            "(pass the base or sibling class to re-type as, e.g. PPrBase)"
+        ) from None
+
+    values: dict[str, Any] = {}
+    for field in fields:
+        value = getattr(obj, field.name, None)
+        if value is None or (isinstance(value, list) and not value):
+            continue
+        values[field.name] = copy.deepcopy(value)
+
+    if not values and not isinstance(obj, cls):
+        theirs = ", ".join(sorted(f.name for f in fields)[:6]) or "no fields"
+        raise TypeError(
+            f"{type(obj).__name__} has nothing {cls.__name__} declares "
+            f"({cls.__name__} has {theirs}); it is neither a base nor a sibling"
+        )
+
+    new = cls(**values)
+    link_parents(new)
     if isinstance(new, Child):
         new.parent = parent
     return new

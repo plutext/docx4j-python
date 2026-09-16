@@ -17,6 +17,12 @@ and it is the same enumeration :func:`docx4j_py.child.link_parents` uses.
     base: ``find(root, CTTrackChange)`` finds every ``RunIns`` and ``RunDel``.
 ``text_of(obj)``
     docx4j ``TextUtils``.
+``walk_all(root, visitor, wildcard_visitor)``
+    ``walk`` that also hands over the ``AnyElement`` wildcard nodes, for
+    anything that reads or rewrites what is on them (CR-003 Phase A).
+``run_items_of(holder)``
+    the run-level list of a ``w:p``, a ``w:hyperlink``, a revision holder, a
+    smart tag, custom XML, a field or a content control (CR-003 Phase A).
 
 ``element_name(obj)`` is the piece that makes ``text_of`` possible at all: 72 of
 the generated classes (CR-001 section 13.3) have no element name of their own,
@@ -31,15 +37,18 @@ from collections.abc import Callable, Iterator
 from importlib import import_module
 from typing import Any
 
-from docx4j_py.child import MCE_NS, iter_children
+from docx4j_py.child import MCE_NS, is_any_element, iter_children
 from docx4j_py.namespaces import WML_NS
 
 __all__ = [
+    "RUN_HOLDERS",
     "element_name",
     "find",
     "iter_nodes",
+    "run_items_of",
     "text_of",
     "walk",
+    "walk_all",
 ]
 
 
@@ -151,6 +160,73 @@ def walk(
         if visitor(node, parent, name) is False:
             continue
         children = list(iter_children(node, context=context, mce=mce))
+        children.reverse()
+        stack.extend((child, node, qname) for qname, child in children)
+
+
+def walk_all(
+    root: Any,
+    visitor: Callable[[Any, Any, str | None], bool | None],
+    wildcard_visitor: Callable[[Any, Any, str | None], bool | None] | None = None,
+    *,
+    context: Any = None,
+    mce: str = "all",
+) -> None:
+    """:func:`walk`, and into the wildcard content as well.
+
+    ``walk`` visits the typed tree. A document also holds content the schema
+    declares as ``xsd:any``, which the parser keeps as xsdata ``AnyElement``
+    nodes: the shape inside an ``mc:Choice``, a ``pic:pic`` inside
+    ``a:graphicData``, a custom XML part. ``walk`` descends *through* those to
+    the typed objects below them but never hands one to the visitor, so
+    anything that has to read or rewrite what is on the wildcard node itself
+    --- its attributes above all, which is where a stray ``r:embed`` or
+    ``r:id`` hides --- cannot use it. This is the walk that does: the typed
+    nodes go to `visitor` and the wildcard nodes to `wildcard_visitor`, each
+    with its parent and the element name it is written under, and each
+    wildcard node carries its own ``attributes`` dict and ``children`` list.
+
+    CR-003 section 4: ``insert_ooxml`` rewrites relationship references "by
+    attribute name and only when the incoming package really has a
+    relationship of that id", and "the walk enters wildcard content".
+
+    Args:
+        root: the node to start at, typed or a wildcard.
+        visitor: ``visitor(node, parent, element_name)`` for every typed node;
+            return ``False`` to stop descending into it.
+        wildcard_visitor: ``wildcard_visitor(any_element, parent, qname)`` for
+            every wildcard node; ``False`` prunes it too. When None the
+            wildcard nodes are still descended into, they are just not
+            reported --- which makes this ``walk`` reaching the typed objects
+            inside wildcards.
+        context: an ``XmlContext``; the shared one by default.
+        mce: how to treat ``mc:AlternateContent``. **``"all"`` by default**,
+            unlike :func:`walk`, because a caller that rewrites references has
+            to reach the branch a consumer would ignore as well: it is written
+            back on save.
+    """
+    if context is None:
+        from docx4j_py.runtime import context as shared
+
+        context = shared()
+
+    seen: set[int] = set()
+    start_name = root.qname if is_any_element(root) else element_name(root)
+    stack: list[tuple[Any, Any, str | None]] = [(root, None, start_name)]
+    while stack:
+        node, parent, name = stack.pop()
+        key = id(node)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if is_any_element(node):
+            if wildcard_visitor is not None and wildcard_visitor(node, parent, name) is False:
+                continue
+        elif visitor(node, parent, name) is False:
+            continue
+
+        children = list(iter_children(node, context=context, mce=mce, wildcards=True))
         children.reverse()
         stack.extend((child, node, qname) for qname, child in children)
 
@@ -389,3 +465,73 @@ def text_of(obj: Any, *, context: Any = None, mce: str = "resolve") -> str:
     out: list[str] = []
     _block_texts(obj, element_name(obj), context, out, mce)
     return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
+# run-level content, by holder
+# ---------------------------------------------------------------------------
+
+_SDT = _w("sdt")
+
+#: Every element whose children are run-level items, and which this module can
+#: therefore hand back as a list. Their runs are what a content API splits,
+#: formats and reads: ``w:p`` and ``w:hyperlink``, the four revision holders
+#: ``w:ins`` / ``w:del`` / ``w:moveFrom`` / ``w:moveTo``, the two markup
+#: holders ``w:smartTag`` and ``w:customXml``, a simple field, the two
+#: bidirectional overrides, and a content control's ``w:sdtContent``.
+RUN_HOLDERS: frozenset[str] = frozenset(
+    {
+        _PARAGRAPH,
+        _w("hyperlink"),
+        _w("ins"),
+        _w("del"),
+        _w("moveFrom"),
+        _w("moveTo"),
+        _w("smartTag"),
+        _w("customXml"),
+        _w("fldSimple"),
+        _w("dir"),
+        _w("bdo"),
+        _w("sdtContent"),
+        _SDT,
+    }
+)
+
+
+def run_items_of(holder: Any) -> list[Any] | None:
+    """The run-level list a holder keeps, or None if it keeps none.
+
+    ``docx4j-generated-objects-ts``'s ``runItemsOf``, and the thing a content
+    API needs before it can split a run, insert one or read a revision: given
+    a ``w:p``, a ``w:hyperlink``, a ``w:ins``, a ``w:del``, a ``w:moveFrom``, a
+    ``w:moveTo``, a ``w:smartTag``, a ``w:customXml``, a ``w:fldSimple``, a
+    ``w:dir``, a ``w:bdo`` or a ``w:sdtContent``, the list its children live
+    in; given a ``w:sdt``, its ``w:sdtContent``'s list, so that a caller with
+    the control does not have to reach through it.
+
+    It is **structural**: the live list is returned, in document order, with
+    nothing filtered out --- a deletion's runs and a ``w:moveFrom``'s are in it,
+    because a caller reading the original view of a revision needs them.
+    Filtering is :func:`text_of`'s job.
+
+    In this model every one of these holders keeps its children under the same
+    field name, ``content``, so the mapping is one element-name test rather
+    than the three property names the TypeScript engine has to know
+    (``content``, ``customXmlOrSmartTagOrSdt``, ``accOrBarOrBox``); CR-003
+    Phase A's notes record that.
+
+    Returns:
+        The holder's own list (mutating it mutates the document), or None for
+        anything that is not a run holder --- a ``w:tbl``, a ``w:r``, a
+        ``w:body``.
+    """
+    name = element_name(holder)
+    if name not in RUN_HOLDERS:
+        return None
+    if name == _SDT:
+        inner = getattr(holder, "sdt_content", None)
+        if inner is None:
+            return None
+        holder = inner
+    items = getattr(holder, "content", None)
+    return items if isinstance(items, list) else None

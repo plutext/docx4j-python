@@ -1,7 +1,11 @@
-"""The text-in sugar: ``p``, ``r``, ``t``, ``tbl``, ``br``, ``tab``.
+"""The text-in sugar: ``p``, ``r``, ``t``, ``tbl``, ``tr``, ``tc``, ``br``, ``tab``.
 
 CR-001 section 6.2: "The sugar is hand-written and small; it is the text-in
-convenience, not a second factory." Everything here is built on
+convenience, not a second factory." CR-003 Phase A added the row and cell
+builders ``tr`` and ``tc`` (``tbl`` is written over them), the ``EG_RPrBase``
+pair :func:`rpr_to_elements` / :func:`rpr_from_elements`, and, in the sibling
+modules :mod:`docx4j_py.wml.pictures` and :mod:`docx4j_py.wml.sdt`, the inline
+picture and content-control builders. Everything here is built on
 :mod:`docx4j_py.wml.el`, so there is one source of element names, and everything
 it returns is a :class:`docx4j_py.child.Child` whose parents are linked as the
 tree is assembled (``ChildList`` does that).
@@ -33,9 +37,10 @@ argument in Python.
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
-from docx4j_py.child import ChildList
+from docx4j_py.child import ChildList, deep_copy
 from docx4j_py.wml import (
     RT,
     P,
@@ -50,8 +55,11 @@ from docx4j_py.wml import (
 
 __all__ = [
     "HIGHLIGHT_COLORS",
+    "RPR_BASE_FIELDS",
     "RUN_OPTIONS",
     "UNDERLINE",
+    "BuilderError",
+    "RPrElement",
     "apply_run_options",
     "br",
     "highlight_hex_value",
@@ -59,10 +67,39 @@ __all__ = [
     "p",
     "r",
     "read_run_options",
+    "rpr_from_elements",
+    "rpr_to_elements",
     "t",
     "tab",
     "tbl",
+    "tc",
+    "tr",
 ]
+
+
+class BuilderError(ValueError):
+    """A builder was given something it cannot make an element of.
+
+    CR-003 section 3.1 asks for one error hierarchy in which every message says
+    what to do instead, and gives each error a stable :attr:`code` and a
+    :attr:`hint` an agent can act on. Phase B builds that hierarchy
+    (``Docx4JError`` / ``ContentError``) over the parts layer; Phase A is the
+    tree only, so this is its stand-in, and it derives from ``ValueError`` so
+    that code written against either spelling keeps working. Phase B re-roots
+    it; the ``code`` strings do not change.
+
+    Attributes:
+        code: a stable string such as ``"sdt.form_mismatch"``.
+        hint: one sentence saying what to do instead.
+    """
+
+    def __init__(self, message: str, *, code: str, hint: str) -> None:
+        """Build the error from its message, its stable code and its hint."""
+        super().__init__(f"{message} ({hint})")
+        self.code = code
+        self.hint = hint
+        self.message = message
+
 
 #: The underline names Office JS uses, and the ``w:u`` value each one writes.
 #: The seventeen entries of ``builders/wml.mts``'s ``UNDERLINE_TO_WML``.
@@ -431,6 +468,66 @@ def p(*runs_or_text: Any, style: str | None = None, **ppr: Any) -> P:
 DEFAULT_TABLE_WIDTH = 9026
 
 
+def _blocks_of(blocks: Any) -> list[Any]:
+    """A cell's or a row's content as a list: a string is one paragraph."""
+    if isinstance(blocks, str):
+        return [p(blocks)]
+    if isinstance(blocks, (list, tuple)):
+        return list(blocks)
+    return [blocks]
+
+
+def tc(blocks: Any = "", *, width: int | None = None, span: int | None = None) -> Tc:
+    """A table cell (``w:tc``).
+
+    Args:
+        blocks: a string (one paragraph of text), a block-level object
+            (:class:`P`, :class:`Tbl`, a ``w:sdt``), or a list of them.
+        width: the cell width in twips, written as ``w:tcW`` of type ``dxa``;
+            none when absent.
+        span: the number of grid columns the cell spans (``w:gridSpan``).
+
+    An empty cell still gets the ``w:p`` Word requires: a ``w:tc`` whose last
+    child is not a paragraph makes Word repair the document.
+    """
+    content = _blocks_of(blocks)
+    if not content:
+        content = [el.p()]
+    cell = Tc(content=ChildList(content))
+    if width is not None or span is not None:
+        cell.tc_pr = el.tcPr()
+        if width is not None:
+            cell.tc_pr.tc_w = el.tcW(w=width, type_value="dxa")
+        if span is not None:
+            cell.tc_pr.grid_span = el.gridSpan(val=span)
+    return cell
+
+
+def tr(cells: list[Any], *, widths: list[int] | None = None, header: bool = False) -> Tr:
+    """A table row (``w:tr``) of cells.
+
+    Args:
+        cells: one entry per cell: a string, a block-level object, a list of
+            them (all three go through :func:`tc`), or a :class:`Tc` built
+            already, which is taken as it is.
+        widths: the cell widths in twips, one per column; a missing entry
+            leaves that cell without a ``w:tcW``.
+        header: repeat this row at the top of every page (``w:trPr`` with
+            ``w:tblHeader``), which is what Word's "repeat header rows" sets.
+    """
+    row = Tr(
+        content=ChildList(
+            cell
+            if isinstance(cell, Tc)
+            else tc(cell, width=None if widths is None or i >= len(widths) else widths[i])
+            for i, cell in enumerate(cells)
+        )
+    )
+    if header:
+        row.tr_pr = el.trPr(content=ChildList([el.tblHeader()]))
+    return row
+
+
 def tbl(
     rows: list[list[Any]],
     *,
@@ -439,6 +536,9 @@ def tbl(
     width: int = DEFAULT_TABLE_WIDTH,
 ) -> Tbl:
     """A table of cells, one paragraph per cell, with a grid.
+
+    Built over :func:`tr` and :func:`tc`, whose output for a string cell of a
+    known width is what this used to write by hand.
 
     Args:
         rows: a row per list; a cell is a string, a :class:`P`, or a list of
@@ -473,20 +573,155 @@ def tbl(
         tbl_grid=el.tblGrid(grid_col=ChildList(el.gridCol(w=w) for w in resolved)),
     )
     for row in rows:
-        cells: list[Any] = []
-        for index in range(columns):
-            cell = row[index] if index < len(row) else ""
-            if isinstance(cell, str):
-                blocks: list[Any] = [p(cell)]
-            elif isinstance(cell, list):
-                blocks = list(cell)
-            else:
-                blocks = [cell]
-            cells.append(
-                Tc(
-                    tc_pr=el.tcPr(tc_w=el.tcW(w=resolved[index], type_value="dxa")),
-                    content=ChildList(blocks),
-                )
-            )
-        table.content.append(Tr(content=ChildList(cells)))
+        table.content.append(
+            tr([row[i] if i < len(row) else "" for i in range(columns)], widths=resolved)
+        )
     return table
+
+
+# ---------------------------------------------------------------------------
+# run properties as a list of elements (EG_RPrBase)
+# ---------------------------------------------------------------------------
+
+
+def _rpr_base_fields() -> tuple[tuple[str, str], ...]:
+    """The ``EG_RPrBase`` members in schema order, as (field name, qname).
+
+    Taken from the model rather than from a list written here: the members are
+    the fields ``RPr`` and ``CtRprChangeRPr`` have in common, in ``RPr``'s
+    declaration order, which is the schema's. That is 51 members, the twelve
+    w14 text effects included, and it excludes ``w:rPrChange`` itself (only
+    ``RPr`` has it) and the four ``ParaRPr`` revision marks.
+    """
+    from docx4j_py.wml import CtRprChangeRPr
+
+    shared = {f.name for f in dataclasses.fields(CtRprChangeRPr)}
+    out = []
+    for field in dataclasses.fields(RPr):
+        if field.name not in shared:
+            continue
+        namespace = field.metadata.get("namespace")
+        local = field.metadata.get("name") or field.name
+        out.append((field.name, f"{{{namespace}}}{local}" if namespace else local))
+    return tuple(out)
+
+
+#: ``EG_RPrBase``: the 51 (field name, qualified name) pairs, in schema order.
+RPR_BASE_FIELDS: tuple[tuple[str, str], ...] = _rpr_base_fields()
+
+_RPR_FIELD_BY_NAME: dict[str, str] = {}
+for _name, _qname in RPR_BASE_FIELDS:
+    _RPR_FIELD_BY_NAME[_name] = _name
+    _RPR_FIELD_BY_NAME[_qname] = _name
+    _RPR_FIELD_BY_NAME[_qname.rpartition("}")[2]] = _name
+del _name, _qname
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class RPrElement:
+    """One member of ``EG_RPrBase``: its field name, its element name, its value.
+
+    The element name is carried beside the value because the value alone does
+    not identify it: ``w:b``, ``w:i``, ``w:caps`` and fifteen more are all a
+    :class:`BooleanDefaultTrue`, so a bare list of property objects could not
+    be turned back into a ``w:rPr``.
+    """
+
+    name: str
+    """The model's field name (``b_cs``, ``vert_align``, ``text_outline``)."""
+    qname: str
+    """The element name, ``{namespace}localName`` (``{…}bCs``)."""
+    value: Any
+    """The property object (``BooleanDefaultTrue``, ``RFonts``, ``CTGlow``…)."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """The JSON-ready view: the two names and the value's class."""
+        return {
+            "name": self.name,
+            "qname": self.qname,
+            "value": type(self.value).__name__,
+        }
+
+
+def rpr_to_elements(rpr: Any) -> list[RPrElement]:
+    """Run properties as a list of ``EG_RPrBase`` elements, in schema order.
+
+    Takes a ``w:rPr`` in any of the four shapes the model gives it ---
+    :class:`RPr` (a run's), :class:`ParaRPr` (a paragraph mark's),
+    ``CtRprChangeRPr`` (``w:rPrChange/w:rPr``) or ``CTParaRPrOriginal``
+    (``w:pPr/w:rPr/w:rPrChange/w:rPr``) --- and returns each property that is
+    present as an :class:`RPrElement`, deep-copied so that the result can be
+    put straight into another tree. ``w:rPrChange`` itself is not a member of
+    ``EG_RPrBase`` and is never returned; neither are ``ParaRPr``'s
+    ``w:ins`` / ``w:del`` / ``w:moveFrom`` / ``w:moveTo`` revision marks.
+
+    :func:`rpr_from_elements` is the inverse. The pair is what a tracked
+    formatting change needs (CR-003 section 3.8: ``w:rPrChange`` records the
+    run properties as they were).
+    """
+    out: list[RPrElement] = []
+    if rpr is None:
+        return out
+    for name, qname in RPR_BASE_FIELDS:
+        value = getattr(rpr, name, None)
+        if value is None:
+            continue
+        items = value if isinstance(value, (list, tuple)) else (value,)
+        for item in items:
+            if item is not None:
+                out.append(RPrElement(name, qname, deep_copy(item)))
+    return out
+
+
+def rpr_from_elements(elements: Any, *, cls: type = RPr) -> Any:
+    """Build a ``w:rPr`` of `cls` from ``EG_RPrBase`` elements.
+
+    The inverse of :func:`rpr_to_elements`. `elements` is what that returned,
+    or a sequence of ``(name, value)`` pairs (the name may be the field name,
+    the local name or the qualified name), or another ``w:rPr`` object of any
+    of the four shapes, which is converted first. `cls` is the class to build:
+    :class:`RPr` by default, ``CtRprChangeRPr`` for the inside of a
+    ``w:rPrChange``, :class:`ParaRPr` or ``CTParaRPrOriginal`` for a paragraph
+    mark's.
+
+    Where the target class keeps a member as a list (the generated
+    ``w:rPrChange/w:rPr`` classes keep every one of them as a list, because
+    ``EG_RPrBase`` is an unbounded group there) the value is appended; where it
+    keeps a single value the last one given wins. Order is not the caller's
+    problem: the model declares these as named fields in schema order, so the
+    serialiser writes them in ``EG_RPrBase`` order whatever order they arrive.
+
+    Raises:
+        BuilderError: if an item is not an :class:`RPrElement`, a pair, or a
+            member of ``EG_RPrBase``.
+    """
+    if elements is None:
+        return cls()
+    if not isinstance(elements, (list, tuple)):
+        elements = rpr_to_elements(elements)
+
+    target = cls()
+    for item in elements:
+        if isinstance(item, RPrElement):
+            name, value = item.name, item.value
+        elif isinstance(item, tuple) and len(item) == 2:
+            name, value = item
+        else:
+            raise BuilderError(
+                f"not an EG_RPrBase element: {type(item).__name__}",
+                code="rpr.not_an_element",
+                hint="pass what rpr_to_elements returned, or (name, value) pairs",
+            )
+        field_name = _RPR_FIELD_BY_NAME.get(name)
+        if field_name is None:
+            raise BuilderError(
+                f"not a member of EG_RPrBase: {name!r}",
+                code="rpr.unknown_property",
+                hint="RPR_BASE_FIELDS lists the 51 names, w:rPrChange is not one of them",
+            )
+        current = getattr(target, field_name, None)
+        if isinstance(current, list):
+            current.append(deep_copy(value))
+        else:
+            setattr(target, field_name, deep_copy(value))
+    return target
