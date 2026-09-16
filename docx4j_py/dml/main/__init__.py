@@ -6251,6 +6251,13 @@ class CTNonVisualDrawingProps(Child):
             "schema_default": "",
         },
     )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "schema_default": "",
+        },
+    )
     hidden: None | bool = field(
         default=None,
         metadata={

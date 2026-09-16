@@ -284,9 +284,10 @@ def default_core_properties(now: datetime.datetime | None = None) -> Any:
     business, not the library's (docx4j's default puts its own name there only
     when ``docx4j.dc.write`` is set); set them on ``contents`` if wanted.
     """
+    from docx4j_xsdata.models.datatype import XmlDateTime
+
     from docx4j_py.docprops.core import CoreProperties
     from docx4j_py.docprops.dcterms import W3CDTF
-    from docx4j_xsdata.models.datatype import XmlDateTime
 
     if now is None:
         now = datetime.datetime.now(datetime.timezone.utc)

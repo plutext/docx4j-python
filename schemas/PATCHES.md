@@ -94,10 +94,11 @@ and harmless, but it is the one patch that widens a type used outside a part roo
   patch (`wml.xsd`, `w15_…`, `office-word-2006-wordml.xsd` all carry one pre-existing,
   unrelated error about a `chartex` QName; `dml-stylesheet.xsd` and the customXml schema are
   valid before and after).
-* `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **25** marker comments in the
-  schemas: 21 wildcards, one for `CT_Dir`/`CT_Bdo`, and three for patches 3 and 4 (the new
-  complexType, the element's `type=`, and the swap). A twenty-sixth is in
-  `docx4j_python__ROOT.xsd`, which is ours in its entirety and not a patch.
+* `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **26** marker comments in the
+  schemas: 21 wildcards, one for `CT_Dir`/`CT_Bdo`, three for patches 3 and 4 (the new
+  complexType, the element's `type=`, and the swap), and one for patch 5 (`@title`; it was 25
+  before CR-003 Phase A). A twenty-seventh is in `docx4j_python__ROOT.xsd`, which is ours in
+  its entirety and not a patch.
 * Round trip: `attribute-dropped` falls from 10 to 0 (see `codegen/README.md`).
 
 ## 3. `w:stylePaneFormatFilter`: `CT_StylePaneFilter` (CR-002 Phase A)
@@ -141,3 +142,22 @@ reordered two elements of a part it had only read —
 `2016_image_with_text_effects.docx` and `DrawingML_GraphicData_wps.docx` each showed a two-element
 `child-order` difference. Both elements are `minOccurs="0"` and nothing depends on their relative
 order.
+
+## 5. `CT_NonVisualDrawingProps/@title` (CR-003 Phase A)
+
+`dml/dml-documentProperties.xsd`, in `CT_NonVisualDrawingProps`, between `descr` and `hidden`:
+
+```xml
+<xsd:attribute name="title" type="xsd:string" use="optional" default=""/>
+```
+
+**Why.** `wp:docPr/@title` is Office JS's `InlinePicture.altTextTitle` and the twin of `@descr`
+(`altTextDescription`), and CR-003 Phase A's `inline_picture(..., title=)` writes it. It is in
+ECMA-376 4th edition Part 1 20.1.2.2.8 (Transitional) and Word reads and writes it; docx4j's
+`xsd/` has carried it since its own CR-018 item 2, so this patch makes the copy **identical to
+docx4j's current schema** rather than adding anything of ours — it is the one attribute
+`diff -r schemas/dml ~/git/docx4j/xsd/dml` reported, and that diff is now empty for this file.
+
+The whole regeneration it caused is seven lines: `title: None | str` on
+`docx4j_py.dml.main.CTNonVisualDrawingProps`. No element name, and therefore no `el` entry,
+changes; `codegen/generate.sh --check` passes.
