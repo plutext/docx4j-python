@@ -65,10 +65,21 @@ body.insert_paragraph("Created by docx4j-python", style="Heading 1")
 paragraph = body.insert_paragraph("One paragraph, three runs")
 paragraph.search("three runs")[0].font.italic = True
 body.insert_break("Page")
-body.insert_xml("<w:tbl><w:tblPr/><w:tblGrid/>"
-                "<w:tr><w:tc><w:p><w:r><w:t>Name</w:t></w:r></w:p></w:tc></w:tr></w:tbl>")
+
+table = body.insert_table(3, 2, values=[["Name", "Value"], ["a", "1"]], style="TableGrid")
+table.header_row_count = 1                   # w:tblHeader on the leading rows
+table.add_rows(1, values=[["b", "2"]])       # the table's own columns and widths
+table.values                                 # [['Name', 'Value'], ['a', '1'], ['', ''], ['b', '2']]
+table.cell(1, 1).text                        # '1'
+table.cell(1, 1).address                     # 'body/3/1/1' --- table, row, cell
+table.cell(1, 1).paragraphs[0].ordinal       # 'body/3/1/1/0' --- the cell's own body, addressed
 pkg.save("hello.docx")
 ```
+
+The columns are equal over the section's text width, taken from `w:sectPr`, and the grid sums to
+it exactly; no style is set unless `style=` is given, so a new table is borderless until
+`table.style_built_in = "TableGrid"`. `TableCell.body` is a `Body` like any other, so
+`cell.insert_paragraph(...)`, `cell.body.search(...)` and the addresses all carry on into it.
 
 `create_package` writes `docProps/app.xml` (`Application`, `AppVersion`) and `docProps/core.xml`
 (`created`, `modified`); author and title are yours to set on those parts' `contents`.
@@ -89,11 +100,31 @@ text_of(document)                                        # docx4j TextUtils, ove
 
 ### Adding an image
 
-An image is a part related from the main document part; the picture in the body refers to it by
-relationship id. `inline_picture` writes the `w:drawing` exactly as docx4j's
+One call does the three steps: the `ImagePart` under the first free `/word/media/imageN.<ext>`,
+the relationship from **the part the body belongs to** (a picture in a header is related from the
+header), and the `w:drawing` sized from the image's own header --- PNG, JPEG, GIF and BMP, read
+here, no Pillow --- and scaled down to the text column as docx4j's `CxCy.scale` does. Sizes are
+points, as Office JS reports them.
+
+```python
+picture = body.insert_inline_picture(png_bytes, width=180, alt_text_description="A pangolin")
+
+picture                                      # <InlinePicture w14:4CD9291E Png 180x131.294pt 'A pangolin'>
+picture.image_part.part_name                 # /word/media/image1.png
+picture.rel_id, picture.image_format         # ('rId3', 'Png')
+picture.width, round(picture.height, 1)      # (180.0, 131.3) --- the ratio is kept
+picture.get_bytes() == png_bytes             # True; get_base64() is the base64 twin
+pkg.last_change.parts_touched
+# ('/word/document.xml', '/word/media/image1.png', '/word/_rels/document.xml.rels')
+```
+
+`paragraph.insert_inline_picture(data, location="Start" | "End" | "Replace")` puts one in a
+paragraph that already exists, and both verbs have a `..._from_base64` twin.
+
+**The part underneath.** An image is a part related from the main document part, and the picture
+refers to it by relationship id; `inline_picture` writes the `w:drawing` exactly as docx4j's
 `BinaryPartAbstractImage.createImageInline` does, and `image_size` reads the size and the density
-out of the image's own header (PNG, JPEG, GIF and BMP, no Pillow), so the picture comes out the
-size it really is:
+out of the header, so the low-level route is there when the parts are what you are working on:
 
 ```python
 from docx4j_py.openpackaging import ImagePart, AddPartBehaviour
@@ -113,8 +144,51 @@ body.content.append(el.p(content=[
 `wml("<w:p><w:r><w:drawing>…")` still takes the whole thing as a fragment when you want to write
 the XML yourself; it declares docx4j's prefix table for you.
 
-`scripts/acceptance.py` builds exactly this, and three other documents, for the manual Word
+`scripts/acceptance.py` builds exactly this, and five other documents, for the manual Word
 checklist in [`tests/README.md`](tests/README.md).
+
+### Pasting a whole package, and reading content controls
+
+`insert_ooxml` takes what Word's clipboard and Office JS's `insertOoxml` hand over: a flat OPC
+`pkg:package` string. Every part its content references is copied in under a free name with a
+fresh relationship id, its own relationships copied recursively keeping their ids, and the
+references in the inserted content rewritten --- by attribute name, and only where the incoming
+package really has a relationship of that id, so a numeric `wp:docPr/@id` is never touched.
+Styles and numbering are **not** merged: that is docx4j's `MergeDocx`. A bare `w:p` / `w:tbl`
+fragment is accepted too, which is what `insert_xml` takes.
+
+```python
+from docx4j_py import load
+
+pkg = load("in.docx")
+views = pkg.body.insert_ooxml(package_xml)   # or "<w:p><w:r><w:t>plain</w:t></w:r></w:p>"
+
+[type(view).__name__ for view in views]      # ['Paragraph', 'Paragraph']
+[view.address for view in views]             # ['w14:4FBB3E23', 'w14:20B26C1D']
+pkg.last_change.parts_touched                # ('/word/document.xml', '/word/media/image1.png')
+pkg.body.inline_pictures[0].rel_id           # 'rId7' --- fresh, and the drawing was rewritten to it
+```
+
+`ContentControl` reads a `w:sdt` in all four of its forms --- block, run, row and cell --- and a
+row- or cell-level one is transparent to `Table.rows` and `TableRow.cells`, which is how an
+OpenDoPE repeat reads as the rows Word shows:
+
+```python
+pkg = load("samples/invoice2013.docx")
+controls = pkg.body.content_controls        # 22, in document order, nested ones included
+
+control = controls[1]
+control                                      # <ContentControl body/2/0/0/0/0 PlainText
+                                             #  '/invoice[1]/customer[1]/contact[1]' 'John Citizen'>
+control.type, control.form                   # ('PlainText', 'run')
+control.get_range()                          # <Range 0:12 'John Citizen'> --- exact, for a run control
+repeat = next(c for c in controls if c.form == "row")
+repeat.tables[0].values[0]                   # ['productcode', 'description', 'quantity', 'price']
+```
+
+`control.delete()` keeps what the control held and puts it where the control was, as Word's
+"remove content control" does; `delete(keep_content=False)` takes the content with it. The typed
+kinds, the bindings and `insert_content_control` are CR-003 Phase E.
 
 ### The object model
 

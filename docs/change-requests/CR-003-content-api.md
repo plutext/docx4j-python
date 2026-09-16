@@ -4,7 +4,7 @@
 and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
 (section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
 (section 11); **Phase D implemented 2026-09-16** (section 12); **Phase K implemented 2026-09-17**
-(section 13). Phases C, E to J proposed.
+(section 13); **Phase C implemented 2026-09-17** (section 14). Phases E to J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -659,7 +659,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | B | `Body`, `Paragraph`, `Range`, `Font`: the verbs, `style` per section 4, `search` across runs with grapheme-safe splitting, `insert_xml`, `insert_element`; the error hierarchy; the Office JS subset list — **implemented 2026-09-16, section 11** | 4 days |
 | D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests — **implemented 2026-09-16, section 12** | 4 days |
 | K | Markdown out, with addresses, then in (3.5) --- **implemented 2026-09-17, section 13** | 3 days |
-| C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` | 4 days |
+| C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` --- **implemented 2026-09-17, section 14** | 4 days |
 | G | Comments (3.9) | 3 days |
 | F | Change tracking and `replace_text` (3.8); the README's audit-trail example | 4 days |
 | E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) | 4 days |
@@ -1509,3 +1509,233 @@ a `w:rPr` per run, a `w:pPr` per paragraph and a style lookup per styled block.
   definitions through it rather than beside it, and its id allocation (the next free
   `w:abstractNumId` and `w:numId` above the document's own) is what keeps section 3.4's
   determinism.
+
+## 14. Phase C implementation notes (2026-09-17)
+
+Phase C is done: `Table`, `TableRow`, `TableCell` and `InlinePicture` with the header readers of
+Phase A, `insert_ooxml` over a flat OPC `pkg:package`, the `ContentControl` reads and `delete`,
+the tests of section 7 and acceptance artefact 6. The suite is **1,011 tests** (1,010 passing
+plus one `xfail`; 1,002 of them fast, 53 s, and 62 s for the whole), against 941 at the end of
+Phase K; **71** of the new ones are `tests/content/test_table.py` (20), `test_picture.py` (14),
+`test_ooxml.py` (13), `test_controls.py` (15) and `tests/agent/test_tables_and_pictures.py` (9).
+Nothing in `~/git/docx4j-xsdata` changed, no schema patch was needed, the model was not
+regenerated and `codegen/generate_el.py` did not change at all: every Phase C name is reached
+through `docx4j_py.model.content`, so `ENGINE_EXPORTS` gained nothing.
+
+```python
+from docx4j_py import load
+
+pkg = load("in.docx")
+table = pkg.body.insert_table(3, 2, values=[["Name", "Value"]], style="TableGrid")
+table.cell(1, 1).paragraphs[0].insert_text("120")
+pkg.body.insert_inline_picture(png_bytes, width=180, alt_text_description="A pangolin")
+pkg.body.insert_ooxml(package_xml)          # Word's own clipboard format
+```
+
+### 14.1 What landed
+
+| Piece | Where | Signature |
+|---|---|---|
+| the tables | `docx4j_py/model/content/table.py` (896 lines) | `Table(element, container, parent_body)` with `row_count`, `rows`, `values` (get and set), `style` / `style_id` / `style_built_in`, `header_row_count` (get and set), `text`, `address`, `ordinal`, `parent_table_cell`, `cell(row_index, cell_index)`, `add_rows(row_count=1, *, location="End", values=None)`, `delete_rows(row_index, row_count=1)`, `column_widths()`, `column_widths_twips()`, `insert_rows`, `delete()`, `to_markdown()`, `get_xml()`, `to_dict()`; `TableRow` (`row_index`, `cell_count`, `cells`, `values`, `is_header`, `insert_rows`, `delete`); `TableCell` (`body`, `paragraphs`, `tables`, `text`, `value`, `row_index`, `cell_index`, `parent_row`, `parent_table`, `width`, `column_width`, `insert_paragraph`, `insert_text`) |
+| the shared row walk | `.text_model` | `rows_of(table)`, `cells_of(row)` → `[(element, the live list holding it)]`, row- and cell-level `w:sdt` / `w:customXml` unwrapped |
+| the sizing | `.table` | `writable_width(body) -> int` (twips), `insert_table_into(...)`, `cell_of(value, body)` |
+| the pictures | `docx4j_py/model/content/picture.py` (601 lines) | `InlinePicture(element, run, paragraph)` with `width` / `height` (points, get and set), `alt_text_description`, `alt_text_title`, `image_format`, `rel_id`, `inline`, `image_part`, `get_bytes()`, `get_base64()`, `delete()`, `get_xml()`, `to_dict()`; `add_image(body, data, *, width, height, alt_text_description, alt_text_title, name) -> NewPicture`, `free_image_name`, `next_drawing_id`, `writable_width_emu`, `pictures_of`, `note_added_part` |
+| the controls | `docx4j_py/model/content/controls.py` (613 lines) | `ContentControl(element, container, parent_body)` with `type`, `form`, `tag`, `title`, `id`, `text`, `paragraphs`, `tables`, `content_controls`, `inline_pictures`, `address`, `body()`, `parent_paragraph()`, `get_range(location="Whole")`, `search`, `insert_text`, `insert_paragraph`, `delete(*, keep_content=True)`, `get_xml()`, `to_dict()`; `controls_in`, `controls_in_paragraph`, `parent_control_of` |
+| the paste | `docx4j_py/model/content/ooxml.py` (469 lines) | `content_of(ooxml, *, target=None, package=None)`, `is_flat_opc`, `rewrite_relationship_ids`, `REL_ATTRIBUTES`, `insert_ooxml_into_body` / `_paragraph` / `_range` |
+| flat OPC, read | `docx4j_py/openpackaging/stores.py` (+89 lines) | `FlatOpcStore.parse(source) -> FlatOpcStore`, a `MemoryPartStore` subclass; `FlatOpcStore.NAMESPACE` |
+| on the views | `.body`, `.paragraph`, `.range` | `Body.tables` / `content_controls` / `inline_pictures` / `insert_table` / `insert_inline_picture` / `insert_inline_picture_from_base64` / `insert_ooxml`; `Body.view_for` hands out `Table` and `ContentControl`; `Paragraph.parent_table_cell` / `parent_content_control` / `content_controls` / `inline_pictures` / `insert_inline_picture` / `insert_inline_picture_from_base64` / `insert_ooxml`; `Range.insert_ooxml` |
+| the trial's undo log | `.trial` | `TrialPackage.note_added_part(part, relationship, source, *, added_content_type=True)`, `TrialPackage.discard_added_parts()` |
+| the outline | `.reports` | `_table_shape` is now `rows_of` / `cells_of`; `_is_row` is gone |
+
+`Body.view_for` was the **one** place section 12.8 said had to change, and it was: a path is
+`block_children_of` all the way down, so `body/4/0/1/0` meant table, row, cell, block before the
+views existed and means the same now. Two Phase B tests that asserted `Block` for a `w:tbl`
+became `Table`; nothing else moved.
+
+### 14.2 Departures from section 3.2 and section 4, all deliberate
+
+1. **`Body.tables` is this body's own list, not every table under it.** Office JS's
+   `Body.tables` is the body's top-level tables (a nested one is `cell.body.tables`, one inside a
+   control is `control.tables`), and the TypeScript engine reads it the same way. `paragraphs`
+   still descends everywhere, which is the asymmetry Office JS itself has. A test pins both
+   halves over `tests/fixtures/nested-table.docx`.
+2. **`column_widths()` is points; `column_widths_twips()` is the twips.** Section 3.2 declares
+   `list[float]`, and every other measurement in this API is points (`TableCell.width`,
+   `Paragraph.left_indent`). The TypeScript engine returns twips there; the twips are still one
+   call away, and `add_rows` uses them.
+3. **`add_rows` takes `row_count` first and `location` as a keyword**, where Office JS's is
+   `addRows(location, rowCount, values)`. Decided question 2 and section 3.1: the location has a
+   default and options are keyword-only, so the common call is `table.add_rows()`.
+4. **`TableRow.insert_rows` and `Table.add_rows` refuse `row_count < 1`** with
+   `table.no_rows` rather than doing nothing, and `insert_table` refuses a zero row or column
+   count with `table.empty`. An agent that computed a count wrongly gets told.
+5. **`Table.address` has no paraId form.** A `w:tr` carries `w14:paraId` in this schema but a
+   `w:tbl` does not, so a table's address is always the ordinal --- which is what
+   `Block.address` returned before, so no address changed (section 12.8's promise).
+6. **`ContentControl.text` does not go through `text_of` for the block, row and cell forms.**
+   `text_of` treats a `w:sdtContent` as a *run holder* (it is in its `RUN_HOLDERS` set, because a
+   run-level control's content is one), so a block control's two paragraphs came back as one
+   line, `"onetwo"`. The three block forms now answer through `body().text`, which is a line per
+   paragraph; the run form still reads `text_of`, which is right for it. Found by a test.
+7. **`insert_text(location="Start" | "End")` on a run-level control edits the control's own
+   items**, not `Paragraph.splice` at the control's boundary. `splice` at a boundary extends the
+   **neighbouring** run (Phase B, section 11.3: that is what makes `replace_text` replace exactly
+   what `search` matched), and at a control's boundary the neighbour is a run *outside* it, so
+   `insert_text("The ", location="Start")` landed before the control and the control's text did
+   not change. Word puts text asked for at the start or the end of a control inside it.
+   `"Replace"` is still `splice(start, end, text)`, which is correct because the whole span is
+   inside. Found by a test.
+8. **`ContentControl.form` is lower case** (`"block"`, `"run"`, `"row"`, `"cell"`), as section
+   3.2 spells it; the TypeScript engine capitalises. It is not an Office JS value --- Office JS
+   has no `form` at all --- so it is not data that crosses into a tool argument under an Office
+   JS name, and section 3.1's rule does not bind it.
+9. **`ContentControl.body()` is a method, not a property**, because it *creates* nothing but is
+   a constructor call over the control's content and reads better as one; `paragraphs`, `tables`
+   and `content_controls` are the properties a caller wants. `parent_paragraph()` likewise.
+10. **The ids Phase C allocates come from the document's own state, not from
+    `pkg.id_generator()`.** Section 12.8 asked for the generator "so that determinism holds for
+    image part names and relationship ids". It holds — but a *random* generator is the wrong tool
+    for these three: `/word/media/imageN.<ext>` is the first free N (docx4j's `getNewPartName`),
+    a relationship id is the relationships part's own next free `rIdN`, and `wp:docPr/@id` is one
+    above the highest in the part. All three are derived from the document, so the same document
+    and the same calls give the same bytes — which a test asserts by running eleven calls twice
+    and comparing the saved bytes — and the names stay readable. `id_generator()` goes on serving
+    the paraIds, which have no such natural order.
+11. **`insert_ooxml` reports `ooxml.no_main_part` for any incoming package it cannot read as a
+    WordprocessingML document**, the underlying `InvalidFormatException` quoted in the message.
+    A flat package with no `officeDocument` relationship fails inside the loader, and two codes
+    for "this is not a document you can paste from" would be two codes an agent has to learn.
+12. **`Table.parent_table_cell` and `Paragraph.parent_table_cell` share `cell_of`**, which walks
+    **up** the parent pointers and is transparent to a cell-level `w:sdt`. A paragraph outside a
+    table costs one `getattr` chain to the `w:body`; there is no scan.
+13. **`_is_row` is gone.** Section 12.8 asked for the `Table` view to be slotted into
+    `_table_shape`; `_is_row` accepted a `w:sdt` *as a row*, so an OpenDoPE repeat outlined as one
+    row whose "cells" were its rows. `rows_of` unwraps it, and the outline now reports the invoice
+    fixture's repeating section as the 2×4 table Word shows. That is a fix, and a test pins it.
+14. **`Body.insert_ooxml` takes `target=`**, which section 3.2 does not list, so that
+    `"Before"` and `"After"` work as they do for `insert_xml`; `"Replace"` clears the body first,
+    as Office JS's does.
+
+### 14.3 The flat OPC decision
+
+`insert_ooxml` needs to read a `pkg:package`, and CR-002 Phase C (flat OPC) is proposed, not
+implemented. The choice was a private reader inside `ooxml.py` or a real
+`PartStore`. The `PartStore` protocol made it small enough that there was no argument:
+
+```python
+class FlatOpcStore(MemoryPartStore):
+    NAMESPACE = "http://schemas.microsoft.com/office/2006/xmlPackage"
+
+    @classmethod
+    def parse(cls, source: str | bytes) -> FlatOpcStore: ...
+```
+
+**89 lines**, of which the parse is thirty: a `MemoryPartStore` already answers `part_names`,
+`has`, `load` and `size`, so unpacking each `pkg:part` into it (a `pkg:xmlData`'s root element
+serialised, or a `pkg:binaryData` base64-decoded) is the whole job, and `load()` takes any
+`PartStore`. One thing had to be added that a zip does not need: a flat package carries **no
+`[Content_Types].xml`** — each part states its own `pkg:contentType` — so one is synthesised from
+those through `ContentTypeManager`, which is what docx4j's `FlatOpcXmlImporter` does.
+
+So this delivers the **read** half of CR-002 Phase C's flat OPC item; writing one
+(`FlatOpcXmlExporter`, a `PartSink`) is still that phase's, and a note in CR-002 section 12 says
+so. `scripts/acceptance.py` and `tests/content/test_ooxml.py` each carry a 25-line `flat_opc()`
+that writes one, which is the measure of how small the exporter would be.
+
+### 14.4 `dry_run`, and the parts a verb adds
+
+Section 12.5 recorded that a part added during a trial "is discarded with it, and cannot be
+un-added", and required the docstring of anything that adds a part to say so. Phase C's two verbs
+add parts, so the question was whether to say it or fix it. Fixing it turned out to be **26
+lines**, so it is fixed:
+
+- `TrialPackage.note_added_part(part, relationship, source, *, added_content_type)` appends to an
+  undo log; the free function `picture.note_added_part` calls it and is a no-op on a real package,
+  so neither verb knows what kind of package it is in.
+- `dry_run.__exit__` calls `TrialPackage.discard_added_parts()`, which removes the relationship,
+  the part and — only when this call added it — the content-type override.
+- A test asserts that a dry run of `insert_inline_picture` and one of `insert_ooxml` each leave
+  the real package **byte for byte**, relationship parts included.
+
+A parts *overlay* was the alternative and is not small: a trial would need its own copy of every
+relationships part the verb touches, its own `get_part`, and a rule for resolving across the two
+maps. The undo log answers the same question at a twentieth of the size.
+
+What still cannot be un-created is a part a trial **creates for a different reason** and does not
+report: Phase K's `insert_markdown` makes an empty `numbering.xml` when the document has none.
+That is unchanged and 13.2 item 10 still describes it; when Phase H owns lists it should report
+through the same log.
+
+### 14.5 The numbers, measured
+
+Against `samples/2010-sample1.docx` loaded and its body read, with the 157 KB PNG out of
+`samples/Images.docx`:
+
+| call | |
+|---|---:|
+| `insert_table(3, 3, values=…)` | **214 µs** |
+| `insert_inline_picture` (157 KB PNG) | **1.0 ms** |
+| the same with a 75-byte PNG | 0.85 ms |
+| of which `next_drawing_id`, a `find` over the part | 0.13 ms and rising |
+| of which `image_size`, the header reader | 1.1 µs |
+| `insert_ooxml`, a 226 KB `pkg:package` with one image | **3.7 ms** |
+| `insert_ooxml`, a bare one-paragraph fragment | 435 µs |
+| `insert_paragraph`, for comparison | 17 µs |
+
+The picture's millisecond is **not** the image: a 75-byte PNG costs 85% of what a 157 KB one
+does, and reading the header is a microsecond. It is the two scans that make the call
+deterministic --- `free_image_name` over the package's parts and `next_drawing_id` over the part's
+tree --- plus the relationship and the content type. `next_drawing_id` is the one that grows:
+**8 ms** on the 200-page document of section 7, where the whole call is 9 ms. That is the cost
+12.4 measured for `address_of` in another guise, and the same fix would apply (cache the highest
+id per body on the package, as `_para_ids_taken` caches the paraIds); one picture in a 200-page
+document at 9 ms did not justify it, and a phase that inserts pictures in a loop should.
+
+The package paste is three quarters parse --- `load()` of a whole package, through
+`FlatOpcStore` --- and one quarter copy.
+
+On the 200-page document of section 7 (2,000 paragraphs, 20 three-by-three tables):
+
+| call | |
+|---|---:|
+| `outline()` **before** Phase C (`_table_shape` as Phase D wrote it) | 20.8 ms |
+| `outline()` **after** (the shared `rows_of` / `cells_of`) | **20.5 ms** |
+| `body.tables` (the body's own list, 20 of them) | 0.1 ms |
+| `body.content_controls` (none, but the walk is the same) | 1.7 ms |
+| `body.inline_pictures` (none; a walk of every run) | 3.8 ms |
+
+The outline is unchanged within the noise, which is what 12.8 wanted: the view was slotted in
+rather than duplicated, and it costs nothing because `rows_of` is the same walk `block_children_of`
+was doing, with one element-name test per child. The budget test of section 7 is untouched.
+
+### 14.6 What Phase E needs
+
+- **`sdt_property` and `sdt_kind_of` are the only accessors**, and they already look in `w:` and
+  `w15:` (Phase A, section 10.3 item 4), which is what `w15:dataBinding` needs. `ContentControl`
+  has a private `_property(local_name)` for the string-valued ones; a setter belongs beside it.
+- **`ContentControl.form` decides from the content for `SdtBlock`.** A typed kind must not change
+  that: a `w:picture` control is block-form in `invoice2013.docx` and run-form elsewhere.
+- **`insert_content_control` is not written**, at any level. `Range.require_one_holder(
+  "insert_content_control")` is written and tested (12.8) and is what the range-level one should
+  call; `next_sdt_id(root)` (Phase A) is the id, and `sdt(content, form=…)` the builder.
+  `RepeatingSection` is already refused at run level by the builder.
+- **A bound control's `insert_text` must write through to the custom XML node** (section 4). The
+  run-level path is `ContentControl._extend` and `Paragraph.splice`; both are in one place, so the
+  write-through hook is one call.
+- **`placeholder_text` needs `w:showingPlcHdr` and the control's own runs**, and `_extend` is the
+  function that builds a run inside an empty control.
+
+### 14.7 What Phase G (comments) and Phase F (tracking) need
+
+- **`TableRow.delete` and `Table.delete_rows` remove the row.** Tracked, a deleted row must stay
+  in the tree with a `w:trPr/w:del` until it is accepted (section 4), and `TrPr.content` is the
+  choice list to put it in --- `TableRow.is_header` is the worked example of reading and writing
+  that list. `Table.delete` should mark every row rather than removing the table.
+- **A new row's paragraphs need `w:ins`** when tracking is on: `_row_element` is the one place
+  rows are built, in `add_rows` and `insert_rows` alike.
+- **Deleting a content control is not tracked** (section 4), and `ContentControl.delete` writes
+  no revision markup, which is already right.
+- **`InlinePicture.delete` prunes the run through `Paragraph._remove_empty_runs`**, which knows
+  about `w:ins` and `w:del`; a tracked delete should wrap rather than prune.
+- **A comment anchored in a cell** gets its `Range` from `cell.body`, which is an ordinary `Body`
+  with the cell's address prefix, so nothing in Phase G has to know about tables.

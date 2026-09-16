@@ -656,7 +656,14 @@ nothing is rewritten at save time (decided question 2). Tests in
   files. `MainDocumentPart.fonts_in_use()` and `styles_in_use()` go with them.
 * **Phase C**: `PresentationMLPackage` and `SpreadsheetMLPackage` with typed main parts (after
   CR-001 Phase D); `FlatOpcPartStore` and `FlatOpcPartSink`; the chart-namespace schema patches of
-  12.5; docs and examples.
+  12.5; docs and examples. **Half of the flat OPC item is done**: CR-003 Phase C needed to read a
+  `pkg:package` for `insert_ooxml` and wrote
+  `stores.FlatOpcStore`, a read-only `PartStore` of 89 lines that
+  `load()` takes like any other (a `pkg:xmlData`'s root element serialised, a `pkg:binaryData`
+  base64-decoded, and the `[Content_Types].xml` a flat package does not carry synthesised from
+  each part's `pkg:contentType`, as docx4j's `FlatOpcXmlImporter` does). What remains is the
+  **sink**: `FlatOpcXmlExporter`, which `tests/content/test_ooxml.py` and `scripts/acceptance.py`
+  each approximate in 25 lines of test code. CR-003 section 14.3 records the decision.
 * **Not started, not blocking**: `OpcPackage.clone()`, external resource loading
   (`Load.loadExternalTargets`), the digital-signature parts, and docx4j's
   `DrawingPropsIdTracker`, which only matters once something adds drawings in bulk.
