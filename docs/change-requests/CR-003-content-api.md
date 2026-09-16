@@ -3,7 +3,8 @@
 **Status:** Proposed 2026-09-16; revised the same day to follow Python conventions throughout
 and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
 (section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
-(section 11); **Phase D implemented 2026-09-16** (section 12). Phases C, E to K proposed.
+(section 11); **Phase D implemented 2026-09-16** (section 12); **Phase K implemented 2026-09-17**
+(section 13). Phases C, E to J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -657,7 +658,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | A | Tree layer additions (3.3) — **implemented 2026-09-16, section 10** | 2 days |
 | B | `Body`, `Paragraph`, `Range`, `Font`: the verbs, `style` per section 4, `search` across runs with grapheme-safe splitting, `insert_xml`, `insert_element`; the error hierarchy; the Office JS subset list — **implemented 2026-09-16, section 11** | 4 days |
 | D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests — **implemented 2026-09-16, section 12** | 4 days |
-| K | Markdown out, with addresses, then in (3.5) | 3 days |
+| K | Markdown out, with addresses, then in (3.5) --- **implemented 2026-09-17, section 13** | 3 days |
 | C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` | 4 days |
 | G | Comments (3.9) | 3 days |
 | F | Change tracking and `replace_text` (3.8); the README's audit-trail example | 4 days |
@@ -688,7 +689,9 @@ All eleven recommendations below were accepted on 2026-09-16 and are now decisio
    the thread rule and the idle-close logic are the library's knowledge and every server needs
    them.
 6. **`markdown-it-py` as a dependency.** Recommendation: yes, for `insert_markdown` only,
-   imported lazily; `to_markdown` needs nothing.
+   imported lazily; `to_markdown` needs nothing. (Done in Phase K, and no second one:
+   `mdit-py-plugins` and `linkify-it-py` were both declined, which is what puts GFM footnote
+   import out of scope --- section 13.4.)
 7. **The python-docx facade: subset test against a pinned python-docx version, or run
    python-docx's own tests.** Recommendation: the subset list; python-docx's tests exercise its
    lxml internals, which are not the promise.
@@ -1297,3 +1300,212 @@ document, not of the agent surface.
 - **Every new mutating verb opens one `recording(...)`** and, if it inserts at a known index,
   reports the address from that index rather than through `address_of` (12.4).
 - `Range.require_one_holder("insert_content_control")` is written and tested; call it.
+
+## 13. Phase K implementation notes (2026-09-17)
+
+Phase K is done: markdown out with addresses and markdown in (section 3.5), the tests of section
+7, acceptance artefact 5 and the README's "Markdown, coarse and fine". The suite is **941 tests**
+(940 passing plus one `xfail`; 931 of them fast, 49 s, and 59 s for the whole), against 866 at the
+end of Phase D; **75** of the new ones are `tests/content/test_markdown.py` (59),
+`tests/agent/test_markdown_workflows.py` (14) and the two `KEEP` tests in `tests/test_codegen_el.py`.
+Nothing in `~/git/docx4j-xsdata` changed, no schema patch was needed and the model was not
+regenerated. One dependency joined `pyproject.toml`: `markdown-it-py>=3.0`, for `insert_markdown`
+only, imported on the first call (decided question 6).
+
+```python
+from docx4j_py import load
+
+pkg = load("in.docx")
+markdown = pkg.to_markdown(addresses=True)          # read it, with a handle on every block
+pkg.paragraph_at("body/11").insert_paragraph("Two tables follow.", location="After")
+pkg.body.insert_markdown("## Appendix\n\n- one\n- two\n")   # or write whole blocks
+```
+
+### 13.1 What landed
+
+| Piece | Where | Signature |
+|---|---|---|
+| markdown out | `docx4j_py/model/markdown/export.py` (1,037 lines) | `body_markdown(body, *, addresses=False, view="accepted", max_chars=None, footnotes=True)`, `markdown_budget_of(body, max_chars=None, ...) -> TextExcerpt`, `paragraph_markdown(paragraph, *, addresses=False, view="accepted")`, `table_markdown(element, context=None, **options)`, `address_comment(address, indent="")`, `escape(text)`; `ADDRESS_COMMENT`, `MarkdownViewValue` / `MarkdownView`, `CODE_STYLE_IDS`, `MONOSPACE_FONTS` |
+| markdown in | `docx4j_py/model/markdown/importer.py` (912 lines) | `blocks_for(body, markdown, recorder) -> (elements, parts touched)`, `ensure_style(package, style_id, *, touched=None, defined=None)`, `style_ids_of(part) -> set[str]`, `parser()`; `STYLE_IDS`, `CUSTOM_STYLE_XML` |
+| the one verb | `docx4j_py/model/markdown/__init__.py` (111 lines) | `insert_markdown_into(body, markdown, *, location="End", target=None) -> list[Paragraph \| Block]`, and every public name re-exported |
+| on the views | `.body`, `.paragraph` | `Body.to_markdown`, `Body.markdown_budget`, `Body.insert_markdown`, `Paragraph.to_markdown`, `Paragraph.insert_markdown` |
+| on the package | `.content.__init__`'s `register()` | `pkg.to_markdown()`, `pkg.markdown_budget()`, `pkg.insert_markdown()` |
+| on a trial | `.trial` | `TrialPackage.to_markdown` / `markdown_budget` / `insert_markdown`, and its own `style_definitions_part` and `numbering_definitions_part` |
+| nothing dropped silently | `.reports` | `ChangeReport.warnings`, `ChangeRecorder.warn(message)` |
+| the regeneration guard | `codegen/clean.py`, `tests/test_codegen_el.py` | `KEEP` gains `"model"`; two tests assert that every tracked hand-written path under `docx4j_py/` is covered by `KEEP` and that nothing `KEEP` names is missing |
+
+The behavioural oracle is Java docx4j's `docx4j-markdown`. `WmlToMarkdown`'s decisions are kept:
+headings from the effective outline level and **before** the numbering test (a built-in `Heading`
+style can carry a legacy `w:numPr`); emphasis wrapped round a *run* of equally formatted text
+rather than round each `w:r`; a header row's bold is convention, not markup; `w:gridSpan` padded
+with empty cells and a `w:vMerge` continuation left empty, because GFM has no spans; a field's
+cached result kept and its instruction dropped; a code block from consecutive `SourceCode`
+paragraphs. `MarkdownToWmlVisitor`'s are kept too: the same style ids, the nine-level
+`w:abstractNum` built from a scanned per-depth signature, a bullet-only signature shared and any
+ordered list given its own `w:num` so it restarts, `w:contextualSpacing` for tightness, a
+follow-on paragraph in a list item indented rather than numbered, and a quote winning over a list.
+
+### 13.2 Departures from section 3.5, each deliberate
+
+1. **`view="markup"` is CriticMarkup, where Java's `MARKUP` policy is `~~strikethrough~~`.**
+   Section 3.5 asks for `{++...++}` / `{--...--}` and `{>>...<<}`, and it is right to: Java's
+   deletion markup is indistinguishable from a real `w:strike`, so a model reading it cannot tell
+   an author's formatting from a reviewer's edit. Insertions are `{++...++}`, deletions and
+   `w:moveFrom` are `{--...--}`, and a `w:commentReference` becomes `{>>the comment text<<}` after
+   the run that carries it. `{==...==}` (CriticMarkup's highlight) is **not** written: a comment
+   range's start and end are separate elements and pairing them is Phase G's job, so the comment
+   is attached at its reference and the highlight is left for that phase.
+2. **The address comment is on its own line before the block, at the block's own indentation.**
+   Section 3.5 shows `<!-- body/3 -->` without saying where, and the two candidates are not
+   equal. A trailing comment is cheaper in tokens but cannot be put on a table without adding a
+   cell; an own-line comment is uniform across every block kind, which is what was asked for. The
+   cost is recorded rather than hidden: **an addressed export is for reading and addressing, not
+   for feeding back through `insert_markdown`**, because in CommonMark an HTML-comment line
+   between two list items ends the list. That is fine, because the two workflows are separate ---
+   the coarse one never asks for addresses. `ADDRESS_COMMENT` is the committed regex
+   (`^[ \t]*<!--\s(?P<address>\S+)\s-->$`, multiline) and a test asserts that `Body.element_at`
+   accepts everything it yields.
+3. **An empty paragraph keeps its comment and nothing else.** Markdown has no empty paragraph and
+   Java drops them; but dropping one under `addresses=True` would make a block unaddressable from
+   the markdown, so the comment line stays on its own.
+4. **Formatting is read direct, not effective.** CR-002 Phase B's `PropertyResolver` does not
+   exist, so where Java compares a run's *effective* `w:rPr` against its paragraph style's
+   baseline, this reads the run's own `w:rPr`. Section 6 allows exactly this. The visible
+   difference is that a `Heading 1` whose style is bold does **not** come out as `# **Title**`
+   here either (its runs carry no `w:b`), but a document that sets `w:b` directly on a heading's
+   runs will, where Java would cancel it against the baseline. A test to flip belongs with the
+   `PropertyResolver`.
+5. **`in_use=True` is *not* the filter on `describe()`'s style list.** Section 12.7 suggested
+   `Description.style_names(kind="paragraph", in_use=True)`. That is wrong for the job: a styles
+   template defines `Heading 1` without ever having used it, and `in_use` is docx4j's
+   `stylesInUse`, which reads the main document part's references. The choice is over every style
+   the document **defines** — read from the styles part's bytes with lxml by `style_ids_of`, so a
+   fragment whose styles are all there unmarshals nothing — falling back to `describe()`'s
+   display names when an id does not match, and to `ensure_style` when neither does.
+6. **`Paragraph.insert_markdown` accepts `"Start"` and `"End"` as well as `"Before"` and
+   `"After"`.** Section 3.5's signature lists only the last two, but section 4's paragraph-level
+   merge rule ("a fragment of exactly one `w:p` has its runs merged into the paragraph, as Word's
+   paste does") has nowhere to live otherwise. `"After"` stays the default, so the short call is
+   unchanged, and the merge behaviour is `insert_xml`'s, verbatim: it must be asked for.
+7. **An image is never fetched, and becomes a link rather than its bare alt text.** docx4j-mcp's
+   posture (and Java's `DefaultMarkdownImageHandler`, which declines a remote URL): an agent must
+   not be able to make the library open a socket. The alt text becomes the link's text and the
+   destination its target, so nothing in the markdown is lost, and the report's `warnings` say so
+   for every image. Embedding a *local* file is Phase C's `insert_inline_picture`, and this should
+   call it when it exists.
+8. **`ChangeReport` gained a `warnings` field.** Section 3.5 says "nothing may be dropped
+   silently" but the report had nowhere to say what was. A field on the frozen dataclass, left out
+   of `to_dict()` when empty, was cheaper than a second result type and is what a tool returns
+   anyway. `ChangeRecorder.warn` is its one writer.
+9. **The content layer reaches the markdown module through a function-level import.** Section 5's
+   rule is that `docx4j_py.model.markdown` imports the content layer and never the reverse, and at
+   *module* level that holds exactly. But `body.to_markdown()` has to work without the caller
+   having imported anything, and the registration trick that gives `XmlPart` its `body` cannot be
+   used here because `Body` is itself lazily imported. So `Body.to_markdown`, `Body.markdown_budget`,
+   `Body.insert_markdown`, `Paragraph.to_markdown` and `Paragraph.insert_markdown` are five
+   two-line methods whose bodies import `docx4j_py.model.markdown`. No module-level cycle exists in
+   either direction, `tests/openpackaging/test_threads_and_import.py` still passes, and
+   `import docx4j_py` does not import the markdown package at all.
+10. **The trial got two more spelled-out parts.** `insert_markdown` *writes* to `styles.xml` and
+    `numbering.xml`, so `TrialPackage.style_definitions_part` and `.numbering_definitions_part`
+    now return the trial's copies, as `main_document_part` does. Without them a dry run left the
+    style it added on the real document, which is not what 12.5 promises. A part the trial
+    **creates** still cannot be un-created: a trial of a fragment with a list leaves an empty
+    `numbering.xml` in the real package (and its `[Content_Types].xml` entry and relationship),
+    and what the trial wrote into it goes with the copy. A test pins both halves.
+11. **One `MarkdownIt` serves the process.** A parser per call cost 600 µs of the 800 a
+    one-paragraph fragment took. A `MarkdownIt` keeps no per-parse state — the block and inline
+    states are made inside `parse` — so it can be shared where CR-001 section 14.7's `ParserConfig`
+    could not. `parser()` is the accessor and the place the import happens.
+12. **`tests/agent/test_markdown.py` is `test_markdown_workflows.py`.** pytest's prepend import
+    mode refuses two test modules with the same basename in directories that have no `__init__.py`,
+    and `tests/` has none by design (every file there does `from conftest import ...`).
+
+### 13.3 The numbers, measured
+
+The 200-page document is section 7's fixture, unchanged: 2,000 paragraphs with a `Heading1` every
+fortieth, 20 three-by-three tables, 2,180 paragraphs and 2,200 blocks.
+
+| call | |
+|---|---:|
+| its markdown | **208,172 characters** (208,172 bytes of UTF-8) |
+| `to_markdown()` | **7 ms** |
+| `to_markdown(addresses=True)` | 50 ms (245,442 characters) |
+| `markdown_budget(16 KB)` | 8 ms |
+| `get_text()`, for comparison | 9 ms |
+| `outline()`, for comparison | 23 ms |
+| `insert_markdown` of all 208 KB | **113 ms**, 2,020 blocks |
+| of which markdown-it's own parse | 28 ms |
+| `insert_markdown` of one paragraph | 205 µs |
+| `insert_paragraph`, for comparison | 27 µs |
+| `import markdown_it` | 17 ms, and **not** loaded by `import docx4j_py` (656 ms, unchanged) |
+
+Reading is cheaper than the outline, which is the right way round: markdown *is* the cheap read.
+`addresses=True` costs seven times as much, because every block asks `address_of` for its address
+and a paragraph without a `w14:paraId` is an upward walk — the same cost 12.4 measured, and the
+same fix would apply (a renderer that knows the index it is at could build the address itself);
+50 ms for a 200-page document did not justify the complication. Writing is an order of magnitude
+dearer than the equivalent verb, and three quarters of that is this code rather than the parser:
+a `w:rPr` per run, a `w:pPr` per paragraph and a style lookup per styled block.
+
+### 13.4 The limits
+
+- **Math is out of scope.** Java's module converts OMML to LaTeX and back (`docx4j-markdown`'s
+  CR-006); an `m:oMath` here contributes nothing to the markdown, and `$...$` in markdown is
+  text. A later phase can port `OmmlToLatex` / `LatexToOmml`; nothing in this design is in its way.
+- **GFM footnote *import* is out of scope**, and the decision was the dependency: `markdown-it-py`
+  has no footnote rule, `mdit-py-plugins` is the only reasonable way to get one, and section 3.5
+  allows exactly one dependency. Doing it by hand means a block rule *and* an inline rule *and* a
+  definition collector, which is not "a few lines". So `[^1]` stays literal text on the way in,
+  while footnotes are exported properly. A footnotes part is written by nothing in this phase.
+- **Export-only constructs**: task list items (`- [x]`), YAML front matter, a fence's info string
+  (` ```python ` comes back as ` ``` `), indented code blocks as distinct from fenced ones,
+  reference-style links, and inline HTML. Java carries the first two; both would need
+  `mdit-py-plugins`.
+- **A loose list item's follow-on paragraph is not reattached on export.** Java appends a
+  `ListParagraph`-styled paragraph with no `w:numPr` to the open list item; here it closes the
+  list and becomes a plain paragraph. The import writes such paragraphs (indented, unnumbered), so
+  a list with multi-paragraph items does not survive a coarse round trip as one list. It is a
+  handful of lines in `_render_blocks` and belongs with Phase H, which owns lists.
+- **Escaping is narrow and hand-written**, because there is no commonmark renderer to delegate to:
+  `\`, `` ` ``, `*`, `_`, `[`, `]`, `<`, `>` inline, and a leading `#`, `>`, `+`, `-`, `=`, `|` or
+  `N.` at the start of a rendered paragraph. It is deliberately not exhaustive; a paragraph of raw
+  HTML-looking text will round-trip, a pathological one may not.
+- **`mc:AlternateContent` and text boxes** contribute nothing, as they do to `Body.text`
+  (decided question 8).
+- **Headers, footers and endnotes** are not in `pkg.to_markdown()`: Java's exporter leaves them
+  out too, and `header_part.body.to_markdown()` renders one when a caller wants it.
+- The addressed export is not re-importable as markdown (13.2 item 2).
+
+### 13.5 What Phase C needs
+
+- **`Table.to_markdown()` hangs on `table_markdown(element, context)`**, which already takes the
+  element and any context (a `Body`, a renderer context, or nothing). Add the method; do not
+  duplicate the renderer, and in particular do not re-derive `_rows_of` / `_cells_of`, which
+  already unwrap a row- or cell-level `w:sdt` as section 4 requires.
+- **`insert_markdown` builds its tables with the Phase A `tbl` / `tr` / `tc` builders and sizes
+  the grid from `w:sectPr`**, which is what `insert_table` is specified to do; when `insert_table`
+  lands, `_Importer.table` should call it rather than keep its own copy of the sizing, and
+  `writable_width()` is the one function to move.
+- **An image should become a real `InlinePicture` when the destination is a local file**, through
+  Phase C's `insert_inline_picture`. The remote case stays a link, always (13.2 item 7).
+- `ContentControl` views change nothing here: the renderer descends through every `w:sdt` form
+  already, because `block_children_of` does.
+
+### 13.6 What Phase H needs
+
+- **The list renderer is `_OpenList` in `export.py`**, which numbers items itself from the
+  numbering part's `w:numFmt` and `w:start`, as section 6 says it must until the `Emulator` lands.
+  When `ListItem.list_string` exists, the marker should come from it, and the four format families
+  this does not distinguish (`lowerLetter`, `lowerRoman`, `upperLetter`, `upperRoman` all render
+  as `N.`) come right for free.
+- **A run of list paragraphs is one markdown block**, broken by any non-list paragraph and by a
+  different top-level `w:numId`. That is Java's rule and it is why four list paragraphs separated
+  by empty ones each restart at `1.` (the `tests/fixtures/lists.docx` test pins it). Phase H should
+  decide whether a `List` view makes the "loose item's follow-on paragraph" rule of 13.4 worth
+  implementing.
+- **`_Numbering` in `importer.py` is docx4j's `ImportNumbering`**, including its per-depth
+  signature scan and the "bullet-only lists share one `w:num`" rule. A `List` API should create
+  definitions through it rather than beside it, and its id allocation (the next free
+  `w:abstractNumId` and `w:numId` above the document's own) is what keeps section 3.4's
+  determinism.

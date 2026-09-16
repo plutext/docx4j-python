@@ -48,6 +48,7 @@ from docx4j_py.model.markdown.importer import (
     STYLE_IDS,
     blocks_for,
     ensure_style,
+    parser,
     style_ids_of,
 )
 
@@ -65,6 +66,7 @@ __all__ = [
     "insert_markdown_into",
     "markdown_budget_of",
     "paragraph_markdown",
+    "parser",
     "style_ids_of",
     "table_markdown",
 ]

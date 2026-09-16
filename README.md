@@ -370,6 +370,103 @@ pkg.element_at("body/99")
 #               (use 'body/6', or call outline() to list current addresses)
 ```
 
+### Markdown, coarse and fine
+
+Markdown is what models read and write best, and it is the exchange format docx4j-mcp settled on.
+There are two ways to use it, and they are for different jobs.
+
+**Coarse: markdown in, markdown out.** Cheapest, and it loses whatever the markdown could not
+carry. CommonMark plus GFM tables and strikethrough, through `markdown-it-py` (the one dependency
+this API adds, imported on the first `insert_markdown`; `to_markdown` needs nothing).
+
+```python
+from docx4j_py import create_package, WordprocessingMLPackage
+
+pkg = create_package()
+views = pkg.body.insert_markdown("""# Weekly brief
+
+Three things happened, and one was **important**.
+
+- the build went green
+- the corpus grew
+  - two new fixtures
+
+| Area | State |
+| --- | --- |
+| engine | green |
+
+See [the CR](https://example.invalid/cr-003).
+""")
+
+[type(v).__name__ for v in views]
+# ['Paragraph', 'Paragraph', 'Paragraph', 'Paragraph', 'Paragraph', 'Block', 'Paragraph']
+pkg.last_change.to_dict()["parts_touched"]
+# ['/word/document.xml', '/word/numbering.xml', '/word/styles.xml']
+
+WordprocessingMLPackage.load(pkg.save()).to_markdown()
+# '# Weekly brief\n\nThree things happened, and one was **important**.\n\n- the build went green\n
+#  - the corpus grew\n  - two new fixtures\n\n| Area | State |\n| --- | --- |\n| engine | green |\n\n
+#  See [the CR](https://example.invalid/cr-003).'
+```
+
+The fragment is **one** `ChangeReport` however many blocks it brings; the styles it needs are added
+from docx4j's `KnownStyles.xml` if the document lacks them (an existing definition always wins),
+a list creates the numbering part when there is none, and a link gets an external relationship.
+An image is **never fetched**: it becomes a link to its destination, and the report's `warnings`
+say so, as they do for an HTML block, which is skipped. Nothing is dropped quietly.
+
+**Fine: read with addresses, then edit by one.** Nothing outside the blocks the agent names
+changes, and every untouched part is still written back byte for byte.
+
+```python
+from docx4j_py import load
+from docx4j_py.model.markdown import ADDRESS_COMMENT
+
+pkg = load("in.docx")
+
+pkg.to_markdown()[:64]
+# 'Docx sample document\n\nThis is a document exhibiting basic docx f'
+
+markdown = pkg.to_markdown(addresses=True)      # each block's address on its own line before it
+markdown[:120]
+# '<!-- body/0 -->\nDocx sample document\n\n<!-- body/1 -->\nThis is a document exhibiting basic docx
+#  features.  \n\n<!-- body/2 '
+
+ADDRESS_COMMENT.pattern                         # the regex that recovers one
+# '^[ \t]*<!--\\s(?P<address>\\S+)\\s-->$'
+
+address = next(                                 # the model picks the block it wants
+    m.group("address")
+    for m, text in zip(ADDRESS_COMMENT.finditer(markdown),
+                       ADDRESS_COMMENT.split(markdown)[1:], strict=False)
+    if text.strip().startswith("# Tables")
+)
+# 'body/11'
+
+pkg.paragraph_at(address).insert_paragraph("Two tables follow.", location="After")
+pkg.last_change.to_dict()
+# {'operation': 'insert_paragraph', 'addresses': ['body/12'],
+#  'moved': [['body/12', 'body/13'], ... 52 pairs ...],
+#  'text_after': 'Two tables follow.', 'parts_touched': ['/word/document.xml'],
+#  'at': '2026-09-16T20:35:40.325800+00:00'}
+```
+
+The address is `paragraph.address`: the `w14:paraId` when Word has stamped one, so it survives an
+insert in front of it, and the ordinal otherwise. `view="markup"` writes tracked changes and
+comments as CriticMarkup (`{++inserted++}`, `{--deleted--}`, `{>>a comment<<}`) where the default
+`view="accepted"` reads the document as if every change had been accepted; `max_chars=` cuts at a
+block boundary and `markdown_budget(max_chars)` is the twin that says whether it bit:
+
+```python
+pkg.markdown_budget(60).to_dict()
+# {'text': 'Docx sample document', 'chars': 1610, 'truncated': True}
+```
+
+**Which to use when.** Round trip is not a goal — markdown cannot hold a docx. Use the coarse pair
+to *create* a document from what a model wrote, or to *read* one whose formatting does not matter.
+Use `to_markdown(addresses=True)` plus in-place edits to *change* a document that exists: the
+coarse route would rewrite the whole body and throw away everything the markdown has no form for.
+
 ### Serving many documents
 
 Import costs about 0.7 s and builds no class metadata; the first parse of each class does. In a

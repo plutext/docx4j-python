@@ -8,9 +8,9 @@ commonmark-java, so this walks a **token stream** rather than an AST --- and
 the posture on anything that would add a dependency (section 3.5's limits are
 in CR-003 section 13).
 
-``markdown_it`` is imported **inside** :func:`blocks_for`, so that
-``import docx4j_py`` does not pay for it and ``to_markdown`` needs it not at
-all (CR-003 decided question 6).
+``markdown_it`` is imported **inside** :func:`parser`, on the first
+``insert_markdown`` of the process, so that ``import docx4j_py`` does not pay
+its 30 ms and ``to_markdown`` never pays it at all (CR-003 decided question 6).
 
 What this may touch beyond the body's own part:
 
@@ -46,6 +46,7 @@ __all__ = [
     "STYLE_IDS",
     "blocks_for",
     "ensure_style",
+    "parser",
     "style_ids_of",
 ]
 
@@ -862,31 +863,50 @@ def _p_pr(style_id: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
+_parser: Any = None
+
+
+def parser() -> Any:
+    """The shared ``MarkdownIt``, built on first use.
+
+    ``markdown-it-py`` is imported **here** rather than at module level, so
+    that ``import docx4j_py`` does not pay its 30 ms and ``to_markdown`` never
+    pays it at all (CR-003 decided question 6). One parser serves the process,
+    as :func:`docx4j_py.runtime.context` does for the model: a ``MarkdownIt``
+    holds no per-parse state --- the block and inline states are made inside
+    ``parse`` --- so it is shared where a ``ParserConfig`` could not be
+    (CR-001 section 14.7).
+
+    The preset is **commonmark** with GFM's tables and strikethrough enabled.
+    ``gfm-like`` is deliberately not used: it turns on ``linkify``, which needs
+    ``linkify-it-py``, a second dependency this CR does not take.
+    """
+    global _parser  # noqa: PLW0603 - one parser for the process
+    if _parser is None:
+        try:
+            from markdown_it import MarkdownIt
+        except ImportError as error:  # pragma: no cover - the dependency is declared
+            raise ContentError(
+                "insert_markdown needs markdown-it-py, which is not installed",
+                code="markdown.no_parser",
+                hint="pip install 'markdown-it-py>=3'",
+            ) from error
+
+        _parser = MarkdownIt("commonmark").enable(["table", "strikethrough"])
+    return _parser
+
+
 def blocks_for(body: Any, markdown: str, recorder: Any) -> tuple[list[Any], set[str]]:
     """Parse markdown and build the block-level elements it describes.
 
-    ``markdown-it-py`` is imported here rather than at module level, so that
-    ``import docx4j_py`` does not pay for it (CR-003 decided question 6). The
-    parser is the **commonmark** preset with GFM's tables and strikethrough
-    enabled; ``linkify`` is deliberately not, because the ``gfm-like`` preset
-    would need ``linkify-it-py``, a second dependency this CR does not take.
+    The parser is :func:`parser`, which imports ``markdown-it-py`` on first use.
 
     Returns:
         The elements, and the names of the parts the call changed besides the
         body's own.
     """
-    try:
-        from markdown_it import MarkdownIt
-    except ImportError as error:  # pragma: no cover - the dependency is declared
-        raise ContentError(
-            "insert_markdown needs markdown-it-py, which is not installed",
-            code="markdown.no_parser",
-            hint="pip install 'markdown-it-py>=3'",
-        ) from error
-
-    parser = MarkdownIt("commonmark").enable(["table", "strikethrough"])
     importer = _Importer(body, recorder)
-    elements = importer.run(parser.parse(markdown))
+    elements = importer.run(parser().parse(markdown))
     if not elements:
         recorder.warn("this markdown produced no block-level content")
     return elements, importer.touched

@@ -12,11 +12,12 @@ docx4j is the behavioural oracle: names, defaults and quirks are docx4j's unless
 departure.
 
 The design lives in `docs/change-requests/`. Each CR's implementation-notes sections (CR-001
-sections 12 to 14, CR-002 section 12) record what was actually built, the numbers and every
-deliberate departure; read them before changing the area they cover. Status: CR-001 (object
-model) Phases A to C implemented, D proposed; CR-002 (engine) Phase A implemented, B (resolution
-utilities, the Java parity harness and golden files) and C (PML, SML, flat OPC) proposed; CR-003
-(content API) to be written. `REPORT.md` is the original xsdata feasibility experiment.
+sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 13) record what was actually built,
+the numbers and every deliberate departure; read them before changing the area they cover.
+Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phase A
+implemented, B (resolution utilities, the Java parity harness and golden files) and C (PML, SML,
+flat OPC) proposed; CR-003 (content API) Phases A, B, D and K implemented, C and E to J proposed.
+`REPORT.md` is the original xsdata feasibility experiment.
 
 ## Environments and commands
 
@@ -42,7 +43,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
-.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the four Word checklist documents
+.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the five Word checklist documents
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata
 python codegen/derive_names.py                         # re-derive codegen/names/ from docx4j's XJC output
@@ -61,8 +62,8 @@ hand-written code. Do not run it as it stands.
 
 `tests/README.md` maps each test file to its CR section and holds the manual Word acceptance
 checklist, with the record of each run. After any change to marshalling, the prefix table, content
-types, the zip writer or `create_package`, regenerate `out/acceptance/` and ask for a Word check:
-saved output must open without a repair prompt.
+types, the zip writer, `create_package` or the markdown importer, regenerate `out/acceptance/`
+and ask for a Word check: saved output must open without a repair prompt.
 
 ## Generated and hand-written code
 
@@ -76,7 +77,11 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 - `runtime.py`: the shared `XmlContext`, parser and serialiser factories, `warm_up()`
 - `fragments.py`: `wml(...)`, `to_xml(...)`
 - `traversal.py`: `walk`, `iter_nodes`, `find`, `text_of`, `element_name`
-- `wml/builders.py`: the `p` / `r` / `t` / `tbl` / `br` / `tab` sugar
+- `wml/builders.py`: the `p` / `r` / `t` / `tbl` / `br` / `tab` sugar (with `wml/pictures.py`
+  and `wml/sdt.py` beside it)
+- `model/`: CR-003's content API — `model/content/` (the `Body`, `Paragraph`, `Range` and `Font`
+  views, addresses, `Outline`, `describe()`, `ChangeReport`, `dry_run`), `model/markdown/`
+  (markdown out and in) and `model/sessions.py` (`DocumentSession`)
 - `resources/`: the parts `warm_up()` parses, and docx4j's default styles, numbering and fontTable
 - `openpackaging/`: the whole engine
 
