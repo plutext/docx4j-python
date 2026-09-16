@@ -328,6 +328,51 @@ class Range:
             for start, end in hits[:limit]
         ]
 
+    # -- comments (CR-003 section 3.9, Phase G) -----------------------------
+
+    def get_comments(self) -> list[Any]:
+        """The comments whose markers overlap this span (Office JS ``getComments``)."""
+        from docx4j_py.model.content.comments import comments_of
+
+        return comments_of(self)
+
+    def insert_comment(self, text: str) -> Any:
+        """Comment on this span (Office JS ``Range.insertComment``).
+
+        The runs are split at the span's boundaries, a ``w:commentRangeStart``
+        and a ``w:commentRangeEnd`` go around them and a reference run in the
+        ``CommentReference`` style goes after the end; the comment itself
+        becomes a ``w:comment`` whose paragraphs are in the ``CommentText``
+        style, opened by a ``w:annotationRef`` run and carrying a fresh
+        ``w14:paraId``. The author is ``pkg.author`` (CR-003 section 3.4's
+        audit trail).
+
+        The markers are **hoisted out of a ``w:ins`` or ``w:del``** the anchor
+        run sits in, because a comment is not a revision (CR-003 section 4).
+
+        **What it may touch beyond this part**: ``/word/comments.xml``,
+        ``/word/commentsExtended.xml``, ``/word/commentsIds.xml`` and
+        ``/word/people.xml``, each **created** with its relationship and content
+        type when the document has none; ``/word/commentsExtensible.xml`` is
+        only kept in step, never created; and ``/word/styles.xml``, when the
+        document does not define the comment styles. Every one of them is listed
+        in the report's ``parts_touched``. **In a**
+        :meth:`~docx4j_py.model.content.trial.dry_run`, a part created here is
+        added to the real package and taken away again when the block ends
+        (CR-003 section 14.4).
+
+        Raises:
+            SpanError: the span crosses a run holder --- a ``w:hyperlink``, a
+                run-level ``w:sdt`` --- and the message says where to split.
+            ContentError: this body's package has no main document part.
+
+        Returns:
+            The new :class:`~docx4j_py.model.content.comments.Comment`.
+        """
+        from docx4j_py.model.content.comments import insert_comment_into
+
+        return insert_comment_into(self, text)
+
     def delete(self) -> None:
         """Remove the span's text, leaving an empty range where it was."""
         with recording(self.paragraph.parent_body, "delete") as change:

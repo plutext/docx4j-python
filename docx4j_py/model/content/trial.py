@@ -50,15 +50,31 @@ __all__ = ["TrialPackage", "TrialPart", "dry_run"]
 class TrialPart:
     """A part whose contents are a deep copy. Everything else is the real part."""
 
-    __slots__ = ("_contents", "_wrapped", "package")
+    __slots__ = ("_contents", "_tree", "_wrapped", "package")
 
     def __init__(self, part: Any, package: Any) -> None:
-        """Copy the part's tree; the copy is what this part's contents are."""
+        """Copy the part's tree; the copy is what this part's contents are.
+
+        An lxml part --- a
+        :class:`~docx4j_py.openpackaging.parts.default_xml_part.DefaultXmlPart`,
+        which is what ``w16cid:commentsIds`` and ``w16cex:commentsExtensible``
+        are (CR-001 section 13.5) --- is copied with ``copy.deepcopy`` of its
+        element instead, so that a trial that edits one leaves the real part
+        alone. Parsing the real part to copy it costs nothing in bytes: lxml
+        writes back what it read, which a test pins.
+        """
+        import copy
+
         #: The real part. :func:`~docx4j_py.model.content.addresses.part_kind`
         #: reads it, so a trial header still reports ``header:rId8``.
         self._wrapped = part
-        self._contents = deep_copy(part.contents)
-        link_parents(self._contents)
+        self._contents: Any = None
+        self._tree: Any = None
+        if hasattr(part, "set_tree"):
+            self._tree = copy.deepcopy(part.tree)
+        else:
+            self._contents = deep_copy(part.contents)
+            link_parents(self._contents)
         #: The trial package.
         self.package = package
 
@@ -66,6 +82,15 @@ class TrialPart:
     def contents(self) -> Any:
         """The copy."""
         return self._contents
+
+    @property
+    def tree(self) -> Any:
+        """The copied lxml element, for a part the model does not type."""
+        return self._tree
+
+    def set_tree(self, tree: Any) -> None:
+        """Replace the copied element; the real part is not touched."""
+        self._tree = tree
 
     @property
     def body_element(self) -> Any:
@@ -92,8 +117,34 @@ class TrialPart:
         """The trial's copy of the comments part."""
         return self.package.trial_part(self._wrapped.comments_part)
 
+    @property
+    def comments_extended_part(self) -> Any:
+        """The trial's copy of ``/word/commentsExtended.xml`` (CR-003 Phase G)."""
+        return self.package.trial_part(self._wrapped.comments_extended_part)
+
+    @property
+    def comments_ids_part(self) -> Any:
+        """The trial's copy of ``/word/commentsIds.xml``, an lxml part."""
+        return self.package.trial_part(self._wrapped.comments_ids_part)
+
+    @property
+    def comments_extensible_part(self) -> Any:
+        """The trial's copy of ``/word/commentsExtensible.xml``, an lxml part."""
+        return self.package.trial_part(self._wrapped.comments_extensible_part)
+
+    @property
+    def people_part(self) -> Any:
+        """The trial's copy of ``/word/people.xml``."""
+        return self.package.trial_part(self._wrapped.people_part)
+
     def get_xml(self) -> str:
         """The copy as XML, marshalled exactly as the real part would be."""
+        if self._tree is not None:
+            from lxml import etree
+
+            from docx4j_py.openpackaging.parts.xml_part import XML_DECLARATION
+
+            return (XML_DECLARATION + etree.tostring(self._tree, encoding="utf-8")).decode("utf-8")
         return self._wrapped._marshal(self._contents).decode("utf-8")
 
     def __getattr__(self, name: str) -> Any:
@@ -215,6 +266,13 @@ class TrialPackage:
             package.parts.remove(part.part_name)
             if added_content_type:
                 package.content_type_manager.remove_override_content_type(part.part_name)
+            # a part with a well-known relationship type left a shortcut behind
+            # (``main.comments_part`` and its four siblings, CR-003 Phase G);
+            # clearing it is what stops the next call finding a part the package
+            # no longer holds
+            shortcut = getattr(source, "set_part_shortcut", None)
+            if shortcut is not None and part.relationship_type:
+                shortcut(None, part.relationship_type)
             removed.append(part.part_name)
         self._added.clear()
         return removed

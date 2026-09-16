@@ -837,6 +837,24 @@ class Paragraph:
         hits = find_all(self.text, search_pattern(text, **options))
         return [hit_for(self, start, end, context=context) for start, end in hits[:limit]]
 
+    # -- comments (CR-003 section 3.9, Phase G) -----------------------------
+
+    def get_comments(self) -> list[Any]:
+        """The comments anchored in this paragraph (Office JS ``getComments``)."""
+        from docx4j_py.model.content.comments import comments_of
+
+        return comments_of(self)
+
+    def insert_comment(self, text: str) -> Any:
+        """Comment on the whole paragraph (Office JS ``insertComment``).
+
+        The paragraph's whole range, so the markers sit around all of its text;
+        :meth:`Range.insert_comment` comments on a span. What the call writes,
+        and what it creates when the document has no comment parts, is
+        :meth:`Range.insert_comment`'s docstring.
+        """
+        return self.get_range().insert_comment(text)
+
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A :class:`~docx4j_py.model.content.Range` over this paragraph."""
         from docx4j_py.model.content.range import Range

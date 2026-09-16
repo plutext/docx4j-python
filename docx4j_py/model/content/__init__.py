@@ -43,11 +43,13 @@ __all__ = [
     "BUILT_IN_STYLES",
     "AddressError",
     "Alignment",
+    "Author",
     "Block",
     "Body",
     "BreakType",
     "BuilderError",
     "ChangeReport",
+    "Comment",
     "ContentControl",
     "ContentError",
     "Description",
@@ -119,6 +121,9 @@ _LAZY: dict[str, str] = {
     "cells_of": "docx4j_py.model.content.text_model",
     "InlinePicture": "docx4j_py.model.content.picture",
     "ContentControl": "docx4j_py.model.content.controls",
+    # CR-003 Phase G, the comments
+    "Author": "docx4j_py.model.content.comments",
+    "Comment": "docx4j_py.model.content.comments",
 }
 
 
@@ -239,6 +244,38 @@ def _package_insert_markdown(self: object, markdown: str, **options: object) -> 
     return self.body.insert_markdown(markdown, **options)  # type: ignore[attr-defined]
 
 
+def _package_author(self: object) -> object:
+    """Who this package's comments and tracked changes are by (CR-003 section 3.9).
+
+    ``pkg.author = Author("Claude", initials="C")``. There is no signed-in user
+    here, so the package carries the identity; a package that has not been given
+    one writes :data:`~docx4j_py.model.content.comments.DEFAULT_AUTHOR`,
+    ``Author("docx4j-python")``. **Phase F's tracked changes read the same
+    setting.**
+    """
+    from docx4j_py.model.content.comments import DEFAULT_AUTHOR
+
+    found = self._author  # type: ignore[attr-defined]
+    return found if found is not None else DEFAULT_AUTHOR
+
+
+def _set_package_author(self: object, value: object) -> None:
+    """Set the identity; a bare string is taken as the author's name."""
+    from docx4j_py.model.content.comments import Author
+
+    if isinstance(value, str):
+        value = Author(value)
+    if value is not None and not isinstance(value, Author):
+        from docx4j_py.model.content.errors import ContentError
+
+        raise ContentError(
+            f"pkg.author takes an Author or a name, not {type(value).__name__}",
+            code="author.invalid",
+            hint="pkg.author = Author('Claude', initials='C')",
+        )
+    self._author = value  # type: ignore[attr-defined]
+
+
 def _package_dry_run(self: object) -> object:
     """``with pkg.dry_run() as trial:`` --- edits on a copy, then thrown away."""
     from docx4j_py.model.content.trial import dry_run
@@ -261,6 +298,12 @@ _PACKAGE_MEMBERS: dict[str, object] = {
     "insert_markdown": _package_insert_markdown,
 }
 
+#: The properties :func:`register` installs, which ``_PACKAGE_MEMBERS`` cannot
+#: hold because a property is not a function. CR-003 Phase G, section 3.9.
+_PACKAGE_PROPERTIES: dict[str, property] = {
+    "author": property(_package_author, _set_package_author, doc=_package_author.__doc__),
+}
+
 
 def register() -> None:
     """Give the parts and the package their content API. Called on import.
@@ -280,6 +323,9 @@ def register() -> None:
         WordprocessingMLPackage.body = _PACKAGE_BODY  # type: ignore[attr-defined]
     for name, member in _PACKAGE_MEMBERS.items():
         if getattr(WordprocessingMLPackage, name, None) is None:
+            setattr(WordprocessingMLPackage, name, member)
+    for name, member in _PACKAGE_PROPERTIES.items():
+        if not isinstance(getattr(WordprocessingMLPackage, name, None), property):
             setattr(WordprocessingMLPackage, name, member)
 
 

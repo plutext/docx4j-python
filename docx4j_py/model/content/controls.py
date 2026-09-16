@@ -455,6 +455,19 @@ class ContentControl:
                     if owner is not None:
                         item.parent = owner
 
+    # -- comments (CR-003 section 3.9, Phase G) -----------------------------
+
+    def get_comments(self) -> list[Any]:
+        """The comments anchored inside this control (CR-003 section 3.2).
+
+        Extension: Office JS's ``ContentControl`` has no ``getComments``, but
+        CR-003 section 3.2 lists it, and a bound control an agent has just
+        filled in is exactly where a comment about it belongs.
+        """
+        from docx4j_py.model.content.comments import comments_of
+
+        return comments_of(self)
+
     # -- output ------------------------------------------------------------
 
     def get_xml(self) -> str:

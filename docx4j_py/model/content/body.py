@@ -907,6 +907,20 @@ class Body(Sequence):
             return TextExcerpt(full, len(full), False)
         return TextExcerpt(full[:max_chars], len(full), True)
 
+    # -- comments (CR-003 section 3.9, Phase G) -----------------------------
+
+    def get_comments(self) -> list[Any]:
+        """The comments anchored in this body (Office JS ``Body.getComments``).
+
+        In document order, with replies nested under their parent: a reply is in
+        the list only when its parent is not. Unmarshals three parts ---
+        ``w:comments``, ``w15:commentsEx`` and ``w:people`` --- and leaves
+        ``w16cid`` and ``w16cex`` byte for byte (CR-003 section 3.9).
+        """
+        from docx4j_py.model.content.comments import comments_of
+
+        return comments_of(self)
+
     def ensure_para_ids(self) -> list[str]:
         """Give every paragraph that lacks a ``w14:paraId`` one. Extension.
 
