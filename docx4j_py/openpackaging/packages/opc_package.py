@@ -65,6 +65,7 @@ class OpcPackage:
     __slots__ = (
         "__weakref__",
         "_assigns_para_ids",
+        "_author",
         "_changes",
         "_current_change",
         "_id_rng",
@@ -114,6 +115,11 @@ class OpcPackage:
         self._current_change: Any = None
         self._assigns_para_ids: bool | None = None
         self._para_ids_taken: dict[str, set[str]] | None = None
+        # CR-003 section 3.9: who a comment (and, with Phase F, a tracked
+        # change) is by. The ``Author`` class is the content layer's, so the
+        # storage is here and the ``author`` property is installed by
+        # ``docx4j_py.model.content.register()``, as ``body`` is.
+        self._author: Any = None
 
     # -- the agent surface's state (CR-003 section 3.4) --------------------
 
