@@ -111,8 +111,9 @@ regenerate the artefacts and check by hand:
 .venv-fork/bin/python scripts/acceptance.py      # writes out/acceptance/
 ```
 
-`out/` is in `.gitignore`, so the seven files are built rather than committed; the script is
-deterministic and takes about two seconds.
+`out/` is in `.gitignore`, so the seven files are built rather than committed; the script takes
+about two seconds. It is deterministic apart from artefact 7, whose `w:date` on each comment is
+the wall clock, as Word writes it (CR-003 section 15.2 item 1).
 
 ### The seven artefacts
 
