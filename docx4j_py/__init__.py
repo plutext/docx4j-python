@@ -2952,10 +2952,14 @@ import docx4j_py.word.wpc  # noqa: F401
 # and the model is what this module's manifest above has just finished
 # importing, so an eager import here would be a cycle.
 _ENGINE: dict[str, str] = {
+    "ContentError": "docx4j_py.model.content",
     "Docx4JException": "docx4j_py.openpackaging",
+    "Font": "docx4j_py.model.content",
     "LoadOptions": "docx4j_py.openpackaging",
     "OpcPackage": "docx4j_py.openpackaging",
+    "Paragraph": "docx4j_py.model.content",
     "PartName": "docx4j_py.openpackaging",
+    "Range": "docx4j_py.model.content",
     "WordprocessingMLPackage": "docx4j_py.openpackaging",
     "create_package": "docx4j_py.openpackaging.api",
     "load": "docx4j_py.openpackaging.api"

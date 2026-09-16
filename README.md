@@ -9,52 +9,82 @@ docx4j documentation and examples read across. The design is the same as
 
 Status: the object model ([CR-001](docs/change-requests/CR-001-object-model.md) Phases A to C),
 the Open Packaging engine ([CR-002](docs/change-requests/CR-002-engine.md) Phase A) and the
-tree-layer builders of the content API ([CR-003](docs/change-requests/CR-003-content-api.md)
-Phase A, implemented 2026-09-16: `tr`, `tc`, `inline_picture`, the `sdt` family,
-`rpr_to_elements`, `deep_copy_as`, `walk_all`, `run_items_of`) are implemented. Over 16 real
-documents, every part not touched is written back byte for byte, all 141 typed WordprocessingML
-parts unmarshal and re-serialise canonically identical to the source, and nothing is dropped.
-Saved output opens in Word. The resolution utilities (`PropertyResolver`, list numbering, fonts:
-CR-002 Phase B) are next, then the content API's views (CR-003 Phase B).
+content API ([CR-003](docs/change-requests/CR-003-content-api.md) Phase A, the tree-layer
+builders, and Phase B, implemented 2026-09-16: `Body`, `Paragraph`, `Range` and `Font` in Office
+JS's vocabulary) are implemented. Over 16 real documents, every part not touched is written back
+byte for byte, all 141 typed WordprocessingML parts unmarshal and re-serialise canonically
+identical to the source, and nothing is dropped. Saved output opens in Word. The agent surface
+(addresses, `outline()`, `find()`, `ChangeReport`: CR-003 Phase D) and tables, pictures and
+content controls (Phase C) are next.
 
 ```python
 from docx4j_py import load
-from docx4j_py.wml import p, r, text_of
 
-pkg = load("in.docx")                                    # a WordprocessingMLPackage; the kind is sniffed
-main = pkg.main_document_part
-document = main.contents                                 # unmarshalled on first access, as docx4j does
-print(text_of(document))                                 # docx4j TextUtils: a paragraph per line
+pkg = load("in.docx")                                # a WordprocessingMLPackage; the kind is sniffed
+body = pkg.body                                      # Word.Body over word/document.xml
 
-body = document.body
-body.content.append(p("Hello World", style="Heading1")) # a paragraph, a run, the text, xml:space if needed
-body.content.append(p("Plain, ", r("bold", bold=True), r(" and red.", color="FF0000")))
+print(body.text)                                     # a paragraph per line, the accepted view
+for paragraph in body.paragraphs:                    # tables and content controls descended into
+    print(paragraph.style, paragraph.text)
 
-styles = pkg.style_definitions_part.contents             # Styles; header_parts(), footer_parts(), ...
-pkg.save("out.docx")                                     # only the parts you unmarshalled are re-marshalled
+title = body.insert_paragraph("Report", location="Start", style="Heading 1")
+title.alignment = "Centered"
+hit = body.search("quick brown fox")[0]              # matches span runs freely
+hit.font.italic = True                               # the runs are split at the boundaries
+hit.insert_text("slow red fox")                      # Replace is a Range's default location
+body.paragraphs[-1].insert_paragraph("The end.")     # After is a Paragraph's
+
+pkg.save("out.docx")                                 # only the parts you touched are re-marshalled
 ```
 
-A part that is never touched is written back byte for byte; reading `contents` marks a part for
-re-marshalling. Everything is synchronous. `load` takes a path, bytes, a file object or a
-`PartStore`; `save` takes a path, a file object or nothing (bytes), and saving over the file you
-loaded is fine.
+A part that is never touched is written back byte for byte; reading `contents` --- which `pkg.body`
+does for `word/document.xml` --- marks a part for re-marshalling. Everything is synchronous. `load`
+takes a path, bytes, a file object or a `PartStore`; `save` takes a path, a file object or nothing
+(bytes), and saving over the file you loaded is fine.
 
 ### From nothing to a `.docx`
 
 ```python
 from docx4j_py import create_package
-from docx4j_py.wml import p, r, tbl, br
+
+pkg = create_package()                                       # docx4j's createPackage: A4, one section
+pkg.body.insert_paragraph("Hello World")
+pkg.save("hello.docx")
+```
+
+Longer, with the verbs of Office JS's `Word.Body` (`docx4j_py.model.content`, CR-003):
+
+```python
+from docx4j_py import create_package
 
 pkg = create_package(page_size="A4")        # docx4j's createPackage: one section, its default styles
-body = pkg.main_document_part.contents.body
-body.content.append(p("Created by docx4j-python", style="Heading1"))
-body.content.append(p("One paragraph, ", r("three runs", italic=True, size=14), r(", one break"), br()))
-body.content.append(tbl([["Name", "Value"], ["a", "1"], ["b", "2"]], style="TableGrid"))
+body = pkg.body
+
+body.insert_paragraph("Created by docx4j-python", style="Heading 1")
+paragraph = body.insert_paragraph("One paragraph, three runs")
+paragraph.search("three runs")[0].font.italic = True
+body.insert_break("Page")
+body.insert_xml("<w:tbl><w:tblPr/><w:tblGrid/>"
+                "<w:tr><w:tc><w:p><w:r><w:t>Name</w:t></w:r></w:p></w:tc></w:tr></w:tbl>")
 pkg.save("hello.docx")
 ```
 
 `create_package` writes `docProps/app.xml` (`Application`, `AppVersion`) and `docProps/core.xml`
 (`created`, `modified`); author and title are yours to set on those parts' `contents`.
+
+**The tree stays reachable.** Nothing is wrapped: `paragraph.element` is the `P`, `body.content`
+is the live `ChildList`, and the low-level route of CR-001 works exactly as it did, on the same
+objects the views hand out.
+
+```python
+from docx4j_py.wml import p, r, tbl, br, text_of
+
+document = pkg.main_document_part.contents               # unmarshalled on first access, as docx4j does
+body = document.body                                     # the typed w:body; pkg.body is the view over it
+body.content.append(p("Plain, ", r("bold", bold=True), r(" and red.", color="FF0000")))
+body.content.append(tbl([["Name", "Value"], ["a", "1"]], style="TableGrid"))
+text_of(document)                                        # docx4j TextUtils, over any subtree
+```
 
 ### Adding an image
 
@@ -68,6 +98,7 @@ size it really is:
 from docx4j_py.openpackaging import ImagePart, AddPartBehaviour
 from docx4j_py.wml import el, r, emu_for, image_size, inline_picture
 
+main = pkg.main_document_part
 image = ImagePart("/word/media/image1.png")
 image.set_bytes(png_bytes)
 rel = main.add_target_part(image, AddPartBehaviour.RENAME_IF_NAME_EXISTS)   # rel.id is the r:embed
@@ -298,14 +329,20 @@ docx4j_py/            one package per XML namespace, generated; codegen/generate
     part_name.py content_types.py stores.py load.py save.py mce.py resources.py api.py
     parts/              Part, BinaryPart, XmlPart, RelationshipsPart, the registry, the typed parts
     packages/           OpcPackage, WordprocessingMLPackage
-  resources/            the parts warm_up parses; docx4j's default styles, numbering and fontTable
+  model/content/        hand written, all of it: the content API (CR-003 Phase B)
+    body.py paragraph.py range.py font.py   the views, in Office JS's vocabulary
+    text_model.py       the paragraph's text as segments, and grapheme-safe splitting
+    styles.py enums.py errors.py            BUILT_IN_STYLES, the Literals and StrEnums, ContentError
+  resources/            the parts warm_up parses; docx4j's default styles, numbering, fontTable
+                        and KnownStyles.xml
 codegen/              the generator, the name tables and the el tables
 schemas/              docx4j's xsd tree with marked patches (schemas/PATCHES.md)
-scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, threads.py, acceptance.py
+scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, threads.py,
+                      acceptance.py, office_js_subset.py
 samples/              16 documents from docx4j (Apache-2.0): 13 .docx, a .dotm, a .pptx, an .xlsx
 out/acceptance/       the four documents for the manual Word checklist
 docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
-                      CR-003 the content API (Phase A implemented 2026-09-16)
+                      CR-003 the content API (Phases A and B implemented 2026-09-16)
 ```
 
 ## Licence

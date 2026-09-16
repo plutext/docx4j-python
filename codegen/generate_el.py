@@ -748,6 +748,13 @@ ENGINE_EXPORTS: dict[str, str] = {
     "Docx4JException": "docx4j_py.openpackaging",
     "load": "docx4j_py.openpackaging.api",
     "create_package": "docx4j_py.openpackaging.api",
+    # CR-003 Phase B, kept few. ``Body`` is deliberately not here: the name is
+    # already the model's ``w:body`` class in the manifest above, and a body is
+    # reached as ``pkg.body`` rather than imported.
+    "ContentError": "docx4j_py.model.content",
+    "Paragraph": "docx4j_py.model.content",
+    "Range": "docx4j_py.model.content",
+    "Font": "docx4j_py.model.content",
 }
 
 
