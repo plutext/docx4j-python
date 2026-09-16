@@ -677,7 +677,12 @@ def table_markdown(element: Any, context: Any = None, **options: Any) -> str:
         for cell in _cells_of(row):
             tc_pr = getattr(cell, "tc_pr", None)
             merge = getattr(tc_pr, "v_merge", None) if tc_pr is not None else None
-            if merge is not None and str(getattr(merge, "val", "") or "") != "restart":
+            # ``w:vMerge`` with no ``w:val`` continues the merge; ``val`` is an
+            # enum, so compare its value rather than its str() (which is the
+            # member's qualified name)
+            merge_value = getattr(merge, "val", None) if merge is not None else None
+            merge_value = getattr(merge_value, "value", merge_value)
+            if merge is not None and merge_value != "restart":
                 cells.append("")
             else:
                 cells.append(_cell_markdown(cell, ctx))

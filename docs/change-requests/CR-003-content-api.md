@@ -1725,6 +1725,14 @@ was doing, with one element-name test per child. The budget test of section 7 is
 - **`placeholder_text` needs `w:showingPlcHdr` and the control's own runs**, and `_extend` is the
   function that builds a run inside an empty control.
 
+### 14.8 A Phase K correction, found while checking Phase C (2026-09-17)
+
+The table renderer of section 13 compared `w:vMerge/@w:val` to `"restart"` through `str()`,
+and the model's value is an enum whose `str()` is the member's qualified name, so the first row
+of a vertically merged cell rendered empty (`samples/sample-docx.docx`'s "Vertical merge" cell).
+It now compares the enum's value; `test_a_vertically_merged_cells_first_row_keeps_its_text` pins
+it. Nothing else in section 13 changes.
+
 ### 14.7 What Phase G (comments) and Phase F (tracking) need
 
 - **`TableRow.delete` and `Table.delete_rows` remove the row.** Tracked, a deleted row must stay

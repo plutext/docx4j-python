@@ -167,6 +167,22 @@ def test_a_table_is_a_gfm_pipe_table(new_package):
     )
 
 
+def test_a_vertically_merged_cells_first_row_keeps_its_text(new_package):
+    # w:vMerge/@w:val is an enum in the model; the renderer must read its
+    # value ("restart"), not its str(), or the merged cell's text vanishes
+    body = new_package.body
+    body.insert_xml(
+        "<w:tbl><w:tblPr/><w:tblGrid/>"
+        "<w:tr><w:tc><w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc></w:tr>"
+        '<w:tr><w:tc><w:tcPr><w:vMerge w:val="restart"/></w:tcPr>'
+        "<w:p><w:r><w:t>Merged</w:t></w:r></w:p></w:tc></w:tr>"
+        "<w:tr><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc></w:tr>"
+        "</w:tbl>"
+    )
+
+    assert body.to_markdown() == "| A |\n| --- |\n| Merged |\n|  |"
+
+
 def test_the_table_renderer_works_over_the_element_alone_for_phase_c(new_package):
     body = new_package.body
     blocks = body.insert_xml(
