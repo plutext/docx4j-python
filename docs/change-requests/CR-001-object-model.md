@@ -182,7 +182,9 @@ walk(root, visitor); find(root, P)                    # TraversalUtil, ClassFind
   (`el.r_t`, `el.sdt_block`), and the table of these is committed and reviewed. Everything `el`
   builds has its parent linked when placed by `ChildList`.
 - The sugar (`p`, `r`, `t`, `tbl`) is hand-written and small; it is the text-in convenience, not a
-  second factory.
+  second factory. *(It grew in CR-003 Phase A, 2026-09-16: `tr`, `tc`, `inline_picture`, the `sdt`
+  family, `rpr_to_elements`, `deep_copy_as`, `walk_all` and `run_items_of`, in `wml/builders.py`
+  and the sibling modules `wml/pictures.py` and `wml/sdt.py`; CR-003 section 10.)*
 - `wml(...)` parses a fragment with the prefix table of section 7 declared on a synthetic wrapper,
   returns the typed object with parents linked, and accepts several siblings (`wml.all`).
   `to_xml(obj)` is the inverse, for a fragment; part-level serialisation is the engine's.
@@ -705,7 +707,9 @@ whitespace or holds two whitespace characters in a row, which is docx4j's `t()` 
 `docx4j_py/wml/builders.py`, hand written, 400 lines, re-exported from `docx4j_py.wml`:
 `p(*runs_or_text, style=None, run_style=None, **ppr)`, `r(*text_or_children, **options)`,
 `t(text)`, `tbl(rows, style=None, widths=None, width=9026)`, `br(type=None)`, `tab()`, and the
-run-option pair `apply_run_options` / `read_run_options`.
+run-option pair `apply_run_options` / `read_run_options`. *(CR-003 Phase A added `tr` and `tc`,
+rewrote `tbl` over them, and put the picture and content-control builders in two sibling modules;
+CR-003 section 10.)*
 
 The run options are `builders/wml.mts`'s, in the same vocabulary (Office JS `Word.Font`, so that
 what a builder sets a view reads back under the same name) spelled `snake_case`: `bold`,

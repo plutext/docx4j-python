@@ -2,7 +2,7 @@
 
 **Status:** Proposed 2026-09-16; revised the same day to follow Python conventions throughout
 and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
-(section 9).
+(section 9); **Phase A implemented 2026-09-16** (section 10). Phases B to K proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -653,7 +653,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 
 | Phase | Content | Effort |
 |---|---|---|
-| A | Tree layer additions (3.3) | 2 days |
+| A | Tree layer additions (3.3) — **implemented 2026-09-16, section 10** | 2 days |
 | B | `Body`, `Paragraph`, `Range`, `Font`: the verbs, `style` per section 4, `search` across runs with grapheme-safe splitting, `insert_xml`, `insert_element`; the error hierarchy; the Office JS subset list | 4 days |
 | D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests | 4 days |
 | K | Markdown out, with addresses, then in (3.5) | 3 days |
@@ -700,3 +700,167 @@ All eleven recommendations below were accepted on 2026-09-16 and are now decisio
 11. **The Python MCP server.** Recommendation: a separate product repository once Phase K lands,
     with docx4j-mcp's tool names for the coarse tools, its path policy and inline caps, and the
     in-place tools of 3.4 as its second release; not this CR.
+
+## 10. Phase A implementation notes (2026-09-16)
+
+Phase A is done: the tree-layer additions of section 3.3, their tests, the acceptance artefact
+and the README. The suite is **696 tests** (687 of them fast), against 581 at the end of CR-002
+Phase A; **115** of the new ones are `tests/test_builders_phase_a.py`. One schema patch and one
+regeneration were needed (10.2); nothing in `~/git/docx4j-xsdata` changed, so the fork is still
+at CR-002 Phase A's commit.
+
+```python
+from docx4j_py.wml import (tr, tc, inline_picture, image_size, emu_for,
+                           sdt, sdt_pr, sdt_property, sdt_kind_of, next_sdt_id,
+                           rpr_to_elements, rpr_from_elements,
+                           deep_copy_as, walk_all, run_items_of)
+```
+
+### 10.1 What landed
+
+| Piece | Where | Signature |
+|---|---|---|
+| rows and cells | `docx4j_py.wml.builders` | `tr(cells, *, widths=None, header=False)`, `tc(blocks="", *, width=None, span=None)` |
+| the picture | `docx4j_py.wml.pictures` (new) | `inline_picture(rel_id, *, cx, cy, id=1, name=None, descr="", title=None, pic_id=0, pic_name=None, link=False) -> Drawing` |
+| the image headers | same | `image_size(data) -> ImageInfo(width_px, height_px, dpi_x, dpi_y, format, has_density)`, `emu_for(info, *, max_width_emu=None) -> EmuSize(cx, cy, scaled)` |
+| content controls | `docx4j_py.wml.sdt` (new) | `sdt(content, *, kind="RichText", tag=None, title=None, id=None, form=None, alias=None, lock=None, placeholder=None)`, `sdt_pr(**the same options)`, `sdt_property(sdt_pr, local_name, namespace=W_AND_W15)`, `sdt_kind_of(sdt_pr) -> str`, `next_sdt_id(root) -> int` |
+| run properties as elements | `docx4j_py.wml.builders` | `rpr_to_elements(rpr) -> list[RPrElement]`, `rpr_from_elements(elements, *, cls=RPr)` |
+| the re-typing copy | `docx4j_py.child` | `deep_copy_as(obj, cls, parent=None)` |
+| the wildcard walk | `docx4j_py.traversal` | `walk_all(root, visitor, wildcard_visitor=None, *, context=None, mce="all")` |
+| the run list | `docx4j_py.traversal` | `run_items_of(holder) -> list | None` |
+
+`builders.py` grew to 730 lines, so the picture and the content control went into sibling modules
+as section 3.3's deliverable allows; every public name is on `docx4j_py.wml` all the same, because
+the generator's package footer now re-exports the `__all__` of **every** hand-written module in a
+namespace package rather than of `builders.py` alone (`codegen/generate_el.py`'s `HAND_WRITTEN` is
+the one list of what the generator does not own, and `codegen/clean.py` keeps the same files).
+
+`BuilderError(ValueError)` carries the `code` and `hint` section 3.1 asks of every error
+(`sdt.form_mismatch`, `picture.empty_extent`, `image.unsupported_format`, `rpr.unknown_property`,
+…). **Phase B must re-root it** under `Docx4JError` / `ContentError` when that hierarchy exists;
+deriving from `ValueError` is what keeps the existing `pytest.raises(ValueError)` call sites
+working until then, and the `code` strings are meant not to change.
+
+### 10.2 What the generated model turned out to be
+
+Three of the five things section 3.3 describes are shaped differently here from the TypeScript
+model, and two of the five helpers are therefore thinner than the CR expected.
+
+**`w:sdtPr` is one choice list, as the CR says.** `SdtPr` has a single compound `content`
+field of 30 alternatives (`rPr`, `alias`, `lock`, `placeholder`, `showingPlcHdr`, `dataBinding`,
+`temporary`, `id`, `tag`, the ten kind elements, and the w14/w15 ones: `w14:checkbox`,
+`w14:entityPicker`, `w15:appearance`, `w15:color`, `w15:dataBinding`, `w15:repeatingSection`,
+`w15:repeatingSectionItem`, `w15:webExtensionCreated`, `w15:webExtensionLinked`). It is docx4j's
+`getRPrOrAliasOrLock()` in Python, so `sdt_property` and `sdt_kind_of` are the accessors the CR
+called for. They are written over `iter_children`, which reads the qualified name of each
+alternative out of the field's `choices` metadata, so the two `dataBinding` entries — `w:` is
+`CTDataBinding`, `w15:` is `W15CtdataBinding` — are told apart by the model rather than by a
+list here. The four container classes are `SdtBlock`, `SdtRun`, `CTSdtRow` and `CTSdtCell`, each
+with `sdt_pr`, `sdt_end_pr` and `sdt_content`, and the four content classes are
+`SdtContentBlock`, `CTSdtContentRun`, `CTSdtContentRow` and `CTSdtContentCell`. Only `SdtBlock` is
+a global element declaration, so only it has an element name of its own: `to_xml` on the other
+three needs `name="{…}sdt"`, which the tests do.
+
+**`w:rPrChange/w:rPr` is *not* an element list here.** Section 3.3 expected the base-type element
+list the TypeScript model has (`CTRPrChange.RPr.egrPrBase`). xsdata generated
+`CtRprChangeRPr` — and `CTParaRPrOriginal`, for `w:pPr/w:rPr/w:rPrChange/w:rPr` — with **named
+fields in `EG_RPrBase` order, each one a list**, because the group is unbounded there; `RPr` and
+`ParaRPr` have the same names as single values. So:
+
+- **`rpr_to_elements` and `rpr_from_elements` are thin**, as the deliverable allowed for: a
+  field-by-field copy, with the single/list difference absorbed. `RPR_BASE_FIELDS` is computed
+  from the model (the fields `RPr` and `CtRprChangeRPr` share, in `RPr`'s declaration order) and
+  is 51 pairs, the twelve w14 text effects included and `w:rPrChange` excluded.
+- **Order is not this code's problem.** Because they are named fields, xsdata writes them in
+  declaration order, which is the schema's, whatever order the caller supplies. The TypeScript
+  has to sort; Python cannot get it wrong.
+- `rpr_to_elements` returns `RPrElement(name, qname, value)` rather than bare property objects,
+  because the value alone does not identify the element: `w:b`, `w:i`, `w:caps` and fifteen more
+  are all a `BooleanDefaultTrue`. `rpr_from_elements` also accepts `(name, value)` pairs and a
+  whole `w:rPr` object of any of the four shapes.
+
+**Every run holder keeps its children under the same field name, `content`.** The TypeScript has
+to know three property names (`content`, `customXmlOrSmartTagOrSdt` for `w:ins`/`w:del`,
+`accOrBarOrBox` for `w:moveFrom`/`w:moveTo`), and CR-001 section 14 warned this would differ per
+holder. It does not: `P`, `PHyperlink`, `RunIns`, `RunDel`, `MoveFrom2`, `MoveTo2`,
+`CTSmartTagRun`, `CTCustomXmlRun`, `CTSimpleField`, `CtDir`, `CtBdo` and the four
+`w:sdtContent` classes all use `content`. `run_items_of` is therefore one element-name test
+(`RUN_HOLDERS`) plus a reach through `sdt_content` for a `w:sdt`, and it is keyed on element
+names rather than classes so that it costs `traversal.py` no import of the model.
+
+**`deep_copy_as` has real work to do.** `CTPPrChange.p_pr` is declared `PPrBase` and `PPr`
+extends it, so `pPrChange.p_pr = deep_copy(ppr)` marshals `<w:pPr xsi:type="w:CT_PPr">`, which is
+valid and is not what Word writes. `deep_copy_as(ppr, PPrBase)` copies only the fields `PPrBase`
+declares — dropping `w:rPr`, `w:sectPr` and `w:pPrChange`, which a `w:pPrChange` must not hold
+anyway — and the `xsi:type` and the `xsi` declaration both go. A test asserts both halves.
+
+### 10.3 Departures from section 3.3
+
+1. **`inline_picture` takes `title`, and that needed a schema patch.** `CT_NonVisualDrawingProps`
+   in this repository's schema copy had no `title` attribute. docx4j's own `xsd/` has carried it
+   since docx4j's CR-018 item 2 (ECMA-376 4th edition Part 1 20.1.2.2.8, Transitional), and it
+   was the *only* difference `diff -r schemas/dml ~/git/docx4j/xsd/dml` reported, so the patch
+   copies it across rather than inventing anything (`schemas/PATCHES.md` 5). The regeneration it
+   caused is seven lines, `codegen/generate.sh --check` passes, and no element name moved.
+2. **`inline_picture` takes `pic_id` and `pic_name` as well.** docx4j's `createImageInline` has
+   two ids (`id1` for `wp:docPr`, `id2` for `pic:cNvPr`) and one `filenameHint` for both names;
+   Word writes `0` for the second id and puts the file name in `pic:cNvPr/@name` while
+   `wp:docPr/@name` says "Picture 1". The defaults are docx4j's behaviour (`pic_id=0`,
+   `pic_name` following `name`); the keywords exist so that a caller can write exactly what Word
+   writes, which is what makes the comparison against `samples/Images.docx` an exact one. `link=`
+   is docx4j's `link` argument, `r:link` instead of `r:embed`.
+3. **`sdt(id=None)` writes no `w:id`.** The TypeScript gives a control a random 31-bit id. That
+   would make `to_xml` non-deterministic, which section 3.4 forbids ("same document, same calls,
+   same bytes"), so the id is omitted unless one is given and `next_sdt_id(root)` is the way to
+   get one. `next_sdt_id` is likewise deterministic — one above the highest `w:id` in the tree,
+   and the lowest free id if that would overflow `ST_DecimalNumber` — where the TypeScript
+   randomises until it misses. Word assigns an id of its own to a control that has none.
+4. **`sdt_property`'s default namespace is `w:` *and* `w15:`** (`W_AND_W15`), where the
+   TypeScript defaults to `w:` alone and makes the caller ask for both. Section 3.3 asks for the
+   two, and the reason is in section 4: 3 of the 20 bindings in `samples/invoice2013.docx` are
+   `w15:dataBinding`. `W_NS`, `W14_NS`, `W15_NS` and `ANY_NS` are exported for the other cases.
+5. **`sdt` and `sdt_pr` also take `lock` and `placeholder`**, written between the `w:id` and the
+   kind element; and `alias` is accepted as a spelling of `title`, since the element is `w:alias`
+   and Word's dialog says "Title" (giving both different values raises).
+6. **`tr` takes `header=`** (`w:trPr/w:tblHeader`), which section 3.3 does not mention and
+   `Table.header_row_count` in section 4 needs something to have written.
+7. **`tc` gives an empty cell a `w:p`.** `tbl` used not to: `tbl([[[]]])` produced a `w:tc` with
+   no paragraph, which makes Word repair the document. Every existing `tbl` test passes
+   unchanged; this is the one output difference and it is a fix.
+8. **`walk_all` defaults to `mce="all"`** where `walk` defaults to `"resolve"`, because a caller
+   that rewrites references has to reach the branch a consumer would ignore: it is written back
+   on save. `wildcard_visitor` is optional, so `walk_all(root, visitor)` is "`walk` that descends
+   through wildcards".
+9. **`emu_for` returns `EmuSize(cx, cy, scaled)`**, a frozen dataclass with `to_dict()`, not a
+   tuple (section 3.1), and takes `max_width_emu` rather than docx4j's `PageDimensions`: the
+   text-column width is the caller's knowledge, and the tree layer has no `w:sectPr`. The
+   arithmetic is `CxCy.scale`'s: `px / dpi * 914400` per axis, the natural size when it fits, and
+   otherwise the maximum width with the height in proportion.
+10. **`image_size` reports `has_density`**, so a caller can tell a real `pHYs`/JFIF density from
+    the 96 dpi default rather than guessing. JPEG density is read from the `JFIF` `APP0` segment
+    only (units 1 dpi, 2 dots per cm), not from EXIF, which is what docx4j's reader does too.
+
+### 10.4 What Phase B must know
+
+- **The error hierarchy.** Re-root `BuilderError` under `Docx4JError` / `ContentError` and keep
+  its `code` strings; `hint` is already the sentence section 3.1 wants.
+- **Nothing here knows about parts.** `inline_picture` takes a relationship id as a string;
+  making the `ImagePart`, finding a free `/word/media/imageN.<ext>` and adding the relationship
+  are Phase C's, and `scripts/acceptance.py`'s `created_with_image` is the worked example of the
+  three steps in order.
+- **The text column.** `emu_for(..., max_width_emu=)` needs a number Phase B can compute from
+  `w:sectPr` (`pgSz/@w` minus `pgMar/@left` and `@right`, twips × 635 EMU); the acceptance
+  script hard-codes A4's 5,731,510 EMU until it can.
+- **Parents of single-valued fields.** A constructor cannot link them (only `ChildList` adopts),
+  so every builder here calls `link_parents` on what it returns. A view that assigns
+  `paragraph.p_pr = …` must do the same, or call `link_parents` afterwards.
+- **`run_items_of` is structural**: it returns the live list with nothing filtered, `w:del` and
+  `w:moveFrom` included, because the original view of a revision needs them. The filtering stays
+  in `text_of`.
+- **`sdt_kind_of` returns `"RichText"` for an untyped control** and never `"Unknown"`, which is
+  section 4's rule and what `ContentControl.type` should report.
+- **`to_xml` on a run-, row- or cell-form `w:sdt` needs `name=`** (only `SdtBlock` is a global
+  element declaration); `wml(xml, wrapper=…)` resolves the same ambiguity on the way in —
+  `"p"` gives `SdtRun`, `"tbl"` gives `CTSdtRow`, `"tr"` gives `CTSdtCell`.
+- **`DelText` is still not a `Text`** (CR-001 section 14.8 point 6), so a run-level filter that
+  wants both must name both.
