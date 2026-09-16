@@ -719,6 +719,13 @@ ENGINE_FOOTER = '''
 # importing, so an eager import here would be a cycle.
 _ENGINE: dict[str, str] = {exports}
 
+# CR-003 section 5: the content API registers ``body`` on the parts and on the
+# package when it is imported, and the parts layer never imports it back. One
+# of the two has to move first, and this module -- which is neither layer, and
+# has just finished importing the model both rest on -- is where they meet.
+# It costs the engine's import, milliseconds on top of the model's.
+import docx4j_py.model.content  # noqa: E402, F401
+
 
 def __getattr__(name: str) -> object:
     """Import an engine name on first use. CR-002 section 7."""

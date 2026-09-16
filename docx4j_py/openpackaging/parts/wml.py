@@ -171,8 +171,15 @@ class MainDocumentPart(DocumentPart):
         return super().contents
 
     @property
-    def body(self) -> Any:
-        """``w:body``, created if the document has none."""
+    def body_element(self) -> Any:
+        """The typed ``w:body``, created if the document has none.
+
+        CR-002 called this ``body``. CR-003 Phase B gives ``part.body`` to the
+        content API's :class:`~docx4j_py.model.content.Body` view --- registered
+        on :class:`~docx4j_py.openpackaging.parts.xml_part.XmlPart` by the
+        content module, which this layer never imports --- so the element keeps
+        the longer name, and ``part.contents.body`` is the same object.
+        """
         from docx4j_py.wml import Body
 
         document = self.contents

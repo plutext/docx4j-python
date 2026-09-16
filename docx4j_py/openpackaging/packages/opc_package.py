@@ -64,6 +64,8 @@ class OpcPackage:
 
     __slots__ = (
         "__weakref__",
+        "_id_rng",
+        "_id_seed",
         "content_type_manager",
         "custom_xml_data_storage_parts",
         "doc_props_core_part",
@@ -93,6 +95,52 @@ class OpcPackage:
         self.relationships_part: RelationshipsPart = RelationshipsPart.create_package_rels()
         self.relationships_part.source_p = self
         self.relationships_part.package = self
+        # CR-003 section 3.4, determinism: the ids the content API allocates
+        # (``w14:paraId`` in Phase B) come from one generator per package, and
+        # it is seedable so that the same document and the same calls give the
+        # same bytes. None means "derive the seed from the document's own
+        # state", which is what makes a run reproducible without being asked.
+        self._id_seed: int | None = None
+        self._id_rng: Any = None
+
+    # -- deterministic ids (CR-003 section 3.4) ----------------------------
+
+    @property
+    def id_seed(self) -> int | None:
+        """The seed of this package's id generator, or None for the derived one.
+
+        The content API allocates ids of its own --- a ``w14:paraId`` for a new
+        paragraph while Phase B is all there is, revision ids and content
+        control ids later --- and CR-003 section 3.4 requires that the same
+        document and the same calls produce the same bytes. Setting this fixes
+        the sequence, which is what a test or a reproducible agent run wants;
+        leaving it None derives a seed from the document's own state, so a run
+        is reproducible without anyone having asked.
+        """
+        return self._id_seed
+
+    @id_seed.setter
+    def id_seed(self, value: int | None) -> None:
+        self._id_seed = value
+        self._id_rng = None
+
+    def id_generator(self, *, derive_from: object = ()) -> Any:
+        """The package's ``random.Random``, made on first use.
+
+        Args:
+            derive_from: what to derive the seed from when :attr:`id_seed` is
+                None --- for paragraph ids, the ids the document already uses.
+        """
+        if self._id_rng is None:
+            import random
+            import zlib
+
+            seed = self._id_seed
+            if seed is None:
+                material = repr(sorted(str(x) for x in derive_from)).encode("utf-8")
+                seed = zlib.crc32(material) ^ 0x646F6378
+            self._id_rng = random.Random(seed)
+        return self._id_rng
 
     # -- the package is a relationship source ------------------------------
 

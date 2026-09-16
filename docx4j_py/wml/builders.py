@@ -41,6 +41,7 @@ import dataclasses
 from typing import Any
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
+from docx4j_py.model.content.errors import BuilderError
 from docx4j_py.wml import (
     RT,
     P,
@@ -77,28 +78,14 @@ __all__ = [
 ]
 
 
-class BuilderError(ValueError):
-    """A builder was given something it cannot make an element of.
-
-    CR-003 section 3.1 asks for one error hierarchy in which every message says
-    what to do instead, and gives each error a stable :attr:`code` and a
-    :attr:`hint` an agent can act on. Phase B builds that hierarchy
-    (``Docx4JError`` / ``ContentError``) over the parts layer; Phase A is the
-    tree only, so this is its stand-in, and it derives from ``ValueError`` so
-    that code written against either spelling keeps working. Phase B re-roots
-    it; the ``code`` strings do not change.
-
-    Attributes:
-        code: a stable string such as ``"sdt.form_mismatch"``.
-        hint: one sentence saying what to do instead.
-    """
-
-    def __init__(self, message: str, *, code: str, hint: str) -> None:
-        """Build the error from its message, its stable code and its hint."""
-        super().__init__(f"{message} ({hint})")
-        self.code = code
-        self.hint = hint
-        self.message = message
+# ``BuilderError`` was defined here in CR-003 Phase A, deriving from
+# ``ValueError`` because there was no hierarchy to root it in yet. Phase B built
+# one, so the class moved to :mod:`docx4j_py.model.content.errors`, under
+# ``ContentError``, with every ``code`` string unchanged and ``ValueError`` kept
+# as a second base (Phase A's notes, CR-003 section 10.4). It is re-exported
+# here, and from ``docx4j_py.wml``, so that both spellings of the import work.
+# That module imports nothing but ``docx4j_py.openpackaging.exceptions``, which
+# is why the tree layer may reach for it.
 
 
 #: The underline names Office JS uses, and the ``w:u`` value each one writes.
@@ -274,9 +261,16 @@ def apply_run_options(r_pr: RPr, **options: Any) -> RPr:
 
     size = options.get("size")
     if size is not None:
-        half = round(size * 2)
-        r_pr.sz = el.sz(val=half)
-        r_pr.sz_cs = el.szCs(val=half)
+        if size == 0:
+            # 0 is what ``read_run_options`` reports for a run that says
+            # nothing about its size, so writing it back removes the element
+            # rather than asking Word for a zero-point font (CR-003 Phase B).
+            r_pr.sz = None
+            r_pr.sz_cs = None
+        else:
+            half = round(size * 2)
+            r_pr.sz = el.sz(val=half)
+            r_pr.sz_cs = el.szCs(val=half)
 
     color = options.get("color")
     if color is not None:
