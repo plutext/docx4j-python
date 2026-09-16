@@ -231,10 +231,22 @@ def test_para_id_is_allocated_when_the_document_uses_them():
     assert first.para_id == second.para_id
 
 
-def test_a_document_without_para_ids_gets_none(new_package):
-    paragraph = new_package.body.insert_paragraph("x")
+def test_a_loaded_document_without_para_ids_gets_none():
+    # CR-003 section 3.4: a new paragraph gets a paraId when the document
+    # already uses them. 2010-sample1.docx does not, so nothing is stamped.
+    package = sample("2010-sample1.docx")
+    paragraph = package.body.insert_paragraph("x")
     assert paragraph.para_id is None
     assert paragraph.insert_paragraph("y").para_id is None
+
+
+def test_a_created_document_always_gets_para_ids(new_package):
+    # ... "and always in a created document", which is Phase D's other half:
+    # every paragraph an agent makes has an address that survives an insert.
+    paragraph = new_package.body.insert_paragraph("x")
+    assert paragraph.para_id
+    assert paragraph.address == f"w14:{paragraph.para_id}"
+    assert paragraph.insert_paragraph("y").para_id != paragraph.para_id
 
 
 def test_insert_break_in_and_around_the_paragraph(new_package):

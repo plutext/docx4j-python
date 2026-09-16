@@ -28,7 +28,13 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError, SpanError
 from docx4j_py.model.content.font import Font
-from docx4j_py.model.content.text_model import find_all, search_pattern
+from docx4j_py.model.content.reports import recording
+from docx4j_py.model.content.text_model import (
+    RUN_HOLDER_NAMES,
+    find_all,
+    search_pattern,
+)
+from docx4j_py.traversal import element_name
 from docx4j_py.wml import to_xml
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -174,7 +180,52 @@ class Range:
             self.end = self.paragraph.split_at(self.end, prefer="forward")
             return self.runs
 
-        return Font(holders, scope=f"{self.start}:{self.end}")
+        return Font(
+            holders,
+            scope=f"{self.start}:{self.end}",
+            record=self.paragraph.formatting,
+        )
+
+    # -- spans that cross a run holder (CR-003 section 3.4) ----------------
+
+    def holder_boundaries(self) -> list[int]:
+        """The offsets at which this span enters or leaves a run holder.
+
+        A ``w:hyperlink``, a run-level ``w:sdt``, a ``w:ins`` and the other run
+        holders own their runs; an operation that has to sit in exactly one of
+        them --- a content control at range level (Phase C), a comment anchor
+        (Phase G) --- cannot span two. These are the offsets to split at.
+        """
+        out: list[int] = []
+        previous: Any = None
+        for segment in self.paragraph.segments():
+            if segment.end <= self.start or segment.start >= self.end:
+                continue
+            holder = getattr(segment.run, "parent", None)
+            name = element_name(holder)
+            key = id(holder) if name in RUN_HOLDER_NAMES else None
+            if previous is not None and key != previous[0]:
+                out.append(max(self.start, segment.start))
+            previous = (key, holder)
+        return out
+
+    def require_one_holder(self, operation: str = "this operation") -> None:
+        """Refuse a span that crosses a run holder, saying where to split.
+
+        Raises:
+            SpanError: the span covers runs in more than one holder; the message
+                names the offsets to split at.
+        """
+        boundaries = self.holder_boundaries()
+        if not boundaries:
+            return
+        where = ", ".join(str(offset) for offset in boundaries)
+        raise SpanError(
+            f"{operation} needs a span inside one run holder, and "
+            f"{self.start}:{self.end} crosses one at {where}",
+            code="range.crosses_holder",
+            hint=f"split the span at {boundaries[0]}, or use get_range() on each part",
+        )
 
     # -- editing -----------------------------------------------------------
 
@@ -192,17 +243,21 @@ class Range:
             same text: a replacement resizes it, text before it shifts it, and
             text after it leaves it where it was.
         """
-        if location == "Replace":
-            out = self.paragraph.splice(self.start, self.end, text)
-            self.end = self.start + len(text)
-            return out
-        if location in ("Before", "Start"):
-            out = self.paragraph.splice(self.start, self.start, text)
-            self.start += len(text)
-            self.end += len(text)
-            return out
-        if location in ("After", "End"):
-            return self.paragraph.splice(self.end, self.end, text)
+        if location in ("Replace", "Before", "Start", "After", "End"):
+            with recording(self.paragraph.parent_body, "insert_text") as change:
+                change.touched(self.paragraph)
+                change.text(before=self.text)
+                if location == "Replace":
+                    out = self.paragraph.splice(self.start, self.end, text)
+                    self.end = self.start + len(text)
+                elif location in ("Before", "Start"):
+                    out = self.paragraph.splice(self.start, self.start, text)
+                    self.start += len(text)
+                    self.end += len(text)
+                else:
+                    out = self.paragraph.splice(self.end, self.end, text)
+                change.text(after=text)
+                return out
         raise ContentError(
             f"insert_text on a range takes Replace, Before, After, Start or End, "
             f"not {location!r}",
@@ -231,15 +286,33 @@ class Range:
 
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
         """Replace every match within the span, last first; returns the count."""
-        matches = self.search(find, **options)
-        for match in reversed(matches):
-            match.insert_text(replace, location="Replace")
-        return len(matches)
+        with recording(self.paragraph.parent_body, "replace_text") as change:
+            matches = self.search(find, **options)
+            for match in reversed(matches):
+                match.insert_text(replace, location="Replace")
+            if matches:
+                change.touched(self.paragraph)
+                change.text(before=find, after=replace)
+            return len(matches)
+
+    def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
+        """Every match within this span, as hits with addresses and context."""
+        from docx4j_py.model.content.reports import hit_for
+
+        base = self.start
+        hits = find_all(self.text, search_pattern(text, **options))
+        return [
+            hit_for(self.paragraph, base + start, base + end, context=context)
+            for start, end in hits[:limit]
+        ]
 
     def delete(self) -> None:
         """Remove the span's text, leaving an empty range where it was."""
-        self.paragraph.splice(self.start, self.end, "")
-        self.end = self.start
+        with recording(self.paragraph.parent_body, "delete") as change:
+            change.touched(self.paragraph)
+            change.text(before=self.text, after="")
+            self.paragraph.splice(self.start, self.end, "")
+            self.end = self.start
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A range over the whole span, or the empty one at either end."""
@@ -278,5 +351,10 @@ class Range:
         return to_xml(copy)
 
     def to_dict(self) -> dict[str, Any]:
-        """A JSON-ready summary: the text and the two offsets. Extension."""
-        return {"text": self.text, "start": self.start, "end": self.end}
+        """A JSON-ready summary: the address, the text and the two offsets. Extension."""
+        return {
+            "address": self.paragraph.address,
+            "text": self.text,
+            "start": self.start,
+            "end": self.end,
+        }

@@ -212,6 +212,10 @@ class WordprocessingMLPackage(OpcPackage):
             raise ValueError(f"Unknown margins {margins!r}; one of {sorted(PAGE_MARGINS)}")
 
         package: WordprocessingMLPackage = new_memory_package(cls)  # type: ignore[assignment]
+        # CR-003 section 3.4: a created document always gets paragraph ids, so
+        # that every paragraph an agent makes has an address that survives an
+        # insert before it. A loaded document decides for itself (``None``).
+        package.assigns_para_ids = True
         package.content_type_manager.add_default_content_type(
             "rels", ContentTypes.RELATIONSHIPS_PART
         )

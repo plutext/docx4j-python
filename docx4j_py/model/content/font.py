@@ -34,9 +34,15 @@ __all__ = ["Font"]
 class Font:
     """A subset of Office JS ``Word.Font``, over the ``w:rPr`` of a scope."""
 
-    __slots__ = ("_holders", "_scope")
+    __slots__ = ("_holders", "_record", "_scope")
 
-    def __init__(self, holders: Callable[[], list[Any]], *, scope: str = "") -> None:
+    def __init__(
+        self,
+        holders: Callable[[], list[Any]],
+        *,
+        scope: str = "",
+        record: Any = None,
+    ) -> None:
         """Build the view.
 
         Args:
@@ -45,9 +51,15 @@ class Font:
                 rather than a list because a range splits its runs at the
                 boundaries the moment a write asks for them.
             scope: what this font is over, for :meth:`__repr__`.
+            record: the ``paragraph.formatting(name, read)`` context manager, so
+                that a write records a ``"format"``
+                :class:`~docx4j_py.model.content.reports.ChangeReport` with the
+                values either side (CR-003 section 3.4). None for a font over
+                something with no paragraph behind it.
         """
         self._holders = holders
         self._scope = scope
+        self._record = record
 
     # -- the mapping -------------------------------------------------------
 
@@ -56,6 +68,14 @@ class Font:
         return read_run_options(getattr(holders[0], "r_pr", None) if holders else None)
 
     def _apply(self, **options: Any) -> None:
+        if self._record is None:
+            self._write(**options)
+            return
+        name = next(iter(options))
+        with self._record(name, lambda: self._read().get(name)):
+            self._write(**options)
+
+    def _write(self, **options: Any) -> None:
         for holder in self._holders():
             r_pr = getattr(holder, "r_pr", None)
             if r_pr is None:

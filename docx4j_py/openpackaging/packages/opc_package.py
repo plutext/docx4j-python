@@ -64,8 +64,12 @@ class OpcPackage:
 
     __slots__ = (
         "__weakref__",
+        "_assigns_para_ids",
+        "_changes",
+        "_current_change",
         "_id_rng",
         "_id_seed",
+        "_para_ids_taken",
         "content_type_manager",
         "custom_xml_data_storage_parts",
         "doc_props_core_part",
@@ -102,6 +106,47 @@ class OpcPackage:
         # state", which is what makes a run reproducible without being asked.
         self._id_seed: int | None = None
         self._id_rng: Any = None
+        # CR-003 section 3.4, decided question 4: a ChangeReport is recorded for
+        # every mutating content-API call, always, because a server needs one on
+        # every call anyway. The list is the caller's to clear. These are plain
+        # containers: this layer still imports nothing from the content API.
+        self._changes: list[Any] = []
+        self._current_change: Any = None
+        self._assigns_para_ids: bool | None = None
+        self._para_ids_taken: dict[str, set[str]] | None = None
+
+    # -- the agent surface's state (CR-003 section 3.4) --------------------
+
+    @property
+    def changes(self) -> list[Any]:
+        """Every ``ChangeReport`` since the last ``pkg.changes.clear()``.
+
+        A plain list, so ``clear()``, slicing and ``len`` are Python's. CR-003
+        section 3.4: recorded always, cleared by the caller.
+        """
+        return self._changes
+
+    @property
+    def last_change(self) -> Any:
+        """The most recent ``ChangeReport``, or None before the first edit."""
+        return self._changes[-1] if self._changes else None
+
+    @property
+    def assigns_para_ids(self) -> bool | None:
+        """Whether a new paragraph is given a ``w14:paraId``; None decides per document.
+
+        CR-003 section 3.4: "new paragraphs get one when the document already
+        uses them (and always in a created document)". None is that rule;
+        ``create_package`` sets True, and a caller who wants stable handles on a
+        document that has none can set it too (or call
+        ``body.ensure_para_ids()`` for the paragraphs already there).
+        """
+        return self._assigns_para_ids
+
+    @assigns_para_ids.setter
+    def assigns_para_ids(self, value: bool | None) -> None:
+        self._assigns_para_ids = value
+        self._para_ids_taken = None
 
     # -- deterministic ids (CR-003 section 3.4) ----------------------------
 

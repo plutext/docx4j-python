@@ -2953,6 +2953,7 @@ import docx4j_py.word.wpc  # noqa: F401
 # importing, so an eager import here would be a cycle.
 _ENGINE: dict[str, str] = {
     "ContentError": "docx4j_py.model.content",
+    "DocumentSession": "docx4j_py.model.sessions",
     "Docx4JException": "docx4j_py.openpackaging",
     "Font": "docx4j_py.model.content",
     "LoadOptions": "docx4j_py.openpackaging",

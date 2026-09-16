@@ -21,9 +21,12 @@ The rules of section 4 that land here:
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
+from docx4j_py.model.content.addresses import ordinal_of, para_id_address
 from docx4j_py.model.content.enums import (
     AlignmentValue,
     BreakTypeValue,
@@ -34,6 +37,11 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.content.font import Font
+from docx4j_py.model.content.reports import (
+    TextExcerpt,
+    moved_by_delete,
+    recording,
+)
 from docx4j_py.model.content.styles import (
     built_in_of,
     id_of_built_in,
@@ -115,12 +123,11 @@ class Paragraph:
         return self.text
 
     def __repr__(self) -> str:
-        """``<Paragraph body/3 'Chapter 2: The …'>``; the address form is Phase D."""
+        """``<Paragraph body/3 'Chapter 2: The …'>``."""
         text = self.text
         preview = text[:_PREVIEW] + "…" if len(text) > _PREVIEW else text
-        index = self.index
-        where = f" {self.parent_body.prefix}/{index}" if index >= 0 else ""
-        return f"<Paragraph{where} {preview!r}>"
+        where = self.ordinal
+        return f"<Paragraph{' ' + where if where else ''} {preview!r}>"
 
     @property
     def index(self) -> int:
@@ -144,24 +151,39 @@ class Paragraph:
 
     @text.setter
     def text(self, value: str) -> None:
-        r_pr = None
-        runs = runs_of(self.element)
-        if runs and getattr(runs[0], "r_pr", None) is not None:
-            r_pr = deep_copy(runs[0].r_pr)
-        run = R(content=ChildList([t(value)] if value else []))
-        if r_pr is not None:
-            run.r_pr = r_pr
-            r_pr.parent = run
-        self.element.content[:] = [run]
-        link_parents(self.element)
+        with recording(self.parent_body, "set_text") as change:
+            change.text(before=self.text, after=value)
+            r_pr = None
+            runs = runs_of(self.element)
+            if runs and getattr(runs[0], "r_pr", None) is not None:
+                r_pr = deep_copy(runs[0].r_pr)
+            run = R(content=ChildList([t(value)] if value else []))
+            if r_pr is not None:
+                run.r_pr = r_pr
+                r_pr.parent = run
+            self.element.content[:] = [run]
+            link_parents(self.element)
+            change.touched(self)
 
-    def get_text(self, *, view: TextView = "accepted") -> str:
+    def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
         """The text in one of the two views of a tracked document.
 
         ``"accepted"`` (the default) is :attr:`text`; ``"original"`` reads the
         document as it was before the tracked changes (CR-003 section 3.8).
+        `max_chars` is the budget of CR-003 section 3.4; it truncates and does
+        not say so, which is what :meth:`text_budget` is for.
         """
-        return text_of_view(self.element, view=view)
+        out = text_of_view(self.element, view=view)
+        return out if max_chars is None else out[:max_chars]
+
+    def text_budget(
+        self, max_chars: int | None = None, *, view: TextView = "accepted"
+    ) -> TextExcerpt:
+        """:meth:`get_text` with the flag: ``TextExcerpt(text, chars, truncated)``."""
+        full = text_of_view(self.element, view=view)
+        if max_chars is None or len(full) <= max_chars:
+            return TextExcerpt(full, len(full), False)
+        return TextExcerpt(full[:max_chars], len(full), True)
 
     @property
     def runs(self) -> list[R]:
@@ -171,6 +193,25 @@ class Paragraph:
     def segments(self, *, view: TextView = "accepted") -> list[Any]:
         """The text segments with their offsets. Extension; see :mod:`.text_model`."""
         return segments_of(self.element, view=view)
+
+    # -- recording a format change (CR-003 section 3.4) --------------------
+
+    @contextlib.contextmanager
+    def formatting(self, name: str, read: Callable[[], Any]) -> Iterator[None]:
+        """Record a ``"format"`` :class:`ChangeReport` around a property write.
+
+        `read` is called before and after, so the report carries the values
+        either side (``"alignment=Left"`` to ``"alignment=Centered"``) and an
+        agent can see what it did without reading the document back.
+        """
+        with recording(self.parent_body, "format") as change:
+            # the value before is recorded *now*, so that a setter written over
+            # another one (``style`` over ``style_id``) wins: ``text_before`` is
+            # set once, and the outer call gets there first
+            change.text(before=f"{name}={read()}")
+            yield
+            change.touched(self)
+            change.text(after=f"{name}={read()}")
 
     # -- style -------------------------------------------------------------
 
@@ -186,12 +227,13 @@ class Paragraph:
 
     @style_id.setter
     def style_id(self, value: str) -> None:
-        p_pr = self._p_pr()
-        if value in ("", "Normal"):
-            p_pr.p_style = None
-            return
-        p_pr.p_style = el.pStyle(val=value)
-        p_pr.p_style.parent = p_pr
+        with self.formatting("style_id", lambda: self.style_id):
+            p_pr = self._p_pr()
+            if value in ("", "Normal"):
+                p_pr.p_style = None
+                return
+            p_pr.p_style = el.pStyle(val=value)
+            p_pr.p_style.parent = p_pr
 
     @property
     def style(self) -> str:
@@ -207,7 +249,8 @@ class Paragraph:
 
     @style.setter
     def style(self, value: str) -> None:
-        self.style_id = style_id_of(self.parent_body.package, value, validate=True)
+        with self.formatting("style", lambda: self.style):
+            self.style_id = style_id_of(self.parent_body.package, value, validate=True)
 
     @property
     def style_built_in(self) -> str:
@@ -216,7 +259,8 @@ class Paragraph:
 
     @style_built_in.setter
     def style_built_in(self, value: str) -> None:
-        self.style_id = id_of_built_in(value)
+        with self.formatting("style_built_in", lambda: self.style_built_in):
+            self.style_id = id_of_built_in(value)
 
     # -- paragraph properties ---------------------------------------------
 
@@ -266,13 +310,14 @@ class Paragraph:
 
     @alignment.setter
     def alignment(self, value: AlignmentValue) -> None:
-        p_pr = self._p_pr()
-        jc = _ALIGNMENT_TO_JC.get(str(value))
-        if jc is None:
-            p_pr.jc = None
-            return
-        p_pr.jc = el.jc(val=jc)
-        p_pr.jc.parent = p_pr
+        with self.formatting("alignment", lambda: self.alignment):
+            p_pr = self._p_pr()
+            jc = _ALIGNMENT_TO_JC.get(str(value))
+            if jc is None:
+                p_pr.jc = None
+                return
+            p_pr.jc = el.jc(val=jc)
+            p_pr.jc.parent = p_pr
 
     def _indent(self, transitional: str, strict: str) -> float:
         ind = self._ind_or_none
@@ -403,7 +448,7 @@ class Paragraph:
         mark's ``w:pPr/w:rPr``, which is a different thing and is what Word
         calls the paragraph mark's font.
         """
-        return Font(lambda: runs_of(self.element), scope="paragraph")
+        return Font(lambda: runs_of(self.element), scope="paragraph", record=self.formatting)
 
     # -- the stable handles ------------------------------------------------
 
@@ -415,6 +460,26 @@ class Paragraph:
     @para_id.setter
     def para_id(self, value: str | None) -> None:
         self.element.para_id = value
+
+    @property
+    def address(self) -> str:
+        """The stable handle: ``"w14:5A2B1C3D"`` when there is a paraId, else the ordinal.
+
+        CR-003 section 3.4's paraId-first rule. A paraId survives every edit,
+        an insert before this paragraph included; an ordinal does not, and a
+        :class:`~docx4j_py.model.content.reports.ChangeReport` says when one
+        moved.
+        """
+        para_id = self.element.para_id
+        return para_id_address(para_id) if para_id else self.ordinal
+
+    @property
+    def ordinal(self) -> str:
+        """The ordinal address (``"body/3"``, ``"body/4/0/1/0"``), always.
+
+        ``""`` for a paragraph that is no longer in its body.
+        """
+        return ordinal_of(self.parent_body, self.element) or ""
 
     @property
     def parent_table_cell(self) -> Any:
@@ -437,13 +502,19 @@ class Paragraph:
         Returns:
             The :class:`~docx4j_py.model.content.Range` of the inserted text.
         """
-        length = len(self.text)
-        if location == "Start":
-            return self.splice(0, 0, text)
-        if location == "End":
-            return self.splice(length, length, text)
-        if location == "Replace":
-            return self.splice(0, length, text)
+        with recording(self.parent_body, "insert_text") as change:
+            before = self.text
+            length = len(before)
+            if location in ("Start", "End", "Replace"):
+                start, end = {
+                    "Start": (0, 0),
+                    "End": (length, length),
+                    "Replace": (0, length),
+                }[location]
+                out = self.splice(start, end, text)
+                change.touched(self)
+                change.text(before=before, after=self.text)
+                return out
         raise ContentError(
             f"insert_text at paragraph level takes Start, End or Replace, not {location!r}",
             code="location.invalid",
@@ -468,21 +539,23 @@ class Paragraph:
             location: ``"Before"`` or ``"After"`` (the default).
             style: a style name or id for the new paragraph.
         """
-        new = P(content=ChildList([_text_run(text)] if text else []))
-        if self.element.p_pr is not None:
-            p_pr = deep_copy(self.element.p_pr)
-            # the mark's own run properties, the section break and any recorded
-            # property change belong to this paragraph, not to the new one
-            p_pr.r_pr = None
-            p_pr.sect_pr = None
-            p_pr.p_pr_change = None
-            new.p_pr = p_pr
-            link_parents(new)
-            p_pr.parent = new
-        view = self.parent_body.insert_element(new, location=location, target=self)
-        if style is not None:
-            view.style = style
-        return view  # type: ignore[return-value]
+        with recording(self.parent_body, "insert_paragraph") as change:
+            new = P(content=ChildList([_text_run(text)] if text else []))
+            if self.element.p_pr is not None:
+                p_pr = deep_copy(self.element.p_pr)
+                # the mark's own run properties, the section break and any recorded
+                # property change belong to this paragraph, not to the new one
+                p_pr.r_pr = None
+                p_pr.sect_pr = None
+                p_pr.p_pr_change = None
+                new.p_pr = p_pr
+                link_parents(new)
+                p_pr.parent = new
+            view = self.parent_body.insert_element(new, location=location, target=self)
+            if style is not None:
+                view.style = style
+            change.text(after=text)
+            return view  # type: ignore[return-value]
 
     def insert_break(
         self,
@@ -497,24 +570,26 @@ class Paragraph:
             location: ``"Start"`` or ``"End"`` puts the break in this
                 paragraph; ``"Before"`` or ``"After"`` puts it in a new one.
         """
-        item = br("page" if type == "Page" else None)
-        if location in ("Before", "After"):
-            new = self.insert_paragraph("", location=location)  # type: ignore[arg-type]
-            new.element.content.append(R(content=ChildList([item])))
-            link_parents(new.element)
-            return
-        run = R(content=ChildList([item]))
-        if location == "Start":
-            self.element.content.insert(0, run)
-        elif location == "End":
-            self.element.content.append(run)
-        else:
-            raise ContentError(
-                f"insert_break takes Start, End, Before or After, not {location!r}",
-                code="location.invalid",
-                hint="Start and End put the break in this paragraph",
-            )
-        link_parents(self.element)
+        with recording(self.parent_body, "insert_break") as change:
+            item = br("page" if type == "Page" else None)
+            if location in ("Before", "After"):
+                new = self.insert_paragraph("", location=location)  # type: ignore[arg-type]
+                new.element.content.append(R(content=ChildList([item])))
+                link_parents(new.element)
+                return
+            run = R(content=ChildList([item]))
+            if location == "Start":
+                self.element.content.insert(0, run)
+            elif location == "End":
+                self.element.content.append(run)
+            else:
+                raise ContentError(
+                    f"insert_break takes Start, End, Before or After, not {location!r}",
+                    code="location.invalid",
+                    hint="Start and End put the break in this paragraph",
+                )
+            link_parents(self.element)
+            change.touched(self)
 
     def insert_xml(self, xml: str, *, location: str = "After") -> list[Any]:
         """Insert a WordprocessingML fragment (CR-003 section 4).
@@ -534,21 +609,27 @@ class Paragraph:
             The views of what was inserted --- this paragraph, when the runs
             were merged into it.
         """
-        elements = wml.all(xml, wrapper="body")
-        if not elements:
-            return []
-        only = elements[0] if len(elements) == 1 and isinstance(elements[0], P) else None
-        if only is not None and location in ("Start", "End"):
-            self.insert_items_at(0 if location == "Start" else len(self.text), list(only.content))
-            return [self]
-        if location == "Replace":
-            self.parent_body.insert_element(elements, location="Before", target=self)
-            views = [self.parent_body.view_for(e) for e in elements]
-            self.delete()
-            return views
-        where = "Before" if location == "Start" else "After" if location == "End" else location
-        self.parent_body.insert_element(elements, location=where, target=self)
-        return [self.parent_body.view_for(e) for e in elements]
+        with recording(self.parent_body, "insert_xml") as change:
+            elements = wml.all(xml, wrapper="body")
+            if not elements:
+                return []
+            only = elements[0] if len(elements) == 1 and isinstance(elements[0], P) else None
+            if only is not None and location in ("Start", "End"):
+                before = self.text
+                self.insert_items_at(
+                    0 if location == "Start" else len(self.text), list(only.content)
+                )
+                change.touched(self)
+                change.text(before=before, after=self.text)
+                return [self]
+            if location == "Replace":
+                self.parent_body.insert_element(elements, location="Before", target=self)
+                views = [self.parent_body.view_for(e) for e in elements]
+                self.delete()
+                return views
+            where = "Before" if location == "Start" else "After" if location == "End" else location
+            self.parent_body.insert_element(elements, location=where, target=self)
+            return [self.parent_body.view_for(e) for e in elements]
 
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text` in this paragraph, as ranges.
@@ -575,10 +656,27 @@ class Paragraph:
         Returns:
             How many were replaced.
         """
-        matches = self.search(find, **options)
-        for match in reversed(matches):
-            match.insert_text(replace, location="Replace")
-        return len(matches)
+        with recording(self.parent_body, "replace_text") as change:
+            before = self.text
+            matches = self.search(find, **options)
+            for match in reversed(matches):
+                match.insert_text(replace, location="Replace")
+            if matches:
+                change.touched(self)
+                change.text(before=before, after=self.text)
+            return len(matches)
+
+    def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
+        """Every match in this paragraph, as hits with addresses and context.
+
+        :class:`~docx4j_py.model.content.reports.SearchHit`\\ s for a tool
+        result, where :meth:`search` gives
+        :class:`~docx4j_py.model.content.range.Range`\\ s for code.
+        """
+        from docx4j_py.model.content.reports import hit_for
+
+        hits = find_all(self.text, search_pattern(text, **options))
+        return [hit_for(self, start, end, context=context) for start, end in hits[:limit]]
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A :class:`~docx4j_py.model.content.Range` over this paragraph."""
@@ -593,8 +691,13 @@ class Paragraph:
 
     def delete(self) -> None:
         """Remove the paragraph from its container."""
-        index = self.index
-        if index >= 0:
+        with recording(self.parent_body, "delete") as change:
+            index = self.index
+            if index < 0:
+                return
+            change.touched(self)
+            change.text(before=self.text, after="")
+            change.shifted(moved_by_delete(self.parent_body, self.container, index))
             del self.container[index]
 
     def get_xml(self) -> str:
@@ -604,6 +707,8 @@ class Paragraph:
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary: what a tool result says about a paragraph."""
         return {
+            "address": self.address,
+            "ordinal": self.ordinal,
             "text": self.text,
             "style": self.style,
             "style_id": self.style_id,

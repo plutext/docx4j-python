@@ -18,7 +18,12 @@ def test_a_span_is_offsets_into_the_accepted_text(new_package):
     assert len(span) == 11
     assert span.paragraphs == [paragraph]
     assert repr(span) == "<Range 4:15 'quick brown'>"
-    assert span.to_dict() == {"text": "quick brown", "start": 4, "end": 15}
+    assert span.to_dict() == {
+        "address": paragraph.address,
+        "text": "quick brown",
+        "start": 4,
+        "end": 15,
+    }
 
 
 def test_insert_text_at_every_location(new_package):

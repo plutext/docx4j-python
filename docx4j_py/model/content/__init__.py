@@ -47,16 +47,27 @@ __all__ = [
     "Body",
     "BreakType",
     "BuilderError",
+    "ChangeReport",
     "ContentError",
+    "Description",
     "Docx4JError",
     "Font",
     "InsertLocation",
     "InvalidTargetError",
+    "Outline",
+    "OutlineEntry",
+    "OutlineSection",
+    "OutlineStats",
+    "PageSetup",
     "Paragraph",
+    "PartInfo",
     "Range",
+    "SearchHit",
     "Segment",
     "SpanError",
     "StyleError",
+    "StyleInfo",
+    "TextExcerpt",
     "UnderlineType",
     "body_of",
     "built_in_of",
@@ -81,6 +92,18 @@ _LAZY: dict[str, str] = {
     "BreakType": "docx4j_py.model.content.enums",
     "InsertLocation": "docx4j_py.model.content.enums",
     "UnderlineType": "docx4j_py.model.content.enums",
+    # CR-003 Phase D, the agent surface
+    "ChangeReport": "docx4j_py.model.content.reports",
+    "Outline": "docx4j_py.model.content.reports",
+    "OutlineEntry": "docx4j_py.model.content.reports",
+    "OutlineSection": "docx4j_py.model.content.reports",
+    "OutlineStats": "docx4j_py.model.content.reports",
+    "SearchHit": "docx4j_py.model.content.reports",
+    "TextExcerpt": "docx4j_py.model.content.reports",
+    "Description": "docx4j_py.model.content.describe",
+    "PageSetup": "docx4j_py.model.content.describe",
+    "PartInfo": "docx4j_py.model.content.describe",
+    "StyleInfo": "docx4j_py.model.content.describe",
 }
 
 
@@ -121,8 +144,84 @@ _PACKAGE_BODY = property(
 )
 
 
+# ---------------------------------------------------------------------------
+# the package's half of the agent surface (CR-003 section 3.4, Phase D)
+# ---------------------------------------------------------------------------
+
+
+def _package_outline(self: object, **options: object) -> object:
+    """The whole document's outline: the body, then the headers and footers.
+
+    Args:
+        **options: ``depth``, ``max_chars``, ``headings_only`` and ``limit``,
+            as :meth:`docx4j_py.model.content.Body.outline`.
+    """
+    from docx4j_py.model.content.reports import package_outline
+
+    return package_outline(self, **options)  # type: ignore[arg-type]
+
+
+def _package_describe(self: object) -> object:
+    """What an agent can use: the styles, the page, the parts, the authors.
+
+    Reads every part it needs as **bytes**, with lxml, so nothing is
+    unmarshalled and an untouched part stays byte for byte
+    (:mod:`docx4j_py.model.content.describe`).
+    """
+    from docx4j_py.model.content.describe import describe_package
+
+    return describe_package(self)
+
+
+def _package_element_at(self: object, address: str) -> object:
+    """The block at an address, in any of the document's bodies."""
+    from docx4j_py.model.content.addresses import element_at
+
+    return element_at(self.body, address)  # type: ignore[attr-defined]
+
+
+def _package_paragraph_at(self: object, address: str | None = None, **options: object) -> object:
+    """The paragraph at an address, containing some text, or with a paraId."""
+    from docx4j_py.model.content.addresses import paragraph_at
+
+    return paragraph_at(self.body, address, **options)  # type: ignore[attr-defined,arg-type]
+
+
+def _package_find(self: object, text: str, **options: object) -> object:
+    """Every match in the main document part, as hits with addresses."""
+    from docx4j_py.model.content.reports import find_in
+
+    return find_in(self.body, text, **options)  # type: ignore[attr-defined,arg-type]
+
+
+def _package_bodies(self: object) -> list:
+    """Every body of the document: the main part, the headers, the footers, the notes."""
+    from docx4j_py.model.content.addresses import package_bodies
+
+    return list(package_bodies(self))
+
+
+def _package_dry_run(self: object) -> object:
+    """``with pkg.dry_run() as trial:`` --- edits on a copy, then thrown away."""
+    from docx4j_py.model.content.trial import dry_run
+
+    return dry_run(self)
+
+
+#: What :func:`register` puts on ``WordprocessingMLPackage``, beyond ``body``.
+_PACKAGE_MEMBERS: dict[str, object] = {
+    "outline": _package_outline,
+    "describe": _package_describe,
+    "element_at": _package_element_at,
+    "paragraph_at": _package_paragraph_at,
+    "find": _package_find,
+    "bodies": _package_bodies,
+    "dry_run": _package_dry_run,
+}
+
+
 def register() -> None:
-    """Give the parts and the package their ``body``. Called on import.
+    """Give the parts and the package their content API. Called on import.
 
     Idempotent, and the only thing this package does at import time beyond
     defining the error hierarchy. The parts layer is imported here; it never
@@ -137,6 +236,9 @@ def register() -> None:
         XmlPart.body = _PART_BODY  # type: ignore[attr-defined]
     if not isinstance(getattr(WordprocessingMLPackage, "body", None), property):
         WordprocessingMLPackage.body = _PACKAGE_BODY  # type: ignore[attr-defined]
+    for name, member in _PACKAGE_MEMBERS.items():
+        if getattr(WordprocessingMLPackage, name, None) is None:
+            setattr(WordprocessingMLPackage, name, member)
 
 
 register()

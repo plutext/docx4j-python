@@ -25,6 +25,14 @@ from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, link_parents
+from docx4j_py.model.content.addresses import (
+    address_of,
+    assign_para_id,
+    element_at,
+    ensure_para_ids,
+    paragraph_at,
+    prefix_for_part,
+)
 from docx4j_py.model.content.enums import (
     BodyLocation,
     BreakTypeValue,
@@ -35,6 +43,15 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError, InvalidTargetError
 from docx4j_py.model.content.paragraph import Paragraph
+from docx4j_py.model.content.reports import (
+    DEFAULT_ENTRY_LIMIT,
+    Outline,
+    TextExcerpt,
+    find_in,
+    moved_by_insert,
+    outline_of,
+    recording,
+)
 from docx4j_py.model.content.text_model import block_children_of, block_list_of
 from docx4j_py.namespaces import PREFIXES
 from docx4j_py.runtime import context
@@ -69,13 +86,17 @@ class Block:
 
     ``Table`` and ``ContentControl`` views are Phase C; until then a body hands
     out this, which carries the element and the list holding it so that the
-    tree is one attribute away.
+    tree is one attribute away. Its :attr:`address` is the ordinal, which is
+    what CR-003 section 3.4 says ``Table.address`` and
+    ``ContentControl.address`` are until those views exist.
     """
 
     element: Any
     """The element: a ``w:tbl``, a ``w:sdt``, a ``w:customXml``, ..."""
     container: list
     """The live list holding it."""
+    body: Any = None
+    """The :class:`Body` it is in, for :attr:`address`; None for a bare block."""
 
     @property
     def name(self) -> str:
@@ -89,13 +110,37 @@ class Block:
 
         return text_of(self.element)
 
+    @property
+    def address(self) -> str:
+        """The ordinal address (``"body/4"``); CR-003 section 3.4."""
+        from docx4j_py.model.content.addresses import address_of
+
+        if self.body is None:
+            raise ContentError(
+                "this block is not attached to a body, so it has no address",
+                code="address.no_body",
+                hint="reach it through body[i] or body.element_at(...)",
+            )
+        return address_of(self.body, self)
+
+    @property
+    def ordinal(self) -> str:
+        """The ordinal address, always, even when a paraId exists. Extension."""
+        from docx4j_py.model.content.addresses import ordinal_of
+
+        return "" if self.body is None else (ordinal_of(self.body, self.element) or "")
+
     def to_dict(self) -> dict[str, Any]:
         """The JSON-ready view: the element's name and its text."""
-        return {"kind": self.name, "text": self.text}
+        out: dict[str, Any] = {"kind": self.name, "text": self.text}
+        if self.body is not None:
+            out["address"] = self.address
+        return out
 
     def __repr__(self) -> str:
-        """``<Block w:tbl>``."""
-        return f"<Block {self.name}>"
+        """``<Block body/4 w:tbl>``."""
+        where = f" {self.ordinal}" if self.body is not None else ""
+        return f"<Block{where} {self.name}>"
 
 
 class Body(Sequence):
@@ -207,7 +252,7 @@ class Body(Sequence):
         container = self._container_of(element)
         if isinstance(element, P):
             return Paragraph(element, container, self)
-        return Block(element, container)
+        return Block(element, container, self)
 
     def paragraph_for(self, element: P) -> Paragraph:
         """The view of a ``w:p`` anywhere in this body's tree."""
@@ -253,7 +298,7 @@ class Body(Sequence):
         """This body's own block-level children, as views, in order."""
         items = self.content
         for item in list(items):
-            yield Paragraph(item, items, self) if isinstance(item, P) else Block(item, items)
+            yield Paragraph(item, items, self) if isinstance(item, P) else Block(item, items, self)
 
     @property
     def text(self) -> str:
@@ -310,11 +355,13 @@ class Body(Sequence):
         Returns:
             The new paragraph's view.
         """
-        element = P(content=ChildList([r(text)] if text else []))
-        view = self.insert_element(element, location=location)
-        if style is not None:
-            view.style = style
-        return view  # type: ignore[return-value]
+        with recording(self, "insert_paragraph") as change:
+            element = P(content=ChildList([r(text)] if text else []))
+            view = self.insert_element(element, location=location)
+            if style is not None:
+                view.style = style
+            change.text(after=text)
+            return view  # type: ignore[return-value]
 
     def insert_text(self, text: str, *, location: TextLocation = "End") -> Range:
         """Text at the start of the first paragraph, the end of the last, or instead of all.
@@ -322,14 +369,18 @@ class Body(Sequence):
         Returns:
             The :class:`~docx4j_py.model.content.Range` of the inserted text.
         """
-        paragraphs = self.paragraphs
-        if location == "Replace" or not paragraphs:
-            if location == "Replace":
-                self.clear()
-            return self.insert_paragraph(text).get_range("Content")
-        if location == "Start":
-            return paragraphs[0].insert_text(text, location="Start")
-        return paragraphs[-1].insert_text(text, location="End")
+        with recording(self, "insert_text") as change:
+            paragraphs = self.paragraphs
+            if location == "Replace" or not paragraphs:
+                if location == "Replace":
+                    change.text(before=self.text)
+                    self.clear()
+                out = self.insert_paragraph(text).get_range("Content")
+                change.text(after=text)
+                return out
+            if location == "Start":
+                return paragraphs[0].insert_text(text, location="Start")
+            return paragraphs[-1].insert_text(text, location="End")
 
     def insert_break(
         self,
@@ -338,11 +389,12 @@ class Body(Sequence):
         location: BodyLocation = "End",
     ) -> None:
         """A new paragraph holding a page or line break, at the start or the end."""
-        paragraph = self.insert_paragraph("", location=location)
-        paragraph.element.content.append(
-            R(content=ChildList([br("page" if type == "Page" else None)]))
-        )
-        link_parents(paragraph.element)
+        with recording(self, "insert_break"):
+            paragraph = self.insert_paragraph("", location=location)
+            paragraph.element.content.append(
+                R(content=ChildList([br("page" if type == "Page" else None)]))
+            )
+            link_parents(paragraph.element)
 
     def insert_xml(
         self,
@@ -365,11 +417,12 @@ class Body(Sequence):
                 ``"After"``; the last two need `target`.
             target: the paragraph or block to insert relative to.
         """
-        elements = wml.all(xml, wrapper="body")
-        if not elements:
-            return []
-        self.insert_element(elements, location=location, target=target)
-        return [self.view_for(element) for element in elements]
+        with recording(self, "insert_xml"):
+            elements = wml.all(xml, wrapper="body")
+            if not elements:
+                return []
+            self.insert_element(elements, location=location, target=target)
+            return [self.view_for(element) for element in elements]
 
     def insert_element(
         self,
@@ -399,6 +452,10 @@ class Body(Sequence):
             InvalidTargetError: the container cannot hold one of the elements.
             ContentError: ``"Before"`` or ``"After"`` with no target.
         """
+        with recording(self, "insert_element") as change:
+            return self._insert_element(element, location, target, change)
+
+    def _insert_element(self, element: Any, location: Location, target: Any, change: Any) -> Any:
         elements = list(element) if isinstance(element, (list, tuple)) else [element]
         if not elements:
             raise ContentError(
@@ -442,8 +499,11 @@ class Body(Sequence):
             link_parents(item)
             item.parent = owner
             if isinstance(item, P):
-                self._assign_para_id(item)
-        return self.view_for(elements[0])
+                change.created(assign_para_id(self, item))
+        change.shifted(moved_by_insert(self, container, index, len(elements)))
+        views = [self.view_for(item) for item in elements]
+        change.touched(*views)
+        return views[0]
 
     def _check(self, elements: list, owner: Any) -> None:
         """Refuse an element the owner's block list cannot hold."""
@@ -467,27 +527,122 @@ class Body(Sequence):
                 ),
             )
 
-    # -- paragraph ids (CR-003 section 3.4, determinism) -------------------
+    # -- addresses (CR-003 section 3.4) ------------------------------------
 
-    def _para_ids(self) -> set[str]:
-        return {p.para_id for p in self.iter_paragraphs() if p.para_id}
+    def address_of(self, target: Any) -> str:
+        """The address of a block: its paraId when it has one, else the ordinal.
 
-    def _assign_para_id(self, element: P) -> None:
-        """Give a new paragraph a ``w14:paraId`` when the document uses them."""
-        if element.para_id:
-            return
-        taken = self._para_ids()
-        if not taken:
-            return
-        package = self.package
-        if package is None:
-            return
-        generator = package.id_generator(derive_from=taken)
-        for _attempt in range(64):
-            candidate = f"{generator.randrange(1, 0x7FFFFFFF):08X}"
-            if candidate not in taken:
-                element.para_id = candidate
-                return
+        Takes a :class:`Paragraph`, a :class:`Block` or the element itself, so
+        it answers for a table and a content control as well (CR-003 section
+        3.4: those views are Phase C, the addresses are not).
+        """
+        return address_of(self, target)
+
+    def element_at(self, address: str) -> Any:
+        """The view of the block at an address (``"body/3"``, ``"w14:5A2B1C3D"``).
+
+        An address whose prefix names another part --- ``"header:rId8/0"`` ---
+        is resolved through the package.
+
+        Raises:
+            AddressError: nothing lives there; the message names the nearest
+                surviving address and says to call :meth:`outline`.
+        """
+        return element_at(self, address)
+
+    def paragraph_at(
+        self,
+        address: str | None = None,
+        *,
+        contains: str | None = None,
+        para_id: str | None = None,
+    ) -> Paragraph:
+        """The paragraph at an address, containing some text, or with a paraId.
+
+        The three address forms of CR-003 section 3.4, in its order of
+        preference. Exactly one of the three arguments is given.
+        """
+        return paragraph_at(self, address, contains=contains, para_id=para_id)
+
+    def outline(
+        self,
+        *,
+        depth: int | None = None,
+        max_chars: int = 80,
+        headings_only: bool = False,
+        limit: int | None = DEFAULT_ENTRY_LIMIT,
+    ) -> Any:
+        """What an agent reads first: this body's structure, within a budget.
+
+        Args:
+            depth: how far to descend into tables and content controls; None is
+                all the way, 1 is this body's own children only.
+            max_chars: how much of each block's text to show.
+            headings_only: the table-of-contents view: the headings, flat.
+            limit: how many entries to report before saying ``truncated``
+                (:data:`~docx4j_py.model.content.reports.DEFAULT_ENTRY_LIMIT`);
+                None for all of them. The ``stats`` count the whole body either
+                way.
+
+        Returns:
+            An :class:`~docx4j_py.model.content.reports.Outline`, with
+            ``to_dict()``, ``to_json()`` and ``to_markdown()``.
+        """
+        entries, stats, truncated = outline_of(
+            self, depth=depth, max_chars=max_chars, headings_only=headings_only, limit=limit
+        )
+        part = self.part
+        stats = dataclasses.replace(stats, skipped=len(getattr(part, "skipped", ()) or ()))
+        return Outline(entries=entries, stats=stats, truncated=truncated)
+
+    def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
+        """Every match, as hits with addresses and the text around them.
+
+        ``search()`` returns :class:`~docx4j_py.model.content.range.Range`\\ s
+        for code; this returns
+        :class:`~docx4j_py.model.content.reports.SearchHit`\\ s for tools, so a
+        server shows an agent *where* the matches are without a call per hit.
+
+        Args:
+            text: what to look for.
+            context: how many characters either side of a match to report.
+            limit: how many hits at most.
+            **options: ``match_case``, ``match_whole_word``, ``match_wildcards``.
+        """
+        return find_in(self, text, context=context, limit=limit, **options)
+
+    def range_of(self, hit: Any) -> Range:
+        """A :class:`~docx4j_py.model.content.range.Range` for a :class:`SearchHit`."""
+        return hit.range(self)
+
+    def text_budget(self, max_chars: int | None = None, *, view: TextView = "accepted") -> Any:
+        """:meth:`get_text` with the flag: ``TextExcerpt(text, chars, truncated)``.
+
+        ``get_text(max_chars=)`` returns a ``str`` because that is what a caller
+        wants to print; this is for a caller who has to say whether the budget
+        bit (CR-003 section 3.4: "when a result is cut, the dataclass says so").
+        """
+        full = self.get_text(view=view)
+        if max_chars is None or len(full) <= max_chars:
+            return TextExcerpt(full, len(full), False)
+        return TextExcerpt(full[:max_chars], len(full), True)
+
+    def ensure_para_ids(self) -> list[str]:
+        """Give every paragraph that lacks a ``w14:paraId`` one. Extension.
+
+        For an agent that wants addresses which survive every edit on a document
+        Word has not stamped. **It re-marshals the part**: an attribute on every
+        paragraph means ``document.xml`` is rebuilt from the tree rather than
+        copied byte for byte.
+
+        Returns:
+            The ids assigned, in document order.
+        """
+        with recording(self, "ensure_para_ids") as change:
+            assigned = ensure_para_ids(self)
+            for para_id in assigned:
+                change.created(para_id)
+            return assigned
 
     # -- searching and editing --------------------------------------------
 
@@ -519,14 +674,19 @@ class Body(Sequence):
         Returns:
             How many were replaced.
         """
-        count = 0
-        for paragraph in self.paragraphs:
-            count += paragraph.replace_text(find, replace, **options)
-        return count
+        with recording(self, "replace_text") as change:
+            count = 0
+            for paragraph in self.paragraphs:
+                count += paragraph.replace_text(find, replace, **options)
+            change.text(before=find, after=replace)
+            return count
 
     def clear(self) -> None:
         """Remove every block. The section properties stay where they are."""
-        self.content.clear()
+        with recording(self, "clear") as change:
+            change.text(before=self.text, after="")
+            change.touched(self.prefix)
+            self.content.clear()
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A range over this body's first or last paragraph (Office JS's shape)."""
@@ -606,34 +766,6 @@ def _accepted_names(owner: Any) -> dict[str, tuple[type, ...]] | None:
 # the registration of CR-003 section 5
 # ---------------------------------------------------------------------------
 
-#: Relationship-type suffix -> the address prefix a part's body reports under.
-_PREFIXES: dict[str, str] = {
-    "header": "header",
-    "footer": "footer",
-    "footnotes": "footnote",
-    "endnotes": "endnote",
-    "comments": "comment",
-}
-
-
-def _prefix_for(part: Any) -> str:
-    name = type(part).__name__
-    for suffix, prefix in _PREFIXES.items():
-        if name.lower().startswith(suffix):
-            rel_id = _rel_id_of(part)
-            return f"{prefix}:{rel_id}" if rel_id else prefix
-    return "body"
-
-
-def _rel_id_of(part: Any) -> str | None:
-    """The relationship id a header or footer is reached by, when there is one."""
-    source = getattr(part, "source_relationships", None) or ()
-    for relationship in source:
-        rel_id = getattr(relationship, "id", None)
-        if rel_id:
-            return str(rel_id)
-    return None
-
 
 def body_of(target: Any) -> Body:
     """The :class:`Body` of a part or a package. What ``part.body`` is.
@@ -669,7 +801,7 @@ def body_of(target: Any) -> Body:
             hint="body is on the document, header, footer, footnotes, endnotes and comments parts",
         )
     package = getattr(target, "package", None)
-    return Body(target, container, _prefix_for(target), package)
+    return Body(target, container, prefix_for_part(target), package)
 
 
 def register_body() -> None:

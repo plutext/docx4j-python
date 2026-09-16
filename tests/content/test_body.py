@@ -152,8 +152,10 @@ def test_body_over_headers_footers_and_the_notes_parts():
     assert header_body.prefix.startswith("header:rId")
     assert header_body.text
 
-    assert main.footnotes_part.body.prefix.startswith("footnote:")
-    assert main.endnotes_part.body.prefix.startswith("endnote:")
+    # there is at most one of each of these, so they carry no relationship id
+    # (CR-003 Phase D, section 3.4's "footnotes/1/0" and "comments/2/0")
+    assert main.footnotes_part.body.prefix == "footnotes"
+    assert main.endnotes_part.body.prefix == "endnotes"
     # a notes part keeps its notes in w:footnote, not w:content, and a Body
     # finds the list all the same
     assert len(main.footnotes_part.body) == 2

@@ -755,6 +755,9 @@ ENGINE_EXPORTS: dict[str, str] = {
     "Paragraph": "docx4j_py.model.content",
     "Range": "docx4j_py.model.content",
     "Font": "docx4j_py.model.content",
+    # CR-003 Phase D: the one name a server imports rather than reaches
+    # through a package (the rest of the agent surface is on ``pkg``).
+    "DocumentSession": "docx4j_py.model.sessions",
 }
 
 
