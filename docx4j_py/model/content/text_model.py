@@ -12,7 +12,9 @@ What counts as text (docx4j ``TextUtils``, and the same rules as
 :func:`docx4j_py.traversal.text_of`): ``w:t``, ``w:tab`` (a tab), ``w:br`` and
 ``w:cr`` (a newline), ``w:noBreakHyphen`` (U+2011), ``w:softHyphen`` (U+00AD)
 and ``w:sym`` (the character its ``w:char`` names). ``w:delText``,
-``w:instrText`` and ``w:delInstrText`` are not text.
+``w:instrText`` and ``w:delInstrText`` are not text --- except that a
+``w:delText`` *is* the text of the original view, inside the ``w:del`` or
+``w:moveFrom`` that removed it, which is the only place it is read.
 
 What is descended into: ``w:hyperlink``, ``w:smartTag``, ``w:customXml``, a
 run-level ``w:sdt``, ``w:fldSimple``, ``w:dir``, ``w:bdo``, and the revision
@@ -33,6 +35,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+import sys
 import unicodedata
 from typing import Any
 
@@ -70,6 +73,7 @@ W_R = _w("r")
 W_T = _w("t")
 W_SYM = _w("sym")
 W_SDT = _w("sdt")
+W_DEL_TEXT = _w("delText")
 W_TBL = _w("tbl")
 
 #: A run's children that contribute a constant string.
@@ -205,7 +209,15 @@ def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
                     continue
                 for index, item in enumerate(content):
                     qname = element_name(item)
-                    text = item_text(qname, item)
+                    if qname == W_DEL_TEXT:
+                        # deleted text is text in the original view only, and
+                        # only inside the revision that deleted it
+                        if revision not in ("del", "moveFrom"):
+                            continue
+                        value = getattr(item, "value", None)
+                        text: str | None = value if isinstance(value, str) else ""
+                    else:
+                        text = item_text(qname, item)
                     if text is None:
                         continue
                     out.append(
@@ -219,7 +231,7 @@ def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
                             text=text,
                             start=position,
                             end=position + len(text),
-                            editable=qname == W_T,
+                            editable=qname in (W_T, W_DEL_TEXT),
                             revision=revision,
                         )
                     )
@@ -277,12 +289,31 @@ def runs_of(container: Any, *, view: str = "accepted") -> list[Any]:
 _sole_list_cache: dict[type, str | None] = {}
 
 
+def _holds_blocks(cls: type) -> bool:
+    """True when instances of `cls` are themselves containers of block content."""
+    try:
+        fields = dataclasses.fields(cls)
+    except TypeError:
+        return False
+    for field in fields:
+        if field.name != "content":
+            continue
+        factory = field.default_factory
+        return factory is not dataclasses.MISSING and isinstance(factory, type)
+    return False
+
+
 def _sole_list_field(value: Any) -> str | None:
     """The one repeated element field of a class that has no ``content`` list.
 
     ``w:footnotes`` keeps its notes in ``footnote`` and ``w:comments`` its
     comments in ``comment``; both are a container of blocks all the same, so a
     ``Body`` over such a part works without naming either field here.
+
+    The field's own items have to be containers of blocks --- a ``w:footnote``
+    and a ``w:comment`` have a ``content`` list, a ``w:style`` does not --- so
+    that ``w:styles``, which likewise keeps one repeated element, is correctly
+    reported as holding no block content at all.
     """
     cls = value.__class__
     try:
@@ -305,9 +336,26 @@ def _sole_list_field(value: Any) -> str | None:
         if found is not None:  # more than one: no answer
             found = None
             break
+        if not all(_holds_blocks(item) for item in _field_types(field)):
+            continue
         found = field.name
     _sole_list_cache[cls] = found
     return found
+
+
+def _field_types(field: Any) -> list[type]:
+    """The classes a repeated element field holds, from its type annotation."""
+    import typing
+
+    annotation = field.type
+    if isinstance(annotation, str):
+        try:
+            module = sys.modules["docx4j_py.wml"]
+            annotation = eval(annotation, vars(module))
+        except Exception:  # noqa: BLE001 - an annotation we cannot resolve holds nothing
+            return []
+    args = typing.get_args(annotation)
+    return [arg for arg in args if isinstance(arg, type)]
 
 
 def block_list_of(value: Any) -> tuple[Any, str] | None:

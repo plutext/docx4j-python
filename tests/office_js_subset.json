@@ -1,0 +1,1688 @@
+{
+  "_": "The Office JS members docx4j-python promises, derived from docx4j-core-ts/test/office-js-subset.ts by scripts/office_js_subset.py. Do not edit by hand; run the script.",
+  "source": "docx4j-core-ts/test/office-js-subset.ts",
+  "aliases": {
+    "Table.getCell": "cell",
+    "InlinePicture.getBase64ImageSrc": "get_base64"
+  },
+  "interfaces": {
+    "Body": [
+      {
+        "office_js": "paragraphs",
+        "name": "paragraphs",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "text",
+        "name": "text",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertParagraph",
+        "name": "insert_paragraph",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertText",
+        "name": "insert_text",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertBreak",
+        "name": "insert_break",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "search",
+        "name": "search",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "clear",
+        "name": "clear",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "getComments",
+        "name": "get_comments",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "getTrackedChanges",
+        "name": "get_tracked_changes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "tables",
+        "name": "tables",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false,
+        "note": "CR-002 phase C"
+      },
+      {
+        "office_js": "contentControls",
+        "name": "content_controls",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "inlinePictures",
+        "name": "inline_pictures",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "insertTable",
+        "name": "insert_table",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "insertInlinePictureFromBase64",
+        "name": "insert_inline_picture_from_base64",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      }
+    ],
+    "CheckboxContentControl": [
+      {
+        "office_js": "isChecked",
+        "name": "is_checked",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "Comment": [
+      {
+        "office_js": "authorEmail",
+        "name": "author_email",
+        "kind": "property",
+        "readonly": true,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "authorName",
+        "name": "author_name",
+        "kind": "property",
+        "readonly": true,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "content",
+        "name": "content",
+        "kind": "property",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "creationDate",
+        "name": "creation_date",
+        "kind": "property",
+        "readonly": true,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "resolved",
+        "name": "resolved",
+        "kind": "property",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "replies",
+        "name": "replies",
+        "kind": "property",
+        "readonly": true,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "reply",
+        "name": "reply",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      }
+    ],
+    "ContentControl": [
+      {
+        "office_js": "tag",
+        "name": "tag",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "title",
+        "name": "title",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "id",
+        "name": "id",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "type",
+        "name": "type",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "text",
+        "name": "text",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "paragraphs",
+        "name": "paragraphs",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "tables",
+        "name": "tables",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "contentControls",
+        "name": "content_controls",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "insertText",
+        "name": "insert_text",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "insertParagraph",
+        "name": "insert_paragraph",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "search",
+        "name": "search",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "xmlMapping",
+        "name": "xml_mapping",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false,
+        "note": "CR-002 phase E (WordApiDesktop 1.3): the XML mapping, the w:sdtPr properties and the kinds"
+      },
+      {
+        "office_js": "placeholderText",
+        "name": "placeholder_text",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "appearance",
+        "name": "appearance",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "color",
+        "name": "color",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "cannotDelete",
+        "name": "cannot_delete",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "cannotEdit",
+        "name": "cannot_edit",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "removeWhenEdited",
+        "name": "remove_when_edited",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "checkboxContentControl",
+        "name": "checkbox_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "datePickerContentControl",
+        "name": "date_picker_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "dropDownListContentControl",
+        "name": "drop_down_list_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "comboBoxContentControl",
+        "name": "combo_box_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "pictureContentControl",
+        "name": "picture_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "repeatingSectionContentControl",
+        "name": "repeating_section_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "groupContentControl",
+        "name": "group_content_control",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "ContentControlListItem": [
+      {
+        "office_js": "displayText",
+        "name": "display_text",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "value",
+        "name": "value",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "index",
+        "name": "index",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "CustomXmlNode": [
+      {
+        "office_js": "baseName",
+        "name": "base_name",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "namespaceUri",
+        "name": "namespace_uri",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "nodeType",
+        "name": "node_type",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "nodeValue",
+        "name": "node_value",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "text",
+        "name": "text",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "xml",
+        "name": "xml",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "xpath",
+        "name": "xpath",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "attributes",
+        "name": "attributes",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "childNodes",
+        "name": "child_nodes",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "parentNode",
+        "name": "parent_node",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "firstChild",
+        "name": "first_child",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "lastChild",
+        "name": "last_child",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "nextSibling",
+        "name": "next_sibling",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "previousSibling",
+        "name": "previous_sibling",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "ownerPart",
+        "name": "owner_part",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "hasChildNodes",
+        "name": "has_child_nodes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "selectNodes",
+        "name": "select_nodes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "selectSingleNode",
+        "name": "select_single_node",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "insertNodeBefore",
+        "name": "insert_node_before",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "removeChild",
+        "name": "remove_child",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "replaceChildNode",
+        "name": "replace_child_node",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "CustomXmlPart": [
+      {
+        "office_js": "id",
+        "name": "id",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "namespaceUri",
+        "name": "namespace_uri",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "builtIn",
+        "name": "built_in",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "documentElement",
+        "name": "document_element",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "namespaceManager",
+        "name": "namespace_manager",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "schemaCollection",
+        "name": "schema_collection",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "getXml",
+        "name": "get_xml",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false,
+        "note": "Office JS returns a ClientResult; a DOM part does not go through a marshaller here, so it is the string (CR-002 section 12)."
+      },
+      {
+        "office_js": "setXml",
+        "name": "set_xml",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "selectNodes",
+        "name": "select_nodes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "selectSingleNode",
+        "name": "select_single_node",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "CustomXmlPartCollection": [
+      {
+        "office_js": "items",
+        "name": "items",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "getByNamespace",
+        "name": "get_by_namespace",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "getItem",
+        "name": "get_item",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false,
+        "note": "Office JS hands out a proxy that errors when there is none; here it is undefined."
+      },
+      {
+        "office_js": "add",
+        "name": "add",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "CustomXmlPrefixMappingCollection": [
+      {
+        "office_js": "items",
+        "name": "items",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "addNamespace",
+        "name": "add_namespace",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "lookupNamespace",
+        "name": "lookup_namespace",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "lookupPrefix",
+        "name": "lookup_prefix",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "DatePickerContentControl": [
+      {
+        "office_js": "dateDisplayFormat",
+        "name": "date_display_format",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "dateDisplayLocale",
+        "name": "date_display_locale",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "dateCalendarType",
+        "name": "date_calendar_type",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "dateStorageFormat",
+        "name": "date_storage_format",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "Document": [
+      {
+        "office_js": "changeTrackingMode",
+        "name": "change_tracking_mode",
+        "kind": "property",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "body",
+        "name": "body",
+        "kind": "property",
+        "readonly": true,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "getTrackedChanges",
+        "name": "get_tracked_changes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      }
+    ],
+    "Font": [
+      {
+        "office_js": "bold",
+        "name": "bold",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "italic",
+        "name": "italic",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "underline",
+        "name": "underline",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "strikeThrough",
+        "name": "strike_through",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "subscript",
+        "name": "subscript",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "superscript",
+        "name": "superscript",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "name",
+        "name": "name",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "size",
+        "name": "size",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "color",
+        "name": "color",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "highlightColor",
+        "name": "highlight_color",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      }
+    ],
+    "InlinePicture": [
+      {
+        "office_js": "altTextDescription",
+        "name": "alt_text_description",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "altTextTitle",
+        "name": "alt_text_title",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "width",
+        "name": "width",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "height",
+        "name": "height",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "imageFormat",
+        "name": "image_format",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "paragraph",
+        "name": "paragraph",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "getBase64ImageSrc",
+        "name": "get_base64",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false,
+        "note": "Office JS returns a ClientResult; this package marshals, so it is a promise (CR-002 section 3.4)"
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      }
+    ],
+    "ListContentControl": [
+      {
+        "office_js": "listItems",
+        "name": "list_items",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "addListItem",
+        "name": "add_list_item",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "deleteAllListItems",
+        "name": "delete_all_list_items",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "Paragraph": [
+      {
+        "office_js": "text",
+        "name": "text",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "style",
+        "name": "style",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "styleBuiltIn",
+        "name": "style_built_in",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "alignment",
+        "name": "alignment",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "leftIndent",
+        "name": "left_indent",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "rightIndent",
+        "name": "right_indent",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "firstLineIndent",
+        "name": "first_line_indent",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "spaceBefore",
+        "name": "space_before",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "spaceAfter",
+        "name": "space_after",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "lineSpacing",
+        "name": "line_spacing",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "outlineLevel",
+        "name": "outline_level",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "font",
+        "name": "font",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertText",
+        "name": "insert_text",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertParagraph",
+        "name": "insert_paragraph",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertBreak",
+        "name": "insert_break",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "search",
+        "name": "search",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "getComments",
+        "name": "get_comments",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "insertComment",
+        "name": "insert_comment",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "getTrackedChanges",
+        "name": "get_tracked_changes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      }
+    ],
+    "PictureContentControl": [
+      {
+        "office_js": "inlinePicture",
+        "name": "inline_picture",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "Range": [
+      {
+        "office_js": "text",
+        "name": "text",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "font",
+        "name": "font",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "style",
+        "name": "style",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertText",
+        "name": "insert_text",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "insertParagraph",
+        "name": "insert_paragraph",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "search",
+        "name": "search",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "getComments",
+        "name": "get_comments",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "insertComment",
+        "name": "insert_comment",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false
+      },
+      {
+        "office_js": "getTrackedChanges",
+        "name": "get_tracked_changes",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      }
+    ],
+    "RepeatingSectionContentControl": [
+      {
+        "office_js": "items",
+        "name": "items",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "allowInsertDeleteSection",
+        "name": "allow_insert_delete_section",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "sectionTitle",
+        "name": "section_title",
+        "kind": "property",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ],
+    "SearchOptions": [
+      {
+        "office_js": "matchCase",
+        "name": "match_case",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "matchWholeWord",
+        "name": "match_whole_word",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      },
+      {
+        "office_js": "matchWildcards",
+        "name": "match_wildcards",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false
+      }
+    ],
+    "Table": [
+      {
+        "office_js": "rowCount",
+        "name": "row_count",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "rows",
+        "name": "rows",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "values",
+        "name": "values",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "style",
+        "name": "style",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "styleBuiltIn",
+        "name": "style_built_in",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "headerRowCount",
+        "name": "header_row_count",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "getCell",
+        "name": "cell",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "addRows",
+        "name": "add_rows",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "deleteRows",
+        "name": "delete_rows",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      }
+    ],
+    "TableCell": [
+      {
+        "office_js": "body",
+        "name": "body",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "cellIndex",
+        "name": "cell_index",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "rowIndex",
+        "name": "row_index",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "parentRow",
+        "name": "parent_row",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "parentTable",
+        "name": "parent_table",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "value",
+        "name": "value",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "width",
+        "name": "width",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false,
+        "note": "Points, as Office JS reports them (CR-002 open question 2)."
+      },
+      {
+        "office_js": "columnWidth",
+        "name": "column_width",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      }
+    ],
+    "TableRow": [
+      {
+        "office_js": "cellCount",
+        "name": "cell_count",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "cells",
+        "name": "cells",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "rowIndex",
+        "name": "row_index",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "parentTable",
+        "name": "parent_table",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "values",
+        "name": "values",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "isHeader",
+        "name": "is_header",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "insertRows",
+        "name": "insert_rows",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false
+      }
+    ],
+    "TrackedChange": [
+      {
+        "office_js": "author",
+        "name": "author",
+        "kind": "property",
+        "readonly": true,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "date",
+        "name": "date",
+        "kind": "property",
+        "readonly": true,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "text",
+        "name": "text",
+        "kind": "property",
+        "readonly": true,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "type",
+        "name": "type",
+        "kind": "property",
+        "readonly": true,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "accept",
+        "name": "accept",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "reject",
+        "name": "reject",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "F",
+        "extension": false
+      }
+    ],
+    "XmlMapping": [
+      {
+        "office_js": "isMapped",
+        "name": "is_mapped",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "xpath",
+        "name": "xpath",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "prefixMappings",
+        "name": "prefix_mappings",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "customXmlPart",
+        "name": "custom_xml_part",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "customXmlNode",
+        "name": "custom_xml_node",
+        "kind": "property",
+        "readonly": true,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "setMapping",
+        "name": "set_mapping",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "setMappingByNode",
+        "name": "set_mapping_by_node",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      },
+      {
+        "office_js": "delete",
+        "name": "delete",
+        "kind": "method",
+        "readonly": false,
+        "phase": "E",
+        "extension": false
+      }
+    ]
+  }
+}

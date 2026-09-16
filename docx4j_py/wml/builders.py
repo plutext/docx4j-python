@@ -312,6 +312,12 @@ def read_run_options(r_pr: RPr | None) -> dict[str, Any]:
     underline_value = getattr(getattr(r_pr, "u", None), "val", None)
     underline_value = getattr(underline_value, "value", underline_value)
     color_value = getattr(getattr(r_pr, "color", None), "val", None)
+    # ``ST_HexColor`` is a union of ``auto`` and ``xsd:hexBinary``, so a parsed
+    # ``w:color`` is ``bytes`` and a built one is the ``str`` this module wrote
+    # (CR-003 Phase B: both have to read back as ``'#RRGGBB'``).
+    if isinstance(color_value, bytes):
+        color_value = color_value.hex().upper()
+    color_value = getattr(color_value, "value", color_value)
     highlight = getattr(getattr(r_pr, "highlight", None), "val", None)
     highlight = getattr(highlight, "value", highlight)
     vert = getattr(getattr(r_pr, "vert_align", None), "val", None)

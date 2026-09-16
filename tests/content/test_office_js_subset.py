@@ -1,0 +1,147 @@
+"""The Office JS compatibility promise, kept honest.
+
+CR-003 section 5: ``tests/office_js_subset.json`` is the committed list of the
+Office JS members this package implements, derived by
+``scripts/office_js_subset.py`` from docx4j-core-ts's own compile-time
+assignability check. This test asserts that every non-extension member Phase B
+owns is really on ``Body``, ``Paragraph``, ``Range`` and ``Font``, with the
+right kind, and reports the members of later phases still to come.
+"""
+
+from __future__ import annotations
+
+import inspect
+import json
+from pathlib import Path
+
+import pytest
+from conftest import ROOT
+
+from docx4j_py.model.content import Body, Font, Paragraph, Range
+
+SUBSET = ROOT / "tests" / "office_js_subset.json"
+
+#: The four interfaces Phase B owns, and the class each one is.
+PHASE_B_CLASSES = {"Body": Body, "Paragraph": Paragraph, "Range": Range, "Font": Font}
+
+#: The phase this file's assertions hold for.
+PHASE = "B"
+
+
+@pytest.fixture(scope="module")
+def subset() -> dict:
+    """The committed list."""
+    return json.loads(SUBSET.read_text(encoding="utf-8"))
+
+
+def kind_of(cls: type, name: str) -> str | None:
+    """``"property"``, ``"method"`` or None, by what the class declares."""
+    for klass in cls.__mro__:
+        if name in vars(klass):
+            return "property" if isinstance(vars(klass)[name], property) else "method"
+    return None
+
+
+def test_the_list_is_committed_and_names_its_source(subset):
+    assert SUBSET.exists()
+    assert subset["source"] == "docx4j-core-ts/test/office-js-subset.ts"
+    assert set(subset["interfaces"]) >= set(PHASE_B_CLASSES)
+    # the two members Python spells differently, recorded in the list itself
+    assert subset["aliases"] == {
+        "Table.getCell": "cell",
+        "InlinePicture.getBase64ImageSrc": "get_base64",
+    }
+
+
+def test_every_phase_b_member_is_there_with_the_right_kind(subset):
+    missing: list[str] = []
+    wrong_kind: list[str] = []
+    later: dict[str, list[str]] = {}
+
+    for interface, members in subset["interfaces"].items():
+        cls = PHASE_B_CLASSES.get(interface)
+        for member in members:
+            if member["extension"] or interface == "SearchOptions":
+                continue
+            where = f"{interface}.{member['name']}"
+            if member["phase"] != PHASE or cls is None:
+                if cls is None or kind_of(cls, member["name"]) is None:
+                    later.setdefault(member["phase"], []).append(where)
+                continue
+            kind = kind_of(cls, member["name"])
+            if kind is None:
+                missing.append(where)
+            elif kind != member["kind"]:
+                wrong_kind.append(f"{where} is a {kind}, Office JS has a {member['kind']}")
+
+    summary = "; ".join(
+        f"{phase} ({len(names)}): {', '.join(sorted(names)[:4])}"
+        + (", ..." if len(names) > 4 else "")
+        for phase, names in sorted(later.items())
+    )
+    print(f"\nlater phases still to come -- {summary}")
+    assert not missing and not wrong_kind, (
+        f"Phase B owes {missing or 'nothing'}; wrong kind: {wrong_kind or 'none'}. "
+        f"(For the record, the members of later phases still missing are {summary}.)"
+    )
+
+
+def test_the_search_options_are_the_keyword_arguments(subset):
+    """Office JS's ``SearchOptions`` is an object; here it is keyword arguments."""
+    names = [member["name"] for member in subset["interfaces"]["SearchOptions"]]
+    assert names == ["match_case", "match_whole_word", "match_wildcards"]
+
+    from docx4j_py.model.content.text_model import search_pattern
+
+    signature = inspect.signature(search_pattern)
+    for name in names:
+        assert signature.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_the_phase_b_classes_offer_nothing_under_an_office_js_name_they_should_not(subset):
+    """A member spelled the Office JS way must be the Office JS thing.
+
+    The guard against a private helper accidentally taking a promised name: any
+    public member of the four classes whose name matches an Office JS member of
+    a *different* interface is suspicious, and a member of this interface must
+    have the declared kind.
+    """
+    for interface, cls in PHASE_B_CLASSES.items():
+        declared = {member["name"]: member for member in subset["interfaces"][interface]}
+        for name, member in declared.items():
+            kind = kind_of(cls, name)
+            if kind is None:
+                continue
+            assert kind == member["kind"], f"{interface}.{name}"
+
+
+def test_the_script_would_write_what_is_committed():
+    """Run the generator against the sibling checkout when it is there."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import office_js_subset
+
+    if not office_js_subset.DEFAULT_SOURCE.exists():
+        pytest.skip("docx4j-core-ts is not checked out beside this repository")
+    assert office_js_subset.main(["--check"]) == 0
+
+
+def test_the_snake_case_mapping_is_the_documented_one():
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import office_js_subset
+
+    assert office_js_subset.snake("styleBuiltIn") == "style_built_in"
+    assert office_js_subset.snake("insertInlinePictureFromBase64") == (
+        "insert_inline_picture_from_base64"
+    )
+    assert office_js_subset.snake("getRange") == "get_range"
+    assert office_js_subset.python_name("Table", "getCell") == "cell"
+    assert office_js_subset.python_name("InlinePicture", "getBase64ImageSrc") == "get_base64"
+    assert office_js_subset.python_name("Paragraph", "getRange") == "get_range"
+
+
+def test_the_committed_file_is_valid_json_the_repository_tracks():
+    assert isinstance(json.loads(Path(SUBSET).read_text(encoding="utf-8")), dict)
