@@ -2,7 +2,8 @@
 
 **Status:** Proposed 2026-09-16; revised the same day to follow Python conventions throughout
 and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
-(section 9); **Phase A implemented 2026-09-16** (section 10). Phases B to K proposed.
+(section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
+(section 11). Phases C to K proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -654,7 +655,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | Phase | Content | Effort |
 |---|---|---|
 | A | Tree layer additions (3.3) — **implemented 2026-09-16, section 10** | 2 days |
-| B | `Body`, `Paragraph`, `Range`, `Font`: the verbs, `style` per section 4, `search` across runs with grapheme-safe splitting, `insert_xml`, `insert_element`; the error hierarchy; the Office JS subset list | 4 days |
+| B | `Body`, `Paragraph`, `Range`, `Font`: the verbs, `style` per section 4, `search` across runs with grapheme-safe splitting, `insert_xml`, `insert_element`; the error hierarchy; the Office JS subset list — **implemented 2026-09-16, section 11** | 4 days |
 | D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests | 4 days |
 | K | Markdown out, with addresses, then in (3.5) | 3 days |
 | C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` | 4 days |
@@ -864,3 +865,208 @@ anyway — and the `xsi:type` and the `xsi` declaration both go. A test asserts 
   `"p"` gives `SdtRun`, `"tbl"` gives `CTSdtRow`, `"tr"` gives `CTSdtCell`.
 - **`DelText` is still not a `Text`** (CR-001 section 14.8 point 6), so a run-level filter that
   wants both must name both.
+
+## 11. Phase B implementation notes (2026-09-16)
+
+Phase B is done: `Body`, `Paragraph`, `Range` and `Font` (section 3.2), the style semantics and
+the other rules of section 4 that they touch, search across runs with the grapheme-safe splitting
+of section 3.12, `insert_xml` and `insert_element`, the error hierarchy of section 3.1, the
+Office JS subset list of section 5, the tests of section 7 and the README. The suite is **776
+tests** (775 fast plus one `xfail`, 45 s without the corpus round trip, 52 s with it), against
+696 at the end of Phase A; **80** of the new ones are `tests/content/`. Nothing in
+`~/git/docx4j-xsdata` changed, no schema patch was needed and the model was not regenerated;
+`codegen/generate_el.py` changed only in its engine footer (11.5), and the footer it now writes is
+byte-identical to what is committed.
+
+```python
+from docx4j_py import create_package
+
+pkg = create_package()
+pkg.body.insert_paragraph("Hello World")
+pkg.save("hello.docx")
+```
+
+### 11.1 What landed
+
+| Piece | Where | Notes |
+|---|---|---|
+| the error hierarchy | `docx4j_py/model/content/errors.py` | `Docx4JError` (CR-002's `Docx4JException`, the same class) → `ContentError(code, message, hint)` → `AddressError`, `InvalidTargetError`, `StyleError`, `SpanError`, `BuilderError`; each has `to_dict()` |
+| the text model | `.text_model` | `Segment`, `segments_of`, `text_of_view`, `runs_of`, `split_at`, `set_text`, `block_list_of` / `block_children_of`, `search_pattern` / `find_all`, `is_grapheme_boundary` / `snap_back` / `snap_forward` / `grapheme_clusters` |
+| the styles | `.styles` | `BUILT_IN_STYLES` (171 `BuiltInStyle(style_id, name, built_in, type, stored_name)`), `WORD_STYLE_VALUES` (the 50 `Word.Style` values, equal to the TypeScript engine's list), `built_in_of`, `id_of_built_in`, `display_name_of`, `style_name_of`, `style_id_of` |
+| the values | `.enums` | `Location`, `BodyLocation`, `TextLocation`, `ParagraphLocation`, `RangeLocation`, `TextView`, `AlignmentValue`, `UnderlineValue`, `BreakTypeValue` as `Literal`s, and `InsertLocation`, `Alignment`, `UnderlineType`, `BreakType` as `StrEnum`s beside them |
+| the views | `.body`, `.paragraph`, `.range`, `.font` | section 3.2's members that Phase B owns, plus `Block` for a block-level child that is not a paragraph (a `Table` view is Phase C) |
+| the registration | `.__init__` | `XmlPart.body` and `WordprocessingMLPackage.body`, installed on import; the parts layer imports nothing from here |
+| determinism | `OpcPackage.id_seed`, `.id_generator()` | section 3.4's seedable per-package generator; a new paragraph gets a `w14:paraId` from it when the document already uses them |
+| the subset list | `scripts/office_js_subset.py`, `tests/office_js_subset.json` | 24 interfaces, 203 members, derived from docx4j-core-ts's `test/office-js-subset.ts` |
+
+`Body` is one class over **any** container with a block-level list, because in this model a
+`w:body`, a `w:hdr`, a `w:ftr`, a `w:tc`, a `w:tr`, a `w:tbl` and all four `w:sdtContent` classes
+keep their children under the same field name, `content` (Phase A's finding, section 10.2,
+turned out to reach further than the run holders). `block_children_of` is therefore the whole of
+the descent: `Body.paragraphs` walks into tables, rows, cells and every `w:sdt` form with one
+three-line visitor and no per-class code, and `Body.sub(container, prefix)` is a constructor call.
+The three notes parts are the exception and they cost one rule: `w:footnotes` keeps its notes in
+`footnote` and `w:comments` its comments in `comment`, so a container with no `content` list
+answers with its single repeated element field **when the items of that field are themselves
+block containers** — which is what tells `w:footnotes` (whose `w:footnote` has a `content` list)
+apart from `w:styles` (whose `w:style` has not), and is why `styles_part.body` raises
+`ContentError("body.no_content")` rather than handing out a body of style definitions.
+
+`insert_element` validates against the `XmlContext` metadata rather than a list written here: the
+container's block field is looked up, its compound `elements` (30 alternatives for a `w:body`)
+are the accepted element names, and the message names both halves —
+
+```
+w:body cannot hold w:r (R); it takes w:customXml, w:sdt, w:p, w:tbl, w:proofErr, w:permStart,
+w:permEnd, w:bookmarkStart and 22 more (wrap a run in a w:p, or insert it into a paragraph
+with paragraph.insert_xml())
+```
+
+so a container this code has never heard of validates correctly, and the accepted list cannot go
+stale against the schema.
+
+### 11.2 Departures from section 3.2 and section 4, all deliberate
+
+1. **`MainDocumentPart.body` is now the view; the element is `body_element`.** CR-002 gave the
+   part a `body` property returning the typed `w:body`. Section 3.2 wants `part.body` to be the
+   `Body` view, and section 5 wants it registered from the content module, so the element kept the
+   longer name and `part.contents.body` is the same object. Nothing in the repository used the old
+   name.
+2. **`Body.tables`, `content_controls`, `inline_pictures`, `insert_table` and the picture verbs
+   are not here.** Section 4 says `Body.tables` returns `Table` views "from the first phase", and
+   it does — `Table` is Phase C, so Phase B offers none rather than the elements the TypeScript
+   engine handed out and had to correct. `body[3]` for a table gives a `Block(element, container)`,
+   which Phase C replaces with a `Table` without changing what `body.paragraphs` reports.
+3. **`Font` keeps `double_strike_through` and `style`**, which Office JS's `Word.Font` has (the
+   first) and does not (the second, `w:rStyle`); both were already in CR-001's
+   `apply_run_options` / `read_run_options` vocabulary, so leaving them off `Font` would have made
+   the one mapping two. They are marked as extensions in the docstrings.
+4. **`Font.size = 0` removes `w:sz` and `w:szCs`.** Section 3.2 does not say, but `read_run_options`
+   reports `0` for a run that sets no size, and writing back what was read must not ask Word for a
+   zero-point font. `apply_run_options` grew the rule (the one change to Phase A's code beyond the
+   error re-rooting), which also means `r(text, size=0)` now clears rather than writes.
+5. **`insert_text` on a `Body` with no paragraphs makes one.** Office JS raises; CR-003 section 3.1
+   says the common call is short, and "insert text into an empty document" is the commonest call
+   an agent makes first.
+6. **`Range.font` splits and does not merge**, as the deliverable allows: two adjacent runs whose
+   `w:rPr` ends up identical stay two runs. Word tolerates it and a `to_api_script` phase can tidy.
+7. **A `Range`'s error type is `SpanError`, not `RangeError`.** Python has no builtin of that name
+   and `Range` here is the view, so the error is named for what it is about. The TypeScript name is
+   in its docstring.
+8. **`get_text(max_chars=)` truncates and does not say so.** The dataclass that reports
+   `truncated=True` (section 3.4) is Phase D's `Outline`; `get_text` returns a `str` and there is
+   nowhere to put the flag until then.
+9. **`paragraph.insert_xml` defaults to `location="After"`**, matching `insert_paragraph`; the
+   merging behaviour section 4 asks for is on `"Start"` and `"End"`, which have to be asked for.
+10. **Setting a style unmarshals the styles part; reading one never does.** Section 4 requires the
+    display name to come from `w:name` "when that part is unmarshalled", and separately requires a
+    `StyleError` listing the five closest names for a style the document does not define. The
+    second cannot be done without reading the part, so `style_id_of(..., validate=True)` unmarshals
+    it and the setter uses that; every read path passes `validate=False` and a test asserts that
+    reading `paragraph.style` leaves `styles.xml` untouched. A name that resolves to a **built-in**
+    style id is written as it stands whether the document defines it or not, because Word creates
+    the definition when it opens the file.
+11. **`w:delText` is read, in one place.** Section 3.2's text model excludes it, and it is excluded
+    — except inside the `w:del` or `w:moveFrom` that removed it, which is the only thing
+    `get_text(view="original")` can be made of. A `w:delText` outside a revision still contributes
+    nothing.
+12. **`read_run_options` reported a parsed `w:color` wrongly**, and Phase B fixed it: `ST_HexColor`
+    is a union of `auto` and `xsd:hexBinary`, so a parsed `w:color/@w:val` is `bytes` and a built
+    one is the `str` the builder wrote. Both now read back as `"#RRGGBB"`. This was a CR-001 defect
+    that only a view over a *loaded* document could find.
+
+### 11.3 Grapheme clusters without a dependency (section 3.12, decided question 10)
+
+`is_grapheme_boundary(text, index)` is `unicodedata`'s general categories and combining classes
+plus the five cases they do not cover: the zero-width joiner binds both ways (which is what holds
+`U+1F468 ZWJ U+1F469 ZWJ U+1F467` together), a variation selector and an emoji skin-tone modifier
+never begin a cluster, two regional indicators make one flag so only every second one is a
+boundary, a virama (canonical combining class 9) binds the consonant after it so `स्ते` is one
+cluster, and `CR LF` is one cluster. `grapheme_clusters` uses the `regex` module's `\X` when that
+module happens to be installed and this function otherwise; `regex` is **not** installed in
+`.venv-fork`, so the committed tests exercise the dependency-free path.
+
+`split_at(offset, prefer="back"|"forward")` snaps before it splits and **returns the offset it
+used**, which is the piece the CR did not specify and every caller needs: `Range.font` snaps its
+start backwards and its end forwards, so formatting a span always covers whole clusters.
+`Paragraph.splice` deliberately does *not* snap, so `replace_text` replaces exactly what `search`
+matched.
+
+### 11.4 The Office JS subset list, and how the mapping works
+
+`scripts/office_js_subset.py` parses `docx4j-core-ts/test/office-js-subset.ts` — the TypeScript
+engine's own compile-time assignability check — rather than restating it, so the two engines
+cannot drift apart in silence. It writes `tests/office_js_subset.json`: 24 interfaces, 203
+members, each with its Office JS name, its Python name, `property` or `method`, `readonly`, the
+CR-003 phase that owns it, whether it is an extension, and the doc comment. `--check` fails if the
+committed file is out of date, and a test runs it when the sibling checkout is present.
+
+The mapping is mechanical `snake_case` (`styleBuiltIn` → `style_built_in`, `getRange` →
+`get_range`, `insertInlinePictureFromBase64` → `insert_inline_picture_from_base64`) with exactly
+**two** exceptions, both of them section 3.2's and both recorded in the JSON's own `aliases`:
+
+| Office JS | Here | Why |
+|---|---|---|
+| `Table.getCell(rowIndex, cellIndex)` | `cell(row_index, cell_index)` | python-docx's name for the same thing (section 3.2), and section 3.1's "no `get_` prefix" for what is a lookup |
+| `InlinePicture.getBase64ImageSrc()` | `get_base64()` | its `get_bytes()` twin is what a Python caller wants (section 3.1: bytes are never only reachable through base64) |
+
+Three further shape differences are in the JSON as data rather than as aliases. Office JS's
+`SearchOptions` is an *object*; here the three options are keyword arguments of `search`, so the
+test asserts they are keyword-only parameters of `search_pattern` instead of members of a class.
+Office JS's collections are proxies with `items`; here they are `list`s. And Office JS's
+`load`/`sync`/`context` have no counterpart at all, which is why the TypeScript file removed them
+before this script ever saw it.
+
+The test asserts that every non-extension member Phase B owns exists on `Body`, `Paragraph`,
+`Range` or `Font` with the right kind, and its assertion message lists the members of later phases
+still missing — **157 of them, C: 52, E: 79, F: 13, G: 13** — so a phase that lands without
+touching its members is caught by the message rather than by a failure.
+
+### 11.5 The import direction, and the one place the two layers meet
+
+Section 5 says the parts layer never imports the content API and that `XmlPart.body` is provided
+by a registration the content module performs on import. Both halves hold, and the second needed
+somewhere for the registration to be triggered from: `docx4j_py/__init__.py`, which is neither
+layer and has just finished importing the model both rest on, now ends with
+`import docx4j_py.model.content`. It costs the engine's import — milliseconds on top of the
+model's second — and `codegen/generate_el.py`'s engine footer writes it, so a regeneration keeps
+it. `docx4j_py/model/content/__init__.py` imports only `errors` eagerly and reaches `body_of`
+through a lazy property getter, so registering costs nothing and `docx4j_py.wml.builders` can take
+`BuilderError` from `docx4j_py.model.content.errors` (whose only import is
+`docx4j_py.openpackaging.exceptions`) without the views importing the builders back.
+
+Four names joined the top-level lazy exports: `ContentError`, `Paragraph`, `Range` and `Font`.
+**`Body` did not**, because `docx4j_py.__all__` already promises that name for the model's
+`w:body` class, and a body is reached as `pkg.body` rather than imported.
+
+One wart found on the way, recorded rather than fixed: `docx4j_py.wml.sdt` is both a module and
+the builder that module exports, so `from docx4j_py.wml import sdt` gives whichever was bound
+first — the lazy re-export if nothing has imported the module, the module if something has. It is
+CR-003 Phase A's and it is not new; `from docx4j_py.wml.sdt import sdt` is unambiguous. A later
+phase should decide whether the generator's package footer ought to rename such a collision.
+
+### 11.6 What Phase D must know
+
+- **The prefix plumbing is in.** `Body.prefix` is the address prefix (`"body"`, `"header:rId8"`,
+  `"footnote:rId5"`, and whatever `sub()` is given), `Body.sub(container, prefix)` carries it into
+  a cell or a control, and `Paragraph.__repr__` already prints `<Paragraph body/3 '…'>` from it.
+  Phase D adds `address`, `element_at`, `paragraph_at`, `address_of` and `outline()`; it does not
+  have to thread anything new through the views.
+- **The ordinal path is `block_children_of` all the way down**, and the four `w:sdtContent` levels
+  are already invisible to it, which is section 4's "the four `sdtContent` levels are skipped in
+  paths". A path is therefore the index in each successive `block_children_of`, with no special
+  case for a table, a row, a cell or a content control.
+- **The id generator is on the package, not on the body.** `pkg.id_seed = 1234` fixes the sequence;
+  with no seed the generator is seeded from the paragraph ids the document already carries, so two
+  runs over the same document give the same new ids. Phase D's revision ids and Phase C's control
+  ids should come from `pkg.id_generator()` too, and the note of section 4 stands: comment ids are
+  a separate space.
+- **`Paragraph.parent_table_cell` is wired and returns None** until Phase C; `Range.paragraphs`,
+  `Body.view_for` and `Body.paragraph_for` are the three places a Phase C `Table` view has to be
+  slotted into, and none of them is on a hot path.
+- **Every mutating verb already returns what it made** (`insert_paragraph` a `Paragraph`,
+  `insert_text` a `Range`, `insert_xml` and `insert_element` the views), so `ChangeReport` has
+  something to report about without any signature changing.
+- **`Body.get_text(max_chars=)` and `search(limit=)` are the budgets that exist**; `iter_paragraphs`
+  and `iter_blocks` are lazy, so `outline(max_chars=)` and `find(limit=, context=)` can be written
+  over them without materialising a list per call.
