@@ -79,9 +79,8 @@ and the registry maps the `.docm` content type to the same `MainDocumentPart`.
 
 Record each run here, in the form docx4j-core-ts's `test/README.md` uses:
 
-> **Not yet run after the section 14.9 style fix.** Artefact 6 was regenerated on 2026-09-17 and
-> now carries a real `Heading1` definition in its `styles.xml`; the six are written by
-> `scripts/acceptance.py` and wait for a Word check.
+> Last run: 2026-09-17, Word (version not recorded), after the CR-003 section 14.9 style fix,
+> artefact 6 re-opened. **Passed**: "Tables and pictures" is Heading 1.
 >
 > Run: 2026-09-17, Word (version not recorded), after CR-003 Phase C, all six artefacts.
 > **Passed except artefact 6**, whose "Tables and pictures" rendered as Normal rather than
