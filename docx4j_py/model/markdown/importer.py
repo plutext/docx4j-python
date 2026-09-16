@@ -17,7 +17,10 @@ What this may touch beyond the body's own part:
 * ``/word/styles.xml`` --- a style the markdown needs and the document does not
   define is added from docx4j's ``KnownStyles.xml``, or, for the two code
   styles Word has no built-in equivalent of, from the minimal definitions Java
-  ``ImportStyles`` writes. An existing definition always wins.
+  ``ImportStyles`` writes. An existing definition always wins. The machinery is
+  :func:`~docx4j_py.model.content.styles.ensure_style`, which lives in
+  :mod:`docx4j_py.model.content.styles` with the rest of the style rule (CR-003
+  section 14.9) and is re-exported here, where Phase K built it.
 * ``/word/numbering.xml`` --- a list needs a numbering definition, and the part
   is **created** when the document has none. In a
   :func:`~docx4j_py.model.content.trial.dry_run` that part is added to the real
@@ -38,10 +41,11 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from docx4j_py.child import ChildList, deep_copy, link_parents
+from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.errors import ContentError, StyleError
+from docx4j_py.model.content.styles import CUSTOM_STYLE_XML, ensure_style, style_ids_of
 from docx4j_py.model.content.table import writable_width
-from docx4j_py.wml import CtLvlStart, P, R, RPr, el, t, tbl, tc, tr, wml
+from docx4j_py.wml import CtLvlStart, P, R, RPr, el, t, tbl, tc, tr
 
 __all__ = [
     "CUSTOM_STYLE_XML",
@@ -63,39 +67,6 @@ STYLE_IDS: dict[str, str] = {
     "table": "TableGrid",
 }
 
-_W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
-
-#: The two styles Word has no built-in equivalent of, exactly as Java
-#: ``ImportStyles`` writes them.
-CUSTOM_STYLE_XML: dict[str, str] = {
-    "CodeChar": (
-        f'<w:style {_W} w:type="character" w:styleId="CodeChar">'
-        '<w:name w:val="Code Char"/>'
-        "<w:rPr>"
-        '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>'
-        '<w:sz w:val="20"/><w:szCs w:val="20"/>'
-        '<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>'
-        "</w:rPr>"
-        "</w:style>"
-    ),
-    "SourceCode": (
-        f'<w:style {_W} w:type="paragraph" w:styleId="SourceCode">'
-        '<w:name w:val="Source Code"/>'
-        '<w:basedOn w:val="Normal"/>'
-        "<w:pPr>"
-        "<w:keepLines/>"
-        '<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>'
-        '<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>'
-        "</w:pPr>"
-        "<w:rPr>"
-        '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>'
-        "<w:noProof/>"
-        '<w:sz w:val="20"/><w:szCs w:val="20"/>'
-        "</w:rPr>"
-        "</w:style>"
-    ),
-}
-
 #: Twips of indent per list or quote level, and the hanging indent of a marker.
 TWIPS_PER_LEVEL = 720
 HANGING = 360
@@ -108,127 +79,6 @@ BULLET_FONTS = ("Symbol", "Courier New", "Wingdings")
 LEVELS = 9
 
 _HYPERLINK_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
-
-
-# ---------------------------------------------------------------------------
-# styles
-# ---------------------------------------------------------------------------
-
-_known_styles_cache: dict[str, Any] | None = None
-
-
-def _known_styles() -> dict[str, Any]:
-    """docx4j's ``KnownStyles.xml``, by style id, parsed once per process."""
-    global _known_styles_cache  # one cache for the process
-    if _known_styles_cache is None:
-        from importlib import resources
-
-        from docx4j_py.openpackaging.parts.wml import StyleDefinitionsPart
-
-        part = StyleDefinitionsPart()
-        part.set_bytes((resources.files("docx4j_py.resources") / "KnownStyles.xml").read_bytes())
-        found: dict[str, Any] = {}
-        for style in getattr(part.contents, "style", None) or ():
-            style_id = getattr(style, "style_id", None)
-            if style_id:
-                found[str(style_id)] = style
-        _known_styles_cache = found
-    return _known_styles_cache
-
-
-def ensure_style(
-    package: Any,
-    style_id: str,
-    *,
-    touched: set[str] | None = None,
-    defined: set[str] | None = None,
-) -> str:
-    """Make sure the document defines `style_id`, adding the definition if not.
-
-    docx4j ``ImportStyles.ensureKnown`` / ``ensureCustom``: a style the
-    template already defines is **never** replaced; one docx4j knows
-    (``KnownStyles.xml``, 164 of them) is activated on demand; the two code
-    styles Word has no equivalent of come from :data:`CUSTOM_STYLE_XML`.
-
-    **This unmarshals ``/word/styles.xml``** when it has to add anything, which
-    marks that part for re-marshalling on the next save. It reads without
-    unmarshalling, so a fragment whose styles are all there costs nothing.
-
-    Args:
-        package: the ``WordprocessingMLPackage``.
-        style_id: ``"Heading1"``, ``"ListParagraph"``, ``"CodeChar"``, ...
-        touched: a set the part name is added to when the part was changed.
-        defined: the ids the part already has, if the caller is keeping them;
-            a style added here is added to it. Computed from the part when not
-            given, which costs one lxml parse.
-
-    Returns:
-        The style id, which is `style_id`.
-
-    Raises:
-        StyleError: the id is neither defined, nor known to docx4j, nor one of
-            the two custom ones.
-    """
-    part = getattr(package, "style_definitions_part", None) if package is not None else None
-    if part is None:
-        # no styles part: Word resolves a built-in style id on its own, and
-        # there is nowhere to put a definition
-        return style_id
-    if defined is None:
-        defined = style_ids_of(part)
-    if style_id in defined:
-        return style_id
-
-    definition = _known_styles().get(style_id)
-    if definition is not None:
-        new = deep_copy(definition)
-    elif style_id in CUSTOM_STYLE_XML:
-        new = wml(CUSTOM_STYLE_XML[style_id], wrapper="styles")
-    else:
-        raise StyleError(
-            f"this document does not define the style {style_id!r} and docx4j does not know it",
-            code="style.not_creatable",
-            hint="add the style to the document, or pass a style docx4j's KnownStyles.xml has",
-        )
-    styles = part.contents
-    if styles.style is None:
-        styles.style = ChildList([], owner=styles)
-    styles.style.append(new)
-    link_parents(new)
-    new.parent = styles
-    defined.add(style_id)
-    if touched is not None:
-        touched.add(str(part.part_name))
-    return style_id
-
-
-def style_ids_of(part: Any) -> set[str]:
-    """The style ids a styles part defines, **without unmarshalling it**.
-
-    Read from the part's bytes with lxml when the part is untouched, the way
-    :mod:`docx4j_py.model.content.describe` reads, so that markdown whose
-    styles the document already has costs no re-marshalling.
-    """
-    ids: set[str] = set()
-    if part.is_unmarshalled:
-        for style in getattr(part.contents, "style", None) or ():
-            style_id = getattr(style, "style_id", None)
-            if style_id:
-                ids.add(str(style_id))
-    else:
-        from lxml import etree
-
-        w = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-        try:
-            root = etree.fromstring(part.xml)
-        except Exception:  # noqa: BLE001 - a styles part that will not parse defines none
-            root = None
-        if root is not None:
-            for style in root.findall(f"{w}style"):
-                style_id = style.get(f"{w}styleId")
-                if style_id:
-                    ids.add(style_id)
-    return ids
 
 
 # ---------------------------------------------------------------------------

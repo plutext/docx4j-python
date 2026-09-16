@@ -44,6 +44,7 @@ from docx4j_py.model.content.reports import (
 )
 from docx4j_py.model.content.styles import (
     built_in_of,
+    define_built_in,
     id_of_built_in,
     style_id_of,
     style_name_of,
@@ -243,14 +244,18 @@ class Paragraph:
         unmarshalled, and derived from the id otherwise; **a read never
         unmarshals it** (CR-003 section 4). Setting accepts a display name, the
         name Word stores, or an id, and refuses a name the document does not
-        define unless it is a built-in style.
+        define unless it is a built-in style, whose definition it **adds** to
+        ``/word/styles.xml`` (CR-003 section 14.9): Word renders a dangling id
+        as Normal, so writing one would lose the style silently.
         """
         return style_name_of(self.parent_body.package, self.style_id)
 
     @style.setter
     def style(self, value: str) -> None:
         with self.formatting("style", lambda: self.style):
-            self.style_id = style_id_of(self.parent_body.package, value, validate=True)
+            self.style_id = style_id_of(
+                self.parent_body.package, value, validate=True, define=True
+            )
 
     @property
     def style_built_in(self) -> str:
@@ -260,7 +265,7 @@ class Paragraph:
     @style_built_in.setter
     def style_built_in(self, value: str) -> None:
         with self.formatting("style_built_in", lambda: self.style_built_in):
-            self.style_id = id_of_built_in(value)
+            self.style_id = define_built_in(self.parent_body.package, id_of_built_in(value))
 
     # -- paragraph properties ---------------------------------------------
 

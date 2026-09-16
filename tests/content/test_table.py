@@ -79,6 +79,45 @@ def test_insert_table_sets_no_style_unless_one_is_asked_for(new_package):
     assert plain.style_id == ""
 
 
+def test_a_table_style_the_document_lacks_is_defined_not_dangled():
+    """CR-003 section 14.9: a dangling ``w:tblStyle`` renders as Table Normal."""
+    from docx4j_py.model.content.styles import style_ids_of
+
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+    assert "TableGrid" not in style_ids_of(styles)
+
+    table = package.body.insert_table(2, 2, style="Table Grid")
+
+    assert table.style_id == "TableGrid"
+    assert "TableGrid" in style_ids_of(styles)
+    assert "/word/styles.xml" in package.last_change.parts_touched
+    added = next(s for s in styles.contents.style if s.style_id == "TableGrid")
+    assert added.name.val == "Table Grid"
+    assert added.tbl_pr.tbl_borders is not None
+
+    back = reloaded(package)
+    assert back.body.tables[-1].style == "Table Grid"
+
+
+def test_the_table_style_setters_define_too():
+    from docx4j_py.model.content.styles import style_ids_of
+
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+    table = package.body.insert_table(1, 1)
+
+    table.style = "Table Grid"
+    assert "TableGrid" in style_ids_of(styles)
+    assert "/word/styles.xml" in package.last_change.parts_touched
+
+    # a Word.Style value KnownStyles.xml predates has nothing to add, so the
+    # id goes in as it stands (CR-003 section 14.9)
+    table.style_built_in = "PlainTable1"
+    assert table.style_id == "PlainTable1"
+    assert "PlainTable1" not in style_ids_of(styles)
+
+
 def test_insert_table_at_the_start_and_the_refusals(new_package):
     body = new_package.body
     body.insert_paragraph("after")

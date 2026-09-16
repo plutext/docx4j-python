@@ -81,6 +81,14 @@ it exactly; no style is set unless `style=` is given, so a new table is borderle
 `table.style_built_in = "TableGrid"`. `TableCell.body` is a `Body` like any other, so
 `cell.insert_paragraph(...)`, `cell.body.search(...)` and the addresses all carry on into it.
 
+Setting a style --- `paragraph.style`, `style_built_in`, or `style=` on `insert_paragraph` and
+`insert_table` --- **adds the definition** when the style is one of Word's built-ins and the
+document does not define it (docx4j's `KnownStyles.xml`, and `/word/styles.xml` shows up in the
+`ChangeReport`'s `parts_touched`). Word renders a dangling `w:pStyle` as Normal rather than
+creating the style, so writing the id alone would lose it silently. A custom name the document
+does not define is refused, with the five closest names; `style_id` is the escape hatch and writes
+the id exactly as given. Reading a style unmarshals nothing.
+
 `create_package` writes `docProps/app.xml` (`Application`, `AppVersion`) and `docProps/core.xml`
 (`created`, `modified`); author and title are yours to set on those parts' `contents`.
 
@@ -624,7 +632,8 @@ docx4j_py/            one package per XML namespace, generated; codegen/generate
   model/content/        hand written, all of it: the content API (CR-003 Phases B and D)
     body.py paragraph.py range.py font.py   the views, in Office JS's vocabulary
     text_model.py       the paragraph's text as segments, and grapheme-safe splitting
-    styles.py enums.py errors.py            BUILT_IN_STYLES, the Literals and StrEnums, ContentError
+    styles.py enums.py errors.py            BUILT_IN_STYLES and ensure_style, the Literals and
+                                            StrEnums, ContentError
     addresses.py        the three address forms, and the paraId generator's users
     reports.py          Outline, SearchHit, ChangeReport, TextExcerpt, and the recorder
     describe.py trial.py                    describe() (lxml, unmarshals nothing) and dry_run()

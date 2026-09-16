@@ -969,6 +969,9 @@ stale against the schema.
     reading `paragraph.style` leaves `styles.xml` untouched. A name that resolves to a **built-in**
     style id is written as it stands whether the document defines it or not, because Word creates
     the definition when it opens the file.
+    **Corrected 2026-09-17:** Word does *not* create the definition --- it renders the paragraph
+    as Normal --- so a built-in style the document does not define is now defined by the setter.
+    See section 14.9.
 11. **`w:delText` is read, in one place.** Section 3.2's text model excludes it, and it is excluded
     — except inside the `w:del` or `w:moveFrom` that removed it, which is the only thing
     `get_text(view="original")` can be made of. A `w:delText` outside a revision still contributes
@@ -1732,6 +1735,72 @@ and the model's value is an enum whose `str()` is the member's qualified name, s
 of a vertically merged cell rendered empty (`samples/sample-docx.docx`'s "Vertical merge" cell).
 It now compares the enum's value; `test_a_vertically_merged_cells_first_row_keeps_its_text` pins
 it. Nothing else in section 13 changes.
+
+### 14.9 A Phase B correction: a built-in style the document lacks is defined, not dangled (2026-09-17)
+
+**What Word showed.** Acceptance artefact 6 does
+`body.insert_paragraph("Tables and pictures", style="Heading 1")` on a loaded
+`samples/2010-sample1.docx`, whose `styles.xml` defines six styles and no heading among them. The
+saved paragraph carried `<w:pStyle w:val="Heading1"/>` and Word rendered it as **Normal**: no
+repair prompt, no warning, the style simply gone. Section 11.2's item 10 had it backwards. Word
+does not materialise a definition for a dangling `w:pStyle`; it falls back to Normal, and a
+dangling `w:tblStyle` falls back to Table Normal the same way.
+
+**The rule now.** A name that resolves through `BUILT_IN_STYLES` to a style the document's styles
+part does not define gets its **definition added** --- docx4j's `KnownStyles.xml`, the same 164
+styles Phase K's markdown import activates on demand --- before the id is written. A custom name
+the document does not define still raises `StyleError` with `code="style.not_found"` and the five
+closest names: nothing to copy from, and guessing is worse than refusing. Two cases still write
+the id as it stands, because there is nothing to add it to or nothing to add:
+
+- **a document with no styles part at all** --- `ensure_style` returns the id untouched, which is
+  what it already did;
+- **the seven modern table styles** (`PlainTable1` ... `PlainTable5`, `GridTable1Light`,
+  `ListTable1Light`). They are in `BUILT_IN_STYLES` because Office JS's `Word.Style` has them, and
+  they are *not* in `KnownStyles.xml`, which predates them. `define_built_in` swallows
+  `style.not_creatable` for exactly this case and writes the id. Word has them latent and will
+  most likely resolve them; if it does not, the fix is seven more definitions in the resource, not
+  a different rule.
+
+**What a setter may now touch.** Reads are unchanged: `style`, `style_id` and `style_built_in`
+unmarshal nothing, and `test_reading_a_style_never_unmarshals_the_styles_part` pins it over a
+whole document. A setter unmarshals `/word/styles.xml` only when it has to add a definition ---
+`style_ids_of` reads the ids with lxml from the part's bytes first, so a style already defined
+costs no re-marshalling --- and when it does add one, `/word/styles.xml` goes into the call's
+`ChangeReport.parts_touched`, through `current_recorder(package).parts`. Artefact 6's heading
+insert now reports `('/word/document.xml', '/word/styles.xml')`; a second
+`insert_paragraph(style="Heading 1")` on the same document adds nothing and reports
+`('/word/document.xml',)` alone.
+
+The callers that pass `define=True`: `Paragraph.style` (and so `Range.style`, which delegates),
+`Body.insert_paragraph(style=)` and `Paragraph.insert_paragraph(style=)` (both through
+`view.style`), `Table.style`, `Body.insert_table(style=)`, and the two `style_built_in` setters,
+which bypass `style_id_of` and call `define_built_in` on what `id_of_built_in` returns.
+`Table.style` and `Table.style_built_in` now open their own `recording` so that the definition is
+added inside it and the part reaches the report. **`style_id` stays raw**: "set `style_id` to
+write the id as it stands" is the documented escape hatch, it is what the error's hint offers, and
+`add_styled_paragraph_of_text` (docx4j's own API) goes through it.
+
+**Where the machinery lives.** `ensure_style`, `style_ids_of`, `_known_styles` and
+`CUSTOM_STYLE_XML` moved from `docx4j_py/model/markdown/importer.py`, where Phase K built them,
+into `docx4j_py/model/content/styles.py`, where the style rule lives: the markdown package imports
+the content layer and not the other way round. They are re-exported from
+`docx4j_py.model.markdown.importer` and `docx4j_py.model.markdown`, so Phase K's `__all__` and its
+tests are unchanged, and the `wml` import `CUSTOM_STYLE_XML` needs is deferred into the one branch
+that uses it.
+
+**Two consequences worth knowing.** docx4j's `Heading1` carries `w:link w:val="Heading1Char"` and
+`w:numPr/w:numId w:val="3"`, and a document that has neither gets a definition pointing at both.
+That is what Java docx4j's `ImportStyles` writes too, and Word resolves an unresolvable `w:link`
+or `w:numId` by ignoring it. And a `dry_run` defines the style on the **trial's** copy of the part
+only: `TrialPackage.style_definitions_part` already returned a trial part for Phase K's sake, and
+`test_a_trial_defines_the_style_on_the_trial_only` pins that the real part is left alone.
+
+**What this does not fix.** Artefact 6's *pasted* heading still renders as Normal, and should:
+`insert_ooxml` takes the body of a flat OPC package and merges neither its styles nor its
+numbering (section 4 --- that is docx4j's `MergeDocx`), so a `w:pStyle` the fragment brings dangles
+by design. The acceptance row in `tests/README.md` now says so, so that the next Word check does
+not read it as the same defect.
 
 ### 14.7 What Phase G (comments) and Phase F (tracking) need
 

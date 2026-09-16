@@ -33,6 +33,7 @@ from docx4j_py.model.content.errors import ContentError, InvalidTargetError
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.styles import (
     built_in_of,
+    define_built_in,
     id_of_built_in,
     style_id_of,
     style_name_of,
@@ -326,13 +327,20 @@ class Table:
         Read from the styles part's ``w:name`` when that part is already
         unmarshalled and derived from the id otherwise; **a read never
         unmarshals it** (CR-003 section 4), exactly as ``Paragraph.style``.
+        Setting a built-in style the document does not define **adds** the
+        definition, as on a paragraph (CR-003 section 14.9): a dangling
+        ``w:tblStyle`` renders as Table Normal.
         """
         style_id = self.style_id
         return style_name_of(self.parent_body.package, style_id) if style_id else ""
 
     @style.setter
     def style(self, value: str) -> None:
-        self.style_id = "" if not value else style_id_of(self.parent_body.package, value)
+        # the recording is opened here so that the definition a built-in style
+        # needs is added inside it, and ``/word/styles.xml`` reaches the report
+        with recording(self.parent_body, "format"):
+            resolved = style_id_of(self.parent_body.package, value, define=True) if value else ""
+            self.style_id = resolved
 
     @property
     def style_built_in(self) -> str:
@@ -341,7 +349,8 @@ class Table:
 
     @style_built_in.setter
     def style_built_in(self, value: str) -> None:
-        self.style_id = id_of_built_in(value)
+        with recording(self.parent_body, "format"):
+            self.style_id = define_built_in(self.parent_body.package, id_of_built_in(value))
 
     @property
     def header_row_count(self) -> int:
@@ -881,7 +890,7 @@ def insert_table_into(
         ]
         element = tbl(rows, width=writable_width(body))
         if style is not None:
-            resolved = style_id_of(body.package, style)
+            resolved = style_id_of(body.package, style, define=True)
             tbl_pr = element.tbl_pr
             tbl_pr.tbl_style = el.tblStyle(val=resolved)
             tbl_pr.tbl_style.parent = tbl_pr

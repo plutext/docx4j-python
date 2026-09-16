@@ -6,6 +6,7 @@ import pytest
 from conftest import reloaded, sample
 
 from docx4j_py.model.content import ContentError, Paragraph, Range, StyleError
+from docx4j_py.model.content.styles import style_ids_of
 from docx4j_py.wml import wml
 
 
@@ -200,9 +201,85 @@ def test_a_style_the_document_does_not_define_is_refused_with_suggestions():
     assert "the closest are" in message
     assert message.count("'") >= 4, "five closest names are listed"
 
-    # a built-in id is written as it stands, defined or not
+    # a built-in style the document does not define is *defined*, not dangled
+    # (CR-003 section 14.9): Word renders a dangling w:pStyle as Normal
     paragraph.style = "Intense Quote"
     assert paragraph.style_id == "IntenseQuote"
+    assert "IntenseQuote" in style_ids_of(package.style_definitions_part)
+
+
+def test_a_built_in_style_the_document_lacks_is_defined_not_dangled():
+    """CR-003 section 14.9, the Phase B correction Word forced on 2026-09-17."""
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+    assert "Heading1" not in style_ids_of(styles), "the sample defines no heading styles"
+
+    heading = package.body.insert_paragraph("Tables and pictures", style="Heading 1")
+
+    assert heading.style_id == "Heading1"
+    assert "Heading1" in style_ids_of(styles)
+    assert "/word/styles.xml" in package.last_change.parts_touched
+
+    # docx4j's own definition, from KnownStyles.xml
+    added = next(s for s in styles.contents.style if s.style_id == "Heading1")
+    assert added.name.val == "heading 1"
+    assert added.based_on.val == "Normal"
+    assert str(added.type_value.value) == "paragraph"
+    assert added.p_pr.outline_lvl.val == 0
+
+    # save, reload and read back: the display name is there for Word
+    back = reloaded(package)
+    last = back.body.paragraphs[-1]
+    assert last.style_id == "Heading1"
+    assert last.style == "Heading 1"
+
+
+def test_a_style_already_defined_is_never_added_twice():
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+
+    package.body.insert_paragraph("one", style="Heading 1")
+    assert "/word/styles.xml" in package.last_change.parts_touched
+    count = len(styles.contents.style)
+
+    package.body.insert_paragraph("two", style="Heading 1")
+
+    assert len(styles.contents.style) == count, "the second call adds nothing"
+    assert "/word/styles.xml" not in package.last_change.parts_touched
+
+
+def test_reading_a_style_never_unmarshals_the_styles_part():
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+
+    for paragraph in package.body.paragraphs:
+        _ = paragraph.style, paragraph.style_id, paragraph.style_built_in
+
+    assert not styles.is_unmarshalled, "a read defines nothing and unmarshals nothing"
+
+
+def test_style_id_stays_the_raw_escape_hatch():
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+    paragraph = package.body.paragraphs[0]
+
+    paragraph.style_id = "Heading1"
+
+    assert paragraph.style_id == "Heading1"
+    assert not styles.is_unmarshalled, "style_id writes the id as it stands"
+
+
+def test_a_trial_defines_the_style_on_the_trial_only():
+    from docx4j_py.model.content.trial import dry_run
+
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+
+    with dry_run(package) as trial:
+        trial.body.insert_paragraph("Tables and pictures", style="Heading 1")
+        assert "Heading1" in style_ids_of(trial.style_definitions_part)
+
+    assert "Heading1" not in style_ids_of(styles), "a trial leaves the real part alone"
 
 
 def test_para_id_is_allocated_when_the_document_uses_them():
