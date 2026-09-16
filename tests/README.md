@@ -73,7 +73,11 @@ and the registry maps the `.docm` content type to the same `MainDocumentPart`.
 
 Record each run here, in the form docx4j-core-ts's `test/README.md` uses:
 
-> Last run: 2026-09-12, Word (version not recorded), after CR-002 Phase A. **Passed.**
+> Last run: 2026-09-17, Word (version not recorded), after CR-003 Phase K, all five artefacts.
+> **Passed.** Every check in the table below held, including artefact 5's list glyphs, the
+> restarting ordered list, the code styles, the link and the table, and a save-close-reopen.
+>
+> Previous run: 2026-09-12, Word (version not recorded), after CR-002 Phase A. **Passed.**
 > 1: image with reflection, no text, as in the source document; 2: the two added paragraphs
 > visible; 3 and 4: correct. No repair prompts. Re-checked after the docProps fix: Windows
 > Explorer's Details tab shows Program name `docx4j-python` and Content created / Date last
