@@ -109,7 +109,8 @@ points, as Office JS reports them.
 ```python
 picture = body.insert_inline_picture(png_bytes, width=180, alt_text_description="A pangolin")
 
-picture                                      # <InlinePicture w14:4CD9291E Png 180x131.294pt 'A pangolin'>
+picture                                      # <InlinePicture w14:6FA720E8 Png 180x131.294pt 'A pangolin'>
+                                             # (the paraId is the package's; set pkg.id_seed to fix it)
 picture.image_part.part_name                 # /word/media/image1.png
 picture.rel_id, picture.image_format         # ('rId3', 'Png')
 picture.width, round(picture.height, 1)      # (180.0, 131.3) --- the ratio is kept
