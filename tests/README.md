@@ -1,9 +1,11 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 576 tests
+.venv-fork/bin/python -m pytest                    # everything, 865 tests
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
+.venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B
+.venv-fork/bin/python -m pytest tests/agent        # the agent surface, CR-003 Phase D
 ```
 
 | file | CR | what it pins |
@@ -23,6 +25,19 @@
 | `openpackaging/test_parts_and_relationships.py` | CR-002 §5.2, §5.5 | the relationship graph, `AddPartBehaviour`, `create_package`, `mc:Ignorable` on write |
 | `openpackaging/test_mce.py` | CR-002 §5.6 | `mce="resolve"` / `"all"` / `"none"`, and the preprocessor |
 | `openpackaging/test_threads_and_import.py` | CR-002 §3, §7 | eight threads over whole packages, and the engine's import cost |
+| `content/test_body.py`, `test_paragraph.py`, `test_range.py`, `test_font.py` | CR-003 §3.2 | the views: the verbs, the style semantics, search across runs |
+| `content/test_text_model.py` | CR-003 §3.12 | segments, grapheme-safe splitting, the search options |
+| `content/test_errors_and_parts.py` | CR-003 §3.1 | the error hierarchy, and untouched parts still byte-identical |
+| `content/test_office_js_subset.py` | CR-003 §3.4 (TS) | the committed Office JS member list |
+| `agent/test_addresses.py` | CR-003 §3.4 | the three address forms, the nearest-address error, `ensure_para_ids` |
+| `agent/test_outline.py` | CR-003 §3.4 | `Outline`, `depth`, `headings_only`, `limit`, the stats, the headers |
+| `agent/test_find_and_describe.py` | CR-003 §3.4 | `SearchHit` and its range, and that `describe()` unmarshals nothing |
+| `agent/test_change_report.py` | CR-003 §3.4, q4 | one report per call, `moved`, and the measured cost |
+| `agent/test_dry_run.py` | CR-003 §3.4 | a trial edits a copy; the real package is byte for byte |
+| `agent/test_sessions.py` | CR-003 §3.4, q5 | `DocumentSession`, the sweep, and eight threads on two handles |
+| `agent/test_budgets.py` | CR-003 §7 | a 200-page document: outline under 64 KB, headings under 8 KB |
+| `agent/test_scenarios.py` | CR-003 §7 | scripted tool-shaped sessions over the corpus, and determinism |
+| `agent/test_errors.py` | CR-003 §3.4 | every error's `code` and `hint`, including where to split a span |
 
 ## Fixtures
 

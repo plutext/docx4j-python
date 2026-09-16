@@ -10,12 +10,13 @@ docx4j documentation and examples read across. The design is the same as
 Status: the object model ([CR-001](docs/change-requests/CR-001-object-model.md) Phases A to C),
 the Open Packaging engine ([CR-002](docs/change-requests/CR-002-engine.md) Phase A) and the
 content API ([CR-003](docs/change-requests/CR-003-content-api.md) Phase A, the tree-layer
-builders, and Phase B, implemented 2026-09-16: `Body`, `Paragraph`, `Range` and `Font` in Office
-JS's vocabulary) are implemented. Over 16 real documents, every part not touched is written back
-byte for byte, all 141 typed WordprocessingML parts unmarshal and re-serialise canonically
-identical to the source, and nothing is dropped. Saved output opens in Word. The agent surface
-(addresses, `outline()`, `find()`, `ChangeReport`: CR-003 Phase D) and tables, pictures and
-content controls (Phase C) are next.
+builders; Phase B, `Body`, `Paragraph`, `Range` and `Font` in Office JS's vocabulary; and
+Phase D, the agent surface — addresses, `outline()`, `find()`, `describe()`, `ChangeReport`,
+`dry_run` and `DocumentSession`, all implemented 2026-09-16) are in. Over 16 real documents,
+every part not touched is written back byte for byte, all 141 typed WordprocessingML parts
+unmarshal and re-serialise canonically identical to the source, and nothing is dropped. Saved
+output opens in Word. Markdown in and out (Phase K) and tables, pictures and content controls
+(Phase C) are next.
 
 ```python
 from docx4j_py import load
@@ -272,6 +273,103 @@ the typed WordprocessingML parts (`MainDocumentPart`, `StyleDefinitionsPart`,
 `GlossaryDocumentPart`, `ThemePart`, the three `DocProps*Part`s, chart and diagram parts), and
 `CustomXmlDataStoragePart`, `VMLPart` and `DefaultXmlPart` as lxml trees.
 
+## For agents
+
+An agent cannot hold a Python object across tool calls, and a 200-page document does not fit in
+its context window. So the API gives it **addresses** — strings that survive an edit — and
+**budgets** on everything it reads. Four calls are the whole loop: read the outline, find the
+text, edit by address, check the report.
+
+```python
+from docx4j_py import load
+
+pkg = load("in.docx")
+
+outline = pkg.outline()                       # small, structured, enough to choose an address from
+outline.to_markdown()                         # the cheapest thing to show a model
+outline.stats.to_dict()                       # {'paragraphs': 412, 'tables': 9, 'words': 11_204, ...}
+outline.to_json()                             # under 64 KB for a 200-page document
+
+hits = pkg.find("quick brown fox")            # matches with their addresses and 40 characters either side
+hits[0].address, hits[0].snippet              # ('w14:5A2B1C3D', '… over the quick brown fox, which …')
+
+paragraph = pkg.paragraph_at(hits[0].address) # 'w14:5A2B1C3D', 'body/3', or contains='Chapter 1'
+paragraph.insert_paragraph("Added by an agent.", location="After")
+
+pkg.last_change.to_json()                     # what that call did, for the tool result
+pkg.save("out.docx")
+```
+
+**Three address forms**, accepted wherever a block-level target is and reported everywhere a view
+is. `w14:5A2B1C3D` is the `w14:paraId` Word writes, and it survives every edit including an insert
+in front of it; `body/3` and `body/4/0/1/0` (a paragraph in a cell) are the ordinal, stable until
+something is inserted or deleted before them; `contains="Chapter 1"` is the first text match.
+`paragraph.address` is the paraId when there is one and the ordinal otherwise, `paragraph.ordinal`
+is always the ordinal. A document Word has not stamped can be stamped here:
+
+```python
+pkg.id_seed = 1234                            # same seed, same ids, same bytes
+pkg.body.ensure_para_ids()                    # every paragraph gets a stable handle
+```
+
+(That one re-marshals `word/document.xml`, because it writes an attribute on every paragraph.
+A document created with `create_package()` stamps every paragraph it is given, so nothing is
+needed there.)
+
+**Every mutation says what it did.** A `ChangeReport` is recorded for every content-API call —
+always, because a server needs one on every call anyway — and costs about 5 µs on a 40 µs
+insert. `pkg.last_change` is the last; `pkg.changes` accumulates until `pkg.changes.clear()`.
+
+```python
+pkg.last_change.to_dict()
+# {'operation': 'insert_paragraph',
+#  'addresses': ['w14:1C24BE5D'],
+#  'moved': [['body/4', 'body/5'], ['body/5', 'body/6']],   # the ordinals that shifted
+#  'created_para_ids': ['1C24BE5D'],
+#  'text_after': 'Added by an agent.',
+#  'parts_touched': ['/word/document.xml'],
+#  'at': '2026-09-16T12:46:08.749252+00:00'}
+```
+
+**Try it first.** A `dry_run` applies the calls to a deep copy of the parts it touches and throws
+the copy away; the real package is byte for byte what it was.
+
+```python
+with pkg.dry_run() as trial:
+    count = trial.body.replace_text("colour", "color")
+    preview = trial.last_change.to_dict()      # what it would do
+
+pkg.body.replace_text("colour", "color")       # commit, having seen the number
+```
+
+**What can I use here?** `describe()` is docx4j-mcp's `describe_template` widened to any document:
+the styles it defines and which it uses, the page, the parts, the comment and revision authors,
+whether tracking is on. It reads every part as bytes with lxml, so it unmarshals nothing and an
+untouched part stays byte for byte.
+
+```python
+description = pkg.describe()
+description.style_names(kind="paragraph", in_use=True)   # ['Heading 1', 'Heading 2', 'Caption', ...]
+description.page.width_pt, description.page.orientation  # (595.3, 'portrait')
+description.authors                                      # {'comments': [...], 'revisions': [...]}
+```
+
+**Budgets everywhere**, and when a result is cut the dataclass says so:
+`outline(depth=, max_chars=80, headings_only=True, limit=300)`, `find(context=40, limit=20)`,
+`get_text(max_chars=)`, and `text_budget(max_chars)` for the caller who needs the flag rather
+than the string.
+
+**Errors say what to do instead.** Every one carries a stable `code`, the message, and a `hint`
+an agent can act on: an address that is gone names the nearest surviving one, an element a
+container cannot hold names what it takes, a style that does not exist lists the five closest
+names, a span that crosses a hyperlink says where to split.
+
+```python
+pkg.element_at("body/99")
+# AddressError: nothing at 'body/99'; the nearest surviving address is 'body/6'
+#               (use 'body/6', or call outline() to list current addresses)
+```
+
 ### Serving many documents
 
 Import costs about 0.7 s and builds no class metadata; the first parse of each class does. In a
@@ -286,6 +384,27 @@ warm_up()            # 44 ms: parses an embedded document and styles part, so th
 `scripts/threads.py` is the check: 8 threads over whole packages with a shared `XmlContext`,
 output identical to the sequential run.
 
+A server then holds packages open across tool calls, so that "open, edit, edit, save" is four
+cheap calls and not four loads. `DocumentSession` is that registry, in the library because the
+thread rule and the idle-close logic are the library's knowledge:
+
+```python
+from docx4j_py import DocumentSession
+
+session = DocumentSession(idle_timeout=900, max_open=32)
+
+handle = session.open("report.docx")          # a short opaque string, not a path
+with session.use(handle) as pkg:              # the handle's lock is held: one call at a time
+    pkg.body.paragraph_at(contains="Chapter 1").insert_paragraph("New", location="After")
+    report = pkg.last_change
+session.save(handle, "edited.docx")           # or save(handle) for the bytes, overwrite=True for the source
+session.sweep()                               # closes what has been idle; no background thread
+session.close(handle)
+```
+
+One lock per handle, so two tool calls on one document serialise and two on different documents
+do not. There is no background thread: `sweep()` is the server's to call.
+
 ## Running it
 
 The bindings import `docx4j_xsdata`, the forked runtime, which `.venv-fork` has installed
@@ -296,6 +415,7 @@ difference from upstream xsdata).
 .venv-fork/bin/python -m pytest                       # the suite
 .venv-fork/bin/python -m pytest -m "not slow"         # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging   # the engine
+.venv-fork/bin/python -m pytest tests/agent           # the agent surface: outline, find, addresses
 
 codegen/generate.sh                                   # regenerate docx4j_py/ from schemas/
 codegen/generate.sh --check                           # regenerate twice and prove it is reproducible
@@ -329,10 +449,14 @@ docx4j_py/            one package per XML namespace, generated; codegen/generate
     part_name.py content_types.py stores.py load.py save.py mce.py resources.py api.py
     parts/              Part, BinaryPart, XmlPart, RelationshipsPart, the registry, the typed parts
     packages/           OpcPackage, WordprocessingMLPackage
-  model/content/        hand written, all of it: the content API (CR-003 Phase B)
+  model/content/        hand written, all of it: the content API (CR-003 Phases B and D)
     body.py paragraph.py range.py font.py   the views, in Office JS's vocabulary
     text_model.py       the paragraph's text as segments, and grapheme-safe splitting
     styles.py enums.py errors.py            BUILT_IN_STYLES, the Literals and StrEnums, ContentError
+    addresses.py        the three address forms, and the paraId generator's users
+    reports.py          Outline, SearchHit, ChangeReport, TextExcerpt, and the recorder
+    describe.py trial.py                    describe() (lxml, unmarshals nothing) and dry_run()
+  model/sessions.py     hand written: DocumentSession, the registry a server keeps documents in
   resources/            the parts warm_up parses; docx4j's default styles, numbering, fontTable
                         and KnownStyles.xml
 codegen/              the generator, the name tables and the el tables
@@ -342,7 +466,7 @@ scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, t
 samples/              16 documents from docx4j (Apache-2.0): 13 .docx, a .dotm, a .pptx, an .xlsx
 out/acceptance/       the four documents for the manual Word checklist
 docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
-                      CR-003 the content API (Phases A and B implemented 2026-09-16)
+                      CR-003 the content API (Phases A, B and D implemented 2026-09-16)
 ```
 
 ## Licence

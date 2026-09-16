@@ -3,7 +3,7 @@
 **Status:** Proposed 2026-09-16; revised the same day to follow Python conventions throughout
 and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
 (section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
-(section 11). Phases C to K proposed.
+(section 11); **Phase D implemented 2026-09-16** (section 12). Phases C, E to K proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -656,7 +656,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 |---|---|---|
 | A | Tree layer additions (3.3) — **implemented 2026-09-16, section 10** | 2 days |
 | B | `Body`, `Paragraph`, `Range`, `Font`: the verbs, `style` per section 4, `search` across runs with grapheme-safe splitting, `insert_xml`, `insert_element`; the error hierarchy; the Office JS subset list — **implemented 2026-09-16, section 11** | 4 days |
-| D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests | 4 days |
+| D | The agent surface (3.4): addresses, `Outline` with budgets, `find()`, `describe()`, `ChangeReport`, `dry_run`, `DocumentSession`, determinism; the agent scenario tests — **implemented 2026-09-16, section 12** | 4 days |
 | K | Markdown out, with addresses, then in (3.5) | 3 days |
 | C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` | 4 days |
 | G | Comments (3.9) | 3 days |
@@ -1070,3 +1070,230 @@ phase should decide whether the generator's package footer ought to rename such 
 - **`Body.get_text(max_chars=)` and `search(limit=)` are the budgets that exist**; `iter_paragraphs`
   and `iter_blocks` are lazy, so `outline(max_chars=)` and `find(limit=, context=)` can be written
   over them without materialising a list per call.
+
+## 12. Phase D implementation notes (2026-09-16)
+
+Phase D is done: the agent surface of section 3.4 — the three address forms, `outline()` under a
+budget, `find()` with context, `describe()`, a `ChangeReport` on every mutating call, `dry_run`,
+`DocumentSession`, determinism, the errors an agent can act on — with the agent scenario tests
+and the token-budget test of section 7 and the README's "For agents" section. The suite is **866
+tests** (865 passing plus one `xfail`; 857 of them fast, 45 s), against 776 at the end of Phase
+B; **89** of the new ones are `tests/agent/`. Nothing in `~/git/docx4j-xsdata` changed, no schema
+patch was needed and the model was not regenerated; `codegen/generate_el.py` changed only in its
+engine footer (one name, `DocumentSession`), and the footer it writes is byte-identical to what
+is committed.
+
+```python
+from docx4j_py import load
+
+pkg = load("in.docx")
+pkg.outline().to_markdown()                              # read it into a context window
+hit = pkg.find("quick brown fox")[0]                     # address, offsets, snippet
+pkg.paragraph_at(hit.address).insert_paragraph("New")    # edit by address
+pkg.last_change.to_json()                                # what that call did
+```
+
+### 12.1 What landed
+
+| Piece | Where | Signature |
+|---|---|---|
+| the three address forms | `docx4j_py/model/content/addresses.py` (610 lines) | `path_of(body, element)`, `ordinal_of(body, element)`, `address_of(body, target)`, `resolve_path`, `element_at(body, address)`, `paragraph_at(body, address=None, *, contains=None, para_id=None)`, `nearest_address`, `package_bodies`, `prefix_for_part`, `assign_para_id`, `ensure_para_ids` |
+| on the views | `.body`, `.paragraph` | `Paragraph.address`, `Paragraph.ordinal`, `Block.address` / `.ordinal` (which is what `Table.address` and `ContentControl.address` are until Phase C), `Body.address_of`, `Body.element_at`, `Body.paragraph_at`, `Body.outline`, `Body.find`, `Body.range_of`, `Body.text_budget`, `Body.ensure_para_ids` |
+| the results | `.reports` (1,022 lines) | `Outline(entries, headers, footers, stats, truncated)`, `OutlineEntry(address, para_id, ordinal, kind, style_id, level, text, chars, truncated, rows, cols, children)`, `OutlineSection(prefix, part_name, entries)`, `OutlineStats(paragraphs, tables, words, chars, comments, tracked_changes, skipped)`, `SearchHit(address, para_id, ordinal, start, end, match, snippet, before, after)`, `ChangeReport(operation, addresses, moved, created_para_ids, text_before, text_after, parts_touched, at)`, `TextExcerpt(text, chars, truncated)` |
+| the recorder | `.reports` | `recording(body, operation)`, `ChangeRecorder`, `NULL_RECORDER`, `moved_by_insert`, `moved_by_delete`, `container_prefix` |
+| `describe()` | `.describe` (452 lines) | `Description(styles, page, parts, headers, footers, custom_xml, authors, tracking_on, skipped, application, created, modified)`, `StyleInfo(id, name, kind, built_in, in_use)`, `PageSetup(width_pt, height_pt, orientation, margins)`, `PartInfo(name, content_type, kind, unmarshalled)` |
+| `dry_run` | `.trial` (296 lines) | `dry_run(package)`, `TrialPackage`, `TrialPart` |
+| the package's half | `.__init__`'s `register()` | `pkg.outline()`, `pkg.describe()`, `pkg.element_at()`, `pkg.paragraph_at()`, `pkg.find()`, `pkg.bodies()`, `pkg.dry_run()`; `pkg.changes`, `pkg.last_change` and `pkg.assigns_para_ids` are on `OpcPackage` itself, because they are state rather than behaviour and need no import from this layer |
+| the session | `docx4j_py/model/sessions.py` (362 lines) | `DocumentSession(*, idle_timeout=900, max_open=32)` with `open`, `add`, `get`, `use`, `lock_for`, `save`, `close`, `close_all`, `handles`, `documents`, `sweep`, `__enter__`/`__exit__`, `__len__`, `__contains__`; `OpenDocument(handle, package, source, lock, last_used)` |
+| the top-level name | `codegen/generate_el.py`'s `ENGINE_EXPORTS` | `from docx4j_py import DocumentSession` — the one name a server imports rather than reaches through a package |
+
+The **prefix plumbing of section 11.6 was enough**, as it promised: `Body` gained addresses
+without threading anything new through the views, and `path_of` is `block_children_of` walked
+*upwards* through the parent pointers, so an address costs the nesting depth rather than the
+document. A level whose block list does not hold the child contributes no index, which is how the
+four `w:sdtContent` classes stay invisible to a path without being named anywhere — the same
+trick that made Phase B's descent one visitor.
+
+### 12.2 Departures from section 3.4, all deliberate
+
+1. **`outline()` takes a `limit`, default 300, and section 3.4 does not mention one.** It had to:
+   section 7 asks for a stated size at the default budgets, and a 200-page document has 2,200
+   blocks, which is 380 KB of JSON at any per-entry size worth having. `limit=None` asks for all
+   of them and `stats` counts the whole body either way, so an agent reading a truncated outline
+   still knows how big the document is and can ask for more. `DEFAULT_ENTRY_LIMIT` is one
+   constant and a test pins it.
+2. **The notes parts' address prefixes lost their relationship id.** Phase B's `_prefix_for` gave
+   a footnotes part `footnote:rId5`; section 3.4's own examples are `footnotes/1/0` and
+   `comments/2/0`, and there is at most one of each part, so the id said nothing. Headers and
+   footers keep theirs (`header:rId3`, `footer:rId5`) because there may be several. One Phase B
+   test changed.
+3. **A created document always stamps `w14:paraId`; a loaded one decides for itself.** Section
+   3.4 asks for exactly this ("and always in a created document"), and it needed somewhere to
+   put the decision: `pkg.assigns_para_ids` is `None` for "as the document does", and
+   `create_package` sets it True. Phase B's test that a new document's paragraphs have no paraId
+   became two tests, one per half of the rule.
+4. **The "document already uses them" test is per body, not per package.** Looking at every part
+   to collect the ids in use would unmarshal the headers, the footers and the notes of a document
+   that only ever had its body edited, and CR-002's promise is that an untouched part is written
+   back byte for byte. The ids in use are cached on the package per address prefix, which also
+   stops a loop of inserts being quadratic. Two parts of one document colliding on a 31-bit id is
+   not a risk worth the promise.
+5. **`describe()` reads bytes with lxml and unmarshals nothing**, which is the choice section 3.4
+   offered and preferred. Every part it reads — styles, settings, `docProps`, the comments part,
+   the custom XML parts — goes through `part.xml` (the source bytes for a part nobody has
+   touched) and `etree.fromstring`. The **one** exception is the main document part, whose tree
+   is used when it is already unmarshalled: a caller with a `body` has unmarshalled it anyway,
+   and re-marshalling two thousand paragraphs to count their style references would be absurd.
+   A test asserts that describing a document leaves every part byte for byte and marks nothing
+   for re-marshalling.
+6. **`StyleInfo.name` is the display name, not the stored `w:name`.** Word stores `heading 1` and
+   shows `Heading 1`; `paragraph.style` takes and reports the display name (section 4), so
+   `describe()`'s list is in the same vocabulary as the setter an agent will call next.
+7. **`Description`, `StyleInfo`, `PageSetup` and `PartInfo` live in `.describe`, and `dry_run` in
+   `.trial`**, where section 5 puts the whole agent surface in `.addresses` and `.reports`. Two
+   more modules of 450 and 300 lines rather than one of 1,800; every name is exported from
+   `docx4j_py.model.content` all the same, as Phase A did when `builders.py` grew (section 10.1).
+8. **`SearchHit` carries `ordinal` and `match` as well as section 3.4's list.** `address` is the
+   paraId when there is one, so without `ordinal` a tool result would not say *where* the hit is
+   in a document Word has not stamped; and `match` saves a server slicing `snippet` to find out
+   what actually matched. `hit.range(body)` and `body.range_of(hit)` both convert back, and the
+   conversion goes through the **address**, so a hit that has been through JSON and a tool call
+   still works.
+9. **`find()` is on `Range` too**, not only on `Body` and `Paragraph`, because `search` is.
+10. **`DocumentSession.save` requires `overwrite=True` to write over the file the document was
+    opened from.** Section 3.4 says `save(handle, path=None)`; the first version took None to
+    mean "the source", and the first test written against it overwrote a corpus sample. That is
+    docx4j-mcp's `overwrite: true` and the reason it exists, so it is the rule here: no target is
+    the bytes, a target is that path, and the source needs asking for.
+11. **`DocumentSession.use(handle)` is the way to hold the lock**, beside `get(handle)`, which
+    section 3.4 does not mention. `get` returns the package and releases the lock, which is right
+    for a read; an edit that must be atomic against another tool call needs the lock for its
+    whole length, and a context manager is how Python says that.
+12. **`SpanError`'s "where to split" is a method nothing calls yet.**
+    `Range.holder_boundaries()` returns the offsets at which a span enters or leaves a
+    `w:hyperlink`, a run-level `w:sdt`, a `w:ins` or another run holder, and
+    `Range.require_one_holder(operation)` raises naming them. Phase D has no operation that needs
+    a single holder; Phase C's range-level `insert_content_control` and Phase G's
+    `insert_comment` do, and section 3.4 asks for the error now. It is tested directly rather
+    than through a caller.
+
+### 12.3 The budgets, measured
+
+The token-budget test builds section 7's 200-page document with the Phase A builders — 2,000
+paragraphs (a `Heading1` every fortieth), 20 three-by-three tables, 2,180 paragraphs and 2,200
+blocks in all (2,020 of them the body's own), built in 0.05 s — and measures the JSON a tool would return:
+
+| call | bytes of UTF-8 JSON | budget |
+|---|---:|---:|
+| `outline().to_json()`, defaults | **53,352** | 64 KB |
+| the same, every paragraph carrying a `w14:paraId` | **60,804** | 64 KB |
+| `outline(headings_only=True).to_json()` | **6,469** (7,698 with paraIds) | 8 KB |
+| `outline(headings_only=True).to_markdown()` | 640 | — |
+| `find(limit=20)`, `to_dict()` each, at `context=40` | **4,143** | 8 KB |
+| `outline(limit=None).to_json()` | 389,778 | — (the honest whole) |
+
+Three things make the default fit. `to_dict()` leaves out what is None or empty, which is worth
+about 25% on a body of plain paragraphs. A table's `text` is its **first row** rather than its
+whole content (`"Region | Quarter | Total"`), which is the preview an agent chooses an address
+from and costs one row. And `limit` cuts the entries while `stats` still counts everything, so
+the result says `paragraphs: 2180, truncated: true` over 300 entries rather than lying by
+omission. The margin is thinnest on `headings_only` with paraIds — 7,698 of 8,192 — which is
+what a 50-heading document costs; a document with a hundred headings needs `limit=`.
+
+### 12.4 What a `ChangeReport` costs, measured
+
+Recorded on every mutating call, as decided question 4 requires, and measured against the same
+call with the recorder switched off:
+
+| | |
+|---|---:|
+| `insert_paragraph` on a loaded document | **38.8 µs** |
+| the same, with the report | **43.0 µs** |
+| the report's share | **≈ 4 µs, 11%** |
+| the recorder alone (construct, three notes, `finish`) | 2.0 µs |
+| one stored `ChangeReport` | 96 bytes plus its tuples |
+
+The first version cost **47 µs**, not 4, and the reason is worth recording: `change.touched(view)`
+asked `address_of` for the address, which for a paragraph with no paraId scans its container for
+the element's index — so a loop of two thousand inserts was quadratic. An insert already **knows**
+the index it chose, so `ChangeRecorder.active` now lets a verb that can build the address cheaply do so, and `container_prefix(body, container)` gives it the prefix (free for the body's own list,
+the container's own ordinal otherwise). A test asserts that the last five hundred of two thousand
+inserts take no more than four times what the first five hundred took.
+
+`moved` is the one field that is not a few values: it lists every ordinal in the **touched
+container** that shifted, so inserting at the start of a 200-block body reports 207 pairs.
+Appending — the default location, and the common call — reports none at all, and the cost is
+`O(blocks after the insertion point)` in one container rather than anything document-wide. A test
+pins both halves.
+
+### 12.5 `dry_run`, and what it cannot undo
+
+`pkg.dry_run()` yields a `TrialPackage`: a package-like object that copies a part's tree with
+CR-001's `deep_copy` the first time the trial asks for that part's body, and answers `body`,
+`outline`, `describe`, `element_at`, `paragraph_at`, `find`, `bodies` and `dry_run` over the
+copies. Those seven have to be spelled out rather than left to `__getattr__`, because the real
+package has them too and delegating would answer about the real document — the one wart in an
+otherwise mechanical wrapper. `TrialPart` keeps the original as `_wrapped`, which is why a trial
+header still reports `header:rId8`: `prefix_for_part` reads the wrapped part's class.
+
+The limits, in the module's docstring and in the README:
+
+- A part the real package has **not** read is unmarshalled by the trial's first look at it, and
+  that marks it for re-marshalling on the *real* package. A dry run over `pkg.body` after
+  `pkg.body` has been read costs a `deepcopy` of `w:document` and nothing else.
+- **Parts added during a trial are discarded with it, and cannot be un-added.** Phase D adds
+  none; Phase C's `insert_inline_picture` would add an `ImagePart` to the real package's part map
+  — the trial shares it — and the docstring of anything that adds a part must say so.
+- `trial.save()` is refused, with a hint saying to leave the block and make the calls again.
+- The trial's id generator is seeded from the real package's, so the paraIds a trial allocates
+  are the ones the commit that follows will allocate. A test asserts it.
+
+### 12.6 Determinism, and what "the same bytes" needed
+
+`test_the_same_seed_and_the_same_calls_give_the_same_bytes` runs eleven calls over
+`2010-sample1.docx` twice and compares the saved bytes; it also compares the `ChangeReport`s,
+minus their timestamps. Two things had to hold that did not follow from Phase B. The ids in use
+are cached per body, so the generator is derived from the same material on both runs whatever
+order the calls come in; and `ensure_para_ids` walks in document order, so a legacy document
+stamped twice gets the same ids. A created document is **not** byte-reproducible across runs and
+this test does not pretend otherwise: `create_package` writes `dcterms:created` and
+`dcterms:modified` as the current time (CR-002 section 12.8), which is a property of the
+document, not of the agent surface.
+
+### 12.7 What Phase K (markdown with addresses) needs
+
+- **`to_markdown(addresses=True)` has its address already.** `paragraph.address` is the paraId
+  when there is one and the ordinal otherwise, which is exactly what section 3.5 wants in the
+  `<!-- body/3 -->` comment, and `Body.element_at` accepts it back. Emit `paragraph.address`
+  rather than `paragraph.ordinal`, so that a model editing markdown and writing back by address
+  is not defeated by an insert.
+- **`Outline.to_markdown()` is not `Body.to_markdown()`** and should not grow into it. The
+  outline's markdown is a nested list of *entries* under a budget; section 3.5's is the document's
+  content with its runs' formatting. `heading_level_of(element)` — `w:outlineLvl + 1`, else a
+  `HeadingN` style — is the one piece worth sharing, and it is exported.
+- **`max_chars=` on `to_markdown` should return a `TextExcerpt`-shaped answer** or say in its
+  docstring that it truncates silently, as `get_text` does. `TextExcerpt(text, chars, truncated)`
+  is there for the first.
+- **`insert_markdown` chooses styles from `describe()`**, as section 3.5 says, and
+  `Description.style_names(kind="paragraph", in_use=True)` is the call: it is over the styles the
+  document *defines*, with `in_use` from docx4j's `stylesInUse`, and it costs no unmarshalling.
+- Every `insert_markdown` must open one `recording(body, "insert_markdown")`, so that a fragment
+  of twenty blocks is one `ChangeReport` and not twenty. The nested verbs are no-ops inside it
+  already.
+
+### 12.8 What Phase C needs
+
+- **`Table.address` and `ContentControl.address` are the ordinal**, which is what `Block.address`
+  already returns; when the views land, `Body.view_for` is the one place to change and the
+  addresses do not move, because a path is `block_children_of` all the way down and a table's
+  rows and cells are already indices in it (`body/4/0/1/0` is table, row, cell, block).
+- **`outline()` already reports `rows`, `cols` and a first-row preview** by walking the tree; a
+  `Table` view should be slotted into `_table_shape` rather than duplicated beside it.
+  `_is_row` accepts a `w:tr` wrapped in a row-level `w:sdt` or `w:customXml`, which is the
+  OpenDoPE repeat of section 4.
+- **Anything that adds a part must say what a `dry_run` does with it** (12.5), and take its ids
+  from `pkg.id_generator()` so that section 3.4's determinism holds for image part names and
+  relationship ids as it now does for paraIds.
+- **Every new mutating verb opens one `recording(...)`** and, if it inserts at a known index,
+  reports the address from that index rather than through `address_of` (12.4).
+- `Range.require_one_holder("insert_content_control")` is written and tested; call it.
