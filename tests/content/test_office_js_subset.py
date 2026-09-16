@@ -17,15 +17,37 @@ from pathlib import Path
 import pytest
 from conftest import ROOT
 
-from docx4j_py.model.content import Body, Font, Paragraph, Range
+from docx4j_py.model.content import (
+    Body,
+    ContentControl,
+    Font,
+    InlinePicture,
+    Paragraph,
+    Range,
+    Table,
+    TableCell,
+    TableRow,
+)
 
 SUBSET = ROOT / "tests" / "office_js_subset.json"
 
 #: The four interfaces Phase B owns, and the class each one is.
 PHASE_B_CLASSES = {"Body": Body, "Paragraph": Paragraph, "Range": Range, "Font": Font}
 
-#: The phase this file's assertions hold for.
-PHASE = "B"
+#: The five Phase C adds.
+PHASE_C_CLASSES = {
+    "Table": Table,
+    "TableRow": TableRow,
+    "TableCell": TableCell,
+    "InlinePicture": InlinePicture,
+    "ContentControl": ContentControl,
+}
+
+#: Every interface implemented so far, and the phase that owns each member.
+CLASSES = {**PHASE_B_CLASSES, **PHASE_C_CLASSES}
+
+#: The phases this file's assertions hold for.
+PHASES = ("B", "C")
 
 
 @pytest.fixture(scope="module")
@@ -35,17 +57,26 @@ def subset() -> dict:
 
 
 def kind_of(cls: type, name: str) -> str | None:
-    """``"property"``, ``"method"`` or None, by what the class declares."""
+    """``"property"``, ``"method"`` or None, by what the class declares.
+
+    A ``__slots__`` entry counts as a property: the views hold their element,
+    their container and their parent in slots (CR-001 section 14: ``parent`` is
+    a slot, not a field), and ``row.parent_table`` reads exactly as Office JS's
+    ``parentTable`` does. What is being asserted is the shape of the member, not
+    how the class happens to store it.
+    """
     for klass in cls.__mro__:
         if name in vars(klass):
-            return "property" if isinstance(vars(klass)[name], property) else "method"
+            member = vars(klass)[name]
+            is_data = isinstance(member, property) or type(member).__name__ == "member_descriptor"
+            return "property" if is_data else "method"
     return None
 
 
 def test_the_list_is_committed_and_names_its_source(subset):
     assert SUBSET.exists()
     assert subset["source"] == "docx4j-core-ts/test/office-js-subset.ts"
-    assert set(subset["interfaces"]) >= set(PHASE_B_CLASSES)
+    assert set(subset["interfaces"]) >= set(CLASSES)
     # the two members Python spells differently, recorded in the list itself
     assert subset["aliases"] == {
         "Table.getCell": "cell",
@@ -53,18 +84,18 @@ def test_the_list_is_committed_and_names_its_source(subset):
     }
 
 
-def test_every_phase_b_member_is_there_with_the_right_kind(subset):
+def test_every_phase_b_and_c_member_is_there_with_the_right_kind(subset):
     missing: list[str] = []
     wrong_kind: list[str] = []
     later: dict[str, list[str]] = {}
 
     for interface, members in subset["interfaces"].items():
-        cls = PHASE_B_CLASSES.get(interface)
+        cls = CLASSES.get(interface)
         for member in members:
             if member["extension"] or interface == "SearchOptions":
                 continue
             where = f"{interface}.{member['name']}"
-            if member["phase"] != PHASE or cls is None:
+            if member["phase"] not in PHASES or cls is None:
                 if cls is None or kind_of(cls, member["name"]) is None:
                     later.setdefault(member["phase"], []).append(where)
                 continue
@@ -81,7 +112,7 @@ def test_every_phase_b_member_is_there_with_the_right_kind(subset):
     )
     print(f"\nlater phases still to come -- {summary}")
     assert not missing and not wrong_kind, (
-        f"Phase B owes {missing or 'nothing'}; wrong kind: {wrong_kind or 'none'}. "
+        f"Phases B and C owe {missing or 'nothing'}; wrong kind: {wrong_kind or 'none'}. "
         f"(For the record, the members of later phases still missing are {summary}.)"
     )
 
@@ -98,7 +129,7 @@ def test_the_search_options_are_the_keyword_arguments(subset):
         assert signature.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
 
 
-def test_the_phase_b_classes_offer_nothing_under_an_office_js_name_they_should_not(subset):
+def test_the_classes_offer_nothing_under_an_office_js_name_they_should_not(subset):
     """A member spelled the Office JS way must be the Office JS thing.
 
     The guard against a private helper accidentally taking a promised name: any
@@ -106,7 +137,7 @@ def test_the_phase_b_classes_offer_nothing_under_an_office_js_name_they_should_n
     a *different* interface is suspicious, and a member of this interface must
     have the declared kind.
     """
-    for interface, cls in PHASE_B_CLASSES.items():
+    for interface, cls in CLASSES.items():
         declared = {member["name"]: member for member in subset["interfaces"][interface]}
         for name, member in declared.items():
             kind = kind_of(cls, name)

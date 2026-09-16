@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the five documents the Word acceptance checklist needs.
+"""Write the six documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Five files, each testing a different half of the save path:
+Six files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -36,6 +36,15 @@ Five files, each testing a different half of the save path:
     ``KnownStyles.xml`` supplies and the two code styles Word has no equivalent
     of, and ``numbering.xml``, which is created from nothing --- plus an
     external relationship for the link.
+``6-tables-and-pictures.docx``
+    a **loaded** document given, through CR-003 Phase C's content API, a table
+    from ``insert_table`` with ``values=`` and ``style="TableGrid"``, a row
+    added with ``add_rows``, a picture at a paragraph through
+    ``insert_inline_picture``, and a flat OPC ``pkg:package`` fragment through
+    ``insert_ooxml``. It exercises the image part under a free
+    ``/word/media/imageN.png``, its relationship and its content type, the
+    ``pkg:package`` reader, and a table whose grid is sized from the loaded
+    document's own ``w:sectPr``.
 """
 
 from __future__ import annotations
@@ -56,6 +65,8 @@ from docx4j_py.wml import el, emu_for, image_size, inline_picture, p, r  # noqa:
 
 SOURCE = ROOT / "samples" / "2016_image_with_text_effects.docx"
 IMAGE_SOURCE = ROOT / "samples" / "Images.docx"
+#: Artefact 6 edits a document that was **loaded**, not created.
+SAMPLE_SOURCE = ROOT / "samples" / "2010-sample1.docx"
 
 #: The width of the text column on A4 with 2.54 cm margins, in EMU: what an
 #: image wider than the page is scaled down to (docx4j's ``CxCy.scale``).
@@ -203,8 +214,95 @@ def markdown_built(out: Path) -> Path:
     return target
 
 
+#: Artefact 6's pasted fragment: a flat OPC package, as Word's clipboard writes
+#: one, built here from a package this engine saved so that nothing is hand-rolled.
+def flat_opc(data: bytes) -> str:
+    """A saved package as a ``pkg:package`` document (docx4j ``FlatOpcXmlExporter``)."""
+    import base64
+    import io
+
+    from lxml import etree
+
+    from docx4j_py.openpackaging.stores import FlatOpcStore
+
+    pkg_ns = FlatOpcStore.NAMESPACE
+    root = etree.Element(f"{{{pkg_ns}}}package", nsmap={"pkg": pkg_ns})
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        types = etree.fromstring(archive.read("[Content_Types].xml"))
+        defaults = {
+            element.get("Extension").lower(): element.get("ContentType")
+            for element in types
+            if element.tag.endswith("Default")
+        }
+        overrides = {
+            element.get("PartName"): element.get("ContentType")
+            for element in types
+            if element.tag.endswith("Override")
+        }
+        for name in archive.namelist():
+            if name == "[Content_Types].xml":
+                continue
+            part_name = "/" + name
+            content_type = overrides.get(part_name) or defaults.get(
+                name.rpartition(".")[2].lower(), "application/octet-stream"
+            )
+            part = etree.SubElement(root, f"{{{pkg_ns}}}part")
+            part.set(f"{{{pkg_ns}}}name", part_name)
+            part.set(f"{{{pkg_ns}}}contentType", content_type)
+            payload = archive.read(name)
+            if "xml" in content_type:
+                etree.SubElement(part, f"{{{pkg_ns}}}xmlData").append(etree.fromstring(payload))
+            else:
+                binary = etree.SubElement(part, f"{{{pkg_ns}}}binaryData")
+                binary.text = base64.b64encode(payload).decode("ascii")
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True).decode()
+
+
+def tables_and_pictures(out: Path) -> Path:
+    """6. A loaded document edited through the Phase C content API."""
+    target = out / "6-tables-and-pictures.docx"
+    with zipfile.ZipFile(IMAGE_SOURCE) as zf:
+        png = zf.read(next(n for n in zf.namelist() if n.lower().endswith(".png")))
+
+    # the fragment a paste brings: a heading, a picture and a table, in a
+    # package of its own, written out as flat OPC
+    source = WordprocessingMLPackage.create_package()
+    source.id_seed = 20260917
+    source.body.insert_paragraph("Pasted from another document", style="Heading 2")
+    source.body.insert_inline_picture(png, width=120, alt_text_description="the same pangolin")
+    source.body.insert_table(2, 2, values=[["pasted", "table"], ["row", "two"]], style="TableGrid")
+    package_xml = flat_opc(source.save())
+
+    pkg = WordprocessingMLPackage.load(SAMPLE_SOURCE)
+    pkg.id_seed = 20260917
+    body = pkg.body
+
+    body.insert_paragraph("Tables and pictures", style="Heading 1")
+    table = body.insert_table(
+        3,
+        3,
+        values=[
+            ["Region", "Quarter", "Total"],
+            ["North", "Q1", "120"],
+            ["South", "Q2", "240"],
+        ],
+        style="TableGrid",
+    )
+    table.header_row_count = 1
+    table.add_rows(1, values=[["East", "Q3", "360"]])
+
+    caption = body.insert_paragraph("A picture inserted at this paragraph:")
+    caption.insert_inline_picture(
+        png, width=180, alt_text_description="A pangolin", alt_text_title="Pangolin"
+    )
+
+    body.insert_ooxml(package_xml)
+    pkg.save(target)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the five artefacts and print a summary."""
+    """Write the six artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -212,7 +310,14 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    for build in (untouched, remarshalled, created, created_with_image, markdown_built):
+    for build in (
+        untouched,
+        remarshalled,
+        created,
+        created_with_image,
+        markdown_built,
+        tables_and_pictures,
+    ):
         target = build(out)
         with zipfile.ZipFile(target) as zf:
             bad = zf.testzip()

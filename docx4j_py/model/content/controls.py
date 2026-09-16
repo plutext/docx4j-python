@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import link_parents
+from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.addresses import ordinal_of
 from docx4j_py.model.content.enums import RangeLocation, TextLocation
 from docx4j_py.model.content.errors import ContentError, InvalidTargetError
@@ -190,9 +190,17 @@ class ContentControl:
 
     @property
     def text(self) -> str:
-        """The control's text, a line per paragraph (docx4j ``TextUtils``)."""
-        inner = getattr(self.element, "sdt_content", None)
-        return text_of(inner) if inner is not None else ""
+        """The control's text, a line per paragraph (docx4j ``TextUtils``).
+
+        A run-level control holds run content, which is one line;
+        :func:`~docx4j_py.traversal.text_of` reads a ``w:sdtContent`` as a run
+        holder and would join a block control's paragraphs into one, so the
+        other three forms answer through their :meth:`body`.
+        """
+        if self.form == "run":
+            inner = getattr(self.element, "sdt_content", None)
+            return text_of(inner) if inner is not None else ""
+        return self.body().text
 
     # -- addresses ---------------------------------------------------------
 
@@ -340,15 +348,56 @@ class ContentControl:
         paragraph, start, end = span
         with recording(self.parent_body, "insert_text") as change:
             change.text(before=self.text)
-            if location == "Start":
-                out = paragraph.splice(start, start, text)
-            elif location == "End":
-                out = paragraph.splice(end, end, text)
-            else:
-                out = paragraph.splice(start, end, text)
+            if location in ("Start", "End"):
+                # ``splice`` at a boundary extends the *neighbouring* run, which
+                # at the control's own boundary is a run outside it. Text asked
+                # for at the start or the end of a control belongs inside it, as
+                # Word puts it, so the control's own items are edited directly.
+                out = self._extend(paragraph, text, at_start=location == "Start")
+                change.touched(paragraph)
+                change.text(after=text)
+                return out
+            out = paragraph.splice(start, end, text)
             change.touched(paragraph)
             change.text(after=text)
             return out
+
+    def _extend(self, paragraph: Paragraph, text: str, *, at_start: bool) -> Range:
+        """Put text at the start or the end of a run control's **own** content."""
+        from docx4j_py.model.content.range import Range
+        from docx4j_py.model.content.text_model import set_text
+        from docx4j_py.wml import R, t
+
+        segments = [
+            segment
+            for segment in segments_of(paragraph.element)
+            if segment.editable and self._inside(segment.run)
+        ]
+        if segments:
+            target = segments[0] if at_start else segments[-1]
+            at = 0 if at_start else len(target.text)
+            set_text(target.item, target.text[:at] + text + target.text[at:])
+            offset = target.start + at
+            return Range(paragraph, offset, offset + len(text))
+        # an empty control: the text becomes its first run
+        items = self.content
+        run = R(content=ChildList([t(text)]))
+        items.insert(0, run)
+        link_parents(run)
+        span = self._run_span()
+        start = span[1] if span is not None else 0
+        return Range(paragraph, start, start + len(text))
+
+    def _inside(self, run: Any) -> bool:
+        """Whether a run sits inside this control."""
+        current = run
+        for _ in range(32):
+            if current is None:
+                return False
+            if current is self.element:
+                return True
+            current = getattr(current, "parent", None)
+        return False
 
     def insert_paragraph(self, text: str = "", *, location: str = "End", **options: Any):
         """A paragraph in, before or after the control.
@@ -468,20 +517,10 @@ class ContentControl:
         if paragraph is None:
             return None
 
-        def inside(run: Any) -> bool:
-            current = run
-            for _ in range(32):
-                if current is None:
-                    return False
-                if current is self.element:
-                    return True
-                current = getattr(current, "parent", None)
-            return False
-
         start: int | None = None
         end = 0
         for segment in segments_of(paragraph.element):
-            if not inside(segment.run):
+            if not self._inside(segment.run):
                 continue
             if start is None:
                 start = segment.start

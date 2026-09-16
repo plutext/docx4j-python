@@ -28,6 +28,10 @@
 | `content/test_body.py`, `test_paragraph.py`, `test_range.py`, `test_font.py` | CR-003 §3.2 | the views: the verbs, the style semantics, search across runs |
 | `content/test_text_model.py` | CR-003 §3.12 | segments, grapheme-safe splitting, the search options |
 | `content/test_errors_and_parts.py` | CR-003 §3.1 | the error hierarchy, and untouched parts still byte-identical |
+| `content/test_table.py` | CR-003 §3.2, §4 | `Table`, `TableRow`, `TableCell`: `insert_table` sized from `w:sectPr`, `values`, `add_rows` / `insert_rows` / `delete_rows`, `header_row_count` on leading rows only, a nested table, and rows that descend into an OpenDoPE row-level `w:sdt` |
+| `content/test_picture.py` | CR-003 §3.2, §4 | `InlinePicture`: the free `/word/media/imageN.<ext>`, the relationship from the body's own part, the header readers, points in and out, `delete`, and a `dry_run` that un-adds the part |
+| `content/test_ooxml.py` | CR-003 §3.2, §4 | `insert_ooxml` from a flat OPC `pkg:package`: parts copied under free names with fresh relationship ids, numeric ids untouched, styles not merged; and `FlatOpcStore` |
+| `content/test_controls.py` | CR-003 §3.2, §4 | `ContentControl` over all four `w:sdt` forms: the reads, `get_range()` exact for a run control, the row and cell refusals, `delete(keep_content=)` |
 | `content/test_office_js_subset.py` | CR-003 §3.4 (TS) | the committed Office JS member list |
 | `content/test_markdown.py` | CR-003 §3.5 | markdown out and in, one construct at a time; the address comment and its regex; what `styles.xml` and `numbering.xml` are touched for |
 | `agent/test_addresses.py` | CR-003 §3.4 | the three address forms, the nearest-address error, `ensure_para_ids` |
@@ -39,6 +43,7 @@
 | `agent/test_budgets.py` | CR-003 §7 | a 200-page document: outline under 64 KB, headings under 8 KB |
 | `agent/test_scenarios.py` | CR-003 §7 | scripted tool-shaped sessions over the corpus, and determinism |
 | `agent/test_errors.py` | CR-003 §3.4 | every error's `code` and `hint`, including where to split a span |
+| `agent/test_tables_and_pictures.py` | CR-003 §7 | a paragraph in a cell addressed and edited, the `ChangeReport` it gives, `dry_run` of `insert_table` and of a picture, determinism of a part name and a relationship id, and `outline()` over nested tables |
 | `agent/test_markdown_workflows.py` | CR-003 §3.5, §7 | the coarse workflow (markdown in, markdown out) and the fine one (read with addresses, edit by address); `dry_run`, determinism, the markdown budget |
 | `test_codegen_el.py` (the last two) | CR-003 §13 | every tracked hand-written path under `docx4j_py/` is inside `codegen/clean.py`'s `KEEP` |
 
@@ -61,6 +66,7 @@ in order to round-trip them.
 | `hyperlink.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/hyperlink.docx` | one `w:hyperlink` with an external relationship |
 | `comments.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/comments-one.docx` | one comment, for the `{>>...<<}` of `view="markup"` |
 | `footnotes.docx` | docx4j `docx4j-samples-docx4j/sample-docs/2010/w14_mcIgnorable-in-other-parts.docx` | a `w:footnoteReference` and the footnotes part it points at |
+| `nested-table.docx` | docx4j `docx4j-layout-fidelity`'s corpus (`Corpus.java`'s `table-nested`) | a one-by-three table whose middle cell holds a two-by-two table, for CR-003 §3.2's `TableCell.tables` and `Table.parent_table_cell` |
 
 Tracked changes need no fixture of their own: `samples/sample-docx.docx` already
 carries one `w:ins` and one `w:del`, which is what the CriticMarkup test reads.
@@ -73,6 +79,9 @@ and the registry maps the `.docm` content type to the same `MainDocumentPart`.
 
 Record each run here, in the form docx4j-core-ts's `test/README.md` uses:
 
+> **Not yet run after CR-003 Phase C.** Artefact 6 is new and artefacts 1 to 5 are unchanged;
+> the six are written by `scripts/acceptance.py` and wait for a Word check.
+>
 > Last run: 2026-09-17, Word (version not recorded), after CR-003 Phase K, all five artefacts.
 > **Passed.** Every check in the table below held, including artefact 5's list glyphs, the
 > restarting ordered list, the code styles, the link and the table, and a save-close-reopen.
@@ -91,10 +100,10 @@ regenerate the artefacts and check by hand:
 .venv-fork/bin/python scripts/acceptance.py      # writes out/acceptance/
 ```
 
-`out/` is in `.gitignore`, so the five files are built rather than committed; the script is
+`out/` is in `.gitignore`, so the six files are built rather than committed; the script is
 deterministic and takes about two seconds.
 
-### The five artefacts
+### The six artefacts
 
 | file | what it exercises | what to look for in Word |
 |---|---|---|
@@ -103,6 +112,7 @@ deterministic and takes about two seconds.
 | `out/acceptance/3-created.docx` | `WordprocessingMLPackage.create_package()`: nothing came from a container | no repair prompt; A4 portrait with 2.54 cm margins; "Created by docx4j-python" is Heading 1; the styles pane offers Normal and Heading 1 to 4; the third paragraph is bold red 14 pt followed by plain text. |
 | `out/acceptance/4-created-with-image.docx` | a created document plus an `ImagePart` added through `add_target_part` and placed with the `w:drawing` CR-003 Phase A's `inline_picture` builds, sized by `image_size` / `emu_for` from the PNG's own header | no repair prompt; the picture appears at its natural size, 9.00 cm by 6.56 cm (340 × 248 px at 96 dpi); right-click → Size shows those dimensions and **Lock aspect ratio ticked** (the `a:graphicFrameLocks noChangeAspect` the old hand-written fragment did not write); Alt Text shows the description; the image survives a Word save-and-reopen. |
 | `out/acceptance/5-markdown-built.docx` | one markdown string through CR-003 Phase K's `insert_markdown`: headings, emphasis, inline code, a nested bullet list, an ordered list, a block quote, a fenced code block, a hyperlink and a GFM pipe table. It writes `styles.xml` (the styles from docx4j's `KnownStyles.xml`, plus `CodeChar` and `SourceCode`, which Word has no built-in equivalent of), creates `numbering.xml` from nothing, and adds an external relationship | no repair prompt; **Heading 1** and **Heading 2** appear in the navigation pane; the bullet list shows Word's own bullet glyphs with the nested level indented and using the second glyph; the ordered list is numbered 1 to 4 and **restarts at 1** (it is its own `w:num`); the quotation is in the Quote style; `x = 1` is in a grey Consolas block and `inline code` in grey Consolas within the paragraph; the link is blue, underlined and **Ctrl-click opens docx4java.org**; the table has Table Grid borders, a bold first row and the Total column right-aligned. Then **save from Word, close, reopen**: still clean, and the list numbering has not changed. |
+| `out/acceptance/6-tables-and-pictures.docx` | a **loaded** document (`samples/2010-sample1.docx`) edited through CR-003 Phase C's content API: `insert_table(3, 3, values=…, style="TableGrid")`, `header_row_count = 1`, `add_rows`, `paragraph.insert_inline_picture(width=180)`, and a flat OPC `pkg:package` through `insert_ooxml` which brings a heading, a second picture and a second table | no repair prompt; **Tables and pictures** is a Heading 1 (Word supplies the built-in definition the source document does not carry); the first table has Table Grid borders, four rows, and its header row repeats if you force a page break inside it (Table Properties → Row → *Repeat as header row* is ticked for row 1 only); the pangolin under "A picture inserted at this paragraph:" is 6.35 cm wide with **Lock aspect ratio ticked** and Alt Text "Pangolin" / "A pangolin"; below it the pasted heading, a second, smaller pangolin (4.23 cm, alt text "the same pangolin") and a two-by-two Table Grid table are all there, and the two images are **different parts** (`/word/media/image1.png` and `image2.png`). Then **save from Word, close, reopen**: still clean. |
 
 ### Checks worth making on every one
 
@@ -116,7 +126,7 @@ deterministic and takes about two seconds.
    Properties → Details tab as *Program name*, or by unzipping and reading
    `docProps/app.xml` (`create_package` writes `docx4j-python` and `0.0001`).
    For 3 and 4, unzipping is the check that counts.
-4. For 2 and 4, **Review → Compare** against the source is a quick way to see that
+4. For 2, 4 and 6, **Review → Compare** against the source is a quick way to see that
    only the intended change happened.
 
 ### What has *not* been checked

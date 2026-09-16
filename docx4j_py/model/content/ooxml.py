@@ -139,14 +139,26 @@ def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[A
             hint="insert it into a body reached from a package, or pass a bare w:p fragment",
         )
     from docx4j_py.openpackaging.api import load
+    from docx4j_py.openpackaging.exceptions import Docx4JException
 
-    source = load(FlatOpcStore.parse(ooxml))
-    main = getattr(source, "main_document_part", None)
+    hint = (
+        "Word's insertOoxml takes a pkg:package whose main part is a "
+        "WordprocessingML document; a bare w:p / w:tbl fragment is accepted too"
+    )
+    try:
+        source = load(FlatOpcStore.parse(ooxml))
+        main = getattr(source, "main_document_part", None)
+    except Docx4JException as error:
+        raise ContentError(
+            f"this pkg:package has no main document part: {error}",
+            code="ooxml.no_main_part",
+            hint=hint,
+        ) from error
     if main is None:
         raise ContentError(
             "this pkg:package has no main document part, so there is nothing to insert",
             code="ooxml.no_main_part",
-            hint="Word's insertOoxml takes a package whose main part is a WordprocessingML document",
+            hint=hint,
         )
     document = main.contents
     body = getattr(document, "body", None)
