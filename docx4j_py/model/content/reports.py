@@ -793,6 +793,14 @@ class ChangeReport:
     """For a text edit, what is there now; for a format, the value written."""
     parts_touched: tuple[str, ...] = ()
     """The parts that will be re-marshalled on the next save."""
+    warnings: tuple[str, ...] = ()
+    """What the call could not carry and did not do silently (CR-003 Phase K).
+
+    A markdown construct with no Word form, an HTML block skipped on the way
+    in, a nested table flattened on the way out: "nothing may be dropped
+    silently" is CR-002's rule for loading and this is its counterpart for the
+    content API. Empty for every call that dropped nothing.
+    """
     at: datetime.datetime = dataclasses.field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC)
     )
@@ -813,6 +821,8 @@ class ChangeReport:
             out["text_after"] = self.text_after
         if self.parts_touched:
             out["parts_touched"] = list(self.parts_touched)
+        if self.warnings:
+            out["warnings"] = list(self.warnings)
         out["at"] = self.at.isoformat()
         return out
 
@@ -839,6 +849,7 @@ class ChangeRecorder:
         "parts",
         "text_after",
         "text_before",
+        "warnings",
     )
 
     #: True: this one is collecting. A verb that can compute an address cheaply
@@ -855,6 +866,7 @@ class ChangeRecorder:
         self.created_para_ids: list[str] = []
         self.text_before: str | None = None
         self.text_after: str | None = None
+        self.warnings: list[str] = []
         part = getattr(body, "part", None)
         self.parts: list[str] = [str(part.part_name)] if part is not None else []
 
@@ -892,6 +904,11 @@ class ChangeRecorder:
         """Record the ordinals that moved."""
         self.moved.extend(pairs)
 
+    def warn(self, message: str) -> None:
+        """Record something this call could not carry (CR-003 Phase K)."""
+        if message and message not in self.warnings:
+            self.warnings.append(message)
+
     def finish(self) -> ChangeReport:
         """The frozen report."""
         return ChangeReport(
@@ -902,6 +919,7 @@ class ChangeRecorder:
             text_before=self.text_before,
             text_after=self.text_after,
             parts_touched=tuple(self.parts),
+            warnings=tuple(self.warnings),
         )
 
 
@@ -923,6 +941,9 @@ class _NullRecorder:
         """Nothing."""
 
     def shifted(self, pairs: list[tuple[str, str]]) -> None:
+        """Nothing."""
+
+    def warn(self, message: str) -> None:
         """Nothing."""
 
 

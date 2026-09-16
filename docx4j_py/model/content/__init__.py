@@ -201,6 +201,29 @@ def _package_bodies(self: object) -> list:
     return list(package_bodies(self))
 
 
+def _package_to_markdown(self: object, **options: object) -> str:
+    """The main document part as markdown (CR-003 section 3.5, Phase K).
+
+    docx4j-mcp's ``docx_to_markdown``, in one call: the body's blocks, with the
+    footnotes it refers to as GFM footnotes at the end.
+
+    Args:
+        **options: ``addresses``, ``view`` (``"accepted"`` or ``"markup"``) and
+            ``max_chars``, as :meth:`docx4j_py.model.content.Body.to_markdown`.
+    """
+    return self.body.to_markdown(**options)  # type: ignore[attr-defined,no-any-return]
+
+
+def _package_markdown_budget(self: object, max_chars: object = None, **options: object) -> object:
+    """:meth:`to_markdown` with the flag: ``TextExcerpt(text, chars, truncated)``."""
+    return self.body.markdown_budget(max_chars, **options)  # type: ignore[attr-defined]
+
+
+def _package_insert_markdown(self: object, markdown: str, **options: object) -> object:
+    """``markdown_to_docx``: insert markdown into the main document part's body."""
+    return self.body.insert_markdown(markdown, **options)  # type: ignore[attr-defined]
+
+
 def _package_dry_run(self: object) -> object:
     """``with pkg.dry_run() as trial:`` --- edits on a copy, then thrown away."""
     from docx4j_py.model.content.trial import dry_run
@@ -217,6 +240,10 @@ _PACKAGE_MEMBERS: dict[str, object] = {
     "find": _package_find,
     "bodies": _package_bodies,
     "dry_run": _package_dry_run,
+    # CR-003 Phase K, section 3.5
+    "to_markdown": _package_to_markdown,
+    "markdown_budget": _package_markdown_budget,
+    "insert_markdown": _package_insert_markdown,
 }
 
 

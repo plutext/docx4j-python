@@ -27,6 +27,7 @@ KEEP = {
     "wml/pictures.py",  # CR-003 Phase A: inline_picture, image_size, emu_for
     "wml/sdt.py",  # CR-003 Phase A: the w:sdt family
     "openpackaging",  # CR-002: the engine, all of it hand written
+    "model",  # CR-003: the content API, all hand written
 }
 
 ROOT = Path(__file__).resolve().parent.parent / "docx4j_py"

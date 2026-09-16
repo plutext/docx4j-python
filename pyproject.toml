@@ -9,6 +9,11 @@ dependencies = [
     # the runtime the generated bindings in docx4j_py/* import (CR-001 section 4);
     # installed editable from ~/git/docx4j-xsdata into .venv-fork
     "docx4j-xsdata[lxml]==26.2",
+    # CR-003 section 3.5 and decided question 6: the one dependency the content
+    # API adds, for `insert_markdown` only, imported lazily inside the call.
+    # `to_markdown` needs nothing. A lower bound, not a pin: markdown-it-py is
+    # a CommonMark reference implementation and its token names are its API.
+    "markdown-it-py>=3.0",
 ]
 
 [project.optional-dependencies]

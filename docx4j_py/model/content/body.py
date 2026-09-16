@@ -426,6 +426,95 @@ class Body(Sequence):
             self.insert_element(elements, location=location, target=target)
             return [self.view_for(element) for element in elements]
 
+    def insert_markdown(
+        self,
+        markdown: str,
+        *,
+        location: BodyLocation = "End",
+        target: Any = None,
+    ) -> list[Any]:
+        """Insert markdown as blocks and return the views of what went in.
+
+        CommonMark plus GFM tables and strikethrough, through
+        ``markdown-it-py``, with the document's own styles (CR-003 section
+        3.5). One :class:`ChangeReport` covers the whole fragment, however many
+        blocks it brings.
+
+        **What it may touch beyond this part**: ``/word/styles.xml``, when the
+        markdown needs a style the document does not define (the definition
+        comes from docx4j's ``KnownStyles.xml``, and an existing one is never
+        replaced); ``/word/numbering.xml``, when a list needs a numbering
+        definition, **created** when the document has none --- in a
+        :meth:`dry_run` that part is added to the real package and is not
+        removed when the trial ends (CR-003 section 12.5); and this part's
+        relationships, one external relationship per link. Every one of them is
+        listed in the report's ``parts_touched``.
+
+        An image is **not fetched**: it becomes a link to its destination with
+        its alt text, and the report says so in ``warnings``, as it does for an
+        HTML block, which is skipped.
+
+        Args:
+            markdown: the markdown.
+            location: ``"Start"`` or ``"End"`` (the default).
+            target: the paragraph or block to insert relative to, for
+                ``"Before"`` and ``"After"``.
+
+        Returns:
+            The inserted views, in document order.
+        """
+        from docx4j_py.model.markdown import insert_markdown_into
+
+        return insert_markdown_into(self, markdown, location=location, target=target)
+
+    def to_markdown(
+        self,
+        *,
+        addresses: bool = False,
+        view: str = "accepted",
+        max_chars: int | None = None,
+    ) -> str:
+        """This body as markdown (CR-003 section 3.5). Unmarshals nothing.
+
+        Args:
+            addresses: put each block's :attr:`Paragraph.address` in an HTML
+                comment on its own line before the block ---
+                ``<!-- w14:5A2B1C3D -->`` or ``<!-- body/3 -->`` --- so that a
+                model can read a document and then edit it by address.
+                :data:`~docx4j_py.model.markdown.ADDRESS_COMMENT` is the regex
+                that recovers one, and :meth:`element_at` accepts what it
+                yields.
+            view: ``"accepted"`` (the default), the document as if every
+                tracked change were accepted, or ``"markup"``, which writes
+                CriticMarkup: ``{++inserted++}``, ``{--deleted--}`` and
+                ``{>>a comment<<}``.
+            max_chars: a budget. The result is **cut at a block boundary**
+                where one fits, and truncated in the middle of a block only
+                when the first block is already over budget. It truncates and
+                does not say so, as ``get_text`` does; :meth:`markdown_budget`
+                is the call that returns the flag.
+        """
+        from docx4j_py.model.markdown import body_markdown
+
+        return body_markdown(self, addresses=addresses, view=view, max_chars=max_chars)
+
+    def markdown_budget(
+        self,
+        max_chars: int | None = None,
+        *,
+        addresses: bool = False,
+        view: str = "accepted",
+    ) -> Any:
+        """:meth:`to_markdown` with the flag: ``TextExcerpt(text, chars, truncated)``.
+
+        The pairing of ``get_text`` and :meth:`text_budget`, for markdown:
+        ``chars`` is the length of the whole document's markdown and
+        ``truncated`` says whether the budget bit.
+        """
+        from docx4j_py.model.markdown import markdown_budget_of
+
+        return markdown_budget_of(self, max_chars, addresses=addresses, view=view)
+
     def insert_element(
         self,
         element: Any,

@@ -161,6 +161,27 @@ class TrialPackage:
         return [self.trial_part(part) for part in self._package.footer_parts()]
 
     @property
+    def style_definitions_part(self) -> Any:
+        """The trial's copy of ``/word/styles.xml``.
+
+        Spelled out for the same reason the agent surface is, and for one more:
+        CR-003 Phase K's ``insert_markdown`` *writes* to this part when the
+        markdown needs a style the document does not define, and a trial must
+        not leave that behind on the real document.
+        """
+        return self.trial_part(self._package.style_definitions_part)
+
+    @property
+    def numbering_definitions_part(self) -> Any:
+        """The trial's copy of ``/word/numbering.xml``, or None.
+
+        A trial that *creates* the part cannot un-create it (CR-003 section
+        12.5): the new part goes into the real package's map, empty, and what
+        the trial wrote into it goes with the copy.
+        """
+        return self.trial_part(self._package.numbering_definitions_part)
+
+    @property
     def parts(self) -> Any:
         """The real package's part map: a trial adds and removes no parts."""
         return self._package.parts
@@ -212,6 +233,24 @@ class TrialPackage:
         from docx4j_py.model.content.addresses import package_bodies
 
         return list(package_bodies(self))
+
+    def to_markdown(self, **options: Any) -> str:
+        """The trial's markdown, over the copies (CR-003 Phase K)."""
+        return self.body.to_markdown(**options)  # type: ignore[no-any-return]
+
+    def markdown_budget(self, max_chars: Any = None, **options: Any) -> Any:
+        """The trial's markdown with the truncation flag."""
+        return self.body.markdown_budget(max_chars, **options)
+
+    def insert_markdown(self, markdown: str, **options: Any) -> Any:
+        """Insert markdown into the trial's copy of the main document part.
+
+        A markdown fragment with a list needs a numbering part, and a part the
+        trial adds is added to the **real** package's part map and stays there
+        (12.5): a trial of such a fragment leaves an empty ``numbering.xml``
+        behind, and the abstract numbering it wrote goes with the copy.
+        """
+        return self.body.insert_markdown(markdown, **options)
 
     def dry_run(self) -> Any:
         """A trial of a trial. Allowed, and as cheap as the first."""

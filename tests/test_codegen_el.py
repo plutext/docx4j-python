@@ -96,3 +96,59 @@ def test_regenerating_el_changes_nothing():
         if path.read_bytes() != data
     ]
     assert changed == []
+
+
+# ---------------------------------------------------------------------------
+# what ``codegen/clean.py`` must not delete (CR-003 Phase K)
+# ---------------------------------------------------------------------------
+
+
+def test_every_hand_written_path_is_covered_by_cleans_keep():
+    """`codegen/clean.py` deletes what ``KEEP`` does not name, so ``KEEP`` must
+    name everything hand written.
+
+    The generator owns exactly three shapes of file: each namespace package's
+    ``__init__.py`` and ``el.py``, the root ``docx4j_py/__init__.py`` and
+    ``docx4j_py/el_index.py``. Every *other* tracked path under ``docx4j_py/``
+    is hand written and must be inside ``KEEP``, or the next
+    ``codegen/generate.sh`` silently deletes it --- which is what would have
+    happened to ``docx4j_py/model/`` before this phase added it.
+
+    Read from git rather than from the working tree, and asserted without
+    running the generator: ``generate.sh`` is not to be run from a test.
+    """
+    from clean import KEEP
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "docx4j_py"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=True,
+    ).stdout.split()
+    assert tracked, "git listed no files under docx4j_py/"
+
+    kept = {Path(entry) for entry in KEEP}
+    generated = {"el.py", "el_index.py"}
+
+    uncovered: list[str] = []
+    for entry in tracked:
+        relative = Path(entry).relative_to("docx4j_py")
+        if relative in kept or any(parent in kept for parent in relative.parents):
+            continue
+        if relative.name in generated or relative.name == "__init__.py":
+            continue  # the generator writes this one
+        uncovered.append(entry)
+
+    assert uncovered == [], (
+        "these hand-written paths are not in codegen/clean.py's KEEP and the "
+        f"next regeneration would delete them: {uncovered}"
+    )
+
+
+def test_everything_keep_names_is_really_there():
+    """A stale ``KEEP`` entry hides a path that no longer exists."""
+    from clean import KEEP
+
+    missing = [entry for entry in sorted(KEEP) if not (ROOT / "docx4j_py" / entry).exists()]
+    assert missing == []

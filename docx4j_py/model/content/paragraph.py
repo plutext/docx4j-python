@@ -631,6 +631,62 @@ class Paragraph:
             self.parent_body.insert_element(elements, location=where, target=self)
             return [self.parent_body.view_for(e) for e in elements]
 
+    def insert_markdown(self, markdown: str, *, location: str = "After") -> list[Any]:
+        """Insert markdown next to this paragraph (CR-003 section 3.5).
+
+        ``"Before"`` and ``"After"`` (the default) put the blocks beside this
+        paragraph. ``"Start"`` and ``"End"`` are accepted as well and follow
+        :meth:`insert_xml`'s rule of CR-003 section 4: a fragment that is
+        exactly one paragraph has its **runs merged into this one**, as Word's
+        paste does; anything else goes before or after.
+
+        What the call may touch beyond this part, and what it does with an
+        image or an HTML block, is :meth:`Body.insert_markdown`'s docstring.
+
+        Returns:
+            The inserted views --- ``[self]`` when the runs were merged in.
+        """
+        from docx4j_py.model.markdown import blocks_for
+
+        with recording(self.parent_body, "insert_markdown") as change:
+            elements, touched = blocks_for(self.parent_body, markdown, change)
+            parts = getattr(change, "parts", None)
+            if parts is not None:
+                for name in sorted(touched):
+                    if name not in parts:
+                        parts.append(name)
+            if not elements:
+                return []
+            only = elements[0] if len(elements) == 1 and isinstance(elements[0], P) else None
+            if only is not None and location in ("Start", "End"):
+                before = self.text
+                self.insert_items_at(
+                    0 if location == "Start" else len(self.text), list(only.content)
+                )
+                change.touched(self)
+                change.text(before=before, after=self.text)
+                return [self]
+            where = "Before" if location == "Start" else "After" if location == "End" else location
+            self.parent_body.insert_element(elements, location=where, target=self)
+            return [self.parent_body.view_for(element) for element in elements]
+
+    def to_markdown(self, *, addresses: bool = False, view: str = "accepted") -> str:
+        """This paragraph as markdown (CR-003 section 3.5).
+
+        Its block form: a heading is ``# ...``, a list paragraph a ``- `` or
+        ``1. `` item, a quote ``> ...``. A footnote reference is ``[^1]``, but
+        the definitions belong to the document, so only
+        :meth:`Body.to_markdown` writes them.
+
+        Args:
+            addresses: put :attr:`address` in an HTML comment on its own line
+                before the paragraph.
+            view: ``"accepted"`` or ``"markup"`` (CriticMarkup).
+        """
+        from docx4j_py.model.markdown import paragraph_markdown
+
+        return paragraph_markdown(self, addresses=addresses, view=view)
+
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text` in this paragraph, as ranges.
 
