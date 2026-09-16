@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the four documents the Word acceptance checklist needs.
+"""Write the five documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Four files, each testing a different half of the save path:
+Five files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -27,6 +27,15 @@ Four files, each testing a different half of the save path:
     sized by ``image_size`` and ``emu_for`` from the image's own header, so the
     relationship, the content type and the stored (not deflated) media entry
     are all exercised.
+``5-markdown-built.docx``
+    a document built from one markdown string through CR-003 Phase K's
+    ``insert_markdown``: headings, emphasis, inline code, a nested bullet list,
+    an ordered list, a block quote, a fenced code block, a hyperlink and a GFM
+    pipe table. It exercises the two parts the markdown importer writes besides
+    the body --- ``styles.xml``, which gains the styles docx4j's
+    ``KnownStyles.xml`` supplies and the two code styles Word has no equivalent
+    of, and ``numbering.xml``, which is created from nothing --- plus an
+    external relationship for the link.
 """
 
 from __future__ import annotations
@@ -144,8 +153,58 @@ def created_with_image(out: Path) -> Path:
     return target
 
 
+#: Artefact 5's source. One string, every construct CR-003 section 3.5 maps.
+MARKDOWN = """# Built from markdown
+
+This document was built by `pkg.body.insert_markdown(...)`, with **bold**,
+*italic*, ~~struck~~ and `inline code` in this paragraph.
+
+## A bullet list, with a level of nesting
+
+- the first item
+- the second item
+  - a nested item
+  - another nested item
+- the third item
+
+## An ordered list
+
+1. read the outline
+2. find the text
+3. edit by address
+4. check the report
+
+> A block quote, which becomes the Quote style.
+
+```
+x = 1
+y = x + 1
+```
+
+## A table
+
+| Region | Quarter | Total |
+| --- | --- | ---: |
+| North | Q1 | 120 |
+| South | Q2 | 240 |
+| East | Q3 | 360 |
+
+See [the docx4j site](https://www.docx4java.org/) for the Java original.
+"""
+
+
+def markdown_built(out: Path) -> Path:
+    """5. A document built from one markdown string (CR-003 Phase K)."""
+    target = out / "5-markdown-built.docx"
+    pkg = WordprocessingMLPackage.create_package()
+    pkg.id_seed = 20260917  # the same seed, the same bytes
+    pkg.body.insert_markdown(MARKDOWN)
+    pkg.save(target)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the four artefacts and print a summary."""
+    """Write the five artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -153,7 +212,7 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    for build in (untouched, remarshalled, created, created_with_image):
+    for build in (untouched, remarshalled, created, created_with_image, markdown_built):
         target = build(out)
         with zipfile.ZipFile(target) as zf:
             bad = zf.testzip()

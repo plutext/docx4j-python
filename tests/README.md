@@ -1,7 +1,7 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 865 tests
+.venv-fork/bin/python -m pytest                    # everything, 940 tests
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
 .venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B
@@ -29,6 +29,7 @@
 | `content/test_text_model.py` | CR-003 §3.12 | segments, grapheme-safe splitting, the search options |
 | `content/test_errors_and_parts.py` | CR-003 §3.1 | the error hierarchy, and untouched parts still byte-identical |
 | `content/test_office_js_subset.py` | CR-003 §3.4 (TS) | the committed Office JS member list |
+| `content/test_markdown.py` | CR-003 §3.5 | markdown out and in, one construct at a time; the address comment and its regex; what `styles.xml` and `numbering.xml` are touched for |
 | `agent/test_addresses.py` | CR-003 §3.4 | the three address forms, the nearest-address error, `ensure_para_ids` |
 | `agent/test_outline.py` | CR-003 §3.4 | `Outline`, `depth`, `headings_only`, `limit`, the stats, the headers |
 | `agent/test_find_and_describe.py` | CR-003 §3.4 | `SearchHit` and its range, and that `describe()` unmarshals nothing |
@@ -38,6 +39,8 @@
 | `agent/test_budgets.py` | CR-003 §7 | a 200-page document: outline under 64 KB, headings under 8 KB |
 | `agent/test_scenarios.py` | CR-003 §7 | scripted tool-shaped sessions over the corpus, and determinism |
 | `agent/test_errors.py` | CR-003 §3.4 | every error's `code` and `hint`, including where to split a span |
+| `agent/test_markdown_workflows.py` | CR-003 §3.5, §7 | the coarse workflow (markdown in, markdown out) and the fine one (read with addresses, edit by address); `dry_run`, determinism, the markdown budget |
+| `test_codegen_el.py` (the last two) | CR-003 §13 | every tracked hand-written path under `docx4j_py/` is inside `codegen/clean.py`'s `KEEP` |
 
 ## Fixtures
 
@@ -47,6 +50,20 @@ and `loadAndSave.xlsx` come from `docx4j-core-tests/src/test/resources`
 (Apache-2.0) and are there for the generic loading path — CR-002 Phase A does not
 type PresentationML or SpreadsheetML, and those two prove that it does not need to
 in order to round-trip them.
+
+`tests/fixtures/` holds the documents a single phase needs, copied from docx4j
+(Apache-2.0) and listed here with their origin:
+
+| file | origin | what it carries |
+|---|---|---|
+| `unknown_content.xml` | written here | CR-001 §7: an element and an attribute the bindings do not know |
+| `lists.docx` | docx4j `docx4j-core-tests/src/test/resources/numbering_indentation.docx` | four `w:numPr` paragraphs on one `decimal` numbering definition, with a real `numbering.xml` |
+| `hyperlink.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/hyperlink.docx` | one `w:hyperlink` with an external relationship |
+| `comments.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/comments-one.docx` | one comment, for the `{>>...<<}` of `view="markup"` |
+| `footnotes.docx` | docx4j `docx4j-samples-docx4j/sample-docs/2010/w14_mcIgnorable-in-other-parts.docx` | a `w:footnoteReference` and the footnotes part it points at |
+
+Tracked changes need no fixture of their own: `samples/sample-docx.docx` already
+carries one `w:ins` and one `w:del`, which is what the CriticMarkup test reads.
 
 **No `.docm` is in the corpus**: docx4j's repository has none to copy. `Normal.dotm`
 covers the macro-enabled path (`application/vnd.ms-word.template.macroEnabledTemplate.main+xml`),
@@ -70,10 +87,10 @@ regenerate the artefacts and check by hand:
 .venv-fork/bin/python scripts/acceptance.py      # writes out/acceptance/
 ```
 
-`out/` is in `.gitignore`, so the four files are built rather than committed; the script is
+`out/` is in `.gitignore`, so the five files are built rather than committed; the script is
 deterministic and takes about two seconds.
 
-### The four artefacts
+### The five artefacts
 
 | file | what it exercises | what to look for in Word |
 |---|---|---|
@@ -81,6 +98,7 @@ deterministic and takes about two seconds.
 | `out/acceptance/2-remarshalled-round-trip.docx` | the same document with `document.xml`, `styles.xml` and `settings.xml` **unmarshalled and re-serialised**, and two paragraphs added (one through the `p()` builder, one through `el`) | no repair prompt; the two added paragraphs are at the end and the second keeps its leading and trailing spaces (`xml:space="preserve"`); the styles pane is unchanged; `w16se`/`w16cid` in `mc:Ignorable` did not upset Word. This is the test of §5.6. |
 | `out/acceptance/3-created.docx` | `WordprocessingMLPackage.create_package()`: nothing came from a container | no repair prompt; A4 portrait with 2.54 cm margins; "Created by docx4j-python" is Heading 1; the styles pane offers Normal and Heading 1 to 4; the third paragraph is bold red 14 pt followed by plain text. |
 | `out/acceptance/4-created-with-image.docx` | a created document plus an `ImagePart` added through `add_target_part` and placed with the `w:drawing` CR-003 Phase A's `inline_picture` builds, sized by `image_size` / `emu_for` from the PNG's own header | no repair prompt; the picture appears at its natural size, 9.00 cm by 6.56 cm (340 × 248 px at 96 dpi); right-click → Size shows those dimensions and **Lock aspect ratio ticked** (the `a:graphicFrameLocks noChangeAspect` the old hand-written fragment did not write); Alt Text shows the description; the image survives a Word save-and-reopen. |
+| `out/acceptance/5-markdown-built.docx` | one markdown string through CR-003 Phase K's `insert_markdown`: headings, emphasis, inline code, a nested bullet list, an ordered list, a block quote, a fenced code block, a hyperlink and a GFM pipe table. It writes `styles.xml` (the styles from docx4j's `KnownStyles.xml`, plus `CodeChar` and `SourceCode`, which Word has no built-in equivalent of), creates `numbering.xml` from nothing, and adds an external relationship | no repair prompt; **Heading 1** and **Heading 2** appear in the navigation pane; the bullet list shows Word's own bullet glyphs with the nested level indented and using the second glyph; the ordered list is numbered 1 to 4 and **restarts at 1** (it is its own `w:num`); the quotation is in the Quote style; `x = 1` is in a grey Consolas block and `inline code` in grey Consolas within the paragraph; the link is blue, underlined and **Ctrl-click opens docx4java.org**; the table has Table Grid borders, a bold first row and the Total column right-aligned. Then **save from Word, close, reopen**: still clean, and the list numbering has not changed. |
 
 ### Checks worth making on every one
 
