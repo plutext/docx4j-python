@@ -531,8 +531,7 @@ def test_reading_a_document_as_markdown_leaves_every_other_part_byte_for_byte():
 def test_inserting_markdown_that_needs_no_new_style_touches_only_the_body():
     package = sample("2010-sample1.docx")
     package.id_seed = 20260917
-    package.body  # the part the edit is in
-    package.style_definitions_part.contents  # already unmarshalled either way
+    _ = package.body, package.style_definitions_part.contents  # unmarshal both first
     before = part_bytes(package.save())
 
     package.body.insert_markdown("Just a plain paragraph.\n")

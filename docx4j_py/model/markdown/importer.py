@@ -120,7 +120,7 @@ _known_styles_cache: dict[str, Any] | None = None
 
 def _known_styles() -> dict[str, Any]:
     """docx4j's ``KnownStyles.xml``, by style id, parsed once per process."""
-    global _known_styles_cache  # noqa: PLW0603 - one cache for the process
+    global _known_styles_cache  # one cache for the process
     if _known_styles_cache is None:
         from importlib import resources
 
@@ -881,7 +881,7 @@ def parser() -> Any:
     ``gfm-like`` is deliberately not used: it turns on ``linkify``, which needs
     ``linkify-it-py``, a second dependency this CR does not take.
     """
-    global _parser  # noqa: PLW0603 - one parser for the process
+    global _parser  # one parser for the process
     if _parser is None:
         try:
             from markdown_it import MarkdownIt

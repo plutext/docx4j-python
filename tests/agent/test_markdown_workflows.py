@@ -146,7 +146,7 @@ def test_an_address_read_from_markdown_survives_a_save_and_a_reload(report):
 
 def test_the_fine_edit_leaves_every_other_part_byte_for_byte():
     package = sample("2010-sample1.docx")
-    package.body  # the only part the edit touches
+    _ = package.body  # the only part the edit touches
     before = part_bytes(package.save())
 
     markdown = package.to_markdown(addresses=True)
@@ -175,8 +175,7 @@ def test_the_addresses_in_the_markdown_are_the_outlines_top_level_ones(report):
 def test_a_dry_run_of_insert_markdown_previews_without_committing():
     package = sample("2010-sample1.docx")
     package.id_seed = SEED
-    package.body
-    package.style_definitions_part.contents
+    _ = package.body, package.style_definitions_part.contents  # unmarshal both first
     before = part_bytes(package.save())
 
     with package.dry_run() as trial:
