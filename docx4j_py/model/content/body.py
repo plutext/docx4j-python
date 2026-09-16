@@ -34,6 +34,7 @@ from docx4j_py.model.content.addresses import (
     paragraph_at,
     prefix_for_part,
 )
+from docx4j_py.model.content.controls import ContentControl, controls_in
 from docx4j_py.model.content.enums import (
     BodyLocation,
     BreakTypeValue,
@@ -54,13 +55,16 @@ from docx4j_py.model.content.reports import (
     outline_of,
     recording,
 )
+from docx4j_py.model.content.table import Table, insert_table_into
 from docx4j_py.model.content.text_model import block_children_of, block_list_of
 from docx4j_py.namespaces import PREFIXES
 from docx4j_py.runtime import context
 from docx4j_py.traversal import element_name
-from docx4j_py.wml import P, R, br, r, to_xml, wml
+from docx4j_py.wml import P, R, Tbl, br, r, to_xml, wml
+from docx4j_py.wml.sdt import SDT_FORMS
 
 if TYPE_CHECKING:  # pragma: no cover
+    from docx4j_py.model.content.picture import InlinePicture
     from docx4j_py.model.content.range import Range
 
 __all__ = ["Block", "Body", "body_of"]
@@ -69,6 +73,10 @@ _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W_P = f"{{{_W}}}p"
 
 _PREFIX_FOR: dict[str, str] = {uri: prefix for prefix, uri in PREFIXES.items()}
+
+#: The four ``w:sdt`` classes, so :meth:`Body.view_for` recognises a control of
+#: any form without asking its element name (all four are ``w:sdt``).
+_SDT_CLASSES: tuple[type, ...] = tuple(container for container, _content in SDT_FORMS.values())
 
 
 def qualified(qname: str | None) -> str:
@@ -250,10 +258,21 @@ class Body(Sequence):
         return any(item is block or item == block for block in self.content)
 
     def view_for(self, element: Any) -> Any:
-        """The view of a block: a :class:`Paragraph`, else a :class:`Block`."""
+        """The view of a block: a :class:`Paragraph`, :class:`Table`, control or :class:`Block`.
+
+        The one place CR-003 section 12.8 says Phase C had to change, and the
+        addresses did not move with it: a path is ``block_children_of`` all the
+        way down, and a table's rows and cells were already indices in it.
+        :class:`Block` is what is left for a ``w:customXml``, a
+        ``w:bookmarkStart`` and anything else a body may hold.
+        """
         container = self._container_of(element)
         if isinstance(element, P):
             return Paragraph(element, container, self)
+        if isinstance(element, Tbl):
+            return Table(element, container, self)
+        if isinstance(element, _SDT_CLASSES):
+            return ContentControl(element, container, self)
         return Block(element, container, self)
 
     def paragraph_for(self, element: P) -> Paragraph:
@@ -298,9 +317,33 @@ class Body(Sequence):
 
     def iter_blocks(self) -> Iterator[Any]:
         """This body's own block-level children, as views, in order."""
-        items = self.content
-        for item in list(items):
-            yield Paragraph(item, items, self) if isinstance(item, P) else Block(item, items, self)
+        for item in list(self.content):
+            yield self.view_for(item)
+
+    @property
+    def tables(self) -> list[Table]:
+        """The tables in this body's own content, as views (Office JS ``Body.tables``).
+
+        This body's own list, as Office JS reports it: a table inside a table
+        is ``cell.body.tables`` and a table inside a content control is
+        ``control.tables``. CR-003 section 4: **views, never elements**, from
+        the first phase that has them.
+        """
+        return [
+            Table(item, self.content, self) for item in self.content if isinstance(item, Tbl)
+        ]
+
+    @property
+    def content_controls(self) -> list[ContentControl]:
+        """Every content control in this body, in document order, nested ones included."""
+        return controls_in(self)
+
+    @property
+    def inline_pictures(self) -> list[InlinePicture]:
+        """Every inline picture in this body, in document order."""
+        return [
+            picture for paragraph in self.iter_paragraphs() for picture in paragraph.inline_pictures
+        ]
 
     @property
     def text(self) -> str:
@@ -425,6 +468,142 @@ class Body(Sequence):
                 return []
             self.insert_element(elements, location=location, target=target)
             return [self.view_for(element) for element in elements]
+
+    def insert_table(
+        self,
+        row_count: int,
+        column_count: int,
+        *,
+        location: BodyLocation = "End",
+        values: list[list[str]] | None = None,
+        style: str | None = None,
+    ) -> Table:
+        """A table of `row_count` by `column_count` cells (Office JS ``insertTable``).
+
+        The columns are equal over the section's text width, taken from
+        ``w:sectPr`` (``pgSz/@w`` less the margins), and the grid sums to that
+        width exactly. **No style is set unless one is asked for** (CR-003
+        section 4), so a new table is borderless until
+        ``table.style_built_in = "TableGrid"``.
+
+        Args:
+            row_count: how many rows; at least 1.
+            column_count: how many columns; at least 1.
+            location: ``"Start"`` or ``"End"`` (the default).
+            values: the text of the cells, row by row; short rows are padded.
+            style: a table style display name, stored name or id
+                (``"Table Grid"``, ``"TableGrid"``).
+
+        Returns:
+            The new table's :class:`~docx4j_py.model.content.table.Table` view.
+        """
+        return insert_table_into(
+            self, row_count, column_count, location=location, values=values, style=style
+        )
+
+    def insert_inline_picture(
+        self,
+        data: bytes,
+        *,
+        location: BodyLocation = "End",
+        width: float | None = None,
+        height: float | None = None,
+        alt_text_description: str = "",
+        alt_text_title: str | None = None,
+        name: str | None = None,
+    ) -> InlinePicture:
+        """A picture in a new paragraph at the start or the end.
+
+        The bytes go into an
+        :class:`~docx4j_py.openpackaging.parts.binary_part.ImagePart` under the
+        first free ``/word/media/imageN.<ext>``, a relationship is written on
+        **this body's part** (so a picture in a header is related from the
+        header), and the ``wp:inline`` is sized from the image's own header ---
+        PNG, JPEG, GIF and BMP, no Pillow --- and scaled down to the text column
+        as docx4j's ``CxCy.scale`` does.
+
+        **In a** :meth:`dry_run`: the image part and its relationship are added
+        to the *real* package, because a trial shares its part map; Phase C
+        gives the trial an undo log, so leaving the ``with`` block removes the
+        part, its relationship and its content-type entry again (CR-003 section
+        12.5). Nothing else about a trial changed.
+
+        Args:
+            data: the image's bytes;
+                :meth:`insert_inline_picture_from_base64` is the base64 twin.
+            location: ``"Start"`` or ``"End"`` (the default).
+            width: the width in points; the height follows the aspect ratio
+                unless it is given too.
+            height: the height in points.
+            alt_text_description: ``wp:docPr/@descr``, Word's alt text.
+            alt_text_title: ``wp:docPr/@title``; not written when None.
+            name: ``wp:docPr/@name``; ``"Picture N"`` by default, as Word.
+
+        Returns:
+            The new :class:`~docx4j_py.model.content.picture.InlinePicture`.
+
+        Raises:
+            BuilderError: the bytes are not a PNG, JPEG, GIF or BMP.
+            ContentError: this body has no part to relate the image to.
+        """
+        from docx4j_py.model.content.picture import insert_picture_into_body
+
+        return insert_picture_into_body(
+            self,
+            data,
+            location=location,
+            width=width,
+            height=height,
+            alt_text_description=alt_text_description,
+            alt_text_title=alt_text_title,
+            name=name,
+        )
+
+    def insert_inline_picture_from_base64(
+        self, base64: str, *, location: BodyLocation = "End", **options: Any
+    ) -> InlinePicture:
+        """:meth:`insert_inline_picture` from base64 (Office JS's own spelling)."""
+        import base64 as base64_module
+
+        return self.insert_inline_picture(
+            base64_module.b64decode(base64), location=location, **options
+        )
+
+    def insert_ooxml(
+        self,
+        ooxml: str,
+        *,
+        location: Location = "End",
+        target: Any = None,
+    ) -> list[Any]:
+        """Word's ``insertOoxml``: a flat OPC ``pkg:package``, or a fragment.
+
+        A ``pkg:package`` is what Word's clipboard produces and what Office JS's
+        ``insertOoxml`` takes. Every part its content references --- an image,
+        an embedded object, a chart --- is copied into this package under a free
+        name with a fresh relationship id, its own relationships copied
+        recursively **keeping their ids**, and the references in the inserted
+        content rewritten; **styles and numbering are not merged** (CR-003
+        section 4). A bare ``w:p`` / ``w:tbl`` fragment is accepted too, and is
+        exactly what :meth:`insert_xml` takes.
+
+        **In a** :meth:`dry_run`: as :meth:`insert_inline_picture`, a copied
+        part is added to the real package and the trial's undo log removes it
+        again on the way out.
+
+        Args:
+            ooxml: the ``pkg:package`` document, or the fragment.
+            location: ``"Start"``, ``"End"`` (the default), ``"Before"``,
+                ``"After"`` or ``"Replace"``, which clears this body first.
+            target: the paragraph or block to insert relative to.
+
+        Returns:
+            The views of what was inserted, since a package may bring several
+            blocks (CR-003 section 4).
+        """
+        from docx4j_py.model.content.ooxml import insert_ooxml_into_body
+
+        return insert_ooxml_into_body(self, ooxml, location=location, target=target)
 
     def insert_markdown(
         self,

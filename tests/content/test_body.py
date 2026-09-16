@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 from conftest import reloaded, sample
 
-from docx4j_py.model.content import Block, Body, ContentError, Paragraph
+from docx4j_py.model.content import Block, Body, ContentError, Paragraph, Table
 from docx4j_py.wml import el
 
 
@@ -58,9 +58,11 @@ def test_the_body_is_a_sequence_of_its_blocks(new_package):
     assert len(body) == 3
     assert isinstance(body[0], Paragraph)
     assert body[0].text == "one"
-    assert isinstance(body[2], Block)
+    # CR-003 Phase C: a w:tbl is a Table view; Block is what is left for the
+    # block-level elements that have no view of their own (a w:customXml).
+    assert isinstance(body[2], Table)
     assert body[2].name == "w:tbl"
-    assert [type(block).__name__ for block in body] == ["Paragraph", "Paragraph", "Block"]
+    assert [type(block).__name__ for block in body] == ["Paragraph", "Paragraph", "Table"]
     assert [b.text for b in body[0:2]] == ["one", "two"]
 
     # `in` is a text search, as CR-003 section 3.1 asks

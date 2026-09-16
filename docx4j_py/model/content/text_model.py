@@ -49,10 +49,12 @@ __all__ = [
     "Segment",
     "block_children_of",
     "block_list_of",
+    "cells_of",
     "find_all",
     "grapheme_clusters",
     "is_grapheme_boundary",
     "item_text",
+    "rows_of",
     "runs_of",
     "search_pattern",
     "segments_of",
@@ -75,6 +77,14 @@ W_SYM = _w("sym")
 W_SDT = _w("sdt")
 W_DEL_TEXT = _w("delText")
 W_TBL = _w("tbl")
+W_TR = _w("tr")
+W_TC = _w("tc")
+W_CUSTOM_XML = _w("customXml")
+
+#: What may wrap a row or a cell without being one: an OpenDoPE repeat puts its
+#: ``w:tr`` inside a ``w:sdt``, and a legacy binding inside a ``w:customXml``
+#: (CR-003 section 4: rows and cells descend into row- and cell-level controls).
+_ROW_WRAPPERS = frozenset({W_SDT, W_CUSTOM_XML})
 
 #: A run's children that contribute a constant string.
 _CONSTANT_TEXT: dict[str, str] = {
@@ -388,6 +398,47 @@ def block_children_of(value: Any) -> list | None:
     """
     found = block_list_of(value)
     return None if found is None else getattr(found[0], found[1])
+
+
+def _wrapped(items: Any, wanted: str, out: list[tuple[Any, list]]) -> None:
+    """Collect ``(element, the live list holding it)`` for one element name.
+
+    A row- or cell-level ``w:sdt`` (an OpenDoPE repeat) or ``w:customXml`` is
+    transparent and is descended into, so the container reported for a row
+    inside a repeat is the **control's** list, which is where an insert beside
+    it belongs.
+    """
+    for item in items:
+        name = element_name(item)
+        if name == wanted:
+            out.append((item, items))
+        elif name in _ROW_WRAPPERS:
+            children = block_children_of(item)
+            if children is not None:
+                _wrapped(children, wanted, out)
+
+
+def rows_of(table: Any) -> list[tuple[Any, list]]:
+    """A table's ``w:tr``\\ s and the list holding each, controls descended into.
+
+    CR-003 section 4: "rows and cells descend into row- and cell-level content
+    controls (an OpenDoPE repeat wraps its ``w:tr`` in a ``w:sdt``), so ``rows``
+    is what Word shows".
+    """
+    return _collected(table, W_TR)
+
+
+def cells_of(row: Any) -> list[tuple[Any, list]]:
+    """A row's ``w:tc``\\ s and the list holding each, controls descended into."""
+    return _collected(row, W_TC)
+
+
+def _collected(container: Any, wanted: str) -> list[tuple[Any, list]]:
+    out: list[tuple[Any, list]] = []
+    items = block_children_of(container)
+    if items is not None:
+        _wrapped(items, wanted, out)
+    return out
 
 
 def child_qname(parent: Any, child: Any) -> str | None:

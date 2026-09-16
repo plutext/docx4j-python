@@ -275,6 +275,28 @@ class Range:
         """A new paragraph before or after this span's paragraph."""
         return self.paragraph.insert_paragraph(text, location=location, style=style)
 
+    def insert_ooxml(self, ooxml: str, *, location: str = "Replace") -> list[Any]:
+        """Word's ``insertOoxml`` around or in place of this span (CR-003 section 3.2).
+
+        A flat OPC ``pkg:package`` or a bare fragment, as
+        :meth:`Body.insert_ooxml`. A fragment of exactly one ``w:p`` has its
+        **runs merged into this paragraph** at the span's start or end, as
+        Word's paste does; anything with a block in it goes before or after the
+        paragraph.
+
+        Args:
+            ooxml: the ``pkg:package`` document, or the fragment.
+            location: ``"Replace"`` (the default, as a range's other verbs),
+                ``"Before"`` or ``"After"``.
+
+        Returns:
+            The views of what was inserted --- ``[self.paragraph]`` when the
+            runs were merged in.
+        """
+        from docx4j_py.model.content.ooxml import insert_ooxml_into_range
+
+        return insert_ooxml_into_range(self, ooxml, location=location)
+
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text` within this span, as ranges of the paragraph."""
         base = self.start

@@ -48,10 +48,12 @@ __all__ = [
     "BreakType",
     "BuilderError",
     "ChangeReport",
+    "ContentControl",
     "ContentError",
     "Description",
     "Docx4JError",
     "Font",
+    "InlinePicture",
     "InsertLocation",
     "InvalidTargetError",
     "Outline",
@@ -67,11 +69,16 @@ __all__ = [
     "SpanError",
     "StyleError",
     "StyleInfo",
+    "Table",
+    "TableCell",
+    "TableRow",
     "TextExcerpt",
     "UnderlineType",
     "body_of",
     "built_in_of",
+    "cells_of",
     "grapheme_clusters",
+    "rows_of",
     "segments_of",
 ]
 
@@ -104,6 +111,14 @@ _LAZY: dict[str, str] = {
     "PageSetup": "docx4j_py.model.content.describe",
     "PartInfo": "docx4j_py.model.content.describe",
     "StyleInfo": "docx4j_py.model.content.describe",
+    # CR-003 Phase C, the tables, the pictures and the controls
+    "Table": "docx4j_py.model.content.table",
+    "TableRow": "docx4j_py.model.content.table",
+    "TableCell": "docx4j_py.model.content.table",
+    "rows_of": "docx4j_py.model.content.text_model",
+    "cells_of": "docx4j_py.model.content.text_model",
+    "InlinePicture": "docx4j_py.model.content.picture",
+    "ContentControl": "docx4j_py.model.content.controls",
 }
 
 

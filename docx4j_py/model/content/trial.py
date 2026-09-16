@@ -24,11 +24,16 @@ What it copies and what it does not:
   by the trial's first look at it. A dry run over ``pkg.body`` after
   ``pkg.body`` has been read costs a ``deepcopy`` of ``w:document`` and nothing
   else.
-* **parts added during the trial are discarded with it.** Phase D adds none;
-  Phase C's ``insert_inline_picture`` would add an image part to the real
-  package's part map, which a trial cannot undo. Until a phase needs it, a
-  trial is for content edits, and the docstring of anything that adds a part
-  should say so.
+* **a part added during the trial is un-added on the way out.** Phase D added
+  none; Phase C's ``insert_inline_picture`` and ``insert_ooxml`` add image
+  parts to the real package's part map, which the trial shares, so they report
+  what they added through :meth:`TrialPackage.note_added_part` and
+  :meth:`TrialPackage.discard_added_parts` removes the part, its relationship
+  and its content-type entry again when the block ends. A part a trial
+  **creates** for another reason --- the ``numbering.xml`` Phase K's
+  ``insert_markdown`` makes when a list needs one --- is still not un-created,
+  because nothing reports it; the docstring of anything that adds a part says
+  which of the two it is.
 * ``trial.save()`` is refused: a trial is not a document.
 """
 
@@ -105,6 +110,7 @@ class TrialPackage:
 
     __slots__ = (
         "__weakref__",
+        "_added",
         "_assigns_para_ids",
         "_changes",
         "_current_change",
@@ -119,6 +125,7 @@ class TrialPackage:
         """Wrap a package; nothing is copied until a body is asked for."""
         self._package = package
         self._parts: dict[int, TrialPart] = {}
+        self._added: list[tuple[Any, Any, Any, bool]] = []
         self._changes: list[Any] = []
         self._current_change: Any = None
         self._assigns_para_ids = package.assigns_para_ids
@@ -183,8 +190,34 @@ class TrialPackage:
 
     @property
     def parts(self) -> Any:
-        """The real package's part map: a trial adds and removes no parts."""
+        """The real package's part map; what a trial adds to it is undone on the way out."""
         return self._package.parts
+
+    def note_added_part(
+        self, part: Any, relationship: Any, source: Any, *, added_content_type: bool = True
+    ) -> None:
+        """Record a part a trial verb added, so :meth:`discard_added_parts` can undo it.
+
+        Called by :func:`docx4j_py.model.content.picture.note_added_part`, which
+        is a no-op on a real package. CR-003 section 12.5 asked for the question
+        to be answered; this answers it with "nothing is left behind".
+        """
+        self._added.append((part, relationship, source, added_content_type))
+
+    def discard_added_parts(self) -> list[Any]:
+        """Remove the parts this trial added; returns their names, newest first."""
+        removed: list[Any] = []
+        package = self._package
+        for part, relationship, source, added_content_type in reversed(self._added):
+            rels = getattr(source, "relationships_part", None) if source is not None else None
+            if rels is not None and relationship is not None:
+                rels.remove_relationship(relationship)
+            package.parts.remove(part.part_name)
+            if added_content_type:
+                package.content_type_manager.remove_override_content_type(part.part_name)
+            removed.append(part.part_name)
+        self._added.clear()
+        return removed
 
     # -- the agent surface -------------------------------------------------
     #
@@ -331,5 +364,6 @@ class dry_run:
         return self.trial
 
     def __exit__(self, *exc_info: object) -> None:
-        """Drop the copies. The real package was never touched."""
+        """Drop the copies and the parts the trial added. The document is as it was."""
+        self.trial.discard_added_parts()
         self.trial._parts.clear()

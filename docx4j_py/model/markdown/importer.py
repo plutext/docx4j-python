@@ -35,10 +35,12 @@ the same bytes, which is CR-003 section 3.4's determinism.
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 from typing import Any
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
 from docx4j_py.model.content.errors import ContentError, StyleError
+from docx4j_py.model.content.table import writable_width
 from docx4j_py.wml import CtLvlStart, P, R, RPr, el, t, tbl, tc, tr, wml
 
 __all__ = [
@@ -104,9 +106,6 @@ BULLET_FONTS = ("Symbol", "Courier New", "Wingdings")
 
 #: How many levels an abstract numbering definition carries.
 LEVELS = 9
-
-#: The width of the text column on A4 with 1 inch margins, in twips.
-DEFAULT_TABLE_WIDTH = 9026
 
 _HYPERLINK_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
 
@@ -614,22 +613,14 @@ class _Importer:
         return cell
 
     def writable_width(self) -> int:
-        """The section's page width minus its margins, in twips; A4 if unstated."""
-        container = getattr(self.body, "container", None)
-        sect_pr = getattr(container, "sect_pr", None)
-        pg_sz = getattr(sect_pr, "pg_sz", None) if sect_pr is not None else None
-        width = getattr(pg_sz, "w", None) if pg_sz is not None else None
-        if width is None:
-            return DEFAULT_TABLE_WIDTH
-        pg_mar = getattr(sect_pr, "pg_mar", None)
-        left = getattr(pg_mar, "left", None) if pg_mar is not None else None
-        right = getattr(pg_mar, "right", None) if pg_mar is not None else None
-        try:
-            writable = int(width) - int(left if left is not None else 1440)
-            writable -= int(right if right is not None else 1440)
-        except (TypeError, ValueError):  # pragma: no cover - malformed sectPr
-            return DEFAULT_TABLE_WIDTH
-        return writable if writable > 0 else DEFAULT_TABLE_WIDTH
+        """The section's page width minus its margins, in twips; A4 if unstated.
+
+        CR-003 section 13.5: the one function to move. It is now
+        :func:`docx4j_py.model.content.table.writable_width`, which is what
+        ``Body.insert_table`` sizes its grid from, so a markdown table and an
+        ``insert_table`` table are the same width by construction.
+        """
+        return writable_width(self.body)
 
     # -- inlines -----------------------------------------------------------
 
@@ -673,24 +664,57 @@ class _Importer:
                 self.recorder.warn(f"inline HTML was skipped: {token.content[:40]}")
 
     def image(self, token: Any) -> None:
-        """An image: **never fetched**, so it degrades to a link or its alt text.
+        """An image: a **local file** is embedded, a remote one stays a link.
 
         docx4j-mcp's posture (its section 6, and Java's
         ``DefaultMarkdownImageHandler``, which declines a remote URL): an agent
-        must not be able to make the library open a socket. The alt text
-        becomes the link's text and the destination its target, so nothing is
-        lost from the markdown; embedding a local file is Phase C's
-        ``insert_inline_picture``.
+        must not be able to make the library open a socket, so a ``http:`` or
+        ``https:`` destination becomes a link whose text is the alt text and
+        nothing is fetched. A destination that names a **file on disk** is read
+        and embedded as a real
+        :class:`~docx4j_py.model.content.picture.InlinePicture`, through the
+        same ``add_image`` that ``insert_inline_picture`` uses (CR-003 section
+        13.5); a file this cannot read --- missing, or not a PNG, JPEG, GIF or
+        BMP --- falls back to the link, with the reason in ``warnings``.
         """
         destination = str(token.attrs.get("src") or "")
         alt = token.content or str(token.attrs.get("alt") or "")
-        self.recorder.warn(f"the image {destination[:60]!r} was kept as a link, not fetched")
+        if destination and self.embed_image(destination, alt):
+            return
         if destination:
+            self.recorder.warn(f"the image {destination[:60]!r} was kept as a link, not fetched")
             self.open_hyperlink(destination)
             self.add_text(alt or destination)
             self.current_hyperlink = None
         elif alt:
             self.add_text(alt)
+
+    def embed_image(self, destination: str, alt: str) -> bool:
+        """Embed a local image file; False when it is remote or cannot be read."""
+        from urllib.parse import urlparse
+
+        scheme = urlparse(destination).scheme
+        if scheme and scheme not in ("file",) and len(scheme) > 1:
+            return False
+        path = Path(destination[7:] if scheme == "file" else destination)
+        try:
+            data = path.read_bytes()
+        except OSError as error:
+            self.recorder.warn(f"the image {destination[:60]!r} could not be read: {error.strerror}")
+            return False
+        from docx4j_py.model.content.picture import add_image
+
+        try:
+            made = add_image(self.body, data, alt_text_description=alt, name=path.name)
+        except ContentError as error:
+            self.recorder.warn(f"the image {destination[:60]!r} was not embedded: {error.message}")
+            return False
+        target = self.run_target()
+        target.append(made.run)
+        link_parents(made.run)
+        made.run.parent = self.current_hyperlink or self.current_p
+        self.touched.add(str(made.image_part.part_name))
+        return True
 
     def open_hyperlink(self, destination: str) -> None:
         """Start a ``w:hyperlink``, with an external relationship on this part."""

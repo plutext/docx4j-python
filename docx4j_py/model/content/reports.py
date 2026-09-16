@@ -36,7 +36,12 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.model.content.addresses import address_of, ordinal_of, para_id_address
-from docx4j_py.model.content.text_model import block_children_of, text_of_view
+from docx4j_py.model.content.text_model import (
+    block_children_of,
+    cells_of,
+    rows_of,
+    text_of_view,
+)
 from docx4j_py.traversal import element_name, text_of
 from docx4j_py.wml import P
 
@@ -364,18 +369,19 @@ def _kind_of(element: Any) -> str:
 
 
 def _table_shape(element: Any) -> tuple[int, int, str]:
-    """A table's rows, columns and first-row preview."""
-    rows = [row for row in (block_children_of(element) or []) if _is_row(row)]
+    """A table's rows, columns and first-row preview.
+
+    CR-003 section 12.8: the ``Table`` view is slotted in here rather than
+    duplicated beside it. ``rows_of`` and ``cells_of`` unwrap a row- or
+    cell-level ``w:sdt`` --- the OpenDoPE repeat of section 4 --- so a repeat
+    reports the rows it holds rather than counting itself as one.
+    """
+    rows = rows_of(element)
     if not rows:
         return 0, 0, ""
-    cells = block_children_of(rows[0]) or []
-    preview = " | ".join(text_of(cell).replace("\n", " ").strip() for cell in cells)
+    cells = cells_of(rows[0][0])
+    preview = " | ".join(text_of(cell).replace("\n", " ").strip() for cell, _ in cells)
     return len(rows), len(cells), preview
-
-
-def _is_row(element: Any) -> bool:
-    name = element_name(element)
-    return bool(name) and name.rpartition("}")[2] in ("tr", "sdt", "customXml")
 
 
 class _Budget:

@@ -2,7 +2,9 @@
 
 docx4j's ``io3.stores.PartStore`` separates the container from the package, and
 that split is the point here because there are three containers from the start:
-a zip, a directory and memory, with flat OPC to come in Phase C.
+a zip, a directory and memory, with flat OPC read in
+:class:`FlatOpcStore` (CR-003 Phase C needed it for ``insert_ooxml``; writing
+one is still CR-002 Phase C's).
 
 Names in a store are as the container stores them --- ``word/document.xml``,
 ``[Content_Types].xml``, ``_rels/.rels`` --- with **no leading slash**, which is
@@ -15,6 +17,7 @@ would put the two out of step.
 | :class:`ZipPartStore` | a path, bytes or a binary file object | ``ZipPartStore`` |
 | :class:`DirectoryPartStore` | an unzipped directory | ``UnzippedPartStore`` |
 | :class:`MemoryPartStore` | a ``dict`` | --- |
+| :class:`FlatOpcStore` | a ``pkg:package`` document | ``FlatOpcXmlImporter`` |
 | :class:`ZipPartSink` | a path, a file object, or bytes | ``ZipPartStore``, the save half |
 | :class:`DirectoryPartSink` | a directory | ``UnzippedPartStore`` |
 | :class:`MemoryPartSink` | | --- |
@@ -34,6 +37,7 @@ from docx4j_py.openpackaging.exceptions import Docx4JException
 __all__ = [
     "DirectoryPartSink",
     "DirectoryPartStore",
+    "FlatOpcStore",
     "MemoryPartSink",
     "MemoryPartStore",
     "PartSink",
@@ -344,6 +348,95 @@ class MemoryPartStore:
     def __repr__(self) -> str:
         """``MemoryPartStore(18 parts)``."""
         return f"MemoryPartStore({len(self._index)} parts)"
+
+
+class FlatOpcStore(MemoryPartStore):
+    """A flat OPC ``pkg:package`` document, read only. docx4j ``FlatOpcXmlImporter``.
+
+    The single-file XML form of a package, which is what Word's clipboard and
+    Office JS's ``insertOoxml`` hand over: one ``pkg:part`` per part, its bytes
+    either a ``pkg:xmlData`` holding the part's root element or a
+    ``pkg:binaryData`` holding base64. Unpacking it into a
+    :class:`MemoryPartStore` is all a reader needs, because
+    :func:`~docx4j_py.openpackaging.load.load_package` takes any
+    :class:`PartStore`::
+
+        pkg = load(FlatOpcStore.parse(xml))
+
+    This is the **read** half of CR-002 Phase C's flat OPC item, written for
+    CR-003 Phase C's ``insert_ooxml``; writing one is still that phase's.
+    """
+
+    __slots__ = ()
+
+    #: The flat OPC namespace. Its presence is how a ``pkg:package`` is told
+    #: from a bare WordprocessingML fragment.
+    NAMESPACE = "http://schemas.microsoft.com/office/2006/xmlPackage"
+
+    @classmethod
+    def parse(cls, source: str | bytes) -> FlatOpcStore:
+        """Unpack a ``pkg:package`` document into a store.
+
+        A flat OPC package carries no ``[Content_Types].xml``: each part states
+        its own ``pkg:contentType``. One is **synthesised** from those, as
+        docx4j's ``FlatOpcXmlImporter`` does, so that the store is an ordinary
+        package a loader can read.
+
+        Args:
+            source: the XML, as text or as bytes.
+
+        Raises:
+            Docx4JException: the document is not a ``pkg:package``.
+        """
+        from lxml import etree
+
+        data = source.encode("utf-8") if isinstance(source, str) else source
+        try:
+            parser = etree.XMLParser(resolve_entities=False, huge_tree=True)
+            root = etree.fromstring(data, parser)
+        except etree.XMLSyntaxError as error:
+            raise Docx4JException(f"Not well-formed XML: {error}") from error
+        if root.tag != f"{{{cls.NAMESPACE}}}package":
+            raise Docx4JException(
+                f"Not a flat OPC package: the root is {root.tag!r}, "
+                f"not {{{cls.NAMESPACE}}}package"
+            )
+        from docx4j_py.openpackaging.content_types import ContentTypeManager
+        from docx4j_py.openpackaging.part_name import CONTENT_TYPES_NAME
+
+        store = cls()
+        types = ContentTypeManager.create_default()
+        for part in root.iterchildren(f"{{{cls.NAMESPACE}}}part"):
+            name = part.get(f"{{{cls.NAMESPACE}}}name")
+            if not name:
+                continue
+            content_type = part.get(f"{{{cls.NAMESPACE}}}contentType") or ""
+            store.put(name, _flat_opc_bytes(part, cls.NAMESPACE), content_type=content_type)
+            if content_type and types.get_content_type(name) != content_type:
+                types.add_override_content_type(name, content_type)
+        store.put(CONTENT_TYPES_NAME, types.to_bytes())
+        return store
+
+    def __repr__(self) -> str:
+        """``FlatOpcStore(9 parts)``."""
+        return f"FlatOpcStore({len(self.part_names())} parts)"
+
+
+def _flat_opc_bytes(part: Any, namespace: str) -> bytes:
+    """One ``pkg:part``'s content: its XML root, or its base64 binary data."""
+    import base64
+
+    from lxml import etree
+
+    binary = part.find(f"{{{namespace}}}binaryData")
+    if binary is not None:
+        return base64.b64decode("".join((binary.text or "").split()))
+    xml_data = part.find(f"{{{namespace}}}xmlData")
+    if xml_data is None:
+        return b""
+    for child in xml_data:
+        return etree.tostring(child, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return b""
 
 
 # ---------------------------------------------------------------------------

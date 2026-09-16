@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 from conftest import WITH_PARA_IDS, WITHOUT_PARA_IDS, reloaded, sample
 
-from docx4j_py.model.content import AddressError, Block, ContentError, Paragraph
+from docx4j_py.model.content import AddressError, Block, ContentError, Paragraph, Table
 
 
 def test_the_ordinal_is_one_index_per_block_step(report):
@@ -125,10 +125,12 @@ def test_element_at_reaches_a_header_through_the_package():
 
 
 def test_element_at_refuses_a_table_as_a_paragraph(report):
+    # CR-003 Phase C: a w:tbl is a Table view, and the address did not move
+    # with it (section 12.8); Block is what is left for a w:customXml.
     block = report.element_at("body/4")
-    assert isinstance(block, Block)
+    assert isinstance(block, Table)
     assert block.address == "body/4"
-    assert repr(block) == "<Block body/4 w:tbl>"
+    assert repr(block) == "<Table body/4 2x2 'Region | Total'>"
 
     with pytest.raises(AddressError) as raised:
         report.paragraph_at("body/4")

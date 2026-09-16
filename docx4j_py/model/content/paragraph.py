@@ -483,12 +483,110 @@ class Paragraph:
 
     @property
     def parent_table_cell(self) -> Any:
-        """The cell this paragraph is in, or None. ``TableCell`` is Phase C.
+        """The cell this paragraph is in, or None (Office JS ``parentTableCell``).
 
-        Wired now so that the member exists and code written against it keeps
-        working; until Phase C it is None even inside a table.
+        The walk is up the parent pointers and goes through a cell-level
+        ``w:sdt`` without naming it, so a paragraph inside an OpenDoPE repeat
+        answers with the cell Word shows.
         """
-        return None
+        from docx4j_py.model.content.table import cell_of
+
+        return cell_of(self.element, self.parent_body)
+
+    @property
+    def parent_content_control(self) -> Any:
+        """The innermost content control this paragraph is in, or None."""
+        from docx4j_py.model.content.controls import parent_control_of
+
+        return parent_control_of(self.element, self.parent_body)
+
+    @property
+    def content_controls(self) -> list[Any]:
+        """The run-level controls in this paragraph, in order, nested ones included."""
+        from docx4j_py.model.content.controls import controls_in_paragraph
+
+        return controls_in_paragraph(self)
+
+    @property
+    def inline_pictures(self) -> list[Any]:
+        """The inline pictures in this paragraph, in order (Office JS ``inlinePictures``)."""
+        from docx4j_py.model.content.picture import pictures_of
+
+        return pictures_of(self)
+
+    def insert_inline_picture(
+        self,
+        data: bytes,
+        *,
+        location: TextLocation = "End",
+        width: float | None = None,
+        height: float | None = None,
+        alt_text_description: str = "",
+        alt_text_title: str | None = None,
+        name: str | None = None,
+    ) -> Any:
+        """A picture in this paragraph (Office JS ``insertInlinePicture``).
+
+        The image part, the relationship and the sizing are
+        :meth:`Body.insert_inline_picture`'s, and so is what a
+        :meth:`~docx4j_py.model.content.trial.dry_run` does with the part it
+        adds; the difference is where the run goes.
+
+        Args:
+            data: the image's bytes; ``insert_inline_picture_from_base64`` is
+                the base64 twin.
+            location: ``"Start"``, ``"End"`` (the default) or ``"Replace"``,
+                which puts the picture in place of the paragraph's content.
+            width: the width in points; the height follows the aspect ratio.
+            height: the height in points.
+            alt_text_description: ``wp:docPr/@descr``, Word's alt text.
+            alt_text_title: ``wp:docPr/@title``; not written when None.
+            name: ``wp:docPr/@name``; ``"Picture N"`` by default.
+        """
+        from docx4j_py.model.content.picture import insert_picture_into_paragraph
+
+        return insert_picture_into_paragraph(
+            self,
+            data,
+            location=location,
+            width=width,
+            height=height,
+            alt_text_description=alt_text_description,
+            alt_text_title=alt_text_title,
+            name=name,
+        )
+
+    def insert_inline_picture_from_base64(
+        self, base64: str, *, location: TextLocation = "End", **options: Any
+    ) -> Any:
+        """:meth:`insert_inline_picture` from base64 (Office JS's own spelling)."""
+        import base64 as base64_module
+
+        return self.insert_inline_picture(
+            base64_module.b64decode(base64), location=location, **options
+        )
+
+    def insert_ooxml(self, ooxml: str, *, location: str = "After") -> list[Any]:
+        """Word's ``insertOoxml`` beside or into this paragraph (CR-003 section 4).
+
+        A flat OPC ``pkg:package`` or a bare fragment, as
+        :meth:`Body.insert_ooxml`; the paragraph-level rule is
+        :meth:`insert_xml`'s, verbatim --- a fragment of exactly one ``w:p``
+        inserted at ``"Start"`` or ``"End"`` has its **runs merged into this
+        paragraph**, as Word's paste does.
+
+        Args:
+            ooxml: the ``pkg:package`` document, or the fragment.
+            location: ``"Before"``, ``"After"`` (the default), ``"Start"``,
+                ``"End"`` or ``"Replace"``.
+
+        Returns:
+            The views of what was inserted --- ``[self]`` when the runs were
+            merged in.
+        """
+        from docx4j_py.model.content.ooxml import insert_ooxml_into_paragraph
+
+        return insert_ooxml_into_paragraph(self, ooxml, location=location)
 
     # -- editing -----------------------------------------------------------
 
