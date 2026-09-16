@@ -3,9 +3,10 @@
 CR-003 section 5: ``tests/office_js_subset.json`` is the committed list of the
 Office JS members this package implements, derived by
 ``scripts/office_js_subset.py`` from docx4j-core-ts's own compile-time
-assignability check. This test asserts that every non-extension member Phase B
-owns is really on ``Body``, ``Paragraph``, ``Range`` and ``Font``, with the
-right kind, and reports the members of later phases still to come.
+assignability check. This test asserts that every non-extension member of an
+implemented phase is really on the class that owns it --- Phase B's ``Body``,
+``Paragraph``, ``Range`` and ``Font``, Phase C's five, Phase G's ``Comment`` ---
+with the right kind, and reports the members of later phases still to come.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from conftest import ROOT
 
 from docx4j_py.model.content import (
     Body,
+    Comment,
     ContentControl,
     Font,
     InlinePicture,
@@ -43,11 +45,14 @@ PHASE_C_CLASSES = {
     "ContentControl": ContentControl,
 }
 
+#: The one Phase G adds.
+PHASE_G_CLASSES = {"Comment": Comment}
+
 #: Every interface implemented so far, and the phase that owns each member.
-CLASSES = {**PHASE_B_CLASSES, **PHASE_C_CLASSES}
+CLASSES = {**PHASE_B_CLASSES, **PHASE_C_CLASSES, **PHASE_G_CLASSES}
 
 #: The phases this file's assertions hold for.
-PHASES = ("B", "C")
+PHASES = ("B", "C", "G")
 
 
 @pytest.fixture(scope="module")
@@ -84,7 +89,7 @@ def test_the_list_is_committed_and_names_its_source(subset):
     }
 
 
-def test_every_phase_b_and_c_member_is_there_with_the_right_kind(subset):
+def test_every_implemented_member_is_there_with_the_right_kind(subset):
     missing: list[str] = []
     wrong_kind: list[str] = []
     later: dict[str, list[str]] = {}
@@ -112,7 +117,7 @@ def test_every_phase_b_and_c_member_is_there_with_the_right_kind(subset):
     )
     print(f"\nlater phases still to come -- {summary}")
     assert not missing and not wrong_kind, (
-        f"Phases B and C owe {missing or 'nothing'}; wrong kind: {wrong_kind or 'none'}. "
+        f"Phases B, C and G owe {missing or 'nothing'}; wrong kind: {wrong_kind or 'none'}. "
         f"(For the record, the members of later phases still missing are {summary}.)"
     )
 

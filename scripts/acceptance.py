@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the six documents the Word acceptance checklist needs.
+"""Write the seven documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Six files, each testing a different half of the save path:
+Seven files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -45,6 +45,14 @@ Six files, each testing a different half of the save path:
     ``/word/media/imageN.png``, its relationship and its content type, the
     ``pkg:package`` reader, and a table whose grid is sized from the loaded
     document's own ``w:sectPr``.
+``7-comments.docx``
+    a **loaded** document (``samples/2010-sample1.docx``, which has no comment
+    parts at all) given, through CR-003 Phase G's content API, a comment on a
+    range found by ``find()``, a reply to it, a second comment resolved through
+    ``w15:done``, and a third on a whole paragraph. All four comment parts are
+    **created** with their relationships and content types, and the two comment
+    styles are added to ``styles.xml``, so this is the test of the part-creating
+    half of section 3.9.
 """
 
 from __future__ import annotations
@@ -301,8 +309,38 @@ def tables_and_pictures(out: Path) -> Path:
     return target
 
 
+def comments(out: Path) -> Path:
+    """7. A loaded document commented on through the Phase G content API."""
+    from docx4j_py.model.content import Author
+
+    target = out / "7-comments.docx"
+    pkg = WordprocessingMLPackage.load(SAMPLE_SOURCE)
+    pkg.id_seed = 20260917
+    pkg.author = Author("Claude", initials="C", email="claude@example.com")
+    body = pkg.body
+
+    # a comment on a range the agent found, and a reply in the same thread
+    hit = pkg.find("first")[0]
+    thread = hit.range(body).insert_comment(
+        "Changed 'first' because the source document says 'red'."
+    )
+    thread.reply("Checked against the source; agreed.")
+
+    # a resolved thread: Word shows it greyed out and marked done
+    done = body.search("document")[0].insert_comment("Fixed, and resolved.")
+    done.reply("Thanks.")
+    done.resolved = True
+
+    # and a comment on a whole paragraph
+    paragraph = body.paragraphs[0]
+    paragraph.insert_comment("A comment on the whole first paragraph.")
+
+    pkg.save(target)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the six artefacts and print a summary."""
+    """Write the seven artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -317,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
         created_with_image,
         markdown_built,
         tables_and_pictures,
+        comments,
     ):
         target = build(out)
         with zipfile.ZipFile(target) as zf:

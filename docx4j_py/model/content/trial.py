@@ -163,6 +163,7 @@ class TrialPackage:
         "__weakref__",
         "_added",
         "_assigns_para_ids",
+        "_author",
         "_changes",
         "_current_change",
         "_id_rng",
@@ -181,6 +182,9 @@ class TrialPackage:
         self._current_change: Any = None
         self._assigns_para_ids = package.assigns_para_ids
         self._para_ids_taken: dict[str, set[str]] | None = None
+        # who a trial's comments are by: the real package's identity unless the
+        # trial is given one of its own, which stays with the trial
+        self._author: Any = None
         # a trial allocates ids from its own generator, seeded like the real
         # one, so that a trial and the commit that follows it agree
         self._id_seed = package.id_seed
@@ -366,6 +370,17 @@ class TrialPackage:
     def assigns_para_ids(self, value: bool | None) -> None:
         self._assigns_para_ids = value
         self._para_ids_taken = None
+
+    @property
+    def author(self) -> Any:
+        """Who the trial's comments are by: the real package's, unless set here."""
+        return self._author if self._author is not None else self._package.author
+
+    @author.setter
+    def author(self, value: Any) -> None:
+        from docx4j_py.model.content.comments import Author
+
+        self._author = Author(value) if isinstance(value, str) else value
 
     @property
     def id_seed(self) -> int | None:

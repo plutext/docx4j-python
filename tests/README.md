@@ -1,7 +1,7 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 940 tests
+.venv-fork/bin/python -m pytest                    # everything, 1,066 tests
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
 .venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B
@@ -32,6 +32,7 @@
 | `content/test_picture.py` | CR-003 §3.2, §4 | `InlinePicture`: the free `/word/media/imageN.<ext>`, the relationship from the body's own part, the header readers, points in and out, `delete`, and a `dry_run` that un-adds the part |
 | `content/test_ooxml.py` | CR-003 §3.2, §4 | `insert_ooxml` from a flat OPC `pkg:package`: parts copied under free names with fresh relationship ids, numeric ids untouched, styles not merged; and `FlatOpcStore` |
 | `content/test_controls.py` | CR-003 §3.2, §4 | `ContentControl` over all four `w:sdt` forms: the reads, `get_range()` exact for a run control, the row and cell refusals, `delete(keep_content=)` |
+| `content/test_comments.py` | CR-003 §3.9, §4 | comments read from three documents (one Word wrote before `w14:paraId`, one Word wrote with all five parts, one thread built here); `insert_comment` on a range and on a paragraph, `reply`, `resolved`, `content`, `delete`; the markers hoisted out of a `w:ins`; a span across a run holder refused; the byte-for-byte promises for the two side parts and for `styles.xml` |
 | `content/test_office_js_subset.py` | CR-003 §3.4 (TS) | the committed Office JS member list |
 | `content/test_markdown.py` | CR-003 §3.5 | markdown out and in, one construct at a time; the address comment and its regex; what `styles.xml` and `numbering.xml` are touched for |
 | `agent/test_addresses.py` | CR-003 §3.4 | the three address forms, the nearest-address error, `ensure_para_ids` |
@@ -44,6 +45,7 @@
 | `agent/test_scenarios.py` | CR-003 §7 | scripted tool-shaped sessions over the corpus, and determinism |
 | `agent/test_errors.py` | CR-003 §3.4 | every error's `code` and `hint`, including where to split a span |
 | `agent/test_tables_and_pictures.py` | CR-003 §7 | a paragraph in a cell addressed and edited, the `ChangeReport` it gives, `dry_run` of `insert_table` and of a picture, determinism of a part name and a relationship id, and `outline()` over nested tables |
+| `agent/test_comment_workflows.py` | CR-003 §3.4, §3.9 | the audit trail: `pkg.author`, `find` then `insert_comment`, the `ChangeReport` a tool returns, a reply and a resolution, a thread's `to_dict()` under a 2 KB budget, `dry_run` leaving all four created parts un-created, and determinism |
 | `agent/test_markdown_workflows.py` | CR-003 §3.5, §7 | the coarse workflow (markdown in, markdown out) and the fine one (read with addresses, edit by address); `dry_run`, determinism, the markdown budget |
 | `test_codegen_el.py` (the last two) | CR-003 §13 | every tracked hand-written path under `docx4j_py/` is inside `codegen/clean.py`'s `KEEP` |
 
@@ -64,7 +66,8 @@ in order to round-trip them.
 | `unknown_content.xml` | written here | CR-001 §7: an element and an attribute the bindings do not know |
 | `lists.docx` | docx4j `docx4j-core-tests/src/test/resources/numbering_indentation.docx` | four `w:numPr` paragraphs on one `decimal` numbering definition, with a real `numbering.xml` |
 | `hyperlink.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/hyperlink.docx` | one `w:hyperlink` with an external relationship |
-| `comments.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/comments-one.docx` | one comment, for the `{>>...<<}` of `view="markup"` |
+| `comments.docx` | docx4j `docx4j-core-tests/src/test/resources/AlteredParts/comments-one.docx` | one comment, for the `{>>...<<}` of `view="markup"` and for CR-003 Phase G's reads; no `w14:paraId`, and `w:comments` is the only comment part |
+| `comments-modern.docx` | docx4j `docx4j-core-tests/src/test/resources/loadAndSave.docx` | Word-written, with **all five** comment parts: `w15:commentsEx` with `w15:done`, `w:people` with an Active-Directory email, `w16cid:commentsIds` and `w16cex:commentsExtensible`. The one comment has no reply, so the **thread** fixture is built in `tests/content/conftest.py` (`threaded_package()`) rather than fabricated (CR-003 section 15) |
 | `footnotes.docx` | docx4j `docx4j-samples-docx4j/sample-docs/2010/w14_mcIgnorable-in-other-parts.docx` | a `w:footnoteReference` and the footnotes part it points at |
 | `nested-table.docx` | docx4j `docx4j-layout-fidelity`'s corpus (`Corpus.java`'s `table-nested`) | a one-by-three table whose middle cell holds a two-by-two table, for CR-003 §3.2's `TableCell.tables` and `Table.parent_table_cell` |
 
@@ -79,6 +82,9 @@ and the registry maps the `.docm` content type to the same `MainDocumentPart`.
 
 Record each run here, in the form docx4j-core-ts's `test/README.md` uses:
 
+> **Not yet run** for artefact 7 (CR-003 Phase G, comments), written 2026-09-17. The file is
+> produced and its zip is sound, but nobody has opened it in Word.
+>
 > Last run: 2026-09-17, Word (version not recorded), after the CR-003 section 14.9 style fix,
 > artefact 6 re-opened. **Passed**: "Tables and pictures" is Heading 1.
 >
@@ -105,10 +111,10 @@ regenerate the artefacts and check by hand:
 .venv-fork/bin/python scripts/acceptance.py      # writes out/acceptance/
 ```
 
-`out/` is in `.gitignore`, so the six files are built rather than committed; the script is
+`out/` is in `.gitignore`, so the seven files are built rather than committed; the script is
 deterministic and takes about two seconds.
 
-### The six artefacts
+### The seven artefacts
 
 | file | what it exercises | what to look for in Word |
 |---|---|---|
@@ -118,6 +124,7 @@ deterministic and takes about two seconds.
 | `out/acceptance/4-created-with-image.docx` | a created document plus an `ImagePart` added through `add_target_part` and placed with the `w:drawing` CR-003 Phase A's `inline_picture` builds, sized by `image_size` / `emu_for` from the PNG's own header | no repair prompt; the picture appears at its natural size, 9.00 cm by 6.56 cm (340 × 248 px at 96 dpi); right-click → Size shows those dimensions and **Lock aspect ratio ticked** (the `a:graphicFrameLocks noChangeAspect` the old hand-written fragment did not write); Alt Text shows the description; the image survives a Word save-and-reopen. |
 | `out/acceptance/5-markdown-built.docx` | one markdown string through CR-003 Phase K's `insert_markdown`: headings, emphasis, inline code, a nested bullet list, an ordered list, a block quote, a fenced code block, a hyperlink and a GFM pipe table. It writes `styles.xml` (the styles from docx4j's `KnownStyles.xml`, plus `CodeChar` and `SourceCode`, which Word has no built-in equivalent of), creates `numbering.xml` from nothing, and adds an external relationship | no repair prompt; **Heading 1** and **Heading 2** appear in the navigation pane; the bullet list shows Word's own bullet glyphs with the nested level indented and using the second glyph; the ordered list is numbered 1 to 4 and **restarts at 1** (it is its own `w:num`); the quotation is in the Quote style; `x = 1` is in a grey Consolas block and `inline code` in grey Consolas within the paragraph; the link is blue, underlined and **Ctrl-click opens docx4java.org**; the table has Table Grid borders, a bold first row and the Total column right-aligned. Then **save from Word, close, reopen**: still clean, and the list numbering has not changed. |
 | `out/acceptance/6-tables-and-pictures.docx` | a **loaded** document (`samples/2010-sample1.docx`) edited through CR-003 Phase C's content API: `insert_table(3, 3, values=…, style="TableGrid")`, `header_row_count = 1`, `add_rows`, `paragraph.insert_inline_picture(width=180)`, and a flat OPC `pkg:package` through `insert_ooxml` which brings a heading, a second picture and a second table | no repair prompt; **Tables and pictures** is a Heading 1 --- blue, bold, 14 pt, and in the navigation pane --- because the setter **added** the definition to `styles.xml`, which the source document does not carry (CR-003 section 14.9; Word does *not* supply it, which is what this row used to claim and what the 2026-09-17 run disproved); the **pasted** heading below is deliberately Normal, because `insert_ooxml` does not merge the source package's styles (CR-003 section 4); the first table has Table Grid borders, four rows, and its header row repeats if you force a page break inside it (Table Properties → Row → *Repeat as header row* is ticked for row 1 only); the pangolin under "A picture inserted at this paragraph:" is 6.35 cm wide with **Lock aspect ratio ticked** and Alt Text "Pangolin" / "A pangolin"; below it the pasted heading, a second, smaller pangolin (4.23 cm, alt text "the same pangolin") and a two-by-two Table Grid table are all there, and the two images are **different parts** (`/word/media/image1.png` and `image2.png`). Then **save from Word, close, reopen**: still clean. |
+| `out/acceptance/7-comments.docx` | a **loaded** document (`samples/2010-sample1.docx`, which has **no** comment parts) given, through CR-003 Phase G's content API, a comment on the range `find("first")` returned, a reply in the same thread, a second comment with a reply that is then **resolved**, and a third on a whole paragraph. All four comment parts are created with their relationships and content types, and `CommentText`, `CommentTextChar` and `CommentReference` are added to `styles.xml` | no repair prompt; **Review → Show Comments** (or the markup pane) shows three threads by **Claude**, initials **C**, with today's date; the first thread's reply is **nested under it**, not a thread of its own; the second thread is shown **Resolved** (greyed out, with a *Reopen* button) and its reply is nested too; the highlighted range of the first thread is exactly the word **first** in "My first 2010 document.", of the second exactly **document**, and of the third the **whole first paragraph**; the comment text is in Word's Comment Text style at 10 pt. Then **save from Word, close, reopen**: still clean, and the threads, the nesting and the resolved state all survive. |
 
 ### Checks worth making on every one
 
@@ -131,7 +138,7 @@ deterministic and takes about two seconds.
    Properties → Details tab as *Program name*, or by unzipping and reading
    `docProps/app.xml` (`create_package` writes `docx4j-python` and `0.0001`).
    For 3 and 4, unzipping is the check that counts.
-4. For 2, 4 and 6, **Review → Compare** against the source is a quick way to see that
+4. For 2, 4, 6 and 7, **Review → Compare** against the source is a quick way to see that
    only the intended change happened.
 
 ### What has *not* been checked
