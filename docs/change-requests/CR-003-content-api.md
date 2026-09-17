@@ -2074,9 +2074,9 @@ Word's not just the markup" rules it --- `pkg.change_tracking_mode` over `w:trac
 primitives, `TrackedChange` with `accept()` and `reject()`, `get_tracked_changes()` on a body, a
 paragraph, a range and the package, `accept_all()` / `reject_all()`, and `replace_text` at all
 three levels --- with the tests of section 7, acceptance artefact 8 and the README's audit
-trail, which now leads with both halves. The suite is **1,125 tests** (1,124 passing plus one
-`xfail`; 1,116 of them fast, 52.9 s, and 60.2 s for the whole), against 1,067 at the end of
-Phase G; **58** of the new ones are `tests/content/test_tracking.py` (52) and
+trail, which now leads with both halves. The suite is **1,130 tests** (1,129 passing plus one
+`xfail`; 1,121 of them fast, 55.0 s, and 63.0 s for the whole), against 1,067 at the end of
+Phase G; **63** of the new ones are `tests/content/test_tracking.py` (57) and
 `tests/agent/test_audit_trail.py` (6). Nothing in `~/git/docx4j-xsdata` changed, no schema patch
 was needed, the model was not regenerated and `codegen/generate_el.py` did not change at all:
 every Phase F name is reached through `docx4j_py.model.content`.
@@ -2181,6 +2181,12 @@ prove it (`test_a_content_control_inherits_tracking_and_its_delete_does_not`,
     trial costs no unmarshalling --- which is how the Phase K dry-run test stayed green.
     12.5's first limitation is unchanged: a trial that *writes* the mode unmarshals the real
     settings part, as it does for any part it copies.
+12. **Corrected 2026-09-17 (16.10): "an inserted paragraph carries its own mark" holds in the
+    middle of a container and nowhere else.** Section 4 and docx4j-core-ts's phase F both say a
+    paragraph this API inserts marks its **own** mark, and Phase F shipped that everywhere. At
+    the **end** of a container it is wrong and Word cannot handle it; the rule is now Word's own
+    (mark the preceding paragraph's mark, leave the final one alone), and 16.10 says what Word
+    did with the version that was not.
 
 ### 16.3 The one thing Word does that this does not
 
@@ -2332,5 +2338,79 @@ move, never after**. `wrap_new_runs`, `Paragraph.insert_break` and `Body.insert_
 wrapper's parent explicitly and were never affected; `_insert_tracked`'s non-anchor path reads a
 parent nothing has moved.
 
-The suite is **1,125 tests** (1,124 passing plus one `xfail`; 1,116 of them fast, 52.9 s, and
-60.2 s for the whole); the four new ones are `tests/content/test_tracking.py`'s, which is now 53.
+The suite was **1,125 tests** at that point (1,124 passing plus one `xfail`); the four new ones
+are `tests/content/test_tracking.py`'s. Section 16.10, the same day, took it further.
+
+### 16.10 What the Word check of artefact 8 found (2026-09-17)
+
+The Word check of `8-tracked-changes.docx` **failed**, in three ways, and two rules came out of
+it. Both are Word's, neither is docx4j's --- docx4j's `AcceptTrackedChanges` reads revision
+markup and never writes any, so it could not have said.
+
+**1. A deleted row was shown pink and not struck through.** The row carried
+`w:trPr/w:del` and nothing else: its cells' runs were still plain `w:r`/`w:t` and their paragraph
+marks were unmarked. Word writes a deleted row as the row mark **and** every run of every cell in
+a `w:del` with `w:delText` **and** every cell paragraph's mark marked `w:pPr/w:rPr/w:del` --- the
+exact mirror of the inserted row this phase already wrote correctly. A row marked but not emptied
+is a row Word knows is going and whose text it still believes is live, which is what the pink
+without strikethrough was saying.
+
+`ChangeTracker.mark_row_deleted` is unchanged (it writes the row mark, and nothing else should);
+the new `track_deleted_row(tracker, row, body)` wraps it and empties the row through
+`Paragraph.delete_text_tracked` and `mark_paragraph_deleted` --- the **same primitives a
+paragraph deletion uses**, so accepting and rejecting need no special case. `Table.delete_rows`,
+`Table.delete`, `TableRow.delete` and `Body.clear` all go through it. A row **this author
+inserted** is now taken back whole instead, as deleting text this author inserted is (section 4);
+the caller removes it and there is no revision left behind.
+
+**The row is still one `TrackedChange`, and that is a decision.** The cell-level revisions a row
+insertion or deletion is made of --- same author, same direction --- are **folded into** the row's
+change, because that is what Word's Reviewing pane shows and what an agent means by "the row I
+deleted"; `folded_in_row(change)` is the function, accepting or rejecting the row processes them,
+and anything else inside the row (another author's edit, a formatting revision) is **listed
+separately and is not touched**. A three-cell deleted row is therefore one change and not seven.
+
+**2 and 3. The appended paragraph could not be seen, and Reject All hung Word.** The inserted
+paragraph was the body's last block and carried its own `w:pPr/w:rPr/w:ins`. **Word never marks a
+container's final paragraph mark as inserted**, because that mark cannot be deleted: pressing
+Enter at the end of the last paragraph marks the **preceding** paragraph's mark and gives the new
+paragraph the original, unmarked final mark. A final mark marked inserted is a revision Word
+cannot reject --- it hung, and the changes stayed as they were.
+
+So `track_inserted_blocks(tracker, elements, container)` replaces the per-paragraph call in
+`Body.insert_element`, which is where `insert_paragraph`, `insert_xml`, `insert_ooxml` and
+`insert_markdown` all arrive. A paragraph with nothing after it but the other paragraphs of the
+same insert **shifts its mark back one**: the paragraph before it takes it. For a fragment of
+three appended blocks that marks the paragraph that was already there and the first two inserted
+ones, and leaves the third --- the one that now ends the container --- unmarked, which is exactly
+what Word writes for three presses of Enter. In the **middle** of a container nothing changes:
+each inserted paragraph carries its own mark, as section 4 says and as docx4j-core-ts does. With
+no paragraph before it (an empty container, or a table) nothing is marked and only the runs are
+wrapped: there is no earlier mark for the break to live on, and rejecting then leaves the
+paragraph empty rather than removing it.
+
+Three things follow from the shift:
+
+- **The take-back follows the mark.** `insertion_mark_of(paragraph, container)` answers "which
+  mark records this paragraph's insertion" --- its own, or the previous paragraph's when it is
+  last --- and `Paragraph.delete()` clears that one when it takes its own insertion back.
+- **Rejecting an inserted mark keeps the surviving paragraph's own properties.**
+  `join_with_next(..., keep_properties=True)`. docx4j's rule --- the joined paragraph takes the
+  *next* one's `w:pPr` --- is right for **accepting a deleted mark**, where the mark that
+  survives is the next one's; in the reject direction the paragraph that survives is one the
+  document already had and nobody edited, and taking the new paragraph's (usually empty)
+  properties would strip its style. A test appends to a `Heading1` paragraph and rejects it.
+- **No fixture could be copied.** Every Word-written `.docx` in the three checkouts was searched
+  again: none has a deleted table row, and none has a final paragraph whose mark is marked
+  inserted --- which is itself the evidence that Word never writes one. The expected markup in
+  the tests is therefore built from Word's rules and says so, as `moves_package()` does (16.5).
+
+**The numbers.** The suite is **1,130 tests** (1,129 passing plus one `xfail`; 1,121 of them
+fast, 55.0 s, and 63.0 s for the whole); `tests/content/test_tracking.py` is 57. Seven of its
+tests pinned the form Word rejected --- an inserted paragraph's own mark at the end of a body, and
+six changes for an inserted two-by-two table --- and were **changed to the new rules**, not the
+other way round. Artefact 8 was rebuilt: the inserted paragraph now goes **after the first
+paragraph**, where a human can see it, a second one is appended at the very end so that the
+final-mark rule is exercised, and the table is written before both so that the body ends with a
+paragraph. Accepting gives the intended document, rejecting gives back exactly the document that
+was there before the mode went on, and the comment survives both.

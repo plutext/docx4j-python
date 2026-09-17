@@ -339,20 +339,85 @@ def test_the_runs_are_split_at_the_spans_boundaries():
     assert paragraph.get_text(view="original") == "Hello brave new world"
 
 
-def test_an_inserted_paragraph_carries_its_own_mark_and_its_runs_are_wrapped():
-    _package, paragraph = tracked()
+def test_a_paragraph_inserted_in_the_middle_carries_its_own_mark():
+    package, paragraph = tracked()
+    package.change_tracking_mode = "Off"
+    last = paragraph.insert_paragraph("The last one.", location="After")
+    package.change_tracking_mode = "TrackAll"
+
     made = paragraph.insert_paragraph("A new paragraph.", location="After")
 
-    xml = made.get_xml()
-    assert "<w:rPr><w:ins " in xml.replace("\n", ""), "the paragraph mark"
-    assert "<w:ins " in xml and "<w:t>A new paragraph.</w:t>" in xml
-    kinds = [(c.kind, c.type) for c in made.get_tracked_changes()]
-    assert kinds == [("mark", "Added"), ("run", "Added")]
+    assert "<w:rPr><w:ins " in made.get_xml().replace("\n", ""), "its own mark"
+    assert "<w:t>A new paragraph.</w:t>" in made.get_xml()
+    assert [(c.kind, c.type) for c in made.get_tracked_changes()] == [
+        ("mark", "Added"),
+        ("run", "Added"),
+    ]
+    assert last.get_tracked_changes() == [], "the paragraph after it is untouched"
+
+
+def test_a_paragraph_appended_at_the_end_leaves_the_final_mark_alone():
+    """CR-003 section 16.10: Word never marks a container's final mark inserted."""
+    package, paragraph = tracked()
+    made = package.body.insert_paragraph("Appended at the end.")
+
+    assert "<w:rPr><w:ins " not in made.get_xml().replace("\n", ""), "the final mark"
+    assert "<w:ins " in made.get_xml(), "but the runs are an insertion"
+    assert "<w:rPr><w:ins " in paragraph.get_xml().replace("\n", ""), "the mark before it"
+    assert [(c.kind, c.type) for c in package.body.get_tracked_changes()] == [
+        ("mark", "Added"),
+        ("run", "Added"),
+    ]
+
+    plain, _plain_paragraph = untracked()
+    plain.body.insert_paragraph("Appended at the end.")
+    assert package.body.text == plain.body.text
+
+    back = reloaded(package)
+    assert back.body.accept_all() == 2
+    assert back.body.text == plain.body.text
+
+
+def test_rejecting_an_appended_paragraph_joins_it_into_the_one_before():
+    package, paragraph = tracked("First.")
+    first_id = paragraph.para_id
+    package.change_tracking_mode = "Off"
+    paragraph.style_id = "Heading1"  # the document's own formatting, not a revision
+    package.change_tracking_mode = "TrackAll"
+    package.body.insert_paragraph("Appended.")
+
+    assert reloaded(package).body.reject_all() == 2
+    back = reloaded(package)
+    back.body.reject_all()
+    paragraphs = back.body.paragraphs
+    assert [p.text for p in paragraphs] == ["First."]
+    assert paragraphs[0].para_id == first_id, "the surviving paragraph is the one that was there"
+    assert paragraphs[0].style_id == "Heading1", "and it keeps its own properties"
+
+
+def test_a_fragment_appended_at_the_end_shifts_every_mark_back_one():
+    package, _paragraph = tracked("First.")
+    package.body.insert_markdown("## A heading\n\npara one\n\npara two\n")
+
+    marked = [
+        p.text
+        for p in package.body.paragraphs
+        if p.element.p_pr is not None
+        and p.element.p_pr.r_pr is not None
+        and p.element.p_pr.r_pr.ins is not None
+    ]
+    assert marked == ["First.", "A heading", "para one"], "never the last one"
+
+    back = reloaded(package)
+    assert back.body.reject_all()
+    assert [p.text for p in back.body.paragraphs] == ["First."], "no empty husk left behind"
 
 
 def test_deleting_a_paragraph_marks_the_mark_and_the_content():
     package, paragraph = tracked()
+    package.change_tracking_mode = "Off"
     paragraph.insert_paragraph("Second.", location="After")
+    package.change_tracking_mode = "TrackAll"
     paragraph.delete()
 
     assert [p.text for p in package.body.paragraphs] == ["", "Second."]
@@ -451,6 +516,51 @@ def test_row_insertions_and_deletions_go_on_the_tr_pr_and_the_row_stays():
     assert back.body.tables[0].values == [["c", "d"], ["e", "f"]]
 
 
+def test_a_deleted_row_is_emptied_as_Word_empties_one():
+    """CR-003 section 16.10: the row mark alone is what Word shows pink, not struck."""
+    package = create_package()
+    package.id_seed = 20260917
+    package.author = Author("Claude")
+    package.tracked_change_date = WHEN
+    table = package.body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])
+    package.change_tracking_mode = "TrackAll"
+
+    table.delete_rows(0)
+
+    row = table.get_xml().partition("</w:tr>")[0]
+    assert "<w:trPr><w:del " in row, "the row mark"
+    assert row.count("<w:rPr><w:del ") == 2, "every cell paragraph's mark"
+    assert row.count("<w:delText>") == 2 and "<w:t>" not in row, "and every run's text"
+    assert table.row_count == 2, "the row itself stays until the change is accepted"
+
+    changes = package.body.get_tracked_changes()
+    assert [(c.kind, c.type, c.text) for c in changes] == [("row", "Deleted", "a\nb")]
+
+    back = reloaded(package)
+    assert back.body.accept_all() == 1
+    assert back.body.tables[0].values == [["c", "d"]]
+
+    again = reloaded(package)
+    assert again.body.reject_all() == 1
+    assert again.body.tables[0].values == [["a", "b"], ["c", "d"]]
+    assert "w:del" not in again.body.tables[0].get_xml(), "and nothing of the deletion is left"
+
+
+def test_a_row_this_author_inserted_and_then_deleted_is_taken_back():
+    package = create_package()
+    package.id_seed = 20260917
+    package.author = Author("Claude")
+    package.tracked_change_date = WHEN
+    table = package.body.insert_table(1, 1, values=[["a"]])
+    package.change_tracking_mode = "TrackAll"
+
+    table.add_rows(1, values=[["b"]])
+    table.delete_rows(1)
+
+    assert table.row_count == 1 and table.values == [["a"]]
+    assert package.body.get_tracked_changes() == []
+
+
 def test_a_row_delete_and_a_table_delete_mark_rather_than_remove():
     package = create_package()
     package.id_seed = 20260917
@@ -471,11 +581,18 @@ def test_a_row_delete_and_a_table_delete_mark_rather_than_remove():
 
 def test_an_inserted_table_marks_every_row_and_every_paragraph():
     package, _paragraph = tracked()
-    package.body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])
+    table = package.body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])
 
-    changes = [c for c in package.body.get_tracked_changes() if c.kind in ("row", "mark")]
-    assert [c.type for c in changes] == ["Added"] * 6, "two rows and four cell paragraphs"
-    assert package.body.reject_all()
+    xml = table.get_xml()
+    assert xml.count("<w:trPr><w:ins ") == 2, "both rows"
+    assert xml.count("<w:rPr><w:ins ") == 4, "and every cell paragraph's mark"
+    assert xml.count("<w:ins ") == 10, "and a w:ins around every cell's runs"
+
+    changes = package.body.get_tracked_changes()
+    assert [(c.kind, c.type) for c in changes] == [("row", "Added"), ("row", "Added")], (
+        "one change per row: the cell-level insertions are folded into it (section 16.10)"
+    )
+    assert package.body.reject_all() == 2
     assert package.body.tables == [], "and the emptied w:tbl goes with the rows"
 
 
@@ -620,10 +737,9 @@ def test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_survives_both():
         paragraph.insert_comment("about the new paragraph")
         return package
 
-    # past the paragraph mark's own w:ins, which is in the w:pPr
-    xml = commented().body.paragraphs[-1].get_xml().partition("</w:pPr>")[2]
-    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins w:id")
-    inside = xml[xml.index("<w:ins w:id") : xml.index("</w:ins>")]
+    xml = commented().body.paragraphs[-1].get_xml()
+    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins ")
+    inside = xml[xml.index("<w:ins ") : xml.index("</w:ins>")]
     assert "commentRange" not in inside and "commentReference" not in inside
 
     accepted = reloaded(commented())
@@ -669,9 +785,8 @@ def test_the_moves_the_formatting_change_and_the_rows_of_the_built_document():
         ("run", "Added"),
         ("run_properties", "Formatted"),
         ("row", "Added"),
-        ("run", "Added"),
         ("row", "Deleted"),
-    ]
+    ], "the inserted row's own w:ins is folded into the row change (section 16.10)"
     assert changes[0].text == "Moved sentence.", "a w:moveFrom reads its w:delText"
     assert changes[1].text == "Moved sentence."
     assert package.body.get_text().splitlines()[0] == " Stays."
@@ -680,7 +795,7 @@ def test_the_moves_the_formatting_change_and_the_rows_of_the_built_document():
 
 def test_accepting_each_kind_does_what_docx4j_does():
     package = moves_package()
-    assert package.body.accept_all() == 6
+    assert package.body.accept_all() == 5
 
     text = [p.text for p in package.body.paragraphs]
     assert text == [" Stays.", "Moved sentence.", "Was italic, now bold.", "New row"]
@@ -692,7 +807,7 @@ def test_accepting_each_kind_does_what_docx4j_does():
 
 def test_rejecting_each_kind_puts_back_what_was_there():
     package = moves_package()
-    assert package.body.reject_all() == 6
+    assert package.body.reject_all() == 5
 
     text = [p.text for p in package.body.paragraphs]
     assert text == ["Moved sentence. Stays.", "", "Was italic, now bold.", "Old row"]

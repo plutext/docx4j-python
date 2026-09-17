@@ -351,13 +351,15 @@ def tracked_changes(out: Path) -> Path:
 
     # something to delete and something to change the formatting of, written
     # *before* the mode goes on, so that they are the document's own content
-    body.insert_paragraph("This paragraph will be deleted, with its mark.")
-    body.insert_paragraph("This paragraph will be made bold.")
     table = body.insert_table(
         3, 3, values=[["Region", "Quarter", "Total"], ["West", "Q2", "240"], ["East", "Q2", "180"]],
         style="TableGrid",
     )
     table.header_row_count = 1
+    # the last block of the body is a paragraph, so that the paragraph appended
+    # below has one before it to carry its mark (CR-003 section 16.10)
+    body.insert_paragraph("This paragraph will be deleted, with its mark.")
+    body.insert_paragraph("This paragraph will be made bold.")
 
     pkg.change_tracking_mode = "TrackAll"
 
@@ -366,8 +368,14 @@ def tracked_changes(out: Path) -> Path:
     hit = pkg.find("second")[0]
     hit.range(body).insert_comment("Changed 'first' to 'second': the source says 2010 was the second.")
 
-    # an insertion, a deletion, a formatting change and two row changes
-    body.insert_paragraph("Added by an agent, with the mark marked inserted.")
+    # an insertion where it can be seen --- after the first paragraph, not at the
+    # very end --- and one appended, which exercises the final-mark rule of
+    # CR-003 section 16.10 (the appended paragraph's own mark is left alone and
+    # the mark before it is marked instead, as Word does)
+    body.paragraphs[0].insert_paragraph(
+        "Added by an agent, right after the first paragraph.", location="After"
+    )
+    body.insert_paragraph("And one appended at the very end.")
     body.paragraph_at(contains="will be deleted").delete()
     body.paragraph_at(contains="made bold").font.bold = True
     table.add_rows(1, values=[["North", "Q2", "300"]])

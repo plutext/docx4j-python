@@ -45,7 +45,7 @@ from docx4j_py.model.content.tracking import (
     restore_r_pr,
     to_restored_text,
 )
-from docx4j_py.traversal import element_name, run_items_of, text_of
+from docx4j_py.traversal import element_name, run_items_of
 from docx4j_py.wml import P, R, Tbl
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -56,6 +56,8 @@ if TYPE_CHECKING:  # pragma: no cover
 __all__ = [
     "TrackedChange",
     "TrackedChangeTarget",
+    "changes_in_row",
+    "folded_in_row",
     "join_with_next",
     "tracked_changes_of_body",
     "tracked_changes_of_paragraph",
@@ -178,7 +180,7 @@ class TrackedChange:
         if target.kind == "paragraph_properties":
             return self.paragraph.text if self.paragraph is not None else ""
         if target.kind == "row":
-            return text_of(target.element)
+            return _row_text(target.element)
         return ""
 
     def get_range(self) -> Range | None:
@@ -235,11 +237,15 @@ class TrackedChange:
             prune_paragraph_properties(paragraph)
             return
         if target.mark == "ins":
+            # the cell-level insertions this row is made of are folded into it
+            # (CR-003 section 16.10), so accepting the row accepts them
+            for inner in reversed(folded_in_row(self)):
+                inner.accept()
             tr_pr = getattr(target.element, "tr_pr", None)
             if tr_pr is not None:
                 tr_pr.ins = None
         else:
-            _remove_row(target, "accept")
+            _remove_row(target, "accept")  # the content goes with the row
 
     def reject(self) -> None:
         """Put back what was there: a ``w:ins`` removed, a ``w:del`` restored.
@@ -258,7 +264,11 @@ class TrackedChange:
             if target.mark == "del":
                 _drop_mark(self.paragraph, "del")
             else:
-                join_with_next(self._require_paragraph(), fallback_to_previous=True)
+                join_with_next(
+                    self._require_paragraph(),
+                    fallback_to_previous=True,
+                    keep_properties=True,
+                )
             return
         if target.kind == "run_properties":
             from docx4j_py.wml import RPr, rpr_from_elements
@@ -269,11 +279,13 @@ class TrackedChange:
             restore_p_pr(self._require_paragraph().element, target.value.p_pr)
             return
         if target.mark == "del":
+            for inner in reversed(folded_in_row(self)):
+                inner.reject()
             tr_pr = getattr(target.element, "tr_pr", None)
             if tr_pr is not None:
                 tr_pr.del_value = None
         else:
-            _remove_row(target, "reject")
+            _remove_row(target, "reject")  # the content goes with the row
 
     # -- the extensions ----------------------------------------------------
 
@@ -418,13 +430,24 @@ def _drop_mark(paragraph: Paragraph | None, which: str) -> None:
     prune_paragraph_properties(paragraph.element)
 
 
-def join_with_next(paragraph: Paragraph, *, fallback_to_previous: bool = False) -> None:
+def join_with_next(
+    paragraph: Paragraph,
+    *,
+    fallback_to_previous: bool = False,
+    keep_properties: bool = False,
+) -> None:
     """Join a paragraph with the next one, as docx4j's ``AcceptTrackedChanges`` does.
 
     The paragraph takes the next one's content **and its properties**, so the
     mark that survives is the next one's and the ``w14:paraId`` that survives is
     this one's. Called when a deleted mark is accepted and when an inserted one
     is rejected.
+
+    `keep_properties` is the **reject** direction's difference: the paragraph
+    that survives is one the document already had --- the break after it is what
+    was inserted --- so it keeps its own ``w:pPr`` rather than taking the new
+    paragraph's, which would strip the formatting of a paragraph nobody edited
+    (CR-003 section 16.10).
 
     `fallback_to_previous` is for the second case at the end of a container,
     where a paragraph this package inserted carries its own mark (CR-003 section
@@ -450,9 +473,10 @@ def join_with_next(paragraph: Paragraph, *, fallback_to_previous: bool = False) 
     for item in list(following.content):
         element.content.append(item)
         item.parent = element
-    element.p_pr = following.p_pr
-    if element.p_pr is not None:
-        element.p_pr.parent = element
+    if not keep_properties:
+        element.p_pr = following.p_pr
+        if element.p_pr is not None:
+            element.p_pr.parent = element
     link_parents(element)
     element.parent = getattr(following, "parent", None) or element.parent
     del container[index + 1]
@@ -604,6 +628,77 @@ def _collect_run_level(paragraph: Paragraph, items: list, out: list[TrackedChang
             _collect_run_level(paragraph, nested, out)
 
 
+def _row_text(row: Any) -> str:
+    """A row's text, a cell paragraph per line, its ``w:delText`` counted."""
+    from docx4j_py.model.content.text_model import cells_of
+
+    lines: list[str] = []
+
+    def visit(blocks: list) -> None:
+        for block in blocks:
+            if isinstance(block, P):
+                lines.append(_revision_text_of_runs(block.content))
+                continue
+            children = block_children_of(block)
+            if children is not None:
+                visit(children)
+
+    for cell, _owner in cells_of(row):
+        children = block_children_of(cell)
+        if children is not None:
+            visit(children)
+    return "\n".join(lines)
+
+
+def changes_in_row(row: Any, body: Body | None = None) -> list[TrackedChange]:
+    """Every tracked change in a row's cells, the row's own revisions apart."""
+    from docx4j_py.model.content.paragraph import Paragraph
+    from docx4j_py.model.content.text_model import cells_of, rows_of
+
+    out: list[TrackedChange] = []
+
+    def visit(blocks: list) -> None:
+        for block in blocks:
+            if isinstance(block, P):
+                out.extend(tracked_changes_of_paragraph(Paragraph(block, blocks, body)))
+                continue
+            if isinstance(block, Tbl):
+                for nested, owner in rows_of(block):
+                    out.extend(tracked_changes_of_row(nested, owner, body))
+                    out.extend(changes_in_row(nested, body))
+                continue
+            children = block_children_of(block)
+            if children is not None:
+                visit(children)
+
+    for cell, _owner in cells_of(row):
+        children = block_children_of(cell)
+        if children is not None:
+            visit(children)
+    return out
+
+
+def folded_in_row(change: TrackedChange) -> list[TrackedChange]:
+    """The cell-level changes a row revision is **made of**, in document order.
+
+    CR-003 section 16.10: a row insertion or deletion is **one**
+    :class:`TrackedChange`, as Word's Reviewing pane shows one, and the cell
+    revisions of the same author and the same direction are folded into it ---
+    they are that same edit. Anything else inside the row --- another author's
+    change, a formatting revision --- is listed separately and is not touched by
+    accepting or rejecting the row.
+    """
+    if change.target.kind != "row":
+        return []
+    wanted = "Added" if change.target.mark == "ins" else "Deleted"
+    author = change.author
+    return [
+        inner
+        for inner in changes_in_row(change.target.element, change.body)
+        if inner.type == wanted and inner.author == author
+    ]
+
+
 def tracked_changes_of_row(row: Any, owner: list, body: Body | None = None) -> list[TrackedChange]:
     """The ``w:trPr/w:ins`` and ``w:trPr/w:del`` revisions of a table row."""
     tr_pr = getattr(row, "tr_pr", None)
@@ -648,7 +743,18 @@ def tracked_changes_of_body(body: Body) -> list[TrackedChange]:
                 continue
             if isinstance(item, Tbl):
                 for row, owner in rows_of(item):
-                    out.extend(tracked_changes_of_row(row, owner, body))
+                    revisions = tracked_changes_of_row(row, owner, body)
+                    out.extend(revisions)
+                    if revisions:
+                        # the row's own revision folds the cell-level ones it is
+                        # made of; everything else in the row is still listed
+                        # a set of views: two of the same markup are equal and
+                        # hash alike, so this is an identity test on the markup
+                        folded = {c for revision in revisions for c in folded_in_row(revision)}
+                        out.extend(
+                            inner for inner in changes_in_row(row, body) if inner not in folded
+                        )
+                        continue
                     for cell, _cell_owner in cells_of(row):
                         children = block_children_of(cell)
                         if children is not None:

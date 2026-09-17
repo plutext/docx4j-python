@@ -81,6 +81,8 @@ __all__ = [
     "Revision",
     "copy_r_pr",
     "date_of",
+    "delete_row_content",
+    "insertion_mark_of",
     "mark_deleted",
     "mark_inserted",
     "mode_of",
@@ -93,7 +95,10 @@ __all__ = [
     "set_mode",
     "to_deleted_text",
     "to_restored_text",
+    "track_deleted_row",
+    "track_inserted_blocks",
     "track_inserted_paragraph",
+    "track_inserted_paragraph_into",
     "track_inserted_table",
     "tracker_of",
     "wrap_new_runs",
@@ -520,9 +525,142 @@ def wrap_new_runs(tracker: ChangeTracker, paragraph: P) -> None:
         index += 1
 
 
+def _index_of(items: list, element: Any) -> int:
+    """The index of an element **by identity**; ``-1`` when it is not there."""
+    for index, item in enumerate(items):
+        if item is element:
+            return index
+    return -1
+
+
 def _is_plain_run(item: Any) -> bool:
     """A ``w:r`` that is not itself a revision holder's child of another author."""
     return isinstance(item, R)
+
+
+def track_inserted_blocks(tracker: ChangeTracker, elements: list, container: list) -> None:
+    """Mark what one insert put into a container, the way **Word** marks it.
+
+    In the middle of a container each new paragraph carries its own mark, as
+    docx4j-core-ts's phase F decided (CR-003 section 16.2 item, corrected in
+    16.10). At the **end** of one it must not: a container's final paragraph
+    mark cannot be deleted, so Word never marks it inserted --- pressing Enter
+    at the end of the last paragraph marks the *preceding* paragraph's mark and
+    gives the new paragraph the original, unmarked final mark. A final mark
+    marked inserted is something Word cannot reject, and it hangs.
+
+    So a paragraph with nothing after it but the other paragraphs of this same
+    insert **shifts its mark back one**: the paragraph before it takes it, which
+    for a fragment of several is the one this call inserted just before. With no
+    paragraph before it --- an empty container, or a table --- nothing is marked
+    and only the runs are wrapped, which is the honest answer: there is no
+    earlier mark for the break to live on.
+    """
+    inserted = {id(item) for item in elements}
+    for item in elements:
+        if isinstance(item, Tbl):
+            track_inserted_table(tracker, item)
+            continue
+        if not isinstance(item, P):
+            continue
+        wrap_new_runs(tracker, item)
+        index = _index_of(container, item)
+        if index < 0:
+            tracker.mark_paragraph_inserted(item)
+            continue
+        if not _trails(container, index, inserted):
+            tracker.mark_paragraph_inserted(item)
+            continue
+        previous = container[index - 1] if index > 0 else None
+        if isinstance(previous, P) and not mark_inserted(previous):
+            tracker.mark_paragraph_inserted(previous)
+
+
+def _trails(container: list, index: int, inserted: set[int]) -> bool:
+    """True when nothing follows ``container[index]`` but this insert's own paragraphs."""
+    for item in container[index + 1 :]:
+        if not isinstance(item, P) or id(item) not in inserted:
+            return False
+    return True
+
+
+def track_inserted_paragraph_into(
+    tracker: ChangeTracker, paragraph: P, container: list
+) -> None:
+    """One inserted paragraph: :func:`track_inserted_blocks` for a single element."""
+    track_inserted_blocks(tracker, [paragraph], container)
+
+
+def insertion_mark_of(paragraph: P, container: list) -> P | None:
+    """The paragraph whose mark records **this** paragraph's insertion, or None.
+
+    Its own mark normally; the **previous** paragraph's when this is the last of
+    its container, which is where :func:`track_inserted_paragraph_into` puts it.
+    """
+    if mark_inserted(paragraph):
+        return paragraph
+    index = _index_of(container, paragraph)
+    if index > 0 and index == len(container) - 1:
+        previous = container[index - 1]
+        if isinstance(previous, P) and mark_inserted(previous):
+            return previous
+    return None
+
+
+def track_deleted_row(tracker: ChangeTracker, row: Tr, body: Any) -> bool:
+    """Delete a row as Word deletes one: the row mark **and its content**.
+
+    Word writes a deleted row as ``w:trPr/w:del`` *plus* every run in every cell
+    in a ``w:del`` with ``w:delText`` and every cell paragraph's mark marked
+    deleted --- the mirror of an inserted row. A row marked but not emptied is
+    what Word shows in pink with no strikethrough (CR-003 section 16.10).
+
+    A row **this author inserted** is taken back instead, as deleting text this
+    author inserted is (section 4).
+
+    Returns:
+        True when the row was taken back and the caller should remove it.
+    """
+    tr_pr = getattr(row, "tr_pr", None)
+    ins = tr_pr.ins if tr_pr is not None else None
+    if ins is not None and str(getattr(ins, "author", "") or "") == tracker.author:
+        return True
+    tracker.mark_row_deleted(row)
+    delete_row_content(tracker, row, body)
+    return False
+
+
+def delete_row_content(tracker: ChangeTracker, row: Tr, body: Any) -> None:
+    """Every run of every cell into a ``w:del``, every cell mark marked deleted."""
+    from docx4j_py.model.content.text_model import block_children_of, cells_of
+
+    for cell, _owner in cells_of(row):
+        blocks = block_children_of(cell)
+        if blocks is not None:
+            _delete_blocks(tracker, blocks, body)
+
+
+def _delete_blocks(tracker: ChangeTracker, blocks: list, body: Any) -> None:
+    from docx4j_py.model.content.paragraph import Paragraph
+    from docx4j_py.model.content.text_model import block_children_of, rows_of
+
+    for block in blocks:
+        if isinstance(block, P):
+            view = Paragraph(block, blocks, body)
+            length = len(view.text)
+            if length:
+                view.delete_text_tracked(tracker, 0, length)
+            if not mark_deleted(block):
+                tracker.mark_paragraph_deleted(block)
+            continue
+        if isinstance(block, Tbl):
+            for nested, _owner in rows_of(block):
+                if getattr(getattr(nested, "tr_pr", None), "del_value", None) is None:
+                    track_deleted_row(tracker, nested, body)
+            continue
+        children = block_children_of(block)
+        if children is not None:
+            _delete_blocks(tracker, children, body)
 
 
 def track_inserted_table(tracker: ChangeTracker, table: Tbl) -> None:

@@ -787,16 +787,14 @@ class Body(Sequence):
             item.parent = owner
             if isinstance(item, P):
                 change.created(assign_para_id(self, item))
-                if tracker is not None:
-                    from docx4j_py.model.content.tracking import (
-                        track_inserted_paragraph,
-                    )
+        if tracker is not None:
+            # a second pass, once every element is in place: the mark an
+            # inserted paragraph carries depends on whether it ends up **last**
+            # in the container, and only the last one of a fragment does
+            # (CR-003 section 16.10)
+            from docx4j_py.model.content.tracking import track_inserted_blocks
 
-                    track_inserted_paragraph(tracker, item)
-            elif isinstance(item, Tbl) and tracker is not None:
-                from docx4j_py.model.content.tracking import track_inserted_table
-
-                track_inserted_table(tracker, item)
+            track_inserted_blocks(tracker, elements, container)
         if change.active:
             # the address is known: this call chose the index. Asking
             # ``address_of`` for it instead would scan the container, which is
@@ -1032,26 +1030,32 @@ class Body(Sequence):
             if tracker is None:
                 self.content.clear()
                 return
-            from docx4j_py.model.content.tracking import mark_deleted
+            from docx4j_py.model.content.tracking import mark_deleted, track_deleted_row
 
-            for row in self._row_elements():
-                if getattr(getattr(row, "tr_pr", None), "del_value", None) is None:
-                    tracker.mark_row_deleted(row)
+            for row, holder in self._row_elements():
+                if getattr(getattr(row, "tr_pr", None), "del_value", None) is not None:
+                    continue
+                if track_deleted_row(tracker, row, self):
+                    index = next(
+                        (i for i, item in enumerate(holder) if item is row), -1
+                    )
+                    if index >= 0:
+                        del holder[index]
             for paragraph in self.paragraphs:
                 if not mark_deleted(paragraph.element):
                     paragraph.delete()
 
-    def _row_elements(self) -> list[Any]:
-        """Every ``w:tr`` in this body's tables, in document order, nested ones included."""
+    def _row_elements(self) -> list[tuple[Any, list]]:
+        """Every ``w:tr`` in this body's tables and the list holding it, in order."""
         from docx4j_py.model.content.text_model import cells_of, rows_of
 
-        out: list[Any] = []
+        out: list[tuple[Any, list]] = []
 
         def visit(items: list) -> None:
             for item in items:
                 if isinstance(item, Tbl):
-                    for row, _owner in rows_of(item):
-                        out.append(row)
+                    for row, owner in rows_of(item):
+                        out.append((row, owner))
                         for cell, _cell_owner in cells_of(row):
                             children = block_children_of(cell)
                             if children is not None:

@@ -978,7 +978,10 @@ class Paragraph:
 
     def _tracked_delete(self, tracker: Any) -> None:
         """The tracked half of :meth:`delete`: the content, then the mark."""
-        from docx4j_py.model.content.tracking import mark_deleted
+        from docx4j_py.model.content.tracking import (
+            mark_deleted,
+            prune_paragraph_properties,
+        )
 
         if mark_deleted(self.element):
             from docx4j_py.model.content.errors import TrackedChangeError
@@ -988,11 +991,20 @@ class Paragraph:
                 code="tracking.already_deleted",
                 hint="accept or reject the deletion before deleting the paragraph again",
             )
+        from docx4j_py.model.content.tracking import insertion_mark_of
+
         length = len(self.text)
         if length:
             self._delete_text(tracker, 0, length)
-        if tracker.own_paragraph(self.element) and not self.element.content:
-            # our own insertion, taken back whole: the paragraph simply goes
+        mark = insertion_mark_of(self.element, self.container)
+        ours = mark is not None and tracker.own_paragraph(mark)
+        if ours and not self.element.content:
+            # our own insertion, taken back whole: the paragraph simply goes, and
+            # so does the mark that recorded it --- which is the **previous**
+            # paragraph's when this one is the last of its container (16.10)
+            if mark is not self.element:
+                mark.p_pr.r_pr.ins = None
+                prune_paragraph_properties(mark)
             index = self.index
             if index >= 0:
                 del self.container[index]
@@ -1155,6 +1167,15 @@ class Paragraph:
             item.parent = owner
 
     # -- tracked editing (CR-003 section 3.8, Phase F) ----------------------
+
+    def delete_text_tracked(self, tracker: Any, start: int, end: int) -> list[Any]:
+        """Turn the text in ``[start, end)`` into a ``w:del``. Extension.
+
+        The tracked half of :meth:`splice`, reachable on its own because a
+        **deleted table row** deletes the content of every cell through exactly
+        this primitive (CR-003 section 16.10).
+        """
+        return self._delete_text(tracker, start, end)
 
     def _delete_text(self, tracker: Any, start: int, end: int) -> list[_Anchor]:
         """The text in ``[start, end)`` becomes a deletion; returns the ``w:del``\\ s.

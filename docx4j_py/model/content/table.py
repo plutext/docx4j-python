@@ -131,6 +131,19 @@ def _row_element(widths: list[int], values: list[str] | None = None) -> Tr:
     )
 
 
+def _delete_row(tracker: Any, row: Tr, body: Any) -> bool:
+    """Mark a row deleted, **content and all**; True when it was taken back.
+
+    CR-003 section 16.10: Word writes a deleted row as ``w:trPr/w:del`` plus
+    every run in every cell in a ``w:del`` with ``w:delText`` and every cell
+    paragraph's mark marked deleted. A row this author inserted is taken back,
+    and then the caller removes it.
+    """
+    from docx4j_py.model.content.tracking import track_deleted_row
+
+    return track_deleted_row(tracker, row, body)
+
+
 def _mark_rows_inserted(tracker: Any, rows: list[Tr]) -> None:
     """``w:trPr/w:ins`` on each new row, and a ``w:ins`` on each paragraph in it.
 
@@ -459,8 +472,7 @@ class Table:
             tracker = self.change_tracker
             rows = rows_of(self.element)[row_index : row_index + row_count]
             for element, container in reversed(rows):
-                if tracker is not None:
-                    tracker.mark_row_deleted(element)
+                if tracker is not None and not _delete_row(tracker, element, self.parent_body):
                     continue
                 index = _index_of(container, element)
                 if index >= 0:
@@ -485,9 +497,13 @@ class Table:
             change.text(before=self.text, after="")
             tracker = self.change_tracker
             if tracker is not None:
-                for element, _container in rows_of(self.element):
-                    if getattr(getattr(element, "tr_pr", None), "del_value", None) is None:
-                        tracker.mark_row_deleted(element)
+                for element, container in reversed(rows_of(self.element)):
+                    if getattr(getattr(element, "tr_pr", None), "del_value", None) is not None:
+                        continue
+                    if _delete_row(tracker, element, self.parent_body):
+                        at = _index_of(container, element)
+                        if at >= 0:
+                            del container[at]
                 return
             change.shifted(moved_by_delete(self.parent_body, self.container, index))
             del self.container[index]
@@ -687,8 +703,7 @@ class TableRow:
             change.touched(self.parent_table.address)
             change.text(before=text_of(self.element), after="")
             tracker = self.parent_table.change_tracker
-            if tracker is not None:
-                tracker.mark_row_deleted(self.element)
+            if tracker is not None and not _delete_row(tracker, self.element, self.parent_body):
                 return
             del self.container[index]
 
