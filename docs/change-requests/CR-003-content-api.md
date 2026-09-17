@@ -2097,8 +2097,8 @@ pkg.body.accept_all()
 
 | Piece | Where | Signature |
 |---|---|---|
-| the tracker | `docx4j_py/model/content/tracking.py` (843 lines) | `ChangeTracker(package, mode)` with `author`, `date`, `markup_roots()`, `next_id()`, `markup()`, `track_change()`, `ins(items)`, `deletion(items)`, `own_insertion(revision)`, `own_paragraph(p)`, `assert_editable(revision)`, `record_r_pr_change(r_pr)`, `record_p_pr_change(p_pr)`, `mark_paragraph_inserted` / `_deleted`, `mark_row_inserted` / `_deleted`; `tracker_of(package)`, `Revision` and `revision_of(run)`, `FontTracking`, `track_inserted_paragraph`, `wrap_new_runs`, `track_inserted_table`, `para_r_pr_of`, `row_pr_of`, `prune_paragraph_properties`, `mark_deleted` / `mark_inserted`, `to_deleted_text` / `to_restored_text`, `copy_r_pr`, `restore_r_pr`, `restore_p_pr`, `xml_date` / `date_of`, `mode_of` / `set_mode` |
-| the view | `docx4j_py/model/content/tracked_change.py` (667 lines) | `TrackedChangeTarget(kind, value, element, owner, mark)`; `TrackedChange(target, paragraph, body)` with `type`, `author`, `date`, `text`, `get_range()`, `accept()`, `reject()`, `to_dict()`, and `id`, `element`, `kind`, `target`, `address` as extensions; `tracked_changes_of_paragraph`, `tracked_changes_of_row`, `tracked_changes_of_body`, `join_with_next` |
+| the tracker | `docx4j_py/model/content/tracking.py` (829 lines) | `ChangeTracker(package, mode)` with `author`, `date`, `markup_roots()`, `next_id()`, `markup()`, `track_change()`, `ins(items)`, `deletion(items)`, `own_insertion(revision)`, `own_paragraph(p)`, `assert_editable(revision)`, `record_r_pr_change(r_pr)`, `record_p_pr_change(p_pr)`, `mark_paragraph_inserted` / `_deleted`, `mark_row_inserted` / `_deleted`; `tracker_of(package)`, `Revision` and `revision_of(run)`, `FontTracking`, `track_inserted_paragraph`, `wrap_new_runs`, `track_inserted_table`, `para_r_pr_of`, `row_pr_of`, `prune_paragraph_properties`, `mark_deleted` / `mark_inserted`, `to_deleted_text` / `to_restored_text`, `copy_r_pr`, `restore_r_pr`, `restore_p_pr`, `xml_date` / `date_of`, `mode_of` / `set_mode` |
+| the view | `docx4j_py/model/content/tracked_change.py` (662 lines) | `TrackedChangeTarget(kind, value, element, owner, mark)`; `TrackedChange(target, paragraph, body)` with `type`, `author`, `date`, `text`, `get_range()`, `accept()`, `reject()`, `to_dict()`, and `id`, `element`, `kind`, `target`, `address` as extensions; `tracked_changes_of_paragraph`, `tracked_changes_of_row`, `tracked_changes_of_body`, `join_with_next` |
 | the values | `.enums` | `ChangeTrackingModeValue` and `ChangeTracking`, `TrackedChangeTypeValue` and `TrackedChangeType`, with `CHANGE_TRACKING_MODES` and `TRACKED_CHANGE_TYPES` beside them |
 | the error | `.errors` | `TrackedChangeError(ContentError)`, codes `tracking.deleted_text`, `tracking.already_deleted`, `tracking.gone`, `tracking.no_paragraph` |
 | on the package | `.__init__`'s `register()`, and `OpcPackage` | `pkg.change_tracking_mode` and `pkg.tracked_change_date` (properties over the `_change_tracking_mode`, `_change_tracker` and `_tracked_change_date` slots), `pkg.get_tracked_changes()` |
@@ -2118,7 +2118,7 @@ prove it (`test_a_content_control_inherits_tracking_and_its_delete_does_not`,
 
 1. **`TrackedChange` is its own module**, `tracked_change.py`, as section 3.8 allowed
    ("or in `tracking.py`; record the choice"). The two halves share nothing but the small
-   helpers `tracking.py` exports, they are 843 and 667 lines, and the writing half must not
+   helpers `tracking.py` exports, they are 829 and 662 lines, and the writing half must not
    import the reading half (a primitive never needs a view). The CR's section 5 table says
    "`ChangeTracker`, `TrackedChange` | `docx4j_py.model.content.tracking`"; both names are
    re-exported from `docx4j_py.model.content`, which is where every other view comes from, so

@@ -62,11 +62,6 @@ __all__ = [
     "tracked_changes_of_row",
 ]
 
-#: What a change may be over. ``"run"`` is a ``w:ins`` / ``w:del`` /
-#: ``w:moveFrom`` / ``w:moveTo``; ``"mark"`` a paragraph mark; ``"row"`` a
-#: ``w:trPr`` revision; the other two are the formatting ones.
-_KINDS = ("run", "mark", "run_properties", "paragraph_properties", "row")
-
 #: How much of the text a ``repr`` shows.
 _PREVIEW = 30
 

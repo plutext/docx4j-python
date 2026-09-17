@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from docx4j_py.child import ChildList, deep_copy, deep_copy_as, link_parents
 from docx4j_py.model.content.enums import (
@@ -70,9 +70,6 @@ from docx4j_py.wml import (
     el,
     rpr_to_elements,
 )
-
-if TYPE_CHECKING:  # pragma: no cover
-    from docx4j_py.model.content.body import Body
 
 __all__ = [
     "CHANGE_TRACKING_MODES",
@@ -826,18 +823,3 @@ def _create_settings_part(package: Any) -> Any:
     part.set_contents(Settings())
     main.add_target_part(part)
     return part
-
-
-def tracked_parts(change: Any, names: list[str]) -> None:
-    """Add part names to the report a verb is recording (CR-003 section 3.4)."""
-    parts = getattr(change, "parts", None)
-    if parts is None:
-        return
-    for name in names:
-        if name and name not in parts:
-            parts.append(name)
-
-
-def tracker_for_body(body: Body) -> ChangeTracker | None:
-    """The tracker of the body's package, or None. What every primitive calls."""
-    return tracker_of(getattr(body, "package", None))
