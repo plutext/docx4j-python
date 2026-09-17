@@ -274,6 +274,45 @@ class NumberingDefinitionsPart(XmlPart["Numbering"]):
         self.set_bytes(default_part_bytes("numbering.xml"))
         return self.contents
 
+    # -- list numbering (CR-002 section 6.2, delivered by CR-003 Phase H) ---
+
+    def get_emulator(self, reset: bool = False) -> Any:
+        """The numbering emulator of this part's package. docx4j ``getEmulator``.
+
+        :class:`docx4j_py.model.listnumbering.Emulator`: the definitions read
+        (from bytes --- this does **not** unmarshal the part) and the counters
+        to walk a story with. `reset` throws the definitions and the counted
+        labels away, as docx4j's ``getEmulator(true)`` does.
+
+        The import is inside the method because the engine imports nothing from
+        the model at module level (CR-001 section 13.5, and
+        ``tests/openpackaging/test_threads_and_import.py``).
+        """
+        from docx4j_py.model.listnumbering import emulator_of
+
+        emulator = emulator_of(self.package)
+        if emulator is not None and reset:
+            emulator.refresh()
+        return emulator
+
+    @property
+    def numbering_state(self) -> Any:
+        """The counters the state-less emulator calls use. docx4j ``getNumberingState``."""
+        emulator = self.get_emulator()
+        return None if emulator is None else emulator.numbering_state
+
+    @property
+    def abstract_list_definitions(self) -> Any:
+        """``w:abstractNumId`` -> the definition. docx4j ``getAbstractListDefinitions``."""
+        emulator = self.get_emulator()
+        return {} if emulator is None else emulator.abstract_list_definitions
+
+    @property
+    def instance_list_definitions(self) -> Any:
+        """``w:numId`` -> the definition. docx4j ``getInstanceListDefinitions``."""
+        emulator = self.get_emulator()
+        return {} if emulator is None else emulator.instance_list_definitions
+
 
 class FontTablePart(XmlPart["Fonts"]):
     """``/word/fontTable.xml``. docx4j ``FontTablePart``."""

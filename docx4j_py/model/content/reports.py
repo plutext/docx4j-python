@@ -1011,6 +1011,7 @@ class recording:
         if package is None:
             return
         package._current_change = None
+        _invalidate_list_labels(package)
         if exc_info[0] is None:
             package.changes.append(self.recorder.finish())
 
@@ -1054,8 +1055,23 @@ class recording_on:
         if package is None:
             return
         package._current_change = None
+        _invalidate_list_labels(package)
         if exc_info[0] is None:
             package.changes.append(self.recorder.finish())
+
+
+def _invalidate_list_labels(package: Any) -> None:
+    """Forget the list labels: one mutation renumbers everything after it.
+
+    The central place CR-003 Phase H asked for. An emulator is only ever there
+    once something has asked for a label, so a document with no lists --- and
+    every call of every other phase --- pays one attribute lookup.
+    """
+    if getattr(package, "_numbering_emulator", None) is None:
+        return
+    from docx4j_py.model.listnumbering import invalidate_labels
+
+    invalidate_labels(package)
 
 
 def current_recorder(package: Any) -> Any:

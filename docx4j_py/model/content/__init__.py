@@ -76,7 +76,9 @@ __all__ = [
     "InlinePicture",
     "InsertLocation",
     "InvalidTargetError",
+    "List",
     "ListContentControl",
+    "ListItem",
     "Outline",
     "OutlineEntry",
     "OutlineSection",
@@ -148,6 +150,9 @@ _LAZY: dict[str, str] = {
     "cells_of": "docx4j_py.model.content.text_model",
     "InlinePicture": "docx4j_py.model.content.picture",
     "ContentControl": "docx4j_py.model.content.controls",
+    # CR-003 Phase H, the lists
+    "List": "docx4j_py.model.content.lists",
+    "ListItem": "docx4j_py.model.content.lists",
     # CR-003 Phase G, the comments
     "Author": "docx4j_py.model.content.comments",
     "Comment": "docx4j_py.model.content.comments",

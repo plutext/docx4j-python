@@ -357,6 +357,19 @@ class Body(Sequence):
         ]
 
     @property
+    def lists(self) -> list[Any]:
+        """Office JS ``Body.lists``: the lists whose items are in this body.
+
+        One :class:`~docx4j_py.model.content.List` per ``w:numId``, in the
+        document order of each list's first item (CR-003 Phase H). A paragraph
+        numbered through its paragraph style brings its list here too, because
+        the emulator resolves it.
+        """
+        from docx4j_py.model.content.lists import lists_of
+
+        return lists_of(self)
+
+    @property
     def text(self) -> str:
         """The text, a paragraph per line: Word's main story, the accepted view.
 

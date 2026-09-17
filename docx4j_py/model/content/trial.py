@@ -188,6 +188,7 @@ class TrialPackage:
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
+        "_numbering_emulator",
         "_package",
         "_para_ids_taken",
         "_parts",
@@ -225,6 +226,10 @@ class TrialPackage:
         self._inserted_paragraphs: set[int] = set()
         #: The ``w:t``\ s whose ``xml:space`` the trial's splits set.
         self._split_spaces: set[int] = set()
+        #: The trial's own numbering emulator (CR-003 Phase H), over the trial's
+        #: copy of ``/word/numbering.xml``: a trial that starts a list counts in
+        #: its own definitions and leaves the real package's emulator alone.
+        self._numbering_emulator: Any = None
         # a trial allocates ids from its own generator, seeded like the real
         # one, so that a trial and the commit that follows it agree
         self._id_seed = package.id_seed

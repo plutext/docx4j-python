@@ -460,6 +460,74 @@ class Paragraph:
         p_pr.outline_lvl = el.outlineLvl(val=level - 1)
         p_pr.outline_lvl.parent = p_pr
 
+    # -- lists (CR-003 section 3.10, Phase H) ------------------------------
+
+    @property
+    def is_list_item(self) -> bool:
+        """Office JS ``isListItem``: whether Word paints a list label for this.
+
+        True for a paragraph the **emulator** numbers, so a paragraph numbered
+        through its paragraph style is one too, and a ``w:numPr`` naming a
+        ``w:numId`` of 0, or one the document does not define, is not.
+        """
+        from docx4j_py.model.content.lists import is_list_item
+
+        return is_list_item(self)
+
+    @property
+    def list(self) -> Any:
+        """Office JS ``list``: the :class:`~docx4j_py.model.content.List` this is in, or None."""
+        from docx4j_py.model.content.lists import list_of
+
+        return list_of(self)
+
+    @property
+    def list_item(self) -> Any:
+        """Office JS ``listItem``: the :class:`~docx4j_py.model.content.ListItem`, or None.
+
+        ``None`` rather than Office JS's ``listItemOrNullObject`` distinction:
+        CR-003 section 3.1 has no null objects.
+        """
+        from docx4j_py.model.content.lists import list_item_of
+
+        return list_item_of(self)
+
+    def start_new_list(self, *, kind: str = "Number", like: Any = None) -> Any:
+        """Office JS ``startNewList``: a new list with this paragraph as its first item.
+
+        Args:
+            kind: ``"Number"`` (the default) or ``"Bullet"``; which of docx4j's
+                two default definitions the new ``w:abstractNum`` is copied from.
+                Extension: Office JS's ``startNewList`` always makes a numbered
+                list.
+            like: an existing list to restart --- a new ``w:num`` over the same
+                ``w:abstractNum`` with a ``w:startOverride`` of 1, which is what
+                Word's *Restart numbering at 1* writes. Extension.
+
+        Raises:
+            ContentError: this paragraph is already a list item.
+        """
+        from docx4j_py.model.content.lists import start_new_list
+
+        return start_new_list(self, kind=kind, like=like)  # type: ignore[arg-type]
+
+    def attach_to_list(self, list_id: int, level: int = 0) -> None:
+        """Office JS ``attachToList``: make this paragraph an item of an existing list.
+
+        Writes ``w:numPr`` through :meth:`_p_pr`, so with tracking on it records
+        a ``w:pPrChange`` --- what Word writes for a numbering change (CR-003
+        section 16.7).
+        """
+        from docx4j_py.model.content.lists import attach_to_list
+
+        attach_to_list(self, list_id, level)
+
+    def detach_from_list(self) -> None:
+        """Office JS ``detachFromList``: this paragraph is no longer a list item."""
+        from docx4j_py.model.content.lists import detach_from_list
+
+        detach_from_list(self)
+
     # -- formatting --------------------------------------------------------
 
     @property
@@ -1020,8 +1088,12 @@ class Paragraph:
         return to_xml(self.element)
 
     def to_dict(self) -> dict[str, Any]:
-        """A JSON-ready summary: what a tool result says about a paragraph."""
-        return {
+        """A JSON-ready summary: what a tool result says about a paragraph.
+
+        A list item carries ``list_item`` as well: its level, the label Word
+        paints and its place among its siblings (CR-003 Phase H).
+        """
+        out: dict[str, Any] = {
             "address": self.address,
             "ordinal": self.ordinal,
             "text": self.text,
@@ -1034,6 +1106,10 @@ class Paragraph:
             "index": self.index,
             "runs": len(self.runs),
         }
+        item = self.list_item
+        if item is not None:
+            out["list_item"] = item.to_dict()
+        return out
 
     # -- docx4j names ------------------------------------------------------
 
