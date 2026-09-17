@@ -520,6 +520,35 @@ pkg.element_at("body/99")
 #               (use 'body/6', or call outline() to list current addresses)
 ```
 
+**Reveal codes.** `to_api_script(target)` is the other direction: shown a document, it writes the
+content-API calls that would *make* it, as Python against a name `body`. An agent that has to edit
+a document learns the verbs from the document in front of it, and what no verb expresses comes out
+as one `insert_xml` with a comment saying which construct forced it — decided per block, so a
+paragraph comes out whole either way. `Paragraph`, `Range` and `Table` have it too, and `limit=`
+is the budget.
+
+```python
+print(pkg.body.to_api_script(addresses=True))
+# # body/0
+# p1 = body.insert_paragraph("Quarterly Report")
+# p1.style_built_in = "Heading1"
+# p1.alignment = "Centered"
+#
+# # body/1
+# p2 = body.insert_paragraph("Revenue rose ")
+# r1 = p2.insert_text("12%")
+# r1.font.bold = True
+# r2 = p2.insert_text(" this quarter.")
+# r2.font.bold = False
+#
+# # body/2
+# # w:hyperlink in the paragraph: as XML
+# body.insert_xml("""<w:p xmlns:w="…"><w:hyperlink r:id="rId9">…</w:hyperlink></w:p>""")
+
+from docx4j_py import create_package
+exec(pkg.body.to_api_script(), {"body": create_package().body})   # and it runs, as it stands
+```
+
 ### The audit trail
 
 An agent that edits a document should leave the trail Word already has: **tracked changes** for

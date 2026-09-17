@@ -10,7 +10,8 @@ implemented 2026-09-17** (section 17), with which every one of the 200 non-exten
 `tests/office_js_subset.json` is implemented; two follow-ups the same day from the Word check of
 artefact 9 (sections 17.10 and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`);
 **Phase H implemented 2026-09-17** (section 18), with the numbering `Emulator` CR-002 section 6.2
-promised for its Phase B (CR-002 section 12.11). Phases I and J proposed.
+promised for its Phase B (CR-002 section 12.11); **Phase I implemented 2026-09-17** (section 19).
+Phase J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting needs CR-002 Phase B (`PropertyResolver`); until it lands the views read direct
@@ -530,6 +531,8 @@ paragraph, a range or an element, falling back to `body.insert_xml(...)` for wha
 cannot express, decided per paragraph so a paragraph comes out whole either way. For an agent it
 is reveal codes: shown a document, it learns the calls that would make it.
 
+*Implemented 2026-09-17, section 19.*
+
 ### 3.12 Scripts and directionality
 
 Offsets are code points. A split (`Paragraph.split_at`, behind `Range.font`, `insert_text` at a
@@ -693,7 +696,7 @@ what a list still owes Phase B is resolution through `PropertyResolver` (section
 | E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) --- **implemented 2026-09-17, section 17** | 4 days |
 | J | The python-docx facade (3.6) and its subset test | 3 days |
 | H | Lists (3.10) --- **implemented 2026-09-17, section 18**, with CR-002 section 6.2's numbering `Emulator` under them | 3 days |
-| I | `to_api_script` (3.11) | 2 days |
+| I | `to_api_script` (3.11) --- **implemented 2026-09-17, section 19** | 2 days |
 
 B, D and K first: after them an agent can read any document within a budget, address any block,
 edit it and see what changed, which is the MCP server's whole first release. G before F, as the
@@ -3456,3 +3459,250 @@ a restyled shared list adds no definition and writes the override, a seed steps
 past a taken value), and the entry is in the portfolio's `word-hangs.md` under quiet
 failures. The regenerated artefact **passed** in Word the same day: all ten acceptance
 artefacts have now passed.
+
+## 19. Phase I implementation notes (2026-09-17)
+
+`to_api_script` (section 3.11): the content-API calls that would produce what
+you show it, as Python source against a name `body`, with `body.insert_xml(...)`
+of the marshalled fragment for what the verbs cannot express. docx4j-core-ts's
+Phase I is a `Word` shim plus `toApiScript`; section 3.11 already said the shim
+has no Python counterpart worth building, so this phase is the generator alone
+--- and, unlike the TypeScript one, its output is **executable as it stands**:
+`exec(script, {"body": body})`, nothing else in scope.
+
+### 19.1 What landed
+
+| module | lines | what it is |
+|---|---:|---|
+| `docx4j_py/model/content/api_script.py` | 1,230 | `to_api_script`, `script_blocks`, `ScriptBlock`, `PLACEHOLDER_PNG`, the emitter and the expressibility rules |
+| `tests/content/test_api_script.py` | 613 | 68 tests: the executed round trip of section 7, and one per rule |
+| `tests/agent/test_api_script_workflows.py` | 120 | 32 tests: reveal codes under a budget, and the whole corpus |
+
+Beside them: `Body`, `Paragraph`, `Range` and `Table` gain a thin delegating
+`to_api_script(**options)`; `docx4j_py.model.content` exports `to_api_script`,
+`script_blocks` and `ScriptBlock` through its lazy `_LAZY` table, so nothing new
+is imported until it is called. **1,306 tests before, 1,406 after.**
+
+`codegen/clean.py` needed no change: `KEEP` holds `model` as a directory, which
+`test_codegen_el.py`'s "every hand-written path is in `KEEP`" test confirms.
+
+**No acceptance artefact.** The generator writes no markup of its own: every
+line it emits is a call to a verb that has already passed its own Word check in
+phases B to H, and the one thing it does write --- the `insert_xml` fragment ---
+is the source document's own bytes. `out/acceptance/` is unchanged, and
+`tests/README.md`'s checklist gains no eleventh document.
+
+### 19.2 The rules the generator follows
+
+The decision is taken **per block, before a line is emitted**: the paragraph's
+properties, every run's formatting and every run-level child are checked first,
+and one `_Unexpressible` sends the whole paragraph to `insert_xml`. So a
+paragraph comes out whole either way, which is section 3.11's rule.
+
+| what it meets | what it emits |
+|---|---|
+| a `w:p` of one unformatted run, no `w:pPr` | `body.insert_paragraph("…")`, one line, no variable |
+| anything more | `p1 = body.insert_paragraph("<the leading run>")` and then the members |
+| `w:pStyle` | `p1.style_built_in = "Heading1"` for a built-in, `p1.style_id = "MyOwn"` otherwise (19.3 item 1) |
+| `w:jc` | `p1.alignment = "Centered"` |
+| `w:ind` | `left_indent`, `right_indent`, `first_line_indent`, in points |
+| `w:spacing` | `space_before`, `space_after`, `line_spacing` (`w:lineRule="exact"` only) |
+| `w:outlineLvl` | `p1.outline_level = n + 1` |
+| `w:numPr` | `list1 = p1.start_new_list(kind=…)` for the first item of each `w:numId`, then `p2.attach_to_list(list1.id, level)` (19.3 item 4) |
+| a level that is not docx4j's default | `list1.set_level_numbering(…)` / `set_level_bullet(…)` / `set_level_indents(…)` |
+| a run of text | `r1 = p1.insert_text("…")` and the `Font` members that differ from the previous run |
+| `w:tab`, a text-wrapping `w:br` in the leading run | `"\t"` and `"\n"` in `insert_paragraph`'s text, which the `r` builder writes back as `w:tab` and `w:br` |
+| a `w:br` alone in a run | `p1.insert_break("Page")` / `("Line")` |
+| a `w:drawing` that is an inline picture | `p1.insert_inline_picture_from_base64(…, width=…, height=…, alt_text_description=…)` |
+| a comment anchored in the paragraph | `body.package.author = Author(…)`, `c1 = p1.search("…")[0].insert_comment("…")`, `c1.reply("…")`, `c1.resolved = True` |
+| a `w:tbl` that is a plain grid of single-paragraph text cells | `t1 = body.insert_table(rows, cols, values=[[…]])`, then `style_built_in` / `style_id` and `header_row_count` |
+| `w:proofErr`, `w:lastRenderedPageBreak`, `w:bookmarkStart` / `End`, `w:lang`, `w:noProof`, the comment markers | nothing: dropped |
+| everything else | `# <the construct>: as XML` and one `body.insert_xml("""…""")` |
+
+`script_blocks(target, **options)` is the same answer machine-readable: a
+`ScriptBlock` per block with `kind` (`"paragraph"`, `"table"`, `"xml"`,
+`"note"`), `address`, `lines`, `exact` and `reason`, with `to_dict()`. It is
+what a tool returns beside the source and what section 19.4's measurement reads.
+
+### 19.3 Departures from section 3.11 and from docx4j-core-ts section 10, each deliberate
+
+1. **A style that is not built in is written by its id, not its display name.**
+   Section 4 and the TypeScript engine emit `style = '<display name>'`; but
+   `Paragraph.style`'s setter resolves the name against *this* package and
+   refuses one the document does not define (section 14.9), so a script run
+   against a fresh body would raise on every custom style. `style_id` is the
+   docx4j-named extension that writes the id the source has, which is exactly
+   what `insert_xml` would have left; a built-in still gets
+   `style_built_in`, whose setter **defines** the style in the target.
+2. **`Font.style` is emitted.** `w:rStyle` sends a paragraph to `insertXml` in
+   the TypeScript engine, which has no `Font.style`; this one has, so a run
+   style is `r1.font.style = "Emphasis"` and the paragraph stays in the verbs.
+   For the same reason `Font.size = 0` and `Font.color = ""` are emitted where
+   the TypeScript engine gives up: `apply_run_options` removes the element for
+   both, so every one of the twelve `Font` members can be turned off again.
+3. **`w:lang` and `w:noProof` are dropped**, wherever they appear --- a run's
+   `w:rPr` or the paragraph mark's. They are language and proofing hints, no
+   verb writes them, they change nothing Word paints, and Word rewrites them on
+   the next save; dropping them is the same decision as `w:proofErr`, and it
+   moves 59 of the corpus's 237 paragraph marks out of the fallback.
+4. **A list names its list, not a number.** Section 18.7 asked for
+   `attach_to_list(list_id, level)` "with `list_id` the numbers the script's own
+   calls will allocate". A literal would have to predict the target's allocator,
+   so the script holds the `List` the call returns in a variable and passes
+   `list1.id`. Same promise, no prediction.
+5. **An inexpressible list definition is a comment, never an `insert_xml`.**
+   Section 18.7's "falls back to `body.insert_xml` of the whole numbering part"
+   cannot be done: `insert_xml` takes *body-level* fragments, and there is no
+   verb that writes a numbering part. Emitting the list's paragraphs as
+   `insert_xml` instead would leave them naming a `w:numId` the target has never
+   heard of --- Word would show them unnumbered, silently. So the paragraphs
+   stay list items through `start_new_list` / `attach_to_list`, the three level
+   setters say what they can, and what none of them says (`w:lvlJc`, `w:isLgl`,
+   `w:suff`, `w:start`, `w:lvlRestart`, `w:pStyle`, a picture bullet, a
+   multi-character bullet, a `w:numFmt` outside `Word.ListNumbering`) is named
+   in a `#` comment on the block and the block is marked `exact=False`. What the
+   generator compares each level against is not the resource but **what
+   `start_new_list(kind=…)` itself produces**, read once per process from a
+   throwaway package, so the two can never drift.
+6. **`start_new_list` applies *List Paragraph*; the script takes it off again.**
+   A source list item that names no style would otherwise come back carrying
+   `w:pStyle ListParagraph` (section 18's rule for the verb), so the block ends
+   with `p1.style_id = ""`.
+7. **A tracked change is `insert_xml`, not accepted content.** The brief offered
+   "as accepted, with a comment" or the fallback; the fallback keeps section
+   3.11's promise, because `insert_xml` reproduces the revision with its author,
+   date and `w:id`, and emitting the accepted text would drop the revision
+   without saying so. `change_tracking_mode` is never emitted, as asked.
+8. **A content control is `insert_xml`.** `ContentControl.tag` and `.title` are
+   **read-only** here (Office JS's are read/write), so a control emitted through
+   `insert_content_control(kind)` would silently lose the `w:tag` that binds it
+   to its data. Everything else the brief named --- `placeholder_text`,
+   `appearance`, `color`, the typed kinds' members, `w:dataBinding` --- is
+   worth nothing without it, and `insert_xml` of the `w:sdt` reproduces all of
+   it exactly. A read/write `tag` and `title` would be a one-line change in
+   `controls.py` and would move this into the verbs; it is noted for Phase J.
+9. **A comment block is `exact=False`.** The paragraph itself is reproduced, and
+   `get_comments()` comes back with the same text, author, reply nesting and
+   `resolved`; but `insert_comment` places its own markers and allocates its own
+   `w:id`, and the creation date is the wall clock, so the block is not the
+   source's bytes and does not claim to be. The comment's own content is
+   compared instead (`test_a_thread_with_a_reply_and_a_resolved_thread_reproduce`).
+10. **A `w:tab` outside the leading run is a tab *character*.** Section 4's
+    rule, kept, but the reason is Python's: `insert_paragraph` goes through the
+    `r` builder, which writes `w:tab` and `w:br` for `\t` and `\n`, while
+    `insert_text` writes the characters. So the leading run's tabs and line
+    breaks round-trip **exactly** --- better than the TypeScript engine --- and
+    a later run's do not; that block is marked `exact=False` with the reason. A
+    `w:br` beside text in a later run has no honest spelling at all and falls
+    back.
+11. **A table is `exact=False` even when it is expressed.** `insert_table` sizes
+    its own `w:tblGrid` from `w:sectPr` (section 4), so the column widths are
+    the target's, not the source's. `TableCell.column_width` writes `w:tcW` on
+    one cell and would leave the grid inconsistent, so no width lines are
+    emitted at all.
+12. **`addresses=True` names the ordinal, never the `w14:paraId`.** `address_of`
+    prefers the paraId, and a paraId is an id of the *source* document, which
+    section 3.11's determinism rule keeps out of the script.
+13. **A `Range` emits its runs only**, against `variable` as a `Paragraph` name
+    (the TypeScript engine wraps them in a new paragraph instead). The docstring
+    says so, because the default `variable="body"` would then insert into a
+    `Body`, which also has `insert_text`.
+14. **A run left with no content is dropped**, not emitted as
+    `insert_text("")` --- a comment-reference run, a run holding only a
+    bookmark. Nothing is painted by one and the empty call would carry the run's
+    formatting into the next.
+15. **The fallback is a marshalled XML string, not `to_source`.** The
+    TypeScript CR's closing note wants `body.insertElement(<the factory calls>)`
+    from its objects package; CR-001 has no `to_source` either, so the same
+    wish is recorded here rather than acted on.
+
+### 19.4 The numbers, measured
+
+The corpus is the 13 WordprocessingML documents of `samples/` (the other three
+are a `.pptx`, an `.xlsx` and a `.dotm`). Every script parses with `ast.parse`,
+every script executes against a fresh `create_package().body`, and every
+document's text survives.
+
+| | blocks | the verbs | `insert_xml` |
+|---|---:|---:|---:|
+| the corpus | 365 | 169 (46%) | 196 |
+| the corpus less `Symbols.docx` | 205 | 162 (79%) | 43 |
+| the six of section 7's round trip | 117 | 90 (77%) | 27 |
+
+`Symbols.docx` is the outlier and the reason for both rows: 142 of its 160
+paragraphs carry a paragraph mark whose `w:rPr` states `w:rFonts`, `w:sz` and
+`w:szCs`, and no verb writes the mark's run properties.
+
+**Of the 169 blocks the verbs expressed, 160 claim `exact=True` and every one of
+them is canonically the source block**; the nine that do not claim it are seven
+inline pictures and two paragraphs with a `w:tab` outside the leading run. The
+comparison is `scripts/canon.py`'s normal form less what the test module's
+docstring lists --- the `w:rsid*` ids, `w14:paraId` / `w14:textId`, `w:lang` /
+`w:noProof`, the `w:bCs` / `w:iCs` / `w:szCs` twins, an empty `w:rPr` / `w:pPr`
+/ `w:tcPr`, a run left with only a `w:rPr`, `w:numPr`, a redundant
+`xml:space="preserve"`, and two adjacent runs of the same `w:rPr` written as
+one. Every one of those is something Word paints identically either way, and
+each is there because a verb cannot write it: `Font.bold = False` removes `w:b`
+but leaves the `w:rPr` it was in, `insert_text` at the end of a paragraph
+extends the last run rather than starting a new one, and the `w:numId` a list
+gets is the target document's own (item 4).
+
+What forced the 196 fallbacks, by construct:
+
+| count | construct |
+|---:|---|
+| 153 | the paragraph mark's `w:rPr` |
+| 14 | `w:pPr` beyond the six members (`w:tabs`, `w:sectPr`, `w:adjustRightInd`, `w:autoSpaceDE`/`DN`, `w:pBdr`, `w:shd`) |
+| 13 | a `w:tbl` that is not a plain grid (`w:trHeight`, `w:gridAfter`, `w:tblBorders`, `w:shd`, a cell paragraph with properties, ragged rows) |
+| 6 | a `w:sdt`, at block, table or run level |
+| 2 | `mc:AlternateContent` in a run |
+| 8 | one each: `oMathPara`, `w:hyperlink`, `w:ins`, a block-level `w:bookmarkStart` / `End`, `w:rFonts` with a `w:cs`, `w:sdt` |
+
+Beyond the corpus, `w:spacing w:lineRule="auto"` is the other common one: it
+accounts for 27 of the 49 fallbacks over the numbering fixtures, because
+`line_spacing` writes `w:lineRule="exact"` and only an exact rule round-trips.
+
+Generation is a marshal of whatever falls back, and costs what that costs:
+
+| document | blocks | script | time |
+|---|---:|---:|---:|
+| `2010-sample1.docx` | 4 | 2,926 chars | 10 ms |
+| `sample-docx.docx` | 64 | 11,295 chars | 96 ms |
+| `Symbols.docx` (the largest) | 160 | 807,478 chars | 841 ms |
+
+The 807 KB is the honest cost of a document the verbs cannot express: 153
+marshalled paragraphs of symbol runs. `limit=` is the answer for an agent, and
+`to_api_script(paragraph)` for one block.
+
+### 19.5 The fixture decision
+
+Nothing new was copied. Section 7's executed round trip runs over
+`samples/2010-sample1.docx` and `samples/sample-docx.docx` and the four fixtures
+earlier phases already brought in --- `lists.docx`, `comments-modern.docx`,
+`hyperlink.docx`, `nested-table.docx` --- and the two documents the rules needed
+that no fixture carries (a two-list document with a non-default level 0, and a
+comment thread with a reply and a resolved thread) are **built in the test from
+the content API itself**, which is what phases G, F and H did for the same
+reason. The comment thread is `tests/content/conftest.py`'s `threaded_package`,
+written for Phase G; Phase I reuses it unchanged.
+
+### 19.6 What Phase J needs
+
+- **The python-docx facade can reuse the generator as it is**: `to_api_script`
+  emits *this* API's calls, and a facade over it does not change them. If a
+  `to_api_script(target, dialect="python-docx")` is ever wanted, the shape to
+  keep is `script_blocks` --- the emitter decides expressibility once and the
+  lines are the only dialect-specific part.
+- **Two one-line changes would move whole categories into the verbs**, and both
+  belong to whichever phase next touches those files: a read/write
+  `ContentControl.tag` and `.title` (item 8), and a `Paragraph.mark_font` over
+  `w:pPr/w:rPr` (which is 153 of the corpus's 196 fallbacks). Neither is Office
+  JS's --- Office JS has no paragraph-mark font either --- so both are
+  extensions, and each would need its own Word check.
+- **`insert_table` sizing** (item 11) is the third: a `column_widths` setter on
+  `Table` that writes `w:tblGrid` and every row's `w:tcW` together would make a
+  plain table `exact`.
+- CR-001 still owes `to_source(element)` --- the `el.p({...})` / `p([r('x')])`
+  calls that build an element --- which would make the fallback readable source
+  rather than a marshalled string (item 15). The TypeScript CR asks its objects
+  package for the same thing.

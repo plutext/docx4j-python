@@ -1099,7 +1099,8 @@ def script_blocks(
                 kind="note",
                 lines=(
                     (
-                        f"# ... {more} more blocks; call to_api_script(body, limit=None) "
+                        f"# ... {more} more block{'' if more == 1 else 's'}; "
+                        "call to_api_script(body, limit=None) "
                         "or pass a Paragraph/Table for one"
                     ),
                 ),

@@ -519,6 +519,7 @@ def test_limit_stops_and_says_where(body) -> None:
         "# ... 3 more blocks; call to_api_script(body, limit=None) "
         "or pass a Paragraph/Table for one"
     )
+    assert to_api_script(body, limit=4).splitlines()[-1].startswith("# ... 1 more block;")
 
 
 def test_addresses_are_the_ordinals(body) -> None:
