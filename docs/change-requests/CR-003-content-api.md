@@ -3454,4 +3454,5 @@ is built. The markdown importer's definitions carry no nsid at all, which artefa
 shows Word accepts; they are left alone. Tests pin both parts (two new lists differ,
 a restyled shared list adds no definition and writes the override, a seed steps
 past a taken value), and the entry is in the portfolio's `word-hangs.md` under quiet
-failures. The artefact is regenerated and awaits a second check.
+failures. The regenerated artefact **passed** in Word the same day: all ten acceptance
+artefacts have now passed.

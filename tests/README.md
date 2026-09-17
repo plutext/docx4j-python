@@ -112,8 +112,7 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `a) b) c)`. Cause: the copied `w:abstractNum` kept the original's `w:nsid`, and Word keys a
 > definition by nsid (CR-003 section 18.8). Fixed the same day: every new definition gets its
 > own nsid, and a level change on a shared definition is now a `w:lvlOverride/w:lvl` on the
-> `w:num` rather than a copy at all. **The regenerated artefact awaits a second check** (the
-> labels, then Reject All, then save and reopen). Artefacts 1 to 9 are unchanged by Phase H --- it adds no verb any of them calls
+> `w:num` rather than a copy at all. **The regenerated artefact passed** the same day. Artefacts 1 to 9 are unchanged by Phase H --- it adds no verb any of them calls
 > --- and their bytes are what they were.
 
 Saved output must open in Word **without a repair prompt**. After any change to
