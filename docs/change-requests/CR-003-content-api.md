@@ -2575,7 +2575,8 @@ existing views.
 
 Tests: `tests/content/test_customxml.py` (22), `tests/content/test_controls_typed.py`
 (30), `tests/agent/test_template_workflows.py` (13), and two more in
-`tests/content/test_office_js_subset.py`. **1,138 before, 1,205 after.**
+`tests/content/test_office_js_subset.py`. **1,138 before, 1,205 after**, and
+1,212 once the reports of 17.9 were tested.
 
 ### 17.2 Departures from section 3.7 and section 4, all deliberate
 
@@ -2743,7 +2744,8 @@ package itself costs **53 ms** to import when it is first touched. The suite is
 **1,138 tests in 64.0 s before, 1,205 in 63.9 s after**; `-m "not slow"` is 1,195
 in 55 s. (`test_a_warm_import_is_faster_still` is timing-sensitive and failed once
 in five runs of the full suite on a loaded machine, before and after this phase
-alike; it is not a Phase E regression.)
+alike; it is not a Phase E regression.) The seven tests of 17.9 take it to
+**1,212 in 63.3 s**.
 
 ### 17.5 The fixture decision
 
@@ -2829,3 +2831,67 @@ Phase J sits on a complete core, which is why section 8 put it after this one.
   control" should call it rather than build a `w:sdt` by hand, because the three
   refusals (a crossed run holder, a repeating section at run level, an empty
   body) are what stop Word repairing the document.
+
+### 17.9 The `ChangeReport` every mutation records (2026-09-17)
+
+Phase E shipped without one, which was a gap against decided question 4 and
+section 12.8: *every* mutating content-API call records one
+:class:`ChangeReport` naming every part it touched, because an MCP tool returns
+exactly `pkg.last_change`. A `fill_template` tool would have returned nothing at
+all, and the bound control's write-through reported `('/word/document.xml',)`
+although it had written a custom XML part that re-marshals on save. Fixed here.
+
+**A package-level `recording`.** `recording(body, operation)` takes a body,
+which is what every Phase B to G verb has. A custom XML node write and
+`custom_xml_parts.add()` have a **package** and a **part** instead, so
+`reports.recording_on(package, operation, *parts)` is the variant: the same
+re-entrant machinery, the same `package._current_change` latch, a
+`ChangeRecorder` whose `body` is None. `ChangeRecorder` gained `part(*names)`
+--- a part or a part name, de-duplicated --- so a call can name a part its body
+does not own, and `touched()` skips `address_of` when there is no body.
+`CustomXmlPart.recording(operation)` is the one-liner the nodes use.
+
+**What records what:**
+
+| call | operation | addresses | parts touched |
+|---|---|---|---|
+| a node's `text` / `node_value` setter | `custom_xml_node.text` / `.node_value` | the node's canonical XPath | the data part |
+| `append_child_node`, `insert_node_before`, `replace_child_node`, `remove_child`, `delete`, `set_xml` | `custom_xml_node.<verb>` | the node's XPath | the data part |
+| the six XPath-addressed editors | `custom_xml_part.<verb>` | the node's XPath | the data part |
+| `CustomXmlPart.set_xml` | `custom_xml_part.set_xml` | the part name | the data part |
+| `custom_xml_parts.add(xml)` | `custom_xml_parts.add` | the new `ds:itemID` | **the item part, its `itemProps` part and the main part's `.rels`** |
+| `CustomXmlPart.delete()` | `custom_xml_part.delete` | the `ds:itemID` | both parts and the `.rels`; each unlinked binding is a warning |
+| `apply_bindings()` | `apply_bindings` | the controls whose content changed | the body parts written |
+| `update_from_content_controls()` | `update_from_content_controls` | the controls read | the **data** parts written, not the body |
+| `fill(data)` | `fill` | the controls that changed | the data parts **and** the body parts |
+| `XmlMapping.set_mapping` / `set_mapping_by_node` / `delete` | `xml_mapping.<verb>` | the control | its body's part |
+| the `w:sdtPr` setters | `control.appearance`, `control.color`, `control.cannot_delete`, `control.cannot_edit`, `control.remove_when_edited`, `placeholder_text` | the control | its body's part |
+| the kind setters | `checkbox.is_checked`, `date_picker.*`, `list.add_list_item`, `list.delete_all_list_items`, `list.last_value`, `list_item.*`, `repeating_section.*`, `insert_copy_after` | the control | its body's part |
+
+Three decisions inside that:
+
+1. **A node's address is its canonical XPath.** `ChangeReport.addresses` is "the
+   addresses touched", and an XPath into a custom XML part is the only address
+   that part has; adding a field for it would have been a worse answer than
+   reading the field it has. It follows that a bound `insert_text` reports two
+   addresses --- the paragraph's ordinal and the node's XPath --- which is
+   exactly what a caller wants to know about that call.
+2. **`fill()` records one report, not one per key plus one for the apply.** A
+   fill of three keys over the invoice writes three nodes and applies twenty
+   bindings, which would have been thirty-four reports; `recording_on` is
+   re-entrant, so the outermost owns it and everything inside is a no-op. The
+   set/skipped counts go in `text_after` --- `"2 set, 1 skipped, 16 bindings
+   applied"` --- and each key that matched no binding is a `warning`, which is
+   what that field is for; no new field was added.
+   `test_fill_records_exactly_one_report_for_the_whole_call` pins the count at 1.
+3. **`tag` and `title` have no setters**, so there was nothing to record for
+   them; `w:tag` and `w:alias` are read-only in this phase and a caller that
+   wants to change one goes through `put_property(el.tag(val=…))`, which is
+   `ContentControl`'s own extension and records nothing of its own.
+
+**Cost**, measured as section 12.4 measured a report: `apply_bindings` over the
+invoice's twenty bindings goes from 1.79 ms to **1.94 ms** (about 9 µs a
+control, which is the `address_of` each applied control now costs), `fill()` of
+four keys from 2.92 ms to **3.25 ms**, and one node write is **9 µs** all told.
+The suite is **1,205 tests before this correction, 1,212 after**; the acceptance
+artefacts are byte for byte what they were, so the Word check is unaffected.

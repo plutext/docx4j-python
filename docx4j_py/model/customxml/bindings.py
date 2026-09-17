@@ -363,15 +363,30 @@ def apply_binding_to(control: ContentControl) -> tuple[bool, str, str, str]:
 
 
 def apply_bindings(package: Any) -> BindingResult:
-    """Push the custom XML into every bound control. docx4j ``BindingHandler``."""
-    applied: list[BindingEntry] = []
-    skipped: list[BindingEntry] = []
-    for control in controls_of(package):
-        if not control.xml_mapping.is_mapped:
-            continue
-        done, value, reason, code = apply_binding_to(control)
-        (applied if done else skipped).append(_entry(control, value, reason, code))
-    return BindingResult("apply_bindings", tuple(applied), tuple(skipped))
+    """Push the custom XML into every bound control. docx4j ``BindingHandler``.
+
+    One :class:`~docx4j_py.model.content.reports.ChangeReport` for the whole
+    pass (CR-003 decided question 4, section 17.9): the addresses are the
+    controls whose content changed, and the parts are the body parts written.
+    """
+    from docx4j_py.model.content.reports import recording_on
+
+    with recording_on(package, "apply_bindings") as change:
+        applied: list[BindingEntry] = []
+        skipped: list[BindingEntry] = []
+        for body in bound_bodies(package):
+            for control in body.content_controls:
+                if not control.xml_mapping.is_mapped:
+                    continue
+                done, value, reason, code = apply_binding_to(control)
+                (applied if done else skipped).append(_entry(control, value, reason, code))
+                if done:
+                    change.touched(control.address)
+                    change.part(getattr(body, "part", None))
+        change.text(after=f"{len(applied)} of {len(applied) + len(skipped)} bindings applied")
+        for entry in skipped:
+            change.warn(f"{entry.xpath or entry.kind}: {entry.reason}")
+        return BindingResult("apply_bindings", tuple(applied), tuple(skipped))
 
 
 # ---------------------------------------------------------------------------
@@ -429,15 +444,32 @@ def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
 
 
 def update_from_content_controls(package: Any) -> BindingResult:
-    """Write every bound control back into the custom XML. docx4j's reverse pass."""
-    applied: list[BindingEntry] = []
-    skipped: list[BindingEntry] = []
-    for control in controls_of(package):
-        if not control.xml_mapping.is_mapped:
-            continue
-        done, value, reason, code = update_from_control(control)
-        (applied if done else skipped).append(_entry(control, value, reason, code))
-    return BindingResult("update_from_content_controls", tuple(applied), tuple(skipped))
+    """Write every bound control back into the custom XML. docx4j's reverse pass.
+
+    One report for the whole pass: the addresses are the controls read, and the
+    parts are the **data** parts written (the body parts are not touched ---
+    this direction only reads them).
+    """
+    from docx4j_py.model.content.reports import recording_on
+
+    with recording_on(package, "update_from_content_controls") as change:
+        applied: list[BindingEntry] = []
+        skipped: list[BindingEntry] = []
+        for control in controls_of(package):
+            mapping = control.xml_mapping
+            if not mapping.is_mapped:
+                continue
+            done, value, reason, code = update_from_control(control)
+            (applied if done else skipped).append(_entry(control, value, reason, code))
+            if done:
+                change.touched(control.address)
+                part = mapping.custom_xml_part
+                change.part(part.part if part is not None else None)
+        change.text(after=f"{len(applied)} of {len(applied) + len(skipped)} nodes written")
+        for entry in skipped:
+            if entry.code != "unchanged":
+                change.warn(f"{entry.xpath or entry.kind}: {entry.reason}")
+        return BindingResult("update_from_content_controls", tuple(applied), tuple(skipped))
 
 
 def write_control_to_node(control: ContentControl) -> bool:
@@ -447,10 +479,19 @@ def write_control_to_node(control: ContentControl) -> bool:
     gone or whose XPath no longer resolves is simply not written, because an
     ``insert_text`` is a text edit and not a binding operation.
     """
-    if not control.xml_mapping.is_mapped:
+    mapping = control.xml_mapping
+    if not mapping.is_mapped:
         return False
     try:
         done, _value, _reason, _code = update_from_control(control)
     except Exception:  # noqa: BLE001 - an unusable binding must not fail a text edit
         return False
+    if done:
+        # the data part will re-marshal on save, so it belongs in the report of
+        # the ``insert_text`` that caused it (CR-003 section 17.9)
+        from docx4j_py.model.content.reports import current_recorder
+
+        part = mapping.custom_xml_part
+        if part is not None:
+            current_recorder(getattr(control.parent_body, "package", None)).part(part.part)
     return done

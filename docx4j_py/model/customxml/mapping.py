@@ -130,30 +130,46 @@ class XmlMapping:
         Returns:
             Whether a binding was written.
         """
-        for candidate in [part] if part is not None else self._candidates():
-            if candidate is None:
-                continue
-            if candidate.select_single_node(xpath, prefix_mappings) is None:
-                continue
-            self._write(xpath, prefix_mappings or "", candidate.id)
-            return True
-        return False
+        with self._recording("xml_mapping.set_mapping") as change:
+            for candidate in [part] if part is not None else self._candidates():
+                if candidate is None:
+                    continue
+                if candidate.select_single_node(xpath, prefix_mappings) is None:
+                    continue
+                self._write(xpath, prefix_mappings or "", candidate.id)
+                change.touched(self.control.address)
+                change.text(after=xpath)
+                return True
+            change.warn(f"{xpath!r} selects nothing in any custom XML part; nothing was written")
+            return False
 
     def set_mapping_by_node(self, node: CustomXmlNode) -> bool:
         """Bind the control to a node, by its canonical XPath. Office JS ``setMappingByNode``.
 
         Always succeeds: the node is there, so its own path resolves.
         """
-        if node.attribute is not None:
-            canonical = canonical_xpath_of((node.element, node.attribute))
-        else:
-            canonical = canonical_xpath_of(node.element)
-        self._write(canonical.xpath, canonical.prefix_mappings, node.owner_part.id)
-        return True
+        with self._recording("xml_mapping.set_mapping_by_node") as change:
+            if node.attribute is not None:
+                canonical = canonical_xpath_of((node.element, node.attribute))
+            else:
+                canonical = canonical_xpath_of(node.element)
+            self._write(canonical.xpath, canonical.prefix_mappings, node.owner_part.id)
+            change.touched(self.control.address)
+            change.text(after=canonical.xpath)
+            return True
 
     def delete(self) -> None:
         """Remove the binding, keeping the content the control shows. Office JS ``delete``."""
-        self.control.remove_property("dataBinding", (W_NS, W15_NS))
+        with self._recording("xml_mapping.delete") as change:
+            change.text(before=self.xpath)
+            self.control.remove_property("dataBinding", (W_NS, W15_NS))
+            change.touched(self.control.address)
+
+    def _recording(self, operation: str) -> Any:
+        """The report every write here opens (CR-003 section 17.9)."""
+        from docx4j_py.model.content.reports import recording
+
+        return recording(self.control.parent_body, operation)
 
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary: what a tool result says about a mapping."""

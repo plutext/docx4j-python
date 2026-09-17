@@ -39,6 +39,7 @@ from docx4j_py.model.content.errors import BindingError
 from docx4j_py.model.customxml.bindings import (
     BindingResult,
     apply_bindings,
+    bound_bodies,
     controls_of,
 )
 from docx4j_py.model.customxml.parts import custom_xml_parts_of
@@ -499,13 +500,30 @@ def fill_template(package: Any, data: dict[str, Any] | str) -> FillResult:
         BindingError: a string was given and the document has no single
             non-built-in part to replace.
     """
+    from docx4j_py.model.content.reports import recording_on
+
+    with recording_on(package, "fill") as change:
+        return _fill(package, data, change)
+
+
+def _fill(package: Any, data: dict[str, Any] | str, change: Any) -> FillResult:
+    """The body of :func:`fill_template`, inside its **one** report.
+
+    One report for the whole call, as ``insert_markdown`` has (CR-003 section
+    17.9): a fill that writes a dozen nodes and then applies twenty bindings
+    leaves one ``ChangeReport``, not thirty-three, because every call inside it
+    finds one already open and is a no-op.
+    """
     collection = custom_xml_parts_of(package)
     if isinstance(data, str):
         target = _single_part(collection)
         target.set_xml(data)
+        bindings = apply_bindings(package)
+        change.part(target.part)
+        change.text(after=f"the whole of {target.part.part_name}")
         return FillResult(
             applied=(FillEntry(key=str(target.part.part_name), xpath="/", value="<xml>"),),
-            bindings=apply_bindings(package),
+            bindings=bindings,
         )
 
     skeleton = describe_template(package)
@@ -553,10 +571,22 @@ def fill_template(package: Any, data: dict[str, Any] | str) -> FillResult:
             node.text = text
             wrote = True
             applied.append(FillEntry(key=key, xpath=binding.xpath, value=text))
+            change.part(part.part)
             break
         if not wrote and not matches:  # pragma: no cover - guarded above
             continue
-    return FillResult(tuple(applied), tuple(skipped), apply_bindings(package))
+    bindings = apply_bindings(package)
+    for entry in bindings.applied:
+        change.touched(entry.address)
+    for body in bound_bodies(package):
+        if any(entry.address for entry in bindings.applied):
+            change.part(getattr(body, "part", None))
+    change.text(
+        after=f"{len(applied)} set, {len(skipped)} skipped, {bindings.updated} bindings applied"
+    )
+    for entry in skipped:
+        change.warn(f"{entry.key}: {entry.reason}")
+    return FillResult(tuple(applied), tuple(skipped), bindings)
 
 
 def _matches(skeleton: Skeleton, key: str) -> list[BindingInfo]:

@@ -606,7 +606,8 @@ class ContentControl:
                 code="binding.bad_appearance",
                 hint="one of BoundingBox, Tags, Hidden",
             )
-        self.put_property(w15_el.appearance(val=stored))
+        with self._property_change("appearance", value):
+            self.put_property(w15_el.appearance(val=stored))
 
     @property
     def color(self) -> str:
@@ -629,10 +630,11 @@ class ContentControl:
         """Set the colour; ``""`` removes it. ``#RRGGBB`` or ``RRGGBB``."""
         from docx4j_py.w15 import el as w15_el
 
-        if not value:
-            self.remove_property("color", W15_NS)
-            return
-        self.put_property(w15_el.color(val=value.lstrip("#").upper()))
+        with self._property_change("color", value):
+            if not value:
+                self.remove_property("color", W15_NS)
+                return
+            self.put_property(w15_el.color(val=value.lstrip("#").upper()))
 
     @property
     def cannot_delete(self) -> bool:
@@ -646,7 +648,8 @@ class ContentControl:
     @cannot_delete.setter
     def cannot_delete(self, value: bool) -> None:
         """Lock or unlock the control itself."""
-        self._set_lock(delete=bool(value), edit=self.cannot_edit)
+        with self._property_change("cannot_delete", value):
+            self._set_lock(delete=bool(value), edit=self.cannot_edit)
 
     @property
     def cannot_edit(self) -> bool:
@@ -656,7 +659,8 @@ class ContentControl:
     @cannot_edit.setter
     def cannot_edit(self, value: bool) -> None:
         """Lock or unlock the content."""
-        self._set_lock(delete=self.cannot_delete, edit=bool(value))
+        with self._property_change("cannot_edit", value):
+            self._set_lock(delete=self.cannot_delete, edit=bool(value))
 
     @property
     def remove_when_edited(self) -> bool:
@@ -674,10 +678,27 @@ class ContentControl:
     @remove_when_edited.setter
     def remove_when_edited(self, value: bool) -> None:
         """Set or clear ``w:temporary``."""
-        if value:
-            self.put_property(el.temporary())
-        else:
-            self.remove_property("temporary", W_NS)
+        with self._property_change("remove_when_edited", value):
+            if value:
+                self.put_property(el.temporary())
+            else:
+                self.remove_property("temporary", W_NS)
+
+    def _property_change(self, name: str, value: Any) -> Any:
+        """``with self._property_change("color", value):`` --- one report per setter.
+
+        CR-003 decided question 4: every mutating call records a
+        :class:`~docx4j_py.model.content.reports.ChangeReport`, and a
+        ``w:sdtPr`` property setter is one. ``tag`` and ``title`` have no
+        setters, so there is nothing to record for them (section 17.9).
+        """
+        from contextlib import ExitStack
+
+        stack = ExitStack()
+        change = stack.enter_context(recording(self.parent_body, f"control.{name}"))
+        change.touched(self.address)
+        change.text(after="" if value is None else str(value))
+        return stack
 
     def _lock(self) -> str:
         value = getattr(sdt_property(self.sdt_pr, "lock", W_NS), "val", None)

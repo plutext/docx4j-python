@@ -65,6 +65,7 @@ __all__ = [
     "heading_level_of",
     "outline_of",
     "recording",
+    "recording_on",
 ]
 
 #: How many entries an ``outline()`` reports before it says ``truncated``.
@@ -859,8 +860,14 @@ class ChangeRecorder:
     #: the null recorder would throw away.
     active = True
 
-    def __init__(self, operation: str, body: Body) -> None:
-        """Start a report for one call."""
+    def __init__(self, operation: str, body: Body | None) -> None:
+        """Start a report for one call.
+
+        `body` is None for a call that has no body of its own --- a custom XML
+        node write, ``custom_xml_parts.add()`` --- which :class:`recording_on`
+        opens; such a call names its parts with :meth:`part` and its addresses
+        as strings.
+        """
         self.operation = operation
         self.body = body
         self.addresses: list[str] = []
@@ -869,7 +876,7 @@ class ChangeRecorder:
         self.text_before: str | None = None
         self.text_after: str | None = None
         self.warnings: list[str] = []
-        part = getattr(body, "part", None)
+        part = getattr(body, "part", None) if body is not None else None
         self.parts: list[str] = [str(part.part_name)] if part is not None else []
 
     # -- what the primitives call -----------------------------------------
@@ -882,6 +889,8 @@ class ChangeRecorder:
             if isinstance(target, str):
                 if target not in self.addresses:
                     self.addresses.append(target)
+                continue
+            if self.body is None:
                 continue
             try:
                 address = address_of(self.body, target)
@@ -910,6 +919,20 @@ class ChangeRecorder:
         """Record something this call could not carry (CR-003 Phase K)."""
         if message and message not in self.warnings:
             self.warnings.append(message)
+
+    def part(self, *names: Any) -> None:
+        """Record a part this call wrote, beyond the body's own.
+
+        What a call that touches a part the body does not own uses: a custom XML
+        data part, the properties part beside it, a relationships part
+        (CR-003 section 17.9).
+        """
+        for name in names:
+            if name is None:
+                continue
+            text = str(getattr(name, "part_name", name))
+            if text and text not in self.parts:
+                self.parts.append(text)
 
     def finish(self) -> ChangeReport:
         """The frozen report."""
@@ -948,6 +971,9 @@ class _NullRecorder:
     def warn(self, message: str) -> None:
         """Nothing."""
 
+    def part(self, *names: Any) -> None:
+        """Nothing."""
+
 
 NULL_RECORDER = _NullRecorder()
 
@@ -973,6 +999,49 @@ class recording:
             return
         self.package = package
         self.recorder = ChangeRecorder(operation, body)
+        package._current_change = self.recorder
+
+    def __enter__(self) -> Any:
+        """The recorder, real or null."""
+        return self.recorder
+
+    def __exit__(self, *exc_info: object) -> None:
+        """Close the report and put it on the package."""
+        package = self.package
+        if package is None:
+            return
+        package._current_change = None
+        if exc_info[0] is None:
+            package.changes.append(self.recorder.finish())
+
+
+class recording_on:
+    """``with recording_on(package, "add", part) as change:`` --- for a call with no body.
+
+    :class:`recording` takes the body, which is what almost every verb has; a
+    custom XML node write and ``custom_xml_parts.add()`` have a **package** and a
+    part instead (CR-003 section 17.9). Re-entrant in exactly the same way ---
+    the outermost owns the report --- so a ``fill()`` that writes twelve nodes
+    and then applies the bindings still leaves **one** report behind.
+
+    Args:
+        package: the package, or a trial one.
+        operation: what to call the report.
+        *parts: the parts this call writes, as parts or as names.
+    """
+
+    __slots__ = ("package", "recorder")
+
+    def __init__(self, package: Any, operation: str, *parts: Any) -> None:
+        """Open a report for `operation` on `package`, unless one is already open."""
+        if package is None or getattr(package, "_current_change", None) is not None:
+            self.package = None
+            self.recorder: Any = current_recorder(package)
+            self.recorder.part(*parts)
+            return
+        self.package = package
+        self.recorder = ChangeRecorder(operation, None)
+        self.recorder.part(*parts)
         package._current_change = self.recorder
 
     def __enter__(self) -> Any:

@@ -282,3 +282,173 @@ def test_the_whole_workflow_end_to_end():
     saved = reloaded(package)
     assert [control.text for control in saved.body.content_controls] == ["Everyone", "Grace"]
     assert saved.custom_xml_parts.describe().bindings[0].value == "Everyone"
+
+
+# ---------------------------------------------------------------------------
+# the ChangeReport every mutation records (CR-003 decided question 4, §17.9)
+# ---------------------------------------------------------------------------
+
+
+def test_fill_records_exactly_one_report_for_the_whole_call(invoice):
+    """`insert_markdown`'s rule: one call, one report, however much it writes."""
+    invoice.changes.clear()
+
+    result = invoice.custom_xml_parts.fill(
+        {
+            "/invoice[1]/customer[1]/company[1]": "Acme Ltd",
+            "/invoice[1]/invoicenumber[1]": "INV-9",
+            "/invoice[1]/nowhere[1]": "x",
+        }
+    )
+
+    assert len(invoice.changes) == 1, [c.operation for c in invoice.changes]
+    change = invoice.last_change
+    assert change.operation == "fill"
+    # the data part it wrote and the body part apply_bindings then wrote
+    assert set(change.parts_touched) == {"/customXml/item1.xml", "/word/document.xml"}
+    # the controls whose content changed
+    assert len(change.addresses) >= result.bindings.updated
+    assert any(address.startswith("body/") for address in change.addresses)
+    # the counts, and the key that matched nothing, without a new field
+    assert change.text_after == "2 set, 1 skipped, 16 bindings applied"
+    assert any("/invoice[1]/nowhere[1]" in warning for warning in change.warnings)
+    assert change.to_dict()["operation"] == "fill"
+
+
+def test_a_dry_run_of_a_fill_reports_the_same_thing_over_the_trial(invoice):
+    invoice.body.paragraphs  # noqa: B018 - read the part first, as a caller would
+    invoice.changes.clear()
+
+    with invoice.dry_run() as trial:
+        trial.custom_xml_parts.fill({"/invoice[1]/customer[1]/company[1]": "Acme Ltd"})
+        assert len(trial.changes) == 1
+        change = trial.last_change
+        assert change.operation == "fill"
+        assert set(change.parts_touched) == {"/customXml/item1.xml", "/word/document.xml"}
+        assert change.text_after == "1 set, 0 skipped, 16 bindings applied"
+
+    # and the real package recorded nothing at all
+    assert invoice.changes == []
+
+
+def test_apply_bindings_and_the_reverse_each_record_one_report(invoice):
+    invoice.custom_xml_parts.get_item(ITEM_ID).select_single_node(
+        "/invoice/customer/company"
+    ).text = "Acme Ltd"
+    invoice.changes.clear()
+
+    invoice.custom_xml_parts.apply_bindings()
+
+    assert len(invoice.changes) == 1
+    change = invoice.last_change
+    assert change.operation == "apply_bindings"
+    assert change.parts_touched == ("/word/document.xml",)
+    assert len(change.addresses) == 16
+    assert change.text_after == "16 of 20 bindings applied"
+    assert len(change.warnings) == 4  # the picture, the rich text and the two containers
+
+    invoice.changes.clear()
+    invoice.custom_xml_parts.update_from_content_controls()
+
+    assert len(invoice.changes) == 1
+    back = invoice.last_change
+    assert back.operation == "update_from_content_controls"
+    # this direction writes the **data** parts, not the body
+    assert "/word/document.xml" not in back.parts_touched
+
+
+def test_the_node_and_part_mutations_each_record_one_report(invoice):
+    part = invoice.custom_xml_parts.get_item(ITEM_ID)
+    node = part.select_single_node("/invoice/customer/company")
+    invoice.changes.clear()
+
+    node.text = "Acme Ltd"
+
+    assert len(invoice.changes) == 1
+    change = invoice.last_change
+    assert change.operation == "custom_xml_node.text"
+    assert change.parts_touched == ("/customXml/item1.xml",)
+    assert change.addresses == ("/invoice[1]/customer[1]/company[1]",)
+    assert change.text_before == "Contozo Inc"
+    assert change.text_after == "Acme Ltd"
+
+    invoice.changes.clear()
+    part.update_element("/invoice/customer/company", "<company>Zenith</company>")
+    assert [c.operation for c in invoice.changes] == ["custom_xml_part.update_element"]
+    assert invoice.last_change.parts_touched == ("/customXml/item1.xml",)
+
+    invoice.changes.clear()
+    part.insert_attribute("/invoice/customer", "kind", "trade")
+    assert [c.operation for c in invoice.changes] == ["custom_xml_part.insert_attribute"]
+
+
+def test_add_and_delete_name_the_parts_they_created(new_package):
+    new_package.body.insert_paragraph("Hello")
+    new_package.changes.clear()
+
+    part = new_package.custom_xml_parts.add('<g xmlns="urn:g"><to>World</to></g>')
+
+    assert len(new_package.changes) == 1
+    change = new_package.last_change
+    assert change.operation == "custom_xml_parts.add"
+    assert set(change.parts_touched) == {
+        "/customXml/item1.xml",
+        "/customXml/itemProps1.xml",
+        "/word/_rels/document.xml.rels",
+    }
+    assert change.addresses == (part.id,)
+
+    control = new_package.body.paragraphs[0].insert_content_control("PlainText")
+    control.xml_mapping.set_mapping("/ns0:g[1]/ns0:to[1]", "xmlns:ns0='urn:g'", part)
+    new_package.changes.clear()
+
+    part.delete()
+
+    assert len(new_package.changes) == 1
+    gone = new_package.last_change
+    assert gone.operation == "custom_xml_part.delete"
+    assert "/customXml/item1.xml" in gone.parts_touched
+    assert "/customXml/itemProps1.xml" in gone.parts_touched
+    assert any("/ns0:g[1]/ns0:to[1]" in warning for warning in gone.warnings)
+
+
+def test_the_mapping_and_the_control_setters_each_record_one_report(new_package):
+    part = new_package.custom_xml_parts.add('<g xmlns="urn:g"><to>World</to></g>')
+    control = new_package.body.insert_paragraph("x").insert_content_control("CheckBox")
+    new_package.changes.clear()
+
+    assert control.xml_mapping.set_mapping("/ns0:g[1]/ns0:to[1]", "xmlns:ns0='urn:g'", part)
+    assert [c.operation for c in new_package.changes] == ["xml_mapping.set_mapping"]
+    assert new_package.last_change.addresses == (control.address,)
+    assert new_package.last_change.parts_touched == ("/word/document.xml",)
+
+    new_package.changes.clear()
+    control.appearance = "Tags"
+    control.color = "#FF0000"
+    control.cannot_delete = True
+    control.checkbox_content_control.is_checked = True
+    assert [c.operation for c in new_package.changes] == [
+        "control.appearance",
+        "control.color",
+        "control.cannot_delete",
+        "checkbox.is_checked",
+    ]
+    assert all(change.addresses == (control.address,) for change in new_package.changes)
+
+    new_package.changes.clear()
+    control.xml_mapping.delete()
+    assert [c.operation for c in new_package.changes] == ["xml_mapping.delete"]
+
+
+def test_a_bound_insert_text_names_the_data_part_it_wrote(invoice):
+    control = by_title(invoice, "/invoice[1]/invoicenumber[1]")
+    invoice.changes.clear()
+
+    control.insert_text("INV-9", location="Replace")
+
+    assert len(invoice.changes) == 1
+    change = invoice.last_change
+    assert change.operation == "insert_text"
+    # the write-through wrote the custom XML part, which re-marshals on save
+    assert set(change.parts_touched) == {"/word/document.xml", "/customXml/item1.xml"}
+    assert change.text_after == "INV-9"

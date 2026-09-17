@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 from lxml import etree
 
 from docx4j_py.model.content.errors import BindingError, ContentError
+from docx4j_py.model.content.reports import recording_on
 from docx4j_py.model.customxml.nodes import (
     CustomXmlNode,
     CustomXmlPrefixMappingCollection,
@@ -184,14 +185,33 @@ class CustomXmlPart:
                 code="binding.not_well_formed",
                 hint="pass the XML of the whole part, root element included",
             ) from error
-        self.part.set_tree(root)
-        self._prefixes = None
+        with self.recording("custom_xml_part.set_xml") as change:
+            self.part.set_tree(root)
+            self._prefixes = None
+            change.touched(f"{self.part.part_name}")
 
     def touch(self) -> None:
         """Mark the part for re-marshalling. What every mutation here calls."""
         mark = getattr(self.part, "mark_modified", None)
         if mark is not None:
             mark()
+
+    @property
+    def package(self) -> Any:
+        """The package this part belongs to, or None. Extension."""
+        return getattr(self.collection, "package", None)
+
+    def recording(self, operation: str) -> Any:
+        """``with part.recording("custom_xml_node.text") as change:``. Extension.
+
+        The :class:`~docx4j_py.model.content.reports.ChangeReport` every mutation
+        of this part or of one of its nodes opens (CR-003 section 17.9, decided
+        question 4). Re-entrant, as every other ``recording`` is, so a ``fill()``
+        that writes a dozen nodes leaves one report and not a dozen.
+        """
+        from docx4j_py.model.content.reports import recording_on
+
+        return recording_on(self.package, operation, self.part)
 
     @property
     def is_modified(self) -> bool:
@@ -271,21 +291,24 @@ class CustomXmlPart:
         CR-003 section 17 and the member is excluded from the subset test's
         argument check.
         """
-        return self._require(xpath, namespace_mappings).append_child_node(xml, index=index)
+        with self.recording("custom_xml_part.insert_element"):
+            return self._require(xpath, namespace_mappings).append_child_node(xml, index=index)
 
     def update_element(
         self, xpath: str, xml: str, namespace_mappings: str | dict[str, str] | None = None
     ) -> CustomXmlNode:
         """Replace the element an XPath selects. Office JS ``updateElement``."""
-        node = self._require(xpath, namespace_mappings)
-        node.set_xml(xml)
-        return node
+        with self.recording("custom_xml_part.update_element"):
+            node = self._require(xpath, namespace_mappings)
+            node.set_xml(xml)
+            return node
 
     def delete_element(
         self, xpath: str, namespace_mappings: str | dict[str, str] | None = None
     ) -> None:
         """Remove the element an XPath selects. Office JS ``deleteElement``."""
-        self._require(xpath, namespace_mappings).delete()
+        with self.recording("custom_xml_part.delete_element"):
+            self._require(xpath, namespace_mappings).delete()
 
     def insert_attribute(
         self,
@@ -295,7 +318,8 @@ class CustomXmlPart:
         namespace_mappings: str | dict[str, str] | None = None,
     ) -> CustomXmlNode:
         """Set an attribute on the element an XPath selects. Office JS ``insertAttribute``."""
-        return self.update_attribute(xpath, name, value, namespace_mappings)
+        with self.recording("custom_xml_part.insert_attribute"):
+            return self.update_attribute(xpath, name, value, namespace_mappings)
 
     def update_attribute(
         self,
@@ -310,26 +334,32 @@ class CustomXmlPart:
         the part's own namespace manager; an unresolved prefix is written as the
         literal name, which is what a document that declares it inline expects.
         """
-        node = self._require(xpath, namespace_mappings)
-        if node.node_type != "Element":
-            raise BindingError(
-                f"{xpath!r} does not select an element",
-                code="binding.not_an_element",
-                hint="an attribute belongs on an element; select one",
-            )
-        qualified = self._qualify(name, namespace_mappings)
-        node.element.set(qualified, value)
-        self.touch()
-        return CustomXmlNode(node.element, self, attribute=qualified)
+        with self.recording("custom_xml_part.update_attribute") as change:
+            node = self._require(xpath, namespace_mappings)
+            if node.node_type != "Element":
+                raise BindingError(
+                    f"{xpath!r} does not select an element",
+                    code="binding.not_an_element",
+                    hint="an attribute belongs on an element; select one",
+                )
+            qualified = self._qualify(name, namespace_mappings)
+            node.element.set(qualified, value)
+            self.touch()
+            written = CustomXmlNode(node.element, self, attribute=qualified)
+            change.touched(written.xpath)
+            change.text(after=value)
+            return written
 
     def delete_attribute(
         self, xpath: str, name: str, namespace_mappings: str | dict[str, str] | None = None
     ) -> None:
         """Remove an attribute. Office JS ``deleteAttribute``."""
-        node = self._require(xpath, namespace_mappings)
-        node.element.attrib.pop(self._qualify(name, namespace_mappings), None)
-        node.element.attrib.pop(name, None)
-        self.touch()
+        with self.recording("custom_xml_part.delete_attribute") as change:
+            node = self._require(xpath, namespace_mappings)
+            change.touched(f"{node.xpath}/@{name.rpartition(':')[2]}")
+            node.element.attrib.pop(self._qualify(name, namespace_mappings), None)
+            node.element.attrib.pop(name, None)
+            self.touch()
 
     def _qualify(self, name: str, namespace_mappings: str | dict[str, str] | None) -> str:
         prefix, _, local = name.partition(":")
@@ -460,14 +490,6 @@ class CustomXmlPartCollection:
             BindingError: `xml` has no document element.
             ContentError: the package has no main document part to relate from.
         """
-        from docx4j_py.model.content.picture import note_added_part
-        from docx4j_py.openpackaging.parts.default_xml_part import (
-            CustomXmlDataStoragePart,
-        )
-        from docx4j_py.openpackaging.parts.docprops import (
-            CustomXmlDataStoragePropertiesPart,
-        )
-        from docx4j_py.openpackaging.parts.relationships_part import AddPartBehaviour
 
         try:
             root = etree.fromstring(xml.encode("utf-8") if isinstance(xml, str) else xml)
@@ -486,6 +508,21 @@ class CustomXmlPartCollection:
                 code="binding.no_main_part",
                 hint="Word drops a custom XML part that only the package relates to",
             )
+
+        recorder = recording_on(self.package, "custom_xml_parts.add")
+        with recorder as change:
+            return self._add(package, source, root, schema_refs, change)
+
+    def _add(self, package: Any, source: Any, root: Any, schema_refs: Any, change: Any) -> Any:
+        """The body of :meth:`add`, inside its report."""
+        from docx4j_py.model.content.picture import note_added_part
+        from docx4j_py.openpackaging.parts.default_xml_part import (
+            CustomXmlDataStoragePart,
+        )
+        from docx4j_py.openpackaging.parts.docprops import (
+            CustomXmlDataStoragePropertiesPart,
+        )
+        from docx4j_py.openpackaging.parts.relationships_part import AddPartBehaviour
 
         data_part = CustomXmlDataStoragePart(_free_item_name(package))
         data_part.set_tree(root)
@@ -510,6 +547,8 @@ class CustomXmlPartCollection:
 
         view = CustomXmlPart(data_part, self, item_id, tuple(_schema_refs(schema_refs, root)))
         self._views[id(data_part)] = view
+        change.part(data_part, props, getattr(source, "relationships_part", None))
+        change.touched(item_id)
         return view
 
     def remove(self, view: CustomXmlPart) -> None:
@@ -526,17 +565,22 @@ class CustomXmlPartCollection:
             )
         package = self.package
         part = getattr(view.part, "_wrapped", view.part)
-        unlinked = self._unlink(view)
-        owner = part.owning_relationship_part
-        if owner is None:
-            main = package.main_document_part
-            owner = main.relationships_part if main is not None else None
-        removed = owner.remove_part(part.part_name) if owner is not None else []
-        for name in removed:
-            package.content_type_manager.remove_override_content_type(name)
-        package.custom_xml_data_storage_parts.pop(getattr(part, "item_id", None) or "", None)
-        self._views.pop(id(view.part), None)
-        view.unlinked = tuple(unlinked)
+        with recording_on(package, "custom_xml_part.delete") as change:
+            unlinked = self._unlink(view)
+            owner = part.owning_relationship_part
+            if owner is None:
+                main = package.main_document_part
+                owner = main.relationships_part if main is not None else None
+            removed = owner.remove_part(part.part_name) if owner is not None else []
+            for name in removed:
+                package.content_type_manager.remove_override_content_type(name)
+            package.custom_xml_data_storage_parts.pop(getattr(part, "item_id", None) or "", None)
+            self._views.pop(id(view.part), None)
+            view.unlinked = tuple(unlinked)
+            change.part(*removed, owner)
+            change.touched(view.id)
+            for xpath in unlinked:
+                change.warn(f"the binding to {xpath!r} was removed with the part")
 
     def _unlink(self, view: CustomXmlPart) -> list[str]:
         """Delete the mappings of every control that names this part, and say which."""

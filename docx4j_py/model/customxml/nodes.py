@@ -323,8 +323,15 @@ class CustomXmlNode:
 
     @text.setter
     def text(self, value: str) -> None:
-        """Replace the node's text; the part is marked for re-marshalling."""
+        """Replace the node's text; the part is marked and a report is recorded."""
         value = "" if value is None else str(value)
+        with self.owner_part.recording("custom_xml_node.text") as change:
+            change.touched(self.xpath)
+            change.text(before=self.text, after=value)
+            self._write_text(value)
+
+    def _write_text(self, value: str) -> None:
+        """The write itself, inside :attr:`text`'s report."""
         if self.attribute is not None:
             self.element.set(self.attribute, value)
         elif self.text_kind is not None:
@@ -342,8 +349,9 @@ class CustomXmlNode:
 
     @node_value.setter
     def node_value(self, value: str) -> None:
-        """As :attr:`text`."""
-        self.text = value
+        """As :attr:`text`, under its own operation name."""
+        with self.owner_part.recording("custom_xml_node.node_value"):
+            self.text = value
 
     @property
     def xml(self) -> str:
@@ -367,6 +375,11 @@ class CustomXmlNode:
             BindingError: `xml` is not one well-formed element, or this node is
                 the document element (replace the part with ``set_xml``).
         """
+        with self.owner_part.recording("custom_xml_node.set_xml") as change:
+            self._write_xml(xml, change)
+
+    def _write_xml(self, xml: str, change: Any) -> None:
+        """The write itself, inside :meth:`set_xml`'s report."""
         parent = self.element.getparent() if self.attribute is None else None
         if self.attribute is not None or self.text_kind is not None:
             self.text = xml
@@ -381,6 +394,7 @@ class CustomXmlNode:
         parent.replace(self.element, created)
         self.element = created
         self.owner_part.touch()
+        change.touched(self.xpath)
 
     # -- the tree ----------------------------------------------------------
 
@@ -508,6 +522,21 @@ class CustomXmlNode:
         Raises:
             BindingError: neither form was given what it needs.
         """
+        with self.owner_part.recording("custom_xml_node.append_child_node") as change:
+            out = self._append(xml, namespace_uri, node_type, node_value, index)
+            change.touched(out.xpath)
+            change.text(after=out.text)
+            return out
+
+    def _append(
+        self,
+        xml: str | None,
+        namespace_uri: str | None,
+        node_type: str | None,
+        node_value: str | None,
+        index: int | None,
+    ) -> CustomXmlNode:
+        """The write itself, inside :meth:`append_child_node`'s report."""
         created = self._create(xml, namespace_uri, node_type, node_value)
         if isinstance(created, tuple):
             name, value = created
@@ -530,16 +559,27 @@ class CustomXmlNode:
         self, xml: str, next_sibling: CustomXmlNode | None = None
     ) -> CustomXmlNode:
         """Insert a node before a child of this one, or append. Office JS ``insertNodeBefore``."""
-        created = _parse_element(xml)
-        if next_sibling is None:
-            self.element.append(created)
-        else:
-            self.element.insert(self.element.index(next_sibling.element), created)
-        self.owner_part.touch()
-        return CustomXmlNode(created, self.owner_part)
+        with self.owner_part.recording("custom_xml_node.insert_node_before") as change:
+            created = _parse_element(xml)
+            if next_sibling is None:
+                self.element.append(created)
+            else:
+                self.element.insert(self.element.index(next_sibling.element), created)
+            self.owner_part.touch()
+            out = CustomXmlNode(created, self.owner_part)
+            change.touched(out.xpath)
+            change.text(after=out.text)
+            return out
 
     def remove_child(self, child: CustomXmlNode) -> None:
         """Remove a child node or an attribute. Office JS ``removeChild``."""
+        with self.owner_part.recording("custom_xml_node.remove_child") as change:
+            change.touched(child.xpath)
+            change.text(before=child.text)
+            self._remove(child)
+
+    def _remove(self, child: CustomXmlNode) -> None:
+        """The removal itself, inside :meth:`remove_child`'s report."""
         if child.attribute is not None:
             self.element.attrib.pop(child.attribute, None)
         elif child.text_kind is not None:
@@ -563,10 +603,15 @@ class CustomXmlNode:
 
     def replace_child_node(self, old_node: CustomXmlNode, xml: str) -> CustomXmlNode:
         """Replace a child with the node `xml` describes. Office JS ``replaceChildNode``."""
-        created = _parse_element(xml)
-        self.element.replace(old_node.element, created)
-        self.owner_part.touch()
-        return CustomXmlNode(created, self.owner_part)
+        with self.owner_part.recording("custom_xml_node.replace_child_node") as change:
+            created = _parse_element(xml)
+            change.text(before=old_node.text)
+            self.element.replace(old_node.element, created)
+            self.owner_part.touch()
+            out = CustomXmlNode(created, self.owner_part)
+            change.touched(out.xpath)
+            change.text(after=out.text)
+            return out
 
     def delete(self) -> None:
         """Remove this node from its parent. Office JS ``delete``.
@@ -575,6 +620,11 @@ class CustomXmlNode:
             BindingError: this is the document element, which only
                 :meth:`~docx4j_py.model.customxml.CustomXmlPart.delete` removes.
         """
+        with self.owner_part.recording("custom_xml_node.delete"):
+            self._delete()
+
+    def _delete(self) -> None:
+        """The removal itself, inside :meth:`delete`'s report."""
         parent = self.parent_node
         if parent is None:
             raise BindingError(

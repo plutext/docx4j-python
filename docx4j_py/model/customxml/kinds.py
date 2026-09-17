@@ -89,6 +89,25 @@ class _KindView:
         """``<CheckboxContentControl checked>``."""
         return f"<{type(self).__name__}>"
 
+    def recording(self, operation: str, value: Any = None) -> Any:
+        """``with view.recording("checkbox.is_checked", value):`` --- one report per setter.
+
+        CR-003 decided question 4, section 17.9: a typed kind's setter writes
+        ``w:sdtPr`` (and, for a checkbox, the control's content), so it records a
+        :class:`~docx4j_py.model.content.reports.ChangeReport` naming the
+        control's address like every other mutating call.
+        """
+        from contextlib import ExitStack
+
+        from docx4j_py.model.content.reports import recording
+
+        stack = ExitStack()
+        change = stack.enter_context(recording(self.control.parent_body, operation))
+        change.touched(self.control.address)
+        if value is not None:
+            change.text(after=str(value))
+        return stack
+
 
 # ---------------------------------------------------------------------------
 # the checkbox
@@ -135,14 +154,15 @@ class CheckboxContentControl(_KindView):
         """
         from docx4j_py.w14 import el as w14_el
 
-        checked = getattr(self.element, "checked", None)
-        if checked is None:
-            checked = w14_el.checked()
-            self.element.checked = checked
-        checked.val = "1" if value else "0"
-        self.control.set_checkbox_glyph(
-            self.checked_symbol if value else self.unchecked_symbol, self.font
-        )
+        with self.recording("checkbox.is_checked", value):
+            checked = getattr(self.element, "checked", None)
+            if checked is None:
+                checked = w14_el.checked()
+                self.element.checked = checked
+            checked.val = "1" if value else "0"
+            self.control.set_checkbox_glyph(
+                self.checked_symbol if value else self.unchecked_symbol, self.font
+            )
 
     @property
     def checked_symbol(self) -> str:
@@ -279,10 +299,8 @@ class DatePickerContentControl(_KindView):
     @date_display_format.setter
     def date_display_format(self, value: str) -> None:
         """Set the pattern; ``""`` removes the element."""
-        if not value:
-            self.element.date_format = None
-            return
-        self.element.date_format = el.dateFormat(val=value)
+        with self.recording("date_picker.date_display_format", value):
+            self.element.date_format = el.dateFormat(val=value) if value else None
 
     #: docx4j and the OOXML element call it ``dateFormat``; Office JS calls it
     #: ``dateDisplayFormat``. Both names read and write the same element.
@@ -296,7 +314,8 @@ class DatePickerContentControl(_KindView):
     @date_display_locale.setter
     def date_display_locale(self, value: str) -> None:
         """Set the language; ``""`` removes the element."""
-        self.element.lid = el.lid(val=value) if value else None
+        with self.recording("date_picker.date_display_locale", value):
+            self.element.lid = el.lid(val=value) if value else None
 
     @property
     def date_calendar_type(self) -> str:
@@ -306,7 +325,8 @@ class DatePickerContentControl(_KindView):
     @date_calendar_type.setter
     def date_calendar_type(self, value: str) -> None:
         """Set the calendar."""
-        self.element.calendar = el.calendar(val=value)
+        with self.recording("date_picker.date_calendar_type", value):
+            self.element.calendar = el.calendar(val=value)
 
     @property
     def date_storage_format(self) -> str:
@@ -316,7 +336,8 @@ class DatePickerContentControl(_KindView):
     @date_storage_format.setter
     def date_storage_format(self, value: DateStorageFormat | str) -> None:
         """Set how the bound value is stored."""
-        self.element.store_mapped_data_as = el.storeMappedDataAs(val=str(value))
+        with self.recording("date_picker.date_storage_format", value):
+            self.element.store_mapped_data_as = el.storeMappedDataAs(val=str(value))
 
     @property
     def full_date(self) -> datetime.datetime | None:
@@ -332,14 +353,15 @@ class DatePickerContentControl(_KindView):
     @full_date.setter
     def full_date(self, value: datetime.datetime | None) -> None:
         """Set ``w:fullDate``; None removes it."""
-        if value is None:
-            self.element.full_date = None
-            return
         from docx4j_xsdata.models.datatype import XmlDateTime
 
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=datetime.UTC)
-        self.element.full_date = XmlDateTime.from_datetime(value.astimezone(datetime.UTC))
+        with self.recording("date_picker.full_date", value):
+            if value is None:
+                self.element.full_date = None
+                return
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=datetime.UTC)
+            self.element.full_date = XmlDateTime.from_datetime(value.astimezone(datetime.UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary."""
@@ -362,14 +384,24 @@ class DatePickerContentControl(_KindView):
 class ContentControlListItem:
     """One ``w:listItem``. Office JS ``Word.ContentControlListItem``."""
 
-    __slots__ = ("element", "items")
+    __slots__ = ("element", "items", "owner")
 
-    def __init__(self, items: list, element: Any) -> None:
-        """Build the view over an entry and the list holding it."""
+    def __init__(self, items: list, element: Any, owner: Any = None) -> None:
+        """Build the view over an entry, the list holding it and the control."""
         #: The live list of entries, so :meth:`delete` can find this one.
         self.items = items
         #: The ``w:listItem``.
         self.element = element
+        #: The :class:`ListContentControl` this entry belongs to, for the report.
+        self.owner = owner
+
+    def _recording(self, operation: str, value: Any = None) -> Any:
+        """The report a write here opens (CR-003 section 17.9)."""
+        from contextlib import nullcontext
+
+        if self.owner is None:
+            return nullcontext()
+        return self.owner.recording(operation, value)
 
     @property
     def display_text(self) -> str:
@@ -379,7 +411,8 @@ class ContentControlListItem:
     @display_text.setter
     def display_text(self, value: str) -> None:
         """Set what the drop-down shows."""
-        self.element.display_text = value
+        with self._recording("list_item.display_text", value):
+            self.element.display_text = value
 
     @property
     def value(self) -> str:
@@ -389,7 +422,8 @@ class ContentControlListItem:
     @value.setter
     def value(self, value: str) -> None:
         """Set what the binding stores."""
-        self.element.value = value
+        with self._recording("list_item.value", value):
+            self.element.value = value
 
     @property
     def index(self) -> int:
@@ -401,9 +435,10 @@ class ContentControlListItem:
 
     def delete(self) -> None:
         """Remove this entry. Office JS ``delete``."""
-        at = self.index
-        if at >= 0:
-            del self.items[at]
+        with self._recording("list_item.delete", self.display_text):
+            at = self.index
+            if at >= 0:
+                del self.items[at]
 
     def to_dict(self) -> dict[str, Any]:
         """``{"display_text": …, "value": …, "index": …}``."""
@@ -441,23 +476,27 @@ class ListContentControl(_KindView):
     def list_items(self) -> list[ContentControlListItem]:
         """Every entry, in order. Office JS ``listItems``."""
         entries = self._entries
-        return [ContentControlListItem(entries, item) for item in entries]
+        return [ContentControlListItem(entries, item, self) for item in entries]
 
     def add_list_item(
         self, display_text: str, value: str | None = None, index: int | None = None
     ) -> ContentControlListItem:
         """Add an entry. Office JS ``addListItem``; `value` defaults to `display_text`."""
-        entries = self._entries
-        item = el.listItem(display_text=display_text, value=display_text if value is None else value)
-        if index is None or index >= len(entries):
-            entries.append(item)
-        else:
-            entries.insert(max(0, index), item)
-        return ContentControlListItem(entries, item)
+        with self.recording("list.add_list_item", display_text):
+            entries = self._entries
+            item = el.listItem(
+                display_text=display_text, value=display_text if value is None else value
+            )
+            if index is None or index >= len(entries):
+                entries.append(item)
+            else:
+                entries.insert(max(0, index), item)
+            return ContentControlListItem(entries, item, self)
 
     def delete_all_list_items(self) -> None:
         """Remove every entry. Office JS ``deleteAllListItems``."""
-        del self._entries[:]
+        with self.recording("list.delete_all_list_items", len(self.list_items)):
+            del self._entries[:]
 
     @property
     def last_value(self) -> str:
@@ -467,7 +506,8 @@ class ListContentControl(_KindView):
     @last_value.setter
     def last_value(self, value: str) -> None:
         """Record what was last shown."""
-        self.element.last_value = value
+        with self.recording("list.last_value", value):
+            self.element.last_value = value
 
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary."""
@@ -539,7 +579,8 @@ class RepeatingSectionContentControl(_KindView):
         """Set the title; ``""`` removes the element."""
         from docx4j_py.w15 import el as w15_el
 
-        self.element.section_title = w15_el.sectionTitle(val=value) if value else None
+        with self.recording("repeating_section.section_title", value):
+            self.element.section_title = w15_el.sectionTitle(val=value) if value else None
 
     @property
     def allow_insert_delete_section(self) -> bool:
@@ -559,12 +600,13 @@ class RepeatingSectionContentControl(_KindView):
         """Allow or forbid inserting and deleting sections."""
         from docx4j_py.w15 import el as w15_el
 
-        if value:
-            self.element.do_not_allow_insert_delete_section = None
-        else:
-            self.element.do_not_allow_insert_delete_section = w15_el.doNotAllowInsertDeleteSection(
-                val="1"
-            )
+        with self.recording("repeating_section.allow_insert_delete_section", value):
+            if value:
+                self.element.do_not_allow_insert_delete_section = None
+            else:
+                self.element.do_not_allow_insert_delete_section = (
+                    w15_el.doNotAllowInsertDeleteSection(val="1")
+                )
 
     def insert_item_after(self, index: int) -> ContentControl:
         """Copy an item and put the copy after it, as Word's ``+`` does.

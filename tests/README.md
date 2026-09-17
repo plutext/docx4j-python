@@ -1,7 +1,7 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 1,205 tests
+.venv-fork/bin/python -m pytest                    # everything, 1,212 tests
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
 .venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B
@@ -50,7 +50,7 @@
 | `agent/test_tables_and_pictures.py` | CR-003 §7 | a paragraph in a cell addressed and edited, the `ChangeReport` it gives, `dry_run` of `insert_table` and of a picture, determinism of a part name and a relationship id, and `outline()` over nested tables |
 | `agent/test_audit_trail.py` | CR-003 §3.4, §3.8 | the audit trail end to end: `pkg.author`, tracking on, an edit by address, `replace_text` after a `dry_run` count, a comment explaining it, `get_tracked_changes()` as JSON, save and reload, and `accept_all()` giving exactly what the same calls with tracking off give; determinism under a fixed seed and a fixed `tracked_change_date` |
 | `agent/test_comment_workflows.py` | CR-003 §3.4, §3.9 | the audit trail: `pkg.author`, `find` then `insert_comment`, the `ChangeReport` a tool returns, a reply and a resolution, a thread's `to_dict()` under a 2 KB budget, `dry_run` leaving all four created parts un-created, and determinism |
-| `agent/test_template_workflows.py` | CR-003 §3.7, §7 | the template story tool-shaped: `describe()` on the invoice (20 bindings, 2 repeats, the values, the repeat each binding is inside) reading the main part as **bytes** and leaving it byte for byte, the addresses once the body has been read, the `to_json()` size under 12 KB with a picture binding's base64 cut to 200 characters, `fill()` by XPath and by tag, a key that matches no binding reported rather than raised, `fill()` with a whole part as a string, a repeat reported but not expanded, a `dry_run` of a fill leaving the document alone, determinism of `add()` under a fixed seed, and describe → fill → save → reload end to end |
+| `agent/test_template_workflows.py` | CR-003 §3.7, §7 | the template story tool-shaped: `describe()` on the invoice (20 bindings, 2 repeats, the values, the repeat each binding is inside) reading the main part as **bytes** and leaving it byte for byte, the addresses once the body has been read, the `to_json()` size under 12 KB with a picture binding's base64 cut to 200 characters, `fill()` by XPath and by tag, a key that matches no binding reported rather than raised, `fill()` with a whole part as a string, a repeat reported but not expanded, a `dry_run` of a fill leaving the document alone, determinism of `add()` under a fixed seed, describe → fill → save → reload end to end, and the **`ChangeReport` every custom XML mutation records** (CR-003 section 17.9): one report for a whole `fill()` however many nodes and bindings it writes, the same over a `dry_run`, `add()` naming the item part, the properties part and the main part's `.rels`, `apply_bindings` naming the body parts and the reverse naming the data parts, and a bound `insert_text` naming the custom XML part it wrote through to |
 | `agent/test_markdown_workflows.py` | CR-003 §3.5, §7 | the coarse workflow (markdown in, markdown out) and the fine one (read with addresses, edit by address); `dry_run`, determinism, the markdown budget |
 | `test_codegen_el.py` (the last two) | CR-003 §13 | every tracked hand-written path under `docx4j_py/` is inside `codegen/clean.py`'s `KEEP` |
 
