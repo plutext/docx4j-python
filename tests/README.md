@@ -91,7 +91,13 @@ Record each run here, in the form docx4j-core-ts's `test/README.md` uses. When a
 markup that makes Word **hang** or quietly refuse an operation, also add an entry to
 `../docx4j-portfolio/docs/word-hangs.md`, the log shared across the three engines.
 
-> Last run: 2026-09-17, Word (version not recorded), after CR-003 Phase G, artefact 7.
+> Last run: 2026-09-17, Word (version not recorded), after CR-003 Phase F, artefact 8, second
+> check. **Passed.** The first check the same day found the deleted row highlighted but not struck
+> through, the appended paragraph invisible and **Reject All hanging Word**; the causes and the
+> fixes are CR-003 sections 16.10 to 16.12 and the first entry of
+> `../docx4j-portfolio/docs/word-hangs.md`. After the fixes every item in the row holds.
+>
+> Previous run: 2026-09-17, Word (version not recorded), after CR-003 Phase G, artefact 7.
 > **Passed.** Three threads by Claude, the replies nested, the resolved thread resolved. The
 > pane lists them in document order of their anchors (whole paragraph, then "first", then
 > "document"), not in insertion order; the row above now says so. On save Word's Compatibility
