@@ -61,13 +61,13 @@ Nine files, each testing a different half of the save path:
     ``samples/invoice2013.docx`` --- a Word-authored template with twenty
     bindings over ``/customXml/item1.xml`` --- **filled** through CR-003 Phase
     E's ``pkg.custom_xml_parts.fill()``: a new company and invoice number, the
-    VAT checkbox cleared, a new date, and new data for the first line item of a
-    repeating section. The repeat itself is **not** expanded: a repeating
-    section is a container and is never bound (section 4), so the document shows
-    the one item it already had, with the new values in it. A new content
-    control is inserted and bound to a **new** custom XML part added through
-    ``add()``, which is the test of ``addPropertiesPart``'s relationship from
-    the main document part.
+    VAT checkbox cleared, a new date, and **three** line items passed as a list
+    to the repeating section's XPath. The document keeps its **one**
+    ``w15:repeatingSectionItem``, because Word expands a bound repeating section
+    to the node set when it opens the file (CR-003 section 17.10), so this is
+    also the check that three rows appear. A new content control is inserted and
+    bound to a **new** custom XML part added through ``add()``, which is the
+    test of ``addPropertiesPart``'s relationship from the main document part.
 """
 
 from __future__ import annotations
@@ -414,9 +414,10 @@ def template_filled(out: Path) -> Path:
     skeleton = pkg.custom_xml_parts.describe()
     assert len(skeleton) == 20, len(skeleton)
 
-    # and the fill: a text binding, the checkbox, the date, and the data of the
-    # repeating section's first line item. The repeat is not expanded --- a
-    # container is never bound --- so the one item it has shows the new values.
+    # and the fill: a text binding, the checkbox, the date, and **three** line
+    # items as a list under the repeating section's own XPath. The engine writes
+    # three data nodes and leaves the document's one template item alone; Word
+    # clones it to the node set when it opens the file (section 17.10).
     result = pkg.custom_xml_parts.fill(
         {
             "/invoice[1]/customer[1]/company[1]": "Acme Manufacturing Ltd",
@@ -424,13 +425,30 @@ def template_filled(out: Path) -> Path:
             "/invoice[1]/invoicenumber[1]": "INV-2026-0917",
             "/invoice[1]/VAT[1]/@applies": "false",
             "/invoice[1]/invoicedate[1]": "2026-09-17T00:00:00Z",
-            "/invoice[1]/lines[1]/lineitem[1]/productcode[1]": "ACME-9",
-            "/invoice[1]/lines[1]/lineitem[1]/description[1]": "Anvil, large",
-            "/invoice[1]/lines[1]/lineitem[1]/quantity[1]": "2",
-            "/invoice[1]/lines[1]/lineitem[1]/price[1]": "199.00",
+            "/invoice[1]/lines[1]/lineitem[1]": [
+                {
+                    "productcode": "ACME-9",
+                    "description": "Anvil, large",
+                    "quantity": "2",
+                    "price": "199.00",
+                },
+                {
+                    "productcode": "ACME-3",
+                    "description": "Rope, 30 m",
+                    "quantity": "10",
+                    "price": "9.00",
+                },
+                {
+                    "productcode": "ACME-1",
+                    "description": "Dynamite, one stick",
+                    "quantity": "1",
+                    "price": "49.00",
+                },
+            ],
         }
     )
     assert not result.skipped, result.skipped
+    assert len(result.created) == 1, result.created
 
     # a new part, a new control, and a binding between them: docx4j's
     # addPropertiesPart, with the relationship from the main document part

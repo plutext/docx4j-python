@@ -86,6 +86,7 @@ __all__ = [
     "PartInfo",
     "PictureContentControl",
     "Range",
+    "RepeatInfo",
     "RepeatingSectionContentControl",
     "SearchHit",
     "Segment",
@@ -175,6 +176,7 @@ _LAZY: dict[str, str] = {
     "BindingInfo": "docx4j_py.model.customxml",
     "BindingResult": "docx4j_py.model.customxml",
     "FillResult": "docx4j_py.model.customxml",
+    "RepeatInfo": "docx4j_py.model.customxml",
 }
 
 

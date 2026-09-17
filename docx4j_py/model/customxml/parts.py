@@ -612,6 +612,11 @@ class CustomXmlPartCollection:
     def describe(self, *, max_value_chars: int | None = 200) -> Skeleton:
         """The data this template wants: docx4j-mcp's ``describe_template``.
 
+        ``skeleton.repeats`` names each repeating section's XPath, how many
+        nodes the data holds for it now, and the **fields** one entry of it
+        takes, so that a caller can write ``fill()``'s list without reading the
+        XML (CR-003 section 17.10).
+
         Args:
             max_value_chars: how much of each current value to report; None for
                 all of it. The default keeps a picture binding's base64 out of a
@@ -622,7 +627,14 @@ class CustomXmlPartCollection:
         return describe_template(self.package, max_value_chars=max_value_chars)
 
     def fill(self, data: dict[str, Any] | str) -> FillResult:
-        """Set the nodes and apply the bindings: docx4j-mcp's ``fill_template``."""
+        """Set the nodes and apply the bindings: docx4j-mcp's ``fill_template``.
+
+        A value that is a **list** fills a repeating section: one data node per
+        entry, cloned from the node the template already has, surplus nodes
+        removed. The document keeps its one ``w15:repeatingSectionItem``,
+        because Word expands the repeat to the node set when it opens the file
+        (CR-003 section 17.10).
+        """
         from docx4j_py.model.customxml.template import fill_template
 
         return fill_template(self.package, data)

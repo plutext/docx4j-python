@@ -75,6 +75,7 @@ from docx4j_py.model.customxml.template import (
     BindingInfo,
     FillEntry,
     FillResult,
+    RepeatInfo,
     Skeleton,
     TemplatePart,
 )
@@ -113,6 +114,7 @@ __all__ = [
     "GroupContentControl",
     "ListContentControl",
     "PictureContentControl",
+    "RepeatInfo",
     "RepeatingSectionContentControl",
     "Skeleton",
     "TemplatePart",

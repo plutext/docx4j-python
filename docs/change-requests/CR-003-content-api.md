@@ -7,7 +7,9 @@ and to be designed for AI projects and MCP servers first; open questions decided
 (section 13); **Phase C implemented 2026-09-17** (section 14); **Phase G implemented
 2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16); **Phase E
 implemented 2026-09-17** (section 17), with which every one of the 200 non-extension members of
-`tests/office_js_subset.json` is implemented. Phases H, I and J proposed.
+`tests/office_js_subset.json` is implemented; and a follow-up the same day from the Word check of
+artefact 9 (section 17.10: what Word does with a repeat, and a repeat's list in `fill()`).
+Phases H, I and J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -2895,3 +2897,86 @@ control, which is the `address_of` each applied control now costs), `fill()` of
 four keys from 2.92 ms to **3.25 ms**, and one node write is **9 µs** all told.
 The suite is **1,205 tests before this correction, 1,212 after**; the acceptance
 artefacts are byte for byte what they were, so the Word check is unaffected.
+
+### 17.10 What the Word check of artefact 9 found (2026-09-17)
+
+**Word expands a bound repeating section when it opens the document**, and
+section 17 said it does not. Artefact 9's row in `tests/README.md` claimed
+"there is still one line item — a repeating section is a container and is never
+bound, so the repeat is not expanded and Word will not add rows of its own".
+The user opened the file: **Word showed two line items**, which is exactly the
+number of `/invoice/lines/lineitem` nodes `samples/invoice2013.docx`'s data part
+holds, though the document itself carries **one** `w15:repeatingSectionItem`.
+The source opens the same way, so this is Word's behaviour and not something the
+fill did.
+
+What Word actually does, and what the two halves of the claim were:
+
+* a `w15:repeatingSection` **is** bound — its `w15:dataBinding` selects a node,
+  `/invoice[1]/lines[1]/lineitem[1]` here — and Word reads the binding as *the
+  node set of that node's siblings*. On open it clones the section's single item
+  once per node and reconciles the items to the nodes, which is also what the
+  `+` and `×` buttons do in the other direction;
+* so **the engine is still right not to expand the repeat** (17.2 item 13, and
+  section 4's "a container is never bound" for `apply_bindings`, which skips it
+  with a warning). Cloning the item here would give a reader *twice* as many
+  rows as the data has: Word's own clones, plus ours.
+
+The consequence is for `fill()`: what an agent means by "three line items" is
+**three data nodes**, and until now `fill()` could only set fields of the nodes
+that were already there. So a key whose XPath is a repeat's now takes a **list**.
+
+**The list form.** `fill({"/invoice[1]/lines[1]/lineitem[1]": [ {...}, {...},
+{...} ]})`, or the same list under the parent of the items
+(`/invoice[1]/lines[1]`), or under the repeat control's `w:tag` or `w:alias`:
+
+* the node the repeat's XPath selects is the **template**. One data node per
+  list entry: the template is `copy.deepcopy`'d for each extra, with the two
+  tails swapped so the part stays indented as its author left it, and surplus
+  siblings of the same tag are removed;
+* each entry is a mapping of **fields** — a child element name
+  (`"productcode"`), or a relative XPath for anything that is not one
+  (`"address/postcode"`, `"@kind"`) — and each is written through
+  `CustomXmlNode.text`, so an entry names what the template node has and nothing
+  else;
+* a repeat whose node has **no** child elements (`invoice2013.docx`'s `note`)
+  takes a list of plain values instead, and `describe()` says so by reporting no
+  fields for it;
+* the document is **not** touched: its one template item is left exactly as it
+  is, and Word does the expansion. `apply_bindings()` then fills the item that
+  is there from the first node, as it did before.
+
+**`describe()` says what a list entry takes.** `Skeleton.repeats` was a tuple of
+XPath strings and is now a tuple of frozen `RepeatInfo(xpath, fields, count,
+prefix_mappings, store_item_id)`: `fields` is the template node's child element
+names in order, and `count` is how many nodes the data holds — which, by the
+paragraph above, is **how many rows Word will show**. An agent can now write the
+list from the skeleton alone, without reading the XML. The JSON key is still
+`repeats`; its members are objects rather than strings.
+
+**Refusals, because a list is a structural change** (17.2 item 8's "report, do
+not raise" is for a *value* that does not land):
+
+| code | when |
+|---|---|
+| `binding.not_a_repeat` | a list under a key that is not a repeat's XPath, its items' parent, or the repeat control's tag or title; the hint lists the repeats |
+| `binding.unknown_field` | an entry names something the template node has not; the hint lists the fields |
+| `binding.entry_not_a_mapping` | a plain value in a list for a repeat whose node **has** fields, which would wipe them |
+| `binding.empty_repeat` | an empty list, which would leave nothing to clone from — and, with no nodes at all, nothing for Word to show |
+
+**What is reported.** `FillResult` gained `created` and `removed`, the canonical
+XPaths of the nodes it made and took away; the one `ChangeReport` names the data
+part, carries each created node's XPath among its addresses, and its
+`text_after` grows the counts only when they are not zero — `"1 set, 0 skipped,
+1 node created, 16 bindings applied"`, so a fill with no list reads exactly as it
+did.
+
+**Artefact 9 now fills three line items**, so the Word check is unambiguous:
+three rows on open, from a file that carries one template item. `tests/README.md`
+says so, and says which of the two numbers is Word's doing.
+
+Seven tests in `tests/agent/test_template_workflows.py`: the three items with
+their children, the document still one item, save-reload-read-back, the parent
+key and the surplus removed, the one `ChangeReport`, a `dry_run` that leaves the
+document alone, the two refusals, and `describe()`'s fields. **1,212 tests
+before, 1,219 after.**

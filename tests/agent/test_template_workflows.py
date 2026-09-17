@@ -44,10 +44,10 @@ def test_describe_says_what_the_template_wants(invoice):
 
     assert len(skeleton) == 20
     assert skeleton.resolved == 20
-    assert skeleton.repeats == (
+    assert [repeat.xpath for repeat in skeleton.repeats] == [
         "/invoice[1]/lines[1]/lineitem[1]",
         "/invoice[1]/notes[1]/note[1]",
-    )
+    ]
     assert [part.id for part in skeleton.parts] == [ITEM_ID]
     assert skeleton.parts[0].namespace_uri == ""
     assert skeleton.parts[0].built_in is False
@@ -197,8 +197,26 @@ def test_fill_with_a_string_refuses_when_it_cannot_tell_which_part():
     assert error.value.code == "binding.ambiguous_part"
 
 
+def test_describe_says_what_one_entry_of_a_repeat_takes(invoice):
+    """CR-003 section 17.10: the fields, so a list can be written without the XML."""
+    skeleton = invoice.custom_xml_parts.describe()
+
+    lines, notes = skeleton.repeats
+    assert lines.xpath == "/invoice[1]/lines[1]/lineitem[1]"
+    assert lines.fields == ("productcode", "description", "quantity", "price")
+    assert lines.count == 2  # what Word shows on open: one item per node
+    assert lines.store_item_id.upper() == ITEM_ID  # the file stores it lower case
+    # a repeat whose node has no children takes plain values, and says so
+    assert notes.fields == ()
+    assert notes.count == 2
+
+    payload = json.loads(skeleton.to_json())["repeats"][0]
+    assert payload["fields"] == ["productcode", "description", "quantity", "price"]
+    assert payload["count"] == 2
+
+
 def test_a_repeat_is_reported_but_not_expanded(invoice):
-    """CR-003 section 17: a repeating section is a container, never bound."""
+    """CR-003 section 17.10: the engine writes the nodes; Word expands the items."""
     before = len(
         next(
             c for c in invoice.body.content_controls if c.type == "RepeatingSection"
@@ -211,6 +229,125 @@ def test_a_repeat_is_reported_but_not_expanded(invoice):
     assert len(section.repeating_section_content_control.items) == before
     inner = by_title(invoice, "/invoice[1]/lines[1]/lineitem[1]/productcode[1]")
     assert inner.text == "ITEM-9"
+
+
+# ---------------------------------------------------------------------------
+# a repeat's list of items (CR-003 section 17.10)
+# ---------------------------------------------------------------------------
+
+
+LINE_ITEMS = [
+    {"productcode": "ACME-9", "description": "Anvil, large", "quantity": "2", "price": "199.00"},
+    {"productcode": "ACME-3", "description": "Rope, 30 m", "quantity": "10", "price": "9.00"},
+    {"productcode": "ACME-1", "description": "Dynamite", "quantity": "1", "price": "49.00"},
+]
+
+
+def line_items(package):
+    """The ``lineitem`` nodes the data holds, as lists of their children's text."""
+    part = package.custom_xml_parts.get_item(ITEM_ID)
+    return [
+        [child.text for child in node.child_elements]
+        for node in part.select_nodes("/invoice/lines/lineitem")
+    ]
+
+
+def repeating_items(package, index: int = 0):
+    """How many ``w15:repeatingSectionItem`` controls the document itself carries."""
+    sections = [c for c in package.body.content_controls if c.type == "RepeatingSection"]
+    return len(sections[index].repeating_section_content_control.items)
+
+
+def test_fill_writes_one_data_node_per_list_entry(invoice):
+    """CR-003 section 17.10: three items in, three nodes out, one template item."""
+    assert repeating_items(invoice) == 1
+    assert len(line_items(invoice)) == 2
+
+    result = invoice.custom_xml_parts.fill({"/invoice[1]/lines[1]/lineitem[1]": LINE_ITEMS})
+
+    assert line_items(invoice) == [
+        ["ACME-9", "Anvil, large", "2", "199.00"],
+        ["ACME-3", "Rope, 30 m", "10", "9.00"],
+        ["ACME-1", "Dynamite", "1", "49.00"],
+    ]
+    # the data grew by one node, and the document keeps its **one** item: Word
+    # clones it to the node set when it opens the file
+    assert result.created == ("/invoice[1]/lines[1]/lineitem[3]",)
+    assert result.removed == ()
+    assert result.applied[0].value == "3 items"
+    assert repeating_items(invoice) == 1
+
+    saved = reloaded(invoice)
+    assert line_items(saved)[2] == ["ACME-1", "Dynamite", "1", "49.00"]
+    assert repeating_items(saved) == 1
+    assert saved.custom_xml_parts.describe().repeats[0].count == 3
+    # and the one item the document has shows the first node's values
+    assert by_title(saved, "/invoice[1]/lines[1]/lineitem[1]/productcode[1]").text == "ACME-9"
+
+
+def test_fill_takes_the_parent_of_the_items_too_and_removes_the_surplus(invoice):
+    result = invoice.custom_xml_parts.fill(
+        {
+            "/invoice[1]/lines[1]": [LINE_ITEMS[0]],
+            "/invoice[1]/notes[1]/note[1]": ["the only note"],
+        }
+    )
+
+    assert [row[0] for row in line_items(invoice)] == ["ACME-9"]
+    assert result.created == ()
+    assert set(result.removed) == {
+        "/invoice[1]/lines[1]/lineitem[2]",
+        "/invoice[1]/notes[1]/note[2]",
+    }
+    part = invoice.custom_xml_parts.get_item(ITEM_ID)
+    assert [node.text for node in part.select_nodes("/invoice/notes/note")] == ["the only note"]
+
+
+def test_a_repeat_fill_records_one_report_naming_the_data_part(invoice):
+    invoice.changes.clear()
+
+    invoice.custom_xml_parts.fill({"/invoice[1]/lines[1]/lineitem[1]": LINE_ITEMS})
+
+    assert len(invoice.changes) == 1
+    change = invoice.last_change
+    assert change.operation == "fill"
+    assert set(change.parts_touched) == {"/customXml/item1.xml", "/word/document.xml"}
+    assert change.text_after == "1 set, 0 skipped, 1 node created, 16 bindings applied"
+    assert "/invoice[1]/lines[1]/lineitem[3]" in change.addresses
+
+
+def test_a_dry_run_of_a_repeat_fill_leaves_the_document_alone(invoice):
+    invoice.body.paragraphs  # noqa: B018 - read the part first, as a caller would
+    before = invoice.save()
+
+    with invoice.dry_run() as trial:
+        result = trial.custom_xml_parts.fill({"/invoice[1]/lines[1]/lineitem[1]": LINE_ITEMS})
+        assert len(result.created) == 1
+        assert len(line_items(trial)) == 3
+
+    assert invoice.save() == before
+    assert len(line_items(invoice)) == 2
+
+
+def test_a_list_under_anything_but_a_repeat_is_refused(invoice):
+    with pytest.raises(BindingError) as error:
+        invoice.custom_xml_parts.fill({"/invoice[1]/invoicenumber[1]": ["one", "two"]})
+
+    assert error.value.code == "binding.not_a_repeat"
+    assert "/invoice[1]/lines[1]/lineitem[1]" in error.value.hint
+    # nothing was written before the refusal
+    assert len(line_items(invoice)) == 2
+
+
+def test_an_entry_that_names_a_field_the_template_has_not_is_refused(invoice):
+    with pytest.raises(BindingError) as error:
+        invoice.custom_xml_parts.fill(
+            {"/invoice[1]/lines[1]/lineitem[1]": [{"productcode": "A", "discount": "10%"}]}
+        )
+
+    assert error.value.code == "binding.unknown_field"
+    assert "productcode, description, quantity, price" in error.value.hint
+    assert len(line_items(invoice)) == 2
 
 
 # ---------------------------------------------------------------------------
