@@ -578,6 +578,11 @@ class _Rows:
         """The table these rows are in."""
         return self._table
 
+    @property
+    def part(self) -> Any:
+        """The part these rows are in."""
+        return self._table.part
+
     def __len__(self) -> int:
         """How many ``w:tr`` the table holds."""
         return len(_rows_of(self._tbl))
@@ -625,6 +630,11 @@ class _Column:
         return self._table
 
     @property
+    def part(self) -> Any:
+        """The part this column is in."""
+        return self._table.part
+
+    @property
     def _index(self) -> int:
         for index, column in enumerate(self._table._grid_cols):
             if column is self._grid_col:
@@ -666,6 +676,11 @@ class _Columns:
     def table(self) -> Table:
         """The table these columns are in."""
         return self._table
+
+    @property
+    def part(self) -> Any:
+        """The part these columns are in."""
+        return self._table.part
 
     def __len__(self) -> int:
         """How many ``w:gridCol`` the grid holds."""

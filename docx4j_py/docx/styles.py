@@ -88,6 +88,20 @@ class BaseStyle:
         """The typed ``w:style``."""
         return self._style
 
+    @property
+    def part(self) -> Any:
+        """``/word/styles.xml``, or None when the document has no styles part.
+
+        python-docx raises here, because ``StyleFactory`` builds a style object
+        with no parent at all; the part is reachable in this engine, so it is
+        answered.
+        """
+        return (
+            getattr(self._package, "style_definitions_part", None)
+            if self._package is not None
+            else None
+        )
+
     # -- identity ----------------------------------------------------------
 
     @property
@@ -352,6 +366,11 @@ class Styles:
     def __repr__(self) -> str:
         """``<docx4j_py.docx Styles, 12 defined>``."""
         return f"<docx4j_py.docx Styles, {len(self)} defined>"
+
+    @property
+    def part(self) -> Any:
+        """``/word/styles.xml``, or None when the document has no styles part."""
+        return getattr(self._package, "style_definitions_part", None)
 
     @property
     def element(self) -> StylesElement:

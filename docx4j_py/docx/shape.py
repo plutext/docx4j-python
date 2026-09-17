@@ -45,9 +45,23 @@ class Drawing:
         return self._drawing
 
     @property
-    def _drawing_element(self) -> Any:
-        """python-docx spells this ``._drawing``; so does this class's slot."""
-        return self._drawing
+    def part(self) -> Any:
+        """The part this drawing is in."""
+        return None if self._parent is None else self._parent.part
+
+    @property
+    def has_picture(self) -> bool:
+        """True when the drawing holds an embedded picture rather than a chart.
+
+        False for a **linked** picture, as python-docx's is: the bytes are on
+        the filesystem, not in the package.
+        """
+        inline = inline_of(self._drawing)
+        pic = _pic_of(inline) if inline is not None else None
+        if pic is None:
+            return False
+        blip = getattr(getattr(pic, "blip_fill", None), "blip", None)
+        return blip is not None and getattr(blip, "embed", None) is not None
 
 
 def inline_of(drawing: Any) -> Any | None:
@@ -182,6 +196,11 @@ class InlineShapes:
     def __init__(self, story: Story) -> None:
         """Wrap the part whose inline shapes these are."""
         self._story = story
+
+    @property
+    def part(self) -> Any:
+        """The part these shapes are in."""
+        return self._story.part
 
     def __repr__(self) -> str:
         """``<docx4j_py.docx InlineShapes, 2 shapes>``."""

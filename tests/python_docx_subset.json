@@ -1,0 +1,2808 @@
+{
+  "_": "The python-docx members docx4j_py.docx promises, derived from an installed python-docx 1.2.0 by scripts/python_docx_subset.py. Do not edit by hand; run the script in a throwaway venv that has python-docx.",
+  "source": "python-docx 1.2.0, introspected",
+  "version": "1.2.0",
+  "counts": {
+    "interfaces": 33,
+    "members": 303,
+    "implemented": 295
+  },
+  "constructors": {
+    "Emu": 1,
+    "Twips": 635,
+    "Pt": 12700,
+    "Mm": 36000,
+    "Cm": 360000,
+    "Inches": 914400
+  },
+  "omitted_enums": {
+    "WD_BUILTIN_STYLE": "163 members naming Word's built-in styles by an MS API integer; docx4j_py.model.content.styles.BUILT_IN_STYLES is the same list keyed by style id and display name, which is what a style setter takes"
+  },
+  "enums": {
+    "WD_PARAGRAPH_ALIGNMENT": {
+      "members": {
+        "LEFT": {
+          "value": 0,
+          "xml_value": "left"
+        },
+        "CENTER": {
+          "value": 1,
+          "xml_value": "center"
+        },
+        "RIGHT": {
+          "value": 2,
+          "xml_value": "right"
+        },
+        "JUSTIFY": {
+          "value": 3,
+          "xml_value": "both"
+        },
+        "DISTRIBUTE": {
+          "value": 4,
+          "xml_value": "distribute"
+        },
+        "JUSTIFY_MED": {
+          "value": 5,
+          "xml_value": "mediumKashida"
+        },
+        "JUSTIFY_HI": {
+          "value": 7,
+          "xml_value": "highKashida"
+        },
+        "JUSTIFY_LOW": {
+          "value": 8,
+          "xml_value": "lowKashida"
+        },
+        "THAI_JUSTIFY": {
+          "value": 9,
+          "xml_value": "thaiDistribute"
+        }
+      }
+    },
+    "WD_BREAK_TYPE": {
+      "members": {
+        "COLUMN": {
+          "value": 8,
+          "xml_value": null
+        },
+        "LINE": {
+          "value": 6,
+          "xml_value": null
+        },
+        "LINE_CLEAR_LEFT": {
+          "value": 9,
+          "xml_value": null
+        },
+        "LINE_CLEAR_RIGHT": {
+          "value": 10,
+          "xml_value": null
+        },
+        "LINE_CLEAR_ALL": {
+          "value": 11,
+          "xml_value": null
+        },
+        "PAGE": {
+          "value": 7,
+          "xml_value": null
+        },
+        "SECTION_CONTINUOUS": {
+          "value": 3,
+          "xml_value": null
+        },
+        "SECTION_EVEN_PAGE": {
+          "value": 4,
+          "xml_value": null
+        },
+        "SECTION_NEXT_PAGE": {
+          "value": 2,
+          "xml_value": null
+        },
+        "SECTION_ODD_PAGE": {
+          "value": 5,
+          "xml_value": null
+        }
+      }
+    },
+    "WD_COLOR_INDEX": {
+      "members": {
+        "INHERITED": {
+          "value": -1,
+          "xml_value": null
+        },
+        "AUTO": {
+          "value": 0,
+          "xml_value": "default"
+        },
+        "BLACK": {
+          "value": 1,
+          "xml_value": "black"
+        },
+        "BLUE": {
+          "value": 2,
+          "xml_value": "blue"
+        },
+        "BRIGHT_GREEN": {
+          "value": 4,
+          "xml_value": "green"
+        },
+        "DARK_BLUE": {
+          "value": 9,
+          "xml_value": "darkBlue"
+        },
+        "DARK_RED": {
+          "value": 13,
+          "xml_value": "darkRed"
+        },
+        "DARK_YELLOW": {
+          "value": 14,
+          "xml_value": "darkYellow"
+        },
+        "GRAY_25": {
+          "value": 16,
+          "xml_value": "lightGray"
+        },
+        "GRAY_50": {
+          "value": 15,
+          "xml_value": "darkGray"
+        },
+        "GREEN": {
+          "value": 11,
+          "xml_value": "darkGreen"
+        },
+        "PINK": {
+          "value": 5,
+          "xml_value": "magenta"
+        },
+        "RED": {
+          "value": 6,
+          "xml_value": "red"
+        },
+        "TEAL": {
+          "value": 10,
+          "xml_value": "darkCyan"
+        },
+        "TURQUOISE": {
+          "value": 3,
+          "xml_value": "cyan"
+        },
+        "VIOLET": {
+          "value": 12,
+          "xml_value": "darkMagenta"
+        },
+        "WHITE": {
+          "value": 8,
+          "xml_value": "white"
+        },
+        "YELLOW": {
+          "value": 7,
+          "xml_value": "yellow"
+        }
+      }
+    },
+    "WD_LINE_SPACING": {
+      "members": {
+        "SINGLE": {
+          "value": 0,
+          "xml_value": "UNMAPPED"
+        },
+        "ONE_POINT_FIVE": {
+          "value": 1,
+          "xml_value": "UNMAPPED"
+        },
+        "DOUBLE": {
+          "value": 2,
+          "xml_value": "UNMAPPED"
+        },
+        "AT_LEAST": {
+          "value": 3,
+          "xml_value": "atLeast"
+        },
+        "EXACTLY": {
+          "value": 4,
+          "xml_value": "exact"
+        },
+        "MULTIPLE": {
+          "value": 5,
+          "xml_value": "auto"
+        }
+      }
+    },
+    "WD_TAB_ALIGNMENT": {
+      "members": {
+        "LEFT": {
+          "value": 0,
+          "xml_value": "left"
+        },
+        "CENTER": {
+          "value": 1,
+          "xml_value": "center"
+        },
+        "RIGHT": {
+          "value": 2,
+          "xml_value": "right"
+        },
+        "DECIMAL": {
+          "value": 3,
+          "xml_value": "decimal"
+        },
+        "BAR": {
+          "value": 4,
+          "xml_value": "bar"
+        },
+        "LIST": {
+          "value": 6,
+          "xml_value": "list"
+        },
+        "CLEAR": {
+          "value": 101,
+          "xml_value": "clear"
+        },
+        "END": {
+          "value": 102,
+          "xml_value": "end"
+        },
+        "NUM": {
+          "value": 103,
+          "xml_value": "num"
+        },
+        "START": {
+          "value": 104,
+          "xml_value": "start"
+        }
+      }
+    },
+    "WD_TAB_LEADER": {
+      "members": {
+        "SPACES": {
+          "value": 0,
+          "xml_value": "none"
+        },
+        "DOTS": {
+          "value": 1,
+          "xml_value": "dot"
+        },
+        "DASHES": {
+          "value": 2,
+          "xml_value": "hyphen"
+        },
+        "LINES": {
+          "value": 3,
+          "xml_value": "underscore"
+        },
+        "HEAVY": {
+          "value": 4,
+          "xml_value": "heavy"
+        },
+        "MIDDLE_DOT": {
+          "value": 5,
+          "xml_value": "middleDot"
+        }
+      }
+    },
+    "WD_UNDERLINE": {
+      "members": {
+        "INHERITED": {
+          "value": -1,
+          "xml_value": null
+        },
+        "NONE": {
+          "value": 0,
+          "xml_value": "none"
+        },
+        "SINGLE": {
+          "value": 1,
+          "xml_value": "single"
+        },
+        "WORDS": {
+          "value": 2,
+          "xml_value": "words"
+        },
+        "DOUBLE": {
+          "value": 3,
+          "xml_value": "double"
+        },
+        "DOTTED": {
+          "value": 4,
+          "xml_value": "dotted"
+        },
+        "THICK": {
+          "value": 6,
+          "xml_value": "thick"
+        },
+        "DASH": {
+          "value": 7,
+          "xml_value": "dash"
+        },
+        "DOT_DASH": {
+          "value": 9,
+          "xml_value": "dotDash"
+        },
+        "DOT_DOT_DASH": {
+          "value": 10,
+          "xml_value": "dotDotDash"
+        },
+        "WAVY": {
+          "value": 11,
+          "xml_value": "wave"
+        },
+        "DOTTED_HEAVY": {
+          "value": 20,
+          "xml_value": "dottedHeavy"
+        },
+        "DASH_HEAVY": {
+          "value": 23,
+          "xml_value": "dashedHeavy"
+        },
+        "DOT_DASH_HEAVY": {
+          "value": 25,
+          "xml_value": "dashDotHeavy"
+        },
+        "DOT_DOT_DASH_HEAVY": {
+          "value": 26,
+          "xml_value": "dashDotDotHeavy"
+        },
+        "WAVY_HEAVY": {
+          "value": 27,
+          "xml_value": "wavyHeavy"
+        },
+        "DASH_LONG": {
+          "value": 39,
+          "xml_value": "dashLong"
+        },
+        "WAVY_DOUBLE": {
+          "value": 43,
+          "xml_value": "wavyDouble"
+        },
+        "DASH_LONG_HEAVY": {
+          "value": 55,
+          "xml_value": "dashLongHeavy"
+        }
+      }
+    },
+    "WD_STYLE_TYPE": {
+      "members": {
+        "CHARACTER": {
+          "value": 2,
+          "xml_value": "character"
+        },
+        "LIST": {
+          "value": 4,
+          "xml_value": "numbering"
+        },
+        "PARAGRAPH": {
+          "value": 1,
+          "xml_value": "paragraph"
+        },
+        "TABLE": {
+          "value": 3,
+          "xml_value": "table"
+        }
+      }
+    },
+    "WD_CELL_VERTICAL_ALIGNMENT": {
+      "members": {
+        "TOP": {
+          "value": 0,
+          "xml_value": "top"
+        },
+        "CENTER": {
+          "value": 1,
+          "xml_value": "center"
+        },
+        "BOTTOM": {
+          "value": 3,
+          "xml_value": "bottom"
+        },
+        "BOTH": {
+          "value": 101,
+          "xml_value": "both"
+        }
+      }
+    },
+    "WD_ROW_HEIGHT_RULE": {
+      "members": {
+        "AUTO": {
+          "value": 0,
+          "xml_value": "auto"
+        },
+        "AT_LEAST": {
+          "value": 1,
+          "xml_value": "atLeast"
+        },
+        "EXACTLY": {
+          "value": 2,
+          "xml_value": "exact"
+        }
+      }
+    },
+    "WD_TABLE_ALIGNMENT": {
+      "members": {
+        "LEFT": {
+          "value": 0,
+          "xml_value": "left"
+        },
+        "CENTER": {
+          "value": 1,
+          "xml_value": "center"
+        },
+        "RIGHT": {
+          "value": 2,
+          "xml_value": "right"
+        }
+      }
+    },
+    "WD_TABLE_DIRECTION": {
+      "members": {
+        "LTR": {
+          "value": 0,
+          "xml_value": null
+        },
+        "RTL": {
+          "value": 1,
+          "xml_value": null
+        }
+      }
+    },
+    "WD_HEADER_FOOTER_INDEX": {
+      "members": {
+        "PRIMARY": {
+          "value": 1,
+          "xml_value": "default"
+        },
+        "FIRST_PAGE": {
+          "value": 2,
+          "xml_value": "first"
+        },
+        "EVEN_PAGE": {
+          "value": 3,
+          "xml_value": "even"
+        }
+      }
+    },
+    "WD_ORIENTATION": {
+      "members": {
+        "PORTRAIT": {
+          "value": 0,
+          "xml_value": "portrait"
+        },
+        "LANDSCAPE": {
+          "value": 1,
+          "xml_value": "landscape"
+        }
+      }
+    },
+    "WD_SECTION_START": {
+      "members": {
+        "CONTINUOUS": {
+          "value": 0,
+          "xml_value": "continuous"
+        },
+        "NEW_COLUMN": {
+          "value": 1,
+          "xml_value": "nextColumn"
+        },
+        "NEW_PAGE": {
+          "value": 2,
+          "xml_value": "nextPage"
+        },
+        "EVEN_PAGE": {
+          "value": 3,
+          "xml_value": "evenPage"
+        },
+        "ODD_PAGE": {
+          "value": 4,
+          "xml_value": "oddPage"
+        }
+      }
+    },
+    "WD_INLINE_SHAPE_TYPE": {
+      "members": {
+        "CHART": {
+          "value": 12,
+          "xml_value": null
+        },
+        "LINKED_PICTURE": {
+          "value": 4,
+          "xml_value": null
+        },
+        "PICTURE": {
+          "value": 3,
+          "xml_value": null
+        },
+        "SMART_ART": {
+          "value": 15,
+          "xml_value": null
+        },
+        "NOT_IMPLEMENTED": {
+          "value": -6,
+          "xml_value": null
+        }
+      }
+    },
+    "MSO_COLOR_TYPE": {
+      "members": {
+        "RGB": {
+          "value": 1,
+          "xml_value": null
+        },
+        "THEME": {
+          "value": 2,
+          "xml_value": null
+        },
+        "AUTO": {
+          "value": 101,
+          "xml_value": null
+        }
+      }
+    },
+    "MSO_THEME_COLOR_INDEX": {
+      "members": {
+        "NOT_THEME_COLOR": {
+          "value": 0,
+          "xml_value": "UNMAPPED"
+        },
+        "ACCENT_1": {
+          "value": 5,
+          "xml_value": "accent1"
+        },
+        "ACCENT_2": {
+          "value": 6,
+          "xml_value": "accent2"
+        },
+        "ACCENT_3": {
+          "value": 7,
+          "xml_value": "accent3"
+        },
+        "ACCENT_4": {
+          "value": 8,
+          "xml_value": "accent4"
+        },
+        "ACCENT_5": {
+          "value": 9,
+          "xml_value": "accent5"
+        },
+        "ACCENT_6": {
+          "value": 10,
+          "xml_value": "accent6"
+        },
+        "BACKGROUND_1": {
+          "value": 14,
+          "xml_value": "background1"
+        },
+        "BACKGROUND_2": {
+          "value": 16,
+          "xml_value": "background2"
+        },
+        "DARK_1": {
+          "value": 1,
+          "xml_value": "dark1"
+        },
+        "DARK_2": {
+          "value": 3,
+          "xml_value": "dark2"
+        },
+        "FOLLOWED_HYPERLINK": {
+          "value": 12,
+          "xml_value": "followedHyperlink"
+        },
+        "HYPERLINK": {
+          "value": 11,
+          "xml_value": "hyperlink"
+        },
+        "LIGHT_1": {
+          "value": 2,
+          "xml_value": "light1"
+        },
+        "LIGHT_2": {
+          "value": 4,
+          "xml_value": "light2"
+        },
+        "TEXT_1": {
+          "value": 13,
+          "xml_value": "text1"
+        },
+        "TEXT_2": {
+          "value": 15,
+          "xml_value": "text2"
+        }
+      }
+    }
+  },
+  "interfaces": {
+    "Document": [
+      {
+        "name": "add_comment",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "add_heading",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "add_page_break",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "add_paragraph",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "add_picture",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "add_section",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "add_table",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "comments",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "core_properties",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "inline_shapes",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "paragraphs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "save",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "sections",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "settings",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "styles",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      },
+      {
+        "name": "tables",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Document",
+        "implemented": true
+      }
+    ],
+    "Paragraph": [
+      {
+        "name": "add_run",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "alignment",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "clear",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "contains_page_break",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "hyperlinks",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "insert_paragraph_before",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "paragraph_format",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "StoryChild",
+        "implemented": true
+      },
+      {
+        "name": "rendered_page_breaks",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "runs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Paragraph",
+        "implemented": true
+      },
+      {
+        "name": "text",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Paragraph",
+        "implemented": true
+      }
+    ],
+    "Run": [
+      {
+        "name": "add_break",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "add_picture",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "add_tab",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "add_text",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "bold",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "clear",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "contains_page_break",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "font",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "italic",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "mark_comment_range",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Run",
+        "implemented": false,
+        "reason": "python-docx's internal helper for add_comment; Phase G places the three markers itself, hoisting them out of a w:ins (CR-003 section 15.2)"
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "StoryChild",
+        "implemented": true
+      },
+      {
+        "name": "style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "text",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Run",
+        "implemented": true
+      },
+      {
+        "name": "underline",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Run",
+        "implemented": true
+      }
+    ],
+    "Font": [
+      {
+        "name": "all_caps",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "bold",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "color",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "complex_script",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "cs_bold",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "cs_italic",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "double_strike",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "emboss",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "highlight_color",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "imprint",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "italic",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "math",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "name",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "no_proof",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "outline",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "rtl",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "shadow",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "size",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "small_caps",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "snap_to_grid",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "spec_vanish",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "strike",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "subscript",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "superscript",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "underline",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      },
+      {
+        "name": "web_hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Font",
+        "implemented": true
+      }
+    ],
+    "ParagraphFormat": [
+      {
+        "name": "alignment",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "first_line_indent",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "keep_together",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "keep_with_next",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "left_indent",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "line_spacing",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "line_spacing_rule",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "page_break_before",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "right_indent",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "space_after",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "space_before",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      },
+      {
+        "name": "tab_stops",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ParagraphFormat",
+        "implemented": false,
+        "reason": "the TabStops collection is a class of its own with its own add/clear verbs; w:tabs is document-order typed content on paragraph_format.element.p_pr.tabs"
+      },
+      {
+        "name": "widow_control",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphFormat",
+        "implemented": true
+      }
+    ],
+    "ColorFormat": [
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "rgb",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ColorFormat",
+        "implemented": true
+      },
+      {
+        "name": "theme_color",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ColorFormat",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ColorFormat",
+        "implemented": true
+      }
+    ],
+    "Hyperlink": [
+      {
+        "name": "address",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Hyperlink",
+        "implemented": true
+      },
+      {
+        "name": "contains_page_break",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Hyperlink",
+        "implemented": true
+      },
+      {
+        "name": "fragment",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Hyperlink",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      },
+      {
+        "name": "runs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Hyperlink",
+        "implemented": true
+      },
+      {
+        "name": "text",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Hyperlink",
+        "implemented": true
+      },
+      {
+        "name": "url",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Hyperlink",
+        "implemented": true
+      }
+    ],
+    "RenderedPageBreak": [
+      {
+        "name": "following_paragraph_fragment",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "RenderedPageBreak",
+        "implemented": false,
+        "reason": "the other half of the same split; see preceding_paragraph_fragment"
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      },
+      {
+        "name": "preceding_paragraph_fragment",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "RenderedPageBreak",
+        "implemented": false,
+        "reason": "splits a paragraph at a rendered page break into two detached Paragraphs; nothing in this engine renders, so nothing writes the break it needs"
+      }
+    ],
+    "Table": [
+      {
+        "name": "add_column",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "add_row",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "alignment",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "autofit",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "cell",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "column_cells",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "columns",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "StoryChild",
+        "implemented": true
+      },
+      {
+        "name": "row_cells",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "rows",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "table",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Table",
+        "implemented": true
+      },
+      {
+        "name": "table_direction",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Table",
+        "implemented": true
+      }
+    ],
+    "_Row": [
+      {
+        "name": "cells",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Row",
+        "implemented": true
+      },
+      {
+        "name": "grid_cols_after",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Row",
+        "implemented": true
+      },
+      {
+        "name": "grid_cols_before",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Row",
+        "implemented": true
+      },
+      {
+        "name": "height",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_Row",
+        "implemented": true
+      },
+      {
+        "name": "height_rule",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_Row",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      },
+      {
+        "name": "table",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Row",
+        "implemented": true
+      }
+    ],
+    "_Rows": [
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      },
+      {
+        "name": "table",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Rows",
+        "implemented": true
+      }
+    ],
+    "_Column": [
+      {
+        "name": "cells",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Column",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      },
+      {
+        "name": "table",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Column",
+        "implemented": true
+      },
+      {
+        "name": "width",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_Column",
+        "implemented": true
+      }
+    ],
+    "_Columns": [
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      },
+      {
+        "name": "table",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Columns",
+        "implemented": true
+      }
+    ],
+    "_Cell": [
+      {
+        "name": "add_paragraph",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "add_table",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "grid_span",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "merge",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "_Cell",
+        "implemented": false,
+        "reason": "python-docx's rectangular merge is about 150 lines of grid surgery whose failure mode in Word is a repair prompt; Phase J left it out rather than half-implement it (CR-003 section 20)"
+      },
+      {
+        "name": "paragraphs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "StoryChild",
+        "implemented": true
+      },
+      {
+        "name": "tables",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "text",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "vertical_alignment",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_Cell",
+        "implemented": true
+      },
+      {
+        "name": "width",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_Cell",
+        "implemented": true
+      }
+    ],
+    "Section": [
+      {
+        "name": "bottom_margin",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "different_first_page_header_footer",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "even_page_footer",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "even_page_header",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "first_page_footer",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "first_page_header",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "footer",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "footer_distance",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "gutter",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "header",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "header_distance",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "left_margin",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "orientation",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "page_height",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "page_width",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "right_margin",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "start_type",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      },
+      {
+        "name": "top_margin",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Section",
+        "implemented": true
+      }
+    ],
+    "Sections": [
+      {
+        "name": "count",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Sequence",
+        "implemented": true
+      },
+      {
+        "name": "index",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Sequence",
+        "implemented": true
+      }
+    ],
+    "_Header": [
+      {
+        "name": "add_paragraph",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "add_table",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "is_linked_to_previous",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_BaseHeaderFooter",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "paragraphs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_BaseHeaderFooter",
+        "implemented": true
+      },
+      {
+        "name": "tables",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      }
+    ],
+    "_Footer": [
+      {
+        "name": "add_paragraph",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "add_table",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "is_linked_to_previous",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "_BaseHeaderFooter",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "paragraphs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "_BaseHeaderFooter",
+        "implemented": true
+      },
+      {
+        "name": "tables",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      }
+    ],
+    "InlineShape": [
+      {
+        "name": "height",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "InlineShape",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "InlineShape",
+        "implemented": true
+      },
+      {
+        "name": "width",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "InlineShape",
+        "implemented": true
+      }
+    ],
+    "InlineShapes": [
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      }
+    ],
+    "Styles": [
+      {
+        "name": "add_style",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Styles",
+        "implemented": true
+      },
+      {
+        "name": "default",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Styles",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "get_by_id",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Styles",
+        "implemented": true
+      },
+      {
+        "name": "get_style_id",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Styles",
+        "implemented": true
+      },
+      {
+        "name": "latent_styles",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Styles",
+        "implemented": false,
+        "reason": "371 w:lsdException entries behind an API nothing in the wild uses; the typed w:latentStyles is document.styles.element.latent_styles"
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      }
+    ],
+    "BaseStyle": [
+      {
+        "name": "builtin",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "delete",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "locked",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "name",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "priority",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "quick_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "style_id",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "unhide_when_used",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      }
+    ],
+    "CharacterStyle": [
+      {
+        "name": "base_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CharacterStyle",
+        "implemented": true
+      },
+      {
+        "name": "builtin",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "delete",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "font",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "CharacterStyle",
+        "implemented": true
+      },
+      {
+        "name": "hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "locked",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "name",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "priority",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "quick_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "style_id",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "unhide_when_used",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      }
+    ],
+    "ParagraphStyle": [
+      {
+        "name": "base_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CharacterStyle",
+        "implemented": true
+      },
+      {
+        "name": "builtin",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "delete",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "font",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "CharacterStyle",
+        "implemented": true
+      },
+      {
+        "name": "hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "locked",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "name",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "next_paragraph_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphStyle",
+        "implemented": true
+      },
+      {
+        "name": "paragraph_format",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ParagraphStyle",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "priority",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "quick_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "style_id",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "unhide_when_used",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      }
+    ],
+    "_TableStyle": [
+      {
+        "name": "base_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CharacterStyle",
+        "implemented": true
+      },
+      {
+        "name": "builtin",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "delete",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "font",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "CharacterStyle",
+        "implemented": true
+      },
+      {
+        "name": "hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "locked",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "name",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "next_paragraph_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "ParagraphStyle",
+        "implemented": true
+      },
+      {
+        "name": "paragraph_format",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ParagraphStyle",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "priority",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "quick_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "style_id",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "unhide_when_used",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      }
+    ],
+    "_NumberingStyle": [
+      {
+        "name": "builtin",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "delete",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "hidden",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "locked",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "name",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "priority",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "quick_style",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "style_id",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "type",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      },
+      {
+        "name": "unhide_when_used",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "BaseStyle",
+        "implemented": true
+      }
+    ],
+    "CoreProperties": [
+      {
+        "name": "author",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "category",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "comments",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "content_status",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "created",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "identifier",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "keywords",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "language",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "last_modified_by",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "last_printed",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "modified",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "revision",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "subject",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "title",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      },
+      {
+        "name": "version",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "CoreProperties",
+        "implemented": true
+      }
+    ],
+    "Settings": [
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "odd_and_even_pages_header_footer",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Settings",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      }
+    ],
+    "Comment": [
+      {
+        "name": "add_paragraph",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Comment",
+        "implemented": true
+      },
+      {
+        "name": "add_table",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "author",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Comment",
+        "implemented": true
+      },
+      {
+        "name": "comment_id",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Comment",
+        "implemented": true
+      },
+      {
+        "name": "initials",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "Comment",
+        "implemented": true
+      },
+      {
+        "name": "iter_inner_content",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "paragraphs",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "StoryChild",
+        "implemented": true
+      },
+      {
+        "name": "tables",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "BlockItemContainer",
+        "implemented": true
+      },
+      {
+        "name": "text",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Comment",
+        "implemented": true
+      },
+      {
+        "name": "timestamp",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Comment",
+        "implemented": true
+      }
+    ],
+    "Comments": [
+      {
+        "name": "add_comment",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Comments",
+        "implemented": false,
+        "reason": "an unanchored comment, which Word shows nothing for; Phase G has no verb for one and Document.add_comment(runs, text) is the anchored form"
+      },
+      {
+        "name": "get",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "Comments",
+        "implemented": true
+      }
+    ],
+    "Length": [
+      {
+        "name": "cm",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Length",
+        "implemented": true
+      },
+      {
+        "name": "emu",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Length",
+        "implemented": true
+      },
+      {
+        "name": "inches",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Length",
+        "implemented": true
+      },
+      {
+        "name": "mm",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Length",
+        "implemented": true
+      },
+      {
+        "name": "pt",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Length",
+        "implemented": true
+      },
+      {
+        "name": "twips",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Length",
+        "implemented": true
+      }
+    ],
+    "RGBColor": [
+      {
+        "name": "from_string",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "RGBColor",
+        "implemented": true
+      }
+    ],
+    "Drawing": [
+      {
+        "name": "has_picture",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Drawing",
+        "implemented": true
+      },
+      {
+        "name": "image",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Drawing",
+        "implemented": false,
+        "reason": "python-docx's Image proxy is a whole image-format parser (blob, dpi, content_type, native size); this engine reads the header it needs in docx4j_py.wml.pictures and hands the bytes out through the content API's InlinePicture.get_bytes() and .image_part"
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "Parented",
+        "implemented": true
+      }
+    ]
+  }
+}

@@ -198,6 +198,16 @@ class ColorFormat:
         return hash(id(self._holder))
 
     @property
+    def element(self) -> Any:
+        """The typed element whose ``w:rPr/w:color`` this is over."""
+        return self._holder
+
+    @property
+    def part(self) -> Any:
+        """The part this colour is in, or None for a colour on a style."""
+        return None if self._story is None else self._story.part
+
+    @property
     def _color(self) -> Any:
         r_pr = _r_pr(self._holder, create=False)
         return getattr(r_pr, "color", None) if r_pr is not None else None
@@ -340,6 +350,16 @@ class Font:
     def element(self) -> Any:
         """The typed element whose ``w:rPr`` this font is over."""
         return self._holder
+
+    @property
+    def part(self) -> Any:
+        """The part this font is in, or None for a font on a style.
+
+        python-docx raises here for a style's font, because its style objects
+        carry no parent; None is the kinder answer and the reads and writes
+        work either way.
+        """
+        return None if self._story is None else self._story.part
 
     # -- the tri-state booleans -------------------------------------------
 
@@ -759,6 +779,11 @@ class ParagraphFormat:
         """The typed element whose ``w:pPr`` this is over."""
         return self._holder
 
+    @property
+    def part(self) -> Any:
+        """The part this format is in, or None for a format on a style."""
+        return None if self._story is None else self._story.part
+
     def _p_pr(self, *, create: bool) -> PPr | None:
         p_pr = getattr(self._holder, "p_pr", None)
         if p_pr is None and create:
@@ -1115,6 +1140,11 @@ class RenderedPageBreak:
         """The typed ``w:lastRenderedPageBreak``."""
         return self._element
 
+    @property
+    def part(self) -> Any:
+        """The part this break is in."""
+        return self._parent.part
+
 
 class Hyperlink:
     """A ``w:hyperlink``: read-only, as python-docx 1.2 has it."""
@@ -1133,6 +1163,11 @@ class Hyperlink:
     def __hash__(self) -> int:
         """Hashes by the element's identity."""
         return hash(id(self._hyperlink))
+
+    @property
+    def part(self) -> Any:
+        """The part this hyperlink is in."""
+        return self._story.part
 
     @property
     def address(self) -> str:

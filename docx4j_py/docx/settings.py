@@ -32,6 +32,11 @@ class Settings:
         return "<docx4j_py.docx Settings>"
 
     @property
+    def part(self) -> Any:
+        """``/word/settings.xml``, or None when the document has none."""
+        return getattr(self._package, "document_settings_part", None)
+
+    @property
     def _part(self) -> Any:
         return getattr(self._package, "document_settings_part", None)
 
