@@ -82,13 +82,6 @@ _W_TBL = f"{{{_W}}}tbl"
 _W_SDT = f"{{{_W}}}sdt"
 _HEADING = re.compile(r"^heading\s*([1-9])$", re.IGNORECASE)
 
-#: The revision elements :class:`OutlineStats` counts. Structural: the element
-#: is there or it is not, and nothing else is unmarshalled to find out.
-_TRACKED = frozenset(
-    {f"{{{_W}}}ins", f"{{{_W}}}del", f"{{{_W}}}rPrChange"}
-)
-
-
 def _compact(text: str, max_chars: int | None) -> tuple[str, int, bool]:
     """`text` cut to a budget: the cut text, its real length, and whether it was."""
     length = len(text)
@@ -598,14 +591,17 @@ def _count_only(items: list, counter: _Counter) -> None:
 
 
 def _tracked_changes(body: Body) -> int:
-    """``w:ins``, ``w:del`` and ``w:rPrChange`` under this body, counted."""
-    from docx4j_py.traversal import iter_nodes
+    """Every tracked change under this body, counted.
 
-    count = 0
-    for node in iter_nodes(body.container, mce="all"):
-        if element_name(node) in _TRACKED:
-            count += 1
-    return count
+    Counted through the same collection
+    :meth:`~docx4j_py.model.content.body.Body.get_tracked_changes` hands out
+    (CR-003 Phase F), so the number an agent reads in the stats and the list it
+    can act on never disagree. It unmarshals nothing beyond this body's own
+    part, which was read to make the outline anyway.
+    """
+    from docx4j_py.model.content.tracked_change import tracked_changes_of_body
+
+    return len(tracked_changes_of_body(body))
 
 
 def comments_in(package: Any) -> int:
