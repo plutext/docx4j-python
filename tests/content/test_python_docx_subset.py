@@ -43,6 +43,8 @@ CLASSES: dict[str, type] = {
     "Run": facade.Run,
     "Font": facade.Font,
     "ParagraphFormat": facade.ParagraphFormat,
+    "TabStops": facade.TabStops,
+    "TabStop": facade.TabStop,
     "ColorFormat": facade.ColorFormat,
     "Hyperlink": facade.Hyperlink,
     "RenderedPageBreak": facade.RenderedPageBreak,
@@ -150,7 +152,6 @@ def test_the_omissions_are_exactly_the_ones_recorded(subset):
     assert omitted == {
         "Comments.add_comment",
         "Drawing.image",
-        "ParagraphFormat.tab_stops",
         "RenderedPageBreak.following_paragraph_fragment",
         "RenderedPageBreak.preceding_paragraph_fragment",
         "Run.mark_comment_range",
@@ -168,7 +169,7 @@ def test_an_omitted_member_raises_rather_than_answering_wrongly():
         _ = document.styles.latent_styles
     # the rest are not there at all, which is what "no proxies" means
     paragraph = document.add_paragraph("x")
-    assert not hasattr(paragraph.paragraph_format, "tab_stops")
+    assert hasattr(paragraph.paragraph_format, "tab_stops"), "offered since 2026-09-18"
     assert not hasattr(paragraph.add_run("y"), "mark_comment_range")
 
 
@@ -251,4 +252,4 @@ def test_the_committed_file_is_valid_json_the_repository_tracks(subset):
     counts = subset["counts"]
     assert counts["interfaces"] == len(subset["interfaces"])
     assert counts["members"] == sum(len(m) for m in subset["interfaces"].values())
-    assert counts["implemented"] == counts["members"] - 8
+    assert counts["implemented"] == counts["members"] - 7

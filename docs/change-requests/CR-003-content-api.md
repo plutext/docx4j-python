@@ -14,7 +14,7 @@ and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`); **H 2026-
 (section 18, lists, with the numbering `Emulator` CR-002 section 6.2 promised for its Phase B
 --- CR-002 section 12.11); **I 2026-09-17** (section 19, `to_api_script`); and
 **J 2026-09-18** (section 20, the python-docx facade), whose own committed member list
-`tests/python_docx_subset.json` has 295 of python-docx 1.2.0's 303 members implemented and
+`tests/python_docx_subset.json` has 305 of python-docx 1.2.0's 312 members implemented (`ParagraphFormat.tab_stops` joined on 2026-09-18) and
 eight refused with a reason each. What the CR leaves open is section 20.8.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
@@ -3772,7 +3772,7 @@ reading of what this engine wrote.
 | `docx4j_py/docx/__init__.py` | 174 | the public surface, 65 names |
 | `docx4j_py/docx/settings.py` | 77 | `Settings`, the one document-level setting python-docx offers |
 | `scripts/python_docx_subset.py` | 306 | the derivation: introspects an installed python-docx and writes the JSON |
-| `tests/python_docx_subset.json` | 3,300 | the committed list: 33 interfaces, 303 members, 18 enumerations |
+| `tests/python_docx_subset.json` | 3,300 | the committed list: 35 interfaces, 312 members, 18 enumerations (tab stops added 2026-09-18) |
 | `tests/content/test_docx_facade.py` | 1,199 | 100 tests: every read, every write saved, reloaded and read back |
 | `tests/agent/test_docx_facade_workflows.py` | 335 | 10 tests: the section 3.6 snippet, a tutorial script, and a loaded document edited |
 | `tests/content/test_python_docx_parity.py` | 294 | 12 tests: one script through both libraries, read back by python-docx |
@@ -3926,9 +3926,14 @@ file.
     behind an API nothing in the facade's corpus or in the wild uses; it raises
     `AttributeError` naming `document.styles.element.latent_styles`, the typed
     `w:latentStyles`.
-13. **`ParagraphFormat.tab_stops` is not offered.** A collection class with its
-    own `add_tab_stop` / `clear_all` verbs over `w:tabs`, which is typed content
-    on `paragraph_format.element.p_pr.tabs`.
+13. **`ParagraphFormat.tab_stops` was not offered on the day, and is since
+    2026-09-18.** `TabStops` and `TabStop` in `docx/text.py` over `w:pPr/w:tabs`,
+    with python-docx's semantics: sorted insertion by position (after an equal
+    one), `SPACES` writing no `w:leader`, `w:tabs` removed with its last stop,
+    the position setter re-inserting in order, and a style's `paragraph_format`
+    carrying them too. Every write is a `ChangeReport`. Neither Office JS nor the
+    content API has tab stops, so this is the one facade member over the typed
+    tree alone.
 14. **`Comments.add_comment` (the unanchored form) is not offered.** Word shows
     nothing for a comment with no `w:commentRangeStart`, and Phase G has no verb
     for one; `Document.add_comment(runs, text)` is the anchored form and is
@@ -3996,7 +4001,7 @@ Almost all of the 16 ms is `create_package()` and the save, not the facade:
 unmarshalling docx4j's default styles and writing eleven parts. The picture
 costs 1 ms, which is the PNG header read and the part write.
 
-The subset: **33 interfaces, 303 members, 295 implemented, 8 omitted**, plus 6
+The subset: **35 interfaces, 312 members, 305 implemented, 7 omitted** (as of 2026-09-18, when `TabStops` and `TabStop` joined; 33 / 303 / 295 / 8 on the day the phase landed), plus 6
 `Length` constructors and **18 enumerations with 230 members**, every one of
 them asserted by name, MS API integer and `w:val` string.
 `tests/python_docx_subset.json` is 3,300 lines and derived, not written.
@@ -4107,6 +4112,10 @@ by whom:
 * **`_Cell.merge`** (departure 11): the one member of the facade's own promise
   that is refused rather than implemented. It wants python-docx's grid surgery
   and a Word check of a merged table written from nothing.
+* **`Styles.latent_styles`** (departure 12): not implemented, by a size judgement
+  rather than difficulty; the typed `w:latentStyles` is one attribute away on the
+  styles part's contents. These two are the whole of what the facade's promise
+  still lacks, `tab_stops` having joined on 2026-09-18 (departure 13).
 * **CR-002 Phase B**, which every phase of this CR has now asked for:
   `PropertyResolver`, so that `Font` and `paragraph_format` report **effective**
   formatting rather than direct (section 6, and `tests/content/test_font.py`'s

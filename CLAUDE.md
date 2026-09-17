@@ -19,7 +19,7 @@ implemented, B (resolution utilities, the Java parity harness and golden files; 
 `Emulator` core landed early through CR-003 H, section 12.11) and C (PML, SML, flat OPC, less the
 flat OPC read half) proposed; CR-003 (content API) **every phase implemented** --- A, B, D, K, C, G,
 F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member of
-`tests/office_js_subset.json` is, and with Phase J `docx4j_py.docx` covers 295 of the 303 members of
+`tests/office_js_subset.json` is, and with Phase J `docx4j_py.docx` covers 305 of the 312 members of
 `tests/python_docx_subset.json`.
 `REPORT.md` is the original xsdata feasibility experiment.
 

@@ -57,6 +57,8 @@ INTERFACES: dict[str, str] = {
     "Run": "docx.text.run:Run",
     "Font": "docx.text.font:Font",
     "ParagraphFormat": "docx.text.parfmt:ParagraphFormat",
+    "TabStops": "docx.text.tabstops:TabStops",
+    "TabStop": "docx.text.tabstops:TabStop",
     "ColorFormat": "docx.dml.color:ColorFormat",
     "Hyperlink": "docx.text.hyperlink:Hyperlink",
     "RenderedPageBreak": "docx.text.pagebreak:RenderedPageBreak",
@@ -98,10 +100,6 @@ OMITTED: dict[str, str] = {
     "Styles.latent_styles": (
         "371 w:lsdException entries behind an API nothing in the wild uses; the typed "
         "w:latentStyles is document.styles.element.latent_styles"
-    ),
-    "ParagraphFormat.tab_stops": (
-        "the TabStops collection is a class of its own with its own add/clear verbs; "
-        "w:tabs is document-order typed content on paragraph_format.element.p_pr.tabs"
     ),
     "Comments.add_comment": (
         "an unanchored comment, which Word shows nothing for; Phase G has no verb for "

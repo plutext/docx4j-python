@@ -31,9 +31,9 @@ addresses and custom XML --- all of it through ``doc.package`` and
 ``doc.part.body``.
 
 **What is deliberately not here** is in CR-003 section 20 and in
-``tests/python_docx_subset.json``: ``_Cell.merge``, ``Styles.latent_styles``,
-``ParagraphFormat.tab_stops``, and python-docx's own ``lxml`` internals, which
-were never the promise (decided question 7).
+``tests/python_docx_subset.json``: ``_Cell.merge``, ``Styles.latent_styles`` and
+python-docx's own ``lxml`` internals, which were never the promise (decided
+question 7). ``ParagraphFormat.tab_stops`` joined the facade on 2026-09-18.
 """
 
 from __future__ import annotations
@@ -101,6 +101,8 @@ from docx4j_py.docx.text import (
     ParagraphFormat,
     RenderedPageBreak,
     Run,
+    TabStop,
+    TabStops,
 )
 
 __all__ = [
@@ -160,6 +162,8 @@ __all__ = [
     "Sections",
     "Settings",
     "Styles",
+    "TabStop",
+    "TabStops",
     "Table",
     "Twips",
     "_Cell",

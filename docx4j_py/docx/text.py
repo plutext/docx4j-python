@@ -25,6 +25,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import IO, TYPE_CHECKING, Any
 
+from docx4j_py.child import ChildList
 from docx4j_py.docx._base import Story, recording
 from docx4j_py.docx.enums import (
     ALIGNMENT_TO_OFFICE_JS,
@@ -35,11 +36,13 @@ from docx4j_py.docx.enums import (
     WD_LINE_SPACING,
     WD_PARAGRAPH_ALIGNMENT,
     WD_STYLE_TYPE,
+    WD_TAB_ALIGNMENT,
+    WD_TAB_LEADER,
     WD_UNDERLINE,
 )
 from docx4j_py.docx.shared import Emu, Length, Pt, RGBColor, Twips, points_of, twips_of
 from docx4j_py.model.content.paragraph import Paragraph as ContentParagraph
-from docx4j_py.wml import P, PPr, R, RPr, el
+from docx4j_py.wml import CTTabStop, P, PPr, R, RPr, el
 from docx4j_py.wml import r as r_builder
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -935,6 +938,11 @@ class ParagraphFormat:
         self._set_ind("left", value)
 
     @property
+    def tab_stops(self) -> TabStops:
+        """``w:tabs``: the custom tab stops, a :class:`TabStops` sequence."""
+        return TabStops(self)
+
+    @property
     def right_indent(self) -> Length | None:
         """``w:ind/@right``: the space from the right margin."""
         return self._ind("right")
@@ -1110,6 +1118,175 @@ class ParagraphFormat:
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
+
+
+class TabStops:
+    """``paragraph_format.tab_stops``: the custom tab stops of a paragraph or a style.
+
+    python-docx ``TabStops``, over ``w:pPr/w:tabs``. A sequence of
+    :class:`TabStop` in document order, which ``add_tab_stop`` keeps sorted by
+    position as python-docx's does; deleting the last one removes ``w:tabs``.
+    The paragraph's *inherited* tab stops (its style's, the defaults) are not
+    here, as they are not in python-docx's.
+    """
+
+    __slots__ = ("_format",)
+
+    def __init__(self, paragraph_format: ParagraphFormat) -> None:
+        """Wrap a :class:`ParagraphFormat`."""
+        self._format = paragraph_format
+
+    @property
+    def element(self) -> Any:
+        """The typed holder (``w:p`` or ``w:style``) whose ``w:tabs`` this is over."""
+        return self._format.element
+
+    @property
+    def part(self) -> Any:
+        """The part the paragraph is in, or None for a style's tab stops."""
+        return self._format.part
+
+    def _tabs(self, *, create: bool) -> Any:
+        return self._format._child("tabs", create=create)
+
+    def _elements(self) -> list[Any]:
+        tabs = self._tabs(create=False)
+        return list(tabs.tab or ()) if tabs is not None else []
+
+    def __len__(self) -> int:
+        """How many custom tab stops the paragraph states."""
+        return len(self._elements())
+
+    def __iter__(self) -> Iterator[TabStop]:
+        """The stops in document order."""
+        return (TabStop(self, element) for element in self._elements())
+
+    def __getitem__(self, idx: int) -> TabStop:
+        """The stop at `idx`; ``IndexError`` past the end, as python-docx."""
+        elements = self._elements()
+        if not elements:
+            raise IndexError("TabStops object is empty")
+        return TabStop(self, elements[idx])
+
+    def __delitem__(self, idx: int) -> None:
+        """Remove the stop at `idx`, and ``w:tabs`` itself when it was the last."""
+        with _write(self._format._story, "docx.tab_stops.delete"):
+            tabs = self._tabs(create=False)
+            elements = list(tabs.tab or ()) if tabs is not None else []
+            try:
+                element = elements[idx]
+            except IndexError:
+                raise IndexError("tab index out of range") from None
+            tabs.tab.remove(element)
+            if not tabs.tab:
+                self._format._p_pr(create=False).tabs = None
+
+    def add_tab_stop(
+        self,
+        position: int | Length,
+        alignment: WD_TAB_ALIGNMENT | int = WD_TAB_ALIGNMENT.LEFT,
+        leader: WD_TAB_LEADER | int | None = WD_TAB_LEADER.SPACES,
+    ) -> TabStop:
+        """Add a stop at `position` (a :class:`Length`; negative is allowed).
+
+        Inserted in position order, after any stop at the same position, as
+        python-docx does. ``SPACES`` (or None) writes no ``w:leader``.
+        """
+        with _write(self._format._story, "docx.tab_stops.add"):
+            tabs = self._tabs(create=True)
+            element = CTTabStop(
+                val=WD_TAB_ALIGNMENT.to_xml(alignment),
+                leader=_leader_xml(leader),
+                pos=twips_of(position),
+            )
+            return TabStop(self, _insert_in_order(tabs, element))
+
+    def clear_all(self) -> None:
+        """Remove every custom tab stop: ``w:tabs`` goes."""
+        p_pr = self._format._p_pr(create=False)
+        if p_pr is None or getattr(p_pr, "tabs", None) is None:
+            return
+        with _write(self._format._story, "docx.tab_stops.clear_all"):
+            p_pr.tabs = None
+
+
+def _leader_xml(leader: Any) -> str | None:
+    if leader is None or WD_TAB_LEADER(leader) is WD_TAB_LEADER.SPACES:
+        return None
+    return WD_TAB_LEADER.to_xml(leader)
+
+
+def _insert_in_order(tabs: Any, element: Any) -> Any:
+    """Put a ``w:tab`` in ``w:tabs`` before the first one further right."""
+    if tabs.tab is None:
+        tabs.tab = ChildList([], owner=tabs)
+    position = int(element.pos or 0)
+    index = len(tabs.tab)
+    for i, existing in enumerate(tabs.tab):
+        if int(existing.pos or 0) > position:
+            index = i
+            break
+    tabs.tab.insert(index, element)
+    element.parent = tabs
+    return element
+
+
+class TabStop:
+    """One custom tab stop, a ``w:tab`` in ``w:tabs``. python-docx ``TabStop``."""
+
+    __slots__ = ("_element", "_stops")
+
+    def __init__(self, stops: TabStops, element: Any) -> None:
+        """Wrap a ``w:tab``."""
+        self._stops = stops
+        self._element = element
+
+    @property
+    def element(self) -> Any:
+        """The typed ``w:tab``."""
+        return self._element
+
+    @property
+    def part(self) -> Any:
+        """The part the paragraph is in, or None for a style's tab stop."""
+        return self._stops.part
+
+    @property
+    def alignment(self) -> WD_TAB_ALIGNMENT:
+        """``w:tab/@val``, a ``WD_TAB_ALIGNMENT`` member."""
+        value = getattr(self._element, "val", None)
+        return WD_TAB_ALIGNMENT.from_xml(str(getattr(value, "value", value)))
+
+    @alignment.setter
+    def alignment(self, value: WD_TAB_ALIGNMENT | int) -> None:
+        with _write(self._stops._format._story, "docx.tab_stop.alignment"):
+            self._element.val = WD_TAB_ALIGNMENT.to_xml(value)
+
+    @property
+    def leader(self) -> WD_TAB_LEADER:
+        """``w:tab/@leader``; ``SPACES`` when absent, as python-docx reports it."""
+        value = getattr(self._element, "leader", None)
+        value = getattr(value, "value", value)
+        return WD_TAB_LEADER.SPACES if value is None else WD_TAB_LEADER.from_xml(str(value))
+
+    @leader.setter
+    def leader(self, value: WD_TAB_LEADER | int | None) -> None:
+        with _write(self._stops._format._story, "docx.tab_stop.leader"):
+            self._element.leader = _leader_xml(value)
+
+    @property
+    def position(self) -> Length:
+        """``w:tab/@pos`` as a :class:`Length`; may be negative."""
+        return Twips(int(self._element.pos or 0))
+
+    @position.setter
+    def position(self, value: int | Length) -> None:
+        """Move the stop, keeping ``w:tabs`` in position order as python-docx does."""
+        with _write(self._stops._format._story, "docx.tab_stop.position"):
+            tabs = self._element.parent
+            tabs.tab.remove(self._element)
+            self._element.pos = twips_of(value)
+            _insert_in_order(tabs, self._element)
 
 
 class _Text:

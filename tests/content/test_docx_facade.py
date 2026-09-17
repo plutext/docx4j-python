@@ -1220,3 +1220,62 @@ def test_two_identical_scripts_give_identical_bytes(png):
         return document.save()
 
     assert part_bytes(build()) == part_bytes(build())
+
+
+# -- tab stops (added 2026-09-18) ------------------------------------------
+
+
+def test_tab_stops_are_added_in_position_order_with_python_docxs_defaults(doc):
+    from docx4j_py.docx import WD_TAB_ALIGNMENT, WD_TAB_LEADER
+    from docx4j_py.fragments import to_xml
+
+    paragraph = doc.add_paragraph("Name\tPage")
+    stops = paragraph.paragraph_format.tab_stops
+    assert len(stops) == 0
+    right = stops.add_tab_stop(Inches(3), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+    left = stops.add_tab_stop(Inches(1))
+    assert [s.position.inches for s in stops] == [1.0, 3.0], "sorted by position"
+    assert left.alignment is WD_TAB_ALIGNMENT.LEFT and left.leader is WD_TAB_LEADER.SPACES
+    assert right.alignment is WD_TAB_ALIGNMENT.RIGHT and right.leader is WD_TAB_LEADER.DOTS
+    xml = to_xml(paragraph._p.p_pr)
+    assert '<w:tab w:val="left" w:pos="1440"/>' in xml, "SPACES writes no w:leader"
+    assert '<w:tab w:val="right" w:leader="dot" w:pos="4320"/>' in xml
+    assert tuple(doc.package.last_change.parts_touched) == ("/word/document.xml",)
+
+
+def test_a_tab_stop_moves_and_keeps_the_order_and_deleting_the_last_removes_w_tabs(doc):
+    from docx4j_py.docx import WD_TAB_ALIGNMENT
+    from docx4j_py.fragments import to_xml
+
+    paragraph = doc.add_paragraph("x")
+    stops = paragraph.paragraph_format.tab_stops
+    stops.add_tab_stop(Inches(1))
+    second = stops.add_tab_stop(Inches(2), WD_TAB_ALIGNMENT.CENTER)
+    second.position = Inches(0.5)
+    assert [s.position.inches for s in stops] == [0.5, 1.0]
+    assert stops[0].alignment is WD_TAB_ALIGNMENT.CENTER
+    assert stops[-1].position == Twips(1440)
+    del stops[0]
+    assert len(stops) == 1
+    del stops[0]
+    assert "w:tabs" not in to_xml(paragraph._p)
+    with pytest.raises(IndexError):
+        stops[0]
+    stops.add_tab_stop(Inches(1))
+    stops.clear_all()
+    assert "w:tabs" not in to_xml(paragraph._p)
+    stops.clear_all()  # nothing there: nothing recorded, nothing raised
+
+
+def test_tab_stops_survive_a_reload_and_a_style_has_them_too(doc):
+    from docx4j_py.docx import WD_STYLE_TYPE, WD_TAB_ALIGNMENT, WD_TAB_LEADER
+
+    paragraph = doc.add_paragraph("a")
+    paragraph.paragraph_format.tab_stops.add_tab_stop(Inches(-0.5), WD_TAB_ALIGNMENT.DECIMAL, WD_TAB_LEADER.DASHES)
+    style = doc.styles.add_style("Ledger", WD_STYLE_TYPE.PARAGRAPH)
+    style.paragraph_format.tab_stops.add_tab_stop(Inches(4), WD_TAB_ALIGNMENT.RIGHT)
+    again = reopen(doc)
+    stop = again.paragraphs[0].paragraph_format.tab_stops[0]
+    assert (stop.position.inches, stop.alignment, stop.leader) == (-0.5, WD_TAB_ALIGNMENT.DECIMAL, WD_TAB_LEADER.DASHES)
+    ledger = again.styles["Ledger"].paragraph_format.tab_stops
+    assert [(s.position.inches, s.alignment) for s in ledger] == [(4.0, WD_TAB_ALIGNMENT.RIGHT)]

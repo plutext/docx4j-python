@@ -70,6 +70,8 @@ DOCX4J = Api(
     WD_ORIENT=facade.WD_ORIENT,
     WD_SECTION=facade.WD_SECTION,
     WD_TABLE_ALIGNMENT=facade.WD_TABLE_ALIGNMENT,
+    WD_TAB_ALIGNMENT=facade.WD_TAB_ALIGNMENT,
+    WD_TAB_LEADER=facade.WD_TAB_LEADER,
 )
 
 PYTHON_DOCX = Api(
@@ -82,6 +84,8 @@ PYTHON_DOCX = Api(
     WD_ORIENT=docx.enum.section.WD_ORIENT,
     WD_SECTION=docx.enum.section.WD_SECTION,
     WD_TABLE_ALIGNMENT=docx.enum.table.WD_TABLE_ALIGNMENT,
+    WD_TAB_ALIGNMENT=docx.enum.text.WD_TAB_ALIGNMENT,
+    WD_TAB_LEADER=docx.enum.text.WD_TAB_LEADER,
 )
 
 #: The table the script builds, as a list of dicts, which is how tutorials do it.
@@ -136,6 +140,10 @@ def build(api: Api, target: Path) -> None:
         cells = table.add_row().cells
         for index, name in enumerate(headers):
             cells[index].text = row[name]
+
+    ledger = document.add_paragraph("Item\tPrice")
+    ledger.paragraph_format.tab_stops.add_tab_stop(api.Inches(4), api.WD_TAB_ALIGNMENT.RIGHT, api.WD_TAB_LEADER.DOTS)
+    ledger.paragraph_format.tab_stops.add_tab_stop(api.Inches(1))
 
     document.add_page_break()
     document.add_paragraph("A bulleted point", style="List Bullet")
@@ -292,3 +300,16 @@ def test_what_the_two_default_templates_differ_in_is_only_the_template(built):
     assert round(ours.page_width.cm, 1) == 21.0, "A4"
     assert round(theirs.page_width.inches, 1) == 8.5, "US Letter"
     assert built["ours"].sections[-1].page_width == built["theirs"].sections[-1].page_width
+
+
+def test_the_tab_stops_read_back_the_same(built):
+    """Position, alignment and leader of each stop, as python-docx reads them."""
+
+    def stops(document):
+        for paragraph in document.paragraphs:
+            if paragraph.text.startswith("Item\t"):
+                return [(s.position, s.alignment, s.leader) for s in paragraph.paragraph_format.tab_stops]
+        raise AssertionError("the ledger paragraph is missing")
+
+    assert stops(built["ours"]) == stops(built["theirs"])
+    assert len(stops(built["ours"])) == 2

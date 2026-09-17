@@ -115,7 +115,7 @@ byte, a `ChangeReport` for every mutation, `dry_run`, tracked changes, comments,
 and custom XML, all of it through `doc.package` and `doc.part.body`. `Paragraph`, `Run`, `Font`,
 `Table`, `_Cell`, `Section` with its headers and footers, `Styles`, `CoreProperties`, `Comment`,
 the `Length` units and the `WD_*` enums are all there; the promise is a committed member list
-(`tests/python_docx_subset.json`, derived by introspecting python-docx 1.2.0: 295 of its 303
+(`tests/python_docx_subset.json`, derived by introspecting python-docx 1.2.0: 305 of its 312
 members implemented, eight refused with a reason each) and a parity test that runs one script
 through both libraries and lets **python-docx** read both files back. python-docx itself is not a
 dependency. The Office JS vocabulary above remains the primary API; this namespace exists so that

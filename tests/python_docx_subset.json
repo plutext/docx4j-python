@@ -3,9 +3,9 @@
   "source": "python-docx 1.2.0, introspected",
   "version": "1.2.0",
   "counts": {
-    "interfaces": 33,
-    "members": 303,
-    "implemented": 295
+    "interfaces": 35,
+    "members": 312,
+    "implemented": 305
   },
   "constructors": {
     "Emu": 1,
@@ -1247,14 +1247,80 @@
         "kind": "property",
         "read_only": true,
         "declared_by": "ParagraphFormat",
-        "implemented": false,
-        "reason": "the TabStops collection is a class of its own with its own add/clear verbs; w:tabs is document-order typed content on paragraph_format.element.p_pr.tabs"
+        "implemented": true
       },
       {
         "name": "widow_control",
         "kind": "property",
         "read_only": false,
         "declared_by": "ParagraphFormat",
+        "implemented": true
+      }
+    ],
+    "TabStops": [
+      {
+        "name": "add_tab_stop",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "TabStops",
+        "implemented": true
+      },
+      {
+        "name": "clear_all",
+        "kind": "method",
+        "read_only": true,
+        "declared_by": "TabStops",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      }
+    ],
+    "TabStop": [
+      {
+        "name": "alignment",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "TabStop",
+        "implemented": true
+      },
+      {
+        "name": "element",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "leader",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "TabStop",
+        "implemented": true
+      },
+      {
+        "name": "part",
+        "kind": "property",
+        "read_only": true,
+        "declared_by": "ElementProxy",
+        "implemented": true
+      },
+      {
+        "name": "position",
+        "kind": "property",
+        "read_only": false,
+        "declared_by": "TabStop",
         "implemented": true
       }
     ],
