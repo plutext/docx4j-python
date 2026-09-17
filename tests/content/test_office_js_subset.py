@@ -6,8 +6,9 @@ Office JS members this package implements, derived by
 assignability check. This test asserts that every non-extension member of an
 implemented phase is really on the class that owns it --- Phase B's ``Body``,
 ``Paragraph``, ``Range`` and ``Font``, Phase C's five, Phase G's ``Comment``,
-Phase F's ``TrackedChange`` and the ``Document`` members that are the package's
---- with the right kind, and reports the members of later phases still to come.
+Phase F's ``TrackedChange`` and the ``Document`` members that are the package's,
+Phase H's ``List`` and ``ListItem`` --- with the right kind, and reports the
+members of later phases still to come.
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ from docx4j_py.model.content import (
     ContentControl,
     Font,
     InlinePicture,
+    List,
+    ListItem,
     Paragraph,
     Range,
     Table,
@@ -96,6 +99,12 @@ PHASE_E_CLASSES = {
 # ``ContentControl.group_content_control`` is what the list does promise.
 assert GroupContentControl is not None
 
+#: The two Phase H adds. Office JS's list members of ``Paragraph`` and ``Body``
+#: are carried in the subset list by ``scripts/office_js_subset.py``'s
+#: ``AHEAD_OF_TS`` block, because docx4j-core-ts's own phase H is still proposed
+#: and its ``office-js-subset.ts`` declares no list interfaces (CR-003 section 18).
+PHASE_H_CLASSES = {"List": List, "ListItem": ListItem}
+
 #: Every interface implemented so far, and the phase that owns each member.
 CLASSES = {
     **PHASE_B_CLASSES,
@@ -103,10 +112,11 @@ CLASSES = {
     **PHASE_G_CLASSES,
     **PHASE_F_CLASSES,
     **PHASE_E_CLASSES,
+    **PHASE_H_CLASSES,
 }
 
 #: The phases this file's assertions hold for.
-PHASES = ("B", "C", "E", "F", "G")
+PHASES = ("B", "C", "E", "F", "G", "H")
 
 
 @pytest.fixture(scope="module")
@@ -171,7 +181,7 @@ def test_every_implemented_member_is_there_with_the_right_kind(subset):
     )
     print(f"\nlater phases still to come -- {summary}")
     assert not missing and not wrong_kind, (
-        f"Phases B, C, E, F and G owe {missing or 'nothing'}; "
+        f"Phases {', '.join(PHASES)} owe {missing or 'nothing'}; "
         f"wrong kind: {wrong_kind or 'none'}. "
         f"(For the record, the members of later phases still missing are {summary}.)"
     )

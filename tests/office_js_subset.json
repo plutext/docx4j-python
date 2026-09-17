@@ -119,6 +119,14 @@
         "readonly": false,
         "phase": "C",
         "extension": false
+      },
+      {
+        "office_js": "lists",
+        "name": "lists",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
       }
     ],
     "CheckboxContentControl": [
@@ -997,6 +1005,88 @@
         "extension": false
       }
     ],
+    "List": [
+      {
+        "office_js": "id",
+        "name": "id",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "levelTypes",
+        "name": "level_types",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "paragraphs",
+        "name": "paragraphs",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "levelExists",
+        "name": "level_exists",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "getLevelParagraphs",
+        "name": "get_level_paragraphs",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "getLevelString",
+        "name": "get_level_string",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "setLevelNumbering",
+        "name": "set_level_numbering",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "setLevelBullet",
+        "name": "set_level_bullet",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "setLevelIndents",
+        "name": "set_level_indents",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "insertParagraph",
+        "name": "insert_paragraph",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      }
+    ],
     "ListContentControl": [
       {
         "office_js": "listItems",
@@ -1020,6 +1110,48 @@
         "kind": "method",
         "readonly": false,
         "phase": "E",
+        "extension": false
+      }
+    ],
+    "ListItem": [
+      {
+        "office_js": "level",
+        "name": "level",
+        "kind": "property",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "listString",
+        "name": "list_string",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "siblingIndex",
+        "name": "sibling_index",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "getAncestor",
+        "name": "get_ancestor",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "getDescendants",
+        "name": "get_descendants",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
         "extension": false
       }
     ],
@@ -1190,6 +1322,54 @@
         "kind": "method",
         "readonly": false,
         "phase": "F",
+        "extension": false
+      },
+      {
+        "office_js": "isListItem",
+        "name": "is_list_item",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "list",
+        "name": "list",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "listItem",
+        "name": "list_item",
+        "kind": "property",
+        "readonly": true,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "startNewList",
+        "name": "start_new_list",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "attachToList",
+        "name": "attach_to_list",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
+        "extension": false
+      },
+      {
+        "office_js": "detachFromList",
+        "name": "detach_from_list",
+        "kind": "method",
+        "readonly": false,
+        "phase": "H",
         "extension": false
       }
     ],
