@@ -339,7 +339,8 @@ def test_set_level_numbering_refuses_a_value_office_js_does_not_have():
     assert raised.value.code == "list.numbering_invalid"
 
 
-def test_a_level_setter_copies_a_definition_two_lists_share():
+def test_a_level_setter_on_a_shared_definition_writes_an_override_on_the_num():
+    """The definition two lists share is left alone; this w:num gets w:lvlOverride/w:lvl."""
     package, first = numbered("One", "Two")
     second = package.body.insert_paragraph("Other").start_new_list(like=first)
     assert len(package.numbering_definitions_part.contents.abstract_num) == 1
@@ -347,9 +348,19 @@ def test_a_level_setter_copies_a_definition_two_lists_share():
     second.set_level_numbering(0, "UpperRoman")
 
     numbering = package.numbering_definitions_part.contents
-    assert len(numbering.abstract_num) == 2, "the shared definition was copied first"
+    assert len(numbering.abstract_num) == 1, "no copy: the change is an instance override"
+    num = next(n for n in numbering.num if int(n.num_id) == second.id)
+    override = next(o for o in num.lvl_override if int(o.ilvl) == 0)
+    assert override.start_override is not None, "the restart's startOverride is still there"
+    assert override.lvl.num_fmt.val == "upperRoman"
     assert [p.list_item.list_string for p in first.paragraphs] == ["1.", "2."]
     assert [p.list_item.list_string for p in second.paragraphs] == ["I."]
+    assert second.level_types[0] == "Number"
+    assert second.get_level_string(0) == "%1."
+
+    second.set_level_bullet(0, "Solid")
+    assert second.level_types[0] == "Bullet", "a second write edits the same override"
+    assert len(num.lvl_override) == 1
 
 
 def test_set_level_bullet_writes_the_glyph_and_the_font():
@@ -597,3 +608,52 @@ def test_a_list_survives_a_save_and_a_reload_in_a_loaded_document():
     items = [p for p in back.body.paragraphs if p.is_list_item]
     assert [p.list_item.list_string for p in items] == ["1.", "a."]
     assert back.body.lists[0].id == the_list.id
+
+
+# -- section 18.8: every definition this code creates has a w:nsid of its own --
+
+
+def _nsids(pkg):
+    numbering = pkg.numbering_definitions_part.contents
+    return [str(a.nsid.val) for a in numbering.abstract_num]
+
+
+def test_two_new_lists_do_not_share_a_nsid():
+    """Word keys a definition by ``w:nsid``; two with the same nsid are one list to it."""
+    pkg = sample("2010-sample1.docx")
+    body = pkg.body
+    body.paragraphs[0].start_new_list()
+    body.insert_paragraph("another").start_new_list()
+    body.insert_paragraph("bullets").start_new_list(kind="Bullet")
+    body.insert_paragraph("more bullets").start_new_list(kind="Bullet")
+    nsids = _nsids(pkg)
+    assert len(nsids) == 4
+    assert len(set(nsids)) == 4
+    assert all(len(n) == 8 and int(n, 16) >= 0 for n in nsids)
+
+
+def test_restyling_a_shared_list_adds_no_definition_and_word_sees_the_change():
+    """The artefact 10 defect: a copy kept the nsid and Word numbered from the original."""
+    pkg = sample("2010-sample1.docx")
+    body = pkg.body
+    first = body.paragraphs[0].start_new_list()
+    body.insert_paragraph("restarted").start_new_list(like=first)
+    first.set_level_numbering(0, "LowerLetter", "%1)")
+    numbering = pkg.numbering_definitions_part.contents
+    assert len(numbering.abstract_num) == 1
+    xml = pkg.numbering_definitions_part.xml.decode()
+    assert xml.count("<w:nsid") == 1
+    assert '<w:lvlOverride w:ilvl="0"><w:lvl w:ilvl="0"' in xml.replace("\n", "")
+
+
+def test_a_fresh_nsid_steps_past_one_the_part_already_has():
+    from docx4j_py.model.content.lists import fresh_nsid
+
+    pkg = sample("2010-sample1.docx")
+    pkg.body.paragraphs[0].start_new_list()
+    numbering = pkg.numbering_definitions_part.contents
+    taken = str(numbering.abstract_num[0].nsid.val)
+    # the seed that produced the taken value must not produce it again
+    seed = f"7E706046:{numbering.abstract_num[0].abstract_num_id}"
+    assert fresh_nsid(numbering, seed) != taken
+    assert fresh_nsid(numbering, "anything") == fresh_nsid(numbering, "anything")

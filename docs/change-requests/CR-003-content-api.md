@@ -3373,7 +3373,8 @@ anyway.
 `scripts/acceptance.py` writes `10-lists.docx`: `samples/2010-sample1.docx` with
 a numbered list of three started by `start_new_list()`, a fourth item at level 1,
 a second list restarted with `like=`, a bullet list, one list restyled to
-`a) b) c)` — which copies the definition it shares with the restarted list — a
+`a) b) c)` — a `w:lvlOverride/w:lvl` on its `w:num`, since it shares the definition
+with the restarted list — a
 paragraph detached, and, with tracking on, a paragraph of the document's own
 attached. `tests/README.md` says what to look for: the labels, the restart at
 **1.** rather than 4., the bullets, the detached paragraph with no bullet and no
@@ -3381,7 +3382,7 @@ indent, the *Formatted* revision in the Reviewing pane with its formatting
 balloon, Reject All taking the bullet off that one paragraph and nothing else,
 and — the thing that matters most — **Word not renumbering anything when it
 saves the file**, which would mean the definitions are not what it expects.
-**Not yet run.**
+Run the same day: section 18.8 records what it found.
 
 ### 18.7 What Phase I and Phase J need
 
@@ -3411,3 +3412,46 @@ saves the file**, which would mean the definitions are not what it expects.
   linked style's `w:basedOn` chain is here; the rest is `StyleUtil`'s), and the
   label's own run properties (docx4j's `labelRPr`, the `w:lvlOverride/w:lvl`
   rule CR-014 probe P3 measured), which nothing in this API reports yet.
+
+### 18.8 What the Word check of artefact 10 found (2026-09-17)
+
+Word's PDF of the first `10-lists.docx` showed every row of the checklist as written
+except one: the first list read **1. 2. 3.** with **a.** under it, not `a) b) c)`. The
+restart at 1., the bullets, the detached paragraph and the tracked bullet with its
+revision mark were all right.
+
+The cause was in the numbering part, not the emulator. `set_level_numbering` had done
+what section 18.2 item 13 says: the decimal definition was shared with the restarted
+list, so it copied `w:abstractNum` 0 to `w:abstractNum` 2, repointed `w:num` 1 at the
+copy and wrote `lowerLetter` and `%1)` into the copy's level 0. The emulator, which
+resolves by `w:abstractNumId`, then said `a) b) c)`, and so did the suite. **Word
+resolves a definition by its `w:nsid`.** `deep_copy` had kept the original's nsid
+(`7E706046`) on the copy, and to Word two `w:abstractNum`s with one nsid are one list:
+it took the first and numbered from it. The same defect was latent in `start_new_list`
+itself, whose comment claimed "two lists in one document may share [the nsid], as
+Word's own do": they do not, only `w:tmpl` is shared, and two plain `start_new_list()`
+calls gave two decimal definitions with the default's nsid, which Word would have run
+on as one list.
+
+The fix is in two parts, and the second is the one that matters. First,
+`fresh_nsid(numbering, seed)` in `lists.py` gives every definition `start_new_list`
+creates an eight-digit hex nsid the part does not already carry, derived from the
+seed (the template's nsid and the new `w:abstractNumId`) with CRC-32 rather than
+drawn at random, so that the same calls still give the same bytes (section 12.6),
+and stepped past any value already in the part. `w:tmpl` and the levels' `w:tplc`
+are left as they are: they name the gallery template and Word's own lists share
+them. Second, on the user's direction the same day, **a level setter on a shared
+definition no longer copies it at all**: the change is written as a
+`w:lvlOverride/w:lvl` on this list's `w:num`, the instance-level override ECMA-376
+17.9.16 provides for exactly this, which Word and the emulator both apply over the
+abstract level and which a `like=` restart already uses for its `w:startOverride`.
+The override's `w:lvl` is a copy of the abstract level with the change applied, since
+an override level replaces the whole level; a second setter on the same level edits
+the same override. The `w:abstractNum` count therefore never changes under a setter,
+which is what the test now asserts, and docx4j-core-ts CR-002 section 3.9's
+"copying the abstract definition first" should be revised to match when its Phase H
+is built. The markdown importer's definitions carry no nsid at all, which artefact 5
+shows Word accepts; they are left alone. Tests pin both parts (two new lists differ,
+a restyled shared list adds no definition and writes the override, a seed steps
+past a taken value), and the entry is in the portfolio's `word-hangs.md` under quiet
+failures. The artefact is regenerated and awaits a second check.

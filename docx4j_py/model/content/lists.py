@@ -33,6 +33,7 @@ Three rules this module keeps, each recorded in CR-003 section 18:
 
 from __future__ import annotations
 
+import zlib
 from typing import TYPE_CHECKING, Any, Literal
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
@@ -185,6 +186,38 @@ def next_abstract_num_id(numbering: Any) -> int:
     )
 
 
+def _nsid_of(abstract: Any) -> str:
+    """The definition's ``w:nsid`` as written, or ``""``."""
+    return str(getattr(getattr(abstract, "nsid", None), "val", None) or "")
+
+
+def _set_nsid(abstract: Any, value: str) -> None:
+    nsid = el.nsid(val=value)
+    abstract.nsid = nsid
+    nsid.parent = abstract
+
+
+def fresh_nsid(numbering: Any, seed: str) -> str:
+    """A ``w:nsid`` no ``w:abstractNum`` in the part carries, from a seed.
+
+    Word identifies a list definition by its ``w:nsid``, not its
+    ``w:abstractNumId``: two definitions with the same nsid are **one** list
+    to Word, which takes the first and ignores the other (CR-003 section 18.8,
+    found by the Word check of acceptance artefact 10). So every definition
+    this code creates --- a new list, or the copy a level setter makes of a
+    shared definition --- gets one of its own. It is derived from the seed
+    rather than drawn at random so that the same calls give the same bytes
+    (section 12.6), and stepped past any value already in the part.
+    """
+    taken = {_nsid_of(a).upper() for a in (numbering.abstract_num or ())}
+    candidate = seed
+    while True:
+        value = format(zlib.crc32(candidate.encode("utf-8")) & 0x7FFFFFFF, "08X")
+        if value not in taken:
+            return value
+        candidate = f"{candidate}+"
+
+
 def next_num_id(numbering: Any) -> int:
     """The next free ``w:numId``: one above the document's own, never 0.
 
@@ -215,8 +248,9 @@ def add_abstract_definition(
 
     abstract = deep_copy(_default_abstract(kind))
     abstract.abstract_num_id = next_abstract_num_id(numbering)
-    # the template's w:nsid and w:tmpl identify the gallery entry the list came
-    # from; two lists in one document may share them, as Word's own do
+    # w:tmpl names the gallery entry the list came from and may be shared;
+    # w:nsid identifies the definition itself and must not be (section 18.8)
+    _set_nsid(abstract, fresh_nsid(numbering, f"{_nsid_of(abstract)}:{abstract.abstract_num_id}"))
     _append(numbering, "abstract_num", abstract)
 
     num = el.num(
@@ -449,12 +483,15 @@ class List:
     # -- writing -----------------------------------------------------------
 
     def _writable_level(self, level: int, change: Any) -> Any:
-        """The typed ``w:lvl`` to edit, the definition copied first if shared.
+        """The typed ``w:lvl`` to edit: the definition's own, or this ``w:num``'s override.
 
-        Office JS's level setters change *this* list; a ``w:abstractNum`` that a
-        second ``w:num`` points at is therefore copied and this ``w:num``
-        repointed at the copy before anything is written (docx4j-core-ts CR-002
-        section 3.9).
+        Office JS's level setters change *this* list. A ``w:abstractNum`` that
+        no other ``w:num`` points at is edited in place. One that is shared is
+        left alone, and the change goes into a ``w:lvlOverride/w:lvl`` on this
+        ``w:num`` --- the instance-level override ECMA-376 17.9.16 provides for
+        exactly this, which the emulator and Word both apply over the abstract
+        level. (docx4j-core-ts CR-002 section 3.9 copies the definition
+        instead; section 18.8 records why this does not.)
         """
         ilvl = int(level)
         if not 0 <= ilvl < LEVELS:
@@ -484,20 +521,24 @@ class List:
         shared = sum(
             1 for other in numbering.num or () if str(_value(other.abstract_num_id)) == str(abstract_id)
         )
-        if shared > 1:
-            copy = deep_copy(abstract)
-            copy.abstract_num_id = next_abstract_num_id(numbering)
-            _append(numbering, "abstract_num", copy)
-            num.abstract_num_id = el.abstractNumId(val=copy.abstract_num_id)
-            num.abstract_num_id.parent = num
-            abstract = copy
 
         found = next((lvl for lvl in (abstract.lvl or ()) if int(lvl.ilvl or 0) == ilvl), None)
-        if found is None:
-            found = el.lvl(ilvl=ilvl, lvl_jc=el.lvlJc(val="left"))
-            found.p_pr = el.pPr(
-                ind=el.ind(left=TWIPS_PER_LEVEL * (ilvl + 1), hanging=HANGING)
+        if shared > 1:
+            override = next(
+                (o for o in (num.lvl_override or ()) if int(o.ilvl or 0) == ilvl), None
             )
+            if override is None:
+                override = el.lvlOverride(ilvl=ilvl)
+                _append_override(num, override)
+            if override.lvl is None:
+                override.lvl = deep_copy(found) if found is not None else _blank_level(ilvl)
+                override.lvl.parent = override
+                link_parents(override.lvl)
+            invalidate(package)
+            return override.lvl
+
+        if found is None:
+            found = _blank_level(ilvl)
             _append_level(abstract, found)
         invalidate(package)
         return found
@@ -1007,6 +1048,29 @@ def _apply_list_style(paragraph: Paragraph, touched: set[str]) -> None:
     ensure_style(package, LIST_PARAGRAPH_STYLE, touched=touched)
     paragraph.element.p_pr.p_style = el.pStyle(val=LIST_PARAGRAPH_STYLE)
     paragraph.element.p_pr.p_style.parent = paragraph.element.p_pr
+
+
+def _blank_level(ilvl: int) -> Any:
+    """A ``w:lvl`` with Word's default indent, for a level the definition lacks."""
+    lvl = el.lvl(ilvl=ilvl, lvl_jc=el.lvlJc(val="left"))
+    lvl.p_pr = el.pPr(ind=el.ind(left=TWIPS_PER_LEVEL * (ilvl + 1), hanging=HANGING))
+    return lvl
+
+
+def _append_override(num: Any, override: Any) -> None:
+    """Put a ``w:lvlOverride`` in the ``w:num``, in ``w:ilvl`` order."""
+    overrides = num.lvl_override
+    if overrides is None:
+        overrides = ChildList([], owner=num)
+        num.lvl_override = overrides
+    position = len(overrides)
+    for index, existing in enumerate(overrides):
+        if int(existing.ilvl or 0) > int(override.ilvl or 0):
+            position = index
+            break
+    overrides.insert(position, override)
+    link_parents(override)
+    override.parent = num
 
 
 def _append_level(abstract: Any, lvl: Any) -> None:
