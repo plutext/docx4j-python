@@ -75,6 +75,7 @@ class OpcPackage:
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
+        "_numbering_emulator",
         "_para_ids_taken",
         "_split_runs",
         "_split_spaces",
@@ -165,6 +166,12 @@ class OpcPackage:
         # split put there. Only those may lose it when the halves are joined:
         # an attribute the document itself wrote stays (section 16.12).
         self._split_spaces: set[int] = set()
+        # CR-003 Phase H: the numbering emulator of this package
+        # (``docx4j_py.model.listnumbering``), made on first use and holding the
+        # list definitions and the counted labels of each story. Here for the
+        # same reason as the four above: the engine holds the state, the content
+        # API puts it there, and this layer imports nothing from it.
+        self._numbering_emulator: Any = None
 
     # -- the agent surface's state (CR-003 section 3.4) --------------------
 
