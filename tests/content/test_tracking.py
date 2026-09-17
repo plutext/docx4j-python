@@ -554,6 +554,87 @@ def test_a_comment_made_while_tracking_is_on_is_a_comment_not_an_insertion():
     assert package.body.paragraphs[0].text == "INSERTED Base text."
 
 
+def test_a_comment_inside_an_insertion_is_hoisted_out_of_it(tmp_path):
+    """CR-003 section 16.9: the defect that made a reject take the comment with it.
+
+    A comment on text that lies **wholly inside** this author's own ``w:ins``
+    --- which is what commenting on a replacement gives --- had its markers and
+    its reference run written *inside* the ``w:ins``, because the replacement's
+    ``w:del`` and ``w:ins`` carried a stale ``parent`` and the hoist of section
+    15.6 could not find the list they were in.
+    """
+    package = sample("2010-sample1.docx")
+    package.author = Author("Claude")
+    package.tracked_change_date = WHEN
+    package.change_tracking_mode = "TrackAll"
+    package.body.replace_text("document", "report")
+    package.body.range_of(package.find("report")[0]).insert_comment("why")
+
+    xml = package.body.paragraphs[0].get_xml()
+    assert "<w:commentRangeStart" in xml
+    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins "), "the start is a sibling"
+    assert xml.index("</w:ins>") < xml.index("<w:commentRangeEnd"), "and so is the end"
+    inside = xml[xml.index("<w:ins ") : xml.index("</w:ins>")]
+    assert "commentRange" not in inside and "commentReference" not in inside
+
+    # the markup the hoist rests on: the w:del and the w:ins of a replacement
+    # are children of the paragraph, not of one another
+    paragraph = package.body.paragraphs[0]
+    from docx4j_py.traversal import element_name
+
+    for item in paragraph.element.content:
+        if element_name(item) in (f"{{{_W}}}ins", f"{{{_W}}}del"):
+            assert item.parent is paragraph.element
+
+
+def test_a_comment_on_an_insertion_survives_accepting_and_rejecting_it():
+    def commented():
+        package = sample("2010-sample1.docx")
+        package.author = Author("Claude")
+        package.tracked_change_date = WHEN
+        package.change_tracking_mode = "TrackAll"
+        package.body.replace_text("document", "report")
+        package.body.range_of(package.find("report")[0]).insert_comment("why")
+        return reloaded(package)
+
+    accepted = commented()
+    assert accepted.body.accept_all() == 2
+    comments = accepted.body.get_comments()
+    assert [c.content for c in comments] == ["why"]
+    assert [r.text for r in comments[0].get_range()] == ["report"]
+
+    rejected = commented()
+    assert rejected.body.reject_all() == 2
+    comments = rejected.body.get_comments()
+    assert [c.content for c in comments] == ["why"], "the insertion did not take it with it"
+    assert [r.text for r in comments[0].get_range()] == [""], "an empty range, where it was"
+
+
+def test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_survives_both():
+    def commented():
+        package = sample("2010-sample1.docx")
+        package.author = Author("Claude")
+        package.tracked_change_date = WHEN
+        package.change_tracking_mode = "TrackAll"
+        paragraph = package.body.insert_paragraph("A whole new paragraph.")
+        paragraph.insert_comment("about the new paragraph")
+        return package
+
+    # past the paragraph mark's own w:ins, which is in the w:pPr
+    xml = commented().body.paragraphs[-1].get_xml().partition("</w:pPr>")[2]
+    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins w:id")
+    inside = xml[xml.index("<w:ins w:id") : xml.index("</w:ins>")]
+    assert "commentRange" not in inside and "commentReference" not in inside
+
+    accepted = reloaded(commented())
+    accepted.body.accept_all()
+    assert [c.content for c in accepted.body.get_comments()] == ["about the new paragraph"]
+
+    rejected = reloaded(commented())
+    rejected.body.reject_all()
+    assert [c.content for c in rejected.body.get_comments()] == ["about the new paragraph"]
+
+
 # ---------------------------------------------------------------------------
 # TrackedChange: reading, accepting, rejecting
 # ---------------------------------------------------------------------------

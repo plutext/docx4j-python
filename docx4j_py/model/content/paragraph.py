@@ -1181,6 +1181,7 @@ class Paragraph:
                     owner=segment.run_owner,
                     own=tracker.own_insertion(revision),
                     revision=revision,
+                    parent=getattr(segment.run, "parent", None),
                 )
             )
 
@@ -1222,10 +1223,11 @@ class Paragraph:
             deletion = tracker.deletion(taken)
             owner.insert(at, deletion)
             revision = group[0].revision
+            # the parent captured before the move: ``tracker.deletion`` has just
+            # made the runs children of the w:del, so asking the run now would
+            # make the w:del its own runs' sibling's child (section 16.9)
             parent = (
-                revision.element
-                if revision is not None
-                else (getattr(group[0].run, "parent", None) or self.element)
+                revision.element if revision is not None else (group[0].parent or self.element)
             )
             deletion.parent = parent
             made.insert(0, _Anchor(owner=owner, element=deletion, parent=parent))
@@ -1428,6 +1430,10 @@ class _Target:
     owner: list
     own: bool
     revision: Any = None
+    parent: Any = None
+    """What held the run **before** the move, captured now: moving it into the
+    ``w:del`` rewrites ``run.parent``, and the ``w:del`` (and the ``w:ins`` that
+    follows it) belong where the run was (CR-003 section 16.9)."""
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

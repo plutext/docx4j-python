@@ -2074,9 +2074,9 @@ Word's not just the markup" rules it --- `pkg.change_tracking_mode` over `w:trac
 primitives, `TrackedChange` with `accept()` and `reject()`, `get_tracked_changes()` on a body, a
 paragraph, a range and the package, `accept_all()` / `reject_all()`, and `replace_text` at all
 three levels --- with the tests of section 7, acceptance artefact 8 and the README's audit
-trail, which now leads with both halves. The suite is **1,122 tests** (1,121 passing plus one
-`xfail`; 1,113 of them fast, 54.4 s, and 64.0 s for the whole), against 1,067 at the end of
-Phase G; **55** of the new ones are `tests/content/test_tracking.py` (49) and
+trail, which now leads with both halves. The suite is **1,125 tests** (1,124 passing plus one
+`xfail`; 1,116 of them fast, 52.9 s, and 60.2 s for the whole), against 1,067 at the end of
+Phase G; **58** of the new ones are `tests/content/test_tracking.py` (52) and
 `tests/agent/test_audit_trail.py` (6). Nothing in `~/git/docx4j-xsdata` changed, no schema patch
 was needed, the model was not regenerated and `codegen/generate_el.py` did not change at all:
 every Phase F name is reached through `docx4j_py.model.content`.
@@ -2297,3 +2297,40 @@ each change with its author and date, Accept All leaving the intended document, 
 restoring the pre-edit one, the comment surviving both, and a save-close-reopen with no repair
 prompt. **Not yet run.** The Compatibility Checker note of 15.7 may appear again, for the same
 reason: the source is a Word 2010 document.
+
+### 16.9 A defect found the same day: a comment inside a same-author insertion
+
+**The defect.** A comment on text that lay **wholly inside** this author's own `w:ins` --- which
+is exactly what commenting on a `replace_text` gives, the commonest thing the audit trail of
+section 3.4 does --- had its `w:commentRangeStart`, its `w:commentRangeEnd` **and its reference
+run written inside the `w:ins`**. Accepting the revision was harmless, but rejecting it deleted
+the comment with the insertion, which is precisely what section 15.6's marker hoist exists to
+prevent.
+
+**The cause was not in Phase G's hoist**, which is correct and untouched. It was a stale parent
+pointer in `Paragraph._delete_text`. Moving the runs into the new `w:del` is
+`ChangeTracker.deletion(items)`, which sets each run's `parent` to the `w:del`; the code then
+asked `group[0].run.parent` for "what held this run", got the `w:del` it had just made, and gave
+both the `w:del` and the `w:ins` of the replacement that as their `parent`. The two elements sat
+in the right place in `w:p/@content` --- the XML was valid and every text test passed --- but
+`_marker_site` walks `segment.run.parent` and then **that** element's parent to find the list to
+hoist into, found the `w:del` instead of the `w:p`, could not find the `w:ins` in the `w:del`'s
+own list, and fell through to its un-hoisted branch. `revision_of` was reading the same wrong
+`owner`, so the fix repairs that too.
+
+**The fix** is four lines: `_Target` now captures `parent` at collection time, before any run is
+moved, and the `w:del` (and the anchor the following `w:ins` is placed against) take that. Three
+tests pin it --- the markers and the reference run are **siblings** of the `w:ins` and the two
+revisions are children of the `w:p`; the comment survives `accept_all()` with its range still
+reading `"report"`; it survives `reject_all()` with an **empty** range where it was, and
+`get_comments()` still lists it --- and a fourth does the same for a comment on a **whole
+paragraph inserted while tracking is on**, where rejecting joins the paragraph into the one
+before it and carries the markers along.
+
+The lesson for anything else that moves elements while tracking: **read a parent before the
+move, never after**. `wrap_new_runs`, `Paragraph.insert_break` and `Body.insert_break` set the
+wrapper's parent explicitly and were never affected; `_insert_tracked`'s non-anchor path reads a
+parent nothing has moved.
+
+The suite is **1,125 tests** (1,124 passing plus one `xfail`; 1,116 of them fast, 52.9 s, and
+60.2 s for the whole); the four new ones are `tests/content/test_tracking.py`'s, which is now 53.
