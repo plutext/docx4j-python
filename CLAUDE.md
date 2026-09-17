@@ -44,7 +44,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
-.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the six Word checklist documents
+.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eight Word checklist documents
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata
 python codegen/derive_names.py                         # re-derive codegen/names/ from docx4j's XJC output
@@ -65,7 +65,8 @@ hand-written code. Do not run it as it stands.
 checklist, with the record of each run. After any change to marshalling, the prefix table, content
 types, the zip writer, `create_package`, the markdown importer or the content API's inserts,
 regenerate `out/acceptance/` and ask for a Word check: saved output must open without a repair
-prompt.
+prompt. Markup that makes Word hang or quietly refuse an operation is logged in
+`../docx4j-portfolio/docs/word-hangs.md`; add to it after any check that finds one.
 
 ## Generated and hand-written code
 

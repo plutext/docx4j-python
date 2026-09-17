@@ -87,7 +87,9 @@ and the registry maps the `.docm` content type to the same `MainDocumentPart`.
 
 ## Word acceptance (manual)
 
-Record each run here, in the form docx4j-core-ts's `test/README.md` uses:
+Record each run here, in the form docx4j-core-ts's `test/README.md` uses. When a check finds
+markup that makes Word **hang** or quietly refuse an operation, also add an entry to
+`../docx4j-portfolio/docs/word-hangs.md`, the log shared across the three engines.
 
 > Last run: 2026-09-17, Word (version not recorded), after CR-003 Phase G, artefact 7.
 > **Passed.** Three threads by Claude, the replies nested, the resolved thread resolved. The
