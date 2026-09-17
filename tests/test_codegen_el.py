@@ -152,3 +152,50 @@ def test_everything_keep_names_is_really_there():
 
     missing = [entry for entry in sorted(KEEP) if not (ROOT / "docx4j_py" / entry).exists()]
     assert missing == []
+
+
+def test_the_hand_written_packages_are_named_in_keep_by_name():
+    """The three hand-written **packages** are named, not just covered.
+
+    ``openpackaging`` (CR-002), ``model`` (CR-003 Phases B to K) and ``docx``
+    (CR-003 Phase J, the python-docx facade) are whole directories of
+    hand-written code, and the test above would pass for each of them only
+    because they are in ``KEEP``. This one says so by name, so that a fourth
+    one cannot be added without the same line: an ``__init__.py`` is exempt
+    above, on the grounds that the generator writes the namespace packages'
+    ones, and a new package whose name ``KEEP`` did not carry would be deleted
+    with only its ``__init__.py`` spared.
+    """
+    from clean import KEEP
+
+    for package in ("openpackaging", "model", "docx"):
+        assert package in KEEP, package
+        directory = ROOT / "docx4j_py" / package
+        assert (directory / "__init__.py").exists(), package
+        assert list(directory.rglob("*.py")), package
+
+
+def test_the_facades_modules_would_all_survive_a_regeneration():
+    """Every tracked file under ``docx4j_py/docx/`` is inside ``KEEP``.
+
+    The ``__init__.py`` exemption of the test above means the facade's package
+    marker would be spared whatever ``KEEP`` said; its thirteen modules would
+    not, so they are checked against ``KEEP`` without that exemption.
+    """
+    from pathlib import Path as _Path
+
+    from clean import KEEP
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "docx4j_py/docx"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=True,
+    ).stdout.split()
+    assert len(tracked) >= 13, "the facade is thirteen modules and a package marker"
+
+    kept = {_Path(entry) for entry in KEEP}
+    for entry in tracked:
+        relative = _Path(entry).relative_to("docx4j_py")
+        assert relative in kept or any(parent in kept for parent in relative.parents), entry

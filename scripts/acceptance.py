@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the ten documents the Word acceptance checklist needs.
+"""Write the eleven documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Ten files, each testing a different half of the save path:
+Eleven files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -79,11 +79,24 @@ Ten files, each testing a different half of the save path:
     created from nothing with its relationship and its content type, the
     definitions copied from docx4j's default numbering, and the ``w:pPrChange``
     a numbering change records.
+``11-python-docx-facade.docx``
+    a document built **entirely through CR-003 Phase J's python-docx facade**
+    (``docx4j_py.docx``), by code that would run unchanged against python-docx:
+    the section 3.6 snippet's constructs, a Title and Heading 1 to 3, a
+    ``List Bullet`` and a ``List Number`` paragraph, a page break, a second
+    section in landscape with a header and a footer of its own, a table with a
+    bold header row, a picture two inches wide, and the core properties. It
+    exercises the facade's write path end to end --- ``ensure_style`` for the
+    headings ``create_package()`` does not define, the header and footer
+    **parts** created by ``is_linked_to_previous = False``, the cloned
+    ``w:sectPr``, the image part, and ``dcterms:created`` written by the facade
+    rather than by ``create_package``.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
 import sys
 import zipfile
 from pathlib import Path
@@ -537,8 +550,93 @@ def lists(out: Path) -> Path:
     return target
 
 
+def python_docx_facade(out: Path) -> Path:
+    """11. A document built entirely through the python-docx facade (Phase J)."""
+    target = out / "11-python-docx-facade.docx"
+    with zipfile.ZipFile(IMAGE_SOURCE) as zf:
+        png = zf.read(next(n for n in zf.namelist() if n.lower().endswith(".png")))
+
+    # Everything below this line is ordinary python-docx code; the only thing
+    # that is not is the import, and `pkg.id_seed` and the two fixed dates,
+    # which keep the artefact byte-for-byte reproducible.
+    from docx4j_py.docx import (
+        WD_ALIGN_PARAGRAPH,
+        WD_ORIENT,
+        WD_SECTION,
+        Document,
+        Inches,
+        Pt,
+        RGBColor,
+    )
+
+    doc = Document()
+    doc.package.id_seed = 20260918
+    fixed = datetime.datetime(2026, 9, 18, 10, 0, tzinfo=datetime.UTC)
+    doc.core_properties.created = fixed
+    doc.core_properties.modified = fixed
+    doc.core_properties.title = "The python-docx facade"
+    doc.core_properties.author = "Ada Lovelace"
+
+    doc.add_heading("The python-docx facade", level=0)
+    doc.add_heading("What this is", level=1)
+
+    # the section 3.6 snippet's constructs
+    paragraph = doc.add_paragraph("Plain, ")
+    paragraph.add_run("bold").bold = True
+    paragraph.add_run(", ")
+    emphasis = paragraph.add_run("red italic 14 pt")
+    emphasis.italic = True
+    emphasis.font.size = Pt(14)
+    emphasis.font.color.rgb = RGBColor(0xC0, 0x00, 0x00)
+    paragraph.add_run(" and ")
+    paragraph.add_run("not bold").bold = False
+    paragraph.add_run(".")
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    doc.add_heading("Headings", level=2)
+    doc.add_heading("A third-level heading", level=3)
+
+    doc.add_heading("Lists, as python-docx makes them", level=2)
+    doc.add_paragraph("A bulleted point, by style only", style="List Bullet")
+    doc.add_paragraph("A numbered step, by style only", style="List Number")
+
+    doc.add_heading("A table", level=2)
+    headers = ("Region", "Quarter", "Revenue")
+    table = doc.add_table(rows=1, cols=3, style="Table Grid")
+    for index, name in enumerate(headers):
+        cell = table.cell(0, index)
+        cell.text = name
+        cell.paragraphs[0].runs[0].bold = True
+    for row in (("North", "Q1", "120"), ("South", "Q1", "98")):
+        cells = table.add_row().cells
+        for index, value in enumerate(row):
+            cells[index].text = value
+    # `_Cell.merge` is not implemented (CR-003 section 20), so there is no
+    # merged cell here; a horizontally spanned cell would be the one thing this
+    # artefact cannot show.
+
+    doc.add_page_break()
+
+    doc.add_heading("A picture", level=1)
+    doc.add_paragraph("Two inches wide, sized by the facade:")
+    doc.add_picture(png, width=Inches(2))
+
+    # a second section, landscape, with a header and a footer of its own
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    section.orientation = WD_ORIENT.LANDSCAPE
+    section.page_width, section.page_height = Inches(11.69), Inches(8.27)
+    section.header.is_linked_to_previous = False
+    section.header.paragraphs[0].text = "docx4j-python"
+    section.footer.is_linked_to_previous = False
+    section.footer.paragraphs[0].text = "Built through docx4j_py.docx"
+    doc.add_paragraph("This last section is landscape, with its own header and footer.")
+
+    doc.save(str(target))
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the ten artefacts and print a summary."""
+    """Write the eleven artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -557,6 +655,7 @@ def main(argv: list[str] | None = None) -> int:
         tracked_changes,
         template_filled,
         lists,
+        python_docx_facade,
     ):
         target = build(out)
         with zipfile.ZipFile(target) as zf:
