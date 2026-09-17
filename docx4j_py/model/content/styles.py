@@ -578,6 +578,7 @@ def ensure_style(
     definition = _known_styles().get(style_id)
     if definition is not None:
         new = deep_copy(definition)
+        _reconcile_style_numbering(package, style_id, new, touched)
     elif style_id in CUSTOM_STYLE_XML:
         from docx4j_py.wml import wml
 
@@ -603,6 +604,51 @@ def ensure_style(
 
     invalidate_styles(package)
     return style_id
+
+
+#: The known styles whose numbering is made real when their definition is added:
+#: the family prefix, and the kind of definition it gets.
+_NUMBERED_STYLE_FAMILIES: tuple[tuple[str, str], ...] = (
+    ("ListBullet", "Bullet"),
+    ("ListNumber", "Number"),
+)
+
+
+def _reconcile_style_numbering(package: Any, style_id: str, style: Any, touched: set[str] | None) -> None:
+    """Make sure a definition being added names no ``w:numId`` the document lacks.
+
+    docx4j's ``KnownStyles.xml`` carries Word's template's style-level numbering:
+    ``ListBullet`` to ``ListBullet5`` name ``w:numId`` 4 to 8, ``ListNumber`` to
+    ``ListNumber5`` 9 to 13, and every ``Heading`` 3, while docx4j's default
+    ``numbering.xml`` defines 1 and 2 only. Word's response to a style whose
+    ``w:numPr`` dangles is arbitrary --- the Word check of acceptance artefact 11
+    showed a decimal ``1.`` on a List Bullet paragraph and nothing on a List
+    Number one (CR-003 section 20.9) --- so a definition added here never
+    dangles: the bullet and number families get a definition of their kind
+    from docx4j's defaults (one ``w:num`` per style, as Word's template has),
+    and any other style-level ``w:numPr`` with no definition behind it is
+    dropped, which is what Word's own Heading styles carry.
+    """
+    p_pr = getattr(style, "p_pr", None)
+    num_pr = getattr(p_pr, "num_pr", None) if p_pr is not None else None
+    num_id = getattr(getattr(num_pr, "num_id", None), "val", None) if num_pr is not None else None
+    if num_id is None or str(num_id) == "0":
+        return
+    from docx4j_py.model.content.lists import (
+        _typed_num,
+        add_abstract_definition,
+        numbering_part_of,
+    )
+
+    part = numbering_part_of(package, create=False)
+    if part is not None and _typed_num(part.contents, num_id) is not None:
+        return
+    kind = next((k for prefix, k in _NUMBERED_STYLE_FAMILIES if style_id.startswith(prefix)), None)
+    if kind is None:
+        p_pr.num_pr = None
+        return
+    num = add_abstract_definition(package, kind, touched=touched)  # type: ignore[arg-type]
+    num_pr.num_id.val = num.num_id
 
 
 def define_built_in(package: Any, style_id: str) -> str:

@@ -531,7 +531,13 @@ def test_a_style_the_document_does_not_define_and_word_does_not_know_is_refused(
 
 
 def test_list_bullet_is_the_style_and_no_w_numpr(doc):
-    """CR-003 section 17.8: python-docx writes a ``w:pStyle`` and no numbering."""
+    """CR-003 section 17.8: python-docx writes a ``w:pStyle`` and no numbering.
+
+    Section 20.9: the *style's* numbering is real, though --- Word paints an
+    arbitrary label for a style whose ``w:numId`` the document does not define
+    (artefact 11's check showed ``1.`` on a List Bullet paragraph), so the
+    definition ``ensure_style`` adds names a ``w:num`` it creates.
+    """
     from docx4j_py.fragments import to_xml
 
     bullet = doc.add_paragraph("a point", style="List Bullet")
@@ -540,10 +546,27 @@ def test_list_bullet_is_the_style_and_no_w_numpr(doc):
         xml = to_xml(paragraph.element)
         assert f'w:pStyle w:val="{style_id}"' in xml
         assert "w:numPr" not in xml
-    assert bullet.view.is_list_item is False, "not a list, as in python-docx"
+    assert bullet.view.is_list_item is True, "a list through the style, which the emulator resolves"
+    assert bullet.view.list_item.list_string == "\u2022"
+    assert number.view.list_item.list_string == "1."
     again = reopen(doc)
     assert [p.style.name for p in again.paragraphs] == ["List Bullet", "List Number"]
     assert "List Bullet" in again.styles
+    assert [p.view.list_item.list_string for p in again.paragraphs] == ["\u2022", "1."]
+    numbering = again.package.numbering_definitions_part.contents
+    assert len(numbering.num) == 2, "one w:num per style, as Word's template has"
+
+
+def test_a_heading_definition_added_here_carries_no_dangling_numbering(doc):
+    """Section 20.9: KnownStyles' Heading styles name w:numId 3, which nothing defines."""
+    from docx4j_py.fragments import to_xml
+
+    doc.add_heading("Numbered by nothing", level=2)
+    styles = doc.package.style_definitions_part.contents
+    heading = next(s for s in styles.style if s.style_id == "Heading2")
+    assert "numPr" not in to_xml(heading)
+    assert doc.package.numbering_definitions_part is None
+    assert doc.paragraphs[0].view.is_list_item is False
 
 
 def test_the_styles_collection_iterates_contains_and_looks_up(doc):

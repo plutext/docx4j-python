@@ -4080,6 +4080,8 @@ things in it are worth a human's eyes:
   a definition of its own, which is worth knowing; either way the paragraphs
   must not make Word repair the file, and
   `paragraph.view.start_new_list()` is the verb that gives a real list.
+  *Checked the same day: Word painted a decimal `1.` on the List Bullet paragraph
+  and nothing on the List Number one. Section 20.9 records the correction.*
 
 Nothing else in the artefact is new markup: the headings, the table, the picture
 and the runs all go through verbs phases B, C and H already had checked.
@@ -4127,3 +4129,37 @@ by whom:
 * **The Python MCP server** (decided question 11): a separate product
   repository, with docx4j-mcp's tool names, its path policy and its inline caps,
   over the API this CR has now finished.
+
+### 20.9 What the Word check of artefact 11 found: a style's numbering must not dangle (2026-09-18)
+
+Word showed the `List Bullet` paragraph numbered **`1.`** and the `List Number`
+paragraph with no label at all. Everything else on the row was as written. The
+cause is older than Phase J: docx4j's `KnownStyles.xml` carries Word's template's
+**style-level** numbering --- `ListBullet` to `ListBullet5` name `w:numId` 4 to 8,
+`ListNumber` to `ListNumber5` 9 to 13, and `Heading1` to `Heading9` all name 3 ---
+while docx4j's default `numbering.xml` defines `w:num` 1 and 2 only. Every
+definition `ensure_style` had added since Phase B therefore dangled, and Word's
+response to a dangling style-level `w:numId` is arbitrary: nothing for the
+headings (artefacts 5 and 6 passed that way), nothing for List Number, and a
+decimal `1.` for List Bullet, which is the same class of quiet failure as the
+dangling `w:pStyle` of section 14.9 and the shared `w:nsid` of section 18.8.
+
+The correction is in `ensure_style`, so it covers every caller: a definition it
+adds never names a `w:numId` the document lacks. `_reconcile_style_numbering`
+checks the numbering part for the id; when it is missing, the two families that
+exist to be lists get a definition of their kind from docx4j's defaults through
+`add_abstract_definition` --- one `w:num` per style, as Word's template has, a
+bullet set for `ListBullet*` and a decimal set for `ListNumber*`, creating
+`numbering.xml` when there is none --- and the style's `w:numId` is rewritten to
+it; any other style-level `w:numPr` with no definition behind it is dropped,
+which is what Word's own Heading styles carry. `is_list_item` is now **true** for
+a `List Bullet` paragraph, through the style, with `list_string` `•`; section
+17.8's rule that the facade writes the style and no `w:numPr` stands, since that
+is what python-docx writes and its template is what makes python-docx's bullet
+appear.
+
+What changed on disk: artefacts 3, 5 and 6 lose the `w:numPr` from the Heading
+definitions they add (Word had ignored it; a re-check is cheap), and artefact 11
+gains `numbering.xml` with a bullet and a decimal definition. Two tests pin it,
+and the entry is in the portfolio's `word-hangs.md`. The regenerated artefact 11
+awaits a second check: a bullet on the first paragraph, `1.` on the second.
