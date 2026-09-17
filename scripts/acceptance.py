@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the eight documents the Word acceptance checklist needs.
+"""Write the nine documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Eight files, each testing a different half of the save path:
+Nine files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -53,6 +53,21 @@ Eight files, each testing a different half of the save path:
     **created** with their relationships and content types, and the two comment
     styles are added to ``styles.xml``, so this is the test of the part-creating
     half of section 3.9.
+``8-tracked-changes.docx``
+    a **loaded** document edited through CR-003 Phase F's content API with the
+    mode on: a replacement, an inserted paragraph, a deleted paragraph, a bold
+    run, a table row added and one deleted, and a comment on the replacement.
+``9-template-filled.docx``
+    ``samples/invoice2013.docx`` --- a Word-authored template with twenty
+    bindings over ``/customXml/item1.xml`` --- **filled** through CR-003 Phase
+    E's ``pkg.custom_xml_parts.fill()``: a new company and invoice number, the
+    VAT checkbox cleared, a new date, and new data for the first line item of a
+    repeating section. The repeat itself is **not** expanded: a repeating
+    section is a container and is never bound (section 4), so the document shows
+    the one item it already had, with the new values in it. A new content
+    control is inserted and bound to a **new** custom XML part added through
+    ``add()``, which is the test of ``addPropertiesPart``'s relationship from
+    the main document part.
 """
 
 from __future__ import annotations
@@ -65,16 +80,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from docx4j_py.openpackaging import (  # noqa: E402
+from docx4j_py.openpackaging import (
     ImagePart,
     WordprocessingMLPackage,
 )
-from docx4j_py.wml import el, emu_for, image_size, inline_picture, p, r  # noqa: E402
+from docx4j_py.wml import el, emu_for, image_size, inline_picture, p, r
 
 SOURCE = ROOT / "samples" / "2016_image_with_text_effects.docx"
 IMAGE_SOURCE = ROOT / "samples" / "Images.docx"
 #: Artefact 6 edits a document that was **loaded**, not created.
 SAMPLE_SOURCE = ROOT / "samples" / "2010-sample1.docx"
+#: Artefact 9's template: Word-authored, twenty bindings, a checkbox, a date, a
+#: picture control and two ``w15:repeatingSection``\ s.
+TEMPLATE_SOURCE = ROOT / "samples" / "invoice2013.docx"
 
 #: The width of the text column on A4 with 2.54 cm margins, in EMU: what an
 #: image wider than the page is scaled down to (docx4j's ``CxCy.scale``).
@@ -385,8 +403,54 @@ def tracked_changes(out: Path) -> Path:
     return target
 
 
+def template_filled(out: Path) -> Path:
+    """9. A Word-authored template filled through the Phase E custom XML API."""
+    target = out / "9-template-filled.docx"
+    pkg = WordprocessingMLPackage.load(TEMPLATE_SOURCE)
+    pkg.id_seed = 20260917
+
+    # what the template wants, before anything is written: the same call
+    # docx4j-mcp's describe_template makes
+    skeleton = pkg.custom_xml_parts.describe()
+    assert len(skeleton) == 20, len(skeleton)
+
+    # and the fill: a text binding, the checkbox, the date, and the data of the
+    # repeating section's first line item. The repeat is not expanded --- a
+    # container is never bound --- so the one item it has shows the new values.
+    result = pkg.custom_xml_parts.fill(
+        {
+            "/invoice[1]/customer[1]/company[1]": "Acme Manufacturing Ltd",
+            "/invoice[1]/customer[1]/contact[1]": "Ada Lovelace",
+            "/invoice[1]/invoicenumber[1]": "INV-2026-0917",
+            "/invoice[1]/VAT[1]/@applies": "false",
+            "/invoice[1]/invoicedate[1]": "2026-09-17T00:00:00Z",
+            "/invoice[1]/lines[1]/lineitem[1]/productcode[1]": "ACME-9",
+            "/invoice[1]/lines[1]/lineitem[1]/description[1]": "Anvil, large",
+            "/invoice[1]/lines[1]/lineitem[1]/quantity[1]": "2",
+            "/invoice[1]/lines[1]/lineitem[1]/price[1]": "199.00",
+        }
+    )
+    assert not result.skipped, result.skipped
+
+    # a new part, a new control, and a binding between them: docx4j's
+    # addPropertiesPart, with the relationship from the main document part
+    part = pkg.custom_xml_parts.add(
+        '<approval xmlns="http://example.com/approval">'
+        "<by>Grace Hopper</by><status>Approved</status></approval>"
+    )
+    body = pkg.body
+    paragraph = body.insert_paragraph("Approved by: ")
+    control = paragraph.get_range("End").insert_content_control("PlainText")
+    mappings = "xmlns:ns0='http://example.com/approval'"
+    assert control.xml_mapping.set_mapping("/ns0:approval[1]/ns0:by[1]", mappings, part)
+    pkg.custom_xml_parts.apply_bindings()
+
+    pkg.save(target)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the eight artefacts and print a summary."""
+    """Write the nine artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -403,6 +467,7 @@ def main(argv: list[str] | None = None) -> int:
         tables_and_pictures,
         comments,
         tracked_changes,
+        template_filled,
     ):
         target = build(out)
         with zipfile.ZipFile(target) as zf:

@@ -178,7 +178,14 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
 
 
 def _offset_index(items: list, paragraph: Any, offset: int) -> int:
-    """Where an empty control goes: after the last run that ends at or before `offset`."""
+    """Where an **empty** control goes: after the last run ending at or before `offset`.
+
+    Then past anything already sitting there that carries no text --- an empty
+    control inserted a moment ago, a bookmark --- so that two empty controls
+    asked for at the same offset come out in the order they were asked for.
+    """
+    from docx4j_py.traversal import text_of
+
     index = 0
     for segment in paragraph.segments():
         if segment.end > offset:
@@ -187,4 +194,6 @@ def _offset_index(items: list, paragraph: Any, offset: int) -> int:
             if item is segment.run:
                 index = position + 1
                 break
+    while index < len(items) and not text_of(items[index]):
+        index += 1
     return index

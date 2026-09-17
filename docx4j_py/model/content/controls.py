@@ -618,7 +618,10 @@ class ContentControl:
         value = getattr(value, "value", value)
         if not value:
             return ""
-        text = str(value)
+        # ``w15:color/@w:val`` is ``ST_HexColorAuto``, a union with ``xs:hexBinary``,
+        # so a parsed document hands the colour back as bytes and a document
+        # this API built hands back the string it was given.
+        text = value.hex().upper() if isinstance(value, bytes) else str(value)
         return text if text.startswith("#") else f"#{text}"
 
     @color.setter

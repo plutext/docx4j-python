@@ -33,6 +33,22 @@ from docx4j_py.model.content import (
     TableRow,
     TrackedChange,
 )
+from docx4j_py.model.customxml import (
+    CheckboxContentControl,
+    ComboBoxContentControl,
+    ContentControlListItem,
+    CustomXmlNode,
+    CustomXmlPart,
+    CustomXmlPartCollection,
+    CustomXmlPrefixMappingCollection,
+    DatePickerContentControl,
+    DropDownListContentControl,
+    GroupContentControl,
+    ListContentControl,
+    PictureContentControl,
+    RepeatingSectionContentControl,
+    XmlMapping,
+)
 
 SUBSET = ROOT / "tests" / "office_js_subset.json"
 
@@ -59,11 +75,38 @@ PHASE_F_CLASSES = {
     "Document": WordprocessingMLPackage,
 }
 
+#: The twelve Phase E adds: the custom XML model, the mapping and the typed
+#: content-control kinds (CR-003 section 3.7). Office JS's ``ListContentControl``
+#: is the shape a drop-down and a combo box share; both subclass it here.
+PHASE_E_CLASSES = {
+    "CustomXmlPart": CustomXmlPart,
+    "CustomXmlPartCollection": CustomXmlPartCollection,
+    "CustomXmlNode": CustomXmlNode,
+    "CustomXmlPrefixMappingCollection": CustomXmlPrefixMappingCollection,
+    "XmlMapping": XmlMapping,
+    "CheckboxContentControl": CheckboxContentControl,
+    "DatePickerContentControl": DatePickerContentControl,
+    "ListContentControl": ListContentControl,
+    "ContentControlListItem": ContentControlListItem,
+    "PictureContentControl": PictureContentControl,
+    "RepeatingSectionContentControl": RepeatingSectionContentControl,
+}
+# Office JS's ``GroupContentControl`` has no members of its own, so the subset
+# list carries no entry for it; the class is here all the same, and
+# ``ContentControl.group_content_control`` is what the list does promise.
+assert GroupContentControl is not None
+
 #: Every interface implemented so far, and the phase that owns each member.
-CLASSES = {**PHASE_B_CLASSES, **PHASE_C_CLASSES, **PHASE_G_CLASSES, **PHASE_F_CLASSES}
+CLASSES = {
+    **PHASE_B_CLASSES,
+    **PHASE_C_CLASSES,
+    **PHASE_G_CLASSES,
+    **PHASE_F_CLASSES,
+    **PHASE_E_CLASSES,
+}
 
 #: The phases this file's assertions hold for.
-PHASES = ("B", "C", "F", "G")
+PHASES = ("B", "C", "E", "F", "G")
 
 
 @pytest.fixture(scope="module")
@@ -128,9 +171,39 @@ def test_every_implemented_member_is_there_with_the_right_kind(subset):
     )
     print(f"\nlater phases still to come -- {summary}")
     assert not missing and not wrong_kind, (
-        f"Phases B, C and G owe {missing or 'nothing'}; wrong kind: {wrong_kind or 'none'}. "
+        f"Phases B, C, E, F and G owe {missing or 'nothing'}; "
+        f"wrong kind: {wrong_kind or 'none'}. "
         f"(For the record, the members of later phases still missing are {summary}.)"
     )
+
+
+def test_the_two_list_kinds_share_one_shape(subset):
+    """Office JS gives a drop-down and a combo box the same members.
+
+    ``ListContentControl`` is the shape; ``DropDownListContentControl`` and
+    ``ComboBoxContentControl`` are the two kinds, and a control reports whichever
+    one it is (CR-003 section 3.7).
+    """
+    assert issubclass(DropDownListContentControl, ListContentControl)
+    assert issubclass(ComboBoxContentControl, ListContentControl)
+    for member in subset["interfaces"]["ListContentControl"]:
+        for cls in (DropDownListContentControl, ComboBoxContentControl):
+            assert kind_of(cls, member["name"]) == member["kind"], f"{cls.__name__}.{member}"
+
+
+def test_the_xpath_addressed_editors_put_the_mappings_last(subset):
+    """CR-003 section 17: a departure the subset list does not cover.
+
+    Office JS's desktop-only ``insertElement(xpath, namespaceMappings, xml)``
+    puts the mappings second; here they come after the XML, with a default, so
+    the common call --- a part with one namespace, or none --- is two arguments.
+    """
+    names = {member["name"] for member in subset["interfaces"]["CustomXmlPart"]}
+    assert "insert_element" not in names  # deliberately outside the promise
+
+    signature = inspect.signature(CustomXmlPart.insert_element)
+    assert list(signature.parameters) == ["self", "xpath", "xml", "namespace_mappings", "index"]
+    assert signature.parameters["namespace_mappings"].default is None
 
 
 def test_the_search_options_are_the_keyword_arguments(subset):

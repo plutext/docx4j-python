@@ -13,11 +13,12 @@ content API ([CR-003](docs/change-requests/CR-003-content-api.md) Phase A, the t
 builders; Phase B, `Body`, `Paragraph`, `Range` and `Font` in Office JS's vocabulary; Phase D,
 the agent surface — addresses, `outline()`, `find()`, `describe()`, `ChangeReport`, `dry_run`
 and `DocumentSession`; Phase K, markdown in and out; Phase C, tables, pictures, `insert_ooxml`
-and content controls; Phase G, comments; and Phase F, change tracking and `replace_text`) are
-in. Over 16 real documents, every part not touched is written back byte for byte, all 141 typed
-WordprocessingML parts unmarshal and re-serialise canonically identical to the source, and
-nothing is dropped. Saved output opens in Word. Custom XML, XML mapping and typed content
-controls (Phase E) are next.
+and content controls; Phase G, comments; Phase F, change tracking and `replace_text`; and
+Phase E, custom XML parts, XML mapping, the typed content-control kinds and `describe()` /
+`fill()`) are in. Over 16 real documents, every part not touched is written back byte for byte,
+all 141 typed WordprocessingML parts unmarshal and re-serialise canonically identical to the
+source, and nothing is dropped. Saved output opens in Word. The python-docx facade (Phase J) is
+next.
 
 ```python
 from docx4j_py import load
@@ -197,8 +198,63 @@ repeat.tables[0].values[0]                   # ['productcode', 'description', 'q
 ```
 
 `control.delete()` keeps what the control held and puts it where the control was, as Word's
-"remove content control" does; `delete(keep_content=False)` takes the content with it. The typed
-kinds, the bindings and `insert_content_control` are CR-003 Phase E.
+"remove content control" does; `delete(keep_content=False)` takes the content with it.
+
+### Filling a template
+
+A Word template is a document whose content controls are **bound** to nodes of a custom XML
+part, and filling one in is two calls. `describe()` says what the template wants --- the XPaths
+it binds, the kind of control that shows each, the repeats, and the value the data holds now ---
+and `fill()` sets the nodes and applies the bindings, which is what Word itself does on open.
+
+```python
+from docx4j_py import load
+
+pkg = load("samples/invoice2013.docx")
+
+skeleton = pkg.custom_xml_parts.describe()
+len(skeleton)                                # 20 bindings
+skeleton.repeats                             # ('/invoice[1]/lines[1]/lineitem[1]',
+                                             #  '/invoice[1]/notes[1]/note[1]')
+skeleton.parts[0].id                         # '{5D7BA57F-1E52-4637-9F82-2D4025768D4F}'
+binding = skeleton.bindings[1]
+binding.xpath, binding.kind, binding.value   # ('/invoice[1]/customer[1]/contact[1]',
+                                             #  'PlainText', 'John Citizen')
+
+result = pkg.custom_xml_parts.fill({
+    "/invoice[1]/customer[1]/company[1]": "Acme Manufacturing Ltd",
+    "/invoice[1]/invoicenumber[1]": "INV-2026-0917",
+    "/invoice[1]/VAT[1]/@applies": "false",
+})
+result                                       # <FillResult 3 set, 0 skipped, 16 bound>
+pkg.save("invoice-filled.docx")
+```
+
+Word refreshes a bound control from its data when it opens the document, so the saved file shows
+the new values either way; `fill()` applies them there and then, so that the same document read
+back through this library shows them too:
+
+```python
+controls = {c.title: c for c in pkg.body.content_controls}
+controls["/invoice[1]/customer[1]/company[1]"].text   # 'Acme Manufacturing Ltd'
+controls["/invoice[1]/VAT[1]/@applies"].text          # '☐' --- the checkbox glyph, MS Gothic
+[c for c in pkg.body.content_controls
+ if c.type == "DatePicker"][0].text                   # '29 January 2015' --- w:dateFormat, applied
+```
+
+`describe()` and `fill()` are the shorthand; the whole WordApiDesktop 1.3 surface is underneath.
+`pkg.custom_xml_parts` is a collection of `CustomXmlPart`s with `get_item` (brace- and
+case-insensitive, because Word writes the store item id both ways), `add(xml)` and
+`apply_bindings()`; a part's nodes are `CustomXmlNode`s with the DOM's members and lxml's XPath;
+and `control.xml_mapping` reads and writes the `w:dataBinding`:
+
+```python
+part = pkg.custom_xml_parts.get_item("{5D7BA57F-1E52-4637-9F82-2D4025768D4F}")
+part.select_single_node("/invoice[1]/customer[1]/company[1]").text   # 'Acme Manufacturing Ltd'
+```
+
+Reading a custom XML part costs nothing: a part that is only read is written back byte for byte,
+and only a mutation makes it re-marshal.
 
 ### The object model
 

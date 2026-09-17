@@ -168,16 +168,27 @@ def bound_bodies(package: Any) -> list[Any]:
 
     docx4j's ``BindingHandler.applyBindings`` walks exactly these three.
     """
-    out: list[Any] = []
+    from docx4j_py.model.content.body import body_of
+    from docx4j_py.model.content.errors import ContentError
+
+    parts: list[Any] = []
     main = getattr(package, "main_document_part", None)
     if main is not None:
-        out.append(main.body)
+        parts.append(main)
     for name in ("header_parts", "footer_parts"):
-        parts = getattr(package, name, None)
-        if parts is None:
+        getter = getattr(package, name, None)
+        if getter is not None:
+            parts.extend(getter())
+    out: list[Any] = []
+    for part in parts:
+        # ``body_of(part)`` and not ``part.body``: a trial's ``TrialPart`` has
+        # no ``body`` of its own and would hand the attribute to the **real**
+        # part, so a dry run's ``apply_bindings`` would edit the real document
+        # (CR-003 section 17).
+        try:
+            out.append(body_of(part))
+        except ContentError:  # pragma: no cover - a part with no block content
             continue
-        for part in parts():
-            out.append(part.body)
     return out
 
 

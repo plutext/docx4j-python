@@ -565,11 +565,17 @@ class CustomXmlPartCollection:
 
         return update_from_content_controls(self.package)
 
-    def describe(self) -> Skeleton:
-        """The data this template wants: docx4j-mcp's ``describe_template``."""
+    def describe(self, *, max_value_chars: int | None = 200) -> Skeleton:
+        """The data this template wants: docx4j-mcp's ``describe_template``.
+
+        Args:
+            max_value_chars: how much of each current value to report; None for
+                all of it. The default keeps a picture binding's base64 out of a
+                tool result.
+        """
         from docx4j_py.model.customxml.template import describe_template
 
-        return describe_template(self.package)
+        return describe_template(self.package, max_value_chars=max_value_chars)
 
     def fill(self, data: dict[str, Any] | str) -> FillResult:
         """Set the nodes and apply the bindings: docx4j-mcp's ``fill_template``."""
