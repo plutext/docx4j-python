@@ -27,6 +27,16 @@ dev = [
 baseline = [
     "xsdata[cli,lxml]==26.2",
 ]
+# CR-003 section 3.6 and section 20: python-docx is **not** a dependency of
+# this package. It is a tool for two things --- deriving
+# `tests/python_docx_subset.json` (`scripts/python_docx_subset.py`) and the
+# parity test that makes python-docx the judge of what this engine wrote
+# (`tests/content/test_python_docx_parity.py`, which skips when python-docx is
+# absent, as it is in .venv-fork). Install it in a throwaway venv, or
+# `pip install -e .[parity]` into one.
+parity = [
+    "python-docx==1.2.0",
+]
 
 [build-system]
 # 1.27 is the first hatchling to accept the SPDX license and license-files fields (PEP 639)
