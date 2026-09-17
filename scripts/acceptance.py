@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the nine documents the Word acceptance checklist needs.
+"""Write the ten documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Nine files, each testing a different half of the save path:
+Ten files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -68,6 +68,17 @@ Nine files, each testing a different half of the save path:
     also the check that three rows appear. A new content control is inserted and
     bound to a **new** custom XML part added through ``add()``, which is the
     test of ``addPropertiesPart``'s relationship from the main document part.
+``10-lists.docx``
+    a **loaded** document given, through CR-003 Phase H's content API, a
+    numbered list of three items from ``start_new_list()``, a fourth item
+    attached at level 1, a second list restarted over the same definition with
+    ``like=``, a bullet list from ``kind="Bullet"``, one list restyled with
+    ``set_level_numbering(0, "LowerLetter", "%1)")``, a paragraph detached, and
+    --- with tracking on --- one paragraph attached, which Word shows as a
+    *Formatted* paragraph-numbering revision. It exercises the numbering part
+    created from nothing with its relationship and its content type, the
+    definitions copied from docx4j's default numbering, and the ``w:pPrChange``
+    a numbering change records.
 """
 
 from __future__ import annotations
@@ -471,8 +482,63 @@ def template_filled(out: Path) -> Path:
     return target
 
 
+def lists(out: Path) -> Path:
+    """10. A loaded document given lists through the Phase H content API."""
+    from docx4j_py.model.content import Author
+
+    target = out / "10-lists.docx"
+    pkg = WordprocessingMLPackage.load(SAMPLE_SOURCE)
+    # a Word 2010 document; a loaded document's mode is never changed silently,
+    # so say so here (CR-003 section 17.11)
+    pkg.compatibility_mode = 15
+    pkg.id_seed = 20260917
+    pkg.author = Author("Claude", initials="C", email="claude@example.com")
+    body = pkg.body
+
+    # a numbered list of three, the first item starting it: the numbering part,
+    # its relationship and its content type are all created here
+    first = body.insert_paragraph("Check the invoice total")
+    numbered = first.start_new_list()
+    body.insert_paragraph("Check the licence key").attach_to_list(numbered.id)
+    body.insert_paragraph("Ship it").attach_to_list(numbered.id)
+    # and a fourth, a level deeper: Word paints "a." in front of it
+    body.insert_paragraph("Ship it by Friday").attach_to_list(numbered.id, 1)
+
+    # Word's "Restart numbering at 1": a second w:num over the *same*
+    # w:abstractNum with a w:startOverride of 1 at level 0
+    restarted = body.insert_paragraph("A second list, starting again at 1").start_new_list(
+        like=numbered
+    )
+    body.insert_paragraph("Its second item").attach_to_list(restarted.id)
+
+    # a bullet list, from docx4j's own default bullet definition
+    bullets = body.insert_paragraph("A bulleted point").start_new_list(kind="Bullet")
+    body.insert_paragraph("And another").attach_to_list(bullets.id)
+
+    # one list restyled: a) b) c), the definition it shares with the restarted
+    # list copied first so that the change stays local to this one
+    numbered.set_level_numbering(0, "LowerLetter", "%1)")
+
+    # a paragraph taken out of a list again
+    body.insert_paragraph("This one was in the list and is not any more").attach_to_list(
+        bullets.id
+    )
+    body.paragraph_at(contains="is not any more").detach_from_list()
+
+    # and, with tracking on, a numbering change a human reviews in Word. The
+    # paragraph is written *before* the mode goes on, so that it is the
+    # document's own: a paragraph this author inserted records no w:pPrChange
+    # (CR-003 section 16.2 item 6), and there would be no revision to review
+    body.insert_paragraph("This paragraph joins the bullets, with tracking on")
+    pkg.change_tracking_mode = "TrackAll"
+    body.paragraph_at(contains="joins the bullets").attach_to_list(bullets.id)
+
+    pkg.save(target)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the nine artefacts and print a summary."""
+    """Write the ten artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -490,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
         comments,
         tracked_changes,
         template_filled,
+        lists,
     ):
         target = build(out)
         with zipfile.ZipFile(target) as zf:
