@@ -15,10 +15,12 @@ The design lives in `docs/change-requests/`. Each CR's implementation-notes sect
 sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 17) record what was actually built,
 the numbers and every deliberate departure; read them before changing the area they cover.
 Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phase A
-implemented, B (resolution utilities, the Java parity harness and golden files) and C (PML, SML,
-flat OPC, less the flat OPC read half) proposed; CR-003 (content API) Phases A, B, C, D, E, F,
-G and K implemented --- with Phase E every non-extension member of `tests/office_js_subset.json`
-is --- H, I and J proposed.
+implemented, B (resolution utilities, the Java parity harness and golden files; its numbering
+`Emulator` core landed early through CR-003 H, section 12.11) and C (PML, SML, flat OPC, less the
+flat OPC read half) proposed; CR-003 (content API) **every phase implemented** --- A, B, D, K, C, G,
+F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member of
+`tests/office_js_subset.json` is, and with Phase J `docx4j_py.docx` covers 295 of the 303 members of
+`tests/python_docx_subset.json`.
 `REPORT.md` is the original xsdata feasibility experiment.
 
 ## Environments and commands
@@ -45,7 +47,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
-.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the nine Word checklist documents
+.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata
 python codegen/derive_names.py                         # re-derive codegen/names/ from docx4j's XJC output
@@ -90,6 +92,10 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `CustomXmlNode`, `XmlMapping`, the typed control kinds, the bindings, `describe()` / `fill()`),
   `model/markdown/` (markdown out and in) and `model/sessions.py` (`DocumentSession`)
 - `resources/`: the parts `warm_up()` parses, and docx4j's default styles, numbering and fontTable
+- `docx/`: CR-003 Phase J's python-docx facade (`Document`, `Paragraph`, `Run`, `Font`, `Table`,
+  `Section`, the `Length` units and the `WD_*` enums), a separate namespace with python-docx's names
+  over the content API; `scripts/python_docx_subset.py` derives its member list from an installed
+  python-docx 1.2.0, which is never a dependency
 - `openpackaging/`: the whole engine
 
 **Never hand-edit a generated file**: the namespace packages' `__init__.py` and `el.py`
