@@ -17,6 +17,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
+# ``scripts/canon.py`` is the prefix-insensitive normal form CR-002's round trip
+# compares with; CR-003 Phase F's invariant (section 16.12) uses the same one.
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from docx4j_py import WordprocessingMLPackage, create_package, load
 

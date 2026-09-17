@@ -74,6 +74,7 @@ from docx4j_py.wml import (
 __all__ = [
     "CHANGE_TRACKING_MODES",
     "REVISION_NAMES",
+    "RUN_ATTRIBUTES",
     "ChangeTracker",
     "ChangeTracking",
     "ChangeTrackingModeValue",
@@ -85,6 +86,7 @@ __all__ = [
     "insertion_mark_of",
     "mark_deleted",
     "mark_inserted",
+    "merge_runs",
     "mode_of",
     "para_r_pr_of",
     "prune_paragraph_properties",
@@ -93,6 +95,7 @@ __all__ = [
     "revision_of",
     "row_pr_of",
     "set_mode",
+    "tidy_runs",
     "to_deleted_text",
     "to_restored_text",
     "track_deleted_row",
@@ -102,6 +105,7 @@ __all__ = [
     "track_inserted_table",
     "tracker_of",
     "wrap_new_runs",
+    "wrap_run",
     "xml_date",
 ]
 
@@ -118,6 +122,12 @@ W_TRACK_REVISIONS = _w("trackRevisions")
 
 #: The four run-level revision holders, by element name.
 REVISION_NAMES: frozenset[str] = frozenset({W_INS, W_DEL, W_MOVE_FROM, W_MOVE_TO})
+
+#: A ``w:r``'s own attributes: Word's revision save ids. A run split in two
+#: gives both halves the original's, so that the halves are identical but for
+#: their text --- which is what lets a rejected revision put them back together
+#: (CR-003 section 16.12).
+RUN_ATTRIBUTES: tuple[str, ...] = ("rsid_rpr", "rsid_del", "rsid_r")
 
 #: What a deleted run's text items become, and the way back.
 _DELETED_NAMES: dict[str, str] = {"t": "delText", "instrText": "delInstrText"}
@@ -342,15 +352,29 @@ class ChangeTracker:
         return revision is not None and revision.kind == "ins" and revision.author == self.author
 
     def own_paragraph(self, paragraph: P) -> bool:
-        """True when this author inserted the paragraph, mark and all.
-
-        Its properties are this author's too, so a property write on it records
-        no ``w:pPrChange``: there is nothing in the document yet to record.
-        """
+        """True when a paragraph's **mark** is an insertion by this author."""
         p_pr = paragraph.p_pr
         r_pr = p_pr.r_pr if p_pr is not None else None
         ins = r_pr.ins if r_pr is not None else None
         return ins is not None and str(getattr(ins, "author", "") or "") == self.author
+
+    def inserted(self, paragraph: P) -> bool:
+        """True when **this session** inserted the paragraph (CR-003 section 16.12).
+
+        Its properties are this author's too, so a property write on it records
+        no ``w:pPrChange``: there is nothing in the document yet to record. The
+        mark cannot answer this since 16.10 --- an inserted paragraph at the end
+        of a container carries none, and the mark it does carry may belong to
+        the paragraph before it --- so the package remembers.
+        """
+        store = getattr(self.package, "_inserted_paragraphs", None)
+        return bool(store) and id(paragraph) in store
+
+    def remember_inserted(self, paragraph: P) -> None:
+        """Record that this session inserted a paragraph."""
+        store = getattr(self.package, "_inserted_paragraphs", None)
+        if store is not None:
+            store.add(id(paragraph))
 
     def assert_editable(self, revision: Revision | None) -> None:
         """Refuse an edit to deleted text, naming the author who deleted it.
@@ -500,6 +524,7 @@ def track_inserted_paragraph(tracker: ChangeTracker, paragraph: P) -> None:
     mark gives the same document once accepted or rejected and keeps the edit on
     the element that was added (CR-003 section 4).
     """
+    tracker.remember_inserted(paragraph)
     tracker.mark_paragraph_inserted(paragraph)
     wrap_new_runs(tracker, paragraph)
 
@@ -533,6 +558,29 @@ def _index_of(items: list, element: Any) -> int:
     return -1
 
 
+def wrap_run(tracker: ChangeTracker, run: R, paragraph: P) -> Any:
+    """Wrap **one** run in a ``w:ins`` where it stands, and return the wrapper.
+
+    What a verb that adds a single run to an existing paragraph needs ---
+    :meth:`~docx4j_py.model.content.paragraph.Paragraph.insert_inline_picture`
+    is the one. :func:`wrap_new_runs` would wrap the paragraph's **own** runs
+    too, and rejecting the revision would then take text nobody inserted
+    (CR-003 section 16.12).
+    """
+    holder = getattr(run, "parent", None)
+    items = run_items_of(holder) if holder is not None else None
+    if items is None:
+        items, holder = paragraph.content, paragraph
+    index = _index_of(items, run)
+    if index < 0:
+        return None
+    del items[index]
+    wrapper = tracker.ins([run])
+    items.insert(index, wrapper)
+    wrapper.parent = holder
+    return wrapper
+
+
 def _is_plain_run(item: Any) -> bool:
     """A ``w:r`` that is not itself a revision holder's child of another author."""
     return isinstance(item, R)
@@ -563,6 +611,7 @@ def track_inserted_blocks(tracker: ChangeTracker, elements: list, container: lis
             continue
         if not isinstance(item, P):
             continue
+        tracker.remember_inserted(item)
         wrap_new_runs(tracker, item)
         index = _index_of(container, item)
         if index < 0:
@@ -691,6 +740,135 @@ def _track_blocks(tracker: ChangeTracker, blocks: list) -> None:
 # ---------------------------------------------------------------------------
 # the property holders
 # ---------------------------------------------------------------------------
+
+
+def merge_runs(
+    items: list, at: int, split: dict[int, int] | None = None, spaces: set[int] | None = None
+) -> int:
+    """Join the runs on either side of one boundary in a run list; how many went.
+
+    A revision that goes --- a ``w:del`` accepted, a ``w:ins`` rejected, a
+    deletion restored --- leaves the two halves of a run **this API split** side
+    by side: isolating ``document`` for a ``w:del`` splits
+    ``<w:t>document.</w:t>`` in two, and putting the text back does not put the
+    run back. Word merges them, and so does this, so that a document with every
+    revision rejected is **canonically the document that was there** (CR-003
+    section 16.12).
+
+    It is deliberately **narrow**. Only the boundary a revision just vacated is
+    looked at; the two runs must be identical but for their content --- the same
+    ``w:rPr`` by value and the same ``w:rsidR`` / ``w:rsidRPr`` / ``w:rsidDel``,
+    which a split gives both halves; and they must be **the two halves of one
+    split this package made** (`split` is its ``_split_runs``, ``id(tail) ->
+    id(head)``). Runs a document keeps apart stay apart even when they are
+    identical, which they often are, and a half is never merged with a run it
+    never belonged to. With no `split` --- a package reloaded since, which
+    cannot know --- nothing is merged at all.
+    """
+    merged = 0
+    while 0 < at < len(items) and _mergeable(items[at - 1], items[at], split):
+        first, second = items[at - 1], items[at]
+        for item in list(second.content):
+            first.content.append(item)
+            item.parent = first
+        _join_text(first, spaces)
+        del items[at]
+        _joined(split, first, second)
+        merged += 1
+    return merged
+
+
+def _joined(split: dict[int, int] | None, first: R, second: R) -> None:
+    """Keep the split table right after two halves become one run."""
+    if not split:
+        return
+    split.pop(id(second), None)
+    for tail, head in list(split.items()):
+        if head == id(second):
+            split[tail] = id(first)
+
+
+def tidy_runs(
+    paragraph: P, split: dict[int, int] | None, spaces: set[int] | None = None
+) -> int:
+    """:func:`merge_runs` at every boundary of a paragraph; how many runs went.
+
+    Run once after ``accept_all()`` / ``reject_all()``, because the order the
+    changes come in decides what is mergeable **when**: a run whose
+    ``w:rPrChange`` is rejected after its neighbour's deletion could not be
+    joined at the moment that deletion went (CR-003 section 16.12). It is as
+    narrow as :func:`merge_runs`: one of the two runs must be a run this
+    session's split made.
+    """
+    merged = 0
+
+    def visit(items: list | None) -> None:
+        nonlocal merged
+        if not items:
+            return
+        index = 1
+        while index < len(items):
+            gone = merge_runs(items, index, split, spaces)
+            merged += gone
+            if gone:
+                continue
+            item = items[index - 1]
+            if not isinstance(item, R):
+                nested = run_items_of(item)
+                if nested is not None:
+                    visit(nested)
+            index += 1
+        last = items[-1] if items else None
+        if last is not None and not isinstance(last, R):
+            nested = run_items_of(last)
+            if nested is not None:
+                visit(nested)
+
+    visit(run_items_of(paragraph))
+    return merged
+
+
+def _mergeable(first: Any, second: Any, split: dict[int, int] | None) -> bool:
+    """True when two adjacent runs are the two halves of one split."""
+    if not isinstance(first, R) or not isinstance(second, R):
+        return False
+    if not split or split.get(id(second)) != id(first):
+        return False
+    if first.r_pr != second.r_pr:
+        return False
+    for name in RUN_ATTRIBUTES:
+        if getattr(first, name, None) != getattr(second, name, None):
+            return False
+    return bool(getattr(first, "content", None)) and bool(getattr(second, "content", None))
+
+
+def _join_text(run: R, spaces: set[int] | None = None) -> None:
+    """Fold a run's adjacent ``w:t`` items into one, as Word writes them.
+
+    ``xml:space`` is **recomputed** for the joined value, but only when the
+    split is what put it there (`spaces`, the package's ``_split_spaces``): the
+    halves of ``<w:t>document.</w:t>`` need it and the whole does not, and a
+    stray ``xml:space="preserve"`` would be a difference where there is none ---
+    while an attribute the **document** wrote, redundant or not, is left exactly
+    as it was (CR-003 section 16.12).
+    """
+    from docx4j_py.model.content.text_model import W_T
+
+    items = run.content
+    index = 0
+    while index < len(items) - 1:
+        first, second = items[index], items[index + 1]
+        if element_name(first) == W_T and element_name(second) == W_T:
+            value = (first.value or "") + (second.value or "")
+            ours = spaces is not None and id(first) in spaces
+            first.value = value
+            if value != value.strip() or "  " in value:
+                first.space = "preserve"
+            elif ours:
+                first.space = None
+            del items[index + 1]
+            continue
+        index += 1
 
 
 def para_r_pr_of(paragraph: P) -> ParaRPr:

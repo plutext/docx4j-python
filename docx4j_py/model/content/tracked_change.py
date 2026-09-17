@@ -40,6 +40,7 @@ from docx4j_py.model.content.text_model import W_DEL_TEXT, block_children_of, it
 from docx4j_py.model.content.tracking import (
     REVISION_NAMES,
     date_of,
+    merge_runs,
     prune_paragraph_properties,
     restore_p_pr,
     restore_r_pr,
@@ -214,10 +215,11 @@ class TrackedChange:
         """
         target = self.target
         if target.kind == "run":
+            memory = split_runs_of(self.body)
             if target.mark in ("ins", "moveTo"):
-                _unwrap(target)
+                _unwrap(target, memory)
             else:
-                _remove(target, "accept")
+                _remove(target, "accept", memory)
             return
         if target.kind == "mark":
             if target.mark == "ins":
@@ -244,6 +246,7 @@ class TrackedChange:
             tr_pr = getattr(target.element, "tr_pr", None)
             if tr_pr is not None:
                 tr_pr.ins = None
+                _prune_row_properties(target.element)
         else:
             _remove_row(target, "accept")  # the content goes with the row
 
@@ -255,10 +258,11 @@ class TrackedChange:
         """
         target = self.target
         if target.kind == "run":
+            memory = split_runs_of(self.body)
             if target.mark in ("ins", "moveTo"):
-                _remove(target, "reject")
+                _remove(target, "reject", memory)
             else:
-                _restore_deleted(target)
+                _restore_deleted(target, memory)
             return
         if target.kind == "mark":
             if target.mark == "del":
@@ -289,6 +293,7 @@ class TrackedChange:
             tr_pr = getattr(target.element, "tr_pr", None)
             if tr_pr is not None:
                 tr_pr.del_value = None
+                _prune_row_properties(target.element)
         else:
             _remove_row(target, "reject")  # the content goes with the row
 
@@ -358,7 +363,13 @@ def _index_of(items: list, element: Any) -> int:
     return -1
 
 
-def _remove(target: TrackedChangeTarget, verb: str) -> None:
+def split_runs_of(body: Body | None) -> tuple[dict[int, int] | None, set[int] | None]:
+    """What this package remembers of its splits: the halves, and the spaces (16.12)."""
+    package = getattr(body, "package", None) if body is not None else None
+    return getattr(package, "_split_runs", None), getattr(package, "_split_spaces", None)
+
+
+def _remove(target: TrackedChangeTarget, verb: str, memory: tuple = (None, None)) -> None:
     """Take the element out of the list holding it."""
     owner = target.owner
     index = _index_of(owner, target.element) if owner is not None else -1
@@ -369,6 +380,7 @@ def _remove(target: TrackedChangeTarget, verb: str) -> None:
             hint="call get_tracked_changes() again after accepting or rejecting others",
         )
     del owner[index]
+    merge_runs(owner, index, *memory)
 
 
 def _remove_row(target: TrackedChangeTarget, verb: str) -> None:
@@ -396,7 +408,7 @@ def _remove_row(target: TrackedChangeTarget, verb: str) -> None:
         table = None
 
 
-def _unwrap(target: TrackedChangeTarget) -> None:
+def _unwrap(target: TrackedChangeTarget, memory: tuple = (None, None)) -> None:
     """A ``w:ins`` or ``w:moveTo`` accepted: its runs take its place."""
     owner = target.owner
     index = _index_of(owner, target.element) if owner is not None else -1
@@ -411,14 +423,32 @@ def _unwrap(target: TrackedChangeTarget) -> None:
     owner[index : index + 1] = items
     for item in items:
         item.parent = parent
+    # the boundaries the revision vacated: the halves of a run this API split
+    # for it are side by side again (CR-003 section 16.12)
+    merge_runs(owner, index + len(items), *memory)
+    merge_runs(owner, index, *memory)
 
 
-def _restore_deleted(target: TrackedChangeTarget) -> None:
+def _restore_deleted(target: TrackedChangeTarget, memory: tuple = (None, None)) -> None:
     """A ``w:del`` or ``w:moveFrom`` rejected: its runs come back as ``w:t``."""
     for item in run_items_of(target.element) or ():
         if isinstance(item, R):
             to_restored_text(item)
-    _unwrap(target)
+    _unwrap(target, memory)
+
+
+def _prune_row_properties(row: Any) -> None:
+    """Drop a ``w:trPr`` a row revision emptied, so no husk is left (16.12)."""
+    tr_pr = getattr(row, "tr_pr", None)
+    if tr_pr is None:
+        return
+    if (
+        tr_pr.ins is None
+        and tr_pr.del_value is None
+        and tr_pr.tr_pr_change is None
+        and not tr_pr.content
+    ):
+        row.tr_pr = None
 
 
 def _drop_mark(paragraph: Paragraph | None, which: str) -> None:
@@ -476,6 +506,17 @@ def join_with_next(
             return
         _drop_mark(paragraph, "ins")
         _drop_mark(paragraph, "del")
+        return
+    if keep_properties and _following_survives(element, following):
+        # rejecting an insertion: the paragraph that survives is the **original**
+        # one, with its own element, attributes, ``w14:paraId`` and properties
+        # (CR-003 section 16.12). Whatever is left in the inserted one --- another
+        # author's runs --- goes to the front of it.
+        for offset, item in enumerate(list(element.content)):
+            following.content.insert(offset, item)
+            item.parent = following
+        link_parents(following)
+        del container[index]
         return
     for item in list(following.content):
         element.content.append(item)
@@ -633,6 +674,40 @@ def _collect_run_level(paragraph: Paragraph, items: list, out: list[TrackedChang
         nested = run_items_of(item)
         if nested is not None:
             _collect_run_level(paragraph, nested, out)
+
+
+#: The attributes that make a ``w:p`` element the document's own: Word's
+#: revision save ids and the stable paragraph id an address is built on.
+_PARAGRAPH_ATTRIBUTES = (
+    "para_id",
+    "text_id",
+    "rsid_r",
+    "rsid_del",
+    "rsid_p",
+    "rsid_rdefault",
+    "rsid_rpr",
+)
+
+
+def _following_survives(element: P, following: P) -> bool:
+    """Which of the two paragraphs a rejected insertion leaves standing.
+
+    The **original** one, in both forms of the mark (CR-003 section 16.12). By
+    reject time the inserted paragraph's runs have already been rejected, so the
+    one still holding content is the original; when that does not decide it ---
+    both empty, or both holding content --- the one carrying more of the
+    document's own attributes wins, and a genuine tie goes to the **next**
+    paragraph, which is the original in the own-mark form.
+    """
+    mine, theirs = bool(element.content), bool(following.content)
+    if mine != theirs:
+        return not mine
+    return _attributes_of(following) >= _attributes_of(element)
+
+
+def _attributes_of(paragraph: P) -> int:
+    """How many of a ``w:p``'s own attributes are set."""
+    return sum(getattr(paragraph, name, None) is not None for name in _PARAGRAPH_ATTRIBUTES)
 
 
 def _row_text(row: Any) -> str:

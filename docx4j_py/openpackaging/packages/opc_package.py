@@ -72,7 +72,10 @@ class OpcPackage:
         "_current_change",
         "_id_rng",
         "_id_seed",
+        "_inserted_paragraphs",
         "_para_ids_taken",
+        "_split_runs",
+        "_split_spaces",
         "_tracked_change_date",
         "content_type_manager",
         "custom_xml_data_storage_parts",
@@ -133,6 +136,23 @@ class OpcPackage:
         self._change_tracking_mode: Any = None
         self._change_tracker: Any = None
         self._tracked_change_date: Any = None
+        # CR-003 section 16.12: ``id(tail) -> id(head)`` for every ``w:r`` this
+        # package's splits have made. A rejected revision puts the two halves of
+        # a split run back side by side, and this is what says they are *those*
+        # two halves --- runs a document keeps apart are never joined, and
+        # neither is a half beside a run it never belonged to. In memory only: a
+        # reload starts with none, and a reject then leaves the runs split.
+        self._split_runs: dict[int, int] = {}
+        # and the ``id()`` of every ``w:p`` this package's content API inserted
+        # while tracking. With the mark of an inserted paragraph sometimes on
+        # the paragraph *before* it (CR-003 section 16.10), the mark no longer
+        # says who made the paragraph, and a property setter has to know: a
+        # paragraph this session inserted records no ``w:pPrChange``.
+        self._inserted_paragraphs: set[int] = set()
+        # and the ``id()`` of every ``w:t`` whose ``xml:space="preserve"`` a
+        # split put there. Only those may lose it when the halves are joined:
+        # an attribute the document itself wrote stays (section 16.12).
+        self._split_spaces: set[int] = set()
 
     # -- the agent surface's state (CR-003 section 3.4) --------------------
 

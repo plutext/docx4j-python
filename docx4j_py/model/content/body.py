@@ -1045,6 +1045,24 @@ class Body(Sequence):
                 if not mark_deleted(paragraph.element):
                     paragraph.delete()
 
+    def _tidy_runs(self) -> int:
+        """Join the runs a tracked edit split apart; returns how many went.
+
+        Only the halves of a run **this session** split, which is what makes it
+        safe to run over the whole body: see
+        :func:`~docx4j_py.model.content.tracking.tidy_runs` and CR-003 section
+        16.12.
+        """
+        from docx4j_py.model.content.tracking import tidy_runs
+
+        split = getattr(self.package, "_split_runs", None)
+        if not split:
+            return 0
+        spaces = getattr(self.package, "_split_spaces", None)
+        return sum(
+            tidy_runs(paragraph.element, split, spaces) for paragraph in self.iter_paragraphs()
+        )
+
     def _row_elements(self) -> list[tuple[Any, list]]:
         """Every ``w:tr`` in this body's tables and the list holding it, in order."""
         from docx4j_py.model.content.text_model import cells_of, rows_of
@@ -1096,6 +1114,8 @@ class Body(Sequence):
             changes = self.get_tracked_changes()
             for tracked in reversed(changes):
                 tracked.accept()
+            if changes:
+                self._tidy_runs()
             change.touched(self.prefix)
             change.text(after=self.text)
             return len(changes)
@@ -1106,6 +1126,8 @@ class Body(Sequence):
             changes = self.get_tracked_changes()
             for tracked in reversed(changes):
                 tracked.reject()
+            if changes:
+                self._tidy_runs()
             change.touched(self.prefix)
             change.text(after=self.text)
             return len(changes)

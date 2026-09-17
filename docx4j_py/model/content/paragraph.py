@@ -291,7 +291,7 @@ class Paragraph:
             self.element.p_pr = p_pr
             p_pr.parent = self.element
         tracker = self.change_tracker
-        if tracker is not None and not tracker.own_paragraph(self.element):
+        if tracker is not None and not tracker.inserted(self.element):
             tracker.record_p_pr_change(p_pr)
         return p_pr
 
@@ -997,7 +997,11 @@ class Paragraph:
         if length:
             self._delete_text(tracker, 0, length)
         mark = insertion_mark_of(self.element, self.container)
-        ours = mark is not None and tracker.own_paragraph(mark)
+        ours = (
+            mark is not None
+            and tracker.own_paragraph(mark)
+            and (mark is self.element or tracker.inserted(self.element))
+        )
         if ours and not self.element.content:
             # our own insertion, taken back whole: the paragraph simply goes, and
             # so does the mark that recorded it --- which is the **previous**
@@ -1045,7 +1049,33 @@ class Paragraph:
         The offset is snapped to a grapheme boundary first (CR-003 section
         3.12); the offset actually used is returned.
         """
-        return split_at(self.element, offset, prefer=prefer)
+        made: list = []
+        used = split_at(self.element, offset, prefer=prefer, made=made)
+        self.remember_split(made)
+        return used
+
+    def remember_split(self, pairs: list) -> None:
+        """Tell the package which two runs a split made. Extension, CR-003 16.12.
+
+        `pairs` are ``(head, tail)`` or ``(head, tail, item)``, where `item` is
+        the head's ``w:t`` when the split is what put ``xml:space`` on it. A
+        rejected revision puts the halves back side by side, and this is what
+        says they are **those** halves: runs a document keeps apart are never
+        joined, and neither is a half beside a run it never belonged to.
+        """
+        if not pairs:
+            return
+        package = self.parent_body.package
+        store = getattr(package, "_split_runs", None)
+        if store is None:
+            return
+        spaces = getattr(package, "_split_spaces", None)
+        for pair in pairs:
+            head, tail = pair[0], pair[1]
+            store[id(tail)] = id(head)
+            item = pair[2] if len(pair) > 2 else None
+            if item is not None and spaces is not None:
+                spaces.add(id(item))
 
     def splice(self, start: int, end: int, text: str) -> Range:
         """Replace the text in ``[start, end)`` and return the range of the new text.
@@ -1370,8 +1400,10 @@ class Paragraph:
         head = list(segment.owner[: segment.index])
         del segment.owner[: segment.index]
         run = _run_items(head, copy_r_pr(getattr(segment.run, "r_pr", None)))
+        _carry_attributes(segment.run, run)
         segment.run_owner.insert(segment.run_index, run)
         run.parent = getattr(segment.run, "parent", None) or self.element
+        self.remember_split([(run, segment.run)])
 
     def _split_run_after(self, segment: Any) -> None:
         """Move the items after `segment` into a run of their own, behind it."""
@@ -1382,8 +1414,10 @@ class Paragraph:
             return
         del segment.owner[segment.index + 1 :]
         run = _run_items(tail, copy_r_pr(getattr(segment.run, "r_pr", None)))
+        _carry_attributes(segment.run, run)
         segment.run_owner.insert(segment.run_index + 1, run)
         run.parent = getattr(segment.run, "parent", None) or self.element
+        self.remember_split([(segment.run, run)])
 
     def _remove_empty_runs(self) -> None:
         """Drop runs an edit emptied, and revisions left holding nothing."""
@@ -1432,6 +1466,16 @@ def _index_of(items: list, element: Any) -> int:
 def _run_of(text: str, r_pr: Any = None) -> R:
     """One ``w:r`` of exactly this text, with the formatting given."""
     return _run_items([t(text)], r_pr)
+
+
+def _carry_attributes(source: R, made: R) -> None:
+    """Copy a run's own attributes onto a run split off from it (section 16.12)."""
+    from docx4j_py.model.content.tracking import RUN_ATTRIBUTES
+
+    for name in RUN_ATTRIBUTES:
+        value = getattr(source, name, None)
+        if value is not None:
+            setattr(made, name, value)
 
 
 def _run_items(items: list, r_pr: Any = None) -> R:

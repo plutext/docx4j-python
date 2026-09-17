@@ -170,9 +170,12 @@ class TrialPackage:
         "_current_change",
         "_id_rng",
         "_id_seed",
+        "_inserted_paragraphs",
         "_package",
         "_para_ids_taken",
         "_parts",
+        "_split_runs",
+        "_split_spaces",
         "_tracked_change_date",
     )
 
@@ -194,6 +197,12 @@ class TrialPackage:
         self._change_tracking_mode: Any = None
         self._change_tracker: Any = None
         self._tracked_change_date: Any = package.tracked_change_date
+        #: The halves the trial's own splits made (CR-003 section 16.12).
+        self._split_runs: dict[int, int] = {}
+        #: The paragraphs the trial inserted (CR-003 section 16.12).
+        self._inserted_paragraphs: set[int] = set()
+        #: The ``w:t``\ s whose ``xml:space`` the trial's splits set.
+        self._split_spaces: set[int] = set()
         # a trial allocates ids from its own generator, seeded like the real
         # one, so that a trial and the commit that follows it agree
         self._id_seed = package.id_seed

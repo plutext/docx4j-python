@@ -1053,6 +1053,146 @@ def test_every_form_survives_a_save_and_a_reload():
     assert back.body.paragraphs[0].text == "Alpha BETA gamma."
 
 
+# ---------------------------------------------------------------------------
+# the invariant: a rejected document is the document that was there
+# (CR-003 section 16.12)
+# ---------------------------------------------------------------------------
+
+#: The documents the invariant runs over: one Word 2010 file with no
+#: ``w14:paraId``, one with tracked changes of its own, and one Word stamps with
+#: ``w14:paraId`` on every paragraph, which is what an agent's addresses rest on.
+INVARIANT_DOCUMENTS = ("2010-sample1.docx", "sample-docx.docx", "DrawingML_GraphicData_wps.docx")
+
+
+def every_tracked_verb(package, word: str = "the") -> None:
+    """Every mutation Phase F tracks, over one body, in one session."""
+    body = package.body
+    body.replace_text(word, word.upper())
+    body.paragraphs[0].insert_text("Start. ", location="Start")
+    body.paragraphs[0].insert_text(" End.", location="End")
+    body.paragraphs[0].insert_paragraph("Inserted after the first.", location="After")
+    body.insert_paragraph("Appended at the end.")
+    body.insert_markdown("## Heading\n\npara one\n\npara two\n")
+    body.paragraphs[2].delete()
+    body.paragraphs[0].font.bold = True
+    body.paragraphs[0].alignment = "Centered"
+    body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])
+    table = body.tables[0]
+    table.add_rows(1, values=[["x", "y"]])
+    if table.row_count > 2:
+        table.delete_rows(0)
+    body.paragraphs[0].insert_inline_picture(_sample_png(), width=40)
+
+
+def tracked_package(name: str):
+    """One of ``samples/``, with the identity, the date and the seed fixed."""
+    package = sample(name)
+    package.id_seed = 20260917
+    package.author = Author("Claude")
+    package.tracked_change_date = WHEN
+    package.change_tracking_mode = "TrackAll"
+    return package
+
+
+@pytest.mark.parametrize("name", INVARIANT_DOCUMENTS)
+def test_rejecting_every_tracked_verb_gives_the_document_back(name):
+    """The invariant that would have caught every defect of 16.9, 16.10 and 16.11.
+
+    Every verb this phase tracks, over a **loaded** document, then
+    ``reject_all()``: the body is **canonically** what it was, every paragraph
+    id is still on its paragraph, no revision markup is left and
+    ``describe()`` and ``outline()`` agree with it.
+    """
+    import canon  # scripts/ is on the path, from conftest
+
+    control = sample(name)
+    # ``samples/sample-docx.docx`` carries revisions of its own, and
+    # ``reject_all()`` rejects those too --- so the document to compare with is
+    # the source with **its** revisions rejected, which is what the control is
+    control.body.reject_all()
+    before = control.body.get_xml().encode("utf-8")
+    ids_before = [p.para_id for p in control.body.paragraphs]
+
+    package = tracked_package(name)
+    package.body.reject_all()          # the document's own, as the control did
+    package.change_tracking_mode = "TrackAll"
+    every_tracked_verb(package)
+    assert package.body.get_tracked_changes(), "the verbs really did write revisions"
+
+    assert package.body.reject_all()
+    after = package.body.get_xml().encode("utf-8")
+
+    report = canon.compare(before, after)
+    assert report.identical, f"{report.differences}: {[d.detail for d in report.diffs[:4]]}"
+    assert package.body.get_tracked_changes() == []
+    assert [p.para_id for p in package.body.paragraphs] == ids_before
+    assert package.body.text == control.body.text
+    assert package.outline().stats.tracked_changes == 0
+    assert package.describe().authors["revisions"] == control.describe().authors["revisions"]
+
+
+@pytest.mark.parametrize("name", INVARIANT_DOCUMENTS)
+def test_accepting_every_tracked_verb_gives_what_the_untracked_run_gives(name):
+    """The mirror: accepting leaves the document the same calls make untracked.
+
+    The **text** and the paragraph ids, not the markup: an accepted insertion
+    stays a run of its own where the untracked edit puts the characters into
+    the run that was there, which is what Word leaves too (CR-003 section
+    16.12). While the changes are *pending* the two differ by the paragraphs
+    whose mark is deleted, which Word shows as well until they are accepted.
+    """
+    plain = sample(name)
+    plain.id_seed = 20260917
+    plain.body.reject_all()            # the document's own revisions, if any
+    every_tracked_verb(plain)
+
+    package = tracked_package(name)
+    package.body.reject_all()
+    package.change_tracking_mode = "TrackAll"
+    every_tracked_verb(package)
+
+    assert package.body.accept_all()
+    assert package.body.get_tracked_changes() == []
+    assert package.body.text == plain.body.text
+
+    accepted_ids = [p.para_id for p in package.body.paragraphs]
+    plain_ids = [p.para_id for p in plain.body.paragraphs]
+    assert len(accepted_ids) == len(plain_ids)
+    # at most one id differs, and it is the **mark join's**: accepting a deleted
+    # paragraph mark keeps the first paragraph's ``w14:paraId`` and takes the
+    # second's properties, as docx4j's ``AcceptTrackedChanges`` does, where an
+    # untracked delete removes the first paragraph and keeps the second's id
+    assert sum(a != b for a, b in zip(accepted_ids, plain_ids, strict=True)) <= 1
+    xml = package.body.get_xml()
+    assert "<w:ins " not in xml and "<w:del " not in xml
+    assert "rPrChange" not in xml and "pPrChange" not in xml
+
+
+def test_a_paragraph_appended_where_no_paragraph_can_carry_its_mark():
+    """The one residue of the final-mark rule, pinned rather than forgotten.
+
+    With no paragraph before it --- a body whose last block is a table, or
+    ``samples/invoice2013.docx``, whose last blocks are bookmark elements ---
+    there is no earlier mark for the break to live on, so nothing is marked and
+    rejecting the insertion empties the paragraph rather than removing it
+    (CR-003 sections 16.10 and 16.12).
+    """
+    package = create_package()
+    package.id_seed = 20260917
+    package.author = Author("Claude")
+    package.tracked_change_date = WHEN
+    package.body.insert_table(1, 1, values=[["a cell"]])
+    package.change_tracking_mode = "TrackAll"
+
+    made = package.body.insert_paragraph("Appended after a table.")
+    assert made.element.p_pr is None, "no mark: there is none to move it to"
+    assert "<w:ins " in made.get_xml(), "the runs are still an insertion"
+
+    package.body.reject_all()
+    assert [p.text for p in package.body.paragraphs] == ["a cell", ""]
+    assert package.body.get_tracked_changes() == []
+
+
 def _sample_png() -> bytes:
     """The PNG out of ``samples/Images.docx``, for the picture test."""
     with zipfile.ZipFile(SAMPLES / "Images.docx") as archive:

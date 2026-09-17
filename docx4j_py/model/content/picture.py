@@ -552,7 +552,7 @@ def insert_picture_into_body(
         paragraph.element.content.append(made.run)
         link_parents(paragraph.element)
         made.run.parent = paragraph.element
-        _track(paragraph)
+        _track(paragraph, made.run)
         change.touched(paragraph)
         _record_part(change, made)
         return InlinePicture(made.drawing, made.run, paragraph)
@@ -582,24 +582,26 @@ def insert_picture_into_paragraph(
                 code="location.invalid",
                 hint="use Body.insert_inline_picture for a picture in a paragraph of its own",
             )
-        _track(paragraph)
+        _track(paragraph, made.run)
         change.touched(paragraph)
         _record_part(change, made)
         return InlinePicture(made.drawing, made.run, paragraph)
 
 
-def _track(paragraph: Paragraph) -> None:
-    """A picture is a run insertion: wrap the new run in a ``w:ins`` when tracking.
+def _track(paragraph: Paragraph, run: Any) -> None:
+    """A picture is a run insertion: wrap **that** run in a ``w:ins``.
 
     CR-003 section 3.8: ``insert_inline_picture`` is a run insertion like any
     other, so the run the image went into is wrapped, and accepting the
-    revision keeps the picture where it is.
+    revision keeps the picture where it is. Only that run: wrapping the
+    paragraph's own runs as well would make a rejected picture take the
+    paragraph's text with it (section 16.12).
     """
     tracker = paragraph.change_tracker
     if tracker is not None:
-        from docx4j_py.model.content.tracking import wrap_new_runs
+        from docx4j_py.model.content.tracking import wrap_run
 
-        wrap_new_runs(tracker, paragraph.element)
+        wrap_run(tracker, run, paragraph.element)
 
 
 def _record_part(change: Any, made: NewPicture) -> None:

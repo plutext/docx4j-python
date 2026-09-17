@@ -561,7 +561,9 @@ def grapheme_clusters(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def split_at(paragraph_element: Any, offset: int, *, prefer: str = "back") -> int:
+def split_at(
+    paragraph_element: Any, offset: int, *, prefer: str = "back", made: list | None = None
+) -> int:
     """Split the run at a text offset so that ``[offset, ...)`` begins a run.
 
     The offset is snapped to a grapheme boundary first (CR-003 section 3.12):
@@ -572,6 +574,10 @@ def split_at(paragraph_element: Any, offset: int, *, prefer: str = "back") -> in
         paragraph_element: the ``w:p``.
         offset: a code-point offset into the paragraph's accepted-view text.
         prefer: ``"back"`` or ``"forward"``, which way to snap.
+        made: a list the ``(head, tail, item)`` triple is appended to, for a
+            caller that has to know which two runs a split made and whether the
+            split is what put ``xml:space`` on the head's ``w:t``
+            (CR-003 section 16.12); `item` is None when the document had it.
 
     Returns:
         The offset actually used, which is the one a caller must go on with.
@@ -590,7 +596,9 @@ def split_at(paragraph_element: Any, offset: int, *, prefer: str = "back") -> in
         return offset
 
     at = offset - segment.start
+    space_before = getattr(segment.item, "space", None)
     set_text(segment.item, segment.text[:at])
+    added_space = space_before is None and getattr(segment.item, "space", None) is not None
     tail = segment.text[at:]
     rest = list(segment.owner[segment.index + 1 :])
     del segment.owner[segment.index + 1 :]
@@ -598,9 +606,17 @@ def split_at(paragraph_element: Any, offset: int, *, prefer: str = "back") -> in
     second = R(content=ChildList([el.t(tail), *rest]))
     if r_pr is not None:
         second.r_pr = deep_copy(r_pr, second)
+    # the halves of a split run keep the original's own attributes, so that they
+    # are identical but for their text (CR-003 section 16.12)
+    for name in ("rsid_rpr", "rsid_del", "rsid_r"):
+        value = getattr(segment.run, name, None)
+        if value is not None:
+            setattr(second, name, value)
     segment.run_owner.insert(segment.run_index + 1, second)
     link_parents(second)
     second.parent = getattr(segment.run, "parent", None) or paragraph_element
+    if made is not None:
+        made.append((segment.run, second, segment.item if added_space else None))
     return offset
 
 
@@ -609,7 +625,10 @@ def set_text(item: Any, value: str) -> None:
 
     Word writes the attribute whenever the value begins or ends with a space or
     holds two in a row; ``el.t`` does the same for a new one, and this keeps an
-    edited one in step.
+    edited one in step. An attribute the document already had is **left alone**
+    when the new value does not need it --- Word writes a redundant one often
+    enough --- and only :func:`~docx4j_py.model.content.tracking.merge_runs`,
+    putting two halves back together, recomputes it (CR-003 section 16.12).
     """
     item.value = value
     if value != value.strip() or "  " in value:

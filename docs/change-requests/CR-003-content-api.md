@@ -2074,9 +2074,9 @@ Word's not just the markup" rules it --- `pkg.change_tracking_mode` over `w:trac
 primitives, `TrackedChange` with `accept()` and `reject()`, `get_tracked_changes()` on a body, a
 paragraph, a range and the package, `accept_all()` / `reject_all()`, and `replace_text` at all
 three levels --- with the tests of section 7, acceptance artefact 8 and the README's audit
-trail, which now leads with both halves. The suite is **1,131 tests** (1,130 passing plus one
-`xfail`; 1,122 of them fast, 54.8 s, and 64.4 s for the whole), against 1,067 at the end of
-Phase G; **64** of the new ones are `tests/content/test_tracking.py` (58) and
+trail, which now leads with both halves. The suite is **1,138 tests** (1,137 passing plus one
+`xfail`; 1,129 of them fast, 55.0 s, and 60.6 s for the whole), against 1,067 at the end of
+Phase G; **71** of the new ones are `tests/content/test_tracking.py` (65) and
 `tests/agent/test_audit_trail.py` (6). Nothing in `~/git/docx4j-xsdata` changed, no schema patch
 was needed, the model was not regenerated and `codegen/generate_el.py` did not change at all:
 every Phase F name is reached through `docx4j_py.model.content`.
@@ -2405,8 +2405,7 @@ Three things follow from the shift:
   inserted --- which is itself the evidence that Word never writes one. The expected markup in
   the tests is therefore built from Word's rules and says so, as `moves_package()` does (16.5).
 
-**The numbers.** The suite is **1,131 tests** (1,130 passing plus one `xfail`; 1,122 of them
-fast, 54.8 s, and 64.4 s for the whole); `tests/content/test_tracking.py` is 58. Seven of its
+**The numbers.** The suite was **1,131 tests** at that point; `tests/content/test_tracking.py` was 58. Seven of its
 tests pinned the form Word rejected --- an inserted paragraph's own mark at the end of a body, and
 six changes for an inserted two-by-two table --- and were **changed to the new rules**, not the
 other way round. Artefact 8 was rebuilt: the inserted paragraph now goes **after the first
@@ -2442,4 +2441,88 @@ source document, `get_tracked_changes()` is **empty**, and no `w:ins` or `w:del`
 part. The two neighbouring tests gained the same two assertions.
 
 The lesson, beside 16.10's: **a test that rejects must assert the markup is gone, not only that
-the text came back.** Text equality passed through every version of this defect.
+the text came back.** Text equality passed through every version of this defect --- and 16.12
+takes it to its conclusion, asserting that the whole part is canonically what it was.
+
+### 16.12 The invariant, and what proving it cost
+
+The defect the second Word check did not find: **rejecting an inserted paragraph in the own-mark
+form kept the inserted element and discarded the original next paragraph's**. The join moved the
+original's content into the inserted `w:p`, so the original's attributes --- its `w:rsid*` and,
+on a document Word stamps, its `w14:paraId` --- went with the element. An agent's address for a
+paragraph **nobody edited** would break after a reject, which is the address promise of section
+3.4.
+
+**The rule now**: rejecting an inserted mark leaves the **original** paragraph standing, in both
+forms. At reject time the inserted paragraph's runs have already been rejected, so the one still
+holding content is the original and it survives; when that does not decide it --- both empty, or
+both holding content --- the one carrying more of the document's own attributes wins
+(`w14:paraId`, `w:textId`, the four `w:rsid*`), and a genuine tie goes to the **next** paragraph,
+which is the original in the own-mark form. Whichever survives keeps its element, its attributes
+and its properties; the other's leftover content is merged into it.
+
+Then the invariant the coordinator asked for, which is the test that would have caught every
+defect of 16.9, 16.10 and 16.11 at once:
+
+> Over a **loaded** document, with tracking on, perform **every verb this phase tracks** ---
+> `replace_text`, `insert_text` at Start and End, `insert_paragraph` after the first and appended
+> at the end, `insert_markdown` of a three-block fragment, `Paragraph.delete`, `font.bold`,
+> `alignment`, `insert_table`, `add_rows`, `delete_rows`, `insert_inline_picture` --- and then
+> `reject_all()`. The body must be **canonically** what it was (`scripts/canon.py`'s normal
+> form, the one CR-002's round trip uses), `get_tracked_changes()` empty, every `w14:paraId`
+> still on its paragraph, and `describe()` and `outline()` in agreement.
+
+It **holds**, and proving it found five more defects, none of which any earlier test could see,
+because every earlier test asserted text rather than markup:
+
+1. **`insert_inline_picture` wrapped the paragraph's own runs.** It called `wrap_new_runs`, which
+   wraps *every* top-level run; rejecting the picture then took the paragraph's text with it.
+   `wrap_run(tracker, run, paragraph)` wraps the one run the verb added.
+2. **A split run was never put back together.** Isolating `document` for a `w:del` splits
+   `<w:t>document.</w:t>` into `document` and `.`, and rejecting the deletion restores the text
+   but not the run. `merge_runs` now joins them at the boundary a revision vacates, and
+   `tidy_runs` makes a second pass after `accept_all()` / `reject_all()`, because the order the
+   changes come in decides what is mergeable when. **It is as narrow as it can be**: the two runs
+   must be identical but for their content (the same `w:rPr` by value, the same `w:rsidR` /
+   `w:rsidRPr` / `w:rsidDel`, which a split now copies onto both halves) **and** be the two
+   halves of one split **this package made** --- `_split_runs` on the package is
+   `id(tail) -> id(head)`, filled at every split and remapped as halves merge. An earlier version
+   merged on equality alone and joined runs that four of the sample documents keep apart; a
+   reloaded package remembers nothing and merges nothing, which is the honest answer.
+3. **`xml:space` came and went.** The halves of a split need `preserve` where the whole did not,
+   so the joined `w:t` has to lose it --- but only when the **split** put it there: a redundant
+   `xml:space="preserve"` the document itself wrote (`tests/fixtures/nested-table.docx` has two)
+   must stay. `_split_spaces` on the package records the `w:t`s whose attribute a split set, and
+   nothing else is ever cleared.
+4. **A property setter stopped recording `w:pPrChange`.** Since 16.10 an `ins` on a paragraph's
+   mark may belong to the paragraph *after* it, so "this paragraph's mark is an insertion of
+   ours" no longer means "we inserted this paragraph" --- and `_p_pr()`'s optimisation (16.2 item
+   6) misfired, applying alignment to a pre-existing paragraph with no revision at all.
+   `_inserted_paragraphs` on the package is the precise answer, filled by `track_inserted_blocks`.
+5. **An emptied `w:trPr` husk** was left when a row revision was accepted or rejected.
+
+**Where it holds.** All three documents the test runs over --- `samples/2010-sample1.docx`
+(no `w14:paraId`), `samples/sample-docx.docx` (revisions of its own, which `reject_all()`
+rejects too, so the control is the source with **its** revisions rejected) and
+`samples/DrawingML_GraphicData_wps.docx` (Word-stamped `w14:paraId`) --- and, measured over the
+whole corpus while the fixes were made, **19 of the 20 documents** in `samples/` and
+`tests/fixtures/`. The exception is `samples/invoice2013.docx`, whose body ends with two
+block-level bookmark elements: a paragraph appended there has no preceding **paragraph** to carry
+its mark (16.10), so nothing is marked and rejecting empties the paragraph rather than removing
+it. That residue is pinned by
+`test_a_paragraph_appended_where_no_paragraph_can_carry_its_mark` rather than left to be
+rediscovered.
+
+**The accept side is asserted differently, and that is a decision.** `accept_all()` gives the
+same **text**, the same paragraph ids and no revision markup as the same calls made untracked ---
+but not the same runs: an accepted insertion stays a run of its own where an untracked
+`insert_text` puts the characters into the run that was there. Word leaves the same, the two
+documents are semantically identical, and making them identical byte for byte would mean merging
+an accepted insertion into its neighbours, which is a different rule from putting a split back
+together. One id may differ too, and it is the mark join's: accepting a deleted paragraph mark
+keeps the **first** paragraph's `w14:paraId` and takes the second's properties, as docx4j's
+`AcceptTrackedChanges` does, where an untracked delete removes the first paragraph and keeps the
+second's id.
+
+The suite is **1,138 tests** (1,137 passing plus one `xfail`; 1,129 of them fast, 55.0 s, and
+60.6 s for the whole); `tests/content/test_tracking.py` is 65.
