@@ -429,6 +429,7 @@ class _Emitter:
         view = _view_of(body, element)
         pictures = {id(picture.run): picture for picture in (view.inline_pictures if view else ())}
         properties = self._properties(element, view)
+        listed = _is_list_item(element, view)
         pieces = _pieces_of(element, pictures)
 
         notes: list[str] = []
@@ -456,7 +457,7 @@ class _Emitter:
 
         text = first.text if leading and first is not None else ""
         lines: list[str] = []
-        if not properties and not rest and leading:
+        if not properties and not rest and not listed and leading:
             # the whole paragraph is one plain run: one line, no variable
             lines.append(f"{self.variable}.insert_paragraph({_quote(text)}{self.at()})")
             return lines, exact, None
@@ -561,8 +562,6 @@ class _Emitter:
         if outline is not None:
             out.append(("outline_level", str(int(outline) + 1)))
 
-        if getattr(p_pr, "num_pr", None) is not None and view is None:
-            raise _Unexpressible("w:numPr outside a package")
         return out
 
     # -- lists (CR-003 section 18.7) ---------------------------------------
@@ -574,16 +573,11 @@ class _Emitter:
         a literal would name the source document's ``w:numId`` and the target's
         allocator knows nothing of it (CR-003 section 18.7).
         """
-        if view is None:
+        if not _is_list_item(view.element if view is not None else None, view):
             return []
-        p_pr = getattr(view.element, "p_pr", None)
-        if getattr(p_pr, "num_pr", None) is None:
-            return []
+        p_pr = view.element.p_pr
         item = view.list_item
         listing = view.list
-        if item is None or listing is None:
-            raise _Unexpressible("a w:numPr the paragraph is not numbered by")
-
         lines: list[str] = []
         key = str(listing.id)
         variable = self._lists.get(key)
@@ -775,6 +769,22 @@ def _style_assignment(style_id: str) -> tuple[str, str]:
     if built_in == "Other":
         return ("style_id", _quote(style_id))
     return ("style_built_in", _quote(built_in))
+
+
+def _is_list_item(element: Any, view: Any) -> bool:
+    """Whether the paragraph carries a ``w:numPr`` the verbs can put back.
+
+    Asked **before** a line is emitted, so that a ``w:numPr`` naming a list the
+    document does not define sends the paragraph to ``insert_xml`` whole.
+    """
+    p_pr = getattr(element, "p_pr", None) if element is not None else None
+    if p_pr is None or getattr(p_pr, "num_pr", None) is None:
+        return False
+    if view is None:
+        raise _Unexpressible("w:numPr outside a package")
+    if view.list_item is None or view.list is None:
+        raise _Unexpressible("a w:numPr the paragraph is not numbered by")
+    return True
 
 
 def _view_of(body: Any, element: Any) -> Any:
