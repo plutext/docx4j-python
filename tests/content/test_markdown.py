@@ -137,10 +137,17 @@ def test_a_list_is_bullets_or_numbers_from_the_numbering_parts_numFmt():
     package = fixture("lists")
     markdown = package.to_markdown()
 
-    # numId 1 is w:numFmt="decimal" at ilvl 0, so the items are numbered; the
-    # empty paragraphs between them close the list each time, as Java's
-    # WmlToMarkdown does, so each restarts at w:start
-    assert len(re.findall(r"^1\. ", markdown, re.MULTILINE)) == 4
+    # numId 1 is w:numFmt="decimal" at ilvl 0, so the items are numbered. The
+    # empty paragraphs between them still close the markdown block each time
+    # (Java's rule, CR-003 section 13.6), but since Phase H the *number* is the
+    # emulator's, and Word numbers four items of one w:numId 1 2 3 4 --- which
+    # is also what CommonMark reads back from four adjacent ordered blocks.
+    assert [line.split(" ")[0] for line in markdown.splitlines() if line[:1].isdigit()] == [
+        "1.",
+        "2.",
+        "3.",
+        "4.",
+    ]
     assert "- " not in markdown, "numId 1 is decimal, not a bullet"
 
 

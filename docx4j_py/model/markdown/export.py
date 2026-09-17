@@ -118,6 +118,8 @@ MONOSPACE_FONTS: frozenset[str] = frozenset(
 #: The paragraph style ids Java's importer and exporter agree on.
 SOURCE_CODE_STYLE = "SourceCode"
 QUOTE_STYLE_IDS: frozenset[str] = frozenset({"Quote", "IntenseQuote"})
+#: Word's own list style, which a loose item's follow-on paragraph carries.
+LIST_STYLE = "ListParagraph"
 
 
 def _w(local: str) -> str:
@@ -201,8 +203,8 @@ class _Context:
     footnote_labels: dict[str, str] = dataclasses.field(default_factory=dict)
     #: What was dropped, for the caller who wants to know.
     warnings: list[str] = dataclasses.field(default_factory=list)
-    #: The numbering part's levels, read once as bytes.
-    _numbering: dict[tuple[str, int], tuple[str, int]] | None = None
+    #: The story's list labels, counted once by the numbering emulator.
+    _labels: dict[int, Any] | None = None
     #: The comments part's texts, read once as bytes.
     _comments: dict[str, str] | None = None
 
@@ -228,57 +230,26 @@ def _root(part: Any) -> Any:
         return None
 
 
-def _numbering_levels(context: _Context) -> dict[tuple[str, int], tuple[str, int]]:
-    """``(numId, ilvl)`` -> ``(numFmt, start)``, from the numbering part's bytes."""
-    if context._numbering is not None:
-        return context._numbering
-    levels: dict[tuple[str, int], tuple[str, int]] = {}
-    root = _root(getattr(context.package, "numbering_definitions_part", None))
-    if root is None:
-        context._numbering = levels
-        return levels
-    by_abstract: dict[str, dict[int, tuple[str, int]]] = {}
-    for abstract in root.findall(_w("abstractNum")):
-        key = abstract.get(_w("abstractNumId")) or ""
-        found: dict[int, tuple[str, int]] = {}
-        for lvl in abstract.findall(_w("lvl")):
-            try:
-                ilvl = int(lvl.get(_w("ilvl")) or 0)
-            except ValueError:  # pragma: no cover - malformed numbering
-                continue
-            fmt_element = lvl.find(_w("numFmt"))
-            fmt = (fmt_element.get(_w("val")) if fmt_element is not None else None) or "bullet"
-            start_element = lvl.find(_w("start"))
-            try:
-                start = int((start_element.get(_w("val")) if start_element is not None else 1) or 1)
-            except ValueError:  # pragma: no cover - malformed numbering
-                start = 1
-            found[ilvl] = (fmt, start)
-        by_abstract[key] = found
-    for num in root.findall(_w("num")):
-        num_id = num.get(_w("numId")) or ""
-        reference = num.find(_w("abstractNumId"))
-        abstract_id = reference.get(_w("val")) if reference is not None else None
-        for ilvl, value in by_abstract.get(abstract_id or "", {}).items():
-            levels[(num_id, ilvl)] = value
-        for override in num.findall(_w("lvlOverride")):
-            try:
-                ilvl = int(override.get(_w("ilvl")) or 0)
-            except ValueError:  # pragma: no cover - malformed numbering
-                continue
-            lvl = override.find(_w("lvl"))
-            if lvl is None:
-                continue
-            fmt_element = lvl.find(_w("numFmt"))
-            fmt = (fmt_element.get(_w("val")) if fmt_element is not None else None) or "bullet"
-            start_element = override.find(_w("startOverride")) or lvl.find(_w("start"))
-            try:
-                start = int((start_element.get(_w("val")) if start_element is not None else 1) or 1)
-            except ValueError:  # pragma: no cover - malformed numbering
-                start = 1
-            levels[(num_id, ilvl)] = (fmt, start)
-    context._numbering = levels
-    return levels
+def _list_labels(context: _Context) -> dict[int, Any]:
+    """The story's list labels, from the numbering emulator, counted once.
+
+    CR-003 Phase H: the marker's number is what **Word** paints, so a restart, a
+    ``w:startOverride``, a ``w:lvlRestart`` and a list numbered through a
+    paragraph style all come out right, where the renderer's own count (Phase K,
+    section 13.6) restarted at every markdown block.
+    """
+    if context._labels is not None:
+        return context._labels
+    from docx4j_py.model.listnumbering import labels_for
+
+    body = context.body
+    context._labels = labels_for(body) if body is not None else {}
+    return context._labels
+
+
+def _label_of(element: Any, context: _Context) -> Any:
+    """The list label of a paragraph, or None when it is not a list item."""
+    return _list_labels(context).get(id(element))
 
 
 def _comment_texts(context: _Context) -> dict[str, str]:
@@ -557,23 +528,20 @@ def _paragraph_style_id(element: Any) -> str | None:
     return str(value) if value else None
 
 
-def _num_pr(element: Any) -> tuple[str, int] | None:
-    """``(numId, ilvl)`` of a list paragraph, or None."""
+def _has_num_pr(element: Any) -> bool:
+    """Whether the paragraph states a ``w:numPr`` of its own."""
     p_pr = _p_pr(element)
-    num_pr = getattr(p_pr, "num_pr", None) if p_pr is not None else None
-    if num_pr is None:
-        return None
-    num_id = getattr(getattr(num_pr, "num_id", None), "val", None)
-    num_id = getattr(num_id, "value", num_id)
-    if num_id is None or str(num_id) == "0":
-        return None
-    ilvl = getattr(getattr(num_pr, "ilvl", None), "val", None)
-    ilvl = getattr(ilvl, "value", ilvl)
-    try:
-        level = int(ilvl) if ilvl is not None else 0
-    except (TypeError, ValueError):  # pragma: no cover - malformed ilvl
-        level = 0
-    return str(num_id), max(0, min(level, 8))
+    return getattr(p_pr, "num_pr", None) is not None if p_pr is not None else False
+
+
+def _is_list_continuation(element: Any) -> bool:
+    """Whether this paragraph is a loose list item's follow-on paragraph.
+
+    Java ``WmlToMarkdown``'s rule, and the one the importer writes: a paragraph
+    of the list style with no ``w:numPr`` of its own, immediately after an item
+    (CR-003 section 13.4, decided in Phase H).
+    """
+    return _paragraph_style_id(element) == LIST_STYLE and not _has_num_pr(element)
 
 
 def _quote_depth(element: Any) -> int:
@@ -728,25 +696,54 @@ def _context_for(body: Any, **options: Any) -> _Context:
 
 @dataclasses.dataclass(slots=True)
 class _OpenList:
-    """The list being built: one markdown block per run of list paragraphs."""
+    """The list being built: one markdown block per run of list paragraphs.
+
+    It counts nothing: since Phase H the marker's number is the emulator's
+    count, so what this holds is the block's lines, which top-level ``w:numId``
+    it belongs to and where a loose item's follow-on paragraph is indented to
+    (CR-003 sections 13.4 and 18).
+    """
 
     lines: list[str] = dataclasses.field(default_factory=list)
-    counters: dict[tuple[str, int], int] = dataclasses.field(default_factory=dict)
     num_id: str | None = None
+    #: The column an item's own continuation lines start at: the indent of the
+    #: last item plus the width of its marker, as CommonMark asks.
+    content_indent: str = "  "
+    #: The column each level's items are indented to, by ``w:ilvl``: a nested
+    #: item starts at its parent's *content* column, which is three characters
+    #: under ``1. `` and two under ``- ``.
+    indents: dict[int, str] = dataclasses.field(default_factory=dict)
+    #: The two delimiters this block uses. A list that follows another list with
+    #: nothing between them takes the *other* delimiter, because CommonMark
+    #: reads two adjacent lists of one delimiter as a single list, and the
+    #: second of them is a different ``w:numId`` (CR-003 section 18).
+    ordered: str = "."
+    bullet: str = "-"
 
-    def marker(self, key: tuple[str, int], fmt: str, start: int) -> str:
-        """The next marker at a level: ``- `` for a bullet, ``N. `` otherwise."""
-        if fmt == "bullet":
-            return "- "
-        value = self.counters.get(key)
-        value = start if value is None else value + 1
-        self.counters[key] = value
-        return f"{value}. "
+    def indent(self, ilvl: int) -> str:
+        """The prefix an item at this level is written at."""
+        return self.indents.get(ilvl, "  " * ilvl)
+
+    def marker(self, label: Any) -> str:
+        """``- `` for a bullet item, ``N. `` for a numbered one.
+
+        Markdown has one ordered marker, so a ``lowerLetter`` or ``upperRoman``
+        level renders as ``N.`` --- but ``N`` is now the counter's own value,
+        which is the half that was wrong before Phase H.
+        """
+        if label.result.is_bullet:
+            return f"{self.bullet} "
+        return f"{label.result.count}{self.ordered} "
 
 
 def _render_blocks(items: Any, context: _Context, out: list[str]) -> None:
     """Every block of a container, in document order, as markdown blocks."""
     open_list: _OpenList | None = None
+    #: ``(w:numId, the delimiter its top-level items used, "bullet" or
+    #: "ordered")`` of the list block just rendered, cleared by anything else:
+    #: what tells the next list whether it has to take the other delimiter to be
+    #: a list of its own.
+    previous: tuple[str, str, str] | None = None
     index = 0
     items = list(items or ())
     while index < len(items):
@@ -757,31 +754,63 @@ def _render_blocks(items: Any, context: _Context, out: list[str]) -> None:
             # the heading test comes first, as Java's does: a built-in Heading
             # style can carry a legacy w:numPr and is still a heading
             level = heading_level_of(element)
-            numbering = None if (level is not None and level <= 6) else _num_pr(element)
-            if numbering is not None:
-                num_id, ilvl = numbering
-                fmt, start = _numbering_levels(context).get((num_id, ilvl), ("bullet", 1))
+            label = None if (level is not None and level <= 6) else _label_of(element, context)
+            if label is not None:
+                num_id, ilvl = label.num_id, label.ilvl
                 if open_list is not None and ilvl == 0 and open_list.num_id not in (None, num_id):
                     open_list = None  # a different top-level list: a new block
                 if open_list is None:
                     open_list = _OpenList()
+                    kind = "bullet" if label.result.is_bullet else "ordered"
+                    if previous is not None and previous[0] != num_id and previous[2] == kind:
+                        # CommonMark reads two adjacent lists of one delimiter as
+                        # one list; the other delimiter makes this its own
+                        if kind == "bullet":
+                            open_list.bullet = "*" if previous[1] == "-" else "-"
+                        else:
+                            open_list.ordered = ")" if previous[1] == "." else "."
                     out.append("")
                 if ilvl == 0:
                     open_list.num_id = num_id
-                indent = "  " * ilvl
-                marker = open_list.marker((num_id, ilvl), fmt, start)
+                indent = open_list.indent(ilvl)
+                marker = open_list.marker(label)
+                open_list.content_indent = indent + " " * len(marker)
+                open_list.indents[ilvl + 1] = open_list.content_indent
                 if context.addresses:
                     open_list.lines.append(address_comment(_address_of(element, context), indent))
                 text = _inline_text(element, context)
                 open_list.lines.append(f"{indent}{marker}{text}".rstrip())
                 out[-1] = "\n".join(open_list.lines)
+                if ilvl == 0:
+                    kind = "bullet" if label.result.is_bullet else "ordered"
+                    delimiter = open_list.bullet if label.result.is_bullet else open_list.ordered
+                    previous = (num_id, delimiter, kind)
+                index += 1
+                continue
+            if open_list is not None and _is_list_continuation(element):
+                # a loose item's follow-on paragraph: Java appends it to the
+                # open item, and so does this since Phase H owns lists
+                # (CR-003 section 13.4). An empty one contributes nothing and
+                # does not close the list.
+                text = _inline_text(element, context)
+                if text.strip():
+                    prefix = open_list.content_indent
+                    open_list.lines.append("")
+                    if context.addresses:
+                        open_list.lines.append(
+                            address_comment(_address_of(element, context), prefix)
+                        )
+                    open_list.lines.append(f"{prefix}{text}".rstrip())
+                    out[-1] = "\n".join(open_list.lines)
                 index += 1
                 continue
             open_list = None
+            previous = None
             index = _render_paragraph(items, index, context, out)
             continue
 
         open_list = None
+        previous = None
         if name == W_TBL:
             rendered = table_markdown(element, context)
             if rendered:

@@ -22,11 +22,13 @@ What this may touch beyond the body's own part:
   :mod:`docx4j_py.model.content.styles` with the rest of the style rule (CR-003
   section 14.9) and is re-exported here, where Phase K built it.
 * ``/word/numbering.xml`` --- a list needs a numbering definition, and the part
-  is **created** when the document has none. In a
-  :func:`~docx4j_py.model.content.trial.dry_run` that part is added to the real
-  package's part map and is *not* removed when the trial ends (CR-003 section
-  12.5): a trial of a markdown fragment with a list leaves an empty numbering
-  part behind, and the abstract numbering it wrote is discarded with the copy.
+  is **created** when the document has none, through
+  :func:`~docx4j_py.model.content.lists.numbering_part_of`, which is the one
+  place any of this package creates one (CR-003 section 13.6). Since Phase H it
+  goes through the trial's undo log, so a
+  :func:`~docx4j_py.model.content.trial.dry_run` of a markdown fragment with a
+  list leaves **nothing** behind --- the limitation CR-003 sections 12.5 and
+  14.4 recorded is closed.
 * the body's part's relationships --- one external relationship per link.
 
 Every id is allocated from the document's own state (the next free
@@ -43,8 +45,14 @@ from typing import Any
 
 from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.errors import ContentError, StyleError
+from docx4j_py.model.content.lists import (
+    next_abstract_num_id,
+    next_num_id,
+    numbering_part_of,
+)
 from docx4j_py.model.content.styles import CUSTOM_STYLE_XML, ensure_style, style_ids_of
 from docx4j_py.model.content.table import writable_width
+from docx4j_py.model.listnumbering import invalidate
 from docx4j_py.wml import CtLvlStart, P, R, RPr, el, t, tbl, tc, tr
 
 __all__ = [
@@ -100,40 +108,17 @@ class _Numbering:
         """Find or create the numbering part, and prepare the id allocators."""
         self.package = package
         self.touched = touched
-        self.part = self._part()
+        # the part, its creation and the two id allocators are Phase H's
+        # (``model/content/lists.py``), so that a definition this makes and one
+        # ``start_new_list`` makes are made the same way and numbered from the
+        # same state --- CR-003 section 13.6 asked for exactly that, and it is
+        # what lets a dry run un-add a numbering part it created (section 14.4)
+        self.part = numbering_part_of(package, create=True, touched=touched)
         self.by_signature: dict[str, int] = {}
         numbering = self.part.contents
         self.numbering = numbering
-        self._next_abstract = (
-            max(
-                (int(getattr(a, "abstract_num_id", 0) or 0) for a in (numbering.abstract_num or ())),
-                default=-1,
-            )
-            + 1
-        )
-        self._next_num = (
-            max((int(getattr(n, "num_id", 0) or 0) for n in (numbering.num or ())), default=0) + 1
-        )
-
-    def _part(self) -> Any:
-        part = getattr(self.package, "numbering_definitions_part", None)
-        if part is not None:
-            self.touched.add(str(part.part_name))
-            return part
-        from docx4j_py.openpackaging.parts.wml import NumberingDefinitionsPart
-        from docx4j_py.wml import Numbering
-
-        part = NumberingDefinitionsPart()
-        part.set_contents(Numbering())
-        main = self.package.get_main_document_part()
-        main.add_target_part(part)
-        self.touched.add(str(part.part_name))
-        # in a trial the part itself cannot be un-added (CR-003 section 12.5),
-        # but what the trial writes into it must not reach the real document:
-        # the trial's copy of it is what this writes to, and the real one
-        # stays the empty ``w:numbering`` that was just added
-        wrap = getattr(self.package, "trial_part", None)
-        return wrap(part) if wrap is not None else part
+        self._next_abstract = next_abstract_num_id(numbering)
+        self._next_num = next_num_id(numbering)
 
     def num_id_for(self, signature: list[str], start: int) -> int:
         """The ``w:numId`` for a top-level list of that signature."""
@@ -184,6 +169,9 @@ class _Numbering:
         self.numbering.abstract_num.append(abstract)
         self.numbering.num.append(number)
         link_parents(self.numbering)
+        # the definitions have changed: the emulator reads them again before the
+        # next label (CR-003 Phase H)
+        invalidate(self.package)
         return num_id
 
 
