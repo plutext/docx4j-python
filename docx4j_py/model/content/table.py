@@ -525,6 +525,18 @@ class Table:
         """The table as XML, with docx4j's prefixes. Extension."""
         return to_xml(self.element)
 
+    def to_api_script(self, **options: Any) -> str:
+        """The content-API calls that would produce this table (CR-003 section 3.11).
+
+        Python source against a name ``body``, executable as it stands; see
+        :func:`docx4j_py.model.content.api_script.to_api_script` for the
+        options (``variable``, ``location``, ``pictures``, ``limit``,
+        ``addresses``).
+        """
+        from docx4j_py.model.content.api_script import to_api_script
+
+        return to_api_script(self, **options)
+
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary: what a tool result says about a table."""
         rows = self.rows

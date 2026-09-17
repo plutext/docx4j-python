@@ -90,6 +90,7 @@ __all__ = [
     "Range",
     "RepeatInfo",
     "RepeatingSectionContentControl",
+    "ScriptBlock",
     "SearchHit",
     "Segment",
     "Skeleton",
@@ -110,7 +111,9 @@ __all__ = [
     "cells_of",
     "grapheme_clusters",
     "rows_of",
+    "script_blocks",
     "segments_of",
+    "to_api_script",
 ]
 
 #: Public name -> the module it lives in. Imported on first use.
@@ -182,6 +185,10 @@ _LAZY: dict[str, str] = {
     "BindingResult": "docx4j_py.model.customxml",
     "FillResult": "docx4j_py.model.customxml",
     "RepeatInfo": "docx4j_py.model.customxml",
+    # CR-003 Phase I, to_api_script
+    "ScriptBlock": "docx4j_py.model.content.api_script",
+    "script_blocks": "docx4j_py.model.content.api_script",
+    "to_api_script": "docx4j_py.model.content.api_script",
 }
 
 

@@ -459,6 +459,18 @@ class Range:
             view.splice(0, self.start, "")
         return to_xml(copy)
 
+    def to_api_script(self, **options: Any) -> str:
+        """The content-API calls that would produce this span's runs (CR-003 section 3.11).
+
+        Python source against a name ``body``, executable as it stands; see
+        :func:`docx4j_py.model.content.api_script.to_api_script` for the
+        options (``variable``, ``location``, ``pictures``, ``limit``,
+        ``addresses``).
+        """
+        from docx4j_py.model.content.api_script import to_api_script
+
+        return to_api_script(self, **options)
+
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary: the address, the text and the two offsets. Extension."""
         return {
