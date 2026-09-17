@@ -99,8 +99,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > sections 17.10 and 17.11 and CR-002 section 12.10. **Passed**: the title bar no longer says
 > "Compatibility Mode" for 3, 4 and 5; 9 shows three line items. 9's title bar still said
 > "Compatibility Mode", as expected of a loaded Word 2010 document whose mode nobody had set;
-> the script now sets `pkg.compatibility_mode = 15` on it, and **that one item on 9 is not yet
-> re-checked**. Artefacts 1, 2, 6, 7 and 8 are unchanged by this work.
+> the script now sets `pkg.compatibility_mode = 15` on it, and the re-check the same day
+> confirmed the title bar is clean. Artefacts 1, 2, 6, 7 and 8 are unchanged by this work.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer or `create_package`,
