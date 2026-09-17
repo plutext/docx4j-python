@@ -4162,4 +4162,5 @@ What changed on disk: artefacts 3, 5 and 6 lose the `w:numPr` from the Heading
 definitions they add (Word had ignored it; a re-check is cheap), and artefact 11
 gains `numbering.xml` with a bullet and a decimal definition. Two tests pin it,
 and the entry is in the portfolio's `word-hangs.md`. The regenerated artefact 11
-awaits a second check: a bullet on the first paragraph, `1.` on the second.
+**passed** the same day: a bullet on the first paragraph, `1.` on the second. With it
+all eleven acceptance artefacts have passed in Word, and CR-003 is closed.

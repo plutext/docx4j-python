@@ -131,9 +131,10 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > **List Bullet** paragraph and nothing on the **List Number** one. Cause: the known-style
 > definitions name a `w:numId` the document never defined (CR-003 section 20.9). Fixed the same
 > day: `ensure_style` now gives those styles a real bullet or decimal definition and drops the
-> dangling numbering the Heading definitions carried. **The regenerated artefact 11 awaits a
-> second check** (a bullet, then `1.`); artefacts 3, 5 and 6 changed only by losing that dangling
-> `w:numPr` from their Heading definitions, which Word had ignored.
+> dangling numbering the Heading definitions carried. **The regenerated artefact 11 passed** the
+> same day: a bullet, then `1.`. Artefacts 3, 5 and 6 changed only by losing that dangling
+> `w:numPr` from their Heading definitions, which Word had ignored. All eleven artefacts have
+> passed in Word.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
