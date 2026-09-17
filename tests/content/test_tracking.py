@@ -393,6 +393,8 @@ def test_rejecting_an_appended_paragraph_joins_it_into_the_one_before():
     assert [p.text for p in paragraphs] == ["First."]
     assert paragraphs[0].para_id == first_id, "the surviving paragraph is the one that was there"
     assert paragraphs[0].style_id == "Heading1", "and it keeps its own properties"
+    assert back.body.get_tracked_changes() == [], "and the mark goes with the break"
+    assert "w:ins" not in back.body.get_xml()
 
 
 def test_a_fragment_appended_at_the_end_shifts_every_mark_back_one():
@@ -409,8 +411,10 @@ def test_a_fragment_appended_at_the_end_shifts_every_mark_back_one():
     assert marked == ["First.", "A heading", "para one"], "never the last one"
 
     back = reloaded(package)
-    assert back.body.reject_all()
+    assert back.body.reject_all() == 6
     assert [p.text for p in back.body.paragraphs] == ["First."], "no empty husk left behind"
+    assert back.body.get_tracked_changes() == []
+    assert "w:ins" not in back.body.get_xml()
 
 
 def test_deleting_a_paragraph_marks_the_mark_and_the_content():
@@ -838,6 +842,53 @@ def test_rejecting_an_inserted_paragraph_at_the_end_joins_with_the_one_before():
 
     assert package.body.reject_all()
     assert [p.text for p in package.body.paragraphs] == ["First."]
+
+
+def test_rejecting_both_mark_forms_of_a_loaded_document_leaves_the_source():
+    """CR-003 section 16.11: the mark goes with the break it recorded.
+
+    The two forms in one document --- a paragraph inserted in the **middle**,
+    which carries its own mark, and one **appended**, whose mark sits on the
+    paragraph before it --- rejected over a document that was loaded rather than
+    created, both through ``reject_all()`` and one change at a time in reverse.
+    """
+    source = [p.text for p in sample("2010-sample1.docx").body.paragraphs]
+
+    def edited():
+        package = sample("2010-sample1.docx")
+        package.author = Author("A")
+        package.tracked_change_date = WHEN
+        package.change_tracking_mode = "TrackAll"
+        package.body.paragraphs[0].insert_paragraph("mid", location="After")
+        package.body.insert_paragraph("end")
+        return package
+
+    package = edited()
+    assert [c.kind for c in package.get_tracked_changes()] == ["mark", "run", "mark", "run"]
+
+    assert package.body.reject_all() == 4, "what it actually undid"
+    assert package.body.get_tracked_changes() == [], "nothing of the revisions is left"
+    assert [p.text for p in package.body.paragraphs] == source
+    xml = package.body.get_xml()
+    assert "w:ins" not in xml and "w:del" not in xml
+
+    one_at_a_time = edited()
+    for change in reversed(one_at_a_time.get_tracked_changes()):
+        change.reject()
+    assert one_at_a_time.get_tracked_changes() == []
+    assert [p.text for p in one_at_a_time.body.paragraphs] == source
+
+    accepted = edited()
+    assert accepted.body.accept_all() == 4
+    assert accepted.get_tracked_changes() == []
+    assert [p.text for p in accepted.body.paragraphs] == [
+        "My first 2010 document.",
+        "mid",
+        "",
+        "",
+        "",
+        "end",
+    ]
 
 
 def test_accepting_a_change_that_is_gone_says_so():

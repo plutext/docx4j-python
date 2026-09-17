@@ -2074,9 +2074,9 @@ Word's not just the markup" rules it --- `pkg.change_tracking_mode` over `w:trac
 primitives, `TrackedChange` with `accept()` and `reject()`, `get_tracked_changes()` on a body, a
 paragraph, a range and the package, `accept_all()` / `reject_all()`, and `replace_text` at all
 three levels --- with the tests of section 7, acceptance artefact 8 and the README's audit
-trail, which now leads with both halves. The suite is **1,130 tests** (1,129 passing plus one
-`xfail`; 1,121 of them fast, 55.0 s, and 63.0 s for the whole), against 1,067 at the end of
-Phase G; **63** of the new ones are `tests/content/test_tracking.py` (57) and
+trail, which now leads with both halves. The suite is **1,131 tests** (1,130 passing plus one
+`xfail`; 1,122 of them fast, 54.8 s, and 64.4 s for the whole), against 1,067 at the end of
+Phase G; **64** of the new ones are `tests/content/test_tracking.py` (58) and
 `tests/agent/test_audit_trail.py` (6). Nothing in `~/git/docx4j-xsdata` changed, no schema patch
 was needed, the model was not regenerated and `codegen/generate_el.py` did not change at all:
 every Phase F name is reached through `docx4j_py.model.content`.
@@ -2405,8 +2405,8 @@ Three things follow from the shift:
   inserted --- which is itself the evidence that Word never writes one. The expected markup in
   the tests is therefore built from Word's rules and says so, as `moves_package()` does (16.5).
 
-**The numbers.** The suite is **1,130 tests** (1,129 passing plus one `xfail`; 1,121 of them
-fast, 55.0 s, and 63.0 s for the whole); `tests/content/test_tracking.py` is 57. Seven of its
+**The numbers.** The suite is **1,131 tests** (1,130 passing plus one `xfail`; 1,122 of them
+fast, 54.8 s, and 64.4 s for the whole); `tests/content/test_tracking.py` is 58. Seven of its
 tests pinned the form Word rejected --- an inserted paragraph's own mark at the end of a body, and
 six changes for an inserted two-by-two table --- and were **changed to the new rules**, not the
 other way round. Artefact 8 was rebuilt: the inserted paragraph now goes **after the first
@@ -2414,3 +2414,32 @@ paragraph**, where a human can see it, a second one is appended at the very end 
 final-mark rule is exercised, and the table is written before both so that the body ends with a
 paragraph. Accepting gives the intended document, rejecting gives back exactly the document that
 was there before the mode went on, and the comment survives both.
+
+### 16.11 The last of it: the mark goes with the break it recorded
+
+The Word check's second rule (16.10) left one thing half done, and a second check of the
+regenerated artefact found it: **rejecting an inserted paragraph mark joined the paragraphs but
+left the mark behind**, so `reject_all()` over a loaded document ended with the text right, an
+empty paragraph where the inserted one had been, and `get_tracked_changes()` still listing the
+two `mark` changes. Accepting was clean throughout.
+
+The cause is `keep_properties`, introduced in 16.10. docx4j's join replaces the surviving
+paragraph's properties with the **next** one's, and that wholesale replacement is what used to
+carry the `w:pPr/w:rPr/w:ins` away; keeping the surviving paragraph's own properties --- which
+16.10 had to do, so that rejecting an appended paragraph does not strip the formatting of a
+paragraph nobody edited --- left the mark sitting in them. `TrackedChange.reject()` now drops it
+explicitly after the join, which is what "the break this mark recorded is gone" means. One line,
+and `join_with_next`'s docstring says whose job it is.
+
+Both forms were affected and neither was covered: the own-mark form in the middle of a container
+and the shifted-back form at the end. The tests that did pass passed because they asserted the
+**text** after rejecting and not the markup, and because they ran over a created package whose
+paragraphs had no properties to keep. `test_rejecting_both_mark_forms_of_a_loaded_document_leaves_the_source`
+now runs the coordinator's own reproduction --- a **loaded** document, a
+paragraph inserted in the middle and one appended, rejected through `reject_all()` **and** one
+change at a time in reverse --- and asserts three things the older tests did not: the body is the
+source document, `get_tracked_changes()` is **empty**, and no `w:ins` or `w:del` is left in the
+part. The two neighbouring tests gained the same two assertions.
+
+The lesson, beside 16.10's: **a test that rejects must assert the markup is gone, not only that
+the text came back.** Text equality passed through every version of this defect.

@@ -264,11 +264,16 @@ class TrackedChange:
             if target.mark == "del":
                 _drop_mark(self.paragraph, "del")
             else:
+                paragraph = self._require_paragraph()
                 join_with_next(
-                    self._require_paragraph(),
+                    paragraph,
                     fallback_to_previous=True,
                     keep_properties=True,
                 )
+                # the break this mark recorded is gone, so the mark goes with
+                # it: keeping the surviving paragraph's own properties (16.10)
+                # means nothing else takes it away (CR-003 section 16.11)
+                _drop_mark(paragraph, "ins")
             return
         if target.kind == "run_properties":
             from docx4j_py.wml import RPr, rpr_from_elements
@@ -447,7 +452,9 @@ def join_with_next(
     that survives is one the document already had --- the break after it is what
     was inserted --- so it keeps its own ``w:pPr`` rather than taking the new
     paragraph's, which would strip the formatting of a paragraph nobody edited
-    (CR-003 section 16.10).
+    (CR-003 section 16.10). Its caller then drops the ``w:ins`` from that
+    ``w:pPr`` itself, since replacing the properties wholesale is what used to
+    carry the mark away (section 16.11).
 
     `fallback_to_previous` is for the second case at the end of a container,
     where a paragraph this package inserted carries its own mark (CR-003 section
