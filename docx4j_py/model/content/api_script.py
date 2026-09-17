@@ -254,6 +254,9 @@ class _Piece:
     note: str | None = None
     #: whether the leading-run form (``insert_paragraph``'s text) writes it
     buildable: bool = False
+    #: whether the run held ``w:t`` and nothing else, so that two of them side
+    #: by side are one run to Word --- and may be coalesced (section 19.3 item 16)
+    plain: bool = False
 
 
 def _run_format(run: Any) -> dict[str, Any]:
@@ -278,7 +281,7 @@ def _text_of_run(run: Any, pictures: Any) -> _Piece:
     fmt = _run_format(run)
     items = [item for item in (run.content or ()) if element_name(item) not in _DROPPED]
     if not items:
-        return _Piece("text", "", fmt=fmt, buildable=True)
+        return _Piece("text", "", fmt=fmt, buildable=True, plain=True)
 
     names = [element_name(item) for item in items]
     if names == [f"{W}drawing"]:
@@ -298,6 +301,7 @@ def _text_of_run(run: Any, pictures: Any) -> _Piece:
 
     text = ""
     buildable = True
+    plain = True
     previous = ""
     for item, name in zip(items, names, strict=True):
         if name == f"{W}t":
@@ -307,15 +311,17 @@ def _text_of_run(run: Any, pictures: Any) -> _Piece:
             text += str(getattr(item, "value", "") or "")
         elif name == f"{W}tab":
             text += "\t"
+            plain = False
         elif name == f"{W}br":
             kind = _value_of_type(item)
             if kind not in (None, "textWrapping"):
                 raise _Unexpressible(f"w:br w:type={kind!r} beside text in a run")
             text += "\n"
+            plain = False
         else:
             raise _Unexpressible(f"{_short(name)} in a run")
         previous = name
-    return _Piece("text", text=text, fmt=fmt, buildable=buildable)
+    return _Piece("text", text=text, fmt=fmt, buildable=buildable, plain=plain)
 
 
 def _value_of_type(item: Any) -> Any:
@@ -344,6 +350,36 @@ def _pieces_of(element: Any, pictures: dict[int, Any]) -> list[_Piece]:
         if piece.kind == "text" and piece.text == "":
             # a run with nothing left in it once the markers are dropped --- a
             # comment reference, a bookmark's run --- writes nothing
+            continue
+        out.append(piece)
+    return _coalesce(out)
+
+
+def _coalesce(pieces: list[_Piece]) -> list[_Piece]:
+    """Two plain runs of the same formatting side by side are one ``insert_text``.
+
+    Word paints two adjacent runs whose ``w:rPr`` is the same as one run, and
+    that is what the source usually holds --- Word splits a sentence into runs
+    at every editing session (``w:rsidRPr``), and the generator drops the ids
+    and the language hints that were all that told them apart. Emitting one
+    call per source run would give a wall of alternating one-word
+    ``insert_text`` lines that says nothing (CR-003 section 19.3 item 16); the
+    round trip is unaffected, since ``insert_text`` merges the runs again and
+    the comparison's normal form merges the source's.
+    """
+    out: list[_Piece] = []
+    for piece in pieces:
+        last = out[-1] if out else None
+        if (
+            last is not None
+            and last.kind == "text"
+            and piece.kind == "text"
+            and last.plain
+            and piece.plain
+            and last.fmt == piece.fmt
+        ):
+            last.text += piece.text
+            last.buildable = last.buildable and piece.buildable
             continue
         out.append(piece)
     return out
@@ -430,6 +466,7 @@ class _Emitter:
         pictures = {id(picture.run): picture for picture in (view.inline_pictures if view else ())}
         properties = self._properties(element, view)
         listed = _is_list_item(element, view)
+        comments = _comments_of(view)
         pieces = _pieces_of(element, pictures)
 
         notes: list[str] = []
@@ -457,7 +494,7 @@ class _Emitter:
 
         text = first.text if leading and first is not None else ""
         lines: list[str] = []
-        if not properties and not rest and not listed and leading:
+        if not properties and not rest and not listed and not comments and leading:
             # the whole paragraph is one plain run: one line, no variable
             lines.append(f"{self.variable}.insert_paragraph({_quote(text)}{self.at()})")
             return lines, exact, None
@@ -493,7 +530,7 @@ class _Emitter:
             for member, value in diff:
                 lines.append(f"{span}.font.{member} = {_literal(value)}")
 
-        comment_lines, commented = self._comment_lines(name, view)
+        comment_lines, commented = self._comment_lines(name, view, comments)
         if commented:
             exact = False
             notes.append("the comment markers, which insert_comment places itself")
@@ -624,14 +661,8 @@ class _Emitter:
 
     # -- comments ----------------------------------------------------------
 
-    def _comment_lines(self, name: str, view: Any) -> tuple[list[str], bool]:
+    def _comment_lines(self, name: str, view: Any, comments: list[Any]) -> tuple[list[str], bool]:
         """``insert_comment`` on the anchor, then ``reply`` and ``resolved``."""
-        if view is None:
-            return [], False
-        try:
-            comments = [c for c in view.get_comments() if c.parent is None]
-        except Exception:  # noqa: BLE001 - a document without comment parts has none
-            return [], False
         if not comments:
             return [], False
         lines: list[str] = []
@@ -769,6 +800,20 @@ def _style_assignment(style_id: str) -> tuple[str, str]:
     if built_in == "Other":
         return ("style_id", _quote(style_id))
     return ("style_built_in", _quote(built_in))
+
+
+def _comments_of(view: Any) -> list[Any]:
+    """The top-level comments anchored in a paragraph; asked before a line is emitted.
+
+    Before, because a paragraph of one plain run would otherwise take the
+    one-line form and lose them (CR-003 section 19.3 item 16 found this).
+    """
+    if view is None:
+        return []
+    try:
+        return [comment for comment in view.get_comments() if comment.parent is None]
+    except Exception:  # noqa: BLE001 - a document without comment parts has none
+        return []
 
 
 def _is_list_item(element: Any, view: Any) -> bool:

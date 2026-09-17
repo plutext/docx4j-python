@@ -3474,14 +3474,14 @@ has no Python counterpart worth building, so this phase is the generator alone
 
 | module | lines | what it is |
 |---|---:|---|
-| `docx4j_py/model/content/api_script.py` | 1,230 | `to_api_script`, `script_blocks`, `ScriptBlock`, `PLACEHOLDER_PNG`, the emitter and the expressibility rules |
-| `tests/content/test_api_script.py` | 613 | 68 tests: the executed round trip of section 7, and one per rule |
+| `docx4j_py/model/content/api_script.py` | 1,275 | `to_api_script`, `script_blocks`, `ScriptBlock`, `PLACEHOLDER_PNG`, the emitter and the expressibility rules |
+| `tests/content/test_api_script.py` | 650 | 71 tests: the executed round trip of section 7, and one per rule |
 | `tests/agent/test_api_script_workflows.py` | 120 | 32 tests: reveal codes under a budget, and the whole corpus |
 
 Beside them: `Body`, `Paragraph`, `Range` and `Table` gain a thin delegating
 `to_api_script(**options)`; `docx4j_py.model.content` exports `to_api_script`,
 `script_blocks` and `ScriptBlock` through its lazy `_LAZY` table, so nothing new
-is imported until it is called. **1,306 tests before, 1,406 after.**
+is imported until it is called. **1,306 tests before, 1,409 after.**
 
 `codegen/clean.py` needed no change: `KEEP` holds `model` as a directory, which
 `test_codegen_el.py`'s "every hand-written path is in `KEEP`" test confirms.
@@ -3510,7 +3510,7 @@ paragraph comes out whole either way, which is section 3.11's rule.
 | `w:outlineLvl` | `p1.outline_level = n + 1` |
 | `w:numPr` | `list1 = p1.start_new_list(kind=…)` for the first item of each `w:numId`, then `p2.attach_to_list(list1.id, level)` (19.3 item 4) |
 | a level that is not docx4j's default | `list1.set_level_numbering(…)` / `set_level_bullet(…)` / `set_level_indents(…)` |
-| a run of text | `r1 = p1.insert_text("…")` and the `Font` members that differ from the previous run |
+| a run of text | `r1 = p1.insert_text("…")` and the `Font` members that differ from the previous run; two plain runs of the same formatting side by side are **one** call (19.3 item 16) |
 | `w:tab`, a text-wrapping `w:br` in the leading run | `"\t"` and `"\n"` in `insert_paragraph`'s text, which the `r` builder writes back as `w:tab` and `w:br` |
 | a `w:br` alone in a run | `p1.insert_break("Page")` / `("Line")` |
 | a `w:drawing` that is an inline picture | `p1.insert_inline_picture_from_base64(…, width=…, height=…, alt_text_description=…)` |
@@ -3616,6 +3616,26 @@ what a tool returns beside the source and what section 19.4's measurement reads.
     from its objects package; CR-001 has no `to_source` either, so the same
     wish is recorded here rather than acted on.
 
+16. **Adjacent plain runs of the same formatting are one `insert_text`**
+    (*added the same day, on the coordinator's report*). Word splits a sentence
+    into runs at every editing session --- `w:rsidRPr` and nothing else tells
+    them apart --- and items 3 and 12 drop exactly what did: the ids and the
+    language hints. Emitting one call per source run gave a wall of alternating
+    one-word lines that said nothing; `lists.docx`'s first list item came out as
+    ten `p2.insert_text(" ")` / `p2.insert_text(".  Some content,")` lines.
+    `_coalesce` joins consecutive pieces whose run held `w:t` and nothing else
+    and whose twelve `Font` values are equal, and joins them into the leading
+    run's text when the first of them is the leading run. `exact` is untouched:
+    `insert_text` merges the runs again anyway, and the comparison's normal form
+    merges the source's (that is the last of the nine items 19.4 lists). A run
+    holding a `w:tab` or a `w:br` is **not** plain and is never coalesced,
+    because the normal form does not merge those either. Finding this also
+    found a defect: a paragraph whose runs all coalesced into one plain leading
+    run took the one-line `body.insert_paragraph("…")` form, which is emitted
+    before the comment calls and so dropped them --- so the comments a
+    paragraph carries, like its `w:numPr`, are now resolved **before** the
+    shortcut is taken.
+
 ### 19.4 The numbers, measured
 
 The corpus is the 13 WordprocessingML documents of `samples/` (the other three
@@ -3666,9 +3686,20 @@ Generation is a marshal of whatever falls back, and costs what that costs:
 
 | document | blocks | script | time |
 |---|---:|---:|---:|
-| `2010-sample1.docx` | 4 | 2,926 chars | 10 ms |
-| `sample-docx.docx` | 64 | 11,295 chars | 96 ms |
-| `Symbols.docx` (the largest) | 160 | 807,478 chars | 841 ms |
+| `2010-sample1.docx` | 4 | 2,926 chars, 10 lines | 10 ms |
+| `sample-docx.docx` | 64 | 11,189 chars, 248 lines | 96 ms |
+| `Symbols.docx` (the largest) | 160 | 807,459 chars, 477 lines | 841 ms |
+
+Item 16's coalescing is what the last column of that table is measured after.
+Its effect is on **lines**, not bytes, because the bytes are the fallbacks':
+over the corpus it takes the `insert_text` calls from 54 to 33, the lines from
+1,180 to 1,159 and the characters from 937,781 to 937,347. Per document, where
+it shows: `sample-docx.docx` 253 lines and 11 `insert_text` calls to 248 and 6
+(11,295 chars to 11,189); `Symbols.docx` 478 lines and its one `insert_text`
+call to 477 and 0 (807,478 chars to 807,459); `toc.docx` 216 lines and 39 calls
+to 204 and 27; `lists.docx` 47 lines and 14 calls to **35 and 2**, which is the
+document the report came from --- its first list item is now a single
+`insert_paragraph`.
 
 The 807 KB is the honest cost of a document the verbs cannot express: 153
 marshalled paragraphs of symbol runs. `limit=` is the answer for an agent, and

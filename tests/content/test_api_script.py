@@ -268,6 +268,43 @@ def test_each_run_emits_the_font_that_differs_from_the_previous(body) -> None:
     ]
 
 
+def test_adjacent_runs_of_the_same_formatting_are_one_call(body) -> None:
+    """Word paints them as one run, so the script writes one ``insert_text``."""
+    body.insert_xml(
+        '<w:p><w:r w:rsidRPr="0034500C"><w:rPr><w:lang w:val="en-AU"/></w:rPr>'
+        '<w:t xml:space="preserve">one </w:t></w:r>'
+        '<w:r w:rsidRPr="00AD6B9B"><w:rPr><w:lang w:val="en-AU"/></w:rPr><w:t>two</w:t></w:r>'
+        '<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t> three</w:t></w:r></w:p>'
+    )
+    assert to_api_script(body.paragraphs[0]).splitlines() == [
+        'p1 = body.insert_paragraph("one two")',
+        'r1 = p1.insert_text(" three")',
+        "r1.font.bold = True",
+    ]
+
+
+def test_the_lists_fixture_item_is_one_call_and_still_exact() -> None:
+    """The ten alternating one-word calls that used to come out of this are one.
+
+    Its runs differ only by ``w:rsidRPr`` and all carry the same
+    ``w:lang``, which the generator drops (CR-003 section 19.3 items 3 and 16).
+    """
+    package = _document("lists.docx")
+    paragraph = package.body.paragraphs[2]
+    block = script_blocks(paragraph)[0]
+    assert block.exact
+    assert [line for line in block.lines if "insert_text" in line] == []
+    assert block.lines[0].startswith('p1 = body.insert_paragraph("None   Some content, .  ')
+    assert block.lines[0].count("Some content,") == 8
+
+
+def test_a_tab_run_is_not_coalesced_into_its_neighbour(body) -> None:
+    """A ``w:tab`` makes its run more than text, and two such runs stay two."""
+    body.insert_xml("<w:p><w:r><w:t>a</w:t></w:r><w:r><w:tab/><w:t>b</w:t></w:r></w:p>")
+    lines = to_api_script(body.paragraphs[0]).splitlines()
+    assert lines[-1] == 'p1.insert_text("\\tb")'
+
+
 def test_a_run_style_is_a_font_member_here(body) -> None:
     """``Font.style`` is ``w:rStyle``; the TypeScript engine has no such member."""
     body.insert_xml(
