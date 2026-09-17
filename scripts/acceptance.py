@@ -407,6 +407,10 @@ def template_filled(out: Path) -> Path:
     """9. A Word-authored template filled through the Phase E custom XML API."""
     target = out / "9-template-filled.docx"
     pkg = WordprocessingMLPackage.load(TEMPLATE_SOURCE)
+    # the invoice is a Word 2010 document (compatibilityMode 14); a loaded document's
+    # mode is never changed silently, so say so here, which is also the one place
+    # the setter is exercised in a Word check (CR-003 section 17.11)
+    pkg.compatibility_mode = 15
     pkg.id_seed = 20260917
 
     # what the template wants, before anything is written: the same call

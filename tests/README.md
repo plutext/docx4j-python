@@ -95,53 +95,12 @@ Record each run here, in the form docx4j-core-ts's `test/README.md` uses. When a
 markup that makes Word **hang** or quietly refuse an operation, also add an entry to
 `../docx4j-portfolio/docs/word-hangs.md`, the log shared across the three engines.
 
-> **Not yet run: artefacts 3, 4, 5 and 9, regenerated 2026-09-17** after CR-003 sections 17.10
-> and 17.11 and CR-002 section 12.10. 3, 4 and 5 are created documents, and `create_package` now
-> writes Word's own `w:compat` --- `compatibilityMode` **15** and the five settings beside it ---
-> so the thing to look at is Word's **title bar**: it must *not* say "Compatibility Mode", where
-> before this change it did. 9 now fills **three** line items, so the check is that Word shows
-> three rows in the line-item table (it expands the repeat itself; the file carries one template
-> item). Everything else in those four rows is unchanged. Artefacts 1, 2, 6, 7 and 8 are not
-> affected by either change.
->
-> Run: 2026-09-17, Word (version not recorded), after CR-003 Phase E, artefact 9. **Passed** ---
-> no repair prompt, and every value in its row was right --- with one correction to the row
-> itself: Word showed **two** line items, not one. The claim that a repeating section is "not
-> expanded and Word will not add rows of its own" was wrong about *Word*: Word expands a bound
-> repeating section to its node set when it opens the document. The engine's half of it stands
-> (it writes the nodes and leaves the one template item alone), and `fill()` now takes a list for
-> a repeat so that the nodes can be written at all. CR-003 section 17.10 records both.
->
-> Previous run: 2026-09-17, Word (version not recorded), after CR-003 Phase F, artefact 8, second
-> check. **Passed.** The first check the same day found the deleted row highlighted but not struck
-> through, the appended paragraph invisible and **Reject All hanging Word**; the causes and the
-> fixes are CR-003 sections 16.10 to 16.12 and the first entry of
-> `../docx4j-portfolio/docs/word-hangs.md`. After the fixes every item in the row holds.
->
-> Previous run: 2026-09-17, Word (version not recorded), after CR-003 Phase G, artefact 7.
-> **Passed.** Three threads by Claude, the replies nested, the resolved thread resolved. The
-> pane lists them in document order of their anchors (whole paragraph, then "first", then
-> "document"), not in insertion order; the row above now says so. On save Word's Compatibility
-> Checker flagged the one resolved thread ("collapsed"), because the source is in Word 2010
-> compatibility mode; expected, and recorded in the row and in CR-003 section 15.7.
->
-> Previous run: 2026-09-17, Word (version not recorded), after the CR-003 section 14.9 style fix,
-> artefact 6 re-opened. **Passed**: "Tables and pictures" is Heading 1.
->
-> Run: 2026-09-17, Word (version not recorded), after CR-003 Phase C, all six artefacts.
-> **Passed except artefact 6**, whose "Tables and pictures" rendered as Normal rather than
-> Heading 1. Word does not create a definition for a dangling `w:pStyle`; CR-003 section 14.9
-> records the correction and a setter now adds the definition.
->
-> Last run: 2026-09-17, Word (version not recorded), after CR-003 Phase K, all five artefacts.
-> **Passed.** Every check in the table below held, including artefact 5's list glyphs, the
-> restarting ordered list, the code styles, the link and the table, and a save-close-reopen.
->
-> Previous run: 2026-09-12, Word (version not recorded), after CR-002 Phase A. **Passed.**
-> 1: image with reflection, no text, as in the source document; 2: the two added paragraphs
-> visible; 3 and 4: correct. No repair prompts. Re-checked after the docProps fix: Windows
-> Explorer's Details tab shows Program name `docx4j-python` and Content created / Date last
-> saved from the core part, rendered in local time.
+> Last run: 2026-09-17, Word (version not recorded), artefacts 3, 4, 5 and 9 after CR-003
+> sections 17.10 and 17.11 and CR-002 section 12.10. **Passed**: the title bar no longer says
+> "Compatibility Mode" for 3, 4 and 5; 9 shows three line items. 9's title bar still said
+> "Compatibility Mode", as expected of a loaded Word 2010 document whose mode nobody had set;
+> the script now sets `pkg.compatibility_mode = 15` on it, and **that one item on 9 is not yet
+> re-checked**. Artefacts 1, 2, 6, 7 and 8 are unchanged by this work.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer or `create_package`,
@@ -170,7 +129,7 @@ clock for the same reason, since the script does not fix `pkg.tracked_change_dat
 
 | `out/acceptance/8-tracked-changes.docx` | the same **loaded** document with `pkg.change_tracking_mode = "TrackAll"` and then, through CR-003 Phase F's content API, `replace_text("first", "second")`, a paragraph inserted **after the first one**, another **appended at the very end** (the final-mark rule of section 16.10), a deleted paragraph, `font.bold = True` on another, a table row added and a row deleted, and a comment explaining the replacement. The table and two paragraphs are written **before** the mode goes on, so that there is something of the document's own to delete and to re-format and so that the body ends with a paragraph | no repair prompt; **Review → Track Changes is on** and the Reviewing pane lists every change with **Claude** and today's date: *Inserted* "second" and *Deleted* "first" in the first paragraph, an *Inserted* paragraph ("Added by an agent, right after the first paragraph.") **visible near the top**, another at the very end, a *Deleted* paragraph ("This paragraph will be deleted, with its mark.") whose paragraph mark is deleted too, a *Formatted* run ("This paragraph will be made bold." shown bold with a formatting balloon), an *Inserted* table row (North / Q2 / 300) and a *Deleted* table row (East / Q2 / 180), which is **still shown and struck through** --- its cell text struck, not merely highlighted --- until it is accepted. The comment by **Claude** is anchored on **second**. Then, on a copy, **Review → Accept All**: the document reads "My second 2010 document.", the deleted paragraph and the East row are gone, both added paragraphs and the North row are there, the bold stays, and the comment survives. On another copy, **Reject All** --- which must **not hang** --- : the first paragraph reads "first" again, the deleted paragraph and the East row are back, the North row and both added paragraphs are gone, the bold is gone, and the comment is still there. Then **save from Word, close, reopen**: still clean. **Expected on that save**: the Compatibility Checker may report the resolved-comment / collapsed-comment note again, for the reason artefact 7's row gives (the source is a Word 2010 document). |
 
-| `out/acceptance/9-template-filled.docx` | `samples/invoice2013.docx`, a Word-authored template with twenty bindings over `/customXml/item1.xml`, **filled** through CR-003 Phase E's `pkg.custom_xml_parts.fill()`: a new company and contact, a new invoice number, the VAT checkbox cleared, a new date, and new data for the first line item of a `w15:repeatingSection`. Then a **new** custom XML part through `add()` --- `/customXml/item2.xml` with its `/customXml/itemProps2.xml`, a brace-wrapped upper-case `ds:itemID` and the relationship from the main document part, as docx4j's `addPropertiesPart` writes it --- a new paragraph, a run-level content control in it, and a mapping to the new part's `<by>` node | no repair prompt; the bound controls show the **new** values on open, before Word has refreshed anything: the customer is **Acme Manufacturing Ltd**, the contact **Ada Lovelace**, the invoice number **INV-2026-0917**, the VAT checkbox is **empty** (☐, in MS Gothic) and the date reads **17 September 2026** in the template's own `d MMMM yyyy` format. The line-item table shows **three** rows --- ACME-9 / Anvil, large / 2 / 199.00, ACME-3 / Rope, 30 m / 10 / 9.00 and ACME-1 / Dynamite, one stick / 1 / 49.00 --- although the file itself carries **one** `w15:repeatingSectionItem`. That is Word's doing, not ours: it expands a bound repeating section to the node set its `w15:dataBinding` selects when it opens the document, cloning the one item per node, so the number of rows is the number of `lineitem` nodes in the data (CR-003 section 17.10). `fill()` wrote the three nodes and left the item alone; a second template item would give twice as many rows. Unzip `customXml/item1.xml` to see the three. At the end, "Approved by: **Grace Hopper**", where *Grace Hopper* is the new control, bound and showing its value. **Developer → XML Mapping Pane** (turn the Developer tab on in File → Options → Customize Ribbon if it is not there) offers **two** custom XML parts in its drop-down: the invoice's, and the new `http://example.com/approval` one whose tree shows `approval/by` and `approval/status`; clicking into the "Grace Hopper" control highlights `by` in the pane. Then **save from Word, close, reopen**: still clean, and every value above is unchanged. **Expected**: Word may report the Compatibility Checker note about the picture control or the repeating section on an older compatibility mode; the source is Word 2013 and the repeat is untouched, so *Continue* is fine. |
+| `out/acceptance/9-template-filled.docx` | `samples/invoice2013.docx`, a Word-authored template with twenty bindings over `/customXml/item1.xml`, **filled** through CR-003 Phase E's `pkg.custom_xml_parts.fill()`: a new company and contact, a new invoice number, the VAT checkbox cleared, a new date, and new data for the first line item of a `w15:repeatingSection`. Then a **new** custom XML part through `add()` --- `/customXml/item2.xml` with its `/customXml/itemProps2.xml`, a brace-wrapped upper-case `ds:itemID` and the relationship from the main document part, as docx4j's `addPropertiesPart` writes it --- a new paragraph, a run-level content control in it, and a mapping to the new part's `<by>` node | no repair prompt; the bound controls show the **new** values on open, before Word has refreshed anything: the customer is **Acme Manufacturing Ltd**, the contact **Ada Lovelace**, the invoice number **INV-2026-0917**, the VAT checkbox is **empty** (☐, in MS Gothic) and the date reads **17 September 2026** in the template's own `d MMMM yyyy` format. The line-item table shows **three** rows --- ACME-9 / Anvil, large / 2 / 199.00, ACME-3 / Rope, 30 m / 10 / 9.00 and ACME-1 / Dynamite, one stick / 1 / 49.00 --- although the file itself carries **one** `w15:repeatingSectionItem`. That is Word's doing, not ours: it expands a bound repeating section to the node set its `w15:dataBinding` selects when it opens the document, cloning the one item per node, so the number of rows is the number of `lineitem` nodes in the data (CR-003 section 17.10). `fill()` wrote the three nodes and left the item alone; a second template item would give twice as many rows. Unzip `customXml/item1.xml` to see the three. At the end, "Approved by: **Grace Hopper**", where *Grace Hopper* is the new control, bound and showing its value. **Developer → XML Mapping Pane** (turn the Developer tab on in File → Options → Customize Ribbon if it is not there) offers **two** custom XML parts in its drop-down: the invoice's, and the new `http://example.com/approval` one whose tree shows `approval/by` and `approval/status`; clicking into the "Grace Hopper" control highlights `by` in the pane. Then **save from Word, close, reopen**: still clean, and every value above is unchanged. The source is a Word 2010 document (`compatibilityMode` 14) and the script sets `pkg.compatibility_mode = 15`, so Word's **title bar must not say "Compatibility Mode"** (the first check of this artefact, before the setter was called, showed it). Word may still report a Compatibility Checker note on save; *Continue* is fine. |
 
 ### Checks worth making on every one
 
