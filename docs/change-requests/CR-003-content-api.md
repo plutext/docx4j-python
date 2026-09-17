@@ -8,12 +8,14 @@ and to be designed for AI projects and MCP servers first; open questions decided
 2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16); **Phase E
 implemented 2026-09-17** (section 17), with which every one of the 200 non-extension members of
 `tests/office_js_subset.json` is implemented; two follow-ups the same day from the Word check of
-artefact 9 (sections 17.10 and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`).
-Phases H, I and J proposed.
+artefact 9 (sections 17.10 and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`);
+**Phase H implemented 2026-09-17** (section 18), with the numbering `Emulator` CR-002 section 6.2
+promised for its Phase B (CR-002 section 12.11). Phases I and J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
-formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
-until it lands the views read direct formatting and say so.
+formatting needs CR-002 Phase B (`PropertyResolver`); until it lands the views read direct
+formatting and say so. **List labels no longer wait for it**: Phase H brought the numbering
+`Emulator` forward into `docx4j_py/model/listnumbering/` (section 18, CR-002 section 12.11).
 **Counterpart:** docx4j-core-ts [CR-002](../../../docx4j-core-ts/docs/change-requests/CR-002-content-api.md)
 (phases B, C, D, E, F, G and I implemented 2026-09-10 to 2026-09-16; H proposed), whose object
 model and rules this CR keeps so the two engines stay one design, and whose implementation
@@ -514,6 +516,11 @@ them byte for byte.
 `detach_from_list`. `list_string` needs CR-002 Phase B's `Emulator`; until then `None`, and
 `to_markdown` numbers lists itself.
 
+*Implemented 2026-09-17, section 18 --- and the last sentence is no longer true: rather than wait,
+Phase H **brought the `Emulator` forward** (CR-002 section 6.2, now
+`docx4j_py/model/listnumbering/`), so `list_string` is the label Word paints and `to_markdown`
+takes its markers from it.*
+
 ### 3.11 `to_api_script`
 
 docx4j-core-ts's phase I is a `Word` shim plus `toApiScript`. The shim has no Python counterpart
@@ -645,8 +652,11 @@ imports the parts, never the reverse.
 
 `Font` reads report direct formatting of the first run in scope until `PropertyResolver` lands,
 then effective formatting as Office JS reports it; documented as such, with a test marked to
-flip. `ListItem.list_string` is `None` until the `Emulator`, and `to_markdown` numbers lists
-itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from Phase B.
+flip. ~~`ListItem.list_string` is `None` until the `Emulator`, and `to_markdown` numbers lists
+itself.~~ **Settled 2026-09-17 (section 18): Phase H wrote the `Emulator` rather than wait for
+it**, so `list_string` is the label Word paints and the markdown exporter's markers come from it;
+what a list still owes Phase B is resolution through `PropertyResolver` (section 18.2 item 16).
+`insert_table` sizes the grid from `w:sectPr`, which needs nothing from Phase B.
 
 ## 7. Tests
 
@@ -682,7 +692,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | F | Change tracking and `replace_text` (3.8); the README's audit-trail example --- **implemented 2026-09-17, section 16** | 4 days |
 | E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) --- **implemented 2026-09-17, section 17** | 4 days |
 | J | The python-docx facade (3.6) and its subset test | 3 days |
-| H | Lists (3.10) | 3 days |
+| H | Lists (3.10) --- **implemented 2026-09-17, section 18**, with CR-002 section 6.2's numbering `Emulator` under them | 3 days |
 | I | `to_api_script` (3.11) | 2 days |
 
 B, D and K first: after them an agent can read any document within a budget, address any block,
@@ -1531,6 +1541,13 @@ a `w:rPr` per run, a `w:pPr` per paragraph and a style lookup per styled block.
   `w:abstractNumId` and `w:numId` above the document's own) is what keeps section 3.4's
   determinism.
 
+*Done 2026-09-17, section 18: the markers come from the emulator (so the four items of
+`lists.docx` are 1 2 3 4, which is what Word paints), the loose item's rule of 13.4 is
+implemented, and the part creation and the two allocators moved into
+`model/content/lists.py`, which `_Numbering` now calls. Section 18.3 also records two things the
+real numbers made visible in the renderer and one gap they closed: a trial that creates a
+numbering part now un-creates it.*
+
 ## 14. Phase C implementation notes (2026-09-17)
 
 Phase C is done: `Table`, `TableRow`, `TableCell` and `InlinePicture` with the header readers of
@@ -2308,6 +2325,10 @@ forms. The result:
   added to `/word/numbering.xml` is a part edit. Nothing in Phase H needs a tracked branch
   beyond the paragraph property one.
 
+*Implemented 2026-09-17 exactly as written, section 18; three tests in
+`tests/content/test_lists.py` pin the three points, and the reject test asserts the markup is
+gone rather than only the value.*
+
 ### 16.8 What the Word check is for
 
 `scripts/acceptance.py` writes `8-tracked-changes.docx`: `samples/2010-sample1.docx` with the
@@ -3083,3 +3104,310 @@ Thirteen tests in `tests/content/test_compatibility.py`, and the `create_package
 test in `tests/openpackaging/test_parts_and_relationships.py` now pins the exact
 `w:compat`. **1,219 tests before, 1,232 after.** Artefacts 3, 4, 5 and 9 were
 regenerated; the Word check of them is outstanding.
+
+## 18. Phase H implementation notes (2026-09-17)
+
+Lists (section 3.10), and under them the numbering **emulator** CR-002 section
+6.2 promised for its Phase B: the labels had to come from somewhere, and a
+second counting engine to be thrown away when Phase B lands would have been the
+wrong thing to write. CR-002 section 12.11 records the loan from that end.
+
+### 18.1 What landed
+
+| module | lines | what it is |
+|---|---:|---|
+| `docx4j_py/model/listnumbering/definitions.py` | 721 | `ListLevel`, `AbstractListNumberingDefinition`, `ListNumberingDefinition`, `Counter`, `NumberingState`, `NumberingStates`, `Indent`, `read_definitions` |
+| `docx4j_py/model/listnumbering/emulator.py` | 782 | `Emulator`, `NumRef`, `NumberingResult` (`ResultTriple`), the style resolution, `labels_for` and the per-story caches |
+| `docx4j_py/model/listnumbering/formats.py` | 143 | the eight number formats, and the decimal fall-back with one warning per format |
+| `docx4j_py/model/listnumbering/__init__.py` | 79 | the exports |
+| `docx4j_py/model/content/lists.py` | 1,025 | `List`, `ListItem`, the five verbs, and the one place a numbering part is created |
+| `tests/content/test_listnumbering.py` | 283 | 25 tests: the emulator against Word's own goldens |
+| `tests/content/test_lists.py` | 599 | 41 tests: the views, the verbs, tracking, the round trips |
+| `tests/agent/test_list_workflows.py` | 150 | 5 tests: the tool shape |
+
+Beside them: `Paragraph` gains `is_list_item`, `list`, `list_item`,
+`start_new_list`, `attach_to_list`, `detach_from_list` and a `list_item` key in
+`to_dict()`; `Body` gains `lists`; `NumberingDefinitionsPart` gains
+`get_emulator()`, `numbering_state` and the two definition maps;
+`markdown/export.py` takes its list markers from the emulator; `OpcPackage` and
+`TrialPackage` each hold the emulator in a slot, as they already hold the
+tracker and the split-run map. **1,222 tests before, 1,293 after.**
+
+`codegen/clean.py` needed no change: `KEEP` holds `model` as a directory, so
+`model/listnumbering/` is covered, which
+`test_codegen_el.py`'s "every hand-written path is in `KEEP`" test confirms.
+
+The emulator matches Word on **every one** of the labels docx4j's CR-014 and
+CR-015 measured (section 18.5).
+
+### 18.2 Departures from sections 3.10, 3.2 and 4, and from docx4j-core-ts 3.9
+
+1. **The definitions are read as bytes with lxml, not from `part.contents`.**
+   The obvious implementation unmarshals `/word/numbering.xml`, and Phase K
+   promised that reading a document — `to_markdown()` reads every list marker —
+   leaves an untouched part byte for byte. So `Emulator` reads the numbering
+   part and the styles part the way `describe()` and the markdown exporter
+   already read them: `etree.fromstring(part.get_xml())`, which is the source
+   bytes for an untouched part and the current tree for an edited one, and is
+   therefore one reader rather than two. A *write* to the numbering part makes
+   the next label read re-marshal it (1.7 ms for a one-list document, 13 ms for
+   a ten-list one), which is the price; a reader pays nothing.
+   `test_reading_the_labels_leaves_the_numbering_part_untouched` pins the
+   promise.
+2. **`ResultTriple.ind` is an `Indent`, not a typed `w:ind`.** It follows from
+   item 1: the level definitions are lxml, so the indent comes out as a frozen
+   dataclass of twips (`left`, `right`, `hanging`, `first_line`) with
+   `to_dict()`. It is the better answer for this API anyway — points and twips
+   are numbers here, not elements — and `NumberingResult.level` still carries
+   the whole `ListLevel` for a caller who wants more.
+3. **docx4j's overloaded `getNumber` is two names.** Python has no overloads:
+   `Emulator.get_number(package, p_pr, state=None)` is the `PPr` form and
+   `Emulator.get_number_of(package, p_style_val, num_id, ilvl, direct_num_pr,
+   state)` the explicit one, with `Emulator.peek(...)` beside them. The
+   instance methods `number`, `number_of` and `peek_number` are what the views
+   call, so that a caller with an emulator in hand does not look it up again.
+4. **A list the document does not define answers `None`, not an empty result.**
+   docx4j returns a `ResultTriple` with a null `numString` when the `w:numId` is
+   missing or the level is not there, and logs; here `get_number` returns
+   `None`, which is what "not a list item" means to every caller in this
+   package and what `is_list_item` is written over. `NumberingResult` gains four
+   fields docx4j has no member for — `num_id`, `ilvl`, `count` and
+   `sibling_index` — because Office JS's `ListItem` reports the last of them and
+   computing it a second way would have been the only alternative.
+5. **`set_level_numbering`'s `format_string` is a `w:lvlText`, not Office JS's
+   array.** Office JS takes `[{level, ...}]` and builds the level text from it;
+   this takes the level text itself (`"%1)"`, `"Article %1."`), which is the
+   same thing said once and is what a caller who knows Word writes anyway. A
+   `numbering_type` of `"None"` also **clears** the level text, because Word's
+   own *None* writes an empty `w:lvlText` beside the `w:numFmt` and leaving the
+   old pattern behind paints a bare `"."` in front of every item.
+6. **`set_level_indents` maps to `w:ind` directly**: `text_indent` is
+   `@w:left` and `bullet_number_picker_indentation` is `@w:hanging`, which is
+   what Office JS's own documentation says the two are ("the same as paragraph
+   indent", "the same as paragraph hanging indent"). Both are in points.
+7. **`start_new_list` takes `kind=` and `like=`.** Office JS's `startNewList()`
+   takes nothing and always makes a numbered list. `kind="Bullet"` is the
+   obvious extension (docx4j's default numbering carries both sets, and the
+   markdown importer needs both); `like=` is Word's *Restart numbering at 1*,
+   which is docx4j's `NumberingDefinitionsPart.restart` — a second `w:num` over
+   the **same** `w:abstractNum` with a `w:startOverride` of 1 at level 0 — and
+   there is no other way to ask for it. Both are marked as extensions in the
+   docstrings.
+8. **`list_string` translates Word's private-use bullets.** A bullet level's
+   `w:lvlText` is `""` in Symbol or `""` in Wingdings: a glyph, not
+   a character, and meaningless outside Word. `ListItem.list_string` reports the
+   Unicode look-alike (`"•"`, `"▪"`, `"❖"`, `"➢"`, `"✓"`), which is what a tool
+   result wants; `List.get_level_string(level)` and the emulator's
+   `num_string` still give the document's own text. `BULLET_GLYPHS` is the
+   table, and it is the inverse of the one `set_level_bullet` writes.
+9. **`ListParagraph` is applied only to a paragraph with no style of its own.**
+   Section 14.9 required the decision either way. Word applies *List Paragraph*
+   when the ribbon makes a list item, and the markdown importer writes it, so
+   `start_new_list` and `attach_to_list` do too — through `ensure_style`, so the
+   definition is added rather than dangled — but a paragraph that already names
+   a style (a heading, a quote) keeps it, which is also what Word does when
+   numbering is applied to a heading. `detach_from_list` never changes the
+   style: Word leaves *List Paragraph* on a paragraph whose numbering it removes.
+10. **`detach_from_list` writes `w:numId 0` for style-contributed numbering.**
+    Removing the `w:numPr` would leave the style still numbering the paragraph.
+    Word writes `<w:numPr><w:numId w:val="0"/></w:numPr>`, ECMA-376 17.9.18's
+    "no numbering", and so does this; a `w:numPr` of the paragraph's own is
+    simply removed. Which of the two it is comes from the emulator's `NumRef`,
+    not from the markup, so a direct `w:numPr` of `w:ilvl` alone is correctly
+    read as style-contributed.
+11. **`parts_touched` names `/word/numbering.xml` only when the call writes
+    it.** `attach_to_list`, `detach_from_list` and `ListItem.level` write a
+    paragraph property and nothing else, and `parts_touched` is "the parts that
+    will be re-marshalled on the next save" (section 3.4). Naming a part a call
+    did not touch would make the field useless for the thing an MCP server does
+    with it. `start_new_list` names three (the body, the numbering part, and
+    `styles.xml` when *List Paragraph* had to be defined), and the level setters
+    two.
+12. **No null-object members.** Office JS has `listOrNullObject` and
+    `listItemOrNullObject`; section 3.1 says `None` is Python's answer and there
+    are no null objects here, so `list` and `list_item` are `None` when the
+    paragraph is not an item and the two extra members do not exist.
+    `setLevelAlignment` and `setLevelStartingNumber` are not in this phase; the
+    first is `w:lvlJc` and the second is `w:start`, and neither has a caller yet.
+13. **docx4j's `restart` and `addAbstractListNumberingDefinition` live in
+    `model/content/lists.py`**, not on `NumberingDefinitionsPart` where docx4j
+    has them. They write model objects, which the engine may only import
+    lazily, and they exist for `start_new_list`; the part keeps what CR-002
+    section 6.2 actually promised — `get_emulator()`, `numbering_state` and the
+    two definition maps — and delegates them to the emulator.
+14. **The emulator belongs to the package, not to the part.** docx4j holds the
+    maps on `NumberingDefinitionsPart` and makes `Emulator` a static marker;
+    here resolution needs the **styles** part as well (there is no
+    `PropertyResolver` to hide it), so one object over the package holds the
+    definitions, the style map, the default `NumberingState` and the per-story
+    label caches. `package._numbering_emulator` is a slot, beside the tracker
+    and the split-run map that are there for the same reason.
+15. **The counted labels are thrown away by `recording`.** A paragraph
+    inserted, deleted or renumbered changes what every item after it is
+    numbered, and no verb can know that on its own; `recording.__exit__` and
+    `recording_on.__exit__` clear the caches, which costs one attribute lookup
+    on every mutation of every phase and nothing at all until something has
+    asked for a label. A change to the *definitions* calls
+    `listnumbering.invalidate` explicitly, and `ensure_style` calls
+    `invalidate_styles` when it adds a definition, because a style may carry a
+    `w:numPr`.
+16. **Resolution is direct, and moves onto `PropertyResolver` when it lands.**
+    The paragraph's own `w:numPr`; else its style's, following `w:basedOn`
+    attribute by attribute so that a style stating only `w:ilvl` inherits the
+    `w:numId`; else the `w:default="1"` paragraph style, which may itself be
+    numbered. `w:numId` 0 turns numbering off, and a level whose `w:pStyle`
+    names another paragraph style numbers only that style unless the `w:numPr`
+    is the paragraph's own. Every one of those is a rule docx4j's CR-014
+    measured against Word (section 18.5), and the style walk is the **only**
+    part of this module that is not docx4j's own logic: when CR-002 Phase B
+    lands, `Emulator.effective_numbering` is the method that goes.
+
+### 18.3 What the markdown exporter gained, and two things it had wrong
+
+Section 13.6 asked for the marker's number to come from `list_string`. It does:
+`_OpenList` counts nothing now, so the four list paragraphs of
+`tests/fixtures/lists.docx` — one `w:numId`, separated by empty paragraphs —
+come out **1. 2. 3. 4.**, which is what Word paints, where the renderer's own
+count restarted at 1. in every block. The block rule of 13.6 is unchanged: a run
+of list paragraphs is one markdown block, broken by a non-list paragraph and by a
+different top-level `w:numId`.
+
+Two things the real numbers made visible, both fixed because Phase H owns lists:
+
+- **A nested item is indented to its parent's content column**, not two spaces
+  per level. Two spaces is right under `- ` and wrong under `1. `, so a sublist
+  of an ordered list did not round-trip as a sublist at all — the items came
+  back at level 0. `_OpenList.indents` carries the column per level.
+- **A list that follows another list with nothing between them takes the other
+  CommonMark delimiter** (`1)` after `1.`, `*` after `-`), and only when the two
+  are of the same kind and different `w:numId`s. CommonMark reads two adjacent
+  lists of one delimiter as a single list, so a restarted list came back merged
+  into the one before it. With the two fixes a created two-level list with a
+  restart round-trips through markdown **exactly**, which
+  `test_a_two_level_list_with_a_restart_round_trips_through_markdown` pins.
+
+**The loose item's follow-on paragraph (section 13.4) is implemented**, as Java
+has it and as 13.4 guessed it would be: a `ListParagraph`-styled paragraph with
+no `w:numPr` immediately after an item is rendered under that item at its
+content column, and an empty one contributes nothing and does not close the
+list. It is what the importer already writes for a loose item, so
+`- one\n\n  continued here\n- two` now round-trips.
+
+### 18.4 The numbers, measured
+
+Reading labels, on this machine (Python 3.14, the fork's parser):
+
+| | |
+|---|---:|
+| a document with **no** numbering part (`2010-sample1.docx`, `tables.docx`) | **0.3 µs**, cached, nothing built |
+| `tests/fixtures/lists.docx` (12 paragraphs, 4 items), first read | **0.33 ms** |
+| `samples/sample-docx.docx` (74 paragraphs, 5 items), first read | **0.73 ms** |
+| the same, after a mutation (the definitions kept, the counting again) | 0.16 ms |
+| the same, cached | 1.3 µs |
+| a created document of **1,000 items** over three levels, first read | 9.9 ms |
+| the same, recounted | 7.3 ms, **7.3 µs an item** |
+| `paragraph.is_list_item` on a held view, cached | 1.4 µs |
+| `list_item.list_string` on a held view, cached | 2.8 µs |
+| `to_markdown()` of the 1,000-item document | 10.4 ms |
+
+The verbs, on a loaded `2010-sample1.docx` in a warm process:
+
+| call | |
+|---|---:|
+| `insert_paragraph` + `attach_to_list` | **37 µs** |
+| `insert_paragraph` + `start_new_list` (the first on a document) | **3.9 ms** |
+| `set_level_numbering`, `detach_from_list` | 6 µs |
+| the numbering part re-marshalled for the label read after a write | 1.7 ms |
+
+Three things were worth fixing once measured, and are in the module:
+
+1. docx4j's default numbering was parsed on **every** `start_new_list` (2.5 ms);
+   it is now parsed once per process into `_DEFAULTS`, and every caller gets a
+   `deep_copy`, so the cache cannot be mutated.
+2. The emulator **keeps its style map** across a change to the numbering part.
+   Re-reading it means re-marshalling `styles.xml` — 6 to 20 ms on a document of
+   any size — and a numbering change cannot change what a style contributes.
+3. `is_list_item` **resolves before it counts**: a paragraph with no `w:numPr`
+   of its own whose style chain is not numbered is not an item, and answering
+   that costs the style map alone. Ten lists started one after another on one
+   document went from 4, 6, 8 … 15 ms to 4, 7, 0.3, 0.3 … ms.
+
+What remains slow is by construction: after a **write** to the numbering part,
+the next label read re-marshals it (item 1 of 18.2). Reading the definitions
+from the typed tree when the part is unmarshalled would remove it, at the cost
+of a second reader to keep in step with the first; it is not worth it until
+something loops.
+
+### 18.5 The fixture decision, and Word's own answers
+
+Six documents were copied into `tests/fixtures/` from docx4j's
+`docx4j-layout-fidelity` corpus (Apache-2.0, listed in `tests/README.md` with
+their origin). They are not samples: they are **probes**, written for docx4j's
+CR-014 and CR-015 to ask Word a question each, and Word answered them in the
+goldens of 2026-09-12. Testing the emulator against anything else would have
+been testing it against docx4j, which is a port of the same C# code.
+
+| fixture | the question | Word's answer, and this emulator's |
+|---|---|---|
+| `numbering-shared-abstract` | do two `w:num` over one `w:abstractNum` share a sequence? | 1 2 3 4 5 6 across the interleaved lists |
+| `numbering-numstylelink-separate` | is a `w:numStyleLink` definition a list of its own? | Y 1 2 3, X 1 2 3, Y 4 5 6 |
+| `numbering-default-style-numbered` | may the `w:default="1"` paragraph style be numbered? | yes: three paragraphs with no `w:pStyle` are 1 2 3 |
+| `numbering-lvlrestart` | what does `w:lvlRestart` mean? | `w:val=0` never restarts (… 1.2.3. / 2. / 2.1.4.), `w:val=1` restarts on level 0 only (… / 2. / 2.1.1.) |
+| `numbering-stories` | which stories count on their own? | header 1 2 3 and its footer 4 5 6; the body 1 2 3 then 4 5 6 past the notes; the footnotes part one count across notes; the endnotes and the comments their own |
+| `styles-numpr-ilvl-only` | may a style state only `w:ilvl`? | yes: 1. 1.1. 2. 2.1. 2.2. |
+
+Four of the eight CR-014 probes were **not** copied, deliberately:
+`numbering-override-rpr` and `numbering-level-vs-style-indent` are about the
+label's run properties and the indent arithmetic, which this phase reports
+(`NumberingResult.ind`) but does not lay out; `numbering-level-pstyle-in-ppr`
+settled a question about `getInd` returning null; and `numbering-label-ilvl0` is
+the style-linked rule, which is tested here over a document built in the open,
+because the probe is a four-page layout document and the rule is three lines of
+resolution. A text box's own count (part of probe P7) is not asserted: the
+content API does not descend into a `w:drawing` (decided question 8), so a text
+box neither gets labels nor disturbs the body's count — which is what Word does
+anyway.
+
+### 18.6 What the Word check is for
+
+`scripts/acceptance.py` writes `10-lists.docx`: `samples/2010-sample1.docx` with
+a numbered list of three started by `start_new_list()`, a fourth item at level 1,
+a second list restarted with `like=`, a bullet list, one list restyled to
+`a) b) c)` — which copies the definition it shares with the restarted list — a
+paragraph detached, and, with tracking on, a paragraph of the document's own
+attached. `tests/README.md` says what to look for: the labels, the restart at
+**1.** rather than 4., the bullets, the detached paragraph with no bullet and no
+indent, the *Formatted* revision in the Reviewing pane with its formatting
+balloon, Reject All taking the bullet off that one paragraph and nothing else,
+and — the thing that matters most — **Word not renumbering anything when it
+saves the file**, which would mean the definitions are not what it expects.
+**Not yet run.**
+
+### 18.7 What Phase I and Phase J need
+
+- **Phase I (`to_api_script`)**: a list paragraph is
+  `paragraph.start_new_list()` for the first item of each `w:numId` and
+  `attach_to_list(list_id, level)` for the rest, in document order, with
+  `list_id` the numbers the script's own calls will allocate rather than the
+  document's. What the verbs cannot express is the **definition**: a list whose
+  `w:abstractNum` is not one of docx4j's two defaults needs
+  `set_level_numbering` / `set_level_bullet` / `set_level_indents` per level, and
+  anything beyond those three (`w:lvlJc`, `w:isLgl`, `w:suff`, a picture bullet)
+  falls back to `body.insert_xml` of the whole numbering part, which is section
+  3.11's rule applied here. `List.to_dict()` and
+  `emulator.instance_list_definitions` are what it reads.
+- **Phase J (the python-docx facade)**: python-docx has **no** list API at all.
+  `document.add_paragraph(text, style="List Bullet")` is how its users make a
+  list, and that writes a `w:pStyle` and no `w:numPr` — a paragraph Word
+  numbers only if the style is numbered, which in python-docx's own default
+  template it is. The facade should therefore map `style="List Bullet"` /
+  `"List Number"` to `ensure_style` plus the style, exactly as python-docx does,
+  and **not** to `start_new_list()`; a caller who wants a real list reaches for
+  `paragraph.start_new_list()`, which the facade leaves in view. `ListItem.level`
+  is the nearest thing python-docx has to a level, and it has no name for it.
+- **CR-002 Phase B** still owns: resolution through `PropertyResolver` (item 16
+  above names the method that goes), the twenty exotic number formats,
+  `NumberingDefinitionsPart.getInd`'s full form (the level's indent through the
+  linked style's `w:basedOn` chain is here; the rest is `StyleUtil`'s), and the
+  label's own run properties (docx4j's `labelRPr`, the `w:lvlOverride/w:lvl`
+  rule CR-014 probe P3 measured), which nothing in this API reports yet.

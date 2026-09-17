@@ -2,7 +2,9 @@
 
 **Status:** Proposed 2026-09-12; open questions decided 2026-09-12 (section 11); **Phase A implemented
 2026-09-12** (section 12); Word acceptance passed 2026-09-12 (12.8); amended 2026-09-17, a created
-document declares `compatibilityMode` 15 (section 12.10). Phases B and C proposed.
+document declares `compatibilityMode` 15 (section 12.10); amended again 2026-09-17, **section
+6.2's numbering emulator landed early through CR-003 Phase H** (section 12.11), as the flat OPC
+read half landed through its Phase C. Phases B and C proposed.
 **Depends on:** CR-001 Phases A to C (implemented 2026-09-12): the generated model under `docx4j_py`,
 `Child` and `ChildList`, `link_parents`, `deep_copy`, `el`, `wml(...)`, `to_xml`, `text_of`,
 `walk`, `find`, `warm_up()`, the prefix table in `docx4j_py.namespaces`, the fork runtime's
@@ -283,6 +285,9 @@ after styles change. `get_document_default_ppr()`, `get_document_default_rpr()`,
 from the model, parent `None`.
 
 ### 6.2 List numbering (docx4j `org.docx4j.model.listnumbering`)
+
+*The counting core of this section was implemented on 2026-09-17, ahead of Phase B, because
+CR-003 Phase H needed list labels: section 12.11 records what landed and what is left.*
 
 `NumberingDefinitionsPart.get_emulator()` and the definitions: `ListNumberingDefinition` per
 `w:num` (with `lvlOverride` / `startOverride` applied), `AbstractListNumberingDefinition` per
@@ -652,9 +657,11 @@ nothing is rewritten at save time (decided question 2). Tests in
 
 ### 12.9 Deferred to Phase B and C
 
-* **Phase B**, unblocked and unchanged: `PropertyResolver` and `StyleUtil`; the numbering
-  `Emulator`; `RunFontSelector` and `IdentityPlusMapper`; the Java parity harness and its golden
-  files. `MainDocumentPart.fonts_in_use()` and `styles_in_use()` go with them.
+* **Phase B**, unblocked and unchanged: `PropertyResolver` and `StyleUtil`; ~~the numbering
+  `Emulator`~~ (**its counting core landed early through CR-003 Phase H on 2026-09-17: section
+  12.11**, which says what of it is left); `RunFontSelector` and `IdentityPlusMapper`; the Java
+  parity harness and its golden files. `MainDocumentPart.fonts_in_use()` and `styles_in_use()` go
+  with them.
 * **Phase C**: `PresentationMLPackage` and `SpreadsheetMLPackage` with typed main parts (after
   CR-001 Phase D); `FlatOpcPartStore` and `FlatOpcPartSink`; the chart-namespace schema patches of
   12.5; docs and examples. **Half of the flat OPC item is done**: CR-003 Phase C needed to read a
@@ -716,3 +723,56 @@ it.
 value and URI, in Word's order. Artefacts 3, 4 and 5 were regenerated and the
 Word check of them is outstanding; 12.8's rule (a change to `create_package`
 means a new Word check) is why.
+
+### 12.11 Section 6.2's numbering emulator landed early, through CR-003 Phase H (2026-09-17)
+
+The way 12.9 records the flat OPC **read** half arriving with CR-003 Phase C:
+CR-003 Phase H needed list labels (`Word.ListItem.listString`, and the markdown
+exporter's markers), and a second counting engine to be thrown away when Phase B
+arrives would have been the wrong thing to write. So section 6.2's **counting
+core** is implemented, in the layout that section named:
+
+`docx4j_py/model/listnumbering/`
+    `definitions.py` --- `ListLevel`, `AbstractListNumberingDefinition`,
+    `ListNumberingDefinition` (with `w:lvlOverride`, `w:startOverride` and the
+    override `w:lvl` applied, and `w:numStyleLink` resolved as
+    `NumberingDefinitionsPart.initialiseMaps` resolves it), `Counter`,
+    `NumberingState` and `NumberingStates` (one per story, as docx4j's are).
+    `formats.py` --- the eight number formats section 6.2 listed (`decimal`,
+    `decimalZero`, `lowerLetter`, `upperLetter`, `lowerRoman`, `upperRoman`,
+    `bullet`, `none`), with docx4j's fail-soft rule: an unknown `w:numFmt`, or a
+    value a format cannot express, gives the decimal label and **one** logged
+    warning per format. `emulator.py` --- `Emulator.get_number(package, p_pr,
+    state)`, `get_number_of(package, p_style_val, num_id, ilvl, direct_num_pr,
+    state)` and `peek(...)`, returning docx4j's `ResultTriple` (`num_string`,
+    `num_font`, `is_bullet`, `ind`) under its newer name `NumberingResult`.
+
+`NumberingDefinitionsPart` gains `get_emulator(reset=False)`, `numbering_state`,
+`abstract_list_definitions` and `instance_list_definitions`, importing the model
+inside the method as this layer must (12.7). `unmarshal_default_numbering()` was
+already here, and `start_new_list` is what section 6.2 said would want it.
+
+Against the eight Word-measured probes of docx4j's CR-014 and the numbering one
+of its CR-015 --- six of which are now `tests/fixtures/numbering-*.docx` and
+`styles-numpr-ilvl-only.docx` --- **every label this emulator produces is the
+label Word paints**, including the two docx4j itself got wrong before CR-014
+(`w:lvlRestart`, and a level reset but not yet used showing its start).
+
+**What remains for Phase B**, and is deliberately not here:
+
+* **Resolution through `PropertyResolver`.** docx4j's `Emulator.resolve` asks
+  the resolver for the effective `w:pPr` of a paragraph style; with no resolver
+  yet, `Emulator.effective_numbering` walks `w:basedOn` itself, attribute by
+  attribute, and reads the styles part with lxml so that a read unmarshals
+  nothing. It is the one method in the module that is not docx4j's own logic,
+  and it is the one that goes when Phase B lands (CR-003 section 18.2 item 16).
+* **The twenty exotic formats** (ordinal, cardinal text, Chinese, Hebrew,
+  Russian, Thai, the enclosed circles): `formats.register` is the hook, and
+  until they arrive each falls back to the decimal label with one warning.
+* **`getInd`'s full form and the label's own run properties** (docx4j's
+  `labelRPr`, the `w:lvlOverride/w:lvl` rule CR-014 probe P3 measured): the
+  level's own `w:ind` and the linked style's `w:basedOn` chain are here, the
+  rest belongs with `StyleUtil`.
+
+Nothing in CR-002 Phase B changes shape because of this; the emulator is where
+6.2 said it would be, and Phase B fills in the resolution underneath it.
