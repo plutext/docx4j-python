@@ -597,6 +597,11 @@ def ensure_style(
     defined.add(style_id)
     if touched is not None:
         touched.add(str(part.part_name))
+    # a style may carry a w:numPr, so the numbering emulator's map of what each
+    # paragraph style contributes is now stale (CR-003 Phase H)
+    from docx4j_py.model.listnumbering import invalidate_styles
+
+    invalidate_styles(package)
     return style_id
 
 

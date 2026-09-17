@@ -61,6 +61,7 @@ __all__ = [
     "emulator_of",
     "invalidate",
     "invalidate_labels",
+    "invalidate_styles",
     "labels_for",
 ]
 
@@ -242,13 +243,21 @@ class Emulator:
         """``/word/numbering.xml``, or None when the document has no lists."""
         return getattr(self._package, "numbering_definitions_part", None)
 
-    def refresh(self) -> Emulator:
-        """Read the definitions again: what a change to the numbering part needs."""
+    def refresh(self, *, styles: bool = False) -> Emulator:
+        """Read the definitions again: what a change to the numbering part needs.
+
+        The **style** map is kept unless `styles` is given, because re-reading it
+        means re-marshalling ``/word/styles.xml`` --- 20 ms on a document of any
+        size --- and a change to the numbering part cannot change what a style
+        contributes. :func:`invalidate_styles` is what a change to the styles
+        part calls, and ``ensure_style`` calls it when it adds a definition.
+        """
         self._read = False
         self._abstract = {}
         self._instances = {}
-        self._styles = None
-        self._default_style_id = None
+        if styles:
+            self._styles = None
+            self._default_style_id = None
         self._labels.clear()
         return self
 
@@ -658,6 +667,20 @@ def invalidate(package: Any) -> None:
     emulator = getattr(package, "_numbering_emulator", None)
     if emulator is not None:
         emulator.refresh()
+
+
+def invalidate_styles(package: Any) -> None:
+    """Forget the paragraph styles' numbering as well: the styles part changed.
+
+    What :func:`docx4j_py.model.content.styles.ensure_style` calls when it adds
+    a definition. Rare, and the only reason the style map is not thrown away
+    with the definitions on every numbering change.
+    """
+    if package is None:
+        return
+    emulator = getattr(package, "_numbering_emulator", None)
+    if emulator is not None:
+        emulator.refresh(styles=True)
 
 
 def invalidate_labels(package: Any) -> None:

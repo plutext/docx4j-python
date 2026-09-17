@@ -45,6 +45,7 @@ from docx4j_py.model.listnumbering.emulator import (
     emulator_of,
     invalidate,
     invalidate_labels,
+    invalidate_styles,
     labels_for,
     states_for,
 )
@@ -70,6 +71,7 @@ __all__ = [
     "format_value",
     "invalidate",
     "invalidate_labels",
+    "invalidate_styles",
     "labels_for",
     "read_definitions",
     "register",

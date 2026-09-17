@@ -268,23 +268,35 @@ def _append(numbering: Any, field: str, value: Any) -> None:
     value.parent = numbering
 
 
+#: docx4j's default definitions, parsed once per process: the bullet set and
+#: the decimal set of ``unmarshalDefaultNumbering``. Never handed out --- every
+#: caller gets a ``deep_copy`` --- so the cache cannot be mutated.
+_DEFAULTS: dict[str, Any] = {}
+
+
 def _default_abstract(kind: str) -> Any:
     """docx4j's own default definition: the decimal set, or the bullet set."""
+    wanted = "bullet" if str(kind) == "Bullet" else "decimal"
+    found = _DEFAULTS.get(wanted)
+    if found is not None:
+        return found
+
     from docx4j_py.openpackaging.parts.wml import NumberingDefinitionsPart
 
     part = NumberingDefinitionsPart()
     numbering = part.unmarshal_default_numbering()
-    wanted = "bullet" if str(kind) == "Bullet" else "decimal"
     for abstract in numbering.abstract_num or ():
         first = next((lvl for lvl in (abstract.lvl or ()) if int(lvl.ilvl or 0) == 0), None)
         fmt = _value(getattr(first, "num_fmt", None)) if first is not None else None
-        if (fmt == "bullet") == (wanted == "bullet"):
-            return abstract
-    raise ContentError(  # pragma: no cover - the resource carries both
-        f"docx4j's default numbering has no {wanted} definition",
-        code="list.no_default_definition",
-        hint="pass kind='Number' or kind='Bullet'",
-    )
+        _DEFAULTS["bullet" if fmt == "bullet" else "decimal"] = abstract
+    found = _DEFAULTS.get(wanted)
+    if found is None:
+        raise ContentError(  # pragma: no cover - the resource carries both
+            f"docx4j's default numbering has no {wanted} definition",
+            code="list.no_default_definition",
+            hint="pass kind='Number' or kind='Bullet'",
+        )
+    return found
 
 
 def _typed_num(numbering: Any, num_id: int | str) -> Any:
@@ -940,7 +952,19 @@ def detach_from_list(paragraph: Paragraph) -> None:
 
 
 def is_list_item(paragraph: Paragraph) -> bool:
-    """Office JS ``Paragraph.isListItem``: whether Word paints a label for it."""
+    """Office JS ``Paragraph.isListItem``: whether Word paints a label for it.
+
+    Resolution comes first and the counting only if it has to: a paragraph with
+    no ``w:numPr`` of its own whose style chain is not numbered is not an item,
+    and answering that costs the style map alone --- which is what makes
+    ``start_new_list``'s guard cheap on a document whose definitions would
+    otherwise have to be read.
+    """
+    emulator = emulator_of(paragraph.parent_body.package)
+    if emulator is None or emulator.part is None:
+        return False
+    if _resolve(paragraph, emulator).not_numbered:
+        return False
     return id(paragraph.element) in labels_for(paragraph.parent_body)
 
 

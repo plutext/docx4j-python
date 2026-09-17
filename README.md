@@ -15,7 +15,7 @@ the agent surface — addresses, `outline()`, `find()`, `describe()`, `ChangeRep
 and `DocumentSession`; Phase K, markdown in and out; Phase C, tables, pictures, `insert_ooxml`
 and content controls; Phase G, comments; Phase F, change tracking and `replace_text`; and
 Phase E, custom XML parts, XML mapping, the typed content-control kinds and `describe()` /
-`fill()`) are in. Over 16 real documents, every part not touched is written back byte for byte,
+`fill()`; and Phase H, lists, with docx4j's numbering emulator under them) are in. Over 16 real documents, every part not touched is written back byte for byte,
 all 141 typed WordprocessingML parts unmarshal and re-serialise canonically identical to the
 source, and nothing is dropped. Saved output opens in Word. The python-docx facade (Phase J) is
 next.
@@ -653,6 +653,49 @@ out of a `w:ins` or `w:del` the anchored run sits in, so accepting that revision
 the comment where it was, and its `w:id` comes from its own counter rather than from the
 revisions'.
 
+### Lists
+
+`Word.List` and `Word.ListItem`, over `w:num` and `w:numPr`. The label is the one **Word** paints:
+it comes from the numbering emulator (docx4j's `org.docx4j.model.listnumbering`, ported here), so
+a restart, a `w:startOverride`, a `w:lvlRestart` and a list numbered through a paragraph style all
+read correctly — not from a count this library keeps.
+
+```python
+from docx4j_py import create_package
+
+pkg = create_package()
+body = pkg.body
+
+steps = body.insert_paragraph("Check the invoice total")
+checklist = steps.start_new_list()             # a new w:num, and numbering.xml if there is none
+body.insert_paragraph("Check the licence key").attach_to_list(checklist.id)
+body.insert_paragraph("Ship it by Friday").attach_to_list(checklist.id, 1)   # a level deeper
+
+[p.list_item.list_string for p in body.paragraphs]
+# ['1.', '2.', 'a.']
+body.paragraphs[2].to_dict()["list_item"]
+# {'level': 1, 'list_string': 'a.', 'sibling_index': 0}
+pkg.last_change.to_dict()["parts_touched"]     # for start_new_list, three parts
+# ['/word/document.xml', '/word/numbering.xml', '/word/styles.xml']
+
+checklist.set_level_numbering(0, "LowerLetter", "%1)")
+[p.list_item.list_string for p in body.paragraphs]
+# ['a)', 'b)', 'a.']
+
+body.insert_paragraph("A second list").start_new_list(like=checklist)   # Word's "restart at 1"
+body.paragraphs[2].detach_from_list()
+[(p.text, p.is_list_item) for p in body.paragraphs]
+# [('Check the invoice total', True), ('Check the licence key', True),
+#  ('Ship it by Friday', False), ('A second list', True)]
+```
+
+`body.lists` gives one `List` per `w:numId` in document order; `list.paragraphs`,
+`list.get_level_paragraphs(level)` and `list_item.get_ancestor()` / `get_descendants()` walk it;
+`set_level_numbering`, `set_level_bullet` and `set_level_indents` are Office JS's level setters,
+and each copies the `w:abstractNum` first when another list shares it, so a change stays local.
+Attaching and detaching go through the paragraph's properties, so with tracking on they record the
+`w:pPrChange` Word records for a numbering change.
+
 ### Markdown, coarse and fine
 
 Markdown is what models read and write best, and it is the exchange format docx4j-mcp settled on.
@@ -802,7 +845,7 @@ codegen/generate.sh --check                           # regenerate twice and pro
 
 .venv-fork/bin/python scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata
 .venv-fork/bin/python scripts/threads.py              # the thread-safety check
-.venv-fork/bin/python scripts/acceptance.py           # the four documents for the Word checklist
+.venv-fork/bin/python scripts/acceptance.py           # the ten documents for the Word checklist
 ```
 
 [`codegen/README.md`](codegen/README.md) explains how the bindings are generated, the docx4j name
@@ -845,7 +888,7 @@ schemas/              docx4j's xsd tree with marked patches (schemas/PATCHES.md)
 scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, threads.py,
                       acceptance.py, office_js_subset.py
 samples/              16 documents from docx4j (Apache-2.0): 13 .docx, a .dotm, a .pptx, an .xlsx
-out/acceptance/       the four documents for the manual Word checklist
+out/acceptance/       the ten documents for the manual Word checklist
 docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
                       CR-003 the content API (Phases A, B and D implemented 2026-09-16)
 ```
