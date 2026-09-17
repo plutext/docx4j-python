@@ -1077,6 +1077,17 @@ class Paragraph:
             if item is not None and spaces is not None:
                 spaces.add(id(item))
 
+    def insert_content_control(self, kind: str = "RichText") -> Any:
+        """Wrap this paragraph in a content control, in place.
+
+        Office JS ``Paragraph.insertContentControl`` (CR-003 section 3.7). The
+        container is the same length afterwards: the ``w:p`` is inside a
+        ``w:sdt`` where it was.
+        """
+        from docx4j_py.model.customxml.insert import insert_content_control_in_paragraph
+
+        return insert_content_control_in_paragraph(self, kind)
+
     def splice(self, start: int, end: int, text: str) -> Range:
         """Replace the text in ``[start, end)`` and return the range of the new text.
 

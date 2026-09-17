@@ -710,6 +710,21 @@ class Body(Sequence):
 
         return markdown_budget_of(self, max_chars, addresses=addresses, view=view)
 
+    def insert_content_control(self, kind: str = "RichText") -> Any:
+        """Wrap everything this body holds in one content control.
+
+        Office JS ``Body.insertContentControl`` (CR-003 section 3.7, Phase E).
+        The body is one block long afterwards: the ``w:sdt``. A content control
+        is **not** a revision, so nothing is written while change tracking is on
+        beyond what the wrapped content already carried.
+
+        Raises:
+            ContentError: the body holds nothing to wrap.
+        """
+        from docx4j_py.model.customxml.insert import insert_content_control_in_body
+
+        return insert_content_control_in_body(self, kind)
+
     def insert_element(
         self,
         element: Any,

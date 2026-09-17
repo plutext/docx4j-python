@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from docx4j_py.model.content.errors import (
     AddressError,
+    BindingError,
     BuilderError,
     ContentError,
     Docx4JError,
@@ -45,6 +46,9 @@ __all__ = [
     "AddressError",
     "Alignment",
     "Author",
+    "BindingError",
+    "BindingInfo",
+    "BindingResult",
     "Block",
     "Body",
     "BreakType",
@@ -52,15 +56,27 @@ __all__ = [
     "ChangeReport",
     "ChangeTracker",
     "ChangeTracking",
+    "CheckboxContentControl",
+    "ComboBoxContentControl",
     "Comment",
     "ContentControl",
+    "ContentControlListItem",
     "ContentError",
+    "CustomXmlNode",
+    "CustomXmlPart",
+    "CustomXmlPartCollection",
+    "CustomXmlPrefixMappingCollection",
+    "DatePickerContentControl",
     "Description",
     "Docx4JError",
+    "DropDownListContentControl",
+    "FillResult",
     "Font",
+    "GroupContentControl",
     "InlinePicture",
     "InsertLocation",
     "InvalidTargetError",
+    "ListContentControl",
     "Outline",
     "OutlineEntry",
     "OutlineSection",
@@ -68,9 +84,12 @@ __all__ = [
     "PageSetup",
     "Paragraph",
     "PartInfo",
+    "PictureContentControl",
     "Range",
+    "RepeatingSectionContentControl",
     "SearchHit",
     "Segment",
+    "Skeleton",
     "SpanError",
     "StyleError",
     "StyleInfo",
@@ -82,6 +101,7 @@ __all__ = [
     "TrackedChangeError",
     "TrackedChangeType",
     "UnderlineType",
+    "XmlMapping",
     "body_of",
     "built_in_of",
     "cells_of",
@@ -135,6 +155,26 @@ _LAZY: dict[str, str] = {
     "ChangeTracking": "docx4j_py.model.content.enums",
     "TrackedChange": "docx4j_py.model.content.tracked_change",
     "TrackedChangeType": "docx4j_py.model.content.enums",
+    # CR-003 Phase E, custom XML and the typed kinds
+    "BindingError": "docx4j_py.model.content.errors",
+    "CustomXmlNode": "docx4j_py.model.customxml",
+    "CustomXmlPart": "docx4j_py.model.customxml",
+    "CustomXmlPartCollection": "docx4j_py.model.customxml",
+    "CustomXmlPrefixMappingCollection": "docx4j_py.model.customxml",
+    "XmlMapping": "docx4j_py.model.customxml",
+    "CheckboxContentControl": "docx4j_py.model.customxml",
+    "ComboBoxContentControl": "docx4j_py.model.customxml",
+    "ContentControlListItem": "docx4j_py.model.customxml",
+    "DatePickerContentControl": "docx4j_py.model.customxml",
+    "DropDownListContentControl": "docx4j_py.model.customxml",
+    "GroupContentControl": "docx4j_py.model.customxml",
+    "ListContentControl": "docx4j_py.model.customxml",
+    "PictureContentControl": "docx4j_py.model.customxml",
+    "RepeatingSectionContentControl": "docx4j_py.model.customxml",
+    "Skeleton": "docx4j_py.model.customxml",
+    "BindingInfo": "docx4j_py.model.customxml",
+    "BindingResult": "docx4j_py.model.customxml",
+    "FillResult": "docx4j_py.model.customxml",
 }
 
 
@@ -360,6 +400,21 @@ def _package_get_tracked_changes(self: object) -> list:
     return list(self.body.get_tracked_changes())  # type: ignore[attr-defined]
 
 
+def _package_custom_xml_parts(self: object) -> object:
+    """The document's custom XML parts (CR-003 section 3.7, Phase E).
+
+    ``pkg.custom_xml_parts.get_item(id)``, ``.add(xml)``, ``.apply_bindings()``,
+    ``.describe()`` and ``.fill(data)``, over
+    :mod:`docx4j_py.model.customxml`, which is imported here on **first use** so
+    that a caller who never touches a content control pays nothing for it.
+    Reading the collection unmarshals nothing: a part that is only read is
+    written back byte for byte.
+    """
+    from docx4j_py.model.customxml.parts import custom_xml_parts_of
+
+    return custom_xml_parts_of(self)
+
+
 def _package_dry_run(self: object) -> object:
     """``with pkg.dry_run() as trial:`` --- edits on a copy, then thrown away."""
     from docx4j_py.model.content.trial import dry_run
@@ -398,6 +453,10 @@ _PACKAGE_PROPERTIES: dict[str, property] = {
         _package_tracked_change_date,
         _set_package_tracked_change_date,
         doc=_package_tracked_change_date.__doc__,
+    ),
+    # CR-003 Phase E, section 3.7
+    "custom_xml_parts": property(
+        _package_custom_xml_parts, doc=_package_custom_xml_parts.__doc__
     ),
 }
 

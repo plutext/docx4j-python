@@ -230,6 +230,23 @@ class Range:
 
     # -- editing -----------------------------------------------------------
 
+    def insert_content_control(self, kind: str = "RichText") -> Any:
+        """Wrap the runs this span covers in a run-level content control.
+
+        Office JS ``Range.insertContentControl`` (CR-003 section 3.7). The runs
+        are split at the span's boundaries first, on grapheme boundaries, so the
+        control holds exactly this span's text.
+
+        Raises:
+            SpanError: the span crosses a run holder; the message names where
+                to split it.
+            BindingError: ``"RepeatingSection"`` was asked for, which Word has
+                no run-level form of.
+        """
+        from docx4j_py.model.customxml.insert import insert_content_control_in_range
+
+        return insert_content_control_in_range(self, kind)
+
     def insert_text(self, text: str, *, location: Location = "Replace") -> Range:
         """Insert text relative to the span.
 
