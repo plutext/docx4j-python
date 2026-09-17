@@ -45,6 +45,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = [
     "CONTAINER_KINDS",
+    "MAX_VALUE_CHARS",
     "PLACEHOLDER_STYLE",
     "PLACEHOLDER_TEXT",
     "BindingEntry",
@@ -71,6 +72,12 @@ _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?")
 
 #: The strings Word reads as a ticked box.
 _TRUE = frozenset({"true", "1", "on", "yes"})
+
+#: How much of a value a :class:`BindingEntry` reports. A picture binding's node
+#: holds the whole image as base64 --- 9 KB in ``samples/invoice2013.docx`` ---
+#: and a result is a tool result, so a longer value is cut and marked with an
+#: ellipsis, as ``describe()`` cuts its own (CR-003 section 17).
+MAX_VALUE_CHARS = 200
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +261,8 @@ def runs_for_value(value: str, run_properties: Any, multiline: bool) -> list[Any
 
 def _entry(control: ContentControl, value: str = "", reason: str = "", code: str = "") -> Any:
     mapping = control.xml_mapping
+    if len(value) > MAX_VALUE_CHARS:
+        value = value[:MAX_VALUE_CHARS] + "\u2026"
     return BindingEntry(
         xpath=mapping.xpath,
         store_item_id=mapping.store_item_id,

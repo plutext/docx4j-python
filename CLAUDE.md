@@ -12,12 +12,13 @@ docx4j is the behavioural oracle: names, defaults and quirks are docx4j's unless
 departure.
 
 The design lives in `docs/change-requests/`. Each CR's implementation-notes sections (CR-001
-sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 16) record what was actually built,
+sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 17) record what was actually built,
 the numbers and every deliberate departure; read them before changing the area they cover.
 Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phase A
 implemented, B (resolution utilities, the Java parity harness and golden files) and C (PML, SML,
-flat OPC, less the flat OPC read half) proposed; CR-003 (content API) Phases A, B, C, D, F, G
-and K implemented, E, H, I and J proposed.
+flat OPC, less the flat OPC read half) proposed; CR-003 (content API) Phases A, B, C, D, E, F,
+G and K implemented --- with Phase E every non-extension member of `tests/office_js_subset.json`
+is --- H, I and J proposed.
 `REPORT.md` is the original xsdata feasibility experiment.
 
 ## Environments and commands
@@ -44,7 +45,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
-.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eight Word checklist documents
+.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the nine Word checklist documents
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata
 python codegen/derive_names.py                         # re-derive codegen/names/ from docx4j's XJC output
@@ -85,7 +86,8 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 - `model/`: CR-003's content API — `model/content/` (the `Body`, `Paragraph`, `Range`, `Font`,
   `Table`, `TableRow`, `TableCell`, `InlinePicture`, `ContentControl`, `Comment` and
   `TrackedChange` views, `insert_ooxml`, addresses, `Outline`, `describe()`, `ChangeReport`,
-  `dry_run`, `Author`, the `ChangeTracker`),
+  `dry_run`, `Author`, the `ChangeTracker`), `model/customxml/` (`CustomXmlPart`,
+  `CustomXmlNode`, `XmlMapping`, the typed control kinds, the bindings, `describe()` / `fill()`),
   `model/markdown/` (markdown out and in) and `model/sessions.py` (`DocumentSession`)
 - `resources/`: the parts `warm_up()` parses, and docx4j's default styles, numbering and fontTable
 - `openpackaging/`: the whole engine

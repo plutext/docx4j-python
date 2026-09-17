@@ -5,8 +5,9 @@ and to be designed for AI projects and MCP servers first; open questions decided
 (section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
 (section 11); **Phase D implemented 2026-09-16** (section 12); **Phase K implemented 2026-09-17**
 (section 13); **Phase C implemented 2026-09-17** (section 14); **Phase G implemented
-2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16). Phases E, H, I and J
-proposed.
+2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16); **Phase E
+implemented 2026-09-17** (section 17), with which every one of the 200 non-extension members of
+`tests/office_js_subset.json` is implemented. Phases H, I and J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -664,7 +665,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` --- **implemented 2026-09-17, section 14** | 4 days |
 | G | Comments (3.9) --- **implemented 2026-09-17, section 15** | 3 days |
 | F | Change tracking and `replace_text` (3.8); the README's audit-trail example --- **implemented 2026-09-17, section 16** | 4 days |
-| E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) | 4 days |
+| E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) --- **implemented 2026-09-17, section 17** | 4 days |
 | J | The python-docx facade (3.6) and its subset test | 3 days |
 | H | Lists (3.10) | 3 days |
 | I | `to_api_script` (3.11) | 2 days |
@@ -672,7 +673,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 B, D and K first: after them an agent can read any document within a budget, address any block,
 edit it and see what changed, which is the MCP server's whole first release. G before F, as the
 TypeScript engine found (tracking has to hoist comment markers). J after E so the facade sits on
-a complete core. Each phase ships as a minor version.
+a complete core, which since 2026-09-17 it does. Each phase ships as a minor version.
 
 ## 9. Open questions (decided 2026-09-16)
 
@@ -2526,3 +2527,305 @@ second's id.
 
 The suite is **1,138 tests** (1,137 passing plus one `xfail`; 1,129 of them fast, 55.0 s, and
 60.6 s for the whole); `tests/content/test_tracking.py` is 65.
+
+## 17. Phase E implementation notes (2026-09-17)
+
+Custom XML parts, XML mapping, the typed content-control kinds,
+`insert_content_control` and the two template verbs (section 3.7), with the
+bindings rules of section 4. The phase is the last of the Office JS surface:
+with it, **every one of the 200 non-extension members of
+`tests/office_js_subset.json` is implemented**, and the test's "later phases
+still to come" line is empty for the first time.
+
+The shape of it is CR-002's, one simplification lighter. docx4j-core-ts had to
+build an XPath engine, warm it, and make every selection asynchronous; **lxml's
+XPath 1.0 is complete and synchronous**, so `select_nodes(xpath,
+namespace_mappings=None)` is a call, there is no `load()` to await, no optional
+dependency, and the design section that described the engine has no counterpart
+here.
+
+### 17.1 What landed
+
+A new package, `docx4j_py/model/customxml/`, and the members it hangs off the
+existing views.
+
+| file | lines | what |
+|---|---:|---|
+| `customxml/xpath.py` | 184 | `parse_prefix_mappings` / `format_prefix_mappings` (Word's `xmlns:ns0='urn:invoice'` string), `select(context, xpath, mappings)` over lxml, `canonical_xpath_of(node) -> CanonicalXPath(xpath, prefix_mappings)` |
+| `customxml/nodes.py` | 670 | `CustomXmlNode` (the full DOM-shaped node model: `base_name`, `namespace_uri`, `node_type`, `node_value`, `text`, `xml`, `xpath`, `attributes`, `child_nodes`, `child_elements`, `parent_node`, `first_child`, `last_child`, `next_sibling`, `previous_sibling`, `owner_part`, `has_child_nodes`, `select_nodes`, `select_single_node`, `append_child_node`, `insert_node_before`, `remove_child` / `remove_child_node`, `replace_child_node`, `delete`, `get_xml`, `set_xml`, `to_dict`), `CustomXmlPrefixMapping`, `CustomXmlPrefixMappingCollection`, `namespaces_of`, `node_for`, `require_node` |
+| `customxml/parts.py` | 679 | `CustomXmlPart` (`id`, `namespace_uri`, `built_in`, `document_element`, `namespace_manager`, `schema_collection`, `get_xml`, `set_xml`, `select_nodes`, `select_single_node`, `insert_element`, `insert_attribute`, `update_element`, `update_attribute`, `delete_element`, `delete_attribute`, `delete`, `touch`, `part`), `CustomXmlPartCollection` (`items`, `get_item`, `get_by_namespace`, `add`, `apply_bindings`, `update_from_content_controls`, `describe`, `fill`, `__len__`, `__iter__`), `BUILT_IN_NAMESPACES`, `normalise_id`, `custom_xml_parts_of` |
+| `customxml/mapping.py` | 223 | `XmlMapping` (`is_mapped`, `xpath`, `prefix_mappings`, `store_item_id`, `custom_xml_part`, `custom_xml_node`, `data_binding`, `set_mapping`, `set_mapping_by_node`, `delete`, `to_dict`) |
+| `customxml/kinds.py` | 627 | `CheckboxContentControl`, `DatePickerContentControl`, `ListContentControl` with `DropDownListContentControl` and `ComboBoxContentControl`, `ContentControlListItem`, `PictureContentControl`, `RepeatingSectionContentControl`, `GroupContentControl`, `kind_view`, `format_date` (Word's .NET `w:dateFormat` patterns) |
+| `customxml/insert.py` | 199 | `insert_content_control_in_body` / `_in_paragraph` / `_in_range` |
+| `customxml/bindings.py` | 447 | `apply_bindings`, `update_from_content_controls`, `write_control_to_node`, `runs_for_value`, `bound_bodies`, `controls_of`, `is_container`, the frozen `BindingEntry` and `BindingResult` |
+| `customxml/template.py` | 583 | `describe_template` and `fill_template`, the frozen `Skeleton`, `BindingInfo`, `TemplatePart`, `FillEntry` and `FillResult` |
+| `customxml/__init__.py` | 142 | the exports |
+| **the package** | **3,754** | |
+
+| changed | lines | what |
+|---|---:|---|
+| `model/content/controls.py` | +456 | `placeholder_text`, `appearance`, `color`, `cannot_delete`, `cannot_edit`, `remove_when_edited`, `is_showing_placeholder`, `run_properties`, `is_multi_line`, `xml_mapping`, the seven `*_content_control` properties, `properties()` / `put_property` / `remove_property` with `SDT_PR_ORDER`, `set_bound_content`, `set_checkbox_glyph`, `write_through`, `insert_copy_after`, and the write-through call in `insert_text` |
+| `model/content/__init__.py` | +59 | `pkg.custom_xml_parts` as a property that imports this package on first use, and sixteen lazy names |
+| `model/content/body.py`, `paragraph.py`, `range.py` | +43 | `insert_content_control(kind="RichText")`, three lines of delegation each |
+| `model/content/errors.py` | +17 | `BindingError` |
+| `model/content/trial.py` | +40 | `TrialPart.mark_modified` / `is_modified`, `TrialPackage.custom_xml_parts`, and the index entry `discard_added_parts` now clears |
+| `openpackaging/parts/default_xml_part.py` | +58/-19 | the parsed-versus-modified split (17.3) |
+| `openpackaging/parts/wml/comments.py` | +18 | `_touch(part)` after the four in-place edits of the two lxml comment parts |
+| `openpackaging/packages/opc_package.py` | +5 | one slot for the collection |
+
+Tests: `tests/content/test_customxml.py` (22), `tests/content/test_controls_typed.py`
+(30), `tests/agent/test_template_workflows.py` (13), and two more in
+`tests/content/test_office_js_subset.py`. **1,138 before, 1,205 after.**
+
+### 17.2 Departures from section 3.7 and section 4, all deliberate
+
+1. **`built_in` is by namespace, not by store item id.** Office JS's `builtIn`
+   means "one of Word's own property stores", and the TypeScript engine decided
+   the test is the document element's namespace (core properties, extended
+   properties, custom properties, cover-page properties, Dublin Core). That sits
+   exactly beside section 4's rule that the three well-known docProps **store
+   item ids** are not special-cased: a binding to one of them resolves only when
+   the package really holds such a part, and `custom_xml_part` answers None
+   otherwise rather than reaching into `/docProps/core.xml`.
+2. **`insert_element` takes `namespace_mappings` third and `index` fourth**, and
+   `insert_attribute` / `update_attribute` / `delete_attribute` take it last.
+   Office JS's desktop-only signatures put it second, before the XML. Putting it
+   after, with a default, makes the common call two arguments ---
+   `part.insert_element("/invoice/lines", "<lineitem/>")` --- for a part with one
+   namespace or none, which is every part in `samples/`. These six members are
+   therefore **outside** the compatibility promise: they are not in
+   `tests/office_js_subset.json`, and a test asserts that they are not, so the
+   departure cannot be forgotten.
+3. **A `w15:dataBinding` keeps its namespace when it is rewritten.** The
+   TypeScript engine always writes `w:dataBinding`, which on a repeating section
+   or a container-bound rich-text control leaves Word holding *two* bindings,
+   because `put_property` matches on the namespace as well as the local name.
+   `XmlMapping._write` reads the namespace of the binding it is replacing and
+   writes back into it; a control with no binding at all gets `w:dataBinding`,
+   which is what Word writes for a text control. `test_a_w15_binding_keeps_its_
+   namespace_when_it_is_rewritten` pins it on `samples/invoice2013.docx`'s own
+   repeating section.
+4. **`set_mapping` resolves before it writes** (the TypeScript engine's rule,
+   adopted): the candidates are the control's current part, then the customer's
+   own parts, then Word's property stores, and the first that resolves the XPath
+   is written. An XPath that resolves nowhere leaves the binding exactly as it
+   was and the call answers `False`. `set_mapping_by_node` cannot fail and
+   answers `True`.
+5. **Dates are formatted in English, whatever `w:lid` says.** Section 4 asks for
+   "the `w:lid` locale". `format_date` implements the .NET token set Word's
+   `w:dateFormat` uses --- `d`, `dd`, `ddd`, `dddd`, `M` to `MMMM`, `yy` to
+   `yyyy`, `H`, `h`, `m`, `s`, `tt`, and quoted literals --- and takes the locale,
+   but the month and weekday names come from one committed English table.
+   Python's `locale` module is process-global and not thread-safe, which CR-001
+   section 14.7's thread rule forbids, and `babel` would be a second dependency
+   where decided question 6 allowed one. `en-AU`, `en-GB` and `en-US` --- which
+   is what Word writes in practice, and what `invoice2013.docx` carries --- name
+   the months identically, and the invoice's `d MMMM yyyy` gives
+   `29 January 2015`, which is what Word shows. A non-English `w:lid` falls back
+   to the same names, and the docstring says so.
+6. **The checkbox glyphs come from `w14:checkedState` / `uncheckedState`**, as
+   section 4 requires and docx4j does **not**: `BindingTraverserXSLT.checkboxRun`
+   hard-codes `☒` / `☐` and MS Gothic with a `// TODO: use the symbols specified`
+   beside it. `_symbol_of` reads the stored value as a hex code point when it
+   looks like one (`2612`) and as a literal glyph otherwise, falling back to
+   Word's defaults; `is_checked = True` writes `w14:checked` **and** the glyph
+   run, because Word draws the box from the content.
+7. **`update_from_content_controls` writes `true` / `false`, the entry's
+   `w:value` and the stored `w:fullDate`**, where docx4j writes the rendered
+   glyph and skips dates altogether. Section 4 makes this a rule; the TypeScript
+   CR calls docx4j's behaviour a data-loss bug, and this port agrees.
+8. **A `fill()` key matches an XPath, then a `w:tag`, then a `w:alias`**, in that
+   order, and a key that matches none is *reported* in `FillResult.skipped` with
+   the code `no_binding` rather than raised. A template fill is a bulk operation;
+   an agent wants the list of what did not land, not the first exception.
+9. **`describe()` and the binding results cut a value at 200 characters.**
+   `samples/invoice2013.docx`'s picture binding holds a 9 KB base64 PNG in its
+   node, and `describe().to_json()` was 31 KB before the cut and 6.5 KB after;
+   `apply_bindings().to_json()` was 31 KB and is 5.7 KB. Section 3.4's budgets
+   are what a tool result has to live inside. `describe(max_value_chars=None)`
+   gives the whole value back.
+10. **`CustomXmlPart.delete()` is refused inside a `dry_run`.** Section 14.4 made
+    an *added* part undoable, and `add()` is; a *deleted* part is not, because
+    un-deleting one would mean re-registering the part, its properties part, two
+    relationships, two content types and every mapping the delete unlinked. The
+    trial raises `ContentError("dry_run.delete_part")` and says to delete on the
+    real package instead, which is honest where doing it and hoping would not be.
+11. **`delete()` unlinks the mappings it can reach, and says which.** The
+    TypeScript engine's rule: only the controls of the parts already unmarshalled
+    are visited, so a document whose main part was never read keeps a
+    `w:dataBinding` naming a part that is gone --- which Word reads as an unbound
+    control. `part.unlinked` holds the XPaths that were unlinked, so a caller can
+    report it.
+12. **`insert_content_control` at body level refuses an empty body.** Office JS
+    would make an empty control; a control that wraps nothing is a thing a caller
+    almost never means, and the error names the fix.
+13. **`RepeatingSectionContentControl.insert_item_after(index)` is an extension**
+    in name --- Office JS has no such method --- and a structural deep copy with a
+    fresh `w:id` from `next_sdt_id`, which is what Word's `+` button does.
+14. **`ContentControlListItem` and the two list kinds share one class.** Office
+    JS's `ListContentControl` is the shape; `DropDownListContentControl` and
+    `ComboBoxContentControl` subclass it and add nothing, so that
+    `control.drop_down_list_content_control` is None on a combo box and the
+    other way round, as Office JS has it.
+
+### 17.3 The engine change: parsed is not modified
+
+The one change outside the content layer, and the reason the phase's central
+promise holds. `DefaultXmlPart` used to write its **tree** back whenever the tree
+existed, so merely reading `part.tree` --- which is what `select_nodes` does ---
+re-serialised the part and lost the source's bytes. CR-002's rule is that a part
+which is only read goes out byte for byte, and CR-003 section 3.7 repeats it for
+custom XML specifically.
+
+The split is the one docx4j-core-ts added for the same reason, in **58 lines**:
+
+* `tree` parses and caches, and marks nothing;
+* `mark_modified()` adopts the tree: from then on `xml` serialises it;
+* `set_tree`, `set_bytes` and `set_xml` mark it too, because they *are* the
+  content;
+* `is_parsed` and `is_modified` are both readable, and `describe()` already
+  tested the first.
+
+Two callers had to be told. `openpackaging/parts/wml/comments.py` edits
+`w16cid:commentsIds` and `w16cex:commentsExtensible` in place, so its four
+mutators call `_touch(part)`; and `TrialPart` answers `mark_modified()` itself,
+because `__getattr__` would otherwise hand it to the **real** part and let a
+trial's node edit escape. Nothing else in the repository edits an lxml part's
+tree, and the whole suite passed unchanged after the split, which is the evidence
+that no other caller was relying on the old behaviour.
+
+`test_reading_every_part_and_node_leaves_the_document_byte_for_byte` is the
+promise: `invoice2013.docx` loaded, every custom XML part's XML read, every child
+node's text and every attribute read, `describe()` called, saved --- and every
+entry of the zip, `customXml/item1.xml`, `customXml/itemProps1.xml` and
+`word/document.xml` included, is the source's bytes.
+
+### 17.4 The numbers, measured
+
+Against `samples/invoice2013.docx` (13 parts, 22 content controls, 20 bindings, a
+28 KB `customXml/item1.xml`), the part and the body already read:
+
+| call | |
+|---|---:|
+| `pkg.custom_xml_parts` (the collection, nothing parsed) | **under 1 µs** |
+| `part.document_element`, parsing the 28 KB part | 1.3 ms, once |
+| `part.select_single_node("/invoice/customer/company")` | **5 µs** |
+| `body.content_controls` (22 of them) | 41 µs |
+| `describe()`, the body already read | **1.0 ms** |
+| `describe()`, nothing unmarshalled (the lxml path, `load()` included) | 2.2 ms |
+| `apply_bindings()`, 20 bindings | **1.8 ms** |
+| `update_from_content_controls()`, 20 bindings | 1.4 ms |
+| `fill()` of four keys, `apply_bindings` included | 2.9 ms |
+| `insert_content_control` at range level | 257 µs |
+| `custom_xml_parts.add()` of a small part, on a created package | 0.9 ms |
+
+| result | chars of JSON |
+|---|---:|
+| `describe().to_json()` | **6,563** |
+| the same with `max_value_chars=None` | 31,473 |
+| `apply_bindings().to_json()` | **5,728** |
+| the same before the cut of 17.2 item 9 | 30,633 |
+
+`apply_bindings` at 1.8 ms for twenty bindings is 90 µs a binding, and three
+quarters of that is `body.content_controls` plus the twenty XPath evaluations;
+the XPath itself is 5 µs, so the cost is the walk, not the engine. Nothing here
+needed a cache.
+
+`insert_content_control` at 257 µs is dominated by `next_sdt_id`, a `find` over
+the whole part's tree --- the same shape as section 14.5's `next_drawing_id`, and
+the same answer: one control in one document does not justify a cache, and a
+phase that inserts them in a loop should add one.
+
+Importing `docx4j_py` is **unchanged at 0.66 s**, because nothing imports this
+package until something asks for it: `pkg.custom_xml_parts` is a property that
+imports it on first use, and `insert_content_control` a method that does. The
+package itself costs **53 ms** to import when it is first touched. The suite is
+**1,138 tests in 64.0 s before, 1,205 in 63.9 s after**; `-m "not slow"` is 1,195
+in 55 s. (`test_a_warm_import_is_faster_still` is timing-sensitive and failed once
+in five runs of the full suite on a loaded machine, before and after this phase
+alike; it is not a Phase E regression.)
+
+### 17.5 The fixture decision
+
+`samples/invoice2013.docx` is Word-authored and carries a checkbox, a date
+picker, a picture control, two `w15:repeatingSection`s with their
+`w15:repeatingSectionItem`s, and twenty bindings of which three are
+`w15:dataBinding` --- everything section 7 promised. What **no** document in
+`samples/`, in docx4j's repository or in docx4j-core-ts carries is a **drop-down
+list, a combo box or a group control**, and none was fabricated: those three
+kinds, and every `w:sdtPr` property setter, are exercised on documents this
+engine builds with `insert_content_control`, which is what the TypeScript engine
+did and what section 16.5 established as the rule for this repository. A
+namespaced custom XML part is built the same way, because the invoice's
+`<invoice>` has no namespace at all --- which is *why* its twenty bindings carry
+an empty `w:prefixMappings` and paths like `/invoice[1]/customer[1]/contact[1]`.
+
+### 17.6 What is not in this phase: OpenDoPE
+
+docx4j's `OpenDoPEHandler` is a second templating system layered over the same
+markup, and none of it is here:
+
+* **conditions** (`od:condition` in `w:tag`, the `ConditionsPart`): a control
+  whose content is removed when a test over the data fails;
+* **repeats as a section per node** (`od:repeat`, `od:rptd`, `od:RptPosCon`): the
+  `w:sdt` is *cloned* once per node the XPath selects, with the descendants'
+  XPaths rewritten to the repeat's index. A `w15:repeatingSection` is Word's own
+  feature and is left exactly as it is: it is a container, never bound, and
+  `fill()` fills the items that already exist;
+* the **`od:Handler`** extensions (pictures from base64, XHTML content,
+  `altChunk` documents).
+
+What *is* read is an OpenDoPE **XPaths part** (`http://opendope.org/xpaths`),
+when a document has one: `describe()` adds its `xpath/@id`, `@name` and
+`dataBinding` entries to the skeleton, because that is where docx4j-mcp's
+`describe_template` finds the question names. `invoice2013.docx` has none, so its
+skeleton comes from `w:dataBinding` alone and `skeleton.open_dope` is False.
+
+The other two things this phase counts as **skipped** rather than failed, per
+section 4: a **picture** binding, which needs the `a:blip` embed replaced from
+base64, and an **explicitly rich-text** binding (`w:sdtPr/w:richText`), which
+carries a whole flat OPC package rather than a value. Both are reported with
+their reason and their code, so a caller sees them.
+
+### 17.7 Two defects the tests found
+
+Recorded because both were silent, and both are the kind that a value read back
+through the view that wrote it would have hidden (section 16.11's lesson):
+
+1. **A dry run's `apply_bindings` edited the real document.** `bound_bodies`
+   reached a part's body through `part.body`, and `TrialPart` has no `body` of
+   its own, so `__getattr__` handed the attribute to the **wrapped** part and the
+   trial wrote its bindings into the real tree. It goes through
+   `body_of(part)` --- which reads `part.contents`, and a `TrialPart`'s
+   `contents` is the copy --- and `test_a_dry_run_of_a_fill_leaves_the_document_
+   alone` compares the saved bytes.
+2. **Two empty controls asked for at the same offset came out reversed.** The
+   insertion index stopped at the last run *with text*, so a second empty control
+   at the end of a paragraph landed in front of the first. `_offset_index` now
+   walks past anything already sitting there that carries no text, and the
+   end-to-end test asserts the two controls in the order they were asked for.
+
+A third, smaller: `w15:color/@w:val` is `ST_HexColorAuto`, a union with
+`xs:hexBinary`, so a **parsed** document hands the colour back as `bytes` while a
+document this API built hands back the string it was given. `color` converts.
+
+### 17.8 What Phase J (the python-docx facade) needs
+
+Phase J sits on a complete core, which is why section 8 put it after this one.
+
+* **The whole Office JS subset is implemented.** `tests/office_js_subset.json`'s
+  200 non-extension members are all present and the subset test's "later phases"
+  line is empty, so the facade has a complete surface to delegate to and its own
+  subset list (`tests/python_docx_subset.json`) is the only thing left to write.
+* **python-docx has no custom XML.** Nothing in this phase has a python-docx
+  counterpart, so Phase J inherits no obligations from it; `document.part` and
+  the `_Body` shim are what its list will need, and both are Phase B's.
+* **`put_property` / `remove_property` is the one way to set a `w:sdtPr` child**,
+  and `SDT_PR_ORDER` is the order Word writes them in. Anything that adds another
+  property --- a facade, or Phase H's lists --- should go through it rather than
+  appending to the choice list, or Word reads the control and rewrites it.
+* **`insert_content_control` is the only verb that wraps existing content.**
+  Every other insert makes new content; a facade that offers "wrap this in a
+  control" should call it rather than build a `w:sdt` by hand, because the three
+  refusals (a crossed run holder, a repeating section at run level, an empty
+  body) are what stop Word repairing the document.
