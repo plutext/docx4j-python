@@ -606,7 +606,7 @@ class ContentControl:
                 code="binding.bad_appearance",
                 hint="one of BoundingBox, Tags, Hidden",
             )
-        with self._property_change("appearance", value):
+        with self._property_change("appearance", value, needs="w15:appearance"):
             self.put_property(w15_el.appearance(val=stored))
 
     @property
@@ -630,7 +630,7 @@ class ContentControl:
         """Set the colour; ``""`` removes it. ``#RRGGBB`` or ``RRGGBB``."""
         from docx4j_py.w15 import el as w15_el
 
-        with self._property_change("color", value):
+        with self._property_change("color", value, needs="w15:color"):
             if not value:
                 self.remove_property("color", W15_NS)
                 return
@@ -684,13 +684,18 @@ class ContentControl:
             else:
                 self.remove_property("temporary", W_NS)
 
-    def _property_change(self, name: str, value: Any) -> Any:
+    def _property_change(self, name: str, value: Any, *, needs: str = "") -> Any:
         """``with self._property_change("color", value):`` --- one report per setter.
 
         CR-003 decided question 4: every mutating call records a
         :class:`~docx4j_py.model.content.reports.ChangeReport`, and a
         ``w:sdtPr`` property setter is one. ``tag`` and ``title`` have no
         setters, so there is nothing to record for them (section 17.9).
+
+        Args:
+            needs: what to name in a compatibility warning when the property is
+                Word 2013's and the document's mode is below 15 (section 17.11);
+                ``""`` for a property every Word understands.
         """
         from contextlib import ExitStack
 
@@ -698,6 +703,10 @@ class ContentControl:
         change = stack.enter_context(recording(self.parent_body, f"control.{name}"))
         change.touched(self.address)
         change.text(after="" if value is None else str(value))
+        if needs:
+            from docx4j_py.model.content.compatibility import warn_below
+
+            warn_below(getattr(self.parent_body, "package", None), change, needs)
         return stack
 
     def _lock(self) -> str:

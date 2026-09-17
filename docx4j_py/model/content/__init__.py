@@ -373,6 +373,51 @@ def _set_package_change_tracking_mode(self: object, value: object) -> None:
                     parts.append(name)
 
 
+def _package_compatibility_mode(self: object) -> object:
+    """Which Word this document says it is written for (CR-003 section 3.4).
+
+    An ``int``: 11 is Word 2003, 12 Word 2007, 14 Word 2010, 15 Word 2013 ---
+    and Word 2016, 2019 and 365, which all write 15. **12 when the document
+    declares nothing**, which is what Word assumes, and why Word shows
+    *Compatibility Mode* in the title bar for such a document; a document this
+    library creates declares 15.
+
+    **Reading does not unmarshal the settings part**: ``w:compatSetting`` is
+    read with lxml from the bytes the part would be saved as, as
+    ``change_tracking_mode`` is, and cached on the package. Setting it unmarshals
+    the part, writes or replaces the setting, and records a ``ChangeReport``
+    naming ``/word/settings.xml``. Setting it does **not** add or remove any
+    other markup: it says which Word to target, and a feature a lower mode
+    cannot carry is reported in that call's ``ChangeReport.warnings``
+    (:func:`~docx4j_py.model.content.compatibility.warn_below`).
+    """
+    from docx4j_py.model.content.compatibility import mode_of
+
+    return mode_of(self)
+
+
+def _set_package_compatibility_mode(self: object, value: object) -> None:
+    """Declare a Word version: 11, 12, 14 or 15. The part touched is reported."""
+    from docx4j_py.model.content.compatibility import set_mode
+    from docx4j_py.model.content.reports import recording
+
+    try:
+        body = self.body  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - a package with no body still takes a mode
+        body = None
+    if body is None:
+        set_mode(self, value)
+        return
+    with recording(body, "compatibility_mode") as change:
+        touched = set_mode(self, value)
+        change.text(after=str(int(value)))  # type: ignore[call-overload]
+        parts = getattr(change, "parts", None)
+        if parts is not None:
+            for name in touched:
+                if name not in parts:
+                    parts.append(name)
+
+
 def _package_tracked_change_date(self: object) -> object:
     """The date a new revision carries, or None for the wall clock (section 3.8).
 
@@ -455,6 +500,12 @@ _PACKAGE_PROPERTIES: dict[str, property] = {
         _package_tracked_change_date,
         _set_package_tracked_change_date,
         doc=_package_tracked_change_date.__doc__,
+    ),
+    # CR-003 section 3.4, added 2026-09-17
+    "compatibility_mode": property(
+        _package_compatibility_mode,
+        _set_package_compatibility_mode,
+        doc=_package_compatibility_mode.__doc__,
     ),
     # CR-003 Phase E, section 3.7
     "custom_xml_parts": property(

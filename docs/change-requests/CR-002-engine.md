@@ -1,7 +1,8 @@
 # CR-002: The engine: container interface, Open Packaging layer, typed parts, resolution utilities
 
 **Status:** Proposed 2026-09-12; open questions decided 2026-09-12 (section 11); **Phase A implemented
-2026-09-12** (section 12); Word acceptance passed 2026-09-12 (12.8). Phases B and C proposed.
+2026-09-12** (section 12); Word acceptance passed 2026-09-12 (12.8); amended 2026-09-17, a created
+document declares `compatibilityMode` 15 (section 12.10). Phases B and C proposed.
 **Depends on:** CR-001 Phases A to C (implemented 2026-09-12): the generated model under `docx4j_py`,
 `Child` and `ChildList`, `link_parents`, `deep_copy`, `el`, `wml(...)`, `to_xml`, `text_of`,
 `walk`, `find`, `warm_up()`, the prefix table in `docx4j_py.namespaces`, the fork runtime's
@@ -667,3 +668,51 @@ nothing is rewritten at save time (decided question 2). Tests in
 * **Not started, not blocking**: `OpcPackage.clone()`, external resource loading
   (`Load.loadExternalTargets`), the digital-signature parts, and docx4j's
   `DrawingPropsIdTracker`, which only matters once something adds drawings in bulk.
+
+### 12.10 A created document is Word 2013, not Word 2007 (2026-09-17)
+
+A dated amendment to Phase A's `create_package`, from the same session as CR-003
+sections 17.10 and 17.11.
+
+Phase A wrote one compatibility setting into `/word/settings.xml`,
+`overrideTableStyleFontSizeAndJustification`, because that is what docx4j's
+`createPackage` writes and 12.3's rule is that docx4j is the oracle. docx4j
+writes **no `compatibilityMode` at all**, and Word reads a document that declares
+none as **Word 2007**: every document this library created opened with
+*Compatibility Mode* in Word's title bar, and Word applied its 2007 layout rules
+to it. Nobody had looked at the title bar, and the Word acceptance checklist did
+not ask.
+
+`create_package` now writes what Word writes into a new document, in Word's own
+order:
+
+| `w:name` (all with `w:uri="http://schemas.microsoft.com/office/word"`) | `w:val` |
+|---|---|
+| `compatibilityMode` | **15** |
+| `overrideTableStyleFontSizeAndJustification` | 1 |
+| `enableOpenTypeFeatures` | 1 |
+| `doNotFlipMirrorIndents` | 1 |
+| `differentiateMultirowTableHeaders` | 1 |
+| `useWord2013TrackBottomHyphenation` | 0 |
+
+15 is Word 2013, and is what Word 2016, 2019 and 365 write too: there has never
+been a 16. The table is `NEW_DOCUMENT_COMPAT` in
+`docx4j_py/openpackaging/parts/wml/__init__.py`, beside `WORD_COMPAT_URI`, and
+`DocumentSettingsPart.set_default_compat_settings()` writes it;
+`set_override_table_style_font_size_and_justification` is still there, over the
+new one-setting `set_compat_setting`, because it is docx4j's own member name.
+The table lives in the engine rather than in the content API because
+`create_package` is the engine's and the engine imports nothing from the content
+API (CR-003 section 5).
+
+**The departure from docx4j is deliberate and is this section.** A created
+document targets Word 2013 and later; a caller who wants otherwise writes
+`pkg.compatibility_mode = 12` (CR-003 sections 3.4 and 17.11), which is the
+property this amendment exists alongside. Loaded documents are untouched, as
+always: their settings part is copied byte for byte unless something unmarshals
+it.
+
+`test_a_created_document_saves_and_reloads` pins the whole `w:compat`, name,
+value and URI, in Word's order. Artefacts 3, 4 and 5 were regenerated and the
+Word check of them is outstanding; 12.8's rule (a change to `create_package`
+means a new Word check) is why.

@@ -142,6 +142,11 @@ class Description:
     """``{"comments": [...], "revisions": [...]}``, each sorted."""
     tracking_on: bool = False
     """``w:trackRevisions`` in the settings part."""
+    compatibility_mode: int = 12
+    """Which Word the document says it is for: 11, 12, 14 or 15 (CR-003 §3.4).
+
+    12 --- Word 2007, what Word assumes --- when the document declares nothing.
+    """
     skipped: int = 0
     """How many items lenient parsing dropped (CR-002 section 8)."""
     application: str | None = None
@@ -162,6 +167,7 @@ class Description:
             "custom_xml": [list(pair) for pair in self.custom_xml],
             "authors": {key: list(value) for key, value in self.authors.items()},
             "tracking_on": self.tracking_on,
+            "compatibility_mode": self.compatibility_mode,
             "skipped": self.skipped,
             "application": self.application,
             "created": self.created,
@@ -381,6 +387,13 @@ def _tracking_on(package: Any) -> bool:
     return value not in ("0", "false")
 
 
+def _compatibility_mode(package: Any) -> int:
+    """The Word version the document declares, read without unmarshalling."""
+    from docx4j_py.model.content.compatibility import mode_of
+
+    return mode_of(package)
+
+
 def _custom_xml(package: Any) -> tuple[tuple[str, str], ...]:
     out: list[tuple[str, str]] = []
     for item_id, part in sorted(getattr(package, "custom_xml_data_storage_parts", {}).items()):
@@ -445,6 +458,7 @@ def describe_package(package: Any) -> Description:
             "revisions": _revision_authors(package),
         },
         tracking_on=_tracking_on(package),
+        compatibility_mode=_compatibility_mode(package),
         skipped=len(getattr(package, "skipped", ()) or ()),
         application=application,
         created=created,

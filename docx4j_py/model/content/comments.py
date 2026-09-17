@@ -788,6 +788,17 @@ class Comment:
 
         with recording(self.body, "resolve_comment" if value else "reopen_comment") as change:
             change.text(before=f"resolved={self.resolved}")
+            if value:
+                # CR-003 sections 15.7 and 17.11: w15:done is Word 2013's, and a
+                # Word 2010 document loses it on save with a Compatibility
+                # Checker note ("comments which have been collapsed")
+                from docx4j_py.model.content.compatibility import warn_below
+
+                warn_below(
+                    getattr(self.body, "package", None),
+                    change,
+                    "a resolved comment (w15:done)",
+                )
             parts = self._writable()
             para_id = self._ensure_para_id()
             entry = self._comment_ex()

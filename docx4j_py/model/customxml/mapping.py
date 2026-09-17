@@ -219,8 +219,18 @@ class XmlMapping:
                 namespace = W15_NS
         self.control.remove_property("dataBinding", (W_NS, W15_NS))
         if namespace == W15_NS:
+            from docx4j_py.model.content.compatibility import warn_below
+            from docx4j_py.model.content.reports import current_recorder
             from docx4j_py.w15 import el as w15_el
 
+            # CR-003 section 17.11: w15 is Word 2013's, and this control is one
+            # of the two kinds Word binds that way
+            package = getattr(self.control.parent_body, "package", None)
+            warn_below(
+                package,
+                current_recorder(package),
+                "a w15:dataBinding (the binding of a repeating section or a container)",
+            )
             binding = w15_el.dataBinding(xpath=xpath, store_item_id=store_item_id)
         else:
             binding = el.dataBinding(xpath=xpath, store_item_id=store_item_id)

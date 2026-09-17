@@ -61,6 +61,21 @@ def _control(body: Any, element: Any, container: list) -> ContentControl:
     return ContentControl(element, container, body)
 
 
+def _warn_if_w15(body: Any, kind: str, change: Any) -> None:
+    """A repeating section is ``w15``: warn when the document is below mode 15.
+
+    CR-003 section 17.11. Word 2010 does not know ``w15:repeatingSection``; the
+    markup is written all the same, and the report says what it needs.
+    """
+    if kind != "RepeatingSection":
+        return
+    from docx4j_py.model.content.compatibility import warn_below
+
+    warn_below(
+        getattr(body, "package", None), change, "a repeating section (w15:repeatingSection)"
+    )
+
+
 def insert_content_control_in_body(body: Any, kind: str = "RichText") -> ContentControl:
     """Wrap everything the body holds in one content control.
 
@@ -77,6 +92,7 @@ def insert_content_control_in_body(body: Any, kind: str = "RichText") -> Content
                 code="control.empty_body",
                 hint="insert a paragraph first, then wrap it",
             )
+        _warn_if_w15(body, kind, change)
         identifier = next_sdt_id(_root_of(body))
         items = list(content)
         control = sdt(items, kind=kind, id=identifier, form="block")
@@ -107,6 +123,7 @@ def insert_content_control_in_paragraph(paragraph: Any, kind: str = "RichText") 
                 code="address.not_found",
                 hint="read it again from body.paragraphs",
             )
+        _warn_if_w15(body, kind, change)
         identifier = next_sdt_id(_root_of(body))
         control = sdt([paragraph.element], kind=kind, id=identifier, form="block")
         container[index] = control

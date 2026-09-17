@@ -7,8 +7,8 @@ and to be designed for AI projects and MCP servers first; open questions decided
 (section 13); **Phase C implemented 2026-09-17** (section 14); **Phase G implemented
 2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16); **Phase E
 implemented 2026-09-17** (section 17), with which every one of the 200 non-extension members of
-`tests/office_js_subset.json` is implemented; and a follow-up the same day from the Word check of
-artefact 9 (section 17.10: what Word does with a repeat, and a repeat's list in `fill()`).
+`tests/office_js_subset.json` is implemented; two follow-ups the same day from the Word check of
+artefact 9 (sections 17.10 and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`).
 Phases H, I and J proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
@@ -354,6 +354,19 @@ reviews in Word with accept and reject, and `range.insert_comment("Changed becau
 the agent explains itself in the document rather than in a chat log. This is the single most
 useful thing the API does for an AI workflow and it costs nothing beyond phases F and G; the
 README leads with it.
+
+**Which Word the document is for** (*added 2026-09-17*). `pkg.compatibility_mode` is the third of
+the package-level settings, beside `author` and `change_tracking_mode`, and reads and writes
+Word's `w:compatSetting compatibilityMode`: an `int`, 11 for Word 2003, 12 for Word 2007, 14 for
+Word 2010 and 15 for Word 2013 — which is also what Word 2016, 2019 and 365 write, there being no
+16 — and **12 when the document declares nothing**, which is what Word assumes and why it shows
+*Compatibility Mode* in the title bar for such a document. Reading it unmarshals nothing (lxml,
+cached, as `change_tracking_mode` is read); writing it unmarshals the settings part and records a
+`ChangeReport`. A document from `create_package()` declares 15. Nothing is ever downgraded or
+upgraded silently: a verb that writes a feature the document's mode is below — a resolved comment,
+a repeating section, a `w15:dataBinding`, `w15:color`, `w15:appearance` — writes it and adds a
+line to that call's `ChangeReport.warnings` naming the feature and the fix. `describe()` reports
+the mode. Section 17.11 has the implementation notes.
 
 **Long-lived process, many documents.** CR-002 accepted a one-second import on the condition
 that a process serves many documents. An MCP server therefore holds packages open across tool
@@ -2980,3 +2993,93 @@ their children, the document still one item, save-reload-read-back, the parent
 key and the surplus removed, the one `ChangeReport`, a `dry_run` that leaves the
 document alone, the two refusals, and `describe()`'s fields. **1,212 tests
 before, 1,219 after.**
+
+### 17.11 `pkg.compatibility_mode`, and what a created document targets (2026-09-17)
+
+Asked for in the same session, from the same Word check: *"does our API include a
+way to set compatibility mode? Where we are using features which require newer
+versions of Word, I'd expect to be setting compatibility accordingly."* It did
+not, and worse: **`create_package()` wrote no `compatibilityMode` at all**, only
+`overrideTableStyleFontSizeAndJustification`, which is what docx4j's
+`createPackage` writes. Word reads a document with no mode as **Word 2007** and
+opens it with *Compatibility Mode* in the title bar. Every document this library
+created was in that state.
+
+**The property** (section 3.4). `pkg.compatibility_mode` is an `int` over
+`w:settings/w:compat/w:compatSetting[@w:name='compatibilityMode'][@w:uri='http://schemas.microsoft.com/office/word']/@w:val`,
+in `docx4j_py/model/content/compatibility.py` (270 lines) and shaped exactly like
+`change_tracking_mode` (section 16): **a read goes through lxml** from the bytes
+the part would be saved as and is cached on the package, so a document whose mode
+is only read keeps `/word/settings.xml` byte for byte; **a write unmarshals the
+part**, writes or replaces the setting (first in `w:compat`, where Word puts it)
+and records a `ChangeReport`. A `TrialPackage` has its own, so a dry run writes
+into the trial's copy. `CompatibilityMode` is an `IntEnum` beside it
+(`WORD_2003` 11, `WORD_2007` 12, `WORD_2010` 14, `WORD_2013` 15), so
+`pkg.compatibility_mode == 15` and `CompatibilityMode.WORD_2013` are the same
+value and what crosses into JSON is the number Word writes. **12 is the answer
+when the document declares nothing**, which is what Word assumes rather than a
+default of ours. 11, 12, 14 and 15 are accepted and anything else is refused with
+`compatibility.mode_invalid`: there is no 16, and Word 2016, 2019 and 365 all
+write 15. `describe()` gained `compatibility_mode`.
+
+**What a created document now carries.** `create_package()` writes the whole
+`w:compat` Word writes into a new document, in Word's order — the table is
+`NEW_DOCUMENT_COMPAT` in `docx4j_py/openpackaging/parts/wml/__init__.py`, and it
+lives in the **engine** because `create_package` writes it and the engine imports
+nothing from the content API (CR-002 section 12.10):
+
+```xml
+<w:compat>
+  <w:compatSetting w:name="compatibilityMode" w:uri="…/office/word" w:val="15"/>
+  <w:compatSetting w:name="overrideTableStyleFontSizeAndJustification" … w:val="1"/>
+  <w:compatSetting w:name="enableOpenTypeFeatures" … w:val="1"/>
+  <w:compatSetting w:name="doNotFlipMirrorIndents" … w:val="1"/>
+  <w:compatSetting w:name="differentiateMultirowTableHeaders" … w:val="1"/>
+  <w:compatSetting w:name="useWord2013TrackBottomHyphenation" … w:val="0"/>
+</w:compat>
+```
+
+**Warnings, not silent downgrades.** A verb that writes a Word 2013 feature into
+a document whose mode is below 15 writes it — Word does not refuse such markup;
+it reports it in the Compatibility Checker and may drop it, which is exactly what
+section 15.7 saw with a resolved comment on a Word 2010 document — and adds one
+line to that call's `ChangeReport.warnings` naming the feature, the mode the
+document declares and the fix (`pkg.compatibility_mode = 15`). Five sites, which
+are the `w15` markup this API writes:
+
+| call | feature |
+|---|---|
+| `comment.resolved = True` | `w15:done` (section 15.7's Compatibility Checker case) |
+| `insert_content_control("RepeatingSection")`, at body and paragraph level | `w15:repeatingSection` |
+| `RepeatingSectionContentControl.insert_item_after` | `w15:repeatingSectionItem` |
+| `XmlMapping.set_mapping` / `set_mapping_by_node` writing into a `w15:dataBinding` | the binding of a repeating section or a container |
+| `control.color`, `control.appearance` | `w15:color`, `w15:appearance` |
+
+The mode is never changed for the caller: which Word can open the document is a
+decision, not a detail. The cost is one lxml read of `settings.xml` per package,
+cached, and nothing at all on a document that is already 15.
+
+Two decisions inside that:
+
+1. **`insert_item_after` opens the report itself.** It delegates to
+   `insert_copy_after`, which opens one of its own; the warning has to land on
+   the report the *caller* sees, so `insert_item_after` opens `recording(...)`
+   first and the inner call is the usual re-entrant no-op. The operation a caller
+   reads is therefore `insert_item_after` rather than `insert_copy_after`, which
+   is the better name for it anyway.
+2. **The two settings helpers in `tracking.py` are now public.**
+   `settings_part_for_write` and `create_settings_part` are what write to
+   `/word/settings.xml` — a trial's copy when there is one, and a part created
+   with its relationship and content type when the document has none — and
+   both modules need them. Renaming them was cheaper than a second copy.
+
+A `dry_run` of the setter leaves the real package byte for byte **when the
+settings part has already been read**; when it has not, the trial's first look
+unmarshals it, which is section 12.5's documented limit of every trial and not of
+this setter. Both are tested, the second for what actually matters: the mode and
+every other part unchanged.
+
+Thirteen tests in `tests/content/test_compatibility.py`, and the `create_package`
+test in `tests/openpackaging/test_parts_and_relationships.py` now pins the exact
+`w:compat`. **1,219 tests before, 1,232 after.** Artefacts 3, 4, 5 and 9 were
+regenerated; the Word check of them is outstanding.

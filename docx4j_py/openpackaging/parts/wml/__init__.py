@@ -33,6 +33,8 @@ if TYPE_CHECKING:  # pragma: no cover
     )
 
 __all__ = [
+    "NEW_DOCUMENT_COMPAT",
+    "WORD_COMPAT_URI",
     "CommentsExtendedPart",
     "CommentsPart",
     "DocumentPart",
@@ -52,6 +54,24 @@ __all__ = [
     "VbaDataPart",
     "WebSettingsPart",
 ]
+
+#: The ``w:uri`` every one of Word's own ``w:compatSetting``\ s carries.
+WORD_COMPAT_URI = "http://schemas.microsoft.com/office/word"
+
+#: The ``w:compat`` Word writes into a **new** document, in its own order:
+#: ``compatibilityMode`` 15 (Word 2013, and what Word 2016, 2019 and 365 write
+#: too) and the five settings beside it. ``create_package`` writes exactly this,
+#: so that a created document is not opened in Word's Compatibility Mode
+#: (CR-002 section 12.10, 2026-09-17). The content API's
+#: ``pkg.compatibility_mode`` reads and rewrites the first of them.
+NEW_DOCUMENT_COMPAT: tuple[tuple[str, str], ...] = (
+    ("compatibilityMode", "15"),
+    ("overrideTableStyleFontSizeAndJustification", "1"),
+    ("enableOpenTypeFeatures", "1"),
+    ("doNotFlipMirrorIndents", "1"),
+    ("differentiateMultirowTableHeaders", "1"),
+    ("useWord2013TrackBottomHyphenation", "0"),
+)
 
 _W = Namespaces.NS_WORD12
 _W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
@@ -293,6 +313,18 @@ class DocumentSettingsPart(XmlPart["Settings"]):
             _w("settings"),
         )
 
+    def set_compat_setting(self, name: str, value: str) -> None:
+        """Write one of Word's own ``w:compatSetting``\\ s, appending it in order."""
+        from docx4j_py.wml import CTCompat, CTCompatSetting
+
+        settings = self.contents
+        if settings.compat is None:
+            settings.compat = CTCompat()
+            settings.compat.parent = settings
+        settings.compat.compat_setting.append(
+            CTCompatSetting(name=name, uri=WORD_COMPAT_URI, val=value)
+        )
+
     def set_override_table_style_font_size_and_justification(self, value: bool) -> None:
         """Write Word's ``overrideTableStyleFontSizeAndJustification`` compat setting.
 
@@ -300,18 +332,20 @@ class DocumentSettingsPart(XmlPart["Settings"]):
         applies a table style's font size and justification to direct
         formatting, which is not what anyone means.
         """
-        from docx4j_py.wml import CTCompat, CTCompatSetting
-
-        settings = self.contents
-        if settings.compat is None:
-            settings.compat = CTCompat()
-            settings.compat.parent = settings
-        setting = CTCompatSetting(
-            name="overrideTableStyleFontSizeAndJustification",
-            uri="http://schemas.microsoft.com/office/word",
-            val="1" if value else "0",
+        self.set_compat_setting(
+            "overrideTableStyleFontSizeAndJustification", "1" if value else "0"
         )
-        settings.compat.compat_setting.append(setting)
+
+    def set_default_compat_settings(self) -> None:
+        """Write the whole ``w:compat`` Word writes into a new document.
+
+        :data:`NEW_DOCUMENT_COMPAT`, in Word's own order, ``compatibilityMode``
+        15 first: a document this library creates targets **Word 2013 and
+        later**, and so opens without Word's *Compatibility Mode* title bar
+        (CR-002 section 12.10). ``pkg.compatibility_mode`` changes it.
+        """
+        for name, value in NEW_DOCUMENT_COMPAT:
+            self.set_compat_setting(name, value)
 
 
 class WebSettingsPart(XmlPart["WebSettings"]):

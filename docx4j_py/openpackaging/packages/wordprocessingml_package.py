@@ -194,8 +194,14 @@ class WordprocessingMLPackage(OpcPackage):
           these only when its ``docx4j.dc.write`` / ``docx4j.App.write``
           properties are set; a created document should not carry empty parts, so
           here they are always written (CR-002 section 12.8);
-        * ``/word/settings.xml`` with Word's
-          ``overrideTableStyleFontSizeAndJustification`` compatibility setting.
+        * ``/word/settings.xml`` with the ``w:compat`` Word writes into a new
+          document (:data:`~docx4j_py.openpackaging.parts.wml.NEW_DOCUMENT_COMPAT`):
+          ``compatibilityMode`` **15**, so the document targets **Word 2013 and
+          later** and does not open in Word's Compatibility Mode, plus the five
+          settings Word writes beside it. docx4j writes only
+          ``overrideTableStyleFontSizeAndJustification`` and no mode at all,
+          which leaves a created document in Word 2007 format; CR-002 section
+          12.10 records the departure, and ``pkg.compatibility_mode`` changes it.
 
         Args:
             page_size: one of :data:`PAGE_SIZES`; ``A4`` as docx4j's code
@@ -253,7 +259,7 @@ class WordprocessingMLPackage(OpcPackage):
         settings = DocumentSettingsPart()
         main.add_target_part(settings)
         settings.set_contents(_empty_settings())
-        settings.set_override_table_style_font_size_and_justification(True)
+        settings.set_default_compat_settings()
 
         return package
 

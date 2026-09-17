@@ -69,6 +69,7 @@ class OpcPackage:
         "_change_tracker",
         "_change_tracking_mode",
         "_changes",
+        "_compatibility_mode",
         "_current_change",
         "_custom_xml_parts",
         "_id_rng",
@@ -141,6 +142,12 @@ class OpcPackage:
         self._change_tracking_mode: Any = None
         self._change_tracker: Any = None
         self._tracked_change_date: Any = None
+        # CR-003 section 3.4 (2026-09-17): the Word version the document
+        # declares, over ``w:compatSetting compatibilityMode``, cached here for
+        # the same reason and read the same way --- with lxml, so that a read
+        # leaves the settings part byte for byte. The ``compatibility_mode``
+        # property is installed by ``docx4j_py.model.content.register()``.
+        self._compatibility_mode: Any = None
         # CR-003 section 16.12: ``id(tail) -> id(head)`` for every ``w:r`` this
         # package's splits have made. A rejected revision puts the two halves of
         # a split run back side by side, and this is what says they are *those*

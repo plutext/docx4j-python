@@ -625,7 +625,20 @@ class RepeatingSectionContentControl(_KindView):
                 code="binding.no_such_item",
                 hint="index from 0; read repeating_section_content_control.items first",
             )
-        return items[index].insert_copy_after()
+        # CR-003 section 17.11: the item is a w15:repeatingSectionItem, so the
+        # report says so when the document is in an older compatibility mode.
+        # The recording is opened here so that the warning lands on the one
+        # report ``insert_copy_after`` would otherwise open by itself.
+        from docx4j_py.model.content.compatibility import warn_below
+        from docx4j_py.model.content.reports import recording
+
+        with recording(self.control.parent_body, "insert_item_after") as change:
+            warn_below(
+                getattr(self.control.parent_body, "package", None),
+                change,
+                "a repeating section item (w15:repeatingSectionItem)",
+            )
+            return items[index].insert_copy_after()
 
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary."""

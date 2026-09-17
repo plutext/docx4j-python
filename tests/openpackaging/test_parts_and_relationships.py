@@ -32,6 +32,7 @@ from docx4j_py.openpackaging import (  # noqa: E402
     StyleDefinitionsPart,
     WordprocessingMLPackage,
 )
+from docx4j_py.openpackaging.parts.wml import NEW_DOCUMENT_COMPAT  # noqa: E402
 
 TOC = ROOT / "samples" / "toc.docx"
 IMAGES = ROOT / "samples" / "Images.docx"
@@ -300,8 +301,22 @@ def test_a_created_document_saves_and_reloads():
         assert again.style_definitions_part is not None
         assert len(again.style_definitions_part.contents.style) > 10
         settings = again.document_settings_part.contents
-        names = [c.name for c in settings.compat.compat_setting]
-        assert "overrideTableStyleFontSizeAndJustification" in names
+        # CR-002 section 12.10 (2026-09-17): the w:compat Word writes into a new
+        # document, in its order. compatibilityMode 15 is what keeps Word's
+        # title bar from saying "Compatibility Mode"; docx4j writes none at all.
+        assert [(c.name, c.val, c.uri) for c in settings.compat.compat_setting] == [
+            (name, value, "http://schemas.microsoft.com/office/word")
+            for name, value in NEW_DOCUMENT_COMPAT
+        ]
+        assert NEW_DOCUMENT_COMPAT == (
+            ("compatibilityMode", "15"),
+            ("overrideTableStyleFontSizeAndJustification", "1"),
+            ("enableOpenTypeFeatures", "1"),
+            ("doNotFlipMirrorIndents", "1"),
+            ("differentiateMultirowTableHeaders", "1"),
+            ("useWord2013TrackBottomHyphenation", "0"),
+        )
+        assert again.compatibility_mode == 15
         assert again.skipped == []
 
 

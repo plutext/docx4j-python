@@ -403,6 +403,16 @@ replaces each `mc:AlternateContent` with the branch Word would take, as docx4j's
 does. The traversal functions take `mce="resolve"` (default, descend into the understood
 `mc:Choice`, else the `mc:Fallback`), `"all"` or `"none"`.
 
+A document from `create_package()` **targets Word 2013 and later**: its `w:settings` carries
+`compatibilityMode` 15 (which is what Word 2016, 2019 and 365 write too — there is no 16) and the
+five settings Word writes beside it, so Word does not open it in *Compatibility Mode*.
+`pkg.compatibility_mode` reads it on any document — 14 for a Word 2010 one, and **12 when the
+document declares nothing**, which is what Word assumes — and `pkg.compatibility_mode = 15` (11,
+12, 14 or 15) changes it. Reading unmarshals nothing; writing re-marshals `/word/settings.xml` and
+is reported. A verb that writes a Word 2013 feature into an older document — a resolved comment,
+a repeating section, a `w15:dataBinding` — writes it and says so in that call's
+`ChangeReport.warnings`, naming the fix; the mode is never changed behind the caller.
+
 Under `docx4j_py.openpackaging`: `PartName` (OPC part names, case-insensitive equality,
 relationship target resolution), `ContentTypeManager` and `ContentTypes`, `RelationshipsPart`
 with `add_part` / `add_relationship` / `remove_part` and docx4j's `AddPartBehaviour`,

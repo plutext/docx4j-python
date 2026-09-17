@@ -81,6 +81,7 @@ __all__ = [
     "FontTracking",
     "Revision",
     "copy_r_pr",
+    "create_settings_part",
     "date_of",
     "delete_row_content",
     "insertion_mark_of",
@@ -95,6 +96,7 @@ __all__ = [
     "revision_of",
     "row_pr_of",
     "set_mode",
+    "settings_part_for_write",
     "tidy_runs",
     "to_deleted_text",
     "to_restored_text",
@@ -1082,12 +1084,12 @@ def set_mode(package: Any, value: str | None) -> list[str]:
             hint="pkg.change_tracking_mode = 'TrackAll'",
         )
     touched: list[str] = []
-    part = _settings_part_for_write(package)
+    part = settings_part_for_write(package)
     if part is None:
         if mode == "Off":
             _remember(package, mode)
             return touched
-        part = _create_settings_part(package)
+        part = create_settings_part(package)
     settings = part.contents
     if mode == "Off":
         settings.track_revisions = None
@@ -1101,8 +1103,11 @@ def set_mode(package: Any, value: str | None) -> list[str]:
     return touched
 
 
-def _settings_part_for_write(package: Any) -> Any:
+def settings_part_for_write(package: Any) -> Any:
     """The settings part a write goes to: a trial's own copy, or the real part.
+
+    Shared with :mod:`~docx4j_py.model.content.compatibility`, which writes into
+    the same part.
 
     A :class:`~docx4j_py.model.content.trial.TrialPackage` answers with the copy
     it is about to edit, so that a dry run of "turn tracking on" leaves the real
@@ -1123,8 +1128,11 @@ def _remember(package: Any, mode: str) -> None:
         pass
 
 
-def _create_settings_part(package: Any) -> Any:
-    """``/word/settings.xml``, created as ``create_package`` creates it."""
+def create_settings_part(package: Any) -> Any:
+    """``/word/settings.xml``, created as ``create_package`` creates it.
+
+    Shared with :mod:`~docx4j_py.model.content.compatibility`.
+    """
     from docx4j_py.openpackaging.parts.wml import DocumentSettingsPart
     from docx4j_py.wml import Settings
 

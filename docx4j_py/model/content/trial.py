@@ -182,6 +182,7 @@ class TrialPackage:
         "_change_tracker",
         "_change_tracking_mode",
         "_changes",
+        "_compatibility_mode",
         "_current_change",
         "_custom_xml_parts",
         "_id_rng",
@@ -214,6 +215,9 @@ class TrialPackage:
         # settings part, and the real document's mode is not touched
         self._change_tracking_mode: Any = None
         self._change_tracker: Any = None
+        # and so is the compatibility mode (CR-003 section 17.11): a trial that
+        # raises it writes into the trial's **copy** of the settings part
+        self._compatibility_mode: Any = None
         self._tracked_change_date: Any = package.tracked_change_date
         #: The halves the trial's own splits made (CR-003 section 16.12).
         self._split_runs: dict[int, int] = {}
@@ -457,6 +461,26 @@ class TrialPackage:
         from docx4j_py.model.content.tracking import set_mode
 
         set_mode(self, None if value is None else str(value))
+
+    @property
+    def compatibility_mode(self) -> int:
+        """The trial's mode: the real package's, until the trial sets its own.
+
+        Setting it here writes ``w:compatSetting`` into the trial's **copy** of
+        ``/word/settings.xml``, so a dry run of "raise the mode and edit" leaves
+        the real document's settings part exactly as it was.
+        """
+        from docx4j_py.model.content.compatibility import mode_of
+
+        if self._compatibility_mode is None:
+            return int(self._package.compatibility_mode)
+        return int(mode_of(self))
+
+    @compatibility_mode.setter
+    def compatibility_mode(self, value: Any) -> None:
+        from docx4j_py.model.content.compatibility import set_mode
+
+        set_mode(self, value)
 
     @property
     def document_settings_part(self) -> Any:
