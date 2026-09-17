@@ -28,6 +28,7 @@ KEEP = {
     "wml/sdt.py",  # CR-003 Phase A: the w:sdt family
     "openpackaging",  # CR-002: the engine, all of it hand written
     "model",  # CR-003: the content API, all hand written
+    "docx",  # CR-003 Phase J: the python-docx facade, all hand written
 }
 
 ROOT = Path(__file__).resolve().parent.parent / "docx4j_py"
