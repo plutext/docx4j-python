@@ -305,17 +305,30 @@ def _package_change_tracking_mode(self: object) -> object:
 
 
 def _set_package_change_tracking_mode(self: object, value: object) -> None:
-    """Turn tracking on or off; the part touched goes into the ``ChangeReport``."""
-    from docx4j_py.model.content.reports import current_recorder
+    """Turn tracking on or off; the part touched goes into the ``ChangeReport``.
+
+    One report per call, as every mutating call has (CR-003 decided question 4),
+    with ``/word/settings.xml`` in ``parts_touched`` when the setter really
+    wrote it and ``text_after`` the mode now in force.
+    """
+    from docx4j_py.model.content.reports import recording
     from docx4j_py.model.content.tracking import set_mode
 
-    touched = set_mode(self, None if value is None else str(value))
-    change = current_recorder(self)
-    parts = getattr(change, "parts", None)
-    if parts is not None:
-        for name in touched:
-            if name not in parts:
-                parts.append(name)
+    try:
+        body = self.body  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - a package with no body still takes a mode
+        body = None
+    if body is None:
+        set_mode(self, None if value is None else str(value))
+        return
+    with recording(body, "change_tracking_mode") as change:
+        touched = set_mode(self, None if value is None else str(value))
+        change.text(after=str(value))
+        parts = getattr(change, "parts", None)
+        if parts is not None:
+            for name in touched:
+                if name not in parts:
+                    parts.append(name)
 
 
 def _package_tracked_change_date(self: object) -> object:

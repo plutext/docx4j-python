@@ -111,6 +111,21 @@ def test_a_document_with_no_settings_part_gets_one_with_its_relationship():
     assert reloaded(package).change_tracking_mode == "TrackAll"
 
 
+def test_setting_the_mode_is_one_change_report_naming_the_settings_part():
+    package = sample("2010-sample1.docx")
+    package.change_tracking_mode = "TrackAll"
+
+    change = package.last_change
+    assert change.operation == "change_tracking_mode"
+    assert change.text_after == "TrackAll"
+    assert "/word/settings.xml" in change.parts_touched
+    assert len(package.changes) == 1
+
+    # turning it off again touches the same part, and nothing else
+    package.change_tracking_mode = "Off"
+    assert package.last_change.parts_touched == change.parts_touched
+
+
 def test_an_invalid_mode_and_an_invalid_date_are_refused_with_a_hint():
     package = create_package()
     with pytest.raises(Exception) as bad_mode:

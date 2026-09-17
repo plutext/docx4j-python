@@ -1,7 +1,7 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 1,120 tests
+.venv-fork/bin/python -m pytest                    # everything, 1,122 tests
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
 .venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B

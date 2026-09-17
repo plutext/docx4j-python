@@ -5,7 +5,8 @@ and to be designed for AI projects and MCP servers first; open questions decided
 (section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
 (section 11); **Phase D implemented 2026-09-16** (section 12); **Phase K implemented 2026-09-17**
 (section 13); **Phase C implemented 2026-09-17** (section 14); **Phase G implemented
-2026-09-17** (section 15). Phases E, F, H, I and J proposed.
+2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16). Phases E, H, I and J
+proposed.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting and list labels need CR-002 Phase B (`PropertyResolver`, the numbering `Emulator`);
@@ -662,7 +663,7 @@ itself. `insert_table` sizes the grid from `w:sectPr`, which needs nothing from 
 | K | Markdown out, with addresses, then in (3.5) --- **implemented 2026-09-17, section 13** | 3 days |
 | C | `Table`, `TableRow`, `TableCell`, `InlinePicture` with the header readers, `insert_ooxml`, `ContentControl` reads and `delete` --- **implemented 2026-09-17, section 14** | 4 days |
 | G | Comments (3.9) --- **implemented 2026-09-17, section 15** | 3 days |
-| F | Change tracking and `replace_text` (3.8); the README's audit-trail example | 4 days |
+| F | Change tracking and `replace_text` (3.8); the README's audit-trail example --- **implemented 2026-09-17, section 16** | 4 days |
 | E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) | 4 days |
 | J | The python-docx facade (3.6) and its subset test | 3 days |
 | H | Lists (3.10) | 3 days |
@@ -2064,3 +2065,235 @@ a defect in the markup. A `resolved = True` on a document whose compatibility mo
 could add a `ChangeReport.warnings` line saying so, which would cost one lxml read of
 `settings.xml`; not done, noted for whoever finds an agent confused by the dialog.
 
+
+## 16. Phase F implementation notes (2026-09-17)
+
+Phase F is done: change tracking as section 3.8 specifies it and section 4's "Tracking rules,
+Word's not just the markup" rules it --- `pkg.change_tracking_mode` over `w:trackRevisions`,
+`pkg.tracked_change_date`, the revision markup every mutation writes in the paragraph-level
+primitives, `TrackedChange` with `accept()` and `reject()`, `get_tracked_changes()` on a body, a
+paragraph, a range and the package, `accept_all()` / `reject_all()`, and `replace_text` at all
+three levels --- with the tests of section 7, acceptance artefact 8 and the README's audit
+trail, which now leads with both halves. The suite is **1,122 tests** (1,121 passing plus one
+`xfail`; 1,113 of them fast, 54.4 s, and 64.0 s for the whole), against 1,067 at the end of
+Phase G; **55** of the new ones are `tests/content/test_tracking.py` (49) and
+`tests/agent/test_audit_trail.py` (6). Nothing in `~/git/docx4j-xsdata` changed, no schema patch
+was needed, the model was not regenerated and `codegen/generate_el.py` did not change at all:
+every Phase F name is reached through `docx4j_py.model.content`.
+
+```python
+from docx4j_py import load
+from docx4j_py.model.content import Author
+
+pkg = load("in.docx")
+pkg.author = Author("Claude", initials="C")
+pkg.change_tracking_mode = "TrackAll"
+pkg.body.replace_text("colour", "color")     # a w:del and a w:ins each
+pkg.get_tracked_changes()[0].to_dict()
+pkg.body.accept_all()
+```
+
+### 16.1 What landed
+
+| Piece | Where | Signature |
+|---|---|---|
+| the tracker | `docx4j_py/model/content/tracking.py` (843 lines) | `ChangeTracker(package, mode)` with `author`, `date`, `markup_roots()`, `next_id()`, `markup()`, `track_change()`, `ins(items)`, `deletion(items)`, `own_insertion(revision)`, `own_paragraph(p)`, `assert_editable(revision)`, `record_r_pr_change(r_pr)`, `record_p_pr_change(p_pr)`, `mark_paragraph_inserted` / `_deleted`, `mark_row_inserted` / `_deleted`; `tracker_of(package)`, `Revision` and `revision_of(run)`, `FontTracking`, `track_inserted_paragraph`, `wrap_new_runs`, `track_inserted_table`, `para_r_pr_of`, `row_pr_of`, `prune_paragraph_properties`, `mark_deleted` / `mark_inserted`, `to_deleted_text` / `to_restored_text`, `copy_r_pr`, `restore_r_pr`, `restore_p_pr`, `xml_date` / `date_of`, `mode_of` / `set_mode` |
+| the view | `docx4j_py/model/content/tracked_change.py` (667 lines) | `TrackedChangeTarget(kind, value, element, owner, mark)`; `TrackedChange(target, paragraph, body)` with `type`, `author`, `date`, `text`, `get_range()`, `accept()`, `reject()`, `to_dict()`, and `id`, `element`, `kind`, `target`, `address` as extensions; `tracked_changes_of_paragraph`, `tracked_changes_of_row`, `tracked_changes_of_body`, `join_with_next` |
+| the values | `.enums` | `ChangeTrackingModeValue` and `ChangeTracking`, `TrackedChangeTypeValue` and `TrackedChangeType`, with `CHANGE_TRACKING_MODES` and `TRACKED_CHANGE_TYPES` beside them |
+| the error | `.errors` | `TrackedChangeError(ContentError)`, codes `tracking.deleted_text`, `tracking.already_deleted`, `tracking.gone`, `tracking.no_paragraph` |
+| on the package | `.__init__`'s `register()`, and `OpcPackage` | `pkg.change_tracking_mode` and `pkg.tracked_change_date` (properties over the `_change_tracking_mode`, `_change_tracker` and `_tracked_change_date` slots), `pkg.get_tracked_changes()` |
+| on the views | `.body`, `.paragraph`, `.range` | `Body.change_tracker` / `get_tracked_changes` / `accept_all` / `reject_all`, `Paragraph.change_tracker` / `font_tracking` / `get_tracked_changes`, `Range.get_tracked_changes`; `Table.change_tracker` |
+| the tracked primitives | `.paragraph` (+397 lines) | `Paragraph.splice`'s tracked branch, `_delete_text`, `_insert_tracked`, `_isolate`, `_split_run_before` / `_after`, `_tracked_delete`, and the hook in the one `_p_pr()` accessor |
+| the trial | `.trial` | `TrialPackage.change_tracking_mode` (trial-local), `tracked_change_date`, `get_tracked_changes()`, `document_settings_part` (the real part until written to) and `writable_settings_part()` |
+| the fixture | `tests/fixtures/tracked-pprchange.docx`, `tests/content/conftest.py` | docx4j's `unmarshallFromTemplateDirtyExample.docx`; `moves_package()` for the forms no document carries |
+
+`Body.insert_element` and `Paragraph.splice` are where the whole phase hangs from. Everything
+else --- `Range.insert_text`, `Range.delete`, the `text` setter, `insert_xml`, `insert_ooxml`,
+`insert_markdown`, `insert_table`, `ContentControl.insert_text`, `TableCell.value` --- already
+ran through those two, so it was tracked the day the branch landed and the tests only had to
+prove it (`test_a_content_control_inherits_tracking_and_its_delete_does_not`,
+`test_markdown_inserted_while_tracking_is_on_is_one_report_and_all_insertions`).
+
+### 16.2 Departures from sections 3.8 and 4, all deliberate
+
+1. **`TrackedChange` is its own module**, `tracked_change.py`, as section 3.8 allowed
+   ("or in `tracking.py`; record the choice"). The two halves share nothing but the small
+   helpers `tracking.py` exports, they are 843 and 667 lines, and the writing half must not
+   import the reading half (a primitive never needs a view). The CR's section 5 table says
+   "`ChangeTracker`, `TrackedChange` | `docx4j_py.model.content.tracking`"; both names are
+   re-exported from `docx4j_py.model.content`, which is where every other view comes from, so
+   nothing outside this repository can tell.
+2. **Reading the mode does not unmarshal the settings part.** Section 3.8 says "reading or
+   writing the mode unmarshals the settings part"; reading it with lxml instead --- the same
+   `_root(part)` `describe()`'s `tracking_on` uses (12.2 item 5) --- costs 3.2 ms once and
+   **0.2 µs** thereafter (the answer is cached on the package), and it keeps a promise worth
+   more than the simplicity: a document whose mode is only *read* saves `/word/settings.xml`
+   byte for byte, which `test_reading_the_mode_leaves_the_settings_part_byte_for_byte` pins.
+   Writing does unmarshal, because changing the flag means re-marshalling the part anyway.
+   The cache is invalidated by the setter and is the only state the mode has.
+3. **A tracked deletion does not reach a field instruction.** `w:instrText` is not text (the
+   text model excludes it, 11.2 item 11), so a span never covers one and `_isolate` splits it
+   into a run of its own: deleting "the whole field" through a `Range` deletes its result and
+   leaves the instruction. Word deletes both. `to_deleted_text` / `to_restored_text` do rename
+   `w:instrText` to `w:delInstrText` and back, and a test exercises them directly, so the
+   markup half of section 4's rule is kept and the field-awareness is what is missing; a phase
+   that owns fields should close it.
+4. **`TrackMineOnly` is remembered for the session and stored as `TrackAll`.** Section 4 says
+   only the second half. Reading the mode back in the same session gives what was asked for
+   (the tracker carries it), and a reload gives `TrackAll`, which a test states in both
+   directions. The distinction changes nothing this engine does: it matters only when a second
+   author edits the same package, which is Office JS's concern.
+5. **Accepting or rejecting away a table's last row takes the table with it.** docx4j's
+   `AcceptTrackedChanges` leaves the husk, because it is a conversion preprocessor and a
+   `w:tbl` with no `w:tr` never reaches the renderer's output. This document is saved again,
+   and an empty `w:tbl` is not valid WordprocessingML, so `_remove_row` drops it. That is the
+   same reasoning section 4 already applied to `w:rPrChange` and `w:pPrChange`.
+6. **A paragraph this author inserted records no `w:pPrChange`, and a run inside a `w:ins` of
+   ours no `w:rPrChange`.** The second is the TypeScript engine's `ownInsertions` rule; the
+   first is its counterpart for `_p_pr()` and is new here, and it is what stops
+   `body.insert_paragraph("x", style="Heading 1")` writing a formatting revision on a paragraph
+   that did not exist a moment ago. `ChangeTracker.own_paragraph(p)` is the test.
+7. **`replace_text` reports the pair, not the text either side.** `text_before` is `find` and
+   `text_after` is `replace`, at body, paragraph and range level, because one call may touch
+   two thousand paragraphs and "the text before" would then be one arbitrary paragraph's. The
+   count is the return value; `ChangeReport` has no field for it and gained none. The three
+   verbs open one `recording("replace_text")` and the nested ones are no-ops inside it, so a
+   whole-body replace is one report (12.4's rule).
+8. **`OutlineStats.tracked_changes` is counted through the view**, not structurally. Phase D
+   counted `w:ins`, `w:del` and `w:rPrChange` by element name over `iter_nodes`; a paragraph
+   mark's `w:ins` is a `CTTrackChange` in a single-valued field and `element_name` answers
+   `None` for it (CR-001's warning about `XmlMeta.qname`, in another guise), so that count
+   could never have agreed with `get_tracked_changes()`. Counting the collection instead makes
+   them agree by construction **and is six times cheaper** (16.4).
+9. **A `TrackedChange`'s `text` for a deletion is the deleted text.** Section 3.8 says only
+   "text". `_revision_text` reads a `w:delText` inside the revision it belongs to, which is
+   what the original view shows and what `to_markdown(view="markup")` renders between `{--`
+   and `--}`; a test asserts the two agree over `samples/sample-docx.docx`.
+10. **`TrackedChange.type` never answers `"None"`**, though the `Literal` carries it, because
+    every piece of markup a change is over is an insertion, a deletion or a formatting change.
+    Office JS's `"Unknown"` is not in the `Literal` at all: section 3.8 lists four values and
+    `"Unknown"` is not one of them.
+11. **A trial's mode is the trial's.** `TrialPackage.change_tracking_mode` falls through to the
+    real package until the trial sets one, and setting it writes `w:trackRevisions` into the
+    trial's **copy** of the settings part (`writable_settings_part()`), so
+    `with pkg.dry_run() as trial: trial.change_tracking_mode = "TrackAll"` leaves the real
+    document's mode alone. Reading it still reads the real part's bytes, so `describe()` on a
+    trial costs no unmarshalling --- which is how the Phase K dry-run test stayed green.
+    12.5's first limitation is unchanged: a trial that *writes* the mode unmarshals the real
+    settings part, as it does for any part it copies.
+
+### 16.3 The one thing Word does that this does not
+
+A `w:moveFrom` / `w:moveTo` pair is **read** (both `TrackedChange`s, both views, accept and
+reject, the `moves_package()` fixture) and never **written**: nothing in the content API moves
+content as a move. Word writes the pair when a user drags a selection; an agent's equivalent is
+a delete and an insert, which is what this writes. `w:moveFromRangeStart` and its three
+siblings are carried through untouched, as they always were. Section 3.8 asks for the forms to
+be covered by `TrackedChange`, which they are.
+
+### 16.4 The numbers, measured
+
+Against the 200-page document of section 7 (2,000 paragraphs, 20 three-by-three tables), loaded
+and its body read, with `pkg.tracked_change_date` fixed:
+
+| call | |
+|---|---:|
+| `insert_text`, untracked | 18 µs |
+| `insert_text`, **tracked** | **45 µs** |
+| the **first** tracked call, which pays for the id scan | **7.4 ms** |
+| the second | 81 µs |
+| `replace_text("lazy", "energetic")` over the whole document, untracked (1,950 matches) | 186 ms |
+| the same, **tracked** | **366 ms** |
+| `get_tracked_changes()` over the 3,900 revisions it made | **45 ms** |
+| `accept_all()` over those 3,900 | **30 ms** |
+| `reject_all()` over those 3,900 | 39 ms |
+| `outline()` with Phase D's structural counter | 20.6 ms |
+| `outline()` with Phase F's counter (16.2 item 8) | **13.9 ms** |
+| `change_tracking_mode`, first read (an lxml parse of `settings.xml`) | 3.2 ms |
+| `change_tracking_mode`, every read after it | **0.2 µs** |
+| `change_tracking_mode = "TrackAll"` (unmarshals the part) | 17.4 ms |
+
+A tracked edit costs **two and a half times** an untracked one, and a tracked `replace_text`
+just under twice: the extra is the run isolation (two `split_at`s and the run splitting, which
+is the work `Range.font` already does) and the two wrappers. That is the honest price of
+writing revision markup, and it is paid per edit rather than per document.
+
+**The id scan is the one fixed cost**, 7.4 ms on a 200-page document, and it is paid **once per
+package**: `ChangeTracker` caches the counter, and the tracker itself is cached on the package,
+so the second tracked call is 81 µs. It walks every node of every part already unmarshalled and
+tests `isinstance(node, CTMarkup)`, which the generated model makes exact --- `CTBookmark`,
+`CTMarkupRange`, `CTTrackChange`, `CTRPrChange` and the rest all extend it, and
+`CommentsComment` extends it too and is the one exclusion (section 4). A part the package has
+not read is not unmarshalled for an id; the annotation ids of an untouched header cannot collide
+with an edit to the body in any way Word minds.
+
+`accept_all()` over 3,900 changes in 30 ms is a tenth of the edits that made them, because it is
+one pass in reverse document order over a list already collected: no re-collection, no
+re-walking, and a paragraph join never disturbs a change still to do.
+
+Nothing here changes the budgets of 12.3: `outline()` gained no field and got faster, and
+`TrackedChange.to_dict()` is 180 bytes of compact JSON, so the 20 an agent would show cost under
+4 KB.
+
+### 16.5 The fixture decision
+
+Section 7 asks for "a document with tracked changes, copied from docx4j's samples". Every
+`.docx` in `~/git/docx4j`, `~/git/docx4j-core-ts` and this repository was searched for the eight
+forms. The result:
+
+- `samples/sample-docx.docx` has one `w:ins` and one `w:del`, by "Jason Harrop", 2007.
+  docx4j-core-ts's own Phase F fixture, `test/fixtures/tracked-changes.docx`, is **the same
+  document** (the same ids, author and dates), so copying it would have added nothing.
+- **`tests/fixtures/tracked-pprchange.docx`** is docx4j's
+  `docx4j-samples-docx4j/sample-docs/unmarshallFromTemplateDirtyExample.docx` copied verbatim
+  (Apache-2.0, 17 KB), and it is the **only** document in any of the three checkouts with a
+  `w:pPrChange`. It is Word-written and also carries a paragraph mark marked inserted, which is
+  the other form no other sample has.
+- A **move**, a **`w:rPrChange`** and a **tracked row** are in none of them. So
+  `tests/content/conftest.py`'s `moves_package()` builds one, in the open, from XML written to
+  match what Word writes: a `w:moveFrom` / `w:moveTo` pair, a run whose `w:rPrChange` records
+  the italic it used to be, an inserted row and a deleted row. It is declared as hand-built in
+  `tests/README.md` and in its own docstring, exactly as Phase G's `threaded_package()` is
+  (15.5). If a genuine Word-written one turns up it should replace it, and the tests would not
+  change.
+
+### 16.6 What Phase E needs
+
+- **A bound control's `insert_text` writes through to the custom XML node** (section 4), and it
+  now runs through a `Paragraph.splice` that may be writing revision markup. The write-through
+  hook belongs *outside* the tracked branch: the data node takes the new text whatever the mode
+  is, because Word refreshes a bound control from the data on open and a `w:del` in the control
+  does not change the data. 14.6 named `ContentControl._extend` and `Paragraph.splice` as the
+  one place; it still is.
+- **`ContentControl.delete()` stays untracked** (section 4, 14.7), and a test now pins it while
+  the mode is on.
+- **The two id spaces are three.** Revision ids are `ChangeTracker.next_id()` over every
+  `CTMarkup`, comment ids are `next_comment_id`, and `w:sdt/@w:id` is `next_sdt_id(root)`
+  (Phase A, 10.3 item 3), which is a fourth thing again. A typed control Phase E creates should
+  take its id from the last of those, not from the tracker.
+
+### 16.7 What Phase H needs
+
+- **A list paragraph's `w:numPr` is a paragraph property**, so `attach_to_list` and
+  `detach_from_list` must go through `Paragraph._p_pr()` like every other property setter, and
+  they will then record a `w:pPrChange` while tracking is on --- which is what Word does for a
+  numbering change on an existing paragraph. `start_new_list()` on a paragraph this author
+  inserted records nothing, by 16.2 item 6.
+- **`w:numberingChange` is not written.** It is the deprecated numbering revision
+  (ECMA-376 17.13.5.19) and Word writes `w:pPrChange` instead; `TrackedChange` does not offer
+  it, and a document that carries one is left alone.
+- **The numbering part is not tracked at all**: a revision is body markup, and a definition
+  added to `/word/numbering.xml` is a part edit. Nothing in Phase H needs a tracked branch
+  beyond the paragraph property one.
+
+### 16.8 What the Word check is for
+
+`scripts/acceptance.py` writes `8-tracked-changes.docx`: `samples/2010-sample1.docx` with the
+author set, the mode on, a replacement, an inserted paragraph, a deleted paragraph, a bold run,
+a table row added and one deleted, and a comment on the replacement. Two paragraphs and the
+table are written **before** the mode goes on, so that there is something of the document's own
+to delete and to re-format. What to look for is in `tests/README.md`: the Review pane listing
+each change with its author and date, Accept All leaving the intended document, Reject All
+restoring the pre-edit one, the comment surviving both, and a save-close-reopen with no repair
+prompt. **Not yet run.** The Compatibility Checker note of 15.7 may appear again, for the same
+reason: the source is a Word 2010 document.

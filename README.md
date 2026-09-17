@@ -10,13 +10,14 @@ docx4j documentation and examples read across. The design is the same as
 Status: the object model ([CR-001](docs/change-requests/CR-001-object-model.md) Phases A to C),
 the Open Packaging engine ([CR-002](docs/change-requests/CR-002-engine.md) Phase A) and the
 content API ([CR-003](docs/change-requests/CR-003-content-api.md) Phase A, the tree-layer
-builders; Phase B, `Body`, `Paragraph`, `Range` and `Font` in Office JS's vocabulary; and
-Phase D, the agent surface — addresses, `outline()`, `find()`, `describe()`, `ChangeReport`,
-`dry_run` and `DocumentSession`, all implemented 2026-09-16) are in. Over 16 real documents,
-every part not touched is written back byte for byte, all 141 typed WordprocessingML parts
-unmarshal and re-serialise canonically identical to the source, and nothing is dropped. Saved
-output opens in Word. Markdown in and out (Phase K) and tables, pictures and content controls
-(Phase C) are next.
+builders; Phase B, `Body`, `Paragraph`, `Range` and `Font` in Office JS's vocabulary; Phase D,
+the agent surface — addresses, `outline()`, `find()`, `describe()`, `ChangeReport`, `dry_run`
+and `DocumentSession`; Phase K, markdown in and out; Phase C, tables, pictures, `insert_ooxml`
+and content controls; Phase G, comments; and Phase F, change tracking and `replace_text`) are
+in. Over 16 real documents, every part not touched is written back byte for byte, all 141 typed
+WordprocessingML parts unmarshal and re-serialise canonically identical to the source, and
+nothing is dropped. Saved output opens in Word. Custom XML, XML mapping and typed content
+controls (Phase E) are next.
 
 ```python
 from docx4j_py import load
@@ -455,16 +456,81 @@ pkg.element_at("body/99")
 
 ### The audit trail
 
-An agent that edits a document should say why, in the document, where the human who opens it in
-Word will see it — not in a chat log they will never read. That is what `pkg.author` and
-`insert_comment` are for, and CR-003 calls it the single most useful thing this API does for an
-AI workflow. (Tracked changes are the other half, and read the same `pkg.author`; they are
-Phase F.)
+An agent that edits a document should leave the trail Word already has: **tracked changes** for
+what it did and a **comment** for why, in the document, where the human who opens it will see it
+— not in a chat log they will never read. That is what `pkg.author`, `pkg.change_tracking_mode`
+and `insert_comment` are for, and CR-003 calls it the single most useful thing this API does for
+an AI workflow.
 
 ```python
 from docx4j_py import load
 from docx4j_py.model.content import Author
 
+pkg = load("in.docx")
+pkg.author = Author("Claude", initials="C", email="claude@example.com")
+pkg.change_tracking_mode = "TrackAll"          # every edit from here is a revision
+
+hit = pkg.find("first")[0]                     # edit by address, as an agent does
+pkg.paragraph_at(hit.address).insert_text("Reviewed. ", location="Start")
+
+with pkg.dry_run() as trial:                   # how many would it touch?
+    trial.body.replace_text("document", "report")
+# 1
+pkg.body.replace_text("document", "report")    # and now for real, as a w:del and a w:ins
+# 1
+
+pkg.find("report")[0].range(pkg.body).insert_comment(
+    "Changed 'document' to 'report': the brief asks for a report."
+)
+
+pkg.get_tracked_changes()
+# [<TrackedChange Added 'Claude' body/0 'Reviewed. '>,
+#  <TrackedChange Deleted 'Claude' body/0 'document'>,
+#  <TrackedChange Added 'Claude' body/0 'report'>]
+
+pkg.get_tracked_changes()[1].to_dict()
+# {'type': 'Deleted', 'author': 'Claude', 'date': '2026-09-17T01:07:23+00:00',
+#  'text': 'document', 'id': 2, 'kind': 'run', 'address': 'body/0'}
+
+pkg.body.paragraphs[0].text                    # the accepted view
+# 'Reviewed. My first 2010 report.'
+pkg.body.paragraphs[0].get_text(view="original")
+# 'My first 2010 document.'
+pkg.save("out.docx")
+```
+
+**A human reviews that in Word**, with Review → Accept and Reject, exactly as they would a
+colleague's edits; nothing about the markup says it came from a program except the author name
+you chose. `accept_all()` and `reject_all()` on a body do the same thing here, in one pass in
+reverse document order, as docx4j's `AcceptTrackedChanges` does — a `w:ins` unwrapped, a `w:del`
+removed, a deleted paragraph mark joined with the next, a deleted row dropped, and the
+`w:rPrChange` and `w:pPrChange` of a formatting change dropped with them:
+
+```python
+pkg.body.accept_all()
+# 3
+pkg.body.paragraphs[0].text
+# 'Reviewed. My first 2010 report.'
+[c.content for c in pkg.body.get_comments()]   # the comment survives either way
+# ["Changed 'document' to 'report': the brief asks for a report."]
+```
+
+Every mutation is tracked while the mode is on, because the tracking sits in the paragraph-level
+primitives: `insert_text`, the `text` setter, `Range.delete`, `insert_paragraph` (whose mark is
+marked inserted), `Paragraph.delete` (whose content becomes a `w:del` and whose mark is marked
+deleted), `insert_table`, the row verbs (`w:trPr/w:ins` and `w:trPr/w:del`; **a deleted row stays
+in the tree** until it is accepted, so `row_count` still counts it), `insert_markdown`,
+`insert_inline_picture` and the `Font` and paragraph-property setters, which record the
+properties as they stood in `w:rPrChange` and `w:pPrChange`. Word's rules come with it: a run
+already inside a `w:ins` by the same author is **extended** rather than nested, deleting text
+that author inserted **takes it back**, a replacement is the `w:del` first and the `w:ins` after
+it, and the runs are split at the span's boundaries so a partly deleted run is not wholly
+deleted. `pkg.tracked_change_date` fixes the `w:date`, which is what makes a tracked edit
+byte-reproducible.
+
+The comment half is the same identity and a different id space:
+
+```python
 pkg = load("in.docx")
 pkg.author = Author("Claude", initials="C", email="claude@example.com")
 
@@ -518,7 +584,8 @@ on `Paragraph` (the whole paragraph) and `Range` (a span, with the runs split at
 Reading comments unmarshals three parts, writing touches five, and a document whose comments are
 never read keeps all five byte for byte. A comment is **not** a revision: its markers are hoisted
 out of a `w:ins` or `w:del` the anchored run sits in, so accepting that revision in Word leaves
-the comment where it was.
+the comment where it was, and its `w:id` comes from its own counter rather than from the
+revisions'.
 
 ### Markdown, coarse and fine
 
