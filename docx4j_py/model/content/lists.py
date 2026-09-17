@@ -507,7 +507,8 @@ class List:
                 Office JS takes an array of level substitutions here; this takes
                 the ``w:lvlText`` itself, which is the same thing said once
                 (CR-003 section 18). ``None`` leaves the level's own alone,
-                writing ``"%<level+1>."`` when it has none.
+                writing ``"%<level+1>."`` when it has none and clearing it for
+                ``"None"``, which is what Word's own *None* numbering writes.
         """
         num_fmt = NUMBERING.get(str(numbering_type))
         if num_fmt is None:
@@ -521,7 +522,12 @@ class List:
             lvl.num_fmt = el.numFmt(val=num_fmt)
             lvl.num_fmt.parent = lvl
             text = format_string
-            if text is None and lvl.lvl_text is None:
+            if text is None and num_fmt == "none":
+                # Word's "None" writes an empty w:lvlText beside the w:numFmt:
+                # the literal text of the old pattern would otherwise be left
+                # painting a bare "." in front of every item
+                text = ""
+            elif text is None and lvl.lvl_text is None:
                 text = f"%{int(level) + 1}."
             if text is not None:
                 lvl.lvl_text = el.lvlText(val=text)
