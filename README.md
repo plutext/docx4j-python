@@ -15,10 +15,11 @@ the agent surface — addresses, `outline()`, `find()`, `describe()`, `ChangeRep
 and `DocumentSession`; Phase K, markdown in and out; Phase C, tables, pictures, `insert_ooxml`
 and content controls; Phase G, comments; Phase F, change tracking and `replace_text`; and
 Phase E, custom XML parts, XML mapping, the typed content-control kinds and `describe()` /
-`fill()`; and Phase H, lists, with docx4j's numbering emulator under them) are in. Over 16 real documents, every part not touched is written back byte for byte,
-all 141 typed WordprocessingML parts unmarshal and re-serialise canonically identical to the
-source, and nothing is dropped. Saved output opens in Word. The python-docx facade (Phase J) is
-next.
+`fill()`; Phase H, lists, with docx4j's numbering emulator under them; Phase I, `to_api_script`, the
+reveal codes of this API; and Phase J, the **python-docx facade**) are in --- **every phase of
+CR-003 is implemented**. Over 16 real documents, every part not touched is written back byte for
+byte, all 141 typed WordprocessingML parts unmarshal and re-serialise canonically identical to
+the source, and nothing is dropped. Saved output opens in Word.
 
 ```python
 from docx4j_py import load
@@ -82,6 +83,43 @@ The columns are equal over the section's text width, taken from `w:sectPr`, and 
 it exactly; no style is set unless `style=` is given, so a new table is borderless until
 `table.style_built_in = "TableGrid"`. `TableCell.body` is a `Body` like any other, so
 `cell.insert_paragraph(...)`, `cell.body.search(...)` and the addresses all carry on into it.
+
+### python-docx code runs
+
+The API in every tutorial and in every model's memory is python-docx's, so `docx4j_py.docx` is a
+structural subset of it (CR-003 section 3.6 and section 20) --- python-docx's names, python-docx's
+semantics, this engine underneath:
+
+```python
+from docx4j_py.docx import Document, Pt
+
+doc = Document("in.docx")                             # or Document() for a new one
+doc.add_heading("Report", level=1)                    # a built-in style it lacks is defined
+p = doc.add_paragraph("Plain, ")
+p.add_run("bold").bold = True
+p.add_run(" and off").bold = False                    # python-docx's tri-state: w:b w:val="0"
+p.runs[1].font.size = Pt(14)                          # a Length of EMU, as python-docx has it
+p.style = "Heading 2"                                 # the display name, as python-docx
+doc.add_table(rows=2, cols=2, style="Table Grid").cell(0, 0).text = "a"
+for paragraph in doc.paragraphs:
+    print(paragraph.style.name, paragraph.text)
+
+print(doc.package.last_change.to_dict())              # a ChangeReport per call: an extension
+print(type(p._p).__name__, doc.part.body.text[:23])   # the typed P, and the Office JS Body
+doc.save("out.docx")
+```
+
+The last two lines are what python-docx code gets here that python-docx does not have: the whole
+schema (`paragraph._p` is the typed `P`, not lxml), parts never touched written back byte for
+byte, a `ChangeReport` for every mutation, `dry_run`, tracked changes, comments, lists, addresses
+and custom XML, all of it through `doc.package` and `doc.part.body`. `Paragraph`, `Run`, `Font`,
+`Table`, `_Cell`, `Section` with its headers and footers, `Styles`, `CoreProperties`, `Comment`,
+the `Length` units and the `WD_*` enums are all there; the promise is a committed member list
+(`tests/python_docx_subset.json`, derived by introspecting python-docx 1.2.0: 295 of its 303
+members implemented, eight refused with a reason each) and a parity test that runs one script
+through both libraries and lets **python-docx** read both files back. python-docx itself is not a
+dependency. The Office JS vocabulary above remains the primary API; this namespace exists so that
+code already written, by people or by models, runs.
 
 Setting a style --- `paragraph.style`, `style_built_in`, or `style=` on `insert_paragraph` and
 `insert_table` --- **adds the definition** when the style is one of Word's built-ins and the
@@ -910,16 +948,19 @@ docx4j_py/            one package per XML namespace, generated; codegen/generate
     reports.py          Outline, SearchHit, ChangeReport, TextExcerpt, and the recorder
     describe.py trial.py                    describe() (lxml, unmarshals nothing) and dry_run()
   model/sessions.py     hand written: DocumentSession, the registry a server keeps documents in
+  docx/                 hand written, all of it: the python-docx facade (CR-003 Phase J)
+    document.py text.py table.py section.py styles.py shape.py comments.py coreprops.py
+    settings.py shared.py enums.py _base.py   python-docx's names, over the content API
   resources/            the parts warm_up parses; docx4j's default styles, numbering, fontTable
                         and KnownStyles.xml
 codegen/              the generator, the name tables and the el tables
 schemas/              docx4j's xsd tree with marked patches (schemas/PATCHES.md)
 scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, threads.py,
-                      acceptance.py, office_js_subset.py
+                      acceptance.py, office_js_subset.py, python_docx_subset.py
 samples/              16 documents from docx4j (Apache-2.0): 13 .docx, a .dotm, a .pptx, an .xlsx
-out/acceptance/       the ten documents for the manual Word checklist
+out/acceptance/       the eleven documents for the manual Word checklist
 docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
-                      CR-003 the content API (Phases A, B and D implemented 2026-09-16)
+                      CR-003 the content API (every phase implemented, 2026-09-16 to 2026-09-18)
 ```
 
 ## Licence
