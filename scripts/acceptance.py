@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Write the seven documents the Word acceptance checklist needs.
+"""Write the eight documents the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Seven files, each testing a different half of the save path:
+Eight files, each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -339,8 +339,46 @@ def comments(out: Path) -> Path:
     return target
 
 
+def tracked_changes(out: Path) -> Path:
+    """8. A loaded document edited through the Phase F content API, tracking on."""
+    from docx4j_py.model.content import Author
+
+    target = out / "8-tracked-changes.docx"
+    pkg = WordprocessingMLPackage.load(SAMPLE_SOURCE)
+    pkg.id_seed = 20260917
+    pkg.author = Author("Claude", initials="C", email="claude@example.com")
+    body = pkg.body
+
+    # something to delete and something to change the formatting of, written
+    # *before* the mode goes on, so that they are the document's own content
+    body.insert_paragraph("This paragraph will be deleted, with its mark.")
+    body.insert_paragraph("This paragraph will be made bold.")
+    table = body.insert_table(
+        3, 3, values=[["Region", "Quarter", "Total"], ["West", "Q2", "240"], ["East", "Q2", "180"]],
+        style="TableGrid",
+    )
+    table.header_row_count = 1
+
+    pkg.change_tracking_mode = "TrackAll"
+
+    # a replacement, explained in a comment on what it changed
+    body.replace_text("first", "second")
+    hit = pkg.find("second")[0]
+    hit.range(body).insert_comment("Changed 'first' to 'second': the source says 2010 was the second.")
+
+    # an insertion, a deletion, a formatting change and two row changes
+    body.insert_paragraph("Added by an agent, with the mark marked inserted.")
+    body.paragraph_at(contains="will be deleted").delete()
+    body.paragraph_at(contains="made bold").font.bold = True
+    table.add_rows(1, values=[["North", "Q2", "300"]])
+    table.delete_rows(2)
+
+    pkg.save(target)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the seven artefacts and print a summary."""
+    """Write the eight artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -356,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
         markdown_built,
         tables_and_pictures,
         comments,
+        tracked_changes,
     ):
         target = build(out)
         with zipfile.ZipFile(target) as zf:

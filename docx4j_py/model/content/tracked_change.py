@@ -244,7 +244,7 @@ class TrackedChange:
             if tr_pr is not None:
                 tr_pr.ins = None
         else:
-            _remove(target, "accept")
+            _remove_row(target, "accept")
 
     def reject(self) -> None:
         """Put back what was there: a ``w:ins`` removed, a ``w:del`` restored.
@@ -278,7 +278,7 @@ class TrackedChange:
             if tr_pr is not None:
                 tr_pr.del_value = None
         else:
-            _remove(target, "reject")
+            _remove_row(target, "reject")
 
     # -- the extensions ----------------------------------------------------
 
@@ -357,6 +357,31 @@ def _remove(target: TrackedChangeTarget, verb: str) -> None:
             hint="call get_tracked_changes() again after accepting or rejecting others",
         )
     del owner[index]
+
+
+def _remove_row(target: TrackedChangeTarget, verb: str) -> None:
+    """Take a row out, and the table with it when that was its last row.
+
+    A departure from docx4j's ``AcceptTrackedChanges``, which is a conversion
+    preprocessor and leaves the husk: a ``w:tbl`` with no ``w:tr`` in it is not
+    valid WordprocessingML, and this document is saved again (CR-003 section
+    16).
+    """
+    row = target.element
+    table = getattr(row, "parent", None)
+    _remove(target, verb)
+    while table is not None and isinstance(table, Tbl):
+        from docx4j_py.model.content.text_model import rows_of
+
+        if rows_of(table):
+            return
+        holder = getattr(table, "parent", None)
+        items = block_children_of(holder) if holder is not None else None
+        index = _index_of(items, table) if items is not None else -1
+        if index < 0:
+            return
+        del items[index]
+        table = None
 
 
 def _unwrap(target: TrackedChangeTarget) -> None:

@@ -5,8 +5,9 @@ Office JS members this package implements, derived by
 ``scripts/office_js_subset.py`` from docx4j-core-ts's own compile-time
 assignability check. This test asserts that every non-extension member of an
 implemented phase is really on the class that owns it --- Phase B's ``Body``,
-``Paragraph``, ``Range`` and ``Font``, Phase C's five, Phase G's ``Comment`` ---
-with the right kind, and reports the members of later phases still to come.
+``Paragraph``, ``Range`` and ``Font``, Phase C's five, Phase G's ``Comment``,
+Phase F's ``TrackedChange`` and the ``Document`` members that are the package's
+--- with the right kind, and reports the members of later phases still to come.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from pathlib import Path
 import pytest
 from conftest import ROOT
 
+from docx4j_py import WordprocessingMLPackage
 from docx4j_py.model.content import (
     Body,
     Comment,
@@ -29,6 +31,7 @@ from docx4j_py.model.content import (
     Table,
     TableCell,
     TableRow,
+    TrackedChange,
 )
 
 SUBSET = ROOT / "tests" / "office_js_subset.json"
@@ -48,11 +51,19 @@ PHASE_C_CLASSES = {
 #: The one Phase G adds.
 PHASE_G_CLASSES = {"Comment": Comment}
 
+#: The two Phase F adds. Office JS's ``Document`` is the **package** here
+#: (``pkg.body``, ``pkg.change_tracking_mode``, ``pkg.get_tracked_changes()``),
+#: which is where CR-003 section 3.8 puts those three members.
+PHASE_F_CLASSES = {
+    "TrackedChange": TrackedChange,
+    "Document": WordprocessingMLPackage,
+}
+
 #: Every interface implemented so far, and the phase that owns each member.
-CLASSES = {**PHASE_B_CLASSES, **PHASE_C_CLASSES, **PHASE_G_CLASSES}
+CLASSES = {**PHASE_B_CLASSES, **PHASE_C_CLASSES, **PHASE_G_CLASSES, **PHASE_F_CLASSES}
 
 #: The phases this file's assertions hold for.
-PHASES = ("B", "C", "G")
+PHASES = ("B", "C", "F", "G")
 
 
 @pytest.fixture(scope="module")

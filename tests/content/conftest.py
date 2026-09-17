@@ -181,3 +181,52 @@ def threaded_package() -> WordprocessingMLPackage:
         part.set_xml(xml)
         main.add_target_part(part)
     return package
+
+
+# ---------------------------------------------------------------------------
+# a document with the revision forms no Word-written sample carries
+# (CR-003 Phase F, section 16)
+# ---------------------------------------------------------------------------
+#
+# `tests/fixtures/tracked-pprchange.docx` is Word-written and carries a
+# `w:pPrChange`, a paragraph-mark `w:ins` and run insertions;
+# `samples/sample-docx.docx` carries one `w:ins` and one `w:del`. Nothing in
+# any of the three checkouts carries a **move**, a `w:rPrChange` or a tracked
+# **row**, so the document below is built here, in the open, from XML written
+# to match what Word writes. It is not presented as a Word document, because it
+# is not one.
+
+MOVES_DOCUMENT = f"""<w:document {_W} {_W14}><w:body>
+<w:p w14:paraId="1D1D1D1D"><w:moveFrom w:id="30" w:author="Ada Lovelace" \
+w:date="2026-09-17T09:00:00Z"><w:r><w:delText>Moved sentence.</w:delText></w:r></w:moveFrom>\
+<w:r><w:t xml:space="preserve"> Stays.</w:t></w:r></w:p>
+<w:p w14:paraId="2D2D2D2D"><w:moveTo w:id="31" w:author="Ada Lovelace" \
+w:date="2026-09-17T09:00:00Z"><w:r><w:t>Moved sentence.</w:t></w:r></w:moveTo></w:p>
+<w:p w14:paraId="3D3D3D3D"><w:r><w:rPr><w:b/><w:rPrChange w:id="32" w:author="Bob Bones" \
+w:date="2026-09-17T09:05:00Z"><w:rPr><w:i/></w:rPr></w:rPrChange></w:rPr>\
+<w:t>Was italic, now bold.</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>\
+<w:tblGrid><w:gridCol w:w="4675"/></w:tblGrid>
+<w:tr><w:trPr><w:ins w:id="33" w:author="Ada Lovelace" w:date="2026-09-17T09:10:00Z"/></w:trPr>\
+<w:tc><w:tcPr><w:tcW w:w="4675" w:type="dxa"/></w:tcPr><w:p w14:paraId="4D4D4D4D">\
+<w:ins w:id="34" w:author="Ada Lovelace" w:date="2026-09-17T09:10:00Z"><w:r><w:t>New row</w:t></w:r>\
+</w:ins></w:p></w:tc></w:tr>
+<w:tr><w:trPr><w:del w:id="35" w:author="Bob Bones" w:date="2026-09-17T09:11:00Z"/></w:trPr>\
+<w:tc><w:tcPr><w:tcW w:w="4675" w:type="dxa"/></w:tcPr><w:p w14:paraId="5D5D5D5D">\
+<w:r><w:t>Old row</w:t></w:r></w:p></w:tc></w:tr>
+</w:tbl>
+</w:body></w:document>"""
+
+
+def moves_package() -> WordprocessingMLPackage:
+    """A document carrying a move, a ``w:rPrChange`` and two tracked rows.
+
+    Built here rather than copied, because no document in docx4j, in
+    docx4j-core-ts or in this repository carries any of the three (CR-003
+    section 16.5). ``tests/fixtures/tracked-pprchange.docx`` is the Word-written
+    fixture for ``w:pPrChange`` and the paragraph-mark forms.
+    """
+    package = create_package()
+    package.id_seed = 20260917
+    package.main_document_part.set_xml(MOVES_DOCUMENT)
+    return package
