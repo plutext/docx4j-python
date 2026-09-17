@@ -70,6 +70,7 @@ class OpcPackage:
         "_change_tracking_mode",
         "_changes",
         "_current_change",
+        "_custom_xml_parts",
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
@@ -97,6 +98,10 @@ class OpcPackage:
         self.content_type_manager = ContentTypeManager.create_default()
         self.parts = Parts()
         self.custom_xml_data_storage_parts: dict[str, Any] = {}
+        # CR-003 Phase E: the content API's view over those parts, made on first
+        # use. A plain container; this layer still imports nothing from the
+        # content API.
+        self._custom_xml_parts: Any = None
         self.source_part_store: PartStore | None = None
         self.load_options = LoadOptions()
         self.was_strict = False

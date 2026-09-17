@@ -50,7 +50,7 @@ __all__ = ["TrialPackage", "TrialPart", "dry_run"]
 class TrialPart:
     """A part whose contents are a deep copy. Everything else is the real part."""
 
-    __slots__ = ("_contents", "_tree", "_wrapped", "package")
+    __slots__ = ("_contents", "_modified", "_tree", "_wrapped", "package")
 
     def __init__(self, part: Any, package: Any) -> None:
         """Copy the part's tree; the copy is what this part's contents are.
@@ -70,6 +70,7 @@ class TrialPart:
         self._wrapped = part
         self._contents: Any = None
         self._tree: Any = None
+        self._modified = False
         if hasattr(part, "set_tree"):
             self._tree = copy.deepcopy(part.tree)
         else:
@@ -91,6 +92,20 @@ class TrialPart:
     def set_tree(self, tree: Any) -> None:
         """Replace the copied element; the real part is not touched."""
         self._tree = tree
+        self._modified = True
+
+    @property
+    def is_modified(self) -> bool:
+        """Whether the trial's copy has been edited (CR-003 Phase E)."""
+        return self._modified
+
+    def mark_modified(self) -> None:
+        """Adopt the **copy**; spelled out so it does not reach the real part.
+
+        ``__getattr__`` would otherwise hand this to the wrapped part and make a
+        trial's node edit re-marshal the real one.
+        """
+        self._modified = True
 
     @property
     def body_element(self) -> Any:
@@ -168,6 +183,7 @@ class TrialPackage:
         "_change_tracking_mode",
         "_changes",
         "_current_change",
+        "_custom_xml_parts",
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
@@ -183,6 +199,8 @@ class TrialPackage:
         """Wrap a package; nothing is copied until a body is asked for."""
         self._package = package
         self._parts: dict[int, TrialPart] = {}
+        #: The trial's own custom XML collection, over its copies (Phase E).
+        self._custom_xml_parts: Any = None
         self._added: list[tuple[Any, Any, Any, bool]] = []
         self._changes: list[Any] = []
         self._current_change: Any = None
@@ -295,6 +313,12 @@ class TrialPackage:
             shortcut = getattr(source, "set_part_shortcut", None)
             if shortcut is not None and part.relationship_type:
                 shortcut(None, part.relationship_type)
+            # a custom XML part is indexed by its ``ds:itemID`` as well
+            # (CR-003 Phase E), and an index entry left behind would make
+            # ``pkg.custom_xml_parts`` report a part the package no longer has
+            index = package.custom_xml_data_storage_parts
+            for key in [key for key, value in index.items() if value is part]:
+                del index[key]
             removed.append(part.part_name)
         self._added.clear()
         return removed
@@ -364,6 +388,20 @@ class TrialPackage:
         behind, and the abstract numbering it wrote goes with the copy.
         """
         return self.body.insert_markdown(markdown, **options)
+
+    @property
+    def custom_xml_parts(self) -> Any:
+        """The trial's custom XML parts, over **copies** of the real ones.
+
+        Spelled out rather than left to ``__getattr__`` for the reason the rest
+        of the agent surface is: the real package has the member too, and
+        delegating would edit the real document. A part is copied the first time
+        the trial asks the collection for it (CR-003 section 14.4), and a part
+        the trial adds is un-added on the way out.
+        """
+        from docx4j_py.model.customxml.parts import custom_xml_parts_of
+
+        return custom_xml_parts_of(self)
 
     def dry_run(self) -> Any:
         """A trial of a trial. Allowed, and as cheap as the first."""

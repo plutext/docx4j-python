@@ -263,6 +263,18 @@ def _entries(part: Any, name: str) -> list[Any]:
     return list(part.tree.findall(name))
 
 
+def _touch(part: Any) -> None:
+    """Adopt an lxml part's tree after editing it in place (CR-003 Phase E).
+
+    :class:`~docx4j_py.openpackaging.parts.default_xml_part.DefaultXmlPart`
+    writes a part that was only *parsed* back byte for byte, so anything that
+    edits :attr:`tree` has to say it did.
+    """
+    mark = getattr(part, "mark_modified", None)
+    if mark is not None:
+        mark()
+
+
 def durable_ids_in_use(part: Any) -> set[str]:
     """Every ``w16cid:durableId`` the part already carries, upper-cased."""
     out: set[str] = set()
@@ -288,10 +300,12 @@ def set_comment_id(part: Any, para_id: str, durable_id: str) -> None:
     for entry in _entries(part, _w16cid("commentId")):
         if (entry.get(_w16cid("paraId")) or "").upper() == para_id.upper():
             entry.set(_w16cid("durableId"), durable_id)
+            _touch(part)
             return
     entry = etree.SubElement(part.tree, _w16cid("commentId"))
     entry.set(_w16cid("paraId"), para_id)
     entry.set(_w16cid("durableId"), durable_id)
+    _touch(part)
 
 
 def remove_comment_id(part: Any, para_id: str) -> str | None:
@@ -302,6 +316,7 @@ def remove_comment_id(part: Any, para_id: str) -> str | None:
         if (entry.get(_w16cid("paraId")) or "").upper() == para_id.upper():
             durable_id = entry.get(_w16cid("durableId"))
             part.tree.remove(entry)
+            _touch(part)
             return durable_id
     return None
 
@@ -319,10 +334,12 @@ def set_extensible(part: Any, durable_id: str, when: datetime.datetime) -> None:
     for entry in _entries(part, _w16cex("commentExtensible")):
         if (entry.get(_w16cex("durableId")) or "").upper() == durable_id.upper():
             entry.set(_w16cex("dateUtc"), stamp)
+            _touch(part)
             return
     entry = etree.SubElement(part.tree, _w16cex("commentExtensible"))
     entry.set(_w16cex("durableId"), durable_id)
     entry.set(_w16cex("dateUtc"), stamp)
+    _touch(part)
 
 
 def remove_extensible(part: Any, durable_id: str) -> None:
@@ -332,4 +349,5 @@ def remove_extensible(part: Any, durable_id: str) -> None:
     for entry in _entries(part, _w16cex("commentExtensible")):
         if (entry.get(_w16cex("durableId")) or "").upper() == durable_id.upper():
             part.tree.remove(entry)
+            _touch(part)
             return

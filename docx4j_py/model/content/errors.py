@@ -17,6 +17,7 @@ catches only it.
         ├── StyleError          no such style, and the five closest names
         ├── SpanError           a span that cannot be formed or edited
         ├── TrackedChangeError  an edit a tracked document cannot carry
+        ├── BindingError        a content control's XML mapping cannot be used
         └── BuilderError        a tree-layer builder was given the wrong thing
 
 :class:`BuilderError` is CR-003 Phase A's, re-rooted here as Phase A's notes
@@ -32,6 +33,7 @@ from docx4j_py.openpackaging.exceptions import Docx4JException
 
 __all__ = [
     "AddressError",
+    "BindingError",
     "BuilderError",
     "ContentError",
     "Docx4JError",
@@ -121,6 +123,21 @@ class TrackedChangeError(ContentError):
 
     default_code = "tracking.error"
     default_hint = "reject the revision first, or edit a span that is not deleted"
+
+
+class BindingError(ContentError):
+    """A content control's XML mapping cannot be used (CR-003 section 3.7).
+
+    The custom XML part a ``w:dataBinding`` names is gone, an XPath selects
+    nothing or more than one node, a typed view was asked of a control of
+    another kind, a ``fill()`` key matches no binding, a repeating section was
+    asked for at run level, or a span crosses a run holder. The message names
+    the XPath or the store item id, because that is what tells a caller which
+    binding is in the way.
+    """
+
+    default_code = "binding.error"
+    default_hint = "call pkg.custom_xml_parts.describe() to list the bindings that resolve"
 
 
 class BuilderError(ContentError, ValueError):
