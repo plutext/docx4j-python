@@ -587,7 +587,8 @@ uv venv --python 3.14 .venv
 uv pip install --python .venv/bin/python 'xsdata[cli,lxml]==26.2'
 export PATH="$PWD/.venv/bin:$PATH"
 
-.venv/bin/xsdata generate -c .xsdata.xml schemas/wml/wml.xsd
+# the baseline lives in baseline/ (git-ignored); xsdata writes relative to the working directory
+(cd baseline && ../.venv/bin/xsdata generate -c ../.xsdata.xml ../schemas/wml/wml.xsd)
 
 .venv/bin/python scripts/bench.py
 
@@ -607,7 +608,7 @@ pyproject.toml
 schemas/               91 xsd files, the transitive closure of wml/wml.xsd
                        (wml.xsd carries one marked patch, 2.1)
 samples/               12 real .docx from docx4j's sample-docs
-docx4j_py/generated/   1 625 modules, 1 373 dataclasses, 319 enums
+baseline/docx4j_py/generated/   1 625 modules, 1 373 dataclasses, 319 enums (git-ignored; see 10)
 scripts/roundtrip.py   parse -> serialize -> diff harness
 scripts/canon.py       canonicalisation + categorised structural diff
 scripts/checks.py      targeted checks (a)-(e)

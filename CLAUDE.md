@@ -58,9 +58,9 @@ itself, because the generator shells out to `ruff` by bare name. `derive_names.p
 `../docx4j/docx4j-generated-objects/target/generated-sources/xjc` by default
 (`codegen/names/README.md`).
 
-`scripts/reproduce.sh` reproduces `REPORT.md` with upstream xsdata and dates from before Phase B:
-it runs `rm -rf docx4j_py` and generates the clusters layout there, which would delete the
-hand-written code. Do not run it as it stands.
+`scripts/reproduce.sh` reproduces `REPORT.md` with upstream xsdata: it regenerates the
+git-ignored baseline in `baseline/docx4j_py/generated/` (running xsdata inside `baseline/`, since
+xsdata writes relative to the working directory) and never touches `docx4j_py/`.
 
 `tests/README.md` maps each test file to its CR section and holds the manual Word acceptance
 checklist, with the record of each run. After any change to marshalling, the prefix table, content
