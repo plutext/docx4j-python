@@ -1,17 +1,21 @@
 # CR-003: A content API for Python, for agents and MCP, in the vocabulary of Office JS
 
-**Status:** Proposed 2026-09-16; revised the same day to follow Python conventions throughout
-and to be designed for AI projects and MCP servers first; open questions decided 2026-09-16
-(section 9); **Phase A implemented 2026-09-16** (section 10); **Phase B implemented 2026-09-16**
-(section 11); **Phase D implemented 2026-09-16** (section 12); **Phase K implemented 2026-09-17**
-(section 13); **Phase C implemented 2026-09-17** (section 14); **Phase G implemented
-2026-09-17** (section 15); **Phase F implemented 2026-09-17** (section 16); **Phase E
-implemented 2026-09-17** (section 17), with which every one of the 200 non-extension members of
-`tests/office_js_subset.json` is implemented; two follow-ups the same day from the Word check of
-artefact 9 (sections 17.10 and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`);
-**Phase H implemented 2026-09-17** (section 18), with the numbering `Emulator` CR-002 section 6.2
-promised for its Phase B (CR-002 section 12.11); **Phase I implemented 2026-09-17** (section 19).
-Phase J proposed.
+**Status: every phase implemented.** Proposed 2026-09-16; revised the same day to follow
+Python conventions throughout and to be designed for AI projects and MCP servers first; open
+questions decided 2026-09-16 (section 9). The eleven phases, in the order they landed:
+**A 2026-09-16** (section 10, the tree-layer builders); **B 2026-09-16** (section 11, `Body`,
+`Paragraph`, `Range`, `Font`); **D 2026-09-16** (section 12, the agent surface);
+**K 2026-09-17** (section 13, markdown); **C 2026-09-17** (section 14, tables, pictures,
+`insert_ooxml`, content controls); **G 2026-09-17** (section 15, comments); **F 2026-09-17**
+(section 16, change tracking); **E 2026-09-17** (section 17, custom XML and the typed controls),
+with which every one of the 200 non-extension members of `tests/office_js_subset.json` is
+implemented, plus two follow-ups the same day from the Word check of artefact 9 (sections 17.10
+and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`); **H 2026-09-17**
+(section 18, lists, with the numbering `Emulator` CR-002 section 6.2 promised for its Phase B
+--- CR-002 section 12.11); **I 2026-09-17** (section 19, `to_api_script`); and
+**J 2026-09-18** (section 20, the python-docx facade), whose own committed member list
+`tests/python_docx_subset.json` has 295 of python-docx 1.2.0's 303 members implemented and
+eight refused with a reason each. What the CR leaves open is section 20.8.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting needs CR-002 Phase B (`PropertyResolver`); until it lands the views read direct
@@ -428,6 +432,8 @@ one. The README says which to use when.
 
 ### 3.6 A python-docx facade, so existing code and model memory keep working
 
+*Implemented 2026-09-18, section 20.*
+
 docx4j-core-ts built a `Word` shim so that add-in code runs unchanged in Node. The Python
 analogue is not Office JS, it is **python-docx**: the API in every tutorial, in every model's
 memory, and in every "write me a script that makes a Word document" answer. `docx4j_py.docx`
@@ -694,14 +700,15 @@ what a list still owes Phase B is resolution through `PropertyResolver` (section
 | G | Comments (3.9) --- **implemented 2026-09-17, section 15** | 3 days |
 | F | Change tracking and `replace_text` (3.8); the README's audit-trail example --- **implemented 2026-09-17, section 16** | 4 days |
 | E | Custom XML, mapping, typed controls, `describe()` / `fill()` (3.7) --- **implemented 2026-09-17, section 17** | 4 days |
-| J | The python-docx facade (3.6) and its subset test | 3 days |
+| J | The python-docx facade (3.6) and its subset test --- **implemented 2026-09-18, section 20** | 3 days |
 | H | Lists (3.10) --- **implemented 2026-09-17, section 18**, with CR-002 section 6.2's numbering `Emulator` under them | 3 days |
 | I | `to_api_script` (3.11) --- **implemented 2026-09-17, section 19** | 2 days |
 
 B, D and K first: after them an agent can read any document within a budget, address any block,
 edit it and see what changed, which is the MCP server's whole first release. G before F, as the
 TypeScript engine found (tracking has to hoist comment markers). J after E so the facade sits on
-a complete core, which since 2026-09-17 it does. Each phase ships as a minor version.
+a complete core, which since 2026-09-17 it does. Each phase ships as a minor version. J landed
+last, on 2026-09-18, which completes the CR.
 
 ## 9. Open questions (decided 2026-09-16)
 
@@ -3737,3 +3744,386 @@ written for Phase G; Phase I reuses it unchanged.
   calls that build an element --- which would make the fallback readable source
   rather than a marshalled string (item 15). The TypeScript CR asks its objects
   package for the same thing.
+
+## 20. Phase J implementation notes (2026-09-18)
+
+The python-docx facade (section 3.6): `docx4j_py.docx`, a structural subset of
+python-docx's public API over this engine, with **python-docx's** semantics
+wherever they differ from Office JS's. The last phase of CR-003, and the one
+with an oracle: python-docx is installed, introspected and then run beside the
+facade, so the promise is against its real API and the comparison is its own
+reading of what this engine wrote.
+
+### 20.1 What landed
+
+| module | lines | what it is |
+|---|---:|---|
+| `docx4j_py/docx/text.py` | 1,662 | `Paragraph`, `Run`, `Font`, `ParagraphFormat`, `ColorFormat`, `Hyperlink`, `RenderedPageBreak`, `_Text` |
+| `docx4j_py/docx/table.py` | 853 | `Table`, `_Row`, `_Rows`, `_Column`, `_Columns`, `_Cell`, and python-docx's layout-grid walk |
+| `docx4j_py/docx/section.py` | 605 | `Section`, `Sections`, `_Header`, `_Footer`, and the part-creating `is_linked_to_previous` |
+| `docx4j_py/docx/styles.py` | 565 | `Styles`, `BaseStyle`, `CharacterStyle`, `ParagraphStyle`, `_TableStyle`, `_NumberingStyle`, `style_for`, `style_id_for` |
+| `docx4j_py/docx/enums.py` | 420 | the eighteen `WD_*` / `MSO_*` enumerations, `BaseEnum` and `BaseXmlEnum` |
+| `docx4j_py/docx/coreprops.py` | 344 | `CoreProperties` over `/docProps/core.xml`, created when absent |
+| `docx4j_py/docx/document.py` | 264 | `Document`, `read_image` |
+| `docx4j_py/docx/comments.py` | 246 | `Comment`, `Comments`, `add_comment` over Phase G |
+| `docx4j_py/docx/shape.py` | 235 | `InlineShape`, `InlineShapes`, `Drawing` |
+| `docx4j_py/docx/shared.py` | 192 | `Length`, `Pt`, `Inches`, `Cm`, `Mm`, `Emu`, `Twips`, `RGBColor`, and the two unit bridges |
+| `docx4j_py/docx/_base.py` | 193 | `Story` and `BlockItemContainer`: what every view shares |
+| `docx4j_py/docx/__init__.py` | 174 | the public surface, 65 names |
+| `docx4j_py/docx/settings.py` | 77 | `Settings`, the one document-level setting python-docx offers |
+| `scripts/python_docx_subset.py` | 306 | the derivation: introspects an installed python-docx and writes the JSON |
+| `tests/python_docx_subset.json` | 3,300 | the committed list: 33 interfaces, 303 members, 18 enumerations |
+| `tests/content/test_docx_facade.py` | 1,199 | 100 tests: every read, every write saved, reloaded and read back |
+| `tests/agent/test_docx_facade_workflows.py` | 335 | 10 tests: the section 3.6 snippet, a tutorial script, and a loaded document edited |
+| `tests/content/test_python_docx_parity.py` | 294 | 12 tests: one script through both libraries, read back by python-docx |
+| `tests/content/test_python_docx_subset.py` | 254 | 11 tests: the committed list asserted, member by member |
+
+Beside them: `codegen/clean.py`'s `KEEP` gains `"docx"` and
+`tests/test_codegen_el.py` gains three tests over it --- the three hand-written
+*packages* named by name, and every tracked file under `docx4j_py/docx/`
+checked against `KEEP` **without** the `__init__.py` exemption the general test
+grants; `pyproject.toml` gains a `parity` extra naming `python-docx==1.2.0` and
+saying it is not a dependency; `scripts/acceptance.py` gains an eleventh
+artefact. Nothing in `docx4j_py/model/` or `docx4j_py/openpackaging/` changed:
+the facade is additive, and the content API needed nothing from it.
+
+**1,406 tests before, 1,530 after** (124 new; 1,492 of them outside the `slow`
+marker, in 58 s, the whole suite in 70 s). `ruff check` is clean on every new
+file.
+
+### 20.2 The mapping: every python-docx member, and what it is here
+
+| python-docx | here |
+|---|---|
+| `Document(path_or_stream=None)` | `load(...)`, or `create_package()` for None; the class itself, not python-docx's factory function (departure 3) |
+| `document.paragraphs` / `.tables` / `.iter_inner_content()` | the ``w:body``'s **direct** `P` / `Tbl` children, filtered off `body.content` (departure 5) |
+| `document.add_paragraph(text, style)` | `Body.insert_paragraph(text)` then the style setter |
+| `document.add_heading(text, level)` | `add_paragraph` + `style_id_of(..., define=True)`, so a built-in heading the document lacks is defined (section 14.9) |
+| `document.add_page_break()` | `add_paragraph` + `Run.add_break(WD_BREAK.PAGE)`, a typed `w:br` |
+| `document.add_table(rows, cols, style)` | `Body.insert_table`, whose grid is sized from `w:sectPr` --- the same number python-docx computes from `page_width` less the margins |
+| `document.add_picture(path_or_stream, width, height)` | `Paragraph.insert_inline_picture(bytes, width=points, height=points)`, the image part under a free `/word/media/imageN.<ext>` |
+| `document.add_section(start_type)` | the typed tree: `deep_copy` of the sentinel `w:sectPr` into a new `w:p/w:pPr`, the references stripped off the sentinel |
+| `document.add_comment(runs, text, author, initials)` | Phase G's `insert_comment_into(Range(...))`, with `pkg.author` set for the length of the call |
+| `document.save(path_or_stream)` | `pkg.save(...)`; with no argument, the bytes |
+| `document.sections` / `.styles` / `.settings` / `.core_properties` / `.inline_shapes` / `.comments` | `Sections`, `Styles`, `Settings`, `CoreProperties`, `InlineShapes`, `Comments`, each over the engine's part |
+| `document.part` / `.element` | the `MainDocumentPart` and the typed `w:document`; `document.package` is the extension |
+| `paragraph.text` (get) | the runs and the hyperlinks, python-docx's `w:r | w:hyperlink` |
+| `paragraph.text` (set) | `clear()` then `add_run(text)`, as python-docx does |
+| `paragraph.style` | `style_for(...)` / `style_id_for(..., define=True)` over `docx4j_py.model.content.styles` |
+| `paragraph.alignment`, `paragraph_format.alignment` | `Paragraph.alignment` (the content API's, through `ALIGNMENT_TO_OFFICE_JS`) for the four values Office JS has, the typed `w:jc` for the other five |
+| `paragraph_format.*` | the typed `w:pPr`: `w:ind`, `w:spacing`, `w:keepNext`, `w:keepLines`, `w:pageBreakBefore`, `w:widowControl` |
+| `paragraph.add_run` / `insert_paragraph_before` / `clear` | the typed `content` list, and `Paragraph.insert_paragraph(location="Before")` |
+| `paragraph.runs` / `.hyperlinks` / `.iter_inner_content()` | the typed `content` list, filtered |
+| `paragraph.contains_page_break` / `.rendered_page_breaks` | `w:lastRenderedPageBreak` under the paragraph; usually none, since nothing here renders |
+| `run.text` (get/set), `add_text`, `add_tab`, `add_break`, `clear` | the typed `content` list and the `r(text)` builder's tab and break splitting |
+| `run.bold` / `.italic` / `.underline` / `.font` / `.style` | `Font`, and the typed `w:rStyle` |
+| `run.add_picture` | `Paragraph.insert_inline_picture`, with the `w:drawing` moved into *this* run, as python-docx puts it |
+| `font.*` (twenty booleans) | the typed `w:rPr` directly, tri-state (departure 4) |
+| `font.name` / `.size` / `.highlight_color` / `.underline` | the typed `w:rFonts` / `w:sz` + `w:szCs` / `w:highlight` / `w:u` |
+| `font.color.rgb` / `.theme_color` / `.type` | the typed `w:color` |
+| `table.cell(r, c)`, `.rows[i].cells`, `.columns[j].cells`, `row_cells`, `column_cells` | python-docx's layout-grid walk, honouring `w:gridSpan`, `w:vMerge` and `w:gridBefore` / `w:gridAfter` --- **not** the content API's per-`w:tc` indexing |
+| `table.add_row()` | `Table.add_rows(1)` |
+| `table.add_column(width)`, `_Column.width`, `_Cell.width` | the typed `w:tblGrid` and `w:tcW` |
+| `table.style` / `.alignment` / `.autofit` / `.table_direction` | `Table.style_id` and the typed `w:tblPr` |
+| `_Cell.text`, `.paragraphs`, `.tables`, `.add_paragraph`, `.add_table` | `Body.sub(tc)`, the content API's cell body |
+| `_Cell.vertical_alignment`, `_Row.height`, `.height_rule` | the typed `w:tcPr/w:vAlign` and `w:trPr/w:trHeight` |
+| `section.*` (the page setup) | the typed `w:sectPr`: `w:pgSz`, `w:pgMar`, `w:type`, `w:titlePg` |
+| `section.header` / `.footer` and their five siblings | `_Header` / `_Footer` over `w:headerReference` / `w:footerReference` and a `HeaderPart` / `FooterPart` |
+| `_Header.is_linked_to_previous = False` | a new part under the first free `/word/headerN.xml`, `main.add_target_part` for the relationship and the content type, and the reference appended to this `w:sectPr` |
+| `section.iter_inner_content()` | the body's blocks between the previous break and this one, the carrying paragraph included |
+| `inline_shape.width` / `.height` / `.type` | the typed `wp:inline/wp:extent` and `pic:spPr/a:xfrm/a:ext`, and the `a:graphicData/@uri` |
+| `styles[...]`, `add_style`, `default`, `get_by_id`, `get_style_id` | the typed `w:styles`, with `display_name_of` and `style_id_of` for the name-to-id table (section 4) |
+| `style.name` / `.style_id` / `.type` / `.builtin` / `.hidden` / `.base_style` / `.next_paragraph_style` / `.font` / `.paragraph_format` / `.delete()` | the typed `w:style` |
+| `core_properties.*` | the typed `cp:coreProperties`, with the `SimpleLiteral` wrapper and the `W3CDTF` `xsi:type` handled in one place |
+| `settings.odd_and_even_pages_header_footer` | the typed `w:evenAndOddHeaders` |
+| `Comment.*` | Phase G's `Comment`, with `comment.view` the door to replies, resolution and the anchor range |
+| `Length`, `Pt`, `Inches`, `Cm`, `Mm`, `Emu`, `Twips`, `RGBColor` | python-docx's own constants and rounding, copied (departure 2) |
+| the `WD_*` enumerations | `BaseEnum` / `BaseXmlEnum` re-implemented, with python-docx's member names, MS API integers and `w:val` strings |
+
+`style="List Bullet"` and `"List Number"` are **style only**, which is section
+17.8's instruction and python-docx's behaviour: a `w:pStyle` and no `w:numPr`.
+`paragraph.view.start_new_list()` is the real list, and stays in view.
+
+### 20.3 Departures, each deliberate
+
+1. **The default template.** `Document()` is `create_package()`: **A4**, 2.54 cm
+   margins, `compatibilityMode` 15, and docx4j's 24 default styles. python-docx's
+   `Document()` is its own `default.docx` --- US Letter, 1 inch margins, its own
+   style set and a frozen `dcterms:created` of 2013. Copying it would mean
+   shipping a second template and a second style set for no gain; the difference
+   is visible and asserted in `test_what_the_two_default_templates_differ_in_is_only_the_template`,
+   and a script that sets its own page size (as most do) gets the same document
+   from both.
+2. **`Length` is an `int` of EMU, and the rest of this package is points.**
+   Every other measurement in CR-003 is a float of points --- `Paragraph.left_indent`,
+   `InlinePicture.width`, `Table.column_widths()` --- because that is what Office
+   JS reports. python-docx code does arithmetic on `Inches(2)` and reads
+   `font.size.pt`, so the facade measures in EMU on an `int` subclass, with
+   python-docx's constants, truncation (`int(inches * 914400)`) and rounding
+   (`round()` for twips) copied rather than re-derived. `docx4j_py/docx/shared.py`
+   is the **only** place the two systems meet (`points_of`, `twips_of`,
+   `emu_for_points`, `emu_for_twips`), and `Inches(1) + Inches(1)` is a plain
+   `int`, as python-docx's is.
+3. **`Document` is a class, not a factory function.** python-docx's
+   `docx.Document` is a function returning a `docx.document.Document`;
+   `docx4j_py.docx.Document` is the class. `Document("in.docx")` reads the same,
+   `isinstance` works, and the subset test maps python-docx's class to it.
+4. **The tri-state booleans go straight to the typed `w:rPr`.** The content API's
+   `Font` is Office JS's, which is two-state: `bold = False` *removes* `w:b`.
+   python-docx's `False` means "off, whatever the style says" and must write
+   `<w:b w:val="0"/>`, and its `None` means "remove". So each of `Font`'s twenty
+   booleans reads and writes the element itself, inside a `recording` block.
+   `bold` and `italic` still write the `w:bCs` / `w:iCs` twins CR-003 section
+   3.12 keeps beside them, and `size` writes `w:szCs` beside `w:sz`, which
+   python-docx does not: a caller who sets `font.bold = True` and then reads
+   `font.cs_bold` sees `True` here and `None` in python-docx. Keeping the twins
+   is worth more than that reading, because Word wants them and because a run
+   formatted through either surface then reads back the same through both.
+5. **`paragraphs`, `tables` and `iter_inner_content()` are direct children
+   only.** python-docx's rule: a paragraph in a table cell is not in
+   `document.paragraphs`, and neither is one inside a `w:ins` or a content
+   control. The content API's `body.paragraphs` descends into all three, and is
+   one attribute away as `document.part.body`. `test_paragraphs_are_the_bodys_own_children_not_the_cells`
+   pins both answers side by side.
+6. **`Run.text` gives a page or column `w:br` no newline.** python-docx's
+   `CT_R.text` renders only a *line* break as `\n`; the content API's `text_of`
+   gives every `w:br` one (CR-001 section 6.2's table). The facade follows
+   python-docx, because `Run.text` and `Paragraph.text` are python-docx's
+   members, so `document.add_page_break().text` is `""` here as it is there.
+7. **`InlineShape.width` sets only the axis it is given.** The content API's
+   `InlinePicture.width` keeps the aspect ratio and resizes the other axis;
+   python-docx's does not, and neither does the facade's. Both are reachable.
+8. **The errors are this package's hierarchy, not python-docx's.** A style name
+   the document does not define and Word does not know raises
+   `StyleError` --- with its `code` and its `hint`, per section 3.1 --- rather
+   than python-docx's bare `KeyError`. `Styles["nope"]` does raise `KeyError`,
+   because that is a mapping lookup and python-docx's contract for it is clear.
+   `Document.add_comment` raises `ContentError` for no runs and for a span
+   across paragraphs.
+9. **A built-in style the document lacks is defined, not refused.** python-docx
+   raises for `style="Heading 7"` on a document whose template does not define
+   it; here `add_heading(text, 7)` works, because `create_package()` defines
+   Heading 1 to 4 and section 14.9's rule --- a dangling `w:pStyle` falls back to
+   Normal in Word, silently --- makes defining it the only safe answer. This is
+   the one place the facade accepts what python-docx refuses, which section 3.6's
+   "existing code runs" wants.
+10. **`part` and `element` answer rather than raising.** python-docx's
+    `ElementProxy.part` raises `ValueError` when the proxy has no parent, which
+    is what `style.font.part` does there. Here a `Font`, `ParagraphFormat`,
+    `ColorFormat` or `BaseStyle` with no story answers `None` (and `BaseStyle.part`
+    answers `/word/styles.xml`, which this engine can reach and python-docx
+    cannot).
+11. **`_Cell.merge` is not implemented.** python-docx's is about 150 lines of
+    grid surgery --- grow the top-left `w:tc`'s `w:gridSpan`, move every covered
+    cell's content into it, mark the rest `w:vMerge="continue"` with their spans
+    adjusted --- whose failure mode in Word is a repair prompt. Half of it would
+    be worse than none, so it raises `NotImplementedError` naming the typed way
+    round (`cell.element.tc_pr.grid_span` / `v_merge`, or `body.insert_xml`).
+    Reading a merged table is fully implemented: the layout-grid walk is
+    python-docx's, and `test_a_grid_span_cell_appears_at_every_position_it_covers`
+    pins it.
+12. **`Styles.latent_styles` is not offered.** 371 `w:lsdException` entries
+    behind an API nothing in the facade's corpus or in the wild uses; it raises
+    `AttributeError` naming `document.styles.element.latent_styles`, the typed
+    `w:latentStyles`.
+13. **`ParagraphFormat.tab_stops` is not offered.** A collection class with its
+    own `add_tab_stop` / `clear_all` verbs over `w:tabs`, which is typed content
+    on `paragraph_format.element.p_pr.tabs`.
+14. **`Comments.add_comment` (the unanchored form) is not offered.** Word shows
+    nothing for a comment with no `w:commentRangeStart`, and Phase G has no verb
+    for one; `Document.add_comment(runs, text)` is the anchored form and is
+    implemented. It raises `NotImplementedError` saying so.
+15. **`Document.add_comment` refuses a first and last run in different
+    paragraphs**, which python-docx allows. Phase G's `Range` is one paragraph's
+    and its marker placement (section 15.2: hoisted out of a `w:ins`) is written
+    for one; the error names `paragraph.view.insert_comment(text)`.
+16. **`Run.mark_comment_range`, `Drawing.image` and the two
+    `RenderedPageBreak` paragraph fragments are not offered**, each with a
+    reason in `tests/python_docx_subset.json`: the first is python-docx's
+    internal helper for `add_comment` and Phase G places the markers itself;
+    the second is python-docx's whole image-format parser, whose useful half is
+    `InlinePicture.get_bytes()` and `.image_part`; the last two split a
+    paragraph at a rendered page break, and nothing here renders, so nothing
+    writes the break they need.
+17. **`WD_BUILTIN_STYLE` is not offered.** 163 members naming Word's built-in
+    styles by an MS API integer; `BUILT_IN_STYLES` is the same list keyed by
+    style id and display name, which is what a style setter takes.
+18. **The wall clock.** `Document()` writes `create_package()`'s
+    `dcterms:created` and `modified` as **now**, where python-docx's template
+    carries a frozen 2013 date. The facade does not fix them --- there is no
+    `id_seed` to read at construction time, since the caller sets it afterwards
+    --- and `doc.core_properties.created = ...` is how a caller makes a build
+    reproducible, which is what
+    `test_two_identical_scripts_give_identical_bytes` and acceptance artefact 11
+    do. Those two dates and a comment's `w:date` (section 15.2 item 1) are the
+    only wall clock in what the facade writes; with them pinned, the same script
+    gives the same bytes.
+19. **A tracked insertion's runs are not in `Paragraph.text`.** python-docx's
+    own docstring says "paragraphs within revision marks such as `w:ins` do not
+    appear in this list", and its `CT_P.text` is `w:r | w:hyperlink`; the facade
+    keeps that, so a paragraph the facade inserted with tracking on reads `""`
+    through `document.paragraphs` and reads its text through
+    `document.part.body`. `test_a_facade_edit_can_be_tracked_and_reviewed` pins
+    both, and `accept_all()` then puts it in the facade's view.
+
+### 20.4 The numbers, measured
+
+Import, on top of the model (the median of three runs of a cold interpreter):
+
+| | cost |
+|---|---:|
+| `import docx4j_py` (the model, unchanged) | 620 ms |
+| the content API modules the facade imports eagerly | 54 ms |
+| the facade's own thirteen modules | **5 ms** |
+| `import docx4j_py.docx` from cold, all told | 680 ms |
+
+The facade is 5 ms because it is 5,800 lines of pure Python with no data tables:
+the enumerations are the only constants and there are 230 members across them.
+The 54 ms is the content API's, and it is paid by any caller that touches a
+view; CR-003 section 11.5 made the content package lazy on purpose, and the
+facade imports `body`, `paragraph`, `table`, `comments`, `picture` and `styles`
+because every one of python-docx's verbs lands in one of them.
+
+The work, median of twenty runs:
+
+| | time |
+|---|---:|
+| the section 3.6 snippet, `Document()` to `save()` bytes, with the picture | **17.0 ms** |
+| the same without the picture | 16.0 ms |
+| `Document(path)` then every paragraph's `style.name` and `text` over `2010-sample1.docx` | 5.3 ms |
+
+Almost all of the 16 ms is `create_package()` and the save, not the facade:
+unmarshalling docx4j's default styles and writing eleven parts. The picture
+costs 1 ms, which is the PNG header read and the part write.
+
+The subset: **33 interfaces, 303 members, 295 implemented, 8 omitted**, plus 6
+`Length` constructors and **18 enumerations with 230 members**, every one of
+them asserted by name, MS API integer and `w:val` string.
+`tests/python_docx_subset.json` is 3,300 lines and derived, not written.
+
+One measured cost worth recording, because it surprised the test that found it:
+a `dry_run` whose facade calls include `add_heading` on a document that does not
+define the heading makes the trial **copy** `/word/styles.xml`, and copying a
+part unmarshals the real one. The trial's edit does not leak --- the style is
+not in the real part afterwards --- but that part is re-serialised on the next
+save, so its bytes change while its content does not. `word/document.xml` stays
+byte for byte, and the styles part stays canonically identical; that is the cost
+CR-003 section 14.4 named, now measured, and
+`test_a_dry_run_around_facade_calls_leaves_the_document_alone` asserts exactly
+that and no more.
+
+### 20.5 The parity result
+
+`tests/content/test_python_docx_parity.py` runs one ordinary python-docx script
+--- a Title, two headings, a paragraph of five runs with a bold, an italic
+14 pt Consolas run in `C00000`, an explicit not-bold and a justified alignment,
+a three-column Table Grid table with a bold header row built from a list of
+dicts, a page break, a `List Bullet` and a `List Number` paragraph, and a second
+section in landscape with its own page size and margin --- **twice**, once
+through `docx4j_py.docx` and once through python-docx 1.2.0, and then opens both
+files **with python-docx** and compares what it reads.
+
+Run on 2026-09-18 from a throwaway virtual environment with python-docx 1.2.0,
+`docx4j-xsdata` and this package installed: **12 passed**. The paragraph texts,
+the style names, the alignments, every run's `text` / `bold` / `italic` /
+`font.size` / `font.name` / `font.color.rgb`, the table's row and column counts,
+its cell texts, its style name, its alignment and its header row's bold, every
+section's `start_type` and `orientation`, the last section's `page_width`,
+`page_height` and `left_margin` to the EMU, the six core properties including
+both dates, the index of the paragraph holding the page break, and the order of
+`iter_inner_content()` are all **equal as python-docx reads them**.
+
+The only thing that differs is the first section's page setup, which is each
+library's default template (departure 1); the twelfth test asserts that
+difference on purpose --- A4 against US Letter --- so that it cannot change
+silently.
+
+The same environment runs the subset derivation
+(`scripts/python_docx_subset.py --check` passes) and the subset test. In
+`.venv-fork`, where python-docx is absent, the parity module and the
+derivation check **skip**, which is the two skips in the suite count.
+
+### 20.6 The fixture decision
+
+**Nothing new was copied.** The facade's tests build their own documents
+through the facade --- which is the point, since the facade is a *writing* API
+--- and read three of `samples/`: `2010-sample1.docx` for the loaded-document
+workflows, `Images.docx` for the PNG every picture test uses, and `Headers.docx`
+for a header that a real Word document, rather than this engine, wrote. The one
+table shape no sample carries, a `w:gridSpan` beside a `w:vMerge`, is built in
+the test from XML written to match what Word writes, as phases F, G and I did
+for the same reason and for the same stated reason: a fixture presented as
+Word's should be Word's.
+
+### 20.7 What the Word check is for
+
+Artefact 11, `out/acceptance/11-python-docx-facade.docx`, is **new and
+unchecked**. It is written entirely by code that would run unchanged against
+python-docx, so what it tests is the facade's *write* path end to end, and three
+things in it are worth a human's eyes:
+
+* the **header and footer parts** `is_linked_to_previous = False` created, with
+  their relationships, their content types and the `w:headerReference` /
+  `w:footerReference` in the second section's `w:sectPr`. No earlier artefact
+  creates a header part at all;
+* the **cloned `w:sectPr`**: `add_section` copies the sentinel into a new
+  paragraph and strips the references off the sentinel, which is python-docx's
+  algorithm and not one this engine had before;
+* the **`List Bullet` / `List Number` paragraphs**, which are the one place the
+  facade's faithfulness to python-docx may read oddly in Word. Section 17.8's
+  instruction is that they are the *style* and no `w:numPr`, as python-docx
+  writes them. docx4j's `KnownStyles.xml` definitions of both **do** carry a
+  `w:numPr` --- `w:numId` 4 for `ListBullet` and 9 for `ListNumber` --- and the
+  document has **no `/word/numbering.xml`**, because nothing in the facade
+  creates one. So the expectation is: the two paragraphs carry the styles and
+  Word paints **no bullet and no number**. If Word paints one, it is supplying
+  a definition of its own, which is worth knowing; either way the paragraphs
+  must not make Word repair the file, and
+  `paragraph.view.start_new_list()` is the verb that gives a real list.
+
+Nothing else in the artefact is new markup: the headings, the table, the picture
+and the runs all go through verbs phases B, C and H already had checked.
+`tests/README.md`'s artefacts table carries the row.
+
+### 20.8 What CR-003 leaves open
+
+With this phase **every phase of CR-003 is implemented**. What is still owed,
+by whom:
+
+* **The three extensions section 19.6 asked for, none of them taken.** Phase J
+  needed none of them: a `Paragraph.mark_font` over `w:pPr/w:rPr` has no
+  python-docx counterpart (python-docx has no paragraph-mark font either); a
+  read/write `ContentControl.tag` and `.title` has none (python-docx has no
+  content controls at all); and a `Table.column_widths` setter is not what
+  python-docx's `column.width` and `cell.width` need, because each of those
+  writes **one** half --- `w:gridCol/@w` and `w:tcW` respectively --- and only
+  `add_column` and `add_table(rows, cols, width)` write both, which the facade
+  does in a private helper (`Table._set_column_widths`). All three would still
+  move whole categories of `to_api_script` fallback into the verbs, and each
+  needs its own Word check; they belong to whichever phase next touches those
+  files.
+* **`_Cell.merge`** (departure 11): the one member of the facade's own promise
+  that is refused rather than implemented. It wants python-docx's grid surgery
+  and a Word check of a merged table written from nothing.
+* **CR-002 Phase B**, which every phase of this CR has now asked for:
+  `PropertyResolver`, so that `Font` and `paragraph_format` report **effective**
+  formatting rather than direct (section 6, and `tests/content/test_font.py`'s
+  `xfail` waiting to flip; the facade inherits it exactly, and its `None` means
+  "not set here" rather than "inherited from nowhere"); resolution for a list
+  level (section 18.2 item 16); the twenty exotic number formats;
+  `NumberingDefinitionsPart.getInd`'s full form; and the label's own run
+  properties.
+* **CR-001's `to_source(element)`** (section 19.6), which would make a
+  `to_api_script` fallback readable source rather than a marshalled string.
+* **The `mc:AlternateContent` gap** of CR-002 section 12.5, pinned so that
+  closing it is visible.
+* **A numbering part for the list styles** (section 20.7). python-docx's
+  template defines `numbering.xml`, and `create_package()` does not; a caller
+  who wants `style="List Bullet"` to *paint* a bullet needs
+  `paragraph.view.start_new_list()`, or `create_package()` would have to copy
+  docx4j's default numbering the way it copies the default styles. That is a
+  CR-002 question about what a created document carries, not a facade one, and
+  the Word check of artefact 11 is what should settle it.
+* **The Python MCP server** (decided question 11): a separate product
+  repository, with docx4j-mcp's tool names, its path policy and its inline caps,
+  over the API this CR has now finished.
