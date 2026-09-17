@@ -1,11 +1,24 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 1,303 tests
+.venv-fork/bin/python -m pytest                    # everything, 1,530 tests (70 s)
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
 .venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B
 .venv-fork/bin/python -m pytest tests/agent        # the agent surface, CR-003 Phase D
+```
+
+Two tests **skip** in `.venv-fork`, and are meant to: `content/test_python_docx_parity.py`
+and the derivation check in `content/test_python_docx_subset.py` need python-docx, which is
+**not a dependency** of this package (CR-003 section 3.6). Run them from a throwaway virtual
+environment that has it:
+
+```bash
+uv venv /tmp/pydocx
+VIRTUAL_ENV=/tmp/pydocx uv pip install python-docx==1.2.0 pytest -e ~/git/docx4j-xsdata -e .
+/tmp/pydocx/bin/python -m pytest tests/content/test_python_docx_parity.py \
+                                tests/content/test_python_docx_subset.py
+/tmp/pydocx/bin/python scripts/python_docx_subset.py     # rewrite the committed member list
 ```
 
 | file | CR | what it pins |
@@ -40,6 +53,10 @@
 | `content/test_listnumbering.py` | CR-002 §6.2, CR-003 §3.10 | the numbering emulator against **Word**: the six probe documents of docx4j's CR-014 and CR-015, each asserted with the labels Word painted in the goldens of 2026-09-12 (one counter per `w:abstractNum`, a `w:numStyleLink` list counting on its own, the `w:default="1"` paragraph style numbered, both `w:lvlRestart` cases, a style stating only `w:ilvl`, and the per-story counters --- body, header and footer together, footnotes, endnotes, comments); the eight number formats and their decimal fall-back; `w:numId` 0; a level linked to another paragraph style; `peek`; and that reading labels unmarshals neither `numbering.xml` nor `styles.xml` |
 | `content/test_lists.py` | CR-003 §3.10, §16.7 | `List` and `ListItem`: the reads (`level_types`, `list_string`, `sibling_index`, `get_ancestor`, `get_descendants`, `to_dict`), `start_new_list` creating the numbering part and its definitions, `like=` as Word's *Restart numbering at 1*, `attach_to_list` / `detach_from_list` (`w:numId` 0 for style-contributed numbering), the level setters writing a `w:lvlOverride/w:lvl` on the `w:num` when the `w:abstractNum` is shared (section 18.8), the nsid every new definition gets, `insert_paragraph`, the tracked attach whose `reject_all()` leaves the paragraph's markup as it was, a `dry_run` that leaves the document byte for byte, and a two-level list with a restart round-tripping through markdown |
 | `content/test_office_js_subset.py` | CR-003 §3.4 (TS) | the committed Office JS member list |
+| `content/test_docx_facade.py` | CR-003 §3.6, §20 | the python-docx facade member by member: the units against python-docx's documented EMU and `Length` as an `int`; `Document()` as `create_package()`; `add_paragraph` / `add_run` / the `text` setters with `\t` as `w:tab` and `\n` as `w:br`; `add_heading` 0 to 9 with the built-in definitions `ensure_style` adds (§14.9); the **tri-state** `Font` --- each of its twenty booleans in all three states, `False` written as `w:val="0"` and `None` removing the element, the `w:bCs` / `w:iCs` twins, sub- and superscript sharing one `w:vertAlign`, name, half-point size, `RGBColor`, a theme colour, the highlighter and `WD_UNDERLINE`; `ParagraphFormat`'s alignment, indents (a negative first line as `w:hanging`), spacing and line spacing as a float multiple or an absolute length; the style objects, `add_style`, `delete`, and `style="List Bullet"` writing a `w:pStyle` and **no** `w:numPr` (§17.8); tables on python-docx's **layout grid** --- `w:gridSpan` and `w:vMerge` making one cell answer at every position it covers, `w:gridBefore`, `add_row`, `add_column`, a nested table, and `add_table(0, 3)`; the page setup, `add_section` cloning the `w:sectPr`, every start type, and a **header part created** by `is_linked_to_previous = False` with its relationship and content type (and relinking removing it, and a second section inheriting the first's); pictures, the shape's size set afterwards, and `Run.iter_inner_content`; the sixteen core properties; comments through Phase G; and that the typed tree, `paragraph.view` and `document.part.body` stay reachable, that every facade call leaves a `ChangeReport`, and that two identical scripts give identical bytes. Every write is followed by save, reload and read back |
+| `content/test_python_docx_subset.py` | CR-003 §3.6, §20 | the committed python-docx member list: every implemented member on the facade class with the right kind, the eight omissions a closed list each with a reason, the `Length` constructors' EMU factors, and all eighteen enumerations by member name, MS API integer and `w:val`. The derivation check **skips** without python-docx |
+| `content/test_python_docx_parity.py` | CR-003 §3.6, §20.5 | **python-docx as the judge**: one ordinary python-docx script run through both libraries, both files then read back **by python-docx** and compared --- texts, style names, alignments, per-run bold / italic / size / name / colour, the table's shape and cell texts and style and alignment, the section start types and orientations, the page setup the script wrote, the core properties, the page break's position, the inner-content order --- and the one deliberate difference, each library's default template, asserted on purpose. **Skips** without python-docx |
+| `agent/test_docx_facade_workflows.py` | CR-003 §3.6, §7 | python-docx code from the wild: the section 3.6 snippet **verbatim**, a tutorial script (headings, mixed runs, a table from a list of dicts, a picture, a page break, save) and its determinism, and over a **loaded** sample --- a `Document(path)` that reads paragraphs and saves leaving every other part byte for byte, the main part canonically identical, an edit's `ChangeReport` naming `styles.xml` when a heading had to be defined, a `dry_run` around facade calls, the content API and the facade seeing one document, a tracked facade edit, and a comment Phase G reads back |
 | `content/test_api_script.py` | CR-003 §3.11, §19 | `to_api_script`: the **executed** round trip of section 7 --- the script run against a fresh `create_package().body` and every block the verbs claimed compared to the source canonically (`scripts/canon.py`'s normal form, less the `w:rsid*` and `w14:paraId` ids, `w:lang` / `w:noProof`, the complex-script twins, an empty `w:rPr`, `w:numPr`, a redundant `xml:space` and two adjacent runs of one `w:rPr` written as one; the module docstring lists them and section 19.4 says why each is there) --- over `2010-sample1.docx`, `sample-docx.docx` and the four fixtures; then one test per rule: the one-line plain paragraph, the members in the order the setters need, a style that is not built in written by its id, the `Font` diff per run, adjacent runs of one formatting coalesced into one call (the lists fixture's item, still exact) and a `w:tab` run left alone, `w:rStyle` as `Font.style`, `insert_break`, a tab in the leading run, the dropped markers, the hyperlink and the tracked change as one `insert_xml`, the paragraph mark's `w:rPr` and `w:lineRule="auto"` falling back, `insert_table`, the two lists with `start_new_list` / `attach_to_list` and the level setters (labels equal), the placeholder and inline picture modes, a comment thread with a reply and a resolved one, `limit`, `addresses`, `variable`, `location`, a `Range`'s runs only, determinism, `ast.parse` and `ruff check` on the emitted script, and (slow) every sample executing |
 | `content/test_markdown.py` | CR-003 §3.5 | markdown out and in, one construct at a time; the address comment and its regex; what `styles.xml` and `numbering.xml` are touched for |
 | `agent/test_addresses.py` | CR-003 §3.4 | the three address forms, the nearest-address error, `ensure_para_ids` |
@@ -85,6 +102,13 @@ in order to round-trip them.
 | `styles-numpr-ilvl-only.docx` | docx4j `docx4j-layout-fidelity`'s corpus (`Corpus.java`, CR-015's probe P4) | a style carrying `w:numPr` and a style based on it stating only `w:ilvl`, with the direct-formatting controls beside them; Word's labels are 1. 1.1. 2. 2.1. 2.2. |
 | `tracked-pprchange.docx` | docx4j `docx4j-samples-docx4j/sample-docs/unmarshallFromTemplateDirtyExample.docx` | Word-written: a `w:pPrChange` with an empty `CT_PPrBase` original, a paragraph mark marked inserted (`w:pPr/w:rPr/w:ins`) and two run insertions, all by `jharrop` in 2012. The one document in any of the three checkouts with a `w:pPrChange` |
 
+**Phase J copied nothing.** The python-docx facade's tests build their own documents through
+the facade --- it is a writing API --- and read three of `samples/`: `2010-sample1.docx` for
+the loaded-document workflows, `Images.docx` for the PNG every picture test uses, and
+`Headers.docx` for a header a real Word document rather than this engine wrote. The one table
+shape no sample carries, a `w:gridSpan` beside a `w:vMerge`, is built in the test from XML
+written to match what Word writes (CR-003 section 20.6).
+
 `samples/sample-docx.docx` carries one `w:ins` and one `w:del`, which is what the
 CriticMarkup test and the stats test read. **A move, a `w:rPrChange` and a tracked
 row** are in no document in docx4j, in docx4j-core-ts or here, so
@@ -102,6 +126,14 @@ Record each run here, in the form docx4j-core-ts's `test/README.md` uses. When a
 markup that makes Word **hang** or quietly refuse an operation, also add an entry to
 `../docx4j-portfolio/docs/word-hangs.md`, the log shared across the three engines.
 
+> **Artefact 11 (`11-python-docx-facade.docx`, CR-003 Phase J) is new and has NOT been
+> checked.** It was written on 2026-09-18 and nobody has opened it in Word. The three things
+> it is for are in its row above and in CR-003 section 20.7; the `List Bullet` /
+> `List Number` expectation is the one that needs a human's eyes, because a `w:pStyle` whose
+> definition names a `w:numId` the document has no `numbering.xml` for is a case nothing in
+> the three engines has measured against Word. Artefacts 1 to 10 are unchanged by Phase J ---
+> it adds no verb any of them calls --- and their bytes are what they were.
+>
 > Last run: 2026-09-17, Word (version not recorded), artefacts 3, 4, 5 and 9 after CR-003
 > sections 17.10 and 17.11 and CR-002 section 12.10. **Passed**: the title bar no longer says
 > "Compatibility Mode" for 3, 4 and 5; 9 shows three line items. 9's title bar still said
@@ -118,19 +150,20 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > --- and their bytes are what they were.
 
 Saved output must open in Word **without a repair prompt**. After any change to
-marshalling, the prefix table, content types, the zip writer or `create_package`,
-regenerate the artefacts and check by hand:
+marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
+importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
+check by hand:
 
 ```bash
 .venv-fork/bin/python scripts/acceptance.py      # writes out/acceptance/
 ```
 
-`out/` is in `.gitignore`, so the ten files are built rather than committed; the script takes
+`out/` is in `.gitignore`, so the eleven files are built rather than committed; the script takes
 about two seconds. It is deterministic apart from the `w:date` of a comment, which is the wall
 clock, as Word writes it (CR-003 section 15.2 item 1); artefact 8's revision dates are the wall
 clock for the same reason, since the script does not fix `pkg.tracked_change_date`.
 
-### The ten artefacts
+### The eleven artefacts
 
 | file | what it exercises | what to look for in Word |
 |---|---|---|
@@ -147,6 +180,8 @@ clock for the same reason, since the script does not fix `pkg.tracked_change_dat
 | `out/acceptance/9-template-filled.docx` | `samples/invoice2013.docx`, a Word-authored template with twenty bindings over `/customXml/item1.xml`, **filled** through CR-003 Phase E's `pkg.custom_xml_parts.fill()`: a new company and contact, a new invoice number, the VAT checkbox cleared, a new date, and new data for the first line item of a `w15:repeatingSection`. Then a **new** custom XML part through `add()` --- `/customXml/item2.xml` with its `/customXml/itemProps2.xml`, a brace-wrapped upper-case `ds:itemID` and the relationship from the main document part, as docx4j's `addPropertiesPart` writes it --- a new paragraph, a run-level content control in it, and a mapping to the new part's `<by>` node | no repair prompt; the bound controls show the **new** values on open, before Word has refreshed anything: the customer is **Acme Manufacturing Ltd**, the contact **Ada Lovelace**, the invoice number **INV-2026-0917**, the VAT checkbox is **empty** (☐, in MS Gothic) and the date reads **17 September 2026** in the template's own `d MMMM yyyy` format. The line-item table shows **three** rows --- ACME-9 / Anvil, large / 2 / 199.00, ACME-3 / Rope, 30 m / 10 / 9.00 and ACME-1 / Dynamite, one stick / 1 / 49.00 --- although the file itself carries **one** `w15:repeatingSectionItem`. That is Word's doing, not ours: it expands a bound repeating section to the node set its `w15:dataBinding` selects when it opens the document, cloning the one item per node, so the number of rows is the number of `lineitem` nodes in the data (CR-003 section 17.10). `fill()` wrote the three nodes and left the item alone; a second template item would give twice as many rows. Unzip `customXml/item1.xml` to see the three. At the end, "Approved by: **Grace Hopper**", where *Grace Hopper* is the new control, bound and showing its value. **Developer → XML Mapping Pane** (turn the Developer tab on in File → Options → Customize Ribbon if it is not there) offers **two** custom XML parts in its drop-down: the invoice's, and the new `http://example.com/approval` one whose tree shows `approval/by` and `approval/status`; clicking into the "Grace Hopper" control highlights `by` in the pane. Then **save from Word, close, reopen**: still clean, and every value above is unchanged. The source is a Word 2010 document (`compatibilityMode` 14) and the script sets `pkg.compatibility_mode = 15`, so Word's **title bar must not say "Compatibility Mode"** (the first check of this artefact, before the setter was called, showed it). Word may still report a Compatibility Checker note on save; *Continue* is fine. |
 
 | `out/acceptance/10-lists.docx` | the same **loaded** document given lists through CR-003 Phase H's content API: `start_new_list()` on a paragraph (which creates `numbering.xml`, its relationship and its content type, and copies docx4j's default decimal definition), two more items attached, a fourth attached at **level 1**, a second list restarted over the same `w:abstractNum` with `like=` (Word's *Restart numbering at 1*, a `w:startOverride` of 1), a bullet list from `kind="Bullet"`, `set_level_numbering(0, "LowerLetter", "%1)")` on the first list --- written as a `w:lvlOverride/w:lvl` on its `w:num`, since it shares the definition with the restarted one, so the change stays local --- a paragraph detached, and, with tracking on, one paragraph attached | no repair prompt; the first list reads **a) b) c)** with **a.** indented under it at level 2 of the list (it was `1. 2. 3.` before the restyle, and the restyle is the point); the second list starts again at **1.** and runs **1. 2.** --- *not* 4. 5., which is what a shared counter without the `w:startOverride` would give; the bullet list shows Word's own **•** glyph in Symbol; "This one was in the list and is not any more" carries **no** bullet and no list indent; and the last paragraph, "This paragraph joins the bullets, with tracking on", is a **bulleted** item shown as a *Formatted* revision by **Claude** in the Reviewing pane, with a formatting balloon naming the numbering change (Word writes `w:pPrChange` for this, never the deprecated `w:numberingChange`). Then, on a copy, **Reject All**: that last paragraph loses its bullet and its indent and nothing else changes. On another copy, **Accept All**: it keeps them. Then **save from Word, close, reopen**: still clean, and **the numbering has not changed** --- Word renumbering the lists on open would mean the definitions are not what it expects. The title bar must not say "Compatibility Mode" (the script sets `pkg.compatibility_mode = 15` on this Word 2010 source). |
+
+| `out/acceptance/11-python-docx-facade.docx` | **new and unchecked.** A document built entirely through CR-003 Phase J's python-docx facade (`docx4j_py.docx`), by code that would run unchanged against python-docx: `Document()`, a `Title` and `Heading 1` to `Heading 3`, the section 3.6 snippet's constructs (a paragraph of mixed runs with a bold, a red italic 14 pt and an explicit **not**-bold, justified), a `List Bullet` and a `List Number` paragraph, a three-column Table Grid table with a bold header row, a page break, a picture two inches wide, a second section in landscape with a header and a footer **of its own**, and `core_properties.title` / `.author`. What is new in it and nowhere else: the **header and footer parts** `is_linked_to_previous = False` creates, and the `w:sectPr` `add_section` clones | no repair prompt; the title bar does not say "Compatibility Mode". **The navigation pane** shows *The python-docx facade* as the Title and *What this is*, *Headings*, *A third-level heading*, *Lists, as python-docx makes them*, *A table* and *A picture* at their levels. `create_package()` defines Heading 1 to 4, so this artefact needed none added; `add_heading(text, 7)` on such a document is what makes the facade define one (CR-003 section 14.9), and artefact 11 deliberately stays inside the four so that a heading that does **not** appear means a marshalling fault and not a missing definition. The run paragraph reads "Plain, **bold**, *red italic 14 pt* and not bold." --- justified, the third run red, italic and visibly larger, and *not bold* not bold even though nothing around it is. The table has Table Grid borders, three columns, a bold header row and two data rows. **The two list paragraphs are the thing to look at**: the facade writes a `w:pStyle` of `ListBullet` / `ListNumber` and **no** `w:numPr`, as python-docx does, and docx4j's definitions of those styles name `w:numId` 4 and 9 while this document has **no `numbering.xml`** --- so the expectation is *no bullet glyph and no number*, just the styles' indent. If Word paints a bullet or a number it is supplying a definition of its own, which is worth recording either way (CR-003 section 20.7). After the page break: "Two inches wide, sized by the facade:" and the pangolin at exactly **5.08 cm** wide with Lock aspect ratio ticked. The last page is **landscape** (29.7 by 21.0 cm), its header reads **docx4j-python** and its footer **Built through docx4j_py.docx**, and the first page has **neither** --- `Insert → Header → Edit Header` on page 1 must show an empty "Same as Previous"-free first section, and on the last page the two lines above. Then **save from Word, close, reopen**: still clean, and the header, the footer and the landscape page survive. |
 
 ### Checks worth making on every one
 
