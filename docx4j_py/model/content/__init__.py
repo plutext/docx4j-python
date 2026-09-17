@@ -37,6 +37,7 @@ from docx4j_py.model.content.errors import (
     InvalidTargetError,
     SpanError,
     StyleError,
+    TrackedChangeError,
 )
 
 __all__ = [
@@ -49,6 +50,8 @@ __all__ = [
     "BreakType",
     "BuilderError",
     "ChangeReport",
+    "ChangeTracker",
+    "ChangeTracking",
     "Comment",
     "ContentControl",
     "ContentError",
@@ -75,6 +78,9 @@ __all__ = [
     "TableCell",
     "TableRow",
     "TextExcerpt",
+    "TrackedChange",
+    "TrackedChangeError",
+    "TrackedChangeType",
     "UnderlineType",
     "body_of",
     "built_in_of",
@@ -124,6 +130,11 @@ _LAZY: dict[str, str] = {
     # CR-003 Phase G, the comments
     "Author": "docx4j_py.model.content.comments",
     "Comment": "docx4j_py.model.content.comments",
+    # CR-003 Phase F, change tracking
+    "ChangeTracker": "docx4j_py.model.content.tracking",
+    "ChangeTracking": "docx4j_py.model.content.enums",
+    "TrackedChange": "docx4j_py.model.content.tracked_change",
+    "TrackedChangeType": "docx4j_py.model.content.enums",
 }
 
 
@@ -276,6 +287,66 @@ def _set_package_author(self: object, value: object) -> None:
     self._author = value  # type: ignore[attr-defined]
 
 
+def _package_change_tracking_mode(self: object) -> object:
+    """Whether this package's edits are tracked (CR-003 section 3.8).
+
+    ``"Off"``, ``"TrackAll"`` or ``"TrackMineOnly"``, over ``w:trackRevisions``
+    in ``/word/settings.xml``. **Reading does not unmarshal the settings part**
+    --- the flag is read with lxml from the bytes the part would be saved as,
+    as ``describe().tracking_on`` reads it --- so a document whose mode is only
+    read keeps that part byte for byte. Setting it does unmarshal the part, and
+    creates one with its relationship and content type when the document has
+    none; ``"TrackMineOnly"`` is stored as ``"TrackAll"``, because
+    ``w:trackRevisions`` is a flag and a file cannot tell the two apart.
+    """
+    from docx4j_py.model.content.tracking import mode_of
+
+    return mode_of(self)
+
+
+def _set_package_change_tracking_mode(self: object, value: object) -> None:
+    """Turn tracking on or off; the part touched goes into the ``ChangeReport``."""
+    from docx4j_py.model.content.reports import current_recorder
+    from docx4j_py.model.content.tracking import set_mode
+
+    touched = set_mode(self, None if value is None else str(value))
+    change = current_recorder(self)
+    parts = getattr(change, "parts", None)
+    if parts is not None:
+        for name in touched:
+            if name not in parts:
+                parts.append(name)
+
+
+def _package_tracked_change_date(self: object) -> object:
+    """The date a new revision carries, or None for the wall clock (section 3.8).
+
+    Fixing it is what makes a tracked edit byte-reproducible, as ``id_seed``
+    does for the ids: ``pkg.tracked_change_date = datetime(2026, 9, 17, tzinfo=UTC)``.
+    """
+    return self._tracked_change_date  # type: ignore[attr-defined]
+
+
+def _set_package_tracked_change_date(self: object, value: object) -> None:
+    """Fix the ``w:date`` of every new revision, or None to use the wall clock."""
+    import datetime as _datetime
+
+    if value is not None and not isinstance(value, _datetime.datetime):
+        from docx4j_py.model.content.errors import ContentError
+
+        raise ContentError(
+            f"pkg.tracked_change_date takes a datetime or None, not {type(value).__name__}",
+            code="tracking.date_invalid",
+            hint="pkg.tracked_change_date = datetime.datetime(2026, 9, 17, tzinfo=datetime.UTC)",
+        )
+    self._tracked_change_date = value  # type: ignore[attr-defined]
+
+
+def _package_get_tracked_changes(self: object) -> list:
+    """Every tracked change in the main document part, in document order."""
+    return list(self.body.get_tracked_changes())  # type: ignore[attr-defined]
+
+
 def _package_dry_run(self: object) -> object:
     """``with pkg.dry_run() as trial:`` --- edits on a copy, then thrown away."""
     from docx4j_py.model.content.trial import dry_run
@@ -296,12 +367,25 @@ _PACKAGE_MEMBERS: dict[str, object] = {
     "to_markdown": _package_to_markdown,
     "markdown_budget": _package_markdown_budget,
     "insert_markdown": _package_insert_markdown,
+    # CR-003 Phase F, section 3.8
+    "get_tracked_changes": _package_get_tracked_changes,
 }
 
 #: The properties :func:`register` installs, which ``_PACKAGE_MEMBERS`` cannot
 #: hold because a property is not a function. CR-003 Phase G, section 3.9.
 _PACKAGE_PROPERTIES: dict[str, property] = {
     "author": property(_package_author, _set_package_author, doc=_package_author.__doc__),
+    # CR-003 Phase F, section 3.8
+    "change_tracking_mode": property(
+        _package_change_tracking_mode,
+        _set_package_change_tracking_mode,
+        doc=_package_change_tracking_mode.__doc__,
+    ),
+    "tracked_change_date": property(
+        _package_tracked_change_date,
+        _set_package_tracked_change_date,
+        doc=_package_tracked_change_date.__doc__,
+    ),
 }
 
 

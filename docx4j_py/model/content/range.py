@@ -184,6 +184,7 @@ class Range:
             holders,
             scope=f"{self.start}:{self.end}",
             record=self.paragraph.formatting,
+            tracking=self.paragraph.font_tracking,
         )
 
     # -- spans that cross a run holder (CR-003 section 3.4) ----------------
@@ -307,14 +308,20 @@ class Range:
         return [Range(self.paragraph, base + start, base + end) for start, end in hits]
 
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
-        """Replace every match within the span, last first; returns the count."""
+        """Replace every match within the span, last first; returns the count.
+
+        **Tracked** when the package's ``change_tracking_mode`` is on, in which
+        case each replacement is a ``w:del`` and a ``w:ins``. The report names
+        the pair, as :meth:`Body.replace_text`'s does.
+        """
         with recording(self.paragraph.parent_body, "replace_text") as change:
+            change.text(before=find)
             matches = self.search(find, **options)
             for match in reversed(matches):
                 match.insert_text(replace, location="Replace")
             if matches:
                 change.touched(self.paragraph)
-                change.text(before=find, after=replace)
+            change.text(after=replace)
             return len(matches)
 
     def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
@@ -327,6 +334,24 @@ class Range:
             hit_for(self.paragraph, base + start, base + end, context=context)
             for start, end in hits[:limit]
         ]
+
+    # -- change tracking (CR-003 section 3.8, Phase F) ----------------------
+
+    def get_tracked_changes(self) -> list[Any]:
+        """The tracked changes this span covers, in document order (Office JS).
+
+        The paragraph's, filtered to those whose range overlaps this span; a
+        deletion, whose range in the accepted text is collapsed, counts when it
+        sits inside the span.
+        """
+        out: list[Any] = []
+        for change in self.paragraph.get_tracked_changes():
+            span = change.get_range()
+            if span is None:
+                continue
+            if span.start <= self.end and span.end >= self.start:
+                out.append(change)
+        return out
 
     # -- comments (CR-003 section 3.9, Phase G) -----------------------------
 

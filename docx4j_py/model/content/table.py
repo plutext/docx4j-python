@@ -48,7 +48,7 @@ from docx4j_py.model.content.text_model import (
 )
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, text_of
-from docx4j_py.wml import Tbl, Tc, Tr, el, tbl, to_xml, tr
+from docx4j_py.wml import P, Tbl, Tc, Tr, el, tbl, to_xml, tr
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
@@ -131,6 +131,25 @@ def _row_element(widths: list[int], values: list[str] | None = None) -> Tr:
     )
 
 
+def _mark_rows_inserted(tracker: Any, rows: list[Tr]) -> None:
+    """``w:trPr/w:ins`` on each new row, and a ``w:ins`` on each paragraph in it.
+
+    The one place rows are built is :func:`_row_element`, and the one place they
+    are marked is here, so ``add_rows`` and ``insert_rows`` track alike
+    (CR-003 section 14.7).
+    """
+    if tracker is None:
+        return
+    from docx4j_py.model.content.tracking import track_inserted_paragraph
+
+    for row in rows:
+        tracker.mark_row_inserted(row)
+        for cell, _owner in cells_of(row):
+            for block in getattr(cell, "content", None) or []:
+                if isinstance(block, P):
+                    track_inserted_paragraph(tracker, block)
+
+
 # ---------------------------------------------------------------------------
 # Table
 # ---------------------------------------------------------------------------
@@ -178,6 +197,11 @@ class Table:
     def tbl(self) -> Tbl:
         """The ``w:tbl``; docx4j's name for :attr:`element`."""
         return self.element
+
+    @property
+    def change_tracker(self) -> Any:
+        """The package's tracker while ``change_tracking_mode`` is on, else None."""
+        return self.parent_body.change_tracker
 
     @property
     def name(self) -> str:
@@ -417,15 +441,27 @@ class Table:
                 container.insert(index + offset, row)
                 link_parents(row)
                 row.parent = self.element
+            _mark_rows_inserted(self.change_tracker, added)
             change.touched(self.address)
             change.text(after="\n".join("\t".join(r) for r in (values or [])))
             return [TableRow(row, container, self) for row in added]
 
     def delete_rows(self, row_index: int, row_count: int = 1) -> None:
-        """Remove `row_count` rows from `row_index` (Office JS ``deleteRows``)."""
+        """Remove `row_count` rows from `row_index` (Office JS ``deleteRows``).
+
+        **While the package tracks changes** the rows stay in the tree and take
+        a ``w:trPr/w:del`` instead, so :attr:`row_count` and :attr:`values`
+        still report them until the change is accepted --- exactly as Word shows
+        them, and the one place a tracked call's answer differs from an
+        untracked one (CR-003 section 4).
+        """
         with recording(self.parent_body, "delete_rows") as change:
+            tracker = self.change_tracker
             rows = rows_of(self.element)[row_index : row_index + row_count]
             for element, container in reversed(rows):
+                if tracker is not None:
+                    tracker.mark_row_deleted(element)
+                    continue
                 index = _index_of(container, element)
                 if index >= 0:
                     del container[index]
@@ -433,7 +469,12 @@ class Table:
             change.text(after="")
 
     def delete(self) -> None:
-        """Remove the table from its container."""
+        """Remove the table from its container.
+
+        **While the package tracks changes** the table stays and every row is
+        marked deleted (``w:trPr/w:del``), which is what Word shows until the
+        change is accepted (CR-003 section 14.7).
+        """
         from docx4j_py.model.content.reports import moved_by_delete
 
         with recording(self.parent_body, "delete") as change:
@@ -442,6 +483,12 @@ class Table:
                 return
             change.touched(self.address)
             change.text(before=self.text, after="")
+            tracker = self.change_tracker
+            if tracker is not None:
+                for element, _container in rows_of(self.element):
+                    if getattr(getattr(element, "tr_pr", None), "del_value", None) is None:
+                        tracker.mark_row_deleted(element)
+                return
             change.shifted(moved_by_delete(self.parent_body, self.container, index))
             del self.container[index]
 
@@ -623,17 +670,26 @@ class TableRow:
                 self.container.insert(index + offset, row)
                 link_parents(row)
                 row.parent = owner
+            _mark_rows_inserted(self.parent_table.change_tracker, added)
             change.touched(self.parent_table.address)
             return [TableRow(row, self.container, self.parent_table) for row in added]
 
     def delete(self) -> None:
-        """Remove the row from its container."""
+        """Remove the row from its container.
+
+        **While the package tracks changes** the row stays and takes a
+        ``w:trPr/w:del`` (CR-003 section 4).
+        """
         with recording(self.parent_body, "delete") as change:
             index = _index_of(self.container, self.element)
             if index < 0:
                 return
             change.touched(self.parent_table.address)
             change.text(before=text_of(self.element), after="")
+            tracker = self.parent_table.change_tracker
+            if tracker is not None:
+                tracker.mark_row_deleted(self.element)
+                return
             del self.container[index]
 
     def to_dict(self) -> dict[str, Any]:

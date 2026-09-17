@@ -34,7 +34,7 @@ __all__ = ["Font"]
 class Font:
     """A subset of Office JS ``Word.Font``, over the ``w:rPr`` of a scope."""
 
-    __slots__ = ("_holders", "_record", "_scope")
+    __slots__ = ("_holders", "_record", "_scope", "_tracking")
 
     def __init__(
         self,
@@ -42,6 +42,7 @@ class Font:
         *,
         scope: str = "",
         record: Any = None,
+        tracking: Callable[[], Any] | None = None,
     ) -> None:
         """Build the view.
 
@@ -56,10 +57,16 @@ class Font:
                 :class:`~docx4j_py.model.content.reports.ChangeReport` with the
                 values either side (CR-003 section 3.4). None for a font over
                 something with no paragraph behind it.
+            tracking: called on every write; returns the
+                :class:`~docx4j_py.model.content.tracking.FontTracking` of a
+                package whose ``change_tracking_mode`` is on, or None. When it
+                returns one, each run's properties as they stand are recorded in
+                ``w:rPrChange`` before the write (CR-003 section 3.8).
         """
         self._holders = holders
         self._scope = scope
         self._record = record
+        self._tracking = tracking
 
     # -- the mapping -------------------------------------------------------
 
@@ -76,12 +83,17 @@ class Font:
             self._write(**options)
 
     def _write(self, **options: Any) -> None:
+        tracking = self._tracking() if self._tracking is not None else None
         for holder in self._holders():
             r_pr = getattr(holder, "r_pr", None)
             if r_pr is None:
                 r_pr = RPr()
                 holder.r_pr = r_pr
                 r_pr.parent = holder
+            # the properties as they are now become w:rPrChange, unless this run
+            # is this author's own insertion (CR-003 section 3.8)
+            if tracking is not None and tracking.records(holder):
+                tracking.tracker.record_r_pr_change(r_pr)
             apply_run_options(r_pr, **options)
 
     # -- Office JS's properties -------------------------------------------

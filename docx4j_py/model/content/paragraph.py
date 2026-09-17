@@ -22,6 +22,7 @@ The rules of section 4 that land here:
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING, Any
 
@@ -154,6 +155,12 @@ class Paragraph:
     def text(self, value: str) -> None:
         with recording(self.parent_body, "set_text") as change:
             change.text(before=self.text, after=value)
+            if self.change_tracker is not None:
+                # tracked, replacing the text is a deletion and an insertion,
+                # not a new run: the splice writes both (CR-003 section 3.8)
+                self.splice(0, len(self.text), value)
+                change.touched(self)
+                return
             r_pr = None
             runs = runs_of(self.element)
             if runs and getattr(runs[0], "r_pr", None) is not None:
@@ -270,12 +277,22 @@ class Paragraph:
     # -- paragraph properties ---------------------------------------------
 
     def _p_pr(self) -> Any:
-        """The ``w:pPr``, created and linked when absent. Every setter goes here."""
+        """The ``w:pPr``, created and linked when absent. Every setter goes here.
+
+        The **one** accessor every paragraph-property setter shares, which is
+        what makes it the place a tracked write records ``w:pPrChange`` with the
+        properties as they stood before it (CR-003 section 3.8). It is recorded
+        once: a second write keeps the first original. A paragraph this author
+        inserted records nothing --- its properties are this author's too.
+        """
         p_pr = self.element.p_pr
         if p_pr is None:
             p_pr = el.pPr()
             self.element.p_pr = p_pr
             p_pr.parent = self.element
+        tracker = self.change_tracker
+        if tracker is not None and not tracker.own_paragraph(self.element):
+            tracker.record_p_pr_change(p_pr)
         return p_pr
 
     def _ind(self) -> Any:
@@ -453,7 +470,38 @@ class Paragraph:
         mark's ``w:pPr/w:rPr``, which is a different thing and is what Word
         calls the paragraph mark's font.
         """
-        return Font(lambda: runs_of(self.element), scope="paragraph", record=self.formatting)
+        return Font(
+            lambda: runs_of(self.element),
+            scope="paragraph",
+            record=self.formatting,
+            tracking=self.font_tracking,
+        )
+
+    def font_tracking(self) -> Any:
+        """What :class:`Font` needs to record ``w:rPrChange``, or None (section 3.8).
+
+        The tracker and the runs that are **this author's own insertion**: a run
+        inside a ``w:ins`` of ours takes the formatting outright, because there
+        is nothing in the document yet to record as the original.
+        """
+        from docx4j_py.model.content.tracking import FontTracking, revision_of
+
+        tracker = self.change_tracker
+        if tracker is None:
+            return None
+        own = {
+            id(run)
+            for run in runs_of(self.element)
+            if tracker.own_insertion(revision_of(run))
+        }
+        return FontTracking(tracker, frozenset(own))
+
+    @property
+    def change_tracker(self) -> Any:
+        """The package's tracker while ``change_tracking_mode`` is on, else None."""
+        from docx4j_py.model.content.tracking import tracker_of
+
+        return tracker_of(self.parent_body.package)
 
     # -- the stable handles ------------------------------------------------
 
@@ -675,12 +723,20 @@ class Paragraph:
         """
         with recording(self.parent_body, "insert_break") as change:
             item = br("page" if type == "Page" else None)
+            tracker = self.change_tracker
             if location in ("Before", "After"):
                 new = self.insert_paragraph("", location=location)  # type: ignore[arg-type]
                 new.element.content.append(R(content=ChildList([item])))
                 link_parents(new.element)
+                if tracker is not None:
+                    from docx4j_py.model.content.tracking import wrap_new_runs
+
+                    wrap_new_runs(tracker, new.element)
                 return
-            run = R(content=ChildList([item]))
+            run: Any = R(content=ChildList([item]))
+            if tracker is not None:
+                link_parents(run)
+                run = tracker.ins([run])
             if location == "Start":
                 self.element.content.insert(0, run)
             elif location == "End":
@@ -812,17 +868,30 @@ class Paragraph:
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
         """Replace every match, last first so the offsets stay valid.
 
+        ``search`` then ``insert_text(replace, location="Replace")`` from the
+        last match to the first, so that the offsets of the ones still to do
+        stay valid --- **tracked** when the package's ``change_tracking_mode``
+        is on, in which case each replacement is a ``w:del`` and a ``w:ins``.
+        The report names the pair rather than the text either side, because one
+        call may touch many paragraphs (CR-003 section 16).
+
+        Args:
+            find: what to look for.
+            replace: what to put there.
+            **options: ``match_case``, ``match_whole_word``,
+                ``match_wildcards`` and ``limit``, as :meth:`search`.
+
         Returns:
             How many were replaced.
         """
         with recording(self.parent_body, "replace_text") as change:
-            before = self.text
+            change.text(before=find)
             matches = self.search(find, **options)
             for match in reversed(matches):
                 match.insert_text(replace, location="Replace")
             if matches:
                 change.touched(self)
-                change.text(before=before, after=self.text)
+            change.text(after=replace)
             return len(matches)
 
     def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
@@ -855,6 +924,19 @@ class Paragraph:
         """
         return self.get_range().insert_comment(text)
 
+    # -- change tracking (CR-003 section 3.8, Phase F) ----------------------
+
+    def get_tracked_changes(self) -> list[Any]:
+        """The tracked changes in this paragraph, in document order (Office JS).
+
+        The paragraph's own ``w:pPrChange`` and mark revisions first, then the
+        run-level ``w:ins``, ``w:del``, ``w:moveFrom``, ``w:moveTo`` and
+        ``w:rPrChange`` in document order.
+        """
+        from docx4j_py.model.content.tracked_change import tracked_changes_of_paragraph
+
+        return tracked_changes_of_paragraph(self)
+
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A :class:`~docx4j_py.model.content.Range` over this paragraph."""
         from docx4j_py.model.content.range import Range
@@ -867,15 +949,55 @@ class Paragraph:
         return Range(self, 0, length)
 
     def delete(self) -> None:
-        """Remove the paragraph from its container."""
+        """Remove the paragraph from its container.
+
+        **While the package tracks changes** the paragraph stays: its content
+        becomes a ``w:del`` and its mark is marked deleted
+        (``w:pPr/w:rPr/w:del``), which is what Word shows until the change is
+        accepted --- unless the whole paragraph was this author's own
+        insertion, which Word simply takes back.
+
+        Raises:
+            TrackedChangeError: tracked, and this paragraph's mark is already
+                marked deleted.
+        """
         with recording(self.parent_body, "delete") as change:
             index = self.index
             if index < 0:
+                return
+            tracker = self.change_tracker
+            if tracker is not None:
+                change.touched(self)
+                change.text(before=self.text, after="")
+                self._tracked_delete(tracker)
                 return
             change.touched(self)
             change.text(before=self.text, after="")
             change.shifted(moved_by_delete(self.parent_body, self.container, index))
             del self.container[index]
+
+    def _tracked_delete(self, tracker: Any) -> None:
+        """The tracked half of :meth:`delete`: the content, then the mark."""
+        from docx4j_py.model.content.tracking import mark_deleted
+
+        if mark_deleted(self.element):
+            from docx4j_py.model.content.errors import TrackedChangeError
+
+            raise TrackedChangeError(
+                "this paragraph's mark is already marked deleted",
+                code="tracking.already_deleted",
+                hint="accept or reject the deletion before deleting the paragraph again",
+            )
+        length = len(self.text)
+        if length:
+            self._delete_text(tracker, 0, length)
+        if tracker.own_paragraph(self.element) and not self.element.content:
+            # our own insertion, taken back whole: the paragraph simply goes
+            index = self.index
+            if index >= 0:
+                del self.container[index]
+            return
+        tracker.mark_paragraph_deleted(self.element)
 
     def get_xml(self) -> str:
         """The paragraph as XML, with docx4j's prefixes. Extension."""
@@ -928,6 +1050,15 @@ class Paragraph:
         length = len(self.text)
         start = max(0, min(start, length))
         end = max(start, min(end, length))
+
+        tracker = self.change_tracker
+        if tracker is not None:
+            # a replacement is the w:del first and the w:ins after it, as Word
+            # writes one (CR-003 section 4)
+            deletions = self._delete_text(tracker, start, end) if end > start else []
+            if text:
+                self._insert_tracked(tracker, start, text, deletions[-1] if deletions else None)
+            return Range(self, start, start + len(text))
 
         segments = self.segments()
         inserted = False
@@ -1023,6 +1154,214 @@ class Paragraph:
             link_parents(item)
             item.parent = owner
 
+    # -- tracked editing (CR-003 section 3.8, Phase F) ----------------------
+
+    def _delete_text(self, tracker: Any, start: int, end: int) -> list[_Anchor]:
+        """The text in ``[start, end)`` becomes a deletion; returns the ``w:del``\\ s.
+
+        The runs holding it are isolated, their ``w:t`` turned into
+        ``w:delText``, and each run of consecutive ones moved into one
+        ``w:del``. Text **this author** had inserted is simply removed, as Word
+        does, rather than nested in a ``w:del``.
+        """
+        from docx4j_py.model.content.tracking import revision_of, to_deleted_text
+
+        targets = self._isolate(start, end)
+        for segment in targets:
+            tracker.assert_editable(revision_of(segment.run))
+
+        runs: list[_Target] = []
+        for segment in targets:
+            if runs and runs[-1].run is segment.run:
+                continue
+            revision = revision_of(segment.run)
+            runs.append(
+                _Target(
+                    run=segment.run,
+                    owner=segment.run_owner,
+                    own=tracker.own_insertion(revision),
+                    revision=revision,
+                )
+            )
+
+        groups: list[list[_Target]] = []
+        for target in runs:
+            group = groups[-1] if groups else None
+            previous = group[-1] if group else None
+            if (
+                group is not None
+                and previous is not None
+                and previous.own == target.own
+                and previous.owner is target.owner
+                and _index_of(target.owner, target.run)
+                == _index_of(previous.owner, previous.run) + 1
+            ):
+                group.append(target)
+            else:
+                groups.append([target])
+
+        made: list[_Anchor] = []
+        for group in reversed(groups):
+            owner = group[0].owner
+            at = _index_of(owner, group[0].run)
+            if at < 0:
+                continue
+            taken = list(owner[at : at + len(group)])
+            del owner[at : at + len(group)]
+            if group[0].own:
+                # taking back our own insertion: the runs go, and an emptied
+                # w:ins with them
+                revision = group[0].revision
+                if revision is not None and not revision.items:
+                    index = _index_of(revision.owner, revision.element)
+                    if index >= 0:
+                        del revision.owner[index]
+                continue
+            for run in taken:
+                to_deleted_text(run)
+            deletion = tracker.deletion(taken)
+            owner.insert(at, deletion)
+            revision = group[0].revision
+            parent = (
+                revision.element
+                if revision is not None
+                else (getattr(group[0].run, "parent", None) or self.element)
+            )
+            deletion.parent = parent
+            made.insert(0, _Anchor(owner=owner, element=deletion, parent=parent))
+        return made
+
+    def _insert_tracked(
+        self, tracker: Any, at: int, text: str, anchor: _Anchor | None = None
+    ) -> None:
+        """Text inserted at `at` as a ``w:ins``, extending one of ours where it can.
+
+        A run of this author's own that is already inside a ``w:ins`` is
+        extended rather than nested in another one, as Word does. `anchor` is
+        the ``w:del`` of a replacement, which the insertion must follow.
+        """
+        from docx4j_py.model.content.tracking import copy_r_pr, revision_of
+
+        if anchor is not None:
+            source = runs_of(anchor.element, view="original")
+            r_pr = copy_r_pr(getattr(source[0], "r_pr", None) if source else None)
+            wrapper = tracker.ins([_run_of(text, r_pr)])
+            index = _index_of(anchor.owner, anchor.element)
+            anchor.owner.insert(index + 1 if index >= 0 else len(anchor.owner), wrapper)
+            wrapper.parent = anchor.parent
+            return
+
+        at = self.split_at(at)
+        segments = self.segments()
+        before = next((s for s in reversed(segments) if s.end <= at), None)
+        after = next((s for s in segments if s.start >= at), None)
+        for segment, side in ((before, "after"), (after, "before")):
+            if segment is None:
+                continue
+            revision = revision_of(segment.run)
+            if not tracker.own_insertion(revision):
+                continue
+            if segment.editable:
+                value = (
+                    segment.text + text if side == "after" else text + segment.text
+                )
+                set_text(segment.item, value)
+            else:
+                run = _run_of(text, copy_r_pr(getattr(segment.run, "r_pr", None)))
+                index = segment.run_index + (1 if side == "after" else 0)
+                segment.run_owner.insert(index, run)
+                link_parents(run)
+                run.parent = revision.element if revision is not None else self.element
+            return
+
+        neighbour = before or after
+        revision = revision_of(neighbour.run) if neighbour is not None else None
+        tracker.assert_editable(revision)
+        source = neighbour.run if neighbour is not None else None
+        if source is None:
+            runs = runs_of(self.element)
+            source = runs[0] if runs else None
+        wrapper = tracker.ins([_run_of(text, copy_r_pr(getattr(source, "r_pr", None)))])
+        if neighbour is None:
+            if at == 0:
+                self.element.content.insert(0, wrapper)
+            else:
+                self.element.content.append(wrapper)
+            wrapper.parent = self.element
+            return
+        owner = revision.owner if revision is not None else neighbour.run_owner
+        item = revision.element if revision is not None else neighbour.run
+        parent = (
+            getattr(revision.element, "parent", None)
+            if revision is not None
+            else getattr(neighbour.run, "parent", None)
+        ) or self.element
+        index = _index_of(owner, item)
+        owner.insert(index + (1 if neighbour is before else 0), wrapper)
+        wrapper.parent = parent
+
+    def _isolate(self, start: int, end: int) -> list[Any]:
+        """Split runs so that each one holding text in ``[start, end)`` holds nothing else.
+
+        :meth:`split_at` does the ``w:t`` boundaries; this also moves the items
+        of a run that straddles a boundary --- a tab, a break, a drawing --- out
+        into runs of their own, so that a partly deleted run is not wholly
+        deleted.
+        """
+
+        def inside() -> list[Any]:
+            return [
+                segment
+                for segment in self.segments()
+                if segment.start >= start and segment.end <= end and segment.text
+            ]
+
+        self.split_at(start)
+        self.split_at(end, prefer="forward")
+        for _guard in range(10_000):  # pragma: no branch - the loop always settles
+            found = inside()
+            split = False
+            seen: set[int] = set()
+            for segment in found:
+                if id(segment.run) in seen:
+                    continue
+                seen.add(id(segment.run))
+                of_run = [s for s in found if s.run is segment.run]
+                first, last = of_run[0], of_run[-1]
+                if first.index > 0:
+                    self._split_run_before(first)
+                    split = True
+                    break
+                if last.index < len(last.owner) - 1:
+                    self._split_run_after(last)
+                    split = True
+                    break
+            if not split:
+                return found
+        return inside()  # pragma: no cover - 10,000 splits in one paragraph
+
+    def _split_run_before(self, segment: Any) -> None:
+        """Move the items before `segment` into a run of their own, in front of it."""
+        from docx4j_py.model.content.tracking import copy_r_pr
+
+        head = list(segment.owner[: segment.index])
+        del segment.owner[: segment.index]
+        run = _run_items(head, copy_r_pr(getattr(segment.run, "r_pr", None)))
+        segment.run_owner.insert(segment.run_index, run)
+        run.parent = getattr(segment.run, "parent", None) or self.element
+
+    def _split_run_after(self, segment: Any) -> None:
+        """Move the items after `segment` into a run of their own, behind it."""
+        from docx4j_py.model.content.tracking import copy_r_pr
+
+        tail = list(segment.owner[segment.index + 1 :])
+        if not tail:
+            return
+        del segment.owner[segment.index + 1 :]
+        run = _run_items(tail, copy_r_pr(getattr(segment.run, "r_pr", None)))
+        segment.run_owner.insert(segment.run_index + 1, run)
+        run.parent = getattr(segment.run, "parent", None) or self.element
+
     def _remove_empty_runs(self) -> None:
         """Drop runs an edit emptied, and revisions left holding nothing."""
         from docx4j_py.model.content.text_model import _REVISIONS, RUN_HOLDER_NAMES
@@ -1052,3 +1391,49 @@ def _text_run(text: str) -> R:
     from docx4j_py.wml import r as run_builder
 
     return run_builder(text)
+
+
+# ---------------------------------------------------------------------------
+# the tracked primitives' helpers (CR-003 section 3.8, Phase F)
+# ---------------------------------------------------------------------------
+
+
+def _index_of(items: list, element: Any) -> int:
+    """The index of an element **by identity**; ``-1`` when it is not there."""
+    for index, item in enumerate(items):
+        if item is element:
+            return index
+    return -1
+
+
+def _run_of(text: str, r_pr: Any = None) -> R:
+    """One ``w:r`` of exactly this text, with the formatting given."""
+    return _run_items([t(text)], r_pr)
+
+
+def _run_items(items: list, r_pr: Any = None) -> R:
+    """One ``w:r`` of these run children, with the formatting given, parents linked."""
+    run = R(content=ChildList(list(items)))
+    if r_pr is not None:
+        run.r_pr = r_pr
+    link_parents(run)
+    return run
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _Target:
+    """One run a tracked deletion is about to move into a ``w:del``."""
+
+    run: Any
+    owner: list
+    own: bool
+    revision: Any = None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _Anchor:
+    """Where a ``w:ins`` goes when it must follow the ``w:del`` of a replacement."""
+
+    owner: list
+    element: Any
+    parent: Any

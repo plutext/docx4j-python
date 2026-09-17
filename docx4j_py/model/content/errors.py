@@ -16,6 +16,7 @@ catches only it.
         ├── InvalidTargetError  this container cannot hold that element
         ├── StyleError          no such style, and the five closest names
         ├── SpanError           a span that cannot be formed or edited
+        ├── TrackedChangeError  an edit a tracked document cannot carry
         └── BuilderError        a tree-layer builder was given the wrong thing
 
 :class:`BuilderError` is CR-003 Phase A's, re-rooted here as Phase A's notes
@@ -37,6 +38,7 @@ __all__ = [
     "InvalidTargetError",
     "SpanError",
     "StyleError",
+    "TrackedChangeError",
 ]
 
 #: CR-003's name for CR-002's root. The same class, not a subclass: one
@@ -106,6 +108,19 @@ class SpanError(ContentError):
 
     default_code = "range.invalid"
     default_hint = "use get_range() or search() to obtain a span of this paragraph"
+
+
+class TrackedChangeError(ContentError):
+    """An edit a document with tracked changes cannot carry (CR-003 section 3.8).
+
+    Editing text another author deleted, deleting a paragraph whose mark is
+    already marked deleted, accepting or rejecting a change that is no longer in
+    the tree. The message names the author where there is one, because that is
+    what tells a caller whose revision is in the way.
+    """
+
+    default_code = "tracking.error"
+    default_hint = "reject the revision first, or edit a span that is not deleted"
 
 
 class BuilderError(ContentError, ValueError):

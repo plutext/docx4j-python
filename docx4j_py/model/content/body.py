@@ -232,6 +232,17 @@ class Body(Sequence):
         """
         return Body(self.part, container, prefix or self.prefix, self.package)
 
+    @property
+    def change_tracker(self) -> Any:
+        """The package's tracker while ``change_tracking_mode`` is on, else None.
+
+        What every mutation asks for: when it gets one it writes Word's revision
+        markup instead of editing in place (CR-003 section 3.8).
+        """
+        from docx4j_py.model.content.tracking import tracker_of
+
+        return tracker_of(self.package)
+
     # -- Sequence ----------------------------------------------------------
 
     def __len__(self) -> int:
@@ -440,6 +451,11 @@ class Body(Sequence):
                 R(content=ChildList([br("page" if type == "Page" else None)]))
             )
             link_parents(paragraph.element)
+            tracker = self.change_tracker
+            if tracker is not None:
+                from docx4j_py.model.content.tracking import wrap_new_runs
+
+                wrap_new_runs(tracker, paragraph.element)
 
     def insert_xml(
         self,
@@ -764,12 +780,23 @@ class Body(Sequence):
             )
 
         self._check(elements, owner)
+        tracker = self.change_tracker
         for offset, item in enumerate(elements):
             container.insert(index + offset, item)
             link_parents(item)
             item.parent = owner
             if isinstance(item, P):
                 change.created(assign_para_id(self, item))
+                if tracker is not None:
+                    from docx4j_py.model.content.tracking import (
+                        track_inserted_paragraph,
+                    )
+
+                    track_inserted_paragraph(tracker, item)
+            elif isinstance(item, Tbl) and tracker is not None:
+                from docx4j_py.model.content.tracking import track_inserted_table
+
+                track_inserted_table(tracker, item)
         if change.active:
             # the address is known: this call chose the index. Asking
             # ``address_of`` for it instead would scan the container, which is
@@ -963,24 +990,121 @@ class Body(Sequence):
         return out
 
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
-        """Replace every match, last first so the offsets stay valid.
+        """Replace every match in this body, last first so the offsets stay valid.
+
+        ``search`` then ``insert_text(replace, location="Replace")`` from the
+        last match of each paragraph to the first, **tracked** when the
+        package's ``change_tracking_mode`` is on. One
+        :class:`~docx4j_py.model.content.reports.ChangeReport` covers the whole
+        body, however many paragraphs it touches, and it names the pair
+        (``text_before`` is `find`, ``text_after`` is `replace`) rather than the
+        text either side, which would be meaningless for many matches.
+
+        Args:
+            find: what to look for.
+            replace: what to put there.
+            **options: ``match_case``, ``match_whole_word``,
+                ``match_wildcards`` and ``limit``, as :meth:`search`.
 
         Returns:
             How many were replaced.
         """
         with recording(self, "replace_text") as change:
+            change.text(before=find)
             count = 0
             for paragraph in self.paragraphs:
                 count += paragraph.replace_text(find, replace, **options)
-            change.text(before=find, after=replace)
+            change.text(after=replace)
             return count
 
     def clear(self) -> None:
-        """Remove every block. The section properties stay where they are."""
+        """Remove every block. The section properties stay where they are.
+
+        **While the package tracks changes** nothing is removed: every row takes
+        a ``w:trPr/w:del`` and every paragraph is deleted as
+        :meth:`Paragraph.delete` deletes one, so the document still shows what
+        was there until the changes are accepted (CR-003 section 4).
+        """
         with recording(self, "clear") as change:
             change.text(before=self.text, after="")
             change.touched(self.prefix)
-            self.content.clear()
+            tracker = self.change_tracker
+            if tracker is None:
+                self.content.clear()
+                return
+            from docx4j_py.model.content.tracking import mark_deleted
+
+            for row in self._row_elements():
+                if getattr(getattr(row, "tr_pr", None), "del_value", None) is None:
+                    tracker.mark_row_deleted(row)
+            for paragraph in self.paragraphs:
+                if not mark_deleted(paragraph.element):
+                    paragraph.delete()
+
+    def _row_elements(self) -> list[Any]:
+        """Every ``w:tr`` in this body's tables, in document order, nested ones included."""
+        from docx4j_py.model.content.text_model import cells_of, rows_of
+
+        out: list[Any] = []
+
+        def visit(items: list) -> None:
+            for item in items:
+                if isinstance(item, Tbl):
+                    for row, _owner in rows_of(item):
+                        out.append(row)
+                        for cell, _cell_owner in cells_of(row):
+                            children = block_children_of(cell)
+                            if children is not None:
+                                visit(children)
+                    continue
+                children = block_children_of(item)
+                if children is not None:
+                    visit(children)
+
+        visit(list(self.content))
+        return out
+
+    # -- change tracking (CR-003 section 3.8, Phase F) ----------------------
+
+    def get_tracked_changes(self) -> list[Any]:
+        """Every tracked change in this body, in document order (Office JS).
+
+        A :class:`~docx4j_py.model.content.tracked_change.TrackedChange` per
+        ``w:ins``, ``w:del``, ``w:moveFrom``, ``w:moveTo``, ``w:rPrChange``,
+        ``w:pPrChange``, paragraph mark and table row revision.
+        """
+        from docx4j_py.model.content.tracked_change import tracked_changes_of_body
+
+        return tracked_changes_of_body(self)
+
+    def accept_all(self) -> int:
+        """Accept every tracked change; returns how many (Office JS's ``acceptAll``).
+
+        One pass in **reverse document order**, so that a paragraph join never
+        disturbs a change still to do. A ``w:ins`` is unwrapped, a ``w:del``
+        removed, a deleted paragraph mark joins its paragraph with the next and
+        a deleted row removed, as docx4j's ``AcceptTrackedChanges`` does; unlike
+        that conversion preprocessor, this also drops ``w:rPrChange`` and
+        ``w:pPrChange``, which is what accepting means for a document that is
+        saved again (CR-003 section 4).
+        """
+        with recording(self, "accept_all") as change:
+            changes = self.get_tracked_changes()
+            for tracked in reversed(changes):
+                tracked.accept()
+            change.touched(self.prefix)
+            change.text(after=self.text)
+            return len(changes)
+
+    def reject_all(self) -> int:
+        """Reject every tracked change; returns how many. The mirror of :meth:`accept_all`."""
+        with recording(self, "reject_all") as change:
+            changes = self.get_tracked_changes()
+            for tracked in reversed(changes):
+                tracked.reject()
+            change.touched(self.prefix)
+            change.text(after=self.text)
+            return len(changes)
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A range over this body's first or last paragraph (Office JS's shape)."""

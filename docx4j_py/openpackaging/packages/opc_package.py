@@ -66,11 +66,14 @@ class OpcPackage:
         "__weakref__",
         "_assigns_para_ids",
         "_author",
+        "_change_tracker",
+        "_change_tracking_mode",
         "_changes",
         "_current_change",
         "_id_rng",
         "_id_seed",
         "_para_ids_taken",
+        "_tracked_change_date",
         "content_type_manager",
         "custom_xml_data_storage_parts",
         "doc_props_core_part",
@@ -120,6 +123,16 @@ class OpcPackage:
         # storage is here and the ``author`` property is installed by
         # ``docx4j_py.model.content.register()``, as ``body`` is.
         self._author: Any = None
+        # CR-003 section 3.8: the change-tracking mode (over ``w:trackRevisions``
+        # in the settings part, cached here so that a loop of edits reads the
+        # part once), the tracker the content API writes revisions through, and
+        # the fixed date a revision carries instead of the wall clock. Plain
+        # containers again: the ``change_tracking_mode`` and
+        # ``tracked_change_date`` properties are installed by
+        # ``docx4j_py.model.content.register()``, as ``author`` is.
+        self._change_tracking_mode: Any = None
+        self._change_tracker: Any = None
+        self._tracked_change_date: Any = None
 
     # -- the agent surface's state (CR-003 section 3.4) --------------------
 

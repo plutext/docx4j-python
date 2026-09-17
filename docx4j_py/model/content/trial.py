@@ -164,6 +164,8 @@ class TrialPackage:
         "_added",
         "_assigns_para_ids",
         "_author",
+        "_change_tracker",
+        "_change_tracking_mode",
         "_changes",
         "_current_change",
         "_id_rng",
@@ -171,6 +173,7 @@ class TrialPackage:
         "_package",
         "_para_ids_taken",
         "_parts",
+        "_tracked_change_date",
     )
 
     def __init__(self, package: Any) -> None:
@@ -185,6 +188,12 @@ class TrialPackage:
         # who a trial's comments are by: the real package's identity unless the
         # trial is given one of its own, which stays with the trial
         self._author: Any = None
+        # change tracking is the trial's own too (CR-003 Phase F): a trial that
+        # turns tracking on writes ``w:trackRevisions`` into its **copy** of the
+        # settings part, and the real document's mode is not touched
+        self._change_tracking_mode: Any = None
+        self._change_tracker: Any = None
+        self._tracked_change_date: Any = package.tracked_change_date
         # a trial allocates ids from its own generator, seeded like the real
         # one, so that a trial and the commit that follows it agree
         self._id_seed = package.id_seed
@@ -381,6 +390,58 @@ class TrialPackage:
         from docx4j_py.model.content.comments import Author
 
         self._author = Author(value) if isinstance(value, str) else value
+
+    @property
+    def change_tracking_mode(self) -> str:
+        """The trial's mode: the real package's, until the trial sets its own.
+
+        Setting it here writes ``w:trackRevisions`` into the trial's **copy** of
+        ``/word/settings.xml``, so a dry run of "turn tracking on and edit"
+        leaves the real document's settings part exactly as it was.
+        """
+        from docx4j_py.model.content.tracking import mode_of
+
+        if self._change_tracking_mode is None:
+            return str(self._package.change_tracking_mode)
+        return str(mode_of(self))
+
+    @change_tracking_mode.setter
+    def change_tracking_mode(self, value: str | None) -> None:
+        from docx4j_py.model.content.tracking import set_mode
+
+        set_mode(self, None if value is None else str(value))
+
+    @property
+    def document_settings_part(self) -> Any:
+        """``/word/settings.xml``: the **real** part until the trial writes to it.
+
+        A read --- ``describe()``'s ``tracking_on``, the mode getter --- reads
+        the real part's bytes with lxml and leaves it as it was (CR-003 section
+        15.3's rule, applied to this part). Only
+        :meth:`writable_settings_part`, which the mode setter calls, makes the
+        copy; from then on this answers with it.
+        """
+        real = self._package.document_settings_part
+        if real is None:
+            return None
+        return self._parts.get(id(real), real)
+
+    def writable_settings_part(self) -> Any:
+        """The trial's **copy** of the settings part, made now. The mode setter's."""
+        return self.trial_part(self._package.document_settings_part)
+
+    @property
+    def tracked_change_date(self) -> Any:
+        """The trial's fixed revision date; the real package's by default."""
+        return self._tracked_change_date
+
+    @tracked_change_date.setter
+    def tracked_change_date(self, value: Any) -> None:
+        self._tracked_change_date = value
+
+    def get_tracked_changes(self) -> list[Any]:
+        """The trial's tracked changes, over the copies."""
+        return list(self.body.get_tracked_changes())
 
     @property
     def id_seed(self) -> int | None:

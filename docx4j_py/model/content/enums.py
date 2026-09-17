@@ -21,18 +21,24 @@ from typing import Literal
 __all__ = [
     "ALIGNMENTS",
     "BREAK_TYPES",
+    "CHANGE_TRACKING_MODES",
+    "TRACKED_CHANGE_TYPES",
     "UNDERLINE_TYPES",
     "Alignment",
     "AlignmentValue",
     "BodyLocation",
     "BreakType",
     "BreakTypeValue",
+    "ChangeTracking",
+    "ChangeTrackingModeValue",
     "InsertLocation",
     "Location",
     "ParagraphLocation",
     "RangeLocation",
     "TextLocation",
     "TextView",
+    "TrackedChangeType",
+    "TrackedChangeTypeValue",
     "UnderlineType",
     "UnderlineValue",
 ]
@@ -166,3 +172,44 @@ class BreakType(StrEnum):
 
 #: Every break type, in Office JS's order.
 BREAK_TYPES: tuple[str, ...] = tuple(b.value for b in BreakType)
+
+
+# ---------------------------------------------------------------------------
+# change tracking (CR-003 section 3.8)
+# ---------------------------------------------------------------------------
+
+#: Office JS ``Word.ChangeTrackingMode``. ``"TrackMineOnly"`` is **stored as**
+#: ``"TrackAll"``: ``w:trackRevisions`` is a flag and a file cannot tell the two
+#: apart (CR-003 section 4).
+ChangeTrackingModeValue = Literal["Off", "TrackAll", "TrackMineOnly"]
+
+
+class ChangeTracking(StrEnum):
+    """Office JS ``Word.ChangeTrackingMode``."""
+
+    OFF = "Off"
+    TRACK_ALL = "TrackAll"
+    TRACK_MINE_ONLY = "TrackMineOnly"
+
+
+#: Every mode, in Office JS's order.
+CHANGE_TRACKING_MODES: tuple[str, ...] = tuple(m.value for m in ChangeTracking)
+
+
+#: Office JS ``Word.TrackedChangeType``. ``"None"`` is in Office JS's list and is
+#: never produced here: every piece of markup a ``TrackedChange`` is over is an
+#: insertion, a deletion or a formatting change.
+TrackedChangeTypeValue = Literal["Added", "Deleted", "Formatted", "None"]
+
+
+class TrackedChangeType(StrEnum):
+    """Office JS ``Word.TrackedChangeType``."""
+
+    ADDED = "Added"
+    DELETED = "Deleted"
+    FORMATTED = "Formatted"
+    NONE = "None"
+
+
+#: Every tracked-change type, in Office JS's order.
+TRACKED_CHANGE_TYPES: tuple[str, ...] = tuple(t.value for t in TrackedChangeType)
