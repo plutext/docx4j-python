@@ -2049,3 +2049,18 @@ So the phase uses two:
 - **`Comment.delete()` is not tracked**, as `ContentControl.delete` is not (section 4, 14.7). A
   comment is not content; deleting one leaves no revision markup, and Phase F should leave that
   as it is.
+
+### 15.7 What Word said about artefact 7 (2026-09-17)
+
+The Word check passed, with two observations worth keeping. The comments pane lists threads in
+**document order of their anchors**, not insertion order: the whole-paragraph comment comes first
+because its `w:commentRangeStart` sits at the paragraph's start, before the range on "first"
+inside the same paragraph. And on save Word's Compatibility Checker reported "Comments which have
+been collapsed will no longer be collapsed", one occurrence: `samples/2010-sample1.docx` is a
+Word 2010 document (`w:compatSetting compatibilityMode` 14) and a resolved thread (`w15:done`)
+is a Word 2013 feature, so Word warns that saving in the older mode drops it. It is Word's own
+downgrade warning, the same one a person resolving a comment in that document would see, and not
+a defect in the markup. A `resolved = True` on a document whose compatibility mode is below 15
+could add a `ChangeReport.warnings` line saying so, which would cost one lxml read of
+`settings.xml`; not done, noted for whoever finds an agent confused by the dialog.
+
