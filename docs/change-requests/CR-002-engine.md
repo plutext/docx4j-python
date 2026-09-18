@@ -907,10 +907,11 @@ This engine fills it in:
 need the full walk, and `scripts/parents.py` still measures the hook against it.
 
 The numbers, on this machine in one session. Over the 50 typed parts of `samples/`
-(`scripts/parents.py`, which now parses each part both ways and checks both trees): parse
-plus walk 293 ms, hooked parse 268 ms. On `Symbols.docx`'s main part alone it is a **wash**
---- 189 ms against 193 --- because `link_parents` over that part was only 20 ms to begin
-with, and the per-object callback costs about what the walk's own bookkeeping cost. The
+(`scripts/parents.py`, which now parses each part both ways and checks both trees) the
+hooked parse is 3 to 5% ahead: 268 ms against 293, 274 against 282, 283 against 291 and
+285 against 301, over four runs. On `Symbols.docx`'s main part alone it is a **wash** ---
+189 ms against 193 --- because `link_parents` over that part was only 20 ms to begin with,
+and the per-object callback costs about what the walk's own bookkeeping cost. The
 fork's CR-001 section 10.4 records why the CR expected more: its "0.12 s of the parse is
 `link_parents`" was a profiled cumulative time, not a real one.
 
