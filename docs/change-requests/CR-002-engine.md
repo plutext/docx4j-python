@@ -342,11 +342,13 @@ imported by the runtime path.
 - **MCE:** the `mce="resolve"` view of `text_of` on the text-box fixtures equals the text Word
   reports; `mce_preprocess=True` produces the same tree as docx4j's preprocessor on the same
   input (a small Java harness, output committed).
-- **Parity with docx4j:** golden files produced by a Java harness under `test/java/` (run by
-  hand, output committed): for each fixture and paragraph, docx4j's effective `PPr` and `RPr` as
-  XML and the numbering string; the Python resolver must produce the same. docx4j-core-ts planned
-  the same harness and has not built it yet; build it here and share the golden files with that
-  repository.
+- **Parity with docx4j:** golden files produced by a Java harness: for each fixture and
+  paragraph, docx4j's effective `PPr` and `RPr` as XML and the numbering result; the Python
+  resolver must produce the same. *Decided 2026-09-19: the harness is built in docx4j-core-ts
+  (`test/java/`, against a pinned docx4j build) and its JSON goldens are committed there under
+  `test/golden/<fixture>.json`; this repository **consumes** those files and builds no harness
+  of its own (section 12.12). The property values inside are XML strings docx4j marshalled, to
+  be unmarshalled here and compared as object trees, never as text.*
 - **Word acceptance** is manual: saved output opens in Word without repair prompts. The checklist
   from docx4j-core-ts `test/README.md` is copied and extended with the settings part.
 - **Threads:** `scripts/threads.py` extended to whole packages, with one `ParserConfig` per
@@ -374,7 +376,7 @@ skipped-content report suffice.
 | Phase | Content | Effort |
 |---|---|---|
 | A | `openpackaging/` core: stores, `PartName`, content types, relationships, parts, registry, `OpcPackage` and `WordprocessingMLPackage`, load and save for zip, directory and memory, `create_package`, MCE view and preprocessor, `mc:Ignorable` on write, settings patch, round-trip and thread tests, Word acceptance checklist | 5 days |
-| B | `PropertyResolver` and `StyleUtil`; numbering `Emulator`; `RunFontSelector` and `IdentityPlusMapper`; the Java parity harness and golden files | 6 days |
+| B | `PropertyResolver` and `StyleUtil`; numbering `Emulator` (its core landed early, section 12.11); `RunFontSelector` and `IdentityPlusMapper`; the parity test over docx4j-core-ts's committed goldens (section 12.12; the harness is not built here) | 5 days |
 | C | PML and SML packages with main parts (after CR-001 Phase D); flat OPC store and sink; docs and examples (server, MCP) | 3 days |
 
 Phase A alone is useful: a typed docx round trip with edits through `el` and the builders. CR-003
@@ -659,9 +661,10 @@ nothing is rewritten at save time (decided question 2). Tests in
 
 * **Phase B**, unblocked and unchanged: `PropertyResolver` and `StyleUtil`; ~~the numbering
   `Emulator`~~ (**its counting core landed early through CR-003 Phase H on 2026-09-17: section
-  12.11**, which says what of it is left); `RunFontSelector` and `IdentityPlusMapper`; the Java
-  parity harness and its golden files. `MainDocumentPart.fonts_in_use()` and `styles_in_use()` go
-  with them.
+  12.11**, which says what of it is left); `RunFontSelector` and `IdentityPlusMapper`; the parity
+  test over the goldens docx4j-core-ts commits (**the harness is built there, not here**: decided
+  2026-09-19, section 12.12). `MainDocumentPart.fonts_in_use()` and `styles_in_use()` go with
+  them.
 * **Phase C**: `PresentationMLPackage` and `SpreadsheetMLPackage` with typed main parts (after
   CR-001 Phase D); `FlatOpcPartStore` and `FlatOpcPartSink`; the chart-namespace schema patches of
   12.5; docs and examples. **Half of the flat OPC item is done**: CR-003 Phase C needed to read a
@@ -776,3 +779,51 @@ label Word paints**, including the two docx4j itself got wrong before CR-014
 
 Nothing in CR-002 Phase B changes shape because of this; the emulator is where
 6.2 said it would be, and Phase B fills in the resolution underneath it.
+
+### 12.12 The Java parity harness is docx4j-core-ts's; Python consumes its goldens (2026-09-19)
+
+Section 8 planned a Java harness under this repository's `test/java/` and offered to share its
+goldens with docx4j-core-ts. Decided the other way round on 2026-09-19, with the TypeScript
+engine's Phase B implementation plan (docx4j-core-ts CR-001 section 14): the harness is a Maven
+project in `docx4j-core-ts/test/java/` against a pinned local build of `../docx4j`
+(17.1.1-SNAPSHOT), and it writes one JSON golden per fixture into
+`docx4j-core-ts/test/golden/<fixture>.json`. Each golden carries a header (docx4j commit, date),
+`styles` (the effective `w:pPr` and `w:rPr` per style id, the default paragraph style, the
+document defaults), `stories` (main document, each header and footer, footnotes, endnotes,
+comments: per block-level paragraph the effective `w:pPr`, the paragraph mark's `w:rPr`, the
+numbering result --- `numString`, `isBullet`, `numFont`, `ind`, `ilvl`, `labelRPr`,
+`notNumbered` --- under one `NumberingState` per story as docx4j's CR-014 defines them, and per
+run the effective `w:rPr` and the font spans `RunFontSelector.documentFontFor` gives, folded by
+code point, with the `IdentityPlusMapper` result) and `tables` (the effective table style and
+whether the chain reaches the default). Property values are XML strings docx4j marshalled with
+its prefixes, to be unmarshalled by each port and compared as object trees, never as text.
+
+What this changes here:
+
+* **No harness is built in this repository.** Phase B's parity test reads the committed goldens
+  from the sibling checkout (`../docx4j-core-ts/test/golden/`) and skips when it is absent, the
+  way `scripts/office_js_subset.py` and the python-docx parity test already behave. Section 8's
+  estimate for Phase B drops by a day.
+* **The fixtures keep their names on both sides.** The six numbering fixtures this repository
+  copied from docx4j-layout-fidelity for Phase H (`numbering-default-style-numbered`,
+  `numbering-lvlrestart`, `numbering-numstylelink-separate`, `numbering-shared-abstract`,
+  `numbering-stories`, `styles-numpr-ilvl-only`) are copied there unchanged with provenance, so
+  a golden's name matches a fixture here. The twenty `styles-*` and `fonts-*` probes and the
+  docx4j-core-tests numbering and font documents come with them and are the fixtures Phase B
+  adds under `tests/fixtures/` when it lands.
+* **Drift comes for free.** A weekly workflow in docx4j-core-ts reruns the harness against
+  docx4j's `VERSION_17_1_1` head and opens a pull request when a golden moves; this repository
+  sees the change when the sibling checkout is updated.
+* **The emulator's tests stay.** `tests/content/test_listnumbering.py` pins the labels against
+  the Word-measured answers of docx4j's CR-014 and CR-015 as it does now; the goldens add
+  docx4j's own `labelRPr`, `ind` and `numFont` per paragraph, which section 12.11 lists as what
+  remains, and docx4j's resolved `numId` / `ilvl` per paragraph if the golden carries them (asked
+  for on 2026-09-19, so that `Emulator.effective_numbering` can be checked against
+  `Emulator.resolve` directly rather than through the label).
+* **The portfolio rule stands.** `python/CR-002.B` still waits on `docx4j/fo-fidelity-next`;
+  the gate was lifted for `core-ts/CR-001.B` only. Its registry entry now also depends on
+  `core-ts/CR-001.B`, since the goldens are that phase's output.
+
+docx4j-core-ts's numbering port takes section 12.11's module split (definitions, state,
+formats, emulator) and its "what remains for Phase B" list, so the two engines' numbering reads
+alike.
