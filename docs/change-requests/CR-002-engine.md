@@ -872,3 +872,56 @@ whose section 8 holds the benchmark tables, the stage-by-stage split, the `cProf
 starts from and what the tree and string writers do and do not share. Phases B to D are the fork's
 and are where the other 450 ms is. The benchmark lives here, as that CR's section 3 asks:
 `scripts/bench_marshal.py`.
+
+### 12.14 The parent pointers are wired during the parse (2026-09-19)
+
+`XmlPart._unmarshal` parsed the part and then walked the whole tree a second time with
+`link_parents`, to set every node's `parent` slot and bind every `ChildList` to its owner
+(CR-001 section 5). For `samples/Symbols.docx`'s main part that is 24,758 nodes visited
+twice, and a `seen` set the size of the document, for work the parse could do as it goes.
+
+The fork's CR-001 Phase D adds a **generic post-bind hook**,
+`ParserConfig(on_bind: Callable[[Any], None] | None = None)`: `ElementNode.bind` calls it
+with every object the parser builds, as soon as `class_factory` has built it. xsdata binds
+bottom up, so at that moment the object's own children exist and are bound and its parent
+does not exist yet --- exactly the moment a parent pointer wants to be set. It is off by
+default and it is per config, so a parse owns its hook the way it owns its skipped report.
+
+This engine fills it in:
+
+* **`child.link_children(obj)`** is one level of `link_parents`, from the same
+  `_child_plan` enumeration and by the same rules: every `Child` in a single-valued field
+  or a list field gets `obj` as its parent, every `ChildList` is bound to `obj` as its
+  owner, and a typed object nested inside an `AnyElement` wildcard keeps the parent it
+  has, exactly as `link_parents` leaves it. It is one level and no deeper: called on every
+  object bottom up, the levels compose into the whole tree.
+* **`runtime.parser_config`** passes `functools.partial(link_children, context=context())`
+  as `on_bind` unless the caller asks for something else. `parser(on_bind=None)` is the
+  plain parser, and then the tree needs `link_parents` before anything reads `.parent`.
+* **`XmlPart._unmarshal`** skips the `link_parents` walk when the config carries a hook,
+  and does it when it does not. `set_contents` is unchanged: it takes an arbitrary tree
+  from a caller, of unknown provenance, so it still walks it.
+
+**`link_parents` is unchanged and stays.** Hand-built trees, `deep_copy`'s relink,
+`set_contents`, the markdown importer, the content API's inserts and every unpickled root
+need the full walk, and `scripts/parents.py` still measures the hook against it.
+
+The numbers, on this machine in one session. Over the 50 typed parts of `samples/`
+(`scripts/parents.py`, which now parses each part both ways and checks both trees): parse
+plus walk 293 ms, hooked parse 268 ms. On `Symbols.docx`'s main part alone it is a **wash**
+--- 189 ms against 193 --- because `link_parents` over that part was only 20 ms to begin
+with, and the per-object callback costs about what the walk's own bookkeeping cost. The
+fork's CR-001 section 10.4 records why the CR expected more: its "0.12 s of the parse is
+`link_parents`" was a profiled cumulative time, not a real one.
+
+It is kept regardless, for what is not on the clock: it is a capability the fork can offer
+upstream on its own (docx4j-python `docs/UPSTREAM.md` report 15), it removes a second full
+traversal and its `seen` set, and it puts the parent pointer where docx4j puts it --- at
+construction --- so no window exists in which a parsed tree has no parents.
+
+The rest of Phase D is the fork's alone and is what actually moved the number: the parse of
+that part is **329 ms to 193 ms, 2.29 to 3.90 MiB/s**, and the corpus's 964 KB of main
+parts 393 ms to 238 ms. With section 12.13's marshal at 250 ms, a 772 KB main part is now
+443 ms to read and write where CR-001 opened at 1,114. The fork's
+`docs/fork/CR-001-serialiser.md` section 10 has the tables, the profile and section 10.6's
+recommendation to close that CR.

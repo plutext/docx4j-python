@@ -23,7 +23,7 @@ VIRTUAL_ENV=/tmp/pydocx uv pip install python-docx==1.2.0 pytest -e ~/git/docx4j
 
 | file | CR | what it pins |
 |---|---|---|
-| `test_child.py` | CR-001 §5 | parent pointers, `ChildList`, `deep_copy` |
+| `test_child.py` | CR-001 §5, CR-002 §12.14 | parent pointers, `ChildList`, `deep_copy`, `link_children` and the parser's post-bind hook |
 | `test_names.py` | CR-001 §6 | docx4j's class names, and that renaming never touched `Meta.name` |
 | `test_skipped_report.py` | CR-001 §7 | the fork's skipped-content report catches an unknown element and attribute |
 | `test_roundtrip.py` | CR-001 §9 | `scripts/roundtrip.py` over `samples/`, zero differences |
@@ -162,6 +162,21 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > comment, revision and `pPrChange` dates, and `docProps/core.xml`); with the dates scrubbed, zero
 > parts differ. **No Word check has been made on this regeneration.** Nothing is expected to have
 > moved, but nobody has opened them.
+
+> **2026-09-19, no Word check needed.** The eleven artefacts were regenerated once more after the
+> fork's CR-001 **Phase D**, the parser (`~/git/docx4j-xsdata`,
+> `docs/fork/CR-001-serialiser.md` section 10, and CR-002 section 12.14 on this side): the
+> class's binding plans built once, a fast path for a plain dataclass child, and the parent
+> pointers wired during the parse through the fork's new `ParserConfig(on_bind=...)`. **Parsing
+> is not marshalling**: nothing on the write path changed at all. Against the artefacts built
+> from the commits before (`7afbd34` here, `7b7d7f9` in the fork), **143 parts were compared,
+> seven differ, and every difference is a wall-clock date** --- `docProps/core.xml` in artefacts
+> 3, 4 and 5, `word/comments.xml` in 7 and 8, `word/document.xml` in 8 and 10; with the dates
+> scrubbed, zero parts differ. The round trip is 50/50 canonically identical with zero
+> differences and nothing skipped, `scripts/parents.py` finds no parent problem over 50 parts
+> and 34,147 nodes, and `tests/openpackaging/test_marshal_one_pass.py` passes, which a mis-bound
+> parse would show. **The user's decision of 2026-09-19 applies: a dates-only difference needs no
+> Word re-check**, and none was made.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown

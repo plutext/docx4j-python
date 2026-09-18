@@ -26,6 +26,21 @@ one exists.
 | 12 | `EventGenerator` routes every event of a nested element through four generator frames between the parent and the child (`convert_value`, `convert_list`, or `convert_elements` and `convert_choice`), each resumed once per event that passes through it; the branch they pick is fixed by the field's metadata. `EventHandler.write` also builds a list per event (`for name, *args in events`). | Same benchmark: 1.0 M generator resumptions for 79,960 events. 262 ms to 249 ms. | to offer upstream; in the fork, commit `8f2fe666` |
 
 
+| 13 | The parser rebuilds three per-class answers for every element of every document. `XmlMeta.find_children` scans the elements mapping, then every compound choice, then every wildcard, and `ElementNode.child` and `bind_object` each ask per child (99,068 calls for one part). `ParserUtils.parse_var` reaches its converter through `parse_value`, `converter.deserialize`, `type_converter` and a `suppress` context manager for every attribute value (30,444 calls, 61,088 `contextlib` calls). And `NodeParser.start` does a `from ... import` of its three node classes on every element, to break an import cycle. All three answers depend only on the class (and, for the children, the qname). | `.venv-fork/bin/python scripts/bench_marshal.py`: `samples/Symbols.docx`, 772 KB and 24,758 elements. Parse 329 ms before, 222 ms after. | to offer upstream; in the fork, commit `cc448de0` (`XmlMeta.get_children` with `children_index`, `XmlVar.converter_plan` with a `generation` counter on `ConverterFactory`, and `bases.load_nodes`) |
+
+| 14 | `ElementNode.child` resolves the derived type, the wildcard fall-back and the `xsi:nil` decision for every child, through `build_node` and `build_element_node`, when the qname matches exactly one var whose declared type is a single dataclass and the element carries neither `xsi:type` nor `xsi:nil` -- which is **every** element of a WordprocessingML part (24,757 of 24,757). The answer is a constant of the class and the qname. | Same benchmark: 222 ms to 189 ms. The full path stays for `xsi:type`, substitution groups, wildcards, unions, primitives, mixed and nillable content. | to offer upstream; in the fork, commit `b9be85ff` (`ElementNode.build_child_plan`, kept in `XmlMeta.child_plans`; with it, `bind_content` skipping the wildcard, text and `PendingCollection` branches a class cannot need) |
+
+| 15 | **A feature request, not a bug.** A binding layer that has to wire something per object -- a parent pointer, a registry entry, docx4j's `Child` interface -- has to walk the finished tree a second time, because the parser offers no per-object callback. `class_factory` is the closest thing and it sees the class and the parameters, not the built object with its children bound. xsdata binds bottom up, so `ElementNode.bind` knows the one moment such a callback wants: the object is complete, its children exist and are bound, and its parent does not exist yet. | docx4j-python's `link_parents` over `samples/Symbols.docx`'s main part: a second full traversal of 24,758 nodes, with a `seen` set the size of the document, for work the parse could have done as it went. | to offer upstream; in the fork, commit `c394b933` (`ParserConfig(on_bind: Callable[[Any], None] | None = None)`, off by default). Consumed here by `child.link_children` through `runtime.parser_config` (CR-002 section 12.14) |
+
+Reports 13 to 15 are the fork's CR-001 Phase D, the parser (`docs/fork/CR-001-serialiser.md`
+section 10 and `docs/fork/CHANGES.md` stage 6): 329 ms to 193 ms for that part, 2.29 to 3.90
+MiB/s. Reports 13 and 14 are the read-side twins of 9 to 12 and are worth offering with them,
+as one "the metadata is a property of the class" contribution. Report 15 stands alone and is
+the most likely of the six to be wanted upstream, because it is a capability rather than a
+speed-up: on its own it measures a wash on a large part (the per-object callback costs what
+the walk it replaces cost), and its value is that it removes the second traversal and puts the
+wiring at construction.
+
 Reports 9 to 12 are the fork's CR-001 Phase B, the serialiser (`~/git/docx4j-xsdata`,
 `docs/fork/CR-001-serialiser.md` section 9 and `docs/fork/CHANGES.md` stage 5). Each is a
 separate, self-contained diff over one of upstream's files that leaves every byte of the output
