@@ -36,6 +36,7 @@ VIRTUAL_ENV=/tmp/pydocx uv pip install python-docx==1.2.0 pytest -e ~/git/docx4j
 | `openpackaging/test_content_types.py` | CR-002 §5.3, §5.4 | `[Content_Types].xml` and docx4j's `newPartForContentType` table |
 | `openpackaging/test_round_trip.py` | CR-002 §1, §8 | load / save / reload over every sample, byte-identical and canonically identical |
 | `openpackaging/test_parts_and_relationships.py` | CR-002 §5.2, §5.5 | the relationship graph, `AddPartBehaviour`, `create_package`, `mc:Ignorable` on write |
+| `openpackaging/test_marshal_one_pass.py` | CR-002 §5.6, §12.13 | the acceptance of the fork's CR-001 Phase A: the old `XmlPart._marshal` kept as `reference_marshal`, and all 150 typed XML parts of all 16 samples marshalled both ways and compared **byte for byte**; the namespace declarations no longer a function of `PYTHONHASHSEED`; the `w:glossaryDocument` rename in place; the warning for an `mc:Ignorable` prefix nobody can resolve |
 | `openpackaging/test_mce.py` | CR-002 §5.6 | `mce="resolve"` / `"all"` / `"none"`, and the preprocessor |
 | `openpackaging/test_threads_and_import.py` | CR-002 §3, §7 | eight threads over whole packages, and the engine's import cost |
 | `content/test_body.py`, `test_paragraph.py`, `test_range.py`, `test_font.py` | CR-003 §3.2 | the views: the verbs, the style semantics, search across runs |
@@ -135,6 +136,19 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > same day: a bullet, then `1.`. Artefacts 3, 5 and 6 changed only by losing that dangling
 > `w:numPr` from their Heading definitions, which Word had ignored. All eleven artefacts have
 > passed in Word.
+
+> **2026-09-19, awaiting a check.** The eleven artefacts were regenerated after the marshalling
+> change of CR-002 section 12.13 (`XmlPart._marshal` in one pass, the fork's CR-001 Phase A), and
+> **have not yet been opened in Word**. Every entry that differs from the artefacts built the
+> commit before is either a wall-clock date (`docProps/core.xml`, the comment and revision dates)
+> or the **order of the namespace declarations on a part's root** --- the old marshal ordered the
+> prefixes it re-added for `mc:Ignorable` by iterating a `set`, so they came out in
+> `PYTHONHASHSEED` order, and they are sorted now. All ten differing parts are canonically
+> identical (`scripts/canon.py`) once the dates are scrubbed, and the 150 typed parts of the
+> 16 samples marshal byte for byte as before (`tests/openpackaging/test_marshal_one_pass.py`), so
+> nothing is expected to have changed in Word. Artefacts 2, 3, 4, 5, 7, 8 and 10 are the ones
+> whose bytes moved; 2 is the one that exercises `mc:Ignorable` on write and is the one to open
+> first.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown

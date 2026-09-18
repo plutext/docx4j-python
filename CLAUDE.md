@@ -24,7 +24,9 @@ F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member 
 CR-004 (PresentationML content API and python-pptx facade), CR-005 (SpreadsheetML, fidelity first,
 openpyxl facade) and CR-006 (the MCP server's contract; code in `../docx4j-mcp-py`) proposed 2026-09-19;
 the xsdata fork's CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`) proposes the
-throughput work, whose Phase A is this engine's `XmlPart._marshal`.
+throughput work, whose **Phase A is this engine's `XmlPart._marshal` and is implemented**
+(2026-09-19, CR-002 section 12.13 and that CR's section 8: one render into an lxml tree and one
+serialisation, `Symbols.docx` 887 ms to 484 ms); its Phases B to D are the fork's.
 `REPORT.md` is the original xsdata feasibility experiment.
 
 ## Environments and commands
@@ -51,6 +53,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
+.venv-fork/bin/python scripts/bench_marshal.py         # parse and marshal, part by part (--json)
 .venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata

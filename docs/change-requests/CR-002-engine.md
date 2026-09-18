@@ -831,3 +831,44 @@ What this changes here:
 docx4j-core-ts's numbering port takes section 12.11's module split (definitions, state,
 formats, emulator) and its "what remains for Phase B" list, so the two engines' numbering reads
 alike.
+
+### 12.13 The marshal is one pass, not three (2026-09-19)
+
+Section 5.6's serialisation was the right shape and the wrong number of passes. `XmlPart._marshal`
+rendered the object to a **string**, parsed that string back with lxml, cleaned the namespaces,
+copied the whole tree into a new root to declare the prefixes `mc:Ignorable` names, and serialised
+again: the document written twice and read once on every marshal. On `samples/Symbols.docx`'s
+771 KB main part (24,758 elements) that was 887 ms, of which the copy alone --- `_redeclare`,
+moving 24,758 nodes --- was 345 ms.
+
+It is now one render and one serialisation:
+
+* `runtime.tree_serializer()`, a new twin of `serializer()` with the same `serializer_config()`
+  (numeric booleans), renders through the fork's `TreeSerializer` **into an lxml tree**;
+* the `root_name` rename is `root.tag = ...` in place, not a tree copy;
+* the namespace reconciliation is `etree.cleanup_namespaces(root)` followed --- only when
+  `mc:Ignorable` names a prefix the cleanup dropped --- by a second pass with `top_nsmap` and
+  `keep_ns_prefixes`, which declares those prefixes on the root without copying anything. Two
+  passes rather than one so the declaration order does not move: the unused ignorable prefixes
+  are declared after the used ones, as they were.
+
+`_redeclare`, `_rename` and the module's `_LXML_PARSER` are gone.
+
+**Symbols.docx: marshal 887 ms to 484 ms, 0.85 to 1.56 MiB/s.** The corpus's 14 main parts,
+964 KB: 985 ms to 572 ms. Parse is untouched (302 ms, 2.49 MiB/s). Of the remaining 484 ms, 450 is
+the fork's render and 19 ms is this engine, the largest piece of that being the full-tree walk for
+`mc:Ignorable` attributes.
+
+The output is the old output, part for part: `tests/openpackaging/test_marshal_one_pass.py` keeps
+the old method as `reference_marshal` and compares all 150 typed XML parts of all 16 samples byte
+for byte. It found one latent bug on the way, now fixed and the single deliberate difference from
+any earlier run: the old method iterated a **`set`** of prefixes, so the order of the namespace
+declarations on a saved root depended on `PYTHONHASHSEED` --- 49 of the 150 parts gave three
+different byte strings over three seeds. Both sort now. The affected parts are canonically
+identical either way, which is why the round trip never saw it.
+
+This is Phase A of the fork's own CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`),
+whose section 8 holds the benchmark tables, the stage-by-stage split, the `cProfile` its Phase B
+starts from and what the tree and string writers do and do not share. Phases B to D are the fork's
+and are where the other 450 ms is. The benchmark lives here, as that CR's section 3 asks:
+`scripts/bench_marshal.py`.
