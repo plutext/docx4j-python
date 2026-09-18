@@ -29,6 +29,7 @@ from docx4j_py.child import (
     ChildList,
     deep_copy,
     iter_tree,
+    link_children,
     link_parents,
 )
 
@@ -248,6 +249,59 @@ class TestLinkParents:
 
 
 # ---------------------------------------------------------------------------
+# link_children, the parser's hook (CR-002 section 12.14)
+# ---------------------------------------------------------------------------
+
+
+class TestLinkChildren:
+    def test_wires_one_level_only(self):
+        p = sample_paragraph()
+        inner = p.content[0]
+        for node in iter_tree(p):
+            node.set_parent(None)
+
+        link_children(p)
+
+        assert inner.get_parent() is p
+        # a grandchild is the next call's business, not this one's
+        for name, _q, _c in ((f.name, None, None) for f in dataclasses.fields(inner)):
+            value = getattr(inner, name, None)
+            for item in value if isinstance(value, (list, tuple)) else (value,):
+                if isinstance(item, Child):
+                    assert item.get_parent() is None
+
+    def test_bottom_up_over_a_tree_is_link_parents(self):
+        p = sample_paragraph()
+        for node in iter_tree(p):
+            node.set_parent(None)
+
+        for node in reversed(list(iter_tree(p))):
+            link_children(node)
+
+        assert_parents_consistent(p)
+
+    def test_binds_a_replaced_list(self):
+        p = sample_paragraph()
+        r = R()
+        p.content = [r]
+
+        link_children(p)
+
+        assert r.get_parent() is p
+
+    def test_leaves_the_root_parent_alone(self):
+        outer, p = P(), sample_paragraph()
+        p.set_parent(outer)
+        link_children(p)
+        assert p.get_parent() is outer
+
+    def test_is_idempotent(self):
+        p = sample_paragraph()
+        link_children(p)
+        link_children(p)
+        assert p.content[0].get_parent() is p
+
+# ---------------------------------------------------------------------------
 # deep_copy
 # ---------------------------------------------------------------------------
 
@@ -430,6 +484,41 @@ class TestGeneratedPackage:
                 for item in items:
                     if isinstance(item, Child):
                         assert item.get_parent() is node
+
+    def test_the_runtime_parser_wires_a_tree_as_it_builds_it(
+        self, document_bytes, context
+    ):
+        """CR-002 section 12.14: the hook, and no ``link_parents`` after it."""
+        from docx4j_py.runtime import parser as runtime_parser
+
+        xml_parser = runtime_parser()
+        assert xml_parser.config.on_bind is not None
+
+        obj = xml_parser.from_bytes(document_bytes, wml.Document)
+
+        checked = 0
+        for node in iter_tree(obj, context=context):
+            for name in (f.name for f in dataclasses.fields(node)):
+                value = getattr(node, name, None)
+                if isinstance(value, ChildList):
+                    assert value.owner is node
+                items = value if isinstance(value, (list, tuple)) else (value,)
+                for item in items:
+                    if isinstance(item, Child):
+                        assert item.get_parent() is node
+                        checked += 1
+        assert checked > 1000
+
+    def test_the_hook_can_be_turned_off(self, document_bytes):
+        """``on_bind=None`` is the plain parser, and then nothing is wired."""
+        from docx4j_py.runtime import parser as runtime_parser
+
+        xml_parser = runtime_parser(on_bind=None)
+        assert xml_parser.config.on_bind is None
+
+        obj = xml_parser.from_bytes(document_bytes, wml.Document)
+
+        assert obj.body.get_parent() is None
 
     def test_mc_ignorable_survives_on_a_font_table(self, parser, serializer):
         """The anyAttribute schema patch, from the object model's side."""

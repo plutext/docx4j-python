@@ -74,9 +74,23 @@ def parser_config(
     and no schema describes still loads --- and ``skipped_report`` is the fork's
     record of what lenience cost, so the caller can fail on it.
 
+    ``on_bind`` is the fork's post-bind hook, and it is what wires the parent
+    pointers: :func:`docx4j_py.child.link_children` runs on every object the
+    parser builds, as it is built, instead of ``link_parents`` walking the
+    finished tree a second time (CR-002 section 12.14). A caller who wants the
+    plain parser may pass ``on_bind=None``; the tree then needs ``link_parents``
+    before anything reads ``.parent``.
+
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
     """
+    if "on_bind" not in kwargs:
+        from functools import partial
+
+        from docx4j_py.child import link_children
+
+        kwargs["on_bind"] = partial(link_children, context=context())
+
     return ParserConfig(
         fail_on_unknown_properties=not lenient,
         fail_on_unknown_attributes=not lenient,

@@ -9,8 +9,10 @@ whole tree, and the budget for it is 20% of the parse time.
 
 For every part it
 
-* parses it (median of N),
-* runs ``link_parents`` (median of N) and reports the ratio,
+* parses it twice, once with a plain config and once with the fork's post-bind
+  hook (``ParserConfig(on_bind=...)``, CR-002 section 12.14), median of N,
+* runs ``link_parents`` on the plain tree (median of N) and reports the ratio,
+  and checks that the hooked tree needs no such walk at all,
 * checks that *every* node's parent is the object that actually holds it, both
   after the walk and after ``deep_copy`` of a subtree,
 * checks that the parsed tree still serialises to the same bytes with the
@@ -37,6 +39,7 @@ from docx4j_py.child import (
     ChildList,
     _child_field_names,
     deep_copy,
+    link_children,
     link_parents,
 )
 
@@ -106,13 +109,24 @@ def main() -> int:
         context=ctx,
         handler=LxmlEventHandler,
     )
+    # the engine's parser: the parent pointers are wired as the tree is built
+    hooked = XmlParser(
+        config=ParserConfig(
+            fail_on_unknown_properties=False,
+            fail_on_unknown_attributes=False,
+            fail_on_converter_warnings=False,
+            on_bind=lambda obj: link_children(obj, context=ctx),
+        ),
+        context=ctx,
+        handler=LxmlEventHandler,
+    )
     serializer = XmlSerializer(
         config=SerializerConfig(xml_declaration=True, indent=None),
         context=ctx,
         writer=LxmlEventWriter,
     )
 
-    total_parse = total_link = total_nodes = 0.0
+    total_parse = total_link = total_nodes = total_hook = 0.0
     failures = 0
     rows = []
 
@@ -132,6 +146,7 @@ def main() -> int:
 
                 parse_ms = []
                 link_ms = []
+                hook_ms = []
                 for _ in range(args.repeat):
                     t = time.perf_counter()
                     obj = parser.from_bytes(data, klass)
@@ -139,10 +154,22 @@ def main() -> int:
                     t = time.perf_counter()
                     link_parents(obj, context=ctx)
                     link_ms.append((time.perf_counter() - t) * 1000)
+                    t = time.perf_counter()
+                    hook_obj = hooked.from_bytes(data, klass)
+                    hook_ms.append((time.perf_counter() - t) * 1000)
 
                 p = statistics.median(parse_ms)
                 q = statistics.median(link_ms)
+                h = statistics.median(hook_ms)
                 count, problems = check(obj, ctx)
+
+                # the same wiring, with no walk after the parse
+                hook_count, hook_problems = check(hook_obj, ctx)
+                if hook_count != count:
+                    hook_problems.append(
+                        f"hook tree has {hook_count} nodes, walk tree has {count}"
+                    )
+                problems.extend(f"hook: {x}" for x in hook_problems)
 
                 # a copied subtree must be self consistent and detached
                 copied = deep_copy(obj)
@@ -162,13 +189,14 @@ def main() -> int:
                 failures += len(bad)
                 total_parse += p
                 total_link += q
+                total_hook += h
                 total_nodes += count
                 rows.append((docx.name, name, count, p, q, len(bad)))
                 flag = "OK " if not bad else "BAD"
                 print(
                     f"{flag} {docx.name:38s} {name:26s} nodes={count:6d} "
                     f"parse={p:7.2f}ms link={q:6.2f}ms "
-                    f"{q / p * 100 if p else 0:5.1f}%"
+                    f"{q / p * 100 if p else 0:5.1f}%  hooked={h:7.2f}ms"
                 )
                 for b in bad[:5]:
                     print(f"      {b}")
@@ -178,6 +206,11 @@ def main() -> int:
         f"parse total {total_parse:.0f} ms, link_parents total {total_link:.0f} ms, "
         f"{total_link / total_parse * 100:.1f}% of parse "
         f"(CR-001 section 8 budget: 20%)"
+    )
+    print(
+        f"with the post-bind hook and no second walk: {total_hook:.0f} ms, "
+        f"{total_hook - (total_parse + total_link):+.0f} ms against "
+        f"{total_parse + total_link:.0f} ms"
     )
     print(f"parent problems: {failures}")
     return 1 if failures else 0

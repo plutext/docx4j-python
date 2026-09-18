@@ -12,7 +12,9 @@ line of its own at the end, because it is the number that CR's phases are
 judged by.
 
 The parse timed here is what :meth:`XmlPart._unmarshal` does: the fork's parser
-plus ``link_parents``. The marshal is :meth:`XmlPart._marshal` itself, so the
+with docx4j-python's post-bind hook, which wires the parent pointers as the
+tree is built, and ``link_parents`` only when a config carries no hook (CR-002
+section 12.14). The marshal is :meth:`XmlPart._marshal` itself, so the
 namespace reconciliation of CR-002 section 5.6 is inside the number.
 """
 
@@ -59,8 +61,10 @@ def measure(path: Path, runs: int) -> dict[str, Any] | None:
     obj = None
     for _ in range(runs):
         started = time.perf_counter()
-        obj = parser().from_bytes(raw, clazz)
-        link_parents(obj, context=context())
+        xml_parser = parser()
+        obj = xml_parser.from_bytes(raw, clazz)
+        if xml_parser.config.on_bind is None:
+            link_parents(obj, context=context())
         parses.append(time.perf_counter() - started)
 
     part.set_contents(obj)

@@ -47,6 +47,7 @@ __all__ = [
     "is_any_element",
     "iter_children",
     "iter_tree",
+    "link_children",
     "link_parents",
     "mce_branch",
 ]
@@ -395,6 +396,8 @@ def _any_element_children(value: Any) -> list | None:
 # field name -> the element qualified name it holds, or, for a compound
 # ``content`` field, a mapping of item class to qualified name
 _child_plan_cache: dict[type, tuple[tuple[str, str | None, dict[type, str] | None], ...]] = {}
+# just the field names of the plan above, for the one-level link_children
+_child_names_cache: dict[type, tuple[str, ...]] = {}
 
 
 def _child_plan(
@@ -670,6 +673,53 @@ def _wildcard_children(value: Any, mce: str = "all") -> Iterator[tuple[str | Non
             yield getattr(inner, "qname", None), inner
         else:
             yield from _wildcard_children(inner, mce)
+
+
+def link_children(obj: Any, *, context: Any = None) -> None:
+    """Wire the parent pointer of `obj`'s **immediate** children, and no more.
+
+    One level of what :func:`link_parents` does, from the same ``_child_plan``
+    enumeration and by the same rules: every ``Child`` in a list field or in a
+    single-valued field gets `obj` as its parent, and every :class:`ChildList`
+    is bound to `obj` as its owner. A typed object nested inside an
+    ``AnyElement`` wildcard keeps the parent it has, exactly as
+    :func:`link_parents` leaves it.
+
+    This is the parser's hook (CR-002 section 12.14). xsdata binds bottom up,
+    so by the time an object exists its own children exist and are bound, and
+    calling this on every object the parser builds ---
+    ``ParserConfig(on_bind=...)``, which :func:`docx4j_py.runtime.parser` fills
+    in --- wires the whole tree as it is parsed, with no second walk.
+    :func:`link_parents` stays for the trees this does not see: hand built
+    ones, ``deep_copy``, and anything a caller assembles field by field.
+
+    Args:
+        obj: the object whose children to wire.
+        context: an ``XmlContext`` to take class metadata from; the parser's
+            own is the cheapest one to pass. Defaults to a shared one.
+    """
+    cls = obj.__class__
+    try:
+        names = _child_names_cache[cls]
+    except KeyError:
+        if context is None:
+            context = _xml_context()
+        names = _child_names_cache[cls] = tuple(
+            entry[0] for entry in _child_plan(cls, context)
+        )
+
+    for name in names:
+        value = getattr(obj, name, None)
+        if value is None:
+            continue
+        if isinstance(value, Child):
+            value.parent = obj
+        elif isinstance(value, ChildList):
+            value.set_owner(obj)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                if isinstance(item, Child):
+                    item.parent = obj
 
 
 def link_parents(root: Any, *, context: Any = None) -> int:

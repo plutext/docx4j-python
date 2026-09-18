@@ -222,7 +222,13 @@ class XmlPart(Part, Generic[T]):
                     f"{self.part_name}: {len(self.skipped)} item(s) were skipped "
                     f"and strict=True: {self.skipped[:5]}"
                 )
-        link_parents(obj, context=context())
+        if xml_parser.config.on_bind is None:
+            # No post-bind hook on this config, so the parse left the parent
+            # pointers unwired and the second walk is still needed. With the
+            # hook --- which `runtime.parser_config` fills in --- every object
+            # was linked as it was built (CR-002 section 12.14).
+            link_parents(obj, context=context())
+
         self._contents = obj
         self._bytes = None
 
