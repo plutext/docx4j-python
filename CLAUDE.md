@@ -21,6 +21,10 @@ flat OPC read half) proposed; CR-003 (content API) **every phase implemented** -
 F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member of
 `tests/office_js_subset.json` is, and with Phase J `docx4j_py.docx` covers 305 of the 312 members of
 `tests/python_docx_subset.json`.
+CR-004 (PresentationML content API and python-pptx facade), CR-005 (SpreadsheetML, fidelity first,
+openpyxl facade) and CR-006 (the MCP server's contract; code in `../docx4j-mcp-py`) proposed 2026-09-19;
+the xsdata fork's CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`) proposes the
+throughput work, whose Phase A is this engine's `XmlPart._marshal`.
 `REPORT.md` is the original xsdata feasibility experiment.
 
 ## Environments and commands
