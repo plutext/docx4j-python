@@ -33,6 +33,7 @@ from docx4j_xsdata.formats.dataclass.parsers import XmlParser
 from docx4j_xsdata.formats.dataclass.parsers.config import ParserConfig
 from docx4j_xsdata.formats.dataclass.serializers import XmlSerializer
 from docx4j_xsdata.formats.dataclass.serializers.config import SerializerConfig
+from docx4j_xsdata.formats.dataclass.serializers.tree import TreeSerializer
 
 __all__ = [
     "context",
@@ -42,6 +43,7 @@ __all__ = [
     "serializer",
     "serializer_config",
     "text_element",
+    "tree_serializer",
     "warm_up",
 ]
 
@@ -108,6 +110,24 @@ def serializer_config(*, pretty: bool = False, **kwargs: Any) -> SerializerConfi
 def serializer(*, pretty: bool = False, **kwargs: Any) -> XmlSerializer:
     """A new :class:`XmlSerializer` on the shared context."""
     return XmlSerializer(context=context(), config=serializer_config(pretty=pretty, **kwargs))
+
+
+def tree_serializer(*, pretty: bool = False, **kwargs: Any) -> TreeSerializer:
+    """A new :class:`TreeSerializer` on the shared context, configured as :func:`serializer`.
+
+    The twin of :func:`serializer` that renders an **lxml tree** instead of a
+    string: the same :func:`serializer_config`, and the same events --- the fork
+    builds both writers on ``EventGenerator``, so ``bool_format`` and the rest
+    of the config mean exactly what they mean for a string render, and only the
+    last step differs (``LxmlTreeBuilder`` keeps the tree the sax handler built,
+    where ``LxmlEventWriter`` serialises it). ``xml_declaration`` has no meaning
+    for a tree and is ignored.
+
+    This is what :meth:`XmlPart._marshal` uses: a part has namespace work to do
+    on the tree afterwards, and going through a string would mean serialising
+    twice and parsing once (the fork's CR-001 Phase A).
+    """
+    return TreeSerializer(context=context(), config=serializer_config(pretty=pretty, **kwargs))
 
 
 # ---------------------------------------------------------------------------

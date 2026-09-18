@@ -50,8 +50,6 @@ XML_DECLARATION = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
 _MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 _MC_IGNORABLE = f"{{{_MC_NS}}}Ignorable"
 
-_LXML_PARSER = etree.XMLParser(remove_blank_text=False, resolve_entities=False, huge_tree=True)
-
 #: The serialiser's prefix table: docx4j's, minus ``xml``, which is bound by
 #: definition and invalid to declare.
 _NS_MAP: dict[str, str] = {p: u for p, u in PREFIXES.items() if p != "xml"}
@@ -261,30 +259,41 @@ class XmlPart(Part, Generic[T]):
         return self.xml.decode("utf-8")
 
     def _marshal(self, obj: Any) -> bytes:
-        from docx4j_py.runtime import serializer
+        """The object as the bytes of a part: one render, one serialisation.
+
+        The fork's CR-001 Phase A. The render goes straight into an lxml tree
+        (:func:`~docx4j_py.runtime.tree_serializer`), the namespace
+        reconciliation happens **in place** on that tree, and ``tostring`` is
+        the only serialisation. Before Phase A this rendered to a string,
+        re-parsed it, and copied the whole tree into a new root to change its
+        namespace map --- 42% of a marshal of a 771 KB part.
+        """
+        from docx4j_py.runtime import tree_serializer
 
         ns_map = _NS_MAP
         if self.default_namespace is not None:
             ns_map = {p: u for p, u in _NS_MAP.items() if u != self.default_namespace}
             ns_map[None] = self.default_namespace  # type: ignore[index]
-        text = serializer(bool_format=self.bool_format).render(obj, ns_map)
-        root = etree.fromstring(text.encode("utf-8"), _LXML_PARSER)
+        root = tree_serializer(bool_format=self.bool_format).render(obj, ns_map).getroot()
 
         wanted = self.root_name or _element_name(obj)
         if wanted is not None and root.tag != wanted:
-            root = _rename(root, wanted)
+            # The namespace is declared on the root already: every prefix of the
+            # table is, before the cleanup below, so the rename keeps its prefix.
+            root.tag = wanted
 
         # Drop what the tree does not use, then put back the prefixes
         # mc:Ignorable names --- they must be declared even though nothing in
         # the tree is in them, or Word rejects the file.
         etree.cleanup_namespaces(root)
-        ns_map = dict(root.nsmap)
-        for prefix in _ignorable_prefixes(root):
-            if prefix in ns_map:
+        declared = root.nsmap
+        missing: dict[str, str] = {}
+        for prefix in sorted(_ignorable_prefixes(root)):
+            if prefix in declared:
                 continue
             uri = PREFIXES.get(prefix) or self._source_ns_map.get(prefix)
             if uri is not None:
-                ns_map[prefix] = uri
+                missing[prefix] = uri
             else:
                 logger.warning(
                     "%s: mc:Ignorable names the prefix %r, which neither the "
@@ -292,8 +301,10 @@ class XmlPart(Part, Generic[T]):
                     self.part_name,
                     prefix,
                 )
-        if ns_map != root.nsmap:
-            root = _redeclare(root, ns_map)
+        if missing:
+            # ``top_nsmap`` declares them on the root, ``keep_ns_prefixes`` stops
+            # the cleanup taking them straight back off again.
+            etree.cleanup_namespaces(root, top_nsmap=missing, keep_ns_prefixes=list(missing))
 
         return XML_DECLARATION + etree.tostring(root, encoding="utf-8")
 
@@ -348,25 +359,3 @@ def _ignorable_prefixes(root: etree._Element) -> set[str]:
         if value:
             found.update(value.split())
     return found
-
-
-def _rename(root: etree._Element, name: str) -> etree._Element:
-    """A copy of `root` under a different element name, children moved over."""
-    new = etree.Element(name, nsmap=root.nsmap)
-    for key, value in root.attrib.items():
-        new.set(key, value)
-    new.text = root.text
-    for child in list(root):
-        new.append(child)
-    return new
-
-
-def _redeclare(root: etree._Element, ns_map: dict[str, str]) -> etree._Element:
-    """A copy of `root` whose namespace declarations are exactly `ns_map`."""
-    new = etree.Element(root.tag, nsmap=ns_map)
-    for key, value in root.attrib.items():
-        new.set(key, value)
-    new.text = root.text
-    for child in list(root):
-        new.append(child)
-    return new
