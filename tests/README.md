@@ -150,7 +150,7 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > whose bytes moved; 2 is the one that exercises `mc:Ignorable` on write and is the one to open
 > first.
 
-> **2026-09-19, awaiting a Word check.** The eleven artefacts were regenerated again after the
+> **2026-09-19, no Word check needed** (the user's decision the same day: only wall-clock dates moved). The eleven artefacts were regenerated again after the
 > fork's CR-001 **Phase B**, the serialiser itself (`~/git/docx4j-xsdata`,
 > `docs/fork/CR-001-serialiser.md` section 9): the writer's namespace bookkeeping shared
 > copy-on-write, a fast path for a plain dataclass element, the class's var lists sorted once, and
