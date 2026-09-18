@@ -137,9 +137,9 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `w:numPr` from their Heading definitions, which Word had ignored. All eleven artefacts have
 > passed in Word.
 
-> **2026-09-19, awaiting a check.** The eleven artefacts were regenerated after the marshalling
-> change of CR-002 section 12.13 (`XmlPart._marshal` in one pass, the fork's CR-001 Phase A), and
-> **have not yet been opened in Word**. Every entry that differs from the artefacts built the
+> **2026-09-19, passed.** The eleven artefacts were regenerated after the marshalling change of
+> CR-002 section 12.13 (`XmlPart._marshal` in one pass, the fork's CR-001 Phase A) and **all
+> eleven passed in Word the same day**, as expected: Every entry that differs from the artefacts built the
 > commit before is either a wall-clock date (`docProps/core.xml`, the comment and revision dates)
 > or the **order of the namespace declarations on a part's root** --- the old marshal ordered the
 > prefixes it re-added for `mc:Ignorable` by iterating a `set`, so they came out in
