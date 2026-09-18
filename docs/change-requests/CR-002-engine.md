@@ -811,6 +811,10 @@ What this changes here:
   a golden's name matches a fixture here. The twenty `styles-*` and `fonts-*` probes and the
   docx4j-core-tests numbering and font documents come with them and are the fixtures Phase B
   adds under `tests/fixtures/` when it lands.
+  docx4j-core-ts's parity set is 37 fixtures (its `test/fixtures/parity/`, provenance in its
+  `test/README.md`): the 27 CR-014/015/016 probes regenerated from `Corpus.java`, nine documents
+  from docx4j-core-tests, and `fonts-modesOfApplication.docx`. This repository's `lists.docx` is
+  docx4j-core-tests' `numbering_indentation.docx` byte for byte, so its golden is that one.
 * **Drift comes for free.** A weekly workflow in docx4j-core-ts reruns the harness against
   docx4j's `VERSION_17_1_1` head and opens a pull request when a golden moves; this repository
   sees the change when the sibling checkout is updated.
