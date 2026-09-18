@@ -150,6 +150,19 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > whose bytes moved; 2 is the one that exercises `mc:Ignorable` on write and is the one to open
 > first.
 
+> **2026-09-19, awaiting a Word check.** The eleven artefacts were regenerated again after the
+> fork's CR-001 **Phase B**, the serialiser itself (`~/git/docx4j-xsdata`,
+> `docs/fork/CR-001-serialiser.md` section 9): the writer's namespace bookkeeping shared
+> copy-on-write, a fast path for a plain dataclass element, the class's var lists sorted once, and
+> a child's events over one generator frame instead of four. Marshalling is 48% faster and the
+> output is meant to be identical: the 150 typed parts of the 16 samples marshal **byte for byte**
+> against bytes frozen before the first change, after each of the four commits, and the round trip
+> is 50/50 canonically identical with zero differences. Of the eleven artefacts, **seven parts
+> differ from the ones built the commit before and every difference is a wall-clock date** (the
+> comment, revision and `pPrChange` dates, and `docProps/core.xml`); with the dates scrubbed, zero
+> parts differ. **No Word check has been made on this regeneration.** Nothing is expected to have
+> moved, but nobody has opened them.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

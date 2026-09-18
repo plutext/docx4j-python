@@ -17,6 +17,24 @@ one exists.
 
 | 8 | Under `--structure-style namespaces`, an `el`-style factory function whose name equals the class it imports shadows that class. Not an xsdata bug — it is this repository's `codegen/generate_el.py` — but it is worth mentioning when reporting report 1, because it is a hazard of any generator that writes helper functions beside imported classes: `def Relationships(**kw) -> Relationships: return Relationships(**kw)` recurses for ever, and the generated lookup tables end up holding the function. | Generate `schemas/relationships.xsd`; `docx4j_py.relationships.el.Relationships()` before the fix. | **fixed here** 2026-09-12 (CR-002 Phase A): the class is imported as `_Relationships` when a function of that name is emitted. Nothing to report upstream |
 
+| 9 | The XML serializer's namespace bookkeeping is O(prefixes) per element. `EventHandler.start_tag` copies the whole prefix-URI map for every element and `start_namespaces` then compares the copy against the parent's entry by entry, so a large user `ns_map` costs one dict copy and one lookup per prefix per element -- and the answer is "declare nothing" for every element but the root. `add_namespace` adds `prefix_exists`, a linear scan of the map's values, per element and per attribute. | `.venv-fork/bin/python scripts/bench_marshal.py`: `samples/Symbols.docx`, 772 KB and 24,758 elements, with docx4j's 130-prefix table. Before: 481 ms, `start_namespaces` the largest single function at 0.39 s of a 2.0 s profile, 3.2 M `dict.get`. After: 336 ms. | to offer upstream; in the fork, commit `bdcc8a95` (the frames share the map copy-on-write and index its URIs) |
+
+| 10 | The serializer asks for an `xsi:type` for every element value: `convert_value` to `convert_any_type` to `convert_xsi_type` to `convert_dataclass`, three `isinstance` checks deep, when the value's class **is** the field's declared class and `xsi_type()` therefore answers `None` by construction. The decision is a property of the field, not of the value. | Same benchmark: `convert_xsi_type` called 378,244 times for one part, always answering `None`. 336 ms to 306 ms. | to offer upstream; in the fork, commit `fd28e1eb` (`XmlVar.fast_element`, filled lazily beside the `namespace_matches` upstream already caches there) |
+
+| 11 | `XmlMeta.get_element_vars` and `get_attribute_vars` chain and `sorted` the class's vars on every call, and the serializer calls both once per **instance**; the answer is a property of the class. 49,516 `sorted` calls for one 24,758-element part. | Same benchmark; 306 ms to 262 ms with both lists built once and kept on the meta. Upstream's only callers are `next_value` and `next_attribute`, which iterate and never modify. | to offer upstream; in the fork, commit `1d8b1f46` |
+
+| 12 | `EventGenerator` routes every event of a nested element through four generator frames between the parent and the child (`convert_value`, `convert_list`, or `convert_elements` and `convert_choice`), each resumed once per event that passes through it; the branch they pick is fixed by the field's metadata. `EventHandler.write` also builds a list per event (`for name, *args in events`). | Same benchmark: 1.0 M generator resumptions for 79,960 events. 262 ms to 249 ms. | to offer upstream; in the fork, commit `8f2fe666` |
+
+
+Reports 9 to 12 are the fork's CR-001 Phase B, the serialiser (`~/git/docx4j-xsdata`,
+`docs/fork/CR-001-serialiser.md` section 9 and `docs/fork/CHANGES.md` stage 5). Each is a
+separate, self-contained diff over one of upstream's files that leaves every byte of the output
+and every one of upstream's 1,122 tests alone, which is why each is listed on its own: together
+they take a 772 KB main part from 481 ms to 249 ms, 1.57 to 3.03 MiB/s, and none of them depends
+on any other fork change. A fifth idea from the same CR --- collapsing a start tag and its
+attributes into one event --- was implemented, measured at nothing, and reverted, so there is
+nothing to offer there.
+
 Nothing new surfaced in the Phase B integration stage beyond report 6; Phase C added report 7, and
 CR-002 Phase A added 8, which is ours rather than upstream's. The engine itself needed **no** fork
 change: the runtime's skipped-content report, numeric booleans and `ListFactory` were enough to
