@@ -188,6 +188,27 @@ class NumberingState:
             self._counters[key] = found
         return found
 
+    @property
+    def counters(self) -> dict[str, Counter]:
+        """Every counter this story stands at, keyed ``"<abstractNumId>/<ilvl>"``.
+
+        docx4j ``NumberingState.counters()``, one of the parity accessors it
+        made public in 17.1.1 so that a port can be held to the *counters* and
+        not only to the labels (CR-003 section 18.10). The map itself, as
+        docx4j's is: a caller that writes to it is counting by hand.
+        """
+        return self._counters
+
+    @property
+    def start_overrides_applied(self) -> set[str]:
+        """The ``w:num`` start overrides spent, keyed ``"<numId>/<ilvl>"``.
+
+        docx4j ``NumberingState.startOverridesApplied()``. A ``w:num``'s first
+        use is recorded here whether or not it carries a ``w:startOverride``,
+        which is docx4j's own behaviour, measured against its goldens.
+        """
+        return self._start_overrides
+
     def start_override_applied(self, num_id: str, ilvl: str) -> bool:
         """Whether this ``w:num``'s ``w:startOverride`` has been spent at a level."""
         return f"{num_id}/{ilvl}" in self._start_overrides
