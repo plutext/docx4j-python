@@ -190,13 +190,9 @@ def _num_ref(emulator: Any, paragraph: Any) -> Any:
 
 
 def _check_num_ref(ours: Any, want: dict[str, Any], where: str) -> None:
-    if want["numId"] == "0" and ours.not_numbered:
-        # CR-003 section 18.2 item 16: ``w:numId`` 0 is Word's "no numbering"
-        # and this emulator answers it in ``resolve``, where docx4j answers it
-        # one step later --- its ``NumRef`` carries numId "0" and ``getNumber``
-        # then fails to find the list. The paragraph is unnumbered either way.
-        assert "turns numbering off" in (ours.reason or ""), where
-        return
+    # a direct or style-contributed ``w:numId`` 0 no longer reaches here: since
+    # docx4j 01d661547 (2026-09-19) it resolves as not numbered on both sides
+    # and the golden carries ``numbering: null`` for the paragraph
     assert (ours.num_id, ours.ilvl, ours.direct, ours.not_numbered) == (
         want["numId"],
         want["ilvl"],

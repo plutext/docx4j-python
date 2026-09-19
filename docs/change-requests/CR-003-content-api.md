@@ -3271,6 +3271,9 @@ CR-015 measured (section 18.5).
     measured against Word (section 18.5), and the style walk is the **only**
     part of this module that is not docx4j's own logic: when CR-002 Phase B
     lands, `Emulator.effective_numbering` is the method that goes.
+    *2026-09-19, later the same day: docx4j adopted this rule (`VERSION_17_1_1`
+    `01d661547`, "a w:numId of 0 turns numbering off"), so the `w:numId` 0 half of this item
+    is no longer a departure; the reason strings are docx4j's (section 18.10).*
 
 ### 18.3 What the markdown exporter gained, and two things it had wrong
 
@@ -4276,3 +4279,14 @@ gains `numbering.xml` with a bullet and a decimal definition. Two tests pin it,
 and the entry is in the portfolio's `word-hangs.md`. The regenerated artefact 11
 **passed** the same day: a bullet on the first paragraph, `1.` on the second. With it
 all eleven acceptance artefacts have passed in Word, and CR-003 is closed.
+
+*Later on 2026-09-19:* the `w:numId` 0 finding went to docx4j and was fixed there the same day
+(`VERSION_17_1_1` `01d661547`, `numIdZeroTurnsNumberingOff` in `ParityAccessorsTest`):
+`numRefFor` now answers `notNumbered` with the reason "the paragraph's w:numId 0 turns numbering
+off" for a direct 0 and "style 'X's w:numId 0 turns numbering off" for one from the style
+chain, and `getNumber` returns null for the paragraph. The goldens were regenerated from that
+commit (docx4j-core-ts `b6bc425`); only `numbering-label-ilvl0.json` changed, its two numId-0
+paragraphs now `numbering: null` like any unnumbered one, every other golden byte-identical
+but for its header. The assertion this test had around that case is removed, and this
+emulator's reason strings are now docx4j's, so the TypeScript port and this one read alike.
+Items 4 and 16 of section 18.2 lose their numId-0 halves. The test still passes at 20 of 20.

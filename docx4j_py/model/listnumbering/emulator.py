@@ -394,8 +394,15 @@ class Emulator:
                 ilvl = effective.ilvl or "0"
 
         if num_id == "0":
-            # Word's convention: w:numId 0 turns numbering off for the paragraph
-            return NumRef(not_numbered=True, reason="w:numId 0 turns numbering off")
+            # Word's convention: w:numId 0 turns numbering off for the paragraph.
+            # docx4j adopted the same rule, and these reason strings, on
+            # 2026-09-19 (VERSION_17_1_1 01d661547; CR-003 section 18.10)
+            reason = (
+                "the paragraph's w:numId 0 turns numbering off"
+                if direct_num_pr
+                else f"style {style_id!r}'s w:numId 0 turns numbering off"
+            )
+            return NumRef(not_numbered=True, reason=reason)
 
         if not ilvl:
             ilvl = "0"
