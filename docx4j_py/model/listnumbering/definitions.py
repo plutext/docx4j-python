@@ -399,9 +399,20 @@ class ListLevel:
         return other
 
     def set_overrides(self, element: Any) -> None:
-        """Apply this instance's ``w:lvlOverride/w:lvl``. docx4j ``setOverrides``."""
+        """Apply this instance's ``w:lvlOverride/w:lvl``. docx4j ``setOverrides``.
+
+        docx4j merges ``w:start``, ``w:lvlRestart``, ``w:lvlText``, ``w:numFmt``
+        and the level font attribute by attribute, but reads ``w:isLgl`` and
+        ``w:pStyle`` (with ``w:suff``, ``w:lvlJc`` and ``w:lvlPicBulletId``,
+        which nothing here models) off **one** level, the override when the
+        instance has one: an override level that states no ``w:isLgl`` turns
+        legal numbering off. Aligned 2026-09-19 with docx4j and its TypeScript
+        port (CR-003 section 18.10); no fixture has such a document.
+        """
         self.override_element = element
         self._read(element)
+        self.is_lgl = _on(element, "isLgl")
+        self.p_style = _val(element, "pStyle")
 
     def set_start_value(self, value: int) -> None:
         """A ``w:startOverride``: applied on the first use of this ``w:num``."""
@@ -644,15 +655,22 @@ class ListNumberingDefinition:
         except (TypeError, ValueError):  # pragma: no cover - a malformed w:ilvl
             this_level = -1
 
+        # a malformed ``w:lvlText`` never raises and reads as docx4j's
+        # TypeScript port reads it (aligned 2026-09-19, CR-003 section 18.10):
+        # a trailing ``%`` contributes nothing, a ``%`` before a non-digit
+        # writes that character alone, and a ``%n`` naming a level the
+        # definition lacks contributes nothing
         format_string = controlling.level_text or ""
         out: list[str] = []
         index = 0
         while index < len(format_string):
             char = format_string[index]
-            if char == "%" and index < len(format_string) - 1:
-                digit = format_string[index + 1]
-                if digit.isdigit():
-                    level_id = int(digit) - 1  # the format string is 1-based
+            if char == "%":
+                if index == len(format_string) - 1:
+                    break
+                following = format_string[index + 1]
+                if following.isdigit():
+                    level_id = int(following) - 1  # the format string is 1-based
                     level = self.level(level_id)
                     if level is not None:
                         if is_legal and level_id < this_level:
@@ -661,8 +679,10 @@ class ListNumberingDefinition:
                             out.append(
                                 level.current_value_formatted(state, f"numId {self.num_id}")
                             )
-                    index += 2
-                    continue
+                else:
+                    out.append(following)
+                index += 2
+                continue
             out.append(char)
             index += 1
         return "".join(out)

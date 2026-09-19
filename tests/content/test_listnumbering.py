@@ -281,3 +281,57 @@ def test_reading_the_labels_leaves_the_numbering_part_untouched():
 
     assert not package.numbering_definitions_part.is_unmarshalled
     assert not package.style_definitions_part.is_unmarshalled
+
+
+# ---------------------------------------------------------------------------
+# two readings aligned with docx4j and its TypeScript port on 2026-09-19,
+# outside every fixture (CR-003 section 18.10)
+# ---------------------------------------------------------------------------
+
+LEGAL = (
+    '<w:abstractNum w:abstractNumId="7">'
+    '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="upperRoman"/><w:lvlText w:val="%1."/></w:lvl>'
+    '<w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:isLgl/>'
+    '<w:lvlText w:val="%1.%2"/></w:lvl>'
+    "</w:abstractNum>"
+    '<w:num w:numId="7"><w:abstractNumId w:val="7"/></w:num>'
+    '<w:num w:numId="8"><w:abstractNumId w:val="7"/>'
+    '<w:lvlOverride w:ilvl="1"><w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
+    '<w:lvlText w:val="%1.%2"/></w:lvl></w:lvlOverride></w:num>'
+)
+
+
+def test_an_override_level_without_isLgl_turns_legal_numbering_off():
+    """docx4j reads w:isLgl off the controlling level, the override when there is one."""
+    package = numbered_package(LEGAL)
+    state = NumberingState()
+    Emulator.get_number_of(package, None, "7", "0", state=state)
+    assert Emulator.get_number_of(package, None, "7", "1", state=state).num_string == "1.1", (
+        "legal: the inherited level in decimal whatever its own format"
+    )
+    state = NumberingState()
+    Emulator.get_number_of(package, None, "8", "0", state=state)
+    assert Emulator.get_number_of(package, None, "8", "1", state=state).num_string == "I.1", (
+        "the override level states no w:isLgl, so legal numbering is off for w:num 8"
+    )
+
+
+@pytest.mark.parametrize(
+    ("level_text", "expected"),
+    [
+        ("%1.", "1."),
+        ("%1%", "1"),  # a trailing % contributes nothing
+        ("%1%x", "1x"),  # a % before a non-digit writes the character alone
+        ("%1.%9", "1."),  # a level the definition lacks contributes nothing
+        ("%", ""),
+    ],
+)
+def test_a_malformed_lvlText_never_raises_and_reads_as_the_typescript_port_reads_it(level_text, expected):
+    numbering = (
+        '<w:abstractNum w:abstractNumId="7"><w:lvl w:ilvl="0">'
+        f'<w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="{level_text}"/>'
+        "</w:lvl></w:abstractNum>"
+        '<w:num w:numId="7"><w:abstractNumId w:val="7"/></w:num>'
+    )
+    package = numbered_package(numbering)
+    assert Emulator.get_number_of(package, None, "7", "0").num_string == expected

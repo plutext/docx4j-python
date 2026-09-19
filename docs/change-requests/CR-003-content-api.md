@@ -4290,3 +4290,22 @@ paragraphs now `numbering: null` like any unnumbered one, every other golden byt
 but for its header. The assertion this test had around that case is removed, and this
 emulator's reason strings are now docx4j's, so the TypeScript port and this one read alike.
 Items 4 and 16 of section 18.2 lose their numId-0 halves. The test still passes at 20 of 20.
+
+
+*Later still on 2026-09-19, two readings outside every fixture,* raised by the TypeScript port
+(docx4j-core-ts CR-001 section 15.2) once it matched all 45 goldens, and aligned here with
+docx4j, which is the oracle, since Word has not been measured on either:
+
+1. **`w:isLgl` on an override level.** docx4j reads `w:isLgl`, `w:pStyle`, `w:suff`, `w:lvlJc`
+   and `w:lvlPicBulletId` off **one** `w:lvl`, the `w:lvlOverride/w:lvl` when the instance has
+   one, while `w:start`, `w:lvlRestart`, `w:lvlText`, `w:numFmt` and the font are merged
+   attribute by attribute. This emulator merged `w:isLgl` too, so an override level that states
+   no `w:isLgl` kept legal numbering on; it now turns it off, as docx4j and the TypeScript
+   port do (`ListLevel.set_overrides`). A probe document for docx4j's harness, checked in
+   Word, would settle which reading is Word's; until then docx4j's stands.
+2. **A malformed `w:lvlText`.** A trailing `%` contributed itself to the label here; docx4j
+   drops it, and its TypeScript port never throws where docx4j would (a `%` before a
+   non-digit, a `%n` naming a level the definition lacks). This emulator now reads all three
+   as the port does: nothing, the character alone, nothing.
+
+Both are pinned in `tests/content/test_listnumbering.py`; neither changes a golden.
