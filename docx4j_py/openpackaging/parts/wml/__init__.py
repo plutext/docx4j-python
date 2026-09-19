@@ -190,6 +190,83 @@ class MainDocumentPart(DocumentPart):
         """The ``w:document``."""
         return super().contents
 
+    # -- fonts (CR-002 section 6.3, Phase B section 15.3) ------------------
+
+    def get_run_font_selector(self, refresh: bool = False) -> Any:
+        """The package's :class:`~docx4j_py.model.fonts.RunFontSelector`.
+
+        docx4j ``MainDocumentPart.getRunFontSelector``; the package holds it, so
+        that a header's or a comment's runs resolve against the same theme.
+        """
+        package = self.package
+        if package is None:
+            return None
+        return package.get_run_font_selector(refresh)
+
+    def get_font_mapper(self, refresh: bool = False) -> Any:
+        """The package's font mapper. docx4j ``WordprocessingMLPackage.getFontMapper``."""
+        package = self.package
+        if package is None:
+            return None
+        return package.get_font_mapper(refresh)
+
+    def stories(self) -> list[Any]:
+        """Every story's content, in docx4j's order, for a walk over the document.
+
+        The body, then the headers and footers in relationship order, then the
+        footnotes, endnotes and comments parts. A part that will not unmarshal
+        is left out rather than raising: discovery is not a fidelity operation.
+        """
+        out: list[Any] = [self.body_element]
+        for part in (*self.header_parts(), *self.footer_parts()):
+            out.append(part.contents)
+        for name in ("footnotes_part", "endnotes_part", "comments_part"):
+            part = getattr(self, name, None)
+            if part is None:
+                continue
+            contents = part.contents
+            for attribute in ("footnote", "endnote", "comment"):
+                items = getattr(contents, attribute, None)
+                if items:
+                    out.extend(items)
+        return out
+
+    def fonts_in_use(self) -> set[str]:
+        """Every document font name this document could ask for. docx4j ``fontsInUse``.
+
+        The four slots of every ``w:rFonts`` on the runs, the paragraph marks and
+        the content controls, over every story; the styles in use with their
+        ``w:basedOn`` chains; the numbering levels; the document defaults; and
+        the default font. Theme references are resolved, and a CJK font name is
+        collected by its English name (CR-002 section 15.3).
+        """
+        from docx4j_py.model.fonts import fonts_in_use
+
+        package = self.package
+        if package is None:
+            return set()
+        numbering_part = self.numbering_definitions_part
+        numbering = None if numbering_part is None else numbering_part.read_contents()
+        return fonts_in_use(
+            self.stories(),
+            package.get_property_resolver(),
+            numbering,
+            package.get_run_font_selector(),
+        )
+
+    def styles_in_use(self) -> set[str]:
+        """Every style id used directly. docx4j ``getStylesInUse``.
+
+        Not the styles they are merely based on; the ``w:default="1"``
+        paragraph, character and table styles count as used where a paragraph,
+        run or table names none of its own.
+        """
+        from docx4j_py.model.fonts import walk_stories
+
+        package = self.package
+        resolver = None if package is None else package.get_property_resolver()
+        return walk_stories(self.stories(), resolver, None, collect_fonts=False).styles
+
     @property
     def body_element(self) -> Any:
         """The typed ``w:body``, created if the document has none.

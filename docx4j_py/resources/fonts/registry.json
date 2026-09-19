@@ -1,0 +1,183 @@
+{
+ "_source": {
+  "docx4jCommit": "bf26b7f26eb755cc6d0e75f91e6ad4f22229accd",
+  "resources": [
+   "docx4j-export-fo-fonts-{symbol,croscore,crosextra,theme2023}, read off PhysicalFonts.getPhysicalFonts() with system discovery off: the environment CR-016 phase 0c measured and the goldens record"
+  ],
+  "generator": "scripts/generate_fonts.py"
+ },
+ "fonts": [
+  {
+   "name": "Akasia Black",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia Black Italic",
+   "family": "Akasia Black"
+  },
+  {
+   "name": "Akasia Bold",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia Bold Italic",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia ExtraBold",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia ExtraBold Italic",
+   "family": "Akasia ExtraBold"
+  },
+  {
+   "name": "Akasia Italic",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia Light",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia Light Italic",
+   "family": "Akasia Light"
+  },
+  {
+   "name": "Akasia Regular",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia SemiBold",
+   "family": "Akasia"
+  },
+  {
+   "name": "Akasia SemiBold Italic",
+   "family": "Akasia"
+  },
+  {
+   "name": "Arimo Bold",
+   "family": "Arimo"
+  },
+  {
+   "name": "Arimo Bold Italic",
+   "family": "Arimo"
+  },
+  {
+   "name": "Arimo Italic",
+   "family": "Arimo"
+  },
+  {
+   "name": "Arimo Regular",
+   "family": "Arimo"
+  },
+  {
+   "name": "Caladea Bold",
+   "family": "Caladea"
+  },
+  {
+   "name": "Caladea Bold Italic",
+   "family": "Caladea"
+  },
+  {
+   "name": "Caladea Italic",
+   "family": "Caladea"
+  },
+  {
+   "name": "Caladea Regular",
+   "family": "Caladea"
+  },
+  {
+   "name": "Carlito Bold",
+   "family": "Carlito"
+  },
+  {
+   "name": "Carlito Bold Italic",
+   "family": "Carlito"
+  },
+  {
+   "name": "Carlito Italic",
+   "family": "Carlito"
+  },
+  {
+   "name": "Carlito Regular",
+   "family": "Carlito"
+  },
+  {
+   "name": "Cousine Bold",
+   "family": "Cousine"
+  },
+  {
+   "name": "Cousine Bold Italic",
+   "family": "Cousine"
+  },
+  {
+   "name": "Cousine Italic",
+   "family": "Cousine"
+  },
+  {
+   "name": "Cousine Regular",
+   "family": "Cousine"
+  },
+  {
+   "name": "DejaVu Serif",
+   "family": "DejaVu Serif"
+  },
+  {
+   "name": "DejaVu Serif Bold",
+   "family": "DejaVu Serif"
+  },
+  {
+   "name": "DejaVu Serif Bold Italic",
+   "family": "DejaVu Serif"
+  },
+  {
+   "name": "DejaVu Serif Italic",
+   "family": "DejaVu Serif"
+  },
+  {
+   "name": "Intos Display Bold",
+   "family": "Intos Display"
+  },
+  {
+   "name": "Intos Display Bold Italic",
+   "family": "Intos Display"
+  },
+  {
+   "name": "Intos Display Italic",
+   "family": "Intos Display"
+  },
+  {
+   "name": "Intos Display Regular",
+   "family": "Intos Display"
+  },
+  {
+   "name": "Noto Sans Symbols 2 Regular",
+   "family": "Noto Sans Symbols 2"
+  },
+  {
+   "name": "Noto Sans Symbols Bold",
+   "family": "Noto Sans Symbols"
+  },
+  {
+   "name": "Noto Sans Symbols Regular",
+   "family": "Noto Sans Symbols"
+  },
+  {
+   "name": "Tinos Bold",
+   "family": "Tinos"
+  },
+  {
+   "name": "Tinos Bold Italic",
+   "family": "Tinos"
+  },
+  {
+   "name": "Tinos Italic",
+   "family": "Tinos"
+  },
+  {
+   "name": "Tinos Regular",
+   "family": "Tinos"
+  }
+ ]
+}

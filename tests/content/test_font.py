@@ -114,11 +114,11 @@ def test_a_write_reaches_every_run_a_read_only_the_first(new_package):
 def test_repr_says_what_the_font_is(new_package):
     paragraph = new_package.body.insert_paragraph("x")
     assert repr(paragraph.get_font(direct=True)) == "<Font paragraph plain>"
-    # effective, the document defaults give it a size
-    assert repr(paragraph.font) == "<Font paragraph 11.0pt>"
+    # effective, the document defaults give it a size and the theme a face
+    assert repr(paragraph.font) == "<Font paragraph Aptos 11.0pt>"
     paragraph.font.bold = True
     paragraph.font.size = 11
-    assert repr(paragraph.font) == "<Font paragraph bold 11.0pt>"
+    assert repr(paragraph.font) == "<Font paragraph bold Aptos 11.0pt>"
 
 
 def test_font_reads_direct_formatting_of_a_run_in_a_real_document():

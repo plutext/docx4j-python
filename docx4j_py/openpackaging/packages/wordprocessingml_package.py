@@ -6,9 +6,12 @@ part shortcuts docx4j's ``DocumentPart`` keeps, and ``create_package``.
 
 ``create_package`` is docx4j's ``createPackage(PageSizePaper, boolean)``, part
 for part: a main document part with one section, docx4j's own default styles,
-a settings part with Word's ``overrideTableStyleFontSizeAndJustification``
-compatibility setting, and core and extended document properties. Nothing else
---- no numbering, no font table, no theme --- exactly as docx4j leaves it.
+a settings part with the ``w:compat`` Word writes into a new document (section
+12.10), core and extended document properties, and --- since CR-002 Phase B
+(section 15.3), a departure docx4j's own ``addDefaultThemePart`` supports but
+its ``createPackage`` does not take --- **a theme part**, so that the
+``minorHAnsi`` the default styles name resolves to a face. No numbering part and
+no font table, as docx4j leaves it.
 """
 
 from __future__ import annotations
@@ -85,15 +88,28 @@ MAIN_CONTENT_TYPES = (
 class WordprocessingMLPackage(OpcPackage):
     """A WordprocessingML package: a ``.docx``, ``.docm``, ``.dotx`` or ``.dotm``."""
 
-    __slots__ = ("_property_resolver", "font_mapper", "main_document_part")
+    __slots__ = (
+        "_font_mapper",
+        "_property_resolver",
+        "_run_font_selector",
+        "default_theme",
+        "main_document_part",
+    )
 
     def __init__(self) -> None:
         """An empty package with no main document part yet."""
         super().__init__()
         self.main_document_part: MainDocumentPart | None = None
-        #: The font mapper, made on first use by :attr:`font_mapper`.
-        self.font_mapper: Any = None
         self._property_resolver: Any = None
+        self._font_mapper: Any = None
+        self._run_font_selector: Any = None
+        #: Which Office theme this package's **themeless** font references
+        #: resolve against, and which theme part ``create_package`` gives it:
+        #: ``"2023"`` (Aptos, Word 365 and the default), ``"2013"`` (Calibri) or
+        #: ``"2007"`` (Cambria). docx4j's one JVM-wide ``docx4j.fonts.defaultTheme``
+        #: is per package here, because a server may hold several at once
+        #: (CR-002 section 15.3). None takes the process-wide setting.
+        self.default_theme: str | None = None
 
     # -- the resolution utilities (CR-002 section 6) -----------------------
 
@@ -124,11 +140,81 @@ class WordprocessingMLPackage(OpcPackage):
 
         What every writer of ``/word/styles.xml`` calls:
         :func:`docx4j_py.model.content.styles.ensure_style` through
-        :func:`docx4j_py.model.listnumbering.invalidate_styles`.
+        :func:`docx4j_py.model.listnumbering.invalidate_styles`. The run font
+        selector's cached default font goes with it, and the font mapper --- a
+        style may name a font --- is thrown away.
         """
         if self._property_resolver is not None:
             self._property_resolver.refresh()
+        if self._run_font_selector is not None:
+            self._run_font_selector.refresh()
+        self._font_mapper = None
         return self._property_resolver
+
+    def get_run_font_selector(self, refresh: bool = False) -> Any:
+        """The package's :class:`~docx4j_py.model.fonts.RunFontSelector`.
+
+        docx4j ``MainDocumentPart.getRunFontSelector``: one per package, made on
+        first use and kept. It reads the theme part's ``a:theme`` and the
+        settings part's ``w:themeFontLang``, both with ``read_contents()``, so
+        resolving a document's fonts costs it no byte of its round trip.
+        """
+        from docx4j_py.model.fonts import RunFontSelector
+
+        if refresh:
+            self._run_font_selector = None
+        if self._run_font_selector is None:
+            theme_part = self.theme_part
+            theme = None if theme_part is None else theme_part.read_contents()
+            settings = self.document_settings_part
+            theme_font_lang = None
+            if settings is not None:
+                theme_font_lang = settings.read_contents().theme_font_lang
+            self._run_font_selector = RunFontSelector(
+                resolver=self.get_property_resolver(),
+                theme=theme,
+                theme_font_lang=theme_font_lang,
+                default_theme=self.default_theme,
+            )
+        return self._run_font_selector
+
+    @property
+    def run_font_selector(self) -> Any:
+        """The selector where one has been built, else None. Never builds one."""
+        return self._run_font_selector
+
+    def get_font_mapper(self, refresh: bool = False) -> Any:
+        """The package's font mapper, populated over the fonts the document uses.
+
+        docx4j ``WordprocessingMLPackage.getFontMapper`` /
+        ``setFontMapper(Mapper)``: an
+        :class:`~docx4j_py.model.fonts.IdentityPlusMapper` over the faces
+        docx4j's four font jars carry, which is the environment the parity
+        goldens record. A consumer with real fonts calls
+        :meth:`set_font_mapper` with its own.
+        """
+        from docx4j_py.model.fonts import IdentityPlusMapper
+
+        if refresh:
+            self._font_mapper = None
+        if self._font_mapper is None:
+            self.set_font_mapper(IdentityPlusMapper())
+        return self._font_mapper
+
+    def set_font_mapper(self, mapper: Any, populate: bool = True) -> Any:
+        """Use `mapper` for this package, running its passes over the fonts in use."""
+        main = self.main_document_part
+        if populate and main is not None:
+            font_table = self.font_table_part
+            fonts = None if font_table is None else font_table.read_contents()
+            mapper.populate(sorted(main.fonts_in_use()), fonts)
+        self._font_mapper = mapper
+        return mapper
+
+    @property
+    def font_mapper(self) -> Any:
+        """:meth:`get_font_mapper`, so that ``pkg.font_mapper`` reads as docx4j's does."""
+        return self.get_font_mapper()
 
     # -- loading -----------------------------------------------------------
 
@@ -214,6 +300,7 @@ class WordprocessingMLPackage(OpcPackage):
         page_size: PageSizePaper = "A4",
         landscape: bool = False,
         margins: str = "NORMAL",
+        default_theme: str | None = None,
     ) -> WordprocessingMLPackage:
         """A new, empty document. docx4j ``WordprocessingMLPackage.createPackage``.
 
@@ -245,6 +332,9 @@ class WordprocessingMLPackage(OpcPackage):
                 the code says A4).
             landscape: swap width and height and write ``w:orient``.
             margins: one of :data:`PAGE_MARGINS`.
+            default_theme: ``"2023"`` (the default: Aptos, what Word 365
+                writes), ``"2013"`` (Calibri) or ``"2007"`` (Cambria) --- which
+                Office theme the new document's theme part carries.
         """
         from docx4j_py.wml import Body, CtSectPrPgMar, CtSectPrPgSz, Document, SectPr
 
@@ -296,6 +386,18 @@ class WordprocessingMLPackage(OpcPackage):
         main.add_target_part(settings)
         settings.set_contents(_empty_settings())
         settings.set_default_compat_settings()
+
+        # A theme part, as docx4j's addDefaultThemePart does, so that a package
+        # created by either library resolves its minorHAnsi defaults to the same
+        # face (CR-002 section 15.3). docx4j's createPackage does not add one;
+        # the departure is deliberate and is recorded there.
+        from docx4j_py.model.fonts import theme_of_setting
+        from docx4j_py.openpackaging.parts.dml import ThemePart
+
+        package.default_theme = theme_of_setting(default_theme).value
+        theme = ThemePart()
+        theme.set_xml(theme_of_setting(default_theme).xml)
+        main.add_target_part(theme)
 
         return package
 

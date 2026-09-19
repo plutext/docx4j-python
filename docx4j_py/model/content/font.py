@@ -96,8 +96,29 @@ class Font:
         if not self._direct and self._context is not None:
             resolver, p_pr = self._context()
             if resolver is not None:
-                return read_run_options(resolver.get_effective_rpr(r_pr, p_pr))
+                effective = resolver.get_effective_rpr(r_pr, p_pr)
+                out = read_run_options(effective)
+                # The one read the effective w:rPr cannot answer on its own: a
+                # run whose face comes from the theme has a w:asciiTheme and no
+                # w:ascii, so the name is the selector's (CR-002 section 15.3).
+                selector = self._selector()
+                if selector is not None:
+                    out["name"] = selector.ascii_font_name(effective)
+                return out
         return read_run_options(r_pr)
+
+    def _selector(self) -> Any:
+        """The package's run font selector, where one has been built."""
+        if self._context is None:
+            return None
+        resolver, _p_pr = self._context()
+        package = getattr(resolver, "package", None)
+        if package is None:
+            return None
+        try:
+            return package.get_run_font_selector()
+        except Exception:  # noqa: BLE001 - a name is not worth an exception
+            return None
 
     def _read_direct(self) -> dict[str, Any]:
         return read_run_options(self._direct_r_pr())
@@ -197,7 +218,13 @@ class Font:
 
     @property
     def name(self) -> str:
-        """``w:rFonts/@w:ascii``; ``""`` when the run sets none.
+        """The face the run's ASCII text is set in.
+
+        ``w:rFonts/@w:ascii``, or the face ``w:asciiTheme`` names, else
+        ``w:hAnsi``, else the document default --- the effective read, through
+        :meth:`~docx4j_py.model.fonts.RunFontSelector.ascii_font_name` (CR-002
+        section 15.3). ``get_font(direct=True).name`` is the run's own
+        ``w:ascii``, ``""`` where it sets none.
 
         Setting writes ``w:ascii`` and ``w:hAnsi`` together and clears the theme
         fonts, as Word does; ``""`` removes ``w:rFonts``.

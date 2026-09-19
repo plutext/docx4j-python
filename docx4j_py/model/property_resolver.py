@@ -144,6 +144,11 @@ class PropertyResolver:
         """The resolver for a package. docx4j's constructor."""
         return PropertyResolver(package)
 
+    @property
+    def package(self) -> Any:
+        """The package this resolver is over, or None where it is over a tree."""
+        return self._package
+
     # -- the source --------------------------------------------------------
 
     def _read_source(self) -> None:
@@ -315,6 +320,27 @@ class PropertyResolver:
     def get_default_paragraph_style_id(self) -> str | None:
         """The ``w:default="1"`` paragraph style's id, or None."""
         return self.default_paragraph_style_id
+
+    @property
+    def default_character_style_id(self) -> str | None:
+        """The ``w:default="1"`` character style's id, or None."""
+        return self._default_character_style_id
+
+    @property
+    def default_table_style_id(self) -> str | None:
+        """The ``w:default="1"`` table style's id, or None."""
+        return self._default_table_style_id
+
+    @property
+    def styles_tree(self) -> Any:
+        """The ``w:styles`` this resolver read, or None where the package has no part.
+
+        Read without unmarshalling the part unless something else already had
+        (:meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart.read_contents`);
+        the font walk and the numbering definitions read it through here rather
+        than opening the part again.
+        """
+        return self._styles
 
     def get_resolved_default_paragraph_style(self) -> Any:
         """The default paragraph style's effective ``w:pPr``."""

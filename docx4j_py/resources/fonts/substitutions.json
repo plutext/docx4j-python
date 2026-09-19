@@ -1,0 +1,2649 @@
+{
+ "_source": {
+  "docx4jCommit": "bf26b7f26eb755cc6d0e75f91e6ad4f22229accd",
+  "resources": [
+   "org/docx4j/fonts/font-substitutes.xml (the <substitutes> block; <scriptSubstitutes> and <widthFactors> serve the glyph-coverage and width passes, which CR-002 Phase B does not port)",
+   "org/docx4j/fonts/substitutions/FontSubstitutions.xml"
+  ],
+  "generator": "scripts/generate_fonts.py"
+ },
+ "substituteRows": [
+  {
+   "documentFont": "Times New Roman",
+   "substitutes": [
+    {
+     "font": "Tinos Regular",
+     "quality": "metric",
+     "error": "0.05% over 1024 lines (7396)"
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "metric",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Arial",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "metric",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "metric",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Courier New",
+   "substitutes": [
+    {
+     "font": "Cousine Regular",
+     "quality": "metric",
+     "error": null
+    },
+    {
+     "font": "Liberation Mono",
+     "quality": "metric",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Calibri",
+   "substitutes": [
+    {
+     "font": "Carlito Regular",
+     "quality": "metric",
+     "error": "0.07% (probe fonts-light-bold)"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Cambria",
+   "substitutes": [
+    {
+     "font": "Caladea Regular",
+     "quality": "measured",
+     "error": "Cambria/Caladea 1.0494 over English letter frequencies; 1.0497 over the 14792 Cambria glyphs of one corpus document and 1.0383 over another's 1870; corrected by the width factor below"
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Calibri Light",
+   "substitutes": [
+    {
+     "font": "Carlito Regular",
+     "quality": "measured",
+     "error": "1.3% wide before the 0.987 width factor below"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Aptos",
+   "substitutes": [
+    {
+     "font": "Akasia Regular",
+     "quality": "metric",
+     "error": "0.00%: all 138 advances identical to Aptos 2.01 and kerned line widths identical to 0.001pt (fontTools + HarfBuzz, CR-001 batch 49 item 6b); the other eleven styles ship in the same jar"
+    },
+    {
+     "font": "Carlito Regular",
+     "quality": "measured",
+     "error": "-5.3% on digits and -5.5% on a-z against Word's own Aptos (55.752/130.394 against 58.865/137.923 at 11pt), where Arimo is +3.9% and +1.5% - but the probe set says the mean advance is not what decides a line: in Carlito every line of styles-linerule, fonts-missing-slots and tab-leader-kinds breaks where Word's Aptos breaks and in Arimo none of styles-linerule's fifteen does"
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "+3.9% / +1.5%: closer on the mean advance, further on the line breaks"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Aptos Display",
+   "substitutes": [
+    {
+     "font": "Intos Display Regular",
+     "quality": "metric",
+     "error": "0.00%: all 138 advances identical to Aptos Display 2.01 and kerned line widths identical to 0.001pt (fontTools + HarfBuzz, CR-001 batch 49 item 6b); italic, bold and bold italic ship in the same jar"
+    },
+    {
+     "font": "Carlito Regular",
+     "quality": "measured",
+     "error": "-2.9% on digits and +1.0% on a-z against Word's own Aptos Display (55.752/130.394 against 57.40/129.16 at 11pt); Arimo is +6.6% and +8.4%"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Aptos Light",
+   "substitutes": [
+    {
+     "font": "Akasia Light",
+     "quality": "metric",
+     "error": "Akasia's own per-style baseline against Aptos-Light.ttf 2.01 (compatibility.json, verified); not measured here as Aptos and Aptos Display were"
+    },
+    {
+     "font": "Carlito Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Aptos Narrow",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Century Gothic",
+   "substitutes": [
+    {
+     "font": "URW Gothic",
+     "quality": "metric",
+     "error": "0.00% over 6743 characters"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Tahoma",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "median 1.006 on an all-Tahoma document"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Segoe UI",
+   "substitutes": [
+    {
+     "font": "Selawik",
+     "quality": "measured",
+     "error": "regular 0.9994, bold 0.9997 (Arimo 1.0028 / 0.9978); no italic face, so italic is the oblique of the regular at 0.9737 (Arimo Italic 0.9769)"
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Gadugi",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Helvetica",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "metric",
+     "error": "by design: Arial is metric-compatible with Helvetica and Arimo is Arial's clone"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "metric",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Helvetica Neue",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Tw Cen MT",
+   "substitutes": [
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "residual 2% (Arimo is 1.0605x Tinos)"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Trebuchet MS",
+   "substitutes": [
+    {
+     "font": "Droid Sans",
+     "quality": "measured",
+     "error": "1.0096 body, 0.9449 bold capitals, 1.0246 italic"
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "1.0273 body, 0.9061 bold capitals, 1.0504 italic"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Arial Black",
+   "substitutes": [
+    {
+     "font": "Noto Sans Black",
+     "quality": "measured",
+     "error": "residual 2% (1.1122x Arimo against Word's 1.134x)"
+    },
+    {
+     "font": "Noto Sans Display Black",
+     "quality": "measured",
+     "error": "residual 2%"
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "13.4% narrow"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Verdana",
+   "substitutes": [
+    {
+     "font": "DejaVu Sans",
+     "quality": "measured",
+     "error": "1.14x Arimo against Word's 1.141x"
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "14% narrow"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Comic Sans MS",
+   "substitutes": [
+    {
+     "font": "Noto Sans Regular",
+     "quality": "measured",
+     "error": "1.15x Carlito against Word's 1.153x"
+    },
+    {
+     "font": "DejaVu Sans",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Segoe UI Light",
+   "substitutes": [
+    {
+     "font": "Selawik Light",
+     "quality": "measured",
+     "error": "0.9995 (Source Sans 3 0.9938); 1.4% per character, at the measurement's floor, against 12.0%"
+    },
+    {
+     "font": "Source Sans 3",
+     "quality": "measured",
+     "error": "+0.4% mean signed, 9.4% mean absolute"
+    },
+    {
+     "font": "Source Sans Pro",
+     "quality": "measured",
+     "error": "+0.4% mean signed, 9.4% mean absolute"
+    },
+    {
+     "font": "Arimo Regular",
+     "quality": "measured",
+     "error": "11.8% wide"
+    },
+    {
+     "font": "Liberation Sans",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Garamond",
+   "substitutes": [
+    {
+     "font": "Tinos Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Bookman Old Style",
+   "substitutes": [
+    {
+     "font": "Tinos Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Georgia",
+   "substitutes": [
+    {
+     "font": "Gelasio Regular",
+     "quality": "metric",
+     "error": "0.06% on regular, bold and italic (0.9994 / 0.9995 / 0.9995; P052 is 0.9838 / 1.1119 / 1.1234)"
+    },
+    {
+     "font": "P052",
+     "quality": "measured",
+     "error": "1.09x Tinos against Word's 1.076-1.112x"
+    },
+    {
+     "font": "Tinos Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Book Antiqua",
+   "substitutes": [
+    {
+     "font": "P052",
+     "quality": "measured",
+     "error": "1.09x Tinos against Word's 1.087-1.114x"
+    },
+    {
+     "font": "Tinos Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Palatino Linotype",
+   "substitutes": [
+    {
+     "font": "P052",
+     "quality": "measured",
+     "error": "measured for Georgia and Book Antiqua; P052 is Palatino's own clone"
+    },
+    {
+     "font": "Tinos Regular",
+     "quality": "class",
+     "error": null
+    },
+    {
+     "font": "Liberation Serif",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Arial Narrow",
+   "substitutes": [
+    {
+     "font": "Liberation Sans Narrow",
+     "quality": "metric",
+     "error": null
+    },
+    {
+     "font": "Nimbus Sans Narrow",
+     "quality": "metric",
+     "error": "0.02% mean over letters, digits and punctuation"
+    }
+   ]
+  },
+  {
+   "documentFont": "Consolas",
+   "substitutes": [
+    {
+     "font": "Cousine Regular",
+     "quality": "class",
+     "error": "Consolas advances 0.55em, Cousine 0.60em"
+    },
+    {
+     "font": "Liberation Mono",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  },
+  {
+   "documentFont": "Lucida Console",
+   "substitutes": [
+    {
+     "font": "Cousine Regular",
+     "quality": "class",
+     "error": "Lucida Console advances 0.55em, Cousine 0.60em"
+    },
+    {
+     "font": "Liberation Mono",
+     "quality": "class",
+     "error": null
+    }
+   ]
+  }
+ ],
+ "vclEntries": {
+  "arial": {
+   "substFonts": "arial;nimbussansl;freesans;albanyamt;albany;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "arialblack": {
+   "substFonts": "arialblack",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "comicsansms": {
+   "substFonts": "comicsansms;tscu_comic;andymt;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting",
+   "fontType": "Standard,Italic,Script,Comic",
+   "fontWidth": "Normal"
+  },
+  "couriernew": {
+   "substFonts": "couriernew;courier10pitch;freemono;cumberlandamt;cumberland;nimbusmonol;courier;tlwgmono;tlwgtypewriter;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "georgia": {
+   "substFonts": "georgia;bell;bitstreamcharter;charter;timesnewroman",
+   "fontType": "Serif",
+   "fontWidth": "Normal"
+  },
+  "impact": {
+   "substFonts": "impact;falstaff;widelatin;latinwide;broadway;mtbroadway;broadwaymt",
+   "fontType": "SansSerif,Decorative,Special",
+   "fontWidth": "UltraExpanded"
+  },
+  "timesnewroman": {
+   "substFonts": "timesnewroman;times;nimbusromanno9l;freeserif;thorndaleamt;thorndale;nimbusromanno9l;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "trebuchetms": {
+   "substFonts": "trebuchetms;helvetica;andalesans;geneva;verdana;albanyamt;albany;arial;nimbussansl;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "verdana": {
+   "substFonts": "verdana;dejavusans;bitstreamverasans;verasans;segoe;lucidasans;albanyamt;albany;arial;nimbussansl;helvetica;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "microsoftsansserif": {
+   "substFonts": "microsoftsansserif;geneva",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "segoeui": {
+   "substFonts": "segoeui",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "tahoma": {
+   "substFonts": "tahoma;geneva;andalesansui;arialunicodems;lucidaunicode;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "calibri": {
+   "substFonts": "calibri;carlito;tahoma;stradatf;alineasans;verdana;helvetica;trebuchet;arial",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "cambria": {
+   "substFonts": "cambria;bigcaslon;cochin;didot;bitstreamcharter;gentium;gentiumalt;georgia;serif",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "candara": {
+   "substFonts": "candara;trebuchetms;helvetica;verdana;sansserif",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "consolas": {
+   "substFonts": "consolas;andalemono;bitstreamverasansmono;dejavusansmono;lucidaconsole;cousine;liberationmono;couriernew",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "constantia": {
+   "substFonts": "constantia;bigcaslon;cochin;didot;bitstreamcharter;gentium;gentiumalt",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "corbel": {
+   "substFonts": "corbel",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "franklingothicmedium": {
+   "substFonts": "franklingothicmedium",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "lucidaconsole": {
+   "substFonts": "lucidaconsole;monaco;cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "marlett": {
+   "substFonts": "marlett;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "palatinolinotype": {
+   "substFonts": "palatinolinotype;palatino;urwpalladiol",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "symbol": {
+   "substFonts": "symbol;starsymbol;standardsymbols;standardsymbolsl;mtsymbol;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "wingdings": {
+   "substFonts": "wingdings;starsymbol;morewingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "albany": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Default,Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "albanyamt": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Default,Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "algerian": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian;imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar",
+   "fontType": "Decorative,Special,Title,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "almanac": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "andalesans": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "andalesansui": {
+   "substFonts": "andalesansui;arialunicodems;lucidaunicode;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Default,Normal,SansSerif,Full",
+   "fontWidth": "Normal"
+  },
+  "andalewtui": {
+   "substFonts": "andalesansui;arialunicodems;lucidaunicode;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Default,Normal,SansSerif,Full",
+   "fontWidth": "Normal"
+  },
+  "antiqueolive": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "arialnarrow": {
+   "substFonts": "helveticanarrow;helmetcondensed;dejavusanscondensed;nimbussanslcondensed;nimbussanscondensed",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "arialunicode": {
+   "substFonts": "andalesansui;arialunicodems;lucidaunicode;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif,Full",
+   "fontWidth": "Normal"
+  },
+  "arioso": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "avantgarde": {
+   "substFonts": "centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "baskervilleoldface": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Other",
+   "fontWidth": "Normal"
+  },
+  "batang": {
+   "substFonts": "썬바탕;sunbatang;baekmukbatang;썬굴림;sungulim;hymyeongjolightk;myeongjo;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sunbatang": {
+   "substFonts": "썬바탕;batang;baekmukbatang;myeongjo;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;썬굴림;sungulim;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Default,Standard,CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "batangche": {
+   "substFonts": "썬바탕;sunbatang;baekmukbatang;썬굴림;sungulim;myeongjo;batang;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;hymyeongjolightk;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "bell": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "bitstreamverasans": {
+   "substFonts": "dejavusans",
+   "fontType": "Default,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "bitstreamveraserif": {
+   "substFonts": "dejavuserif",
+   "fontType": "Default,Serif",
+   "fontWidth": "Normal"
+  },
+  "bitstreamveramono": {
+   "substFonts": "dejavumono",
+   "fontType": "Standard,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "blackadder": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "bookantiqua": {
+   "substFonts": "palatino;palatinolinotype;bookantiqua;palladio;palladiol;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "bookman": {
+   "substFonts": "bookman;itcbookman;bookmanl;bookmanoldstyle;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "bookmanl": {
+   "substFonts": "bookman;itcbookman;bookmanl;bookmanoldstyle;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "bookmanoldstyle": {
+   "substFonts": "bookman;itcbookman;bookmanl;bookmanoldstyle;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Other",
+   "fontWidth": "Normal"
+  },
+  "bradleyhand": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Italic,Script,Handwriting",
+   "fontWidth": "Normal"
+  },
+  "broadway": {
+   "substFonts": "broadway;mtbroadway;broadwaymt;falstaff;widelatin;latinwide;impact",
+   "fontType": "Decorative,Special",
+   "fontWidth": "Expanded"
+  },
+  "calisto": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "castellar": {
+   "substFonts": "monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Title,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "century": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "centurygothic": {
+   "substFonts": "centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "centuryschoolbook": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Schoolbook",
+   "fontWidth": "Normal"
+  },
+  "centuryschoolbookl": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Schoolbook",
+   "fontWidth": "Normal"
+  },
+  "cfangsong": {
+   "substFonts": "fangsong;fzfangsong;cfangsong;simkai;fzkai;zycjkkai;mkai;kai;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "cgtimes": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "chancery": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "chanceryl": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "chevara": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian;imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar",
+   "fontType": "Decorative,Special,Capitals,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "chevaraoutline": {
+   "substFonts": "monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Capitals,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "chicago": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "chiller": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Special,Italic,Script",
+   "fontWidth": "Normal"
+  },
+  "cmusansserif": {
+   "substFonts": "albanyamt;albany;arial;dejavusans;cmusansserif;freesans;nimbussansl;helvetica;lucida;geneva;helmet;andalesansui;arialunicodems;lucidasansunicode;tahoma",
+   "fontType": "Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "cmuserif": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;dejavuserif;cmuserif;freeserif;nimbusromanno9l;luxiserif;times;lucidaserif;lucidabright;timmons;newyork;serif",
+   "fontType": "Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "cmutypewritertext": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;dejavusansmono;cmutypewritertext;freemono;nimbusmonol;courier;lucidasanstypewriter;lucidatypewriter;monaco;monospaced",
+   "fontType": "Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "colonna": {
+   "substFonts": "monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "comicsans": {
+   "substFonts": "comicsansms;andymt;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting",
+   "fontType": "Standard,Italic,Script,Comic",
+   "fontWidth": "Normal"
+  },
+  "conga": {
+   "substFonts": "sheffield;conga;centurygothic;copperlategothic;felixtitling;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif,Decorative,Capitals",
+   "fontWidth": "Normal"
+  },
+  "copperlategothic": {
+   "substFonts": "sheffield;conga;centurygothic;copperlategothic;felixtitling;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif,Decorative,Capitals",
+   "fontWidth": "Normal"
+  },
+  "corsiva": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "courier": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "cumberland": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Default,Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "cumberlandamt": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Default,Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "curlz": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Special,Italic,Script",
+   "fontWidth": "Normal"
+  },
+  "cursive": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Italic,Script",
+   "fontWidth": "Normal"
+  },
+  "dejavusans": {
+   "substFonts": "bitstreamverasans",
+   "fontType": "Default,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "dejavuserif": {
+   "substFonts": "bitstreamveraserif",
+   "fontType": "Default,Serif",
+   "fontWidth": "Normal"
+  },
+  "dejavumono": {
+   "substFonts": "bitstreamveramono",
+   "fontType": "Default,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "dejavusanscondensed": {
+   "substFonts": "arialnarrow",
+   "fontType": "SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "din": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Default,Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "dingbats": {
+   "substFonts": "starsymbol;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "dotum": {
+   "substFonts": "썬돋움;sundotum;baekmukdotum;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sundotum": {
+   "substFonts": "썬돋움;baekmukdotum;dotum;dotumche;gulim;gulimche;roundgothic;kodig;썬굴림;sungulim;hygothicmedium;hygraphicmedium;hymyeongjolightk;haansoftdotum;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "dotumche": {
+   "substFonts": "썬돋움;sundotum;baekmukdotum;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hygothic": {
+   "substFonts": "썬돋움;sundotum;baekmukdotum;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "haansoftdotum": {
+   "substFonts": "썬돋움;sundotum;baekmukdotum;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hygraphic": {
+   "substFonts": "썬돋움;sundotum;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "edwardianscript": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "elite": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "elited": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "engravers": {
+   "substFonts": "sheffield;conga;centurygothic;copperlategothic;felixtitling;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif,Decorative,Capitals",
+   "fontWidth": "Normal"
+  },
+  "extra": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "falstaff": {
+   "substFonts": "falstaff;widelatin;latinwide;impact;broadway;mtbroadway;broadwaymt",
+   "fontType": "Serif,Decorative,Special",
+   "fontWidth": "UltraExpanded"
+  },
+  "fangsong": {
+   "substFonts": "fangsong;fzfangsong;cfangsong;simkai;fzkai;zycjkkai;mkai;kai;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "fantasy": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special",
+   "fontWidth": "Normal"
+  },
+  "felixtitling": {
+   "substFonts": "sheffield;conga;centurygothic;copperlategothic;felixtitling;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif,Decorative,Capitals",
+   "fontWidth": "Normal"
+  },
+  "forte": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting",
+   "fontType": "Decorative,Italic,Script,Comic",
+   "fontWidth": "Normal"
+  },
+  "freemono": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;dejavusansmono;cmutypewritertext;freemono;nimbusmonol;courier;lucidasanstypewriter;lucidatypewriter;monaco;monospaced",
+   "fontType": "Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "freesans": {
+   "substFonts": "albanyamt;albany;arial;dejavusans;cmusansserif;freesans;nimbussansl;helvetica;lucida;geneva;helmet;andalesansui;arialunicodems;lucidasansunicode;tahoma",
+   "fontType": "Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "freeserif": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;dejavuserif;cmuserif;freeserif;nimbusromanno9l;luxiserif;times;lucidaserif;lucidabright;timmons;newyork;serif",
+   "fontType": "Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "frenchscript": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Special,Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "frutiger": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "fujiyama": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "SansSerif,Special",
+   "fontWidth": "Condensed"
+  },
+  "fzhei": {
+   "substFonts": "simhei;fzhei;zycjkhei;mhei;hei;andalesansui;fzsongti;msunglightsc;simsun;nsimsun;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "fzkai": {
+   "substFonts": "simkai;fzkai;zycjkkai;mkai;kai;fangsong;fzfangsong;cfangsong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "gallia": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian;imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar",
+   "fontType": "Decorative,Special,Title,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "garamond": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "geneva": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "gigi": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Special,Italic,Script",
+   "fontWidth": "Normal"
+  },
+  "gothic": {
+   "substFonts": "hggothicbsun;msgothic;mspgothic;hggothic;hggothicb;hggothice;ipagothic;kochigothic;sazanamigothic;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "gothicb": {
+   "substFonts": "hggothicbsun;msgothic;mspgothic;hggothic;hggothicb;hggothice;ipagothic;kochigothic;sazanamigothic;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "gothicl": {
+   "substFonts": "msgothic;mspgothic;hggothic;hggothicb;hggothice;ipapgothic;sazanamigothic;kochigothic;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "gulim": {
+   "substFonts": "썬굴림;sungulim;baekmukgulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "gulimche": {
+   "substFonts": "썬굴림;sungulim;baekmukgulim;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "newgulim": {
+   "substFonts": "썬굴림;sungulim;gulimche;baekmukgulim;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "gungsuh": {
+   "substFonts": "썬궁서;sungungseo;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "gungsuhche": {
+   "substFonts": "썬궁서;sungungseo;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hygungso": {
+   "substFonts": "썬궁서;sungungseo;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hyhaeseo": {
+   "substFonts": "썬궁서;sungungseo;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hei": {
+   "substFonts": "hei;andalesansui;simhei;fzhei;zycjkhei;mhei;fzmingti;msunglighttc;mingliu;pmingliu;ming;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "heiseimin": {
+   "substFonts": "hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "helmet": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "helmetcondensed": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "helv": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "helvetica": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "helveticanarrow": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "hggothicbsun": {
+   "substFonts": "msgothic;hggothicb;hggothice;andalesansui;gothic;hgmincholightj;msmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "hgpgothicbsun": {
+   "substFonts": "mspgothic;hgpgothicb;hgpgothice;andalesansui",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "hgmincholsun": {
+   "substFonts": "hgmincholightj;msmincho;mspmincho;hgminchoj;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "hgpmincholsun": {
+   "substFonts": "mspmincho;ipapmincho;sazanamimincho;kochimincho;andalesansui;mincho;arialunicodems;lucidaunicode",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "hggothic": {
+   "substFonts": "msgothic;mspgothic;hggothicb;hggothice;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "hggothicb": {
+   "substFonts": "msgothic;mspgothic;hggothic;hggothice;ipagothic;ipapgothic;sazanamigothic;kochigothic;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "hggothice": {
+   "substFonts": "msgothic;mspgothic;hggothic;hggothicb;ipagothic;ipapgothic;sazanamigothic;kochigothic;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "hgminchoj": {
+   "substFonts": "hgmincholightj;msmincho;mspmincho;ipapmincho;sazanamimincho;kochimincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "hgminchol": {
+   "substFonts": "hgmincholsun;hgmincholightj;msmincho;mspmincho;hgminchoj;ipamincho;ipapmincho;sazanamimincho;kochimincho;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "hgmincholightj": {
+   "substFonts": "hgmincholsun;msmincho;mspmincho;ipapmincho;sazanamimincho;hgmincholightj;kochimincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "holidaypi": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "holidays": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "hymyeongjolightk": {
+   "substFonts": "hymyeongjolightk;myeongjo;batang;batangche;gungsuh;gungsuhche;myeomjo;썬굴림;sungulim;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hymyeongjoextra": {
+   "substFonts": "썬바탕;sunbatang;baekmukbatang;hymyeongjolightk;myeongjo;batang;batangche;gungsuh;gungsuhche;myeomjo;썬굴림;sungulim;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "haansoftbatang": {
+   "substFonts": "썬바탕;sunbatang;baekmukbatang;hymyeongjolightk;myeongjo;batang;batangche;gungsuh;gungsuhche;myeomjo;썬굴림;sungulim;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hysinmyeongjo": {
+   "substFonts": "썬바탕;sunbatang;baekmukbatang;hymyeongjolightk;myeongjo;batang;batangche;gungsuh;gungsuhche;myeomjo;썬굴림;sungulim;gulim;gulimche;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sungulim": {
+   "substFonts": "썬굴림;baekmukgulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sungungseo": {
+   "substFonts": "썬궁서;gungsuh;gungsuhche;hygungsobold;썬바탕;썬굴림;sungulim;baekmukgulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sunheadline": {
+   "substFonts": "썬헤드라인;hyheadlinemedium;baekmukheadline;yetr;hygothicextra;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hyheadline": {
+   "substFonts": "썬헤드라인;sunheadline;baekmukheadline;hyheadlinemedium;yetr;hygothicextra;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "yetr": {
+   "substFonts": "썬헤드라인;sunheadline;hyheadlinemedium;baekmukheadline;yetr;hygothicextra;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hygothicextra": {
+   "substFonts": "썬헤드라인;sunheadline;hyheadlinemedium;baekmukheadline;yetr;hygothicextra;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sunmokpan": {
+   "substFonts": "썬목판;hy목판l;썬바탕;썬굴림;sungulim;baekmukgulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "mdsol": {
+   "substFonts": "썬목판;sunmokpan;썬목판;hy목판l;썬바탕;썬굴림;sungulim;baekmukgulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hy목판l": {
+   "substFonts": "썬목판;sunmokpan;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;baekmukbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sunyeopseo": {
+   "substFonts": "썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hypost": {
+   "substFonts": "sunyeopseo;썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "mdgaesung": {
+   "substFonts": "sunyeopseo;썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "mdart": {
+   "substFonts": "sunyeopseo;썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "mdeasop": {
+   "substFonts": "sunyeopseo;썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "mdalong": {
+   "substFonts": "sunyeopseo;썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "magicr": {
+   "substFonts": "sunyeopseo;썬엽서;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hy엽서m": {
+   "substFonts": "썬엽서;sunyeopseo;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hy센스l": {
+   "substFonts": "썬엽서;sunyeopseo;hypostlight;magicr;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "suncrystal": {
+   "substFonts": "썬크리스탈;hy크리스탈m;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hy크리스탈m": {
+   "substFonts": "썬크리스탈;suncrystal;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sunsaemmul": {
+   "substFonts": "썬샘물;hyshortsamulmedium;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hyshortsamul": {
+   "substFonts": "sunsaemmul;썬샘물;hyshortsamulmedium;썬바탕;썬굴림;sungulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sunbaeksong": {
+   "substFonts": "썬백송;hy백송b;썬바탕;썬굴림;sungulim;baekmukgulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "hy백송b": {
+   "substFonts": "썬백송;sunbaeksong;썬바탕;썬굴림;sungulim;baekmukgulim;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;hymyeongjolightk;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "imprint": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "imprintmtshadow": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "imprintshadow": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "informalroman": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Italic,Script",
+   "fontWidth": "Normal"
+  },
+  "kai": {
+   "substFonts": "kai;simkai;fzkai;zycjkkai;mkai;fzmingti;msunglighttc;mingliu;pmingliu;ming;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "kidprint": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting",
+   "fontType": "Default,Standard,Italic,Script,Comic",
+   "fontWidth": "Normal"
+  },
+  "kodig": {
+   "substFonts": "gulim;gulimche;썬돋움;sundotum;baekmukgulim;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "kristen": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting",
+   "fontType": "Italic,Script,Comic",
+   "fontWidth": "Normal"
+  },
+  "kunstlerscript": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "latinwide": {
+   "substFonts": "falstaff;widelatin;latinwide;impact;broadway;mtbroadway;broadwaymt",
+   "fontType": "Serif,Decorative,Special",
+   "fontWidth": "UltraExpanded"
+  },
+  "lettergothic": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "liberationsans": {
+   "substFonts": "liberationsans;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Default,Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "liberationserif": {
+   "substFonts": "liberationserif;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Default,Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "liberationmono": {
+   "substFonts": "liberationmono;cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Default,Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "linedraw": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "lineprinter": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "losangeles": {
+   "substFonts": "onyx;arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif,Special",
+   "fontWidth": "Condensed"
+  },
+  "lucidabright": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "lucidacalligraphic": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "lucidacalligraphy": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "lucidadingbats": {
+   "substFonts": "starsymbol;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "lucidahandwriting": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Italic,Script,Handwriting",
+   "fontWidth": "Normal"
+  },
+  "lucidasans": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "lucidasansdingbats": {
+   "substFonts": "starsymbol;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "lucidasanstyp": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "lucidasanstypewriter": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "lucidasansunicode": {
+   "substFonts": "andalesansui;arialunicodems;lucidaunicode;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "lucidatypewriter": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "mhei": {
+   "substFonts": "simhei;fzhei;zycjkhei;mhei;hei;andalesansui;fzsongti;msunglightsc;simsun;nsimsun;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "mincho": {
+   "substFonts": "hgmincholsun;hgmincholightj;msmincho;mspmincho;ipamincho;ipapmincho;sazanamimincho;hgmincholightj;hgminchoj;kochimincho;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "minchoj": {
+   "substFonts": "hgmincholsun;hgmincholightj;msmincho;sazanamimincho;hgmincholightj;mspmincho;hgminchoj;hgminchol;minchol;hgheiseimin;heiseimin;mincho;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "minchol": {
+   "substFonts": "hgmincholsun;hgmincholightj;msmincho;ipamincho;sazanamimincho;kochimincho;mspmincho;hgminchoj;hgminchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "minchou": {
+   "substFonts": "hgmincholsun;hgmincholightj;msmincho;ipamicho;ipapmincho;sazanamimincho;kochimincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "ming": {
+   "substFonts": "fzmingti;msunglighttc;mingliu;pmingliu;ming;hei;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "mingli": {
+   "substFonts": "fzmingti;msunglighttc;mingliu;pmingliu;ming;hei;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "mingliu": {
+   "substFonts": "fzmingti;msunglighttc;mingliu;pmingliu;ming;hei;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "mkai": {
+   "substFonts": "simkai;fzkai;zycjkkai;mkai;kai;fangsong;fzfangsong;cfangsong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "monaco": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "mono": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "monol": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "monospace": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "monospaced": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "morewingbats": {
+   "substFonts": "starsymbol;wingdings;morewingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "msgothic": {
+   "substFonts": "hggothicbsun;mspgothic;hggothic;hggothicb;ipagothic;sazanamigothic;kochigothic;hggothice;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "msmincho": {
+   "substFonts": "hgmincholsun;hgmincholightj;ipamincho;sazanamimincho;kochimincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "msong": {
+   "substFonts": "song;fzsongyi;fzsong;msong;shusong;fzshusong;fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;arplshanheisununi;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "mspmincho": {
+   "substFonts": "hgpmincholsun;hgmincholightj;msmincho;ipapmincho;sazanamimincho;hgminchoj;hgminchol;kochimincho;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "msuigothic": {
+   "substFonts": "hggothicbsun;mspgothic;msgothic;hggothic;hggothicb;ipauigothic;sazanamigothic;kochigothic;hggothice;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "msunglightsc": {
+   "substFonts": "fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;song;fzsongyi;fzsong;msong;shusong;fzshusong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "fzsongti": {
+   "substFonts": "fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;song;fzsongyi;fzsong;msong;shusong;fzshusong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "msunglighttc": {
+   "substFonts": "fzmingti;msunglighttc;mingliu;pmingliu;ming;hei;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "fzmingti": {
+   "substFonts": "fzmingti;msunglighttc;mingliu;pmingliu;ming;hei;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "mtbroadway": {
+   "substFonts": "broadway;mtbroadway;broadwaymt;falstaff;widelatin;latinwide;impact",
+   "fontType": "Decorative,Special",
+   "fontWidth": "UltraExpanded"
+  },
+  "myeongjo": {
+   "substFonts": "썬굴림;sungulim;baekmukgulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;gulim;gulimche;썬돋움;sundotum;dotum;dotumche;roundgothic;kodig;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "newcenturyschlbk": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Schoolbook",
+   "fontWidth": "Normal"
+  },
+  "newcenturyschoolbook": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Schoolbook",
+   "fontWidth": "Normal"
+  },
+  "newyork": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "nimbusromanno9l": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Default,Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "nlq": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "nimbussansl": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Standard,Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "nimbusromannol": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Default,Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "nimbusmonol": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono",
+   "fontType": "Standard,Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "nsimsun": {
+   "substFonts": "fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;song;fzsongyi;fzsong;msong;shusong;fzshusong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "ocean": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "omega": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "onyx": {
+   "substFonts": "losangeles;arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif,Special",
+   "fontWidth": "Condensed"
+  },
+  "opensymbol": {
+   "substFonts": "starsymbol;andalesansui;arialunicodems;lucidaunicode;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "outlook": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "palacescript": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Default,Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "palatino": {
+   "substFonts": "palatino;bookantiqua;palladio;palladiol;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "palladio": {
+   "substFonts": "palatino;bookantiqua;palladio;palladiol;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "palladiol": {
+   "substFonts": "palatino;bookantiqua;palladio;palladiol;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "pepita": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "pgothic": {
+   "substFonts": "hgpgothicbsun;mspgothic;msgothic;hggothic;hggothicb;ipapgothic;sazanamigothic;kochigothic;hggothice;andalesansui;gothic;hgmincholightj;msmincho;mspmincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "pica": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "picad": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed,Typewriter",
+   "fontWidth": "Normal"
+  },
+  "pmincho": {
+   "substFonts": "hgpminchobsun;hgmincholightj;mspmincho;msmincho;ipapmincho;sazanamimincho;kochimincho;hgminchoj;hgminchol;minchol;mincho;hgheiseimin;heiseimin;minchou;msgothic;mspgothic;hggothic;hggothicb;hggothice;andalesansui;gothic;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_JP",
+   "fontWidth": "Normal"
+  },
+  "pmingliu": {
+   "substFonts": "fzmingti;msunglighttc;mingliu;pmingliu;ming;hei;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_TW",
+   "fontWidth": "Normal"
+  },
+  "pristina": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "ps": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "psd": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "psnlq": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "roman": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "romanno9": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "romanno9l": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "romanps": {
+   "substFonts": "cumberlandamt;cumberland;couriernew;nimbusmonol;courier;lucidatypewriter;lucidasanstypewriter;monaco;monospaced;nimbusmono;nimbusmonol",
+   "fontType": "Normal,Fixed",
+   "fontWidth": "Normal"
+  },
+  "roundgothic": {
+   "substFonts": "gulim;gulimche;썬돋움;sundotum;baekmukdotum;dotum;dotumche;roundgothic;kodig;andalesansui;썬굴림;sungulim;hymyeongjolightk;myeongjo;썬바탕;sunbatang;batang;batangche;gungsuh;gungsuhche;myeomjo;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_KR",
+   "fontWidth": "Normal"
+  },
+  "sans": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;bitstreamvera;verdana;luxisans;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sanscondensed": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "sansl": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sanslcondensed": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "sansserif": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "schoolbook": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif,Schoolbook",
+   "fontWidth": "Normal"
+  },
+  "script": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "segoe": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "serif": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "sheffield": {
+   "substFonts": "sheffield;conga;centurygothic;copperlategothic;felixtitling;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Default,Normal,SansSerif,Decorative,Capitals",
+   "fontWidth": "Normal"
+  },
+  "shelley": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "shusong": {
+   "substFonts": "song;fzsongyi;fzsong;msong;shusong;fzshusong;fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "simhei": {
+   "substFonts": "simhei;fzhei;zycjkhei;mhei;hei;andalesansui;fzsongti;msunglightsc;simsun;nsimsun;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "simkai": {
+   "substFonts": "simkai;fzkai;zycjkkai;mkai;kai;fangsong;fzfangsong;cfangsong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "simsong": {
+   "substFonts": "song;fzsongyi;fzsong;msong;shusong;fzshusong;fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;arplshanheisununi;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "simsun": {
+   "substFonts": "fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;song;fzsongyi;fzsong;msong;shusong;fzshusong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "snowcap": {
+   "substFonts": "imprintmtshadow;imprintshadow;imprint;chevaraoutline;chevara;gallia;colonnamt;algerian;castellar;monotypeoldstyleboldoutline;monotypeoldstyleoutline;chevaraoutline;imprintmtshadow;imprintshadow;imprint;colonnamt;castellar;imprintmtshadow;imprintshadow;imprint;chevara;gallia;algerian",
+   "fontType": "Decorative,Special,Outline,Shadow",
+   "fontWidth": "Normal"
+  },
+  "song": {
+   "substFonts": "song;fzsongyi;fzsong;msong;shusong;fzshusong;fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "sorts": {
+   "substFonts": "starsymbol;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "sorts2": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "sorts3": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "spartan": {
+   "substFonts": "sheffield;conga;centurygothic;copperlategothic;felixtitling;centurygothic;urwgothic;avantgarde;itcavantgarde;gothic;avantgardegothic;conga;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif,Decorative,Capitals",
+   "fontWidth": "Normal"
+  },
+  "standardsymbols": {
+   "substFonts": "starsymbol;symbol;standardsymbols;standardsymbolsl;mtsymbol;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "standardsymbolsl": {
+   "substFonts": "starsymbol;symbol;standardsymbols;standardsymbolsl;mtsymbol;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "starbats": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "starmath": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "starsymbol": {
+   "substFonts": "opensymbol;andalesansui;arialunicodems;lucidaunicode;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "swiss": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "swissnarrow": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "thorndale": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Default,Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "thorndaleamt": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Default,Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "times": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;nimbusromanno9l;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Standard,Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "timesroman": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "timmons": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "tmsrmn": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "univers": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "universcondensed": {
+   "substFonts": "arialnarrow;helveticanarrow;helmetcondensed;nimbussanslcondensed;nimbussanscondensed;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "utah": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "utopia": {
+   "substFonts": "newcenturyschlbk;newcenturyschoolbook;centuryschoolbook;centuryschoolbookl;thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons;serif;lucidaserif;lucidabright;roman;nimbusromanno9;bookman;itcbookman;garamond;garamondmt;palatino",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "vacation": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "vinerhand": {
+   "substFonts": "andymt;comicsansms;andy;kidprint;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley",
+   "fontType": "Italic,Script,Handwriting",
+   "fontWidth": "Normal"
+  },
+  "vivaldi": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "vladimirscript": {
+   "substFonts": "palacescript;palacescriptmt;arioso;shelley;zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,BrushScript",
+   "fontWidth": "Normal"
+  },
+  "webdings": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "webdings2": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "webdings3": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "widelatin": {
+   "substFonts": "falstaff;widelatin;latinwide;impact;broadway;mtbroadway;broadwaymt",
+   "fontType": "Serif,Decorative,Special",
+   "fontWidth": "UltraExpanded"
+  },
+  "wingdings2": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "wingdings3": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "wingdings4": {
+   "substFonts": "starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "zapfcalligraphic": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "zapfcalligraphy": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "zapfchancery": {
+   "substFonts": "zapfchancery;itczapfchancery;monotypecorsiva;corsiva;chancery;chanceryl;lucidacalligraphy;lucidahandwriting;palacescript;palacescriptmt;arioso;shelley;andymt;comicsansms;andy;kidprint;",
+   "fontType": "Italic,Script,Chancery",
+   "fontWidth": "Normal"
+  },
+  "zapfdingbats": {
+   "substFonts": "starsymbol;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;opensymbol;starsymbol;opensymbol;starbats;wingdings;zapfdingbats;itczapfdingbats;monotypesorts;dingbats;lucidadingbats;lucidasansdingbats;webdings;symbol;standardsymbols;standardsymbolsl;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Symbol,Special",
+   "fontWidth": "Normal"
+  },
+  "zycjkhei": {
+   "substFonts": "simhei;fzhei;zycjkhei;mhei;hei;andalesansui;fzsongti;msunglightsc;simsun;nsimsun;zycjksun;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "zycjkkai": {
+   "substFonts": "simkai;fzkai;zycjkkai;mkai;kai;fangsong;fzfangsong;cfangsong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "zycjksun": {
+   "substFonts": "fzsongti;msunglightsc;simsun;nsimsun;arplshanheisununi;zycjksun;song;fzsongyi;fzsong;msong;shusong;fzshusong;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "CJK,CJK_SC",
+   "fontWidth": "Normal"
+  },
+  "sansregular": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sansdemi": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sansheavy": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sansbold": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sansitalic": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Italic,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sansbolditalic": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Italic,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sanssemibold": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sanssemibolditalic": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Italic,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "sanscondensedsemibold": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "sanscondensedsemibolditalic": {
+   "substFonts": "albanyamt;albany;arial;nimbussansl;helvetica;lucidasans",
+   "fontType": "Italic,SansSerif",
+   "fontWidth": "Condensed"
+  },
+  "serifregular": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "serifbold": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons",
+   "fontType": "Normal,Serif",
+   "fontWidth": "Normal"
+  },
+  "serifbolditalic": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons",
+   "fontType": "Italic,Serif",
+   "fontWidth": "Normal"
+  },
+  "serifitalic": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons",
+   "fontType": "Italic,Serif",
+   "fontWidth": "Normal"
+  },
+  "serifcaps": {
+   "substFonts": "thorndaleamt;thorndale;timesnewroman;nimbusromanno9l;times;timesroman;newyork;timmons",
+   "fontType": "Serif,Capitals",
+   "fontWidth": "Normal"
+  },
+  "charter": {
+   "substFonts": "bitstreamcharter;georgia;timesnewroman",
+   "fontType": "Serif",
+   "fontWidth": "Normal"
+  },
+  "bitstreamcharter": {
+   "substFonts": "charter;georgia;timesnewroman",
+   "fontType": "Serif",
+   "fontWidth": "Normal"
+  },
+  "angsananew": {
+   "substFonts": "angsanaupc;oonaksit;tahoma;browallianew;lucidasans;arialunicodems;clearlyu",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "angsanaupc": {
+   "substFonts": "angsananew;oonaksit;tahoma;browalliaupc;lucidasans;arialunicodems;clearlyu",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "browallianew": {
+   "substFonts": "browalliaupc;angsananew;oonaksit;tahoma;lucidasans;arialunicodems;clearlyu",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "browalliaupc": {
+   "substFonts": "browallianew;angsanaupc;oonaksit;tahoma;lucidasans;arialunicodems;clearlyu",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "cordianew": {
+   "substFonts": "cordiaupc;browalliaupc;angsananew;oonaksit;tahoma;lucidasans;arialunicodems;clearlyu",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "cordiaupc": {
+   "substFonts": "cordianew;browallianew;angsanaupc;oonaksit;tahoma;lucidasans;arialunicodems;clearlyu",
+   "fontType": "",
+   "fontWidth": ""
+  },
+  "ooannop": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "oonaksit": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "ooratchada": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "oosawasdee": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "oothanakrit": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "garuda": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "norasi": {
+   "substFonts": "cordianew;browallianew;angsananew;tahoma",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "nftnorasi": {
+   "substFonts": "norasi",
+   "fontType": "CTL",
+   "fontWidth": ""
+  },
+  "mangal": {
+   "substFonts": "mangal",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "latha": {
+   "substFonts": "latha",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "sylfaen": {
+   "substFonts": "sylfaen",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "raavi": {
+   "substFonts": "raavi",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "shruti": {
+   "substFonts": "shruti",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "gautami": {
+   "substFonts": "gautami",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "tunga": {
+   "substFonts": "tunga",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "estrangeloedessa": {
+   "substFonts": "estrangeloedessa",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "cambriamath": {
+   "substFonts": "cambriamath",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "arialunicodems": {
+   "substFonts": "arialunicodems",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "trebuchet": {
+   "substFonts": "andalesans;verdana;trebuchetms;albanyamt;albany;arial;nimbussansl;helvetica;lucidasans;lucida;geneva;helmet;sansserif;nimbussans;andalesansui;arialunicodems;lucidaunicode",
+   "fontType": "Normal,SansSerif",
+   "fontWidth": "Normal"
+  },
+  "mvboli": {
+   "substFonts": "mvboli",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@msmincho": {
+   "substFonts": "@msmincho",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@mspmincho": {
+   "substFonts": "@mspmincho",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@msgothic": {
+   "substFonts": "@msgothic",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "mspgothic": {
+   "substFonts": "mspgothic",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@mspgothic": {
+   "substFonts": "@mspgothic",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@msuigothic": {
+   "substFonts": "@msuigothic",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@gulim": {
+   "substFonts": "@gulim",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@gulimche": {
+   "substFonts": "@gulimche",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@dotum": {
+   "substFonts": "@dotum",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@dotumche": {
+   "substFonts": "@dotumche",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@batang": {
+   "substFonts": "@batang",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@batangche": {
+   "substFonts": "@batangche",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@gungsuh": {
+   "substFonts": "@gungsuh",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@gungsuhche": {
+   "substFonts": "@gungsuhche",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@simsun": {
+   "substFonts": "@simsun",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@nsimsun": {
+   "substFonts": "@nsimsun",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@simhei": {
+   "substFonts": "@simhei",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@mingliu": {
+   "substFonts": "@mingliu",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@pmingliu": {
+   "substFonts": "@pmingliu",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "bauhaus93": {
+   "substFonts": "bauhaus93",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "bellmt": {
+   "substFonts": "bellmt",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "berlinsansfb": {
+   "substFonts": "berlinsansfb",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "bernardmtcondensed": {
+   "substFonts": "bernardmtcondensed",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "bodonimtpostercompressed": {
+   "substFonts": "bodonimtpostercompressed",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "britannicbold": {
+   "substFonts": "britannicbold",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "brushscriptmt": {
+   "substFonts": "brushscriptmt",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "californianfb": {
+   "substFonts": "californianfb",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "centaur": {
+   "substFonts": "centaur",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "colonnamt": {
+   "substFonts": "colonnamt",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "cooperblack": {
+   "substFonts": "cooperblack",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "footlightmtlight": {
+   "substFonts": "footlightmtlight",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "freestylescript": {
+   "substFonts": "freestylescript",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "harlowsoliditalic": {
+   "substFonts": "harlowsoliditalic",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "harrington": {
+   "substFonts": "harrington",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "hightowertext": {
+   "substFonts": "hightowertext",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "jokerman": {
+   "substFonts": "jokerman",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "juiceitc": {
+   "substFonts": "juiceitc",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "kristenitc": {
+   "substFonts": "kristenitc",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "lucidafax": {
+   "substFonts": "lucidafax",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "magneto": {
+   "substFonts": "magneto",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "maturamtscriptcapitals": {
+   "substFonts": "maturamtscriptcapitals",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "mistral": {
+   "substFonts": "mistral",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "modernno.20": {
+   "substFonts": "modernno.20",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "monotypecorsiva": {
+   "substFonts": "monotypecorsiva",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "niagaraengraved": {
+   "substFonts": "niagaraengraved",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "niagarasolid": {
+   "substFonts": "niagarasolid",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "oldenglishtextmt": {
+   "substFonts": "oldenglishtextmt",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "parchment": {
+   "substFonts": "parchment",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "playbill": {
+   "substFonts": "playbill",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "poorrichard": {
+   "substFonts": "poorrichard",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "ravie": {
+   "substFonts": "ravie",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "showcardgothic": {
+   "substFonts": "showcardgothic",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "snapitc": {
+   "substFonts": "snapitc",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "stencil": {
+   "substFonts": "stencil",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "tempussansitc": {
+   "substFonts": "tempussansitc",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "vinerhanditc": {
+   "substFonts": "vinerhanditc",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "berlinsansfbdemi": {
+   "substFonts": "berlinsansfbdemi",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "nina": {
+   "substFonts": "nina",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "mtextra": {
+   "substFonts": "mtextra",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "bookshelfsymbol7": {
+   "substFonts": "bookshelfsymbol7",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "msreferencesansserif": {
+   "substFonts": "msreferencesansserif",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "msreferencespecialty": {
+   "substFonts": "msreferencespecialty",
+   "fontType": "",
+   "fontWidth": "Normal"
+  },
+  "@arialunicodems": {
+   "substFonts": "@arialunicodems",
+   "fontType": "",
+   "fontWidth": "Normal"
+  }
+ }
+}

@@ -261,11 +261,32 @@ def test_create_package_makes_what_docx4j_makes():
         "/word/document.xml",
         "/word/settings.xml",
         "/word/styles.xml",
+        # CR-002 section 15.3: a theme part, as docx4j's addDefaultThemePart
+        # gives one, so that the minorHAnsi the default styles name resolves to
+        # a face. docx4j's own createPackage leaves it out
+        "/word/theme/theme1.xml",
     ]
     assert isinstance(pkg.main_document_part, MainDocumentPart)
     # styles hangs off the document part, not off the package, as in docx4j
     assert pkg.relationships_part.get_rel("/word/styles.xml") is None
     assert pkg.main_document_part.relationships_part.get_rel("/word/styles.xml")
+    assert pkg.main_document_part.relationships_part.get_rel("/word/theme/theme1.xml")
+
+
+@pytest.mark.parametrize(
+    ("value", "minor", "major"),
+    [("2023", "Aptos", "Aptos Display"), ("2013", "Calibri", "Calibri Light"),
+     ("2007", "Calibri", "Cambria")],
+)
+def test_create_package_takes_the_default_theme(value, minor, major):
+    """CR-002 section 15.3: which Office theme the new document's theme part is."""
+    pkg = WordprocessingMLPackage.create_package(default_theme=value)
+    assert pkg.default_theme == value
+    scheme = pkg.theme_part.contents.theme_elements.font_scheme
+    assert scheme.minor_font.latin.typeface == minor
+    assert scheme.major_font.latin.typeface == major
+    # and the document's own default font resolves through it
+    assert pkg.get_run_font_selector().default_font == minor
 
 
 @pytest.mark.parametrize("page_size", sorted(PAGE_SIZES))
