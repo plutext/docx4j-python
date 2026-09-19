@@ -194,7 +194,7 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > parse would show. **The user's decision of 2026-09-19 applies: a dates-only difference needs no
 > Word re-check**, and none was made.
 
-> **2026-09-19, a Word check is outstanding.** CR-002 Phase B gave `create_package` a **theme
+> **2026-09-19, passed.** CR-002 Phase B gave `create_package` a **theme
 > part** (`/word/theme/theme1.xml`, docx4j's Office 2023 theme: Aptos and Aptos Display), so that
 > the `minorHAnsi` the default styles name resolves to a face rather than to nothing --- docx4j's
 > own `addDefaultThemePart` supplies exactly this part, and CR-002 section 15.3 records the
@@ -204,8 +204,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > are the five new `word/theme/theme1.xml` entries, the five `.rels` that point at them, and the
 > wall-clock dates. Artefacts 1, 2, 7, 8, 9 and 10 are built from **loaded** documents, which
 > already have a theme part, and are byte for byte what they were once the dates are scrubbed.
-> **This is new markup in a created document and 12.8's rule applies: it needs a Word check, and
-> none has been made.** What to look for in 3, 4, 5, 6 and 11: no repair prompt, and the body
+> **This is new markup in a created document and 12.8's rule applies; artefacts 3, 4, 5, 6 and 11
+> were checked in Word the same day and all passed.** What was looked for in 3, 4, 5, 6 and 11: no repair prompt, and the body
 > text in **Aptos** (Word's own themeless default is the same face, so the document should look
 > as it did) with the Heading styles in **Aptos Display**; the Design tab's Fonts gallery should
 > show the Office theme selected rather than nothing.

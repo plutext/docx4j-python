@@ -1315,5 +1315,6 @@ The suite is **1,942 tests**, all passing, with one skip (the corpus round trip 
 * **`PhysicalFonts.discover`** over installed fonts, which the same dependency unlocks.
 * **The `<scriptSubstitutes>` and `<widthFactors>` blocks of `font-substitutes.xml`**, which serve
   the two passes above and are deliberately not generated.
-* **A Word check** of the five acceptance artefacts that gained a theme part (3, 4, 5, 6 and 11):
-  new markup in a created document, and 12.8's rule. `tests/README.md` records what to look for.
+* ~~**A Word check** of the five acceptance artefacts that gained a theme part (3, 4, 5, 6 and 11)~~
+  --- **passed in Word on 2026-09-19**, the same day: no repair prompt, the body in Aptos and the
+  headings in Aptos Display, as `tests/README.md` records. Nothing of Phase B awaits a check.
