@@ -404,8 +404,21 @@ class Emulator:
             )
             return NumRef(not_numbered=True, reason=reason)
 
+        # the reason strings from here on are docx4j's at VERSION_17_1_1
+        # 7fba7a150, the shared contract of the three implementations
+        # (CR-003 section 18.10); the two cases never appear in a golden
+        origin = "the paragraph's own" if direct_num_pr else f"from style {style_id!r}"
+        definition = self.instance_list_definitions.get(num_id)
+        if definition is None:
+            return NumRef(not_numbered=True, reason=f"no w:num for numId {num_id} ({origin})")
+
         if not ilvl:
             ilvl = "0"
+
+        if not definition.level_exists(ilvl):
+            return NumRef(
+                not_numbered=True, reason=f"no w:lvl {ilvl} in w:num {num_id} ({origin})"
+            )
 
         if not direct_num_pr and self.style_linked_elsewhere(num_id, ilvl, style_id):
             return NumRef(

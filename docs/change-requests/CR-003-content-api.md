@@ -4309,3 +4309,21 @@ docx4j, which is the oracle, since Word has not been measured on either:
    as the port does: nothing, the character alone, nothing.
 
 Both are pinned in `tests/content/test_listnumbering.py`; neither changes a golden.
+
+
+*And the reason strings, the same day.* docx4j at `VERSION_17_1_1` `7fba7a150` fixed the
+wording of `numRefFor`'s reasons, and the goldens were regenerated from it (harness version 3;
+zero non-header changes, so 20 of 20 holds). Those strings are now the shared contract of the
+three implementations, and this emulator says them verbatim: the two `w:numId` 0 forms above,
+and the two that never appear in a golden because they make `numbering` null --- "no w:num for
+numId N (the paragraph's own)" / "(from style 'X')" and "no w:lvl L in w:num N (...)" --- which
+`resolve` now answers in docx4j's check order (the style chain, numId 0, no `w:num`, the level
+defaulted to 0, no `w:lvl`, style-linked-elsewhere, numbered) and a unit test pins, as
+docx4j's `ParityAccessorsTest` and the port's `numbering.test.mjs` do on their sides. The
+pre-existing reasons ("no numId, no paragraph style and no default paragraph style", "no numId,
+and style 'X' is not numbered", "level L of numId N is linked to a paragraph style other than
+'X'") were already docx4j's. What this emulator does not say: "no pPr", "no numbering part",
+"cyclic styles at X", "style 'X' has no pPr" and "style 'X' has a w:numPr without a w:numId
+val", which arise before `resolve` here (a package with no numbering part answers `None`
+one level up; the style walk does not detect a cycle, CR-002 Phase B's resolver will) ---
+recorded rather than imitated.

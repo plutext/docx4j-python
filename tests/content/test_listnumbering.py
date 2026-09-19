@@ -224,8 +224,21 @@ def test_w_numId_zero_turns_numbering_off():
 
 
 def test_a_numId_the_document_does_not_define_is_not_numbered():
+    """docx4j's reason strings at VERSION_17_1_1 7fba7a150, verbatim (CR-003 section 18.10)."""
     package = numbered_package(DECIMAL)
     assert Emulator.get_number_of(package, None, "99", "0") is None
+    emulator = emulator_of(package)
+    dangling = emulator.resolve(None, "99", "0", True)
+    assert (dangling.not_numbered, dangling.reason) == (True, "no w:num for numId 99 (the paragraph's own)")
+    missing = emulator.resolve(None, "7", "4", True)
+    assert (missing.not_numbered, missing.reason) == (True, "no w:lvl 4 in w:num 7 (the paragraph's own)")
+    styled = numbered_package(
+        DECIMAL,
+        '<w:style w:type="paragraph" w:styleId="L"><w:name w:val="L"/>'
+        '<w:pPr><w:numPr><w:numId w:val="99"/></w:numPr></w:pPr></w:style>',
+    )
+    via_style = emulator_of(styled).resolve("L", None, None, False)
+    assert via_style.reason == "no w:num for numId 99 (from style 'L')"
 
 
 def test_a_level_linked_to_another_paragraph_style_numbers_only_that_style():
