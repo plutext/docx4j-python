@@ -14,9 +14,12 @@ departure.
 The design lives in `docs/change-requests/`. Each CR's implementation-notes sections (CR-001
 sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 17) record what was actually built,
 the numbers and every deliberate departure; read them before changing the area they cover.
-Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phase A
-implemented, B (resolution utilities, the Java parity harness and golden files; its numbering
-`Emulator` core landed early through CR-003 H, section 12.11) and C (PML, SML, flat OPC, less the
+Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phases A and
+**B implemented** — B on 2026-09-19 (section 15): `PropertyResolver` and `StyleUtil` over a
+property catalogue, the numbering emulator completed (resolution through the resolver, docx4j's
+whole format registry, `getInd` and the label's `w:rPr`), and `org.docx4j.fonts`' decision half,
+with **zero differences on all 45 of docx4j's parity goldens**, which this repository consumes
+from `../docx4j-core-ts/test/golden/` and never builds — C (PML, SML, flat OPC, less the
 flat OPC read half) proposed; CR-003 (content API) **every phase implemented** --- A, B, D, K, C, G,
 F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member of
 `tests/office_js_subset.json` is, and with Phase J `docx4j_py.docx` covers 305 of the 312 members of
@@ -55,6 +58,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
 .venv-fork/bin/python scripts/bench_marshal.py         # parse and marshal, part by part (--json)
 .venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
+.venv-fork/bin/python scripts/generate_fonts.py        # docx4j_py/resources/fonts/ from ../docx4j
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata
 python codegen/derive_names.py                         # re-derive codegen/names/ from docx4j's XJC output
@@ -92,13 +96,18 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 - `traversal.py`: `walk`, `iter_nodes`, `find`, `text_of`, `element_name`
 - `wml/builders.py`: the `p` / `r` / `t` / `tbl` / `br` / `tab` sugar (with `wml/pictures.py`
   and `wml/sdt.py` beside it)
-- `model/`: CR-003's content API — `model/content/` (the `Body`, `Paragraph`, `Range`, `Font`,
+- `model/`: CR-002 Phase B's resolution utilities — `property_catalogue.py`, `style_util.py`,
+  `property_resolver.py`, `listnumbering/` and `fonts/` (`RunFontSelector`, the `Mapper` family,
+  `FontFallback`, `fonts_in_use`) — and CR-003's content API: `model/content/` (the `Body`,
+  `Paragraph`, `Range`, `Font`,
   `Table`, `TableRow`, `TableCell`, `InlinePicture`, `ContentControl`, `Comment` and
   `TrackedChange` views, `insert_ooxml`, addresses, `Outline`, `describe()`, `ChangeReport`,
   `dry_run`, `Author`, the `ChangeTracker`), `model/customxml/` (`CustomXmlPart`,
   `CustomXmlNode`, `XmlMapping`, the typed control kinds, the bindings, `describe()` / `fill()`),
   `model/markdown/` (markdown out and in) and `model/sessions.py` (`DocumentSession`)
-- `resources/`: the parts `warm_up()` parses, and docx4j's default styles, numbering and fontTable
+- `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
+  and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office
+  theme parts, written by `scripts/generate_fonts.py` and never hand-edited
 - `docx/`: CR-003 Phase J's python-docx facade (`Document`, `Paragraph`, `Run`, `Font`, `Table`,
   `Section`, the `Length` units and the `WD_*` enums), a separate namespace with python-docx's names
   over the content API; `scripts/python_docx_subset.py` derives its member list from an installed

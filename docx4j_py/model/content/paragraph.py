@@ -38,7 +38,6 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.content.font import Font
-from docx4j_py.model.property_resolver import resolver_of
 from docx4j_py.model.content.reports import (
     TextExcerpt,
     moved_by_delete,
@@ -60,6 +59,7 @@ from docx4j_py.model.content.text_model import (
     split_at,
     text_of_view,
 )
+from docx4j_py.model.property_resolver import resolver_of
 from docx4j_py.wml import P, R, br, el, t, to_xml, wml
 
 if TYPE_CHECKING:  # pragma: no cover

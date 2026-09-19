@@ -35,8 +35,8 @@ from docx4j_py.model.fonts import (
 from docx4j_py.model.fonts.data import (
     EAST_ASIAN_FAMILIES,
     LINE_METRIC_FAMILIES,
-    MS_FONTS_WITH_BOLD,
     MS_FONT_NAMES,
+    MS_FONTS_WITH_BOLD,
     SUBSTITUTE_ROWS,
     VCL_ENTRIES,
 )

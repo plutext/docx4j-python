@@ -659,9 +659,20 @@ imports the parts, never the reverse.
 
 ## 6. What CR-002 Phase B supplies, and what this CR does without it
 
-`Font` reads report direct formatting of the first run in scope until `PropertyResolver` lands,
+~~`Font` reads report direct formatting of the first run in scope until `PropertyResolver` lands,
 then effective formatting as Office JS reports it; documented as such, with a test marked to
-flip. ~~`ListItem.list_string` is `None` until the `Emulator`, and `to_markdown` numbers lists
+flip.~~ **Done 2026-09-19, CR-002 Phase B (its section 15.1).** `Font` reads report the
+**effective** formatting of the first run in scope, as Office JS does --- the document defaults,
+the paragraph style's run properties, the run's character style, then its direct formatting ---
+and `Paragraph.alignment`, the indent, spacing and outline-level getters read the effective
+`w:pPr`; `Table.style` and `style_built_in` report the style the table resolves to, so a table
+naming none reads *Normal Table*. `Font.name` is the resolved face, the theme reference followed.
+Writes are unchanged and still direct; `paragraph.get_font(direct=True)` and
+`range.get_font(direct=True)` are the direct reads, and `paragraph.effective_p_pr` /
+`effective_paragraph_mark_r_pr` the resolved objects themselves. `tests/content/test_font.py`'s
+`xfail` flipped, as it was written to. The **python-docx facade is deliberately not switched**:
+python-docx's `Font` booleans are tri-state, `None` means *inherited*, and python-docx does not
+report effective values either (section 20.3). ~~`ListItem.list_string` is `None` until the `Emulator`, and `to_markdown` numbers lists
 itself.~~ **Settled 2026-09-17 (section 18): Phase H wrote the `Emulator` rather than wait for
 it**, so `list_string` is the label Word paints and the markdown exporter's markers come from it;
 what a list still owes Phase B is resolution through `PropertyResolver` (section 18.2 item 16).
@@ -3274,6 +3285,15 @@ CR-015 measured (section 18.5).
     *2026-09-19, later the same day: docx4j adopted this rule (`VERSION_17_1_1`
     `01d661547`, "a w:numId of 0 turns numbering off"), so the `w:numId` 0 half of this item
     is no longer a departure; the reason strings are docx4j's (section 18.10).*
+    **Closed 2026-09-19 by CR-002 Phase B (its section 15.2): the style walk is gone.**
+    `Emulator.effective_numbering` is `PropertyResolver.getEffectivePPr(styleId).getNumPr()`
+    now --- the resolver merges the `w:basedOn` chain member by member and `w:numId` and
+    `w:ilvl` each inherit on their own, which is the rule this walk reproduced --- and so are
+    `default_paragraph_style_id` and the `w:basedOn` walk inside `styleLinkedElsewhere`. The
+    old reading stays only as the fallback for a body with **no package**, which is the one
+    caller that has no resolver to ask. `resolve` gained the two reason strings the walk could
+    not produce, `"style 'X' has a w:numPr without a w:numId val"` and `"cyclic styles at X"`,
+    so the module is docx4j's logic end to end.
 
 ### 18.3 What the markdown exporter gained, and two things it had wrong
 
@@ -3498,8 +3518,10 @@ the name rather than duplicating the file. The seven already here differ from th
 core-ts copies only in the `xmlns:` declarations docx4j's prefix mapper writes on
 the root (and, in `numbering-stories.docx`, the attribute order inside the VML
 `mc:Fallback`): every element and attribute that numbering reads is identical,
-checked before the goldens were believed. The remaining 26 goldens are CR-002
-Phase B's — fonts, styles, tables, revisions — and their fixtures are not copied.
+checked before the goldens were believed. ~~The remaining 26 goldens are CR-002
+Phase B's — fonts, styles, tables, revisions — and their fixtures are not copied.~~
+**Copied 2026-09-19 by CR-002 Phase B**: all 45 fixtures are in `tests/fixtures/`,
+with their provenance rows in `tests/README.md`.
 
 **The story rule**, which is docx4j's `NumberingStates.forPart` and which
 `NumberingStates` here already implemented: the main document is one story; **every
@@ -3525,11 +3547,23 @@ every counter of the story keyed `"<abstractNumId>/<ilvl>"`, with **all three**
 fields (`value`, `encounteredAlready`, `resetPending`; this `Counter` has all
 three), plus `startOverridesApplied` keyed `"<numId>/<ilvl>"`. The golden's
 paragraph `text` preview is compared too, as a guard that the two walks are in
-step. **Not** compared, because they are CR-002 Phase B's: `effectivePPr`,
+step. ~~**Not** compared, because they are CR-002 Phase B's: `effectivePPr`,
 `paragraphMarkRPr`, `runs` and their `fontSpans`, and numbering's `ind`,
 `indResolved`, `lvl`, `labelRPr` and `numFont` — `ind` and `lvl` come out here as
 an `Indent` and a `ListLevel` rather than as typed elements (section 18.2 item 2),
-so comparing them is Phase B's job once a `PropertyResolver` exists.
+so comparing them is Phase B's job once a `PropertyResolver` exists.~~
+
+**Amended 2026-09-19, CR-002 Phase B (its section 15.2).** All of it is compared
+now, and by three test files rather than one. This one gained `numFont`, `ind`,
+`indResolved`, `lvl` and `labelRPr` as **object trees** — `ListLevel` unmarshals
+its `w:lvl` elements once and keeps them, so `ind` is the typed `w:ind` docx4j
+hands out and `labelRPr` the `w:rPr` the label is drawn with — and it runs over
+**all 45** goldens rather than 19, because Phase B copied the rest of the fixtures:
+618 paragraphs over 88 stories, 183 of them numbered over 21 documents, zero
+differences. `effectivePPr`, `paragraphMarkRPr` and the runs' `effectiveRPr` are
+`tests/content/test_properties_goldens.py`'s and their `fontSpans`
+`tests/content/test_fonts_goldens.py`'s, both also at zero differences; the walk
+the three share is `tests/content/goldens.py`.
 
 `NumberingState` gained the two accessors docx4j made public in 17.1.1 for exactly
 this, `counters` and `start_overrides_applied`, so that the test reads the state
@@ -4222,14 +4256,20 @@ by whom:
   rather than difficulty; the typed `w:latentStyles` is one attribute away on the
   styles part's contents. These two are the whole of what the facade's promise
   still lacks, `tab_stops` having joined on 2026-09-18 (departure 13).
-* **CR-002 Phase B**, which every phase of this CR has now asked for:
+* ~~**CR-002 Phase B**, which every phase of this CR has now asked for:
   `PropertyResolver`, so that `Font` and `paragraph_format` report **effective**
   formatting rather than direct (section 6, and `tests/content/test_font.py`'s
   `xfail` waiting to flip; the facade inherits it exactly, and its `None` means
   "not set here" rather than "inherited from nowhere"); resolution for a list
   level (section 18.2 item 16); the twenty exotic number formats;
   `NumberingDefinitionsPart.getInd`'s full form; and the label's own run
-  properties.
+  properties.~~ **Implemented 2026-09-19** (CR-002 section 15): every one of
+  those five. The content API's reads are effective (section 6), the list
+  resolution is the resolver's (18.2 item 16), the format registry is docx4j's
+  whole twenty-nine, `getInd` follows the level's linked style, and the label's
+  `w:rPr` is on the result. The **python-docx facade stays direct**, because
+  python-docx is: its `None` means "inherited", which is section 20.3's decision
+  and is unchanged.
 * **CR-001's `to_source(element)`** (section 19.6), which would make a
   `to_api_script` fallback readable source rather than a marshalled string.
 * **The `mc:AlternateContent` gap** of CR-002 section 12.5, pinned so that

@@ -338,9 +338,8 @@ def _chinese(
                 last_is_zero = True
             rest //= 10
             unit_position += 1
-        if out.endswith(characters[0]):  # the trailing zero character
-            out = out[: -len(characters[0])]
-        return out
+        # the trailing zero character, which docx4j's convertFourDigit deletes
+        return out.removesuffix(characters[0])
 
     def format_it(value: int) -> str:
         if value == 0:

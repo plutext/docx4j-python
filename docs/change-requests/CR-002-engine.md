@@ -4,7 +4,12 @@
 2026-09-12** (section 12); Word acceptance passed 2026-09-12 (12.8); amended 2026-09-17, a created
 document declares `compatibilityMode` 15 (section 12.10); amended again 2026-09-17, **section
 6.2's numbering emulator landed early through CR-003 Phase H** (section 12.11), as the flat OPC
-read half landed through its Phase C. Phases B and C proposed.
+read half landed through its Phase C; amended 2026-09-19, the marshal is one pass (12.13) and the
+parent pointers are wired during the parse (12.14); **Phase B implemented 2026-09-19** (section
+15): `PropertyResolver`, `StyleUtil`, the numbering completed and the fonts, with **zero
+differences on all 45 of docx4j's parity goldens** --- 984 style ids, 618 paragraphs, 1,113 runs,
+8 tables, 183 numbered paragraphs and 1,112 font spans. Word acceptance of the five created
+artefacts that gained a theme part is outstanding (15.5). Phase C proposed.
 **Depends on:** CR-001 Phases A to C (implemented 2026-09-12): the generated model under `docx4j_py`,
 `Child` and `ChildList`, `link_parents`, `deep_copy`, `el`, `wml(...)`, `to_xml`, `text_of`,
 `walk`, `find`, `warm_up()`, the prefix table in `docx4j_py.namespaces`, the fork runtime's
@@ -348,7 +353,11 @@ imported by the runtime path.
   (`test/java/`, against a pinned docx4j build) and its JSON goldens are committed there under
   `test/golden/<fixture>.json`; this repository **consumes** those files and builds no harness
   of its own (section 12.12). The property values inside are XML strings docx4j marshalled, to
-  be unmarshalled here and compared as object trees, never as text.*
+  be unmarshalled here and compared as object trees, never as text.* **Done 2026-09-19 (section
+  15): all 45 fixtures are in `tests/fixtures/`, three test files read the goldens ---
+  `tests/content/test_properties_goldens.py`, `test_numbering_goldens.py` and
+  `test_fonts_goldens.py`, over the walk they share in `tests/content/goldens.py` --- and every
+  recorded answer is reproduced. Zero differences.**
 - **Word acceptance** is manual: saved output opens in Word without repair prompts. The checklist
   from docx4j-core-ts `test/README.md` is copied and extended with the settings part.
 - **Threads:** `scripts/threads.py` extended to whole packages, with one `ParserConfig` per
@@ -659,12 +668,13 @@ nothing is rewritten at save time (decided question 2). Tests in
 
 ### 12.9 Deferred to Phase B and C
 
-* **Phase B**, unblocked and unchanged: `PropertyResolver` and `StyleUtil`; ~~the numbering
-  `Emulator`~~ (**its counting core landed early through CR-003 Phase H on 2026-09-17: section
-  12.11**, which says what of it is left); `RunFontSelector` and `IdentityPlusMapper`; the parity
-  test over the goldens docx4j-core-ts commits (**the harness is built there, not here**: decided
-  2026-09-19, section 12.12). `MainDocumentPart.fonts_in_use()` and `styles_in_use()` go with
-  them.
+* ~~**Phase B**~~ **implemented 2026-09-19, section 15**: `PropertyResolver` and `StyleUtil`; the
+  numbering `Emulator` completed (its counting core had landed early through CR-003 Phase H on
+  2026-09-17, section 12.11, and 15.2 is the three things that section said were left);
+  `RunFontSelector` and `IdentityPlusMapper` with `MainDocumentPart.fonts_in_use()` and
+  `styles_in_use()`; and the parity test over the goldens docx4j-core-ts commits (**the harness
+  is built there, not here**: decided 2026-09-19, section 12.12), which finds zero differences on
+  all 45.
 * **Phase C**: `PresentationMLPackage` and `SpreadsheetMLPackage` with typed main parts (after
   CR-001 Phase D); `FlatOpcPartStore` and `FlatOpcPartSink`; the chart-namespace schema patches of
   12.5; docs and examples. **Half of the flat OPC item is done**: CR-003 Phase C needed to read a
@@ -935,3 +945,375 @@ parts 393 ms to 238 ms. With section 12.13's marshal at 250 ms, a 772 KB main pa
 443 ms to read and write where CR-001 opened at 1,114. The fork's
 `docs/fork/CR-001-serialiser.md` section 10 has the tables, the profile and section 10.6's
 recommendation to close that CR.
+
+## 15. Phase B implementation notes (2026-09-19)
+
+Phase B is done. Section 6's three resolution utilities are implemented, and the parity test
+section 8 promised reads the goldens docx4j-core-ts commits (12.12) and finds **zero
+differences on all 45 of them**, over the effective properties, the style resolutions, the
+table styles, the list labels and counters, and the font spans.
+
+The gate 12.12's last bullet recorded --- `python/CR-002.B` waiting on `docx4j/fo-fidelity-next`
+--- was lifted by Jason on 2026-09-19, the goldens being that work's output and already
+committed.
+
+What was written, in four steps, each its own commit:
+
+```
+docx4j_py/model/
+    property_catalogue.py   1,126   docx4j PropertyCatalogue: one entry per member of
+                                    w:rPr, PPrBase, CT_TblPrBase and w:tcPr, in schema
+                                    order, with its leaf merge rule and its emptiness
+    style_util.py             561   docx4j StyleUtil, the catalogue-driven half
+    property_resolver.py      731   docx4j PropertyResolver
+    listnumbering/            +510  effective_numbering through the resolver, docx4j's
+                                    whole format registry, getInd's full form, the
+                                    typed views of a level (lvl, labelRPr, own_ind)
+    fonts/                  2,817   RunFontSelector (661), Mapper and
+                                    IdentityPlusMapper (769), FontFallback (328),
+                                    fonts_in_use (238), the JSON loaders (216), the
+                                    script table (167), ThemePart.getFont (125),
+                                    the registry (140), defaultTheme (95),
+                                    LanguageTagToScriptMapping and CJKToEnglish (100),
+                                    PhysicalFont (83), the package exports (162)
+docx4j_py/resources/fonts/  184 KB  docx4j's own tables as committed JSON, plus the
+                                    three Office theme parts byte for byte
+scripts/generate_fonts.py     375   what writes them, from ../docx4j
+tests/content/              1,445   goldens.py and the five test files
+```
+
+Four modules of the engine changed: `XmlPart` gained `read_contents()`,
+`WordprocessingMLPackage` the three accessors and a theme part in `create_package`,
+`MainDocumentPart` the font walk, and `exceptions` a `CyclicStylesException`.
+No fork commit was needed: nothing in Phase B wanted a runtime feature `docx4j-xsdata` does not
+already have.
+
+### 15.1 Step 1: property resolution
+
+`PropertyResolver` is the resolution order of docx4j's CR-015 phase 2, and `StyleUtil` is the
+overlay, both driven by the **property catalogue** rather than hand-written per element: one
+table per properties element, one entry per schema member in schema order, each saying how to
+read it, write it, merge a more specific value over an inherited one, whether it is empty and
+whether it formats the content. `apply`, `is_empty`, `unset` and `has_direct_formatting` are all
+derived from the tables by iteration, so the four cannot drift apart as docx4j's hand-kept lists
+did before its CR-015 phase 1. Every leaf a merge carries is a **copy** (`deep_copy`), so an
+effective `w:rPr`'s `w:b` is never the styles part's.
+
+**Parity is zero differences** on all 45 goldens: the document defaults and `effectivePPr` /
+`effectiveRPr` for every one of the **984** style ids, `effectivePPr` and `paragraphMarkRPr` for
+every one of the **618** paragraphs of every story, `effectiveRPr` for every one of the **1,113**
+runs, and the effective table style and `reachesDefaultTableStyle` of all **8** tables --- 1,602
+`w:pPr` and 2,715 `w:rPr` comparisons, each as an **object tree** (ours through a marshal and an
+unmarshal, the golden's XML string through an unmarshal), so neither prefixes nor attribute
+order nor the class a member happens to be is part of the contract.
+
+**Departures from section 6.1 and from the Java, all deliberate.**
+
+1. **`CyclicStylesException` raises only when asked**, as docx4j does: its `isCyclic` reads
+   `docx4j.openpackaging.exceptions.CyclicStylesException.throw`, false by default, and otherwise
+   stops the walk and resolves with as much of the hierarchy as it has. Here that property is
+   `style_util.throw_on_cyclic_styles(True)`. Section 6.1's "`basedOn` cycles raise
+   `CyclicStylesException`" is the property's `true` branch, not the default. The TypeScript port
+   took the same reading.
+2. **The deprecated overloads are not ported**: the four-flag `getEffectiveRPr(styleId, ...)` and
+   `getEffectiveRPrUsingPStyleRPr`, which docx4j's CR-015 phase 5 deprecated and which exist only
+   for callers older than the fix; and `ImmutablePropertyResolver`, deprecated with no caller.
+3. **`activate_style(style_id)` answers from what the package has.** docx4j reads `KnownStyles.xml`
+   from its jar to activate a style the document lacks; this package has that resource, but it is
+   the content API's `ensure_style` (CR-003 section 14.9) that reads it, with the numbering
+   reconciliation a known style needs, so the resolver's string form answers `True` for a style
+   already live and `False` (logged) otherwise. The object form works as docx4j's does,
+   recursively for `w:basedOn` and `w:link`.
+4. **The resolver reads the styles part with a new `XmlPart.read_contents()`**, which unmarshals
+   into a *private* tree without marking the part unmarshalled. Without it, building a resolver
+   would cost every document its byte-for-byte round trip of `word/styles.xml`, since this engine
+   re-marshals any part that was unmarshalled --- and the content API now builds a resolver on
+   every effective read. When something else unmarshals the part for real (the comment styles, a
+   caller's `contents`), `refresh()` switches to that live tree and the private copy is dropped;
+   `activate_style(style)` raises while the styles part is private, since it would otherwise
+   write into a tree nobody will save. This is the TypeScript port's departure 6, arrived at
+   independently for the same reason.
+5. **Three flags on catalogue entries record docx4j quirks rather than hiding them**:
+   `counts_empty=False` for `w:bidiVisual` (applied by `apply(CTTblPrBase)` but not counted by
+   `isEmpty(CTTblPrBase)`), and both that and a "keep the destination" merge for `w:tblCaption`
+   and `w:tblDescription`, which docx4j's hand-written pair neither counts nor carries. Likewise
+   `w:start` / `w:end` on `w:tblCellMar` and the `w:tcBorders` members follow the Java's lists,
+   not the schema's, although the generated classes carry them.
+6. **Table conditional formatting stays out**, as docx4j's own `table-conditions` CR has it.
+   `apply_tbl_style_pr_list` merges a style's `w:tblStylePr` per condition, because
+   `apply(Style, Style)` does; nothing applies a condition to a cell.
+
+**Quirks reproduced deliberately**, each because a golden records it:
+
+* **`w:framePr` gains an explicit `w:anchorLock`.** docx4j reads it through `isAnchorLock()`,
+  which answers `true` when the attribute is absent, and then applies that answer, so any merged
+  `w:framePr` carries `w:anchorLock="true"` even when no layer stated it. The same reading makes
+  `isEmpty(CTFramePr)` treat an explicit `w:anchorLock="0"` as the only attribute that makes a
+  frame non-empty on its own.
+* **A `w:rFonts` that states only a `w:hint`, or nothing at all, still creates the element** in
+  the destination, which `RunFontSelector` relies on; a *null* source leaves the destination
+  alone, which is the CR-015 phase 1 fix.
+* **`isEmpty(SectPr)` is "anything non-null is non-empty"**, which is all `is_empty_ppr` uses it
+  for; `w:sectPr` is not merged (CR-015 phase 4).
+* **`get_effective_ppr(styleId)` of a *character* style** answers the document defaults plus that
+  style's (empty) paragraph chain, not None: the golden records it for every style in the part.
+* **`get_effective_rpr(styleId)` of a missing style is None**, where `get_effective_ppr(styleId)`
+  of a missing style is the default paragraph style's.
+* **The heading outline level comes from the style's `w:name`**, not its declaration: Word takes
+  a built-in heading's level from "heading 1" ... "heading 9", the same in every locale, whatever
+  `w:outlineLvl` the style declares. The layer is a copy where the two differ, and the styles
+  part is not touched.
+* **Word's 10 pt default is made explicit** on the resolver's private copy of the document
+  defaults where nothing states a size (CR-015's probe `styles-no-size-anywhere`), and **Word's
+  built-in Normal Table** underlies a table naming no style and one whose chain reaches the
+  document's default table style --- the built-in, not the document's definition of that style
+  (CR-015 phase 4, probe `styles-table-default`).
+
+**Goldens questioned: none.** Every recorded value is reproduced; nothing was left failing.
+
+**The content API switch (CR-003 section 6, closed).** `Font` reads go through
+`get_effective_rpr(rPr, pPr)` of the first run in scope, and `Paragraph.alignment`,
+`left_indent`, `right_indent`, `first_line_indent`, `space_before`, `space_after`,
+`line_spacing` and `outline_level` read `get_effective_ppr(pPr)`; `Table.style` and
+`style_built_in` report the style the table resolves to, so a table naming none reads *Normal
+Table* rather than nothing. Writes are unchanged and still direct, and so is the
+`ChangeReport` a format write records --- a report is about what the *markup* says either side
+of the write. `paragraph.get_font(direct=True)` and `range.get_font(direct=True)` are the direct
+reads, which is what a caller reproducing markup wants and what these reads were before;
+`paragraph.effective_p_pr` and `paragraph.effective_paragraph_mark_r_pr` are the resolved objects
+themselves. A body with **no package** --- a fragment --- reads direct and raises nothing.
+`Alignment` keeps `"Unknown"` where nothing anywhere states a `w:jc`, which is a departure from
+the TypeScript port, whose `Alignment` reads `'Left'` after resolution: the enum is CR-003
+section 3.2's and changing it is a content-API decision, not this CR's.
+
+**The python-docx facade is deliberately not switched.** python-docx's `Font` booleans are
+tri-state and `None` means *inherited*; python-docx does not report effective values either, and
+CR-003 section 20.3 says the facade keeps python-docx's semantics. `docx4j_py.docx` therefore
+still reads the run's own `w:rPr`, and the parity test with python-docx as the judge is
+unaffected.
+
+### 15.2 Step 2: numbering completion
+
+Section 12.11 listed three things the Phase H emulator still owed Phase B. All three are here.
+
+**Resolution through the resolver.** `Emulator.effective_numbering` was the one method in the
+module that was not docx4j's own logic --- it walked `w:basedOn` itself, attribute by attribute,
+over an lxml reading of the styles part --- and it is now
+`PropertyResolver.get_effective_ppr(styleId).getNumPr()`, which is what docx4j's `Emulator.resolve`
+asks for. `default_paragraph_style_id` and the `w:basedOn` walk inside `styleLinkedElsewhere` went
+the same way. The lxml reading stays as the fallback for a body with **no package**, which is the
+only caller that cannot ask a resolver, and it is still what `read_definitions` uses to resolve a
+`w:numStyleLink` (docx4j's `resolveLinkedAbstractNum` reads the raw style too).
+
+`resolve` gained the two reason strings the hand-written walk could not produce, in docx4j's own
+order: `"style 'X' has a w:numPr without a w:numId val"`, which needs to tell a `w:numPr` that
+states nothing from no `w:numPr` at all, and `"cyclic styles at X"`, which is reachable now that
+a cycle can be detected. Neither appears in a golden; both are docx4j's contract.
+
+**The twenty exotic formats.** `formats.py` is docx4j's whole registry --- **twenty-nine**
+formats, one for one with its `NumberFormat*` class and its values: ordinal, cardinalText,
+ordinalText, hex, chicago, numberInDash, the full-width, Thai and Devanagari digit families, the
+Russian, Arabic and Thai alphabets, hebrew1 with its 15 and 16 exceptions, the two Chinese
+counting sets and the enclosed circles, beside the eight section 6.2 named. Still fail-soft: a
+`w:numFmt` with no formatter, or a value a formatter cannot express, gives the decimal label and
+one warning per format; the formatters themselves raise `ValueError`, as docx4j's throw
+`NumberFormatException`, so a caller that wants to know still can.
+
+**`getInd`'s full form, the label's `w:rPr` and the level itself.** `ListLevel` gained the typed
+views of docx4j's JAXB plane, unmarshalled once from the lxml element and kept: `lvl` (the
+abstract `w:lvl`), `override_lvl`, `r_pr` (the abstract level's, never the override's),
+`label_r_pr` (the override level's `w:rPr` where the instance overrides this level with one, else
+the abstract level's --- a replacement, not a merge, which CR-014 probe P3 measured) and
+`own_ind`. `Emulator.ind_of(numId, ilvl)` is `NumberingDefinitionsPart.getInd`: the override
+level asked first and the abstract level only where it answers nothing, each through
+`getIndFromLvl` --- a `w:ind` the level states itself, else the first found walking the linked
+`w:pStyle`'s `w:basedOn` chain, read through the resolver's `get_style` as docx4j reads it.
+`NumberingResult` carries all of them, and its `ind` is now the **typed** `w:ind` docx4j hands
+out (the `Indent` summary, which folds `w:start` into `left`, is `result.indent`).
+
+`get_ind(numPr)` is the seam the paragraph merge asks per layer, so that a style stating a
+`w:numPr` brings the level's indent with it. That is what makes `effectivePPr` parity possible at
+all: the TypeScript port did the same walk narrowly in its step 2 and replaced it in step 3; here
+it was written once, in the real module, because section 12.11 had already put the definitions
+there.
+
+**Parity.** `tests/content/test_numbering_goldens.py` now runs **all 45** goldens rather than 19
+--- 618 paragraphs over 88 stories, 183 of them numbered over 21 documents --- and compares
+`numFont`, `ind`, `indResolved`, `lvl` and `labelRPr` as object trees beside the `numString`,
+`isBullet`, `ilvl`, `numId`, `numRef` and whole `stateAfter` it compared before. **Zero
+differences.** The walk it shares with the two other golden tests moved to
+`tests/content/goldens.py`.
+
+### 15.3 Step 3: fonts
+
+`docx4j_py/model/fonts/` is the **decision** half of `org.docx4j.fonts`. docx4j's
+`RunFontSelector` is 2,572 lines, most of them XSL-FO output; what section 6.3 promised, and what
+a renderer, a text extractor or a measurer needs, is the decision per character.
+
+**What is in.** `RunFontSelector` (`document_fonts_of`, `default_font_of`, the theme lookup by
+`w:themeFontLang`, `resolved_slots`, `complex_script_font` with `w:cs` and `w:rtl` **by value**,
+`preamble_rule`, the [MS-OI29500] 17.3.2.26 table branch for branch, `span_script`, `is_emoji`,
+`symbol_font_name`, `run_locale`, `document_font_for` and `spans`); `theme_fonts.theme_font_of`,
+docx4j's `ThemePart.getFont(STTheme, CTLanguage)` over an `a:fontScheme` rather than a part, since
+the selector, font discovery and the content API all resolve references and none of them should
+have to hold a `ThemePart`; `Mapper` with the one precedence of docx4j's CR-016 phase 3 and
+`FontDecision(source, via, width_error, physical_font)`, which is what the goldens record;
+`IdentityPlusMapper`; `FontFallback`'s class and candidate half; `fonts_in_use` and
+`styles_in_use` as CR-016 phase 4's walk for names; and the default theme.
+
+**Parity is zero differences** on all 45 goldens: **1,112 font spans** over 1,113 runs,
+`fontsInUse` and `stylesInUse` as sorted lists, the theme part, the default font, and 134
+`IdentityPlusMapper` decisions (41 distinct).
+
+**docx4j's tables are committed as JSON**, under `docx4j_py/resources/fonts/`, written by
+`scripts/generate_fonts.py` from docx4j's own resources in docx4j's own order --- 30 substitute
+rows and 419 OpenOffice VCL entries from `font-substitutes.xml` and `FontSubstitutions.xml`, 137
+Microsoft families (41 with a bold face of their own) and 512 line-metric families (46 East
+Asian) from `MicrosoftFonts.xml` and `word-line-metrics.properties` --- beside the three Office
+theme parts copied byte for byte. Each file carries a `_source` object naming the docx4j commit
+it came from; the four data files are **byte identical** at the goldens' commit (`7fba7a150`) and
+at docx4j's head, which was checked. The registry of 43 physical faces is the fourth file and is
+not parsed out of the jars: reading a name table would need a font library this package does not
+depend on, so the list is the script's own, with `--check-jars` to compare it against the built
+jars.
+
+**What of the Java is deliberately not ported**, and why each is a later CR:
+
+1. **Everything that makes XSL-FO**: `createElement` / `setAttribute` / `symbolSetAttribute`, the
+   `RunFontCharacterVisitor` and the three output modes, `finish()`'s post-processes (`kernSpaces`,
+   `characterScaling`, `noLigatures`, `smallCaps`, `applyLineHeight`, `markWidthFactor`) and
+   `getCssProperty`. The answer here is a list of `FontSpan`; how a span is drawn is the
+   consumer's.
+2. **The glyph-coverage pass** (`glyphFallback`, `FontFallback.selectCovering` / `covers` /
+   `needsCoverage`, `GlyphCheck`, `GlyphAdvances`, `TextMeasurer`) and with it
+   **`BestMatchingMapper`**'s panose matching: all of it reads a font file's cmap and metrics.
+   `add_mapper_substitutes` is the empty hook docx4j's base class has, so the later CR adds a
+   mapper rather than changing this one.
+3. **`WordLineMetrics` and `WidthFactors`**: line boxes and advance corrections are measurement,
+   not selection. `register_line_metrics_alias` / `line_metrics_family` are kept, because the
+   `w:altName` and Word-default passes are written over them and a consumer that does measure
+   needs to know whose metrics Word used, but nothing here reads a metric.
+4. **`arabicNumbering` and `capsAndSoftHyphens`**: both rewrite the run's *text* before the
+   dispatch, and neither changes which font a character gets.
+5. **`symbolRun`'s Unicode replacement** (`SymbolMapper`, `translateUnicode2SingleByte`): the
+   selector answers "Symbol" or "Wingdings" for such a run, which is the document font and what a
+   golden records; turning a private-use code point into the replacement character a substitute
+   face can draw is output.
+6. **`registerUsedFont`, `ownFont`, the FOP configuration, `FontReport`, `FontsAnalysis.usage`,
+   `MetricsOnlyFonts` and `FontEnvironment`**: no FOP here, and each of the last five needs font
+   files.
+
+**Departures from the Java, all deliberate.**
+
+1. **A `FontRegistry` is a parameter, not a static map.** docx4j's `PhysicalFonts` discovers the
+   machine's fonts once, in the `Mapper` static initialiser. A library that runs on a server has
+   no reason to think the machine's fonts are the author's, and reading a font file needs a
+   dependency this package does not have, so a `Mapper` is constructed over a registry the caller
+   supplies. `default_font_registry()` is the 43 faces docx4j's four font jars carry, read off
+   `PhysicalFonts.getPhysicalFonts()` with system discovery off --- the environment CR-016 phase
+   0c measured and the goldens record --- so a mapping computed here reproduces a golden on any
+   machine. `PhysicalFonts.discover` over installed fonts is a later CR, as section 6.3 says.
+2. **`PhysicalFont` is a name, a family and the no-bold-face flag**, with no `EmbedFontInfo`, no
+   panose, no file URI and no `Typeface`.
+3. **`spans()` folds by font alone**, which is what `document_font_for` per code point answers and
+   what the harness records. docx4j's rendering walk additionally cuts a span where the *script*
+   changes between two non-shared characters, so that the coverage pass can substitute a Greek
+   stretch as a sibling span rather than nesting it; that cut serves the coverage pass, which is
+   not ported. `span_script` is exported and each span reports its script, so a renderer can cut
+   further.
+4. **U+2190 to U+2BFF answers the hAnsi font.** docx4j asks whether the hAnsi font has the glyph
+   and names Segoe UI Symbol where it has that face. Both are glyph checks; without them the
+   branch answers hAnsi, which is also docx4j's answer in the goldens' font environment.
+5. **The emoji font is a constructor argument, not a property**
+   (`docx4j.fonts.RunFontSelector.EmojiFont`); unset by default, as docx4j's property is.
+6. **`script_of` is a range table, not the Unicode database.** Java's
+   `Character.UnicodeScript.of(cp).name()` has no equivalent in Python: `re` has no
+   `\p{Script=...}` and `unicodedata` exposes no script property, and adding `regex` for one
+   field would be a dependency for nothing. So `scripts.py` carries the ranges of the scripts a
+   font selection distinguishes, with the combining ranges answering `INHERITED` and everything
+   else `COMMON` --- a code point of a script the table does not carry joins the span it follows,
+   which is the safe answer and the same one a shared character gets. **Nothing in the goldens
+   depends on it**: the harness records no script per span, and the field is an extension of the
+   TypeScript port's that this reproduces.
+7. **`docx4j.fonts.defaultTheme` is per package**, `pkg.default_theme`, not one process-wide
+   property: docx4j has a properties file and a JVM; a server here may hold several packages at
+   once. The process-wide `default_theme_setting()` is the fallback and is what moves them all.
+8. **The mapper's per-script choices are not recorded**: `FontDecision` carries what a golden
+   records and not `recordScriptChoice` / `recordSymbolFace` / `getBoldFace` / `getLineBox` /
+   `getWidthFactor`, which are the conversion's report of what the coverage pass and the metrics
+   did.
+9. **`IdentityPlusMapper` is in `mapper.py`**, not a module of its own: it is twelve lines over
+   `Mapper` and Python's import cost is per module, which is 12.3's reason for the one-module
+   WordprocessingML parts.
+
+**Quirks reproduced deliberately**, each because a golden or a CR-016 probe records it: `w:cs
+w:val="0"` turns an inherited complex-script flag **off**, and `w:rtl` alone on Latin text still
+takes the cs font; a theme reference beats the explicit attribute beside it at every level, and
+where the package has no theme part the reference resolves to the Office theme's Latin face, so
+the explicit name is never used; a theme reference the theme *part* cannot answer gives Calibri in
+the document default only, where the same reference on a run resolves to nothing and the explicit
+attribute stands; an `a:font` entry whose `typeface` is empty answers the empty string, where a
+script the list does not carry falls back to the collection's own `a:latin`; a run with no
+`w:rFonts` at all gets the default font in the ascii and hAnsi slots only, never the eastAsia
+slot, which would fire the preamble rule; `w:cs=""` (LibreOffice writes it in `w:docDefaults`) is
+read as no complex-script font in `resolved_slots` but is returned as it is by
+`complex_script_font`; `is_known_family` asks `substitution_class`, not `class_of`, so a name that
+merely ends in "Sans" is not a known family and the Word-default pass acts on it; and
+`add_no_bold_face_aliases` skips a Word-defaulted font, because a font Word itself could not find
+is substituted whole, its real bold included.
+
+**`create_package` gives a new document a theme part**, as docx4j's `addDefaultThemePart` does,
+so that the `minorHAnsi` its default styles name resolves to a face rather than to nothing.
+docx4j's own `createPackage` does not, and this is the departure: a created document now has
+**six** parts rather than five, and `create_package(default_theme="2013")` gives it Office 2013's
+theme instead of Word 365's. A loaded document is untouched, as always, and one with no theme
+part still resolves its references from the setting --- which is where the golden
+`fonts-missing-slots` gets its Aptos.
+
+**`Font.name` is the resolved face.** It was `w:rFonts/@w:ascii`, so a run whose face comes from
+the theme read `""`; it is now `RunFontSelector.ascii_font_name` of the effective `w:rPr` --- the
+face `w:asciiTheme` names, else `w:hAnsi`, else the document default. `get_font(direct=True).name`
+is unchanged.
+
+**Goldens questioned: none.** Every recorded value is reproduced; nothing was left failing.
+
+### 15.4 The numbers
+
+On this machine, in one session; `min` of three cold loads each.
+
+| | 2010-sample1 (4 p, 2 runs) | invoice2013 (41 runs) | loadAndSave (10 stories) | Symbols (160 p, 3,902 runs) |
+|---|---:|---:|---:|---:|
+| build the resolver | 3 ms | 4 ms | 12 ms | 4 ms |
+| build the selector | 3 ms | 3 ms | 3 ms | 3 ms |
+| build the mapper (with `fonts_in_use`) | 2 ms | 7 ms | 15 ms | 232 ms |
+| `fonts_in_use()` alone | 6 ms | 12 ms | 27 ms | 248 ms |
+| `spans()` per run | --- | 38 us | 49 us | **41 us** |
+
+Building a resolver is the styles part's parse and a copy of the document defaults: 3 to 12 ms,
+once per package, and **no part is unmarshalled**, so the document still saves byte for byte.
+`get_effective_rpr` is **34 us** a call over `Symbols.docx`'s 3,902 runs (132 ms for all of them)
+and 40 us over `loadAndSave.docx`'s; the style chains are cached per style id, so what a call
+pays is the document defaults' `deep_copy` and the run's own layer.
+
+`fonts_in_use()` is the expensive one, and it is the walk, not the fonts: 248 ms over
+`Symbols.docx` is one `iter_nodes` traversal of a 24,758-node part, 63 us per run, and it is paid
+once per package when something first asks for a mapper. The mapper's own passes over the 10
+names that walk found are the remaining 8 ms.
+
+The three parity tests take **9.5 s**, **2.3 s** and **2.3 s**; the two unit files 1.1 s each.
+The suite is **1,942 tests**, all passing, with one skip (the corpus round trip is `slow`).
+`scripts/roundtrip.py` is 50/50 parts canonically identical, zero differences, nothing skipped.
+
+### 15.5 What is left
+
+* **`BestMatchingMapper`, the glyph-coverage pass and font metrics**, which are one body of work
+  and one dependency: a library that can read a font file's cmap, panose and advances.
+  `add_mapper_substitutes` is the hook, `FontRegistry` the seam and
+  `register_line_metrics_alias` the record they plug into, so none of the code here changes.
+* **Table conditional formatting**: `w:tblStylePr` is merged per condition but no condition is
+  applied to a cell. docx4j's own `table-conditions` CR is where that is settled.
+* **`PhysicalFonts.discover`** over installed fonts, which the same dependency unlocks.
+* **The `<scriptSubstitutes>` and `<widthFactors>` blocks of `font-substitutes.xml`**, which serve
+  the two passes above and are deliberately not generated.
+* **A Word check** of the five acceptance artefacts that gained a theme part (3, 4, 5, 6 and 11):
+  new markup in a created document, and 12.8's rule. `tests/README.md` records what to look for.

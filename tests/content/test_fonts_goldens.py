@@ -25,7 +25,16 @@ from typing import Any
 
 import goldens
 import pytest
-from goldens import all_goldens, children_of, fixture_for, read, run_text, runs_of, story, walk
+from goldens import (
+    all_goldens,
+    children_of,
+    fixture_for,
+    read,
+    run_text,
+    runs_of,
+    story,
+    walk,
+)
 
 from docx4j_py import load
 from docx4j_py.openpackaging.load import LoadOptions
