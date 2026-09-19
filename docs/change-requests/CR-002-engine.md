@@ -832,6 +832,15 @@ docx4j-core-ts's numbering port takes section 12.11's module split (definitions,
 formats, emulator) and its "what remains for Phase B" list, so the two engines' numbering reads
 alike.
 
+**Consumed the same day.** `tests/content/test_numbering_goldens.py` holds the Phase H emulator
+to 19 of the 45 goldens --- 285 paragraphs over 43 stories --- comparing `numString`, `isBullet`,
+`ilvl`, `numId`, docx4j's own `numRef` (the resolution asked for above, which the harness
+delivers from its new public `Emulator.numRefFor`) and the whole `stateAfter`: every counter and
+every start override spent. `ind`, `indResolved`, `lvl`, `labelRPr`, `numFont`, `effectivePPr`,
+`paragraphMarkRPr` and the runs' `fontSpans` are what Phase B still has to compare, and the test
+says so. CR-003 section 18.10 records the fixtures copied, the story rule, the two recorded
+departures the goldens surfaced (both `w:numId` 0) and the numbers.
+
 ### 12.13 The marshal is one pass, not three (2026-09-19)
 
 Section 5.6's serialisation was the right shape and the wrong number of passes. `XmlPart._marshal`

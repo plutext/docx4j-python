@@ -3467,6 +3467,109 @@ past a taken value), and the entry is in the portfolio's `word-hangs.md` under q
 failures. The regenerated artefact **passed** in Word the same day: all ten acceptance
 artefacts have now passed.
 
+### 18.10 Parity against docx4j's goldens (2026-09-19)
+
+Section 18.5 held the emulator to the labels Word painted, transcribed by hand from
+docx4j's CR-014 and CR-015. Those are still the right answers, but they were a
+handful of strings; the **Java parity harness** that landed in `docx4j-core-ts`
+today (`test/java/`, harness version 2) writes down what **docx4j itself** answers
+for every paragraph of every story of every fixture, counters included. CR-002
+section 12.12 settled that the harness lives there and that this repository
+*consumes* its committed goldens, so the JSON is not copied here:
+`tests/content/test_numbering_goldens.py` reads `../docx4j-core-ts/test/golden/`
+and skips when the sibling checkout is absent. The existing
+`tests/content/test_listnumbering.py` is unchanged — it is the Word-measured half,
+and the goldens are the docx4j-measured one.
+
+**What was consumed.** The 45 goldens of commit `1e5ad74`, made from docx4j
+`VERSION_17_1_1` at `d5809a1d8`, of which **19** have their fixture here. Twelve
+fixtures were copied across for this (`tests/README.md` carries the provenance
+rows): six `numbering-*` probes from `Corpus.java` (`label-ilvl0`, `leader-kinds`,
+`level-pstyle-in-ppr`, `level-vs-style-indent`, `override-rpr`,
+`stories-coretests`) and six docx4j-core-tests documents (`NumberingImplicitNumId`,
+`numbering_indentation_firstline`, `NumberingIndents`, `startOverride`,
+`article-section-isLgl`, `article-section-NotIsLgl`). The six numbering fixtures
+already here, and `styles-numpr-ilvl-only.docx`, carry the golden's own name;
+`lists.docx` **is** `numbering_indentation.docx` byte for byte, so the test maps
+the name rather than duplicating the file. The seven already here differ from the
+core-ts copies only in the `xmlns:` declarations docx4j's prefix mapper writes on
+the root (and, in `numbering-stories.docx`, the attribute order inside the VML
+`mc:Fallback`): every element and attribute that numbering reads is identical,
+checked before the goldens were believed. The remaining 26 goldens are CR-002
+Phase B's — fonts, styles, tables, revisions — and their fixtures are not copied.
+
+**The story rule**, which is docx4j's `NumberingStates.forPart` and which
+`NumberingStates` here already implemented: the main document is one story; **every
+header and footer of the document share one** (not one each); the footnotes,
+endnotes and comments parts have one each; a text box is a fresh story
+(`NumberingStates.new_story()`) whose paragraphs stay in the containing part's list
+in document order. Nothing had to be fixed — `labels_for` and `_story_bodies`
+already shared one state across headers and footers — and the goldens now pin it:
+`numbering-stories` and `numbering-stories-coretests` run the header 1 2 3 and the
+footer 4 5 6 out of the state they share, the body 1 2 3 then 4 5 6 either side of
+a text box that counts 1 2 3 of its own. The stories are walked in the order the
+golden lists them, which is the harness's (main, headers by relationship id,
+footers, footnotes, endnotes, comments); the order matters, because two of them
+share a state. The walk mirrors the harness's `Walk` — into tables, content
+controls, hyperlinks and revisions; a fresh state at a `wps:wsp` — and the package
+is loaded with `mce_preprocess=True`, which is the only way a text box's paragraphs
+are typed at all.
+
+**What is compared**, per paragraph: `numString`, `isBullet`, `ilvl`, `numId`,
+`numRef` (docx4j's own resolution from its new public `Emulator.numRefFor`: `numId`,
+`ilvl`, `direct`, `notNumbered`) against `Emulator.resolve`, and `stateAfter` —
+every counter of the story keyed `"<abstractNumId>/<ilvl>"`, with **all three**
+fields (`value`, `encounteredAlready`, `resetPending`; this `Counter` has all
+three), plus `startOverridesApplied` keyed `"<numId>/<ilvl>"`. The golden's
+paragraph `text` preview is compared too, as a guard that the two walks are in
+step. **Not** compared, because they are CR-002 Phase B's: `effectivePPr`,
+`paragraphMarkRPr`, `runs` and their `fontSpans`, and numbering's `ind`,
+`indResolved`, `lvl`, `labelRPr` and `numFont` — `ind` and `lvl` come out here as
+an `Indent` and a `ListLevel` rather than as typed elements (section 18.2 item 2),
+so comparing them is Phase B's job once a `PropertyResolver` exists.
+
+`NumberingState` gained the two accessors docx4j made public in 17.1.1 for exactly
+this, `counters` and `start_overrides_applied`, so that the test reads the state
+through an API rather than through `_counters`.
+
+**Two facts of docx4j's the goldens show, and this emulator already had.** All nine
+level counters of an abstract list are created together on the list's first use,
+only the used one carrying `encounteredAlready` and the deeper ones sitting at
+their start value with `resetPending` (here: `increment_counter` initialises the
+shallower levels and resets the deeper ones, which creates them); and a `w:num`'s
+first use is recorded in `startOverridesApplied` whether or not it carries a
+`w:startOverride` (here: `ListLevel.increment_counter` marks it on the branch that
+takes the start value). Neither is written down in ECMA-376; both were confirmed
+with docx4j. `startOverride.json` was the one that would have caught a difference.
+
+**Divergences: two, both already recorded departures; nothing was fixed and nothing
+is `xfail`.** Both are the same two paragraphs of `numbering-label-ilvl0` — a
+paragraph whose direct `w:numPr` names `w:numId` **0**, Word's "no numbering":
+
+1. Section 18.2 item **16**. docx4j's `resolve` does not special-case `w:numId` 0:
+   its `NumRef` comes back `numId "0"`, `ilvl "0"`, `direct`, `notNumbered` **false**,
+   and `getNumber` then simply fails to find list 0. `Emulator.resolve` here answers
+   it one step earlier, with `not_numbered` and the reason "w:numId 0 turns numbering
+   off", which is what `is_list_item` and `detach_from_list` are written over. The
+   test asserts exactly that, naming the item.
+2. Section 18.2 item **4**. For those paragraphs docx4j returns a non-null
+   `ResultTriple` with a null `numString`; `number` here returns `None`, which is what
+   "not a list item" means to every caller in this package. The test asserts `None`
+   against the golden's null `numString`, naming the item, and still compares the
+   counters — which must be untouched, and are.
+
+No label, no counter and no start override differs anywhere. Word paints nothing in
+front of either paragraph, so the two departures are in the shape of the answer and
+not in the answer.
+
+**The numbers.** 19 goldens, 43 stories, **285 paragraphs** compared, of which 174
+carry a label and 2 are docx4j's empty result; 20 tests (one per golden, plus one
+that asserts the only numbering goldens without a fixture here are
+`fonts-modesOfApplication` and `tracked-changes`, whose subjects are fonts and
+revisions). Zero `xfail`s, zero skips when the sibling checkout is present, and the
+whole file runs in 0.25 s. A negative control — `Counter.increment` stepping by two
+— fails all 19.
+
 ## 19. Phase I implementation notes (2026-09-17)
 
 `to_api_script` (section 3.11): the content-API calls that would produce what
