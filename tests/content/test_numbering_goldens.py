@@ -21,13 +21,17 @@ What is compared, per paragraph of per story, in document order:
   overrides spent so far, keyed ``"<numId>/<ilvl>"``. All three counter fields
   are compared: this emulator has all three.
 
-What is **not** compared, because it is CR-002 Phase B's (the property
-resolver, the font selector) and this emulator does not claim it:
-``effectivePPr``, ``paragraphMarkRPr``, ``runs`` and their ``fontSpans``, and
-numbering's ``ind``, ``indResolved``, ``lvl``, ``labelRPr`` and ``numFont``.
-``ind`` and ``lvl`` in particular come out here as an :class:`Indent` and a
-:class:`ListLevel` rather than as typed ``w:ind`` and ``w:lvl`` elements
-(CR-003 section 18.2 item 2), so comparing them is a Phase B job.
+* ``numFont`` --- the ``w:hAnsi`` the level's ``w:rPr`` names;
+* ``ind`` (the level's own), ``indResolved`` (``getInd``, which follows the
+  level's linked ``w:pStyle``), ``lvl`` (the abstract ``w:lvl``) and
+  ``labelRPr`` (the override level's ``w:rPr`` where it has one, else the
+  abstract's) --- all four as **object trees**, which CR-002 Phase B's typed
+  views on ``ListLevel`` made possible (section 15.2).
+
+What is **not** compared here, because it belongs to the other two golden
+tests: ``effectivePPr``, ``paragraphMarkRPr`` and the runs' ``effectiveRPr``
+(``test_properties_goldens.py``) and their ``fontSpans``
+(``test_fonts_goldens.py``).
 
 **The story rule** is docx4j's ``NumberingStates.forPart``, which
 :class:`~docx4j_py.model.listnumbering.NumberingStates` already implements: the
@@ -51,120 +55,31 @@ import json
 from pathlib import Path
 from typing import Any
 
+import goldens
 import pytest
-from conftest import FIXTURES, ROOT
+from goldens import (
+    W_IND,
+    W_LVL,
+    W_RPR,
+    all_goldens,
+    children_of,
+    fixture_for,
+    same,
+    story,
+    text_of,
+    walk,
+)
 
 from docx4j_py import load
-from docx4j_py.child import iter_children
 from docx4j_py.model.listnumbering import NumberingState, NumberingStates, emulator_of
 from docx4j_py.openpackaging.load import LoadOptions
-from docx4j_py.wml import DelText, P, Text
 
-#: The committed goldens of the sibling checkout. Not copied here: CR-002 §12.12.
-GOLDENS = ROOT.parent / "docx4j-core-ts" / "test" / "golden"
-
-#: Where a golden's fixture is under another name here. ``lists.docx`` is
-#: ``numbering_indentation.docx`` byte for byte (tests/README.md), so the map
-#: is the whole of the duplication this test needed.
-FIXTURE_NAMES = {"numbering_indentation": "lists"}
-
-#: The node whose children begin a story of their own. docx4j's ``isTextBox``
-#: reaches this through ``wp:inline``/``wp:anchor`` → ``a:graphicData`` →
-#: ``wps:wsp``; starting the new story at the ``wps:wsp`` itself gives every
-#: paragraph below it the same fresh state. ``v:textbox`` is named for
-#: completeness: VML has no typed classes in this object model, so a VML text
-#: box's paragraphs are a wildcard tree and no fixture here has one.
-TEXT_BOXES = frozenset({"Wsp", "Textbox", "CTTextbox"})
+GOLDENS = goldens.GOLDENS
 
 pytestmark = pytest.mark.skipif(
     not GOLDENS.is_dir(),
     reason=f"the docx4j parity goldens are not checked out at {GOLDENS}",
 )
-
-
-# ---------------------------------------------------------------------------
-# which goldens this repository can answer
-# ---------------------------------------------------------------------------
-
-
-def _fixture_for(golden: Path) -> Path:
-    return FIXTURES / f"{FIXTURE_NAMES.get(golden.stem, golden.stem)}.docx"
-
-
-def _goldens() -> list[Path]:
-    """Every golden whose fixture is in ``tests/fixtures/``."""
-    if not GOLDENS.is_dir():
-        return []
-    return [path for path in sorted(GOLDENS.glob("*.json")) if _fixture_for(path).exists()]
-
-
-# ---------------------------------------------------------------------------
-# the walk: docx4j's Harness.Walk
-# ---------------------------------------------------------------------------
-
-
-def _is_text_box(obj: Any) -> bool:
-    return type(obj).__name__ in TEXT_BOXES
-
-
-def _walk(children: Any, state: NumberingState, out: list[Any], depth: int = 0) -> None:
-    """Every ``w:p`` in document order, with the state its story counts in."""
-    if depth > 60:  # pragma: no cover - the harness's own guard
-        return
-    for _name, child in children:
-        if isinstance(child, P):
-            out.append((child, state))
-            _walk(iter_children(child), state, out, depth + 1)
-        elif _is_text_box(child):
-            _walk(iter_children(child), NumberingState(), out, depth + 1)
-        else:
-            _walk(iter_children(child), state, out, depth + 1)
-
-
-def _story(package: Any, key: str) -> tuple[Any, Any]:
-    """The content a golden's story key names, and the part it belongs to."""
-    main = package.main_document_part
-    if key == "main":
-        return main.contents.body, main
-    if key.startswith(("header:", "footer:")):
-        part = main.relationships_part.get_part(key.split(":", 1)[1])
-        return part.contents, part
-    if key == "footnotes":
-        return main.footnotes_part.contents.footnote, main.footnotes_part
-    if key == "endnotes":
-        return main.endnotes_part.contents.endnote, main.endnotes_part
-    if key == "comments":
-        return main.comments_part.contents.comment, main.comments_part
-    raise AssertionError(f"unknown story {key!r}")  # pragma: no cover
-
-
-def _children_of(root: Any) -> list[Any]:
-    """A story root's children: a list of notes or comments is their contents."""
-    if isinstance(root, list):
-        out: list[Any] = []
-        for item in root:
-            out.extend(iter_children(item))
-        return out
-    return list(iter_children(root))
-
-
-def _text_of(paragraph: Any) -> str:
-    """The harness's ``textOf``: every ``w:t`` and ``w:delText``, no text box."""
-    out: list[str] = []
-
-    def collect(obj: Any, depth: int) -> None:
-        if depth > 60:  # pragma: no cover - the harness's own guard
-            return
-        for _name, child in iter_children(obj):
-            if isinstance(child, (Text, DelText)):
-                out.append(child.value or "")
-            elif _is_text_box(child) or isinstance(child, P):
-                continue
-            else:
-                collect(child, depth + 1)
-
-    collect(paragraph, 0)
-    return "".join(out)
 
 
 # ---------------------------------------------------------------------------
@@ -232,29 +147,29 @@ def _check_state(state: NumberingState, want: dict[str, Any], where: str) -> Non
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("golden", _goldens(), ids=lambda path: path.stem)
+@pytest.mark.parametrize("golden", all_goldens(), ids=lambda path: path.stem)
 def test_the_emulator_answers_what_docx4j_answers(golden: Path) -> None:
     """Every numbered paragraph of every story, against docx4j's own answer."""
     recorded = json.loads(golden.read_text(encoding="utf-8"))
-    package = load(_fixture_for(golden), options=LoadOptions(mce_preprocess=True))
+    package = load(fixture_for(golden), options=LoadOptions(mce_preprocess=True))
     emulator = emulator_of(package)
     assert emulator is not None
     states = NumberingStates()
     compared = 0
 
-    for key, story in recorded["stories"].items():
-        root, part = _story(package, key)
+    for key, recorded_story in recorded["stories"].items():
+        root, part = story(package, key)
         state = states.for_part(part)
         found: list[Any] = []
-        _walk(_children_of(root), state, found)
-        expected = story["paragraphs"]
+        walk(children_of(root), state, found)
+        expected = recorded_story["paragraphs"]
         assert len(found) == len(expected), (
             f"{golden.stem}/{key}: {len(found)} paragraphs, docx4j walked {len(expected)}"
         )
 
         for (paragraph, story_state), want in zip(found, expected, strict=True):
             where = f"{golden.stem}/{key}[{want['index']}] {want['text']!r}"
-            assert _text_of(paragraph)[:80] == (want["text"] or ""), (
+            assert text_of(paragraph)[:80] == (want["text"] or ""), (
                 f"{where}: the walks are out of step"
             )
             result = emulator.number(getattr(paragraph, "p_pr", None), story_state)
@@ -295,6 +210,23 @@ def test_the_emulator_answers_what_docx4j_answers(golden: Path) -> None:
                 assert result.num_id == numbering["numId"], (
                     f"{where}: numId {result.num_id!r} != {numbering['numId']!r}"
                 )
+                assert result.num_font == numbering["numFont"], (
+                    f"{where}: numFont {result.num_font!r} != {numbering['numFont']!r}"
+                )
+                same(result.ind, numbering["ind"], f"{where}: ind", name=W_IND)
+                same(
+                    result.ind_resolved,
+                    numbering["indResolved"],
+                    f"{where}: indResolved",
+                    name=W_IND,
+                )
+                same(result.lvl, numbering["lvl"], f"{where}: lvl", name=W_LVL)
+                same(
+                    result.label_r_pr,
+                    numbering["labelRPr"],
+                    f"{where}: labelRPr",
+                    name=W_RPR,
+                )
 
             _check_num_ref(_num_ref(emulator, paragraph), numbering["numRef"], where)
             _check_state(story_state, numbering["stateAfter"], where)
@@ -313,7 +245,7 @@ def test_every_numbering_golden_has_its_fixture() -> None:
             for paragraph in story["paragraphs"]
         )
     }
-    have = {path.stem for path in _goldens()}
+    have = {path.stem for path in all_goldens()}
     # CR-002 Phase B copied the rest of the parity set, so every golden that
     # numbers anything --- ``fonts-modesOfApplication`` and ``tracked-changes``
     # among them --- now has its fixture here and runs.

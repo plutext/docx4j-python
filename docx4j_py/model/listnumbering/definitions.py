@@ -94,6 +94,26 @@ def _on(element: Any, local: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _model_of(element: Any) -> Any:
+    """One lxml element as the object model's own class, or None.
+
+    The numbering definitions are read with lxml so that a document whose list
+    labels are only *read* is still written back byte for byte (CR-003 section
+    13); what a caller asking for the level's own ``w:lvl``, ``w:rPr`` or
+    ``w:ind`` wants is nevertheless the typed object docx4j hands out, so the
+    element is serialised and unmarshalled once, and the result kept on the
+    level. Lenient, because a level is being *read*: a ``w:lvl`` the bindings do
+    not fully know should give up what they do know rather than raise.
+    """
+    if element is None:
+        return None
+    from lxml import etree
+
+    from docx4j_py.fragments import wml
+
+    return wml(etree.tostring(element, encoding="unicode"), lenient=True)
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Indent:
     """A level's ``w:pPr/w:ind``, in twips. What docx4j returns as a typed ``Ind``."""
@@ -117,6 +137,22 @@ class Indent:
             right=_int(ind.get(_w("right")) or ind.get(_w("end"))),
             hanging=_int(ind.get(_w("hanging"))),
             first_line=_int(ind.get(_w("firstLine"))),
+        )
+
+    @classmethod
+    def of_ind(cls, ind: Any) -> Indent | None:
+        """A typed ``w:ind`` as this summary, or None.
+
+        ``w:start`` reads as ``left`` and ``w:end`` as ``right``, the
+        transitional spellings, which is what a caller laying a label out wants.
+        """
+        if ind is None:
+            return None
+        return cls(
+            left=ind.left if ind.left is not None else ind.start,
+            right=ind.right if ind.right is not None else ind.end,
+            hanging=ind.hanging,
+            first_line=ind.first_line,
         )
 
     def to_dict(self) -> dict[str, int]:
@@ -313,12 +349,17 @@ class StyleNumbering:
     ilvl: str | None = None
     default: bool = False
     ind: Indent | None = None
+    has_num_pr: bool = False
+    """Whether the style states a ``w:numPr`` at all. docx4j tells "not numbered"
+    from "a ``w:numPr`` without a ``w:numId`` val" and gives each its own
+    reason; :attr:`num_id` alone cannot."""
 
 
 class ListLevel:
     """One ``w:lvl``. docx4j ``ListLevel``; the count lives in a state."""
 
     __slots__ = (
+        "_models",
         "abstract_element",
         "abstract_num_id",
         "font",
@@ -359,6 +400,9 @@ class ListLevel:
         self.p_style: str | None = None
         self.ind: Indent | None = None
         self.has_start_override = False
+        #: The typed views of this level's ``w:lvl`` elements, unmarshalled on
+        #: first use and kept (CR-002 section 15.2).
+        self._models: dict[str, Any] = {}
         if element is not None:
             self._read(element)
 
@@ -396,6 +440,7 @@ class ListLevel:
         other = ListLevel.__new__(ListLevel)
         for name in ListLevel.__slots__:
             setattr(other, name, getattr(self, name))
+        other._models = {}  # the overrides this copy is about to take change them
         return other
 
     def set_overrides(self, element: Any) -> None:
@@ -413,11 +458,66 @@ class ListLevel:
         self._read(element)
         self.is_lgl = _on(element, "isLgl")
         self.p_style = _val(element, "pStyle")
+        self._models.clear()
 
     def set_start_value(self, value: int) -> None:
         """A ``w:startOverride``: applied on the first use of this ``w:num``."""
         self.start_value = value
         self.has_start_override = True
+
+    # -- the typed views (docx4j's JAXB plane) -----------------------------
+
+    def _model(self, key: str, element: Any) -> Any:
+        """`element` as the object model's own class, unmarshalled once and kept."""
+        if key not in self._models:
+            self._models[key] = _model_of(element)
+        return self._models[key]
+
+    @property
+    def lvl(self) -> Any:
+        """The **abstract** ``w:lvl`` as a typed object. docx4j ``getJaxbAbstractLvl``."""
+        return self._model("abstract", self.abstract_element)
+
+    @property
+    def override_lvl(self) -> Any:
+        """The instance's ``w:lvlOverride/w:lvl`` as a typed object, or None."""
+        return self._model("override", self.override_element)
+
+    @property
+    def r_pr(self) -> Any:
+        """The **abstract** level's ``w:rPr``, never the override's. docx4j ``getRPr``."""
+        lvl = self.lvl
+        return None if lvl is None else lvl.r_pr
+
+    @property
+    def label_r_pr(self) -> Any:
+        """The ``w:rPr`` the label is drawn with. docx4j ``getLabelRPr``.
+
+        The ``w:lvlOverride/w:lvl``'s where the instance overrides this level
+        with one carrying a ``w:rPr``, else the abstract level's --- one or the
+        other, as Word applies them (docx4j CR-014 probe P3, measured: an
+        abstract ``w:i`` under an override ``w:b`` and ``w:sz`` 36 gives Word a
+        bold 18 pt label with no italic anywhere). A replacement, not a merge.
+        """
+        override = self.override_lvl
+        if override is not None and override.r_pr is not None:
+            return override.r_pr
+        return self.r_pr
+
+    @property
+    def own_ind(self) -> Any:
+        """The level's own ``w:ind`` as a typed object. docx4j ``ResultTriple.getIndent``.
+
+        The instance's override level's where it states one, else the abstract
+        level's; the linked style's is :meth:`Emulator.ind_of`, not this.
+        """
+        override = self.override_lvl
+        if override is not None and override.p_pr is not None and override.p_pr.ind is not None:
+            return override.p_pr.ind
+        lvl = self.lvl
+        if lvl is not None and lvl.p_pr is not None:
+            return lvl.p_pr.ind
+        return None
 
     @property
     def ilvl(self) -> int:

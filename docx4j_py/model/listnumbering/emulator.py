@@ -114,9 +114,22 @@ class NumberingResult:
     """The ``w:hAnsi`` font the level's ``w:rPr`` names, or None."""
     is_bullet: bool = False
     """Whether the level's ``w:numFmt`` is ``bullet``."""
-    ind: Indent | None = None
-    """The level's own ``w:ind``: the instance's where it states one, else the
-    abstract level's."""
+    ind: Any = None
+    """The level's own ``w:ind`` as a typed object: the instance override
+    level's where it states one, else the abstract level's. docx4j
+    ``getIndent()``. Since CR-002 Phase B this is the model's ``w:ind`` and not
+    the :class:`~docx4j_py.model.listnumbering.Indent` summary, which is
+    :attr:`indent`."""
+    ind_resolved: Any = None
+    """The ``w:ind`` that actually applies, the level's linked ``w:pStyle``
+    followed. docx4j ``NumberingDefinitionsPart.getInd``."""
+    lvl: Any = None
+    """The **abstract** ``w:lvl`` this number came from, typed. docx4j ``getLvl``."""
+    r_pr: Any = None
+    """The abstract level's ``w:rPr``, never the override's. docx4j ``getRPr``."""
+    label_r_pr: Any = None
+    """The ``w:rPr`` the label is drawn with: the override level's where it has
+    one, else the abstract level's. docx4j ``getLabelRPr`` (CR-014 probe P3)."""
     num_id: str = ""
     """The ``w:numId`` the label was counted in. Extension."""
     ilvl: int = 0
@@ -135,13 +148,23 @@ class NumberingResult:
         """docx4j's ``getBullet``: the ``w:lvlText`` of a bullet level, else None."""
         return self.num_string if self.is_bullet else None
 
+    @property
+    def indent(self) -> Indent | None:
+        """:attr:`ind` as the :class:`Indent` summary, in twips.
+
+        ``w:start`` reads as ``left`` and ``w:end`` as ``right``, which is what
+        a caller laying a label out wants; the typed :attr:`ind` keeps the
+        spelling the document used.
+        """
+        return Indent.of_ind(self.ind)
+
     def to_dict(self) -> dict[str, Any]:
         """The JSON-ready view."""
         return {
             "num_string": self.num_string,
             "num_font": self.num_font,
             "is_bullet": self.is_bullet,
-            "ind": None if self.ind is None else self.ind.to_dict(),
+            "ind": None if self.indent is None else self.indent.to_dict(),
             "num_id": self.num_id,
             "ilvl": self.ilvl,
             "sibling_index": self.sibling_index,
@@ -299,34 +322,68 @@ class Emulator:
 
     @property
     def default_paragraph_style_id(self) -> str | None:
-        """The ``w:default="1"`` paragraph style's id, which may be numbered."""
+        """The ``w:default="1"`` paragraph style's id, which may be numbered.
+
+        docx4j ``PropertyResolver.getDefaultParagraphStyleId``; the lxml reading
+        stands in where there is no resolver.
+        """
+        resolver = self.resolver
+        if resolver is not None:
+            return resolver.default_paragraph_style_id
         if self._styles is None:
             self._styles, self._default_style_id = _read_styles(self._package)
         return self._default_style_id
 
-    def effective_numbering(self, style_id: str) -> StyleNumbering:
-        """A style's ``w:numPr``, following ``w:basedOn`` attribute by attribute.
+    @property
+    def resolver(self) -> Any:
+        """The package's property resolver, or None. docx4j's ``propertyResolver``."""
+        return _resolver_of(self._package)
 
-        What ``PropertyResolver.getEffectivePPr(styleId).getNumPr()`` answers in
-        docx4j: a style stating only ``w:ilvl`` takes the ``w:numId`` of the
-        style it is based on (probe ``styles-numpr-ilvl-only``, case (d)).
+    def effective_numbering(self, style_id: str) -> StyleNumbering:
+        """A style's effective ``w:numPr``. docx4j ``getEffectivePPr(styleId).getNumPr()``.
+
+        The resolver merges the ``w:basedOn`` chain member by member, and
+        ``w:numId`` and ``w:ilvl`` each inherit on their own, so a style stating
+        only ``w:ilvl`` takes the ``w:numId`` of the style it is based on (probe
+        ``styles-numpr-ilvl-only``, case (d)).
+
+        CR-002 section 12.11 listed this as the one method here that was not
+        docx4j's own logic --- it walked ``w:basedOn`` itself over an lxml
+        reading of the styles part --- and section 15.2 is where it went: the
+        resolver is the walk now. The old reading is kept as the fallback for a
+        package with no resolver to ask, which is a detached body.
         """
+        resolver = self.resolver
+        if resolver is not None:
+            p_pr = resolver.get_effective_ppr(style_id)
+            num_pr = None if p_pr is None else p_pr.num_pr
+            num_id = _value(getattr(num_pr, "num_id", None)) if num_pr is not None else None
+            ilvl = _value(getattr(num_pr, "ilvl", None)) if num_pr is not None else None
+            return StyleNumbering(
+                style_id,
+                None,
+                None if num_id is None else str(num_id),
+                None if ilvl is None else str(ilvl),
+                has_num_pr=num_pr is not None,
+            )
         styles = self.styles
         seen: set[str] = set()
-        num_id: str | None = None
-        ilvl: str | None = None
+        num_id_text: str | None = None
+        ilvl_text: str | None = None
         current: str | None = style_id
         while current is not None and current not in seen:
             seen.add(current)
             style = styles.get(current)
             if style is None:
                 break
-            if num_id is None:
-                num_id = style.num_id
-            if ilvl is None:
-                ilvl = style.ilvl
+            if num_id_text is None:
+                num_id_text = style.num_id
+            if ilvl_text is None:
+                ilvl_text = style.ilvl
             current = style.based_on
-        return StyleNumbering(style_id, None, num_id, ilvl)
+        return StyleNumbering(
+            style_id, None, num_id_text, ilvl_text, has_num_pr=num_id_text is not None
+        )
 
     def linked_style_id(self, num_id: str, ilvl: str | None) -> str | None:
         """The ``w:pStyle`` a level names (ECMA-376 17.9.24), or None.
@@ -353,15 +410,24 @@ class Emulator:
             return False
         if style_id is None:
             return True
-        styles = self.styles
+        resolver = self.resolver
+        styles = self.styles if resolver is None else None
         seen: set[str] = set()
         current: str | None = style_id
         while current is not None and current not in seen:
             seen.add(current)
             if linked == current:
                 return False
-            style = styles.get(current)
-            current = None if style is None else style.based_on
+            if resolver is not None:
+                style = resolver.get_style(current)
+                current = (
+                    None
+                    if style is None
+                    else getattr(getattr(style, "based_on", None), "val", None)
+                )
+            else:
+                entry = styles.get(current) if styles is not None else None
+                current = None if entry is None else entry.based_on
         return True
 
     # -- resolution --------------------------------------------------------
@@ -385,11 +451,26 @@ class Emulator:
                         not_numbered=True,
                         reason="no numId, no paragraph style and no default paragraph style",
                     )
-            effective = self.effective_numbering(style_id)
-            if effective.num_id is None:
+            from docx4j_py.openpackaging.exceptions import CyclicStylesException
+
+            try:
+                effective = self.effective_numbering(style_id)
+            except CyclicStylesException:
+                # docx4j logs and answers with the reason; a cycle raises only
+                # where style_util.throw_on_cyclic_styles has been turned on
+                logger.exception("cyclic styles at %s", style_id)
+                return NumRef(not_numbered=True, reason=f"cyclic styles at {style_id}")
+            if not effective.has_num_pr:
+                # no numbering set on the style either; that is fine
                 return NumRef(
                     not_numbered=True,
                     reason=f"no numId, and style {style_id!r} is not numbered",
+                )
+            if effective.num_id is None:
+                logger.error("style %r has a w:numPr without a w:numId val", style_id)
+                return NumRef(
+                    not_numbered=True,
+                    reason=f"style {style_id!r} has a w:numPr without a w:numId val",
                 )
             num_id = effective.num_id
             if not ilvl:
@@ -478,13 +559,18 @@ class Emulator:
         definition.increment_counter(level_id, state)
         label = definition.current_number_string(level_id, state)
         level = definition.level(level_id)
-        assert level is not None  # level_exists said so
+        if level is None:  # pragma: no cover - level_exists said otherwise
+            return None
         counter = level.counter(state)
         return NumberingResult(
             num_string=label,
             num_font=level.font or None,
             is_bullet=level.is_bullet,
-            ind=level.ind,
+            ind=level.own_ind,
+            ind_resolved=self.ind_of(definition.num_id, level_id),
+            lvl=level.lvl,
+            r_pr=level.r_pr,
+            label_r_pr=level.label_r_pr,
             num_id=definition.num_id,
             ilvl=level.ilvl,
             count=counter.value,

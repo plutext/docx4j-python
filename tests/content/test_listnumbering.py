@@ -70,7 +70,60 @@ def test_a_format_that_cannot_say_the_value_falls_back_to_decimal():
 
 
 def test_an_unknown_numFmt_falls_back_to_decimal(caplog):
-    assert format_value("chineseCounting", 5) == "5"
+    # docx4j ships twenty-nine formats and CR-002 Phase B ported all of them
+    # (section 15.2), so the fall-back needs a w:numFmt no library registers ---
+    # one of the counting styles docx4j leaves to ``register`` (Japanese here)
+    assert format_value("japaneseCounting", 5) == "5"
+
+
+@pytest.mark.parametrize(
+    ("num_fmt", "value", "expected"),
+    [
+        ("ordinal", 21, "21st"),
+        ("ordinal", 12, "12th"),
+        ("cardinalText", 1234, "One Thousand Two Hundred Thirty-Four"),
+        ("ordinalText", 21, "Twenty-First"),
+        ("ordinalText", 100, "One Hundredth"),
+        ("hex", 255, "FF"),
+        ("chicago", 1, "*"),
+        ("chicago", 5, "**"),
+        ("numberInDash", 3, "- 3 -"),
+        ("decimalFullWidth", 12, "\uff11\uff12"),
+        ("decimalFullWidth2", 12, "\uff11\uff12"),
+        ("thaiNumbers", 12, "\u0e51\u0e52"),
+        ("hindiNumbers", 12, "\u0967\u0968"),
+        ("russianLower", 1, "\u0430"),
+        ("russianUpper", 29, "\u0410\u0410"),
+        ("arabicAlpha", 1, "\u0623"),
+        ("thaiLetters", 1, "\u0e01"),
+        ("hebrew1", 15, "\u05d8\u05d5"),
+        ("hebrew1", 16, "\u05d8\u05d6"),
+        ("hebrew1", 115, "\u05e7\u05d8\u05d5"),
+        ("hebrew1", 401, "\u05ea\u05d0"),
+        ("chineseCounting", 10086, "\u4e00\u4e07\u516b\u5341\u516d"),
+        ("chineseCountingThousand", 21, "\u4e8c\u5341\u4e00"),
+        ("chineseLegalSimplified", 21, "\u8d30\u62fe\u58f9"),
+        ("decimalEnclosedCircle", 1, "\u2460"),
+        ("decimalEnclosedCircle", 20, "\u2473"),
+        ("decimalEnclosedCircleChinese", 3, "\u2462"),
+    ],
+)
+def test_the_twenty_docx4j_also_ships(num_fmt, value, expected):
+    """CR-002 section 15.2: every ``NumberFormat*`` class, with docx4j's values."""
+    assert format_value(num_fmt, value) == expected
+
+
+def test_the_exotic_formats_fall_back_where_they_cannot_say_the_value():
+    assert format_value("decimalEnclosedCircle", 21) == "21"
+    assert format_value("chicago", 0) == "0"
+    assert format_value("hebrew1", 0) == "0"
+    assert format_value("cardinalText", -1) == "-1"
+
+
+def test_the_registry_is_docx4js_twenty_nine():
+    from docx4j_py.model.listnumbering.formats import registered_formats
+
+    assert len(registered_formats()) == 29
 
 
 # ---------------------------------------------------------------------------
@@ -282,9 +335,11 @@ def test_the_level_indent_comes_through_on_the_result():
     package = numbered_package(DECIMAL)
     result = Emulator.get_number_of(package, None, "7", "0")
 
+    # since CR-002 Phase B the result's w:ind is the typed one docx4j hands out
     assert result.ind.left == 720
     assert result.ind.hanging == 360
-    assert result.ind.to_dict() == {"left": 720, "hanging": 360}
+    assert result.ind_resolved == result.ind, "the level states its own, so getInd is it"
+    assert result.indent.to_dict() == {"left": 720, "hanging": 360}
 
 
 def test_reading_the_labels_leaves_the_numbering_part_untouched():
