@@ -85,14 +85,50 @@ MAIN_CONTENT_TYPES = (
 class WordprocessingMLPackage(OpcPackage):
     """A WordprocessingML package: a ``.docx``, ``.docm``, ``.dotx`` or ``.dotm``."""
 
-    __slots__ = ("font_mapper", "main_document_part")
+    __slots__ = ("_property_resolver", "font_mapper", "main_document_part")
 
     def __init__(self) -> None:
         """An empty package with no main document part yet."""
         super().__init__()
         self.main_document_part: MainDocumentPart | None = None
-        #: Set in Phase B (CR-002 section 6.3); here so the attribute exists.
+        #: The font mapper, made on first use by :attr:`font_mapper`.
         self.font_mapper: Any = None
+        self._property_resolver: Any = None
+
+    # -- the resolution utilities (CR-002 section 6) -----------------------
+
+    def get_property_resolver(self, refresh: bool = False) -> Any:
+        """The package's :class:`~docx4j_py.model.property_resolver.PropertyResolver`.
+
+        docx4j ``MainDocumentPart.getPropertyResolver(boolean)``: one per
+        package, made on first use and kept. `refresh` re-reads the styles part
+        and throws the caches away, which is what a caller who has **modified or
+        removed** a style needs; a style merely *added* is picked up on its own.
+
+        The styles and numbering parts are read without being unmarshalled, so
+        building a resolver costs a document no byte of its round trip.
+
+        The import is inside the method because the engine imports nothing from
+        the model at module level (``tests/openpackaging/test_threads_and_import.py``).
+        """
+        from docx4j_py.model.property_resolver import PropertyResolver
+
+        if self._property_resolver is None:
+            self._property_resolver = PropertyResolver(self)
+        elif refresh:
+            self._property_resolver.refresh()
+        return self._property_resolver
+
+    def refresh_property_resolver(self) -> Any:
+        """Re-read the styles part into the resolver, if one has been built.
+
+        What every writer of ``/word/styles.xml`` calls:
+        :func:`docx4j_py.model.content.styles.ensure_style` through
+        :func:`docx4j_py.model.listnumbering.invalidate_styles`.
+        """
+        if self._property_resolver is not None:
+            self._property_resolver.refresh()
+        return self._property_resolver
 
     # -- loading -----------------------------------------------------------
 

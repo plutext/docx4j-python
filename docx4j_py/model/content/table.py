@@ -358,17 +358,64 @@ class Table:
             change.text(after=f"style_id={self.style_id}")
 
     @property
-    def style(self) -> str:
-        """The style's display name (``"Table Grid"``), as Office JS reports it.
+    def effective_table_style(self) -> Any:
+        """The table style which actually applies, or None without a package.
 
-        Read from the styles part's ``w:name`` when that part is already
-        unmarshalled and derived from the id otherwise; **a read never
+        docx4j ``PropertyResolver.getEffectiveTableStyle``: the ``w:basedOn``
+        chain merged root-first with the table's own ``w:tblPr`` over it, on top
+        of Word's built-in *Normal Table* where the chain reaches the document's
+        default table style or the table names none (CR-002 section 6.1). A new
+        ``w:style`` each call.
+        """
+        from docx4j_py.model.property_resolver import resolver_of
+
+        resolver = resolver_of(self.parent_body.package)
+        if resolver is None:
+            return None
+        return resolver.get_effective_table_style(self.element.tbl_pr)
+
+    @property
+    def reaches_default_table_style(self) -> bool:
+        """Whether Word's built-in Normal Table underlies this table (CR-015 phase 4)."""
+        from docx4j_py.model.property_resolver import resolver_of
+
+        resolver = resolver_of(self.parent_body.package)
+        if resolver is None:
+            return not self.style_id
+        return resolver.reaches_default_table_style(self.element.tbl_pr)
+
+    @property
+    def effective_style_id(self) -> str:
+        """The id of the style that applies: ``w:tblStyle``, or the default's.
+
+        A table naming no style resolves to the document's default table style
+        --- ``TableNormal`` where the part declares none --- which is what Word
+        draws it with, where :attr:`style_id` reports the empty string the
+        markup has. A table that names one resolves to that one:
+        :attr:`effective_table_style` is the *merged* style and carries the
+        default's id, since docx4j's ``apply(Style, Style)`` never copies a
+        ``w:styleId``.
+        """
+        direct = self.style_id
+        if direct:
+            return direct
+        style = self.effective_table_style
+        return "" if style is None else (style.style_id or "")
+
+    @property
+    def style(self) -> str:
+        """The **effective** style's display name (``"Table Grid"``), as Office JS reports it.
+
+        The style the table resolves to (:attr:`effective_style_id`), so a table
+        naming none reports Word's *Normal Table* rather than nothing; the name
+        is read from the styles part's ``w:name`` when that part is already
+        unmarshalled and derived from the id otherwise, and **a read never
         unmarshals it** (CR-003 section 4), exactly as ``Paragraph.style``.
         Setting a built-in style the document does not define **adds** the
         definition, as on a paragraph (CR-003 section 14.9): a dangling
         ``w:tblStyle`` renders as Table Normal.
         """
-        style_id = self.style_id
+        style_id = self.effective_style_id
         return style_name_of(self.parent_body.package, style_id) if style_id else ""
 
     @style.setter
@@ -381,8 +428,8 @@ class Table:
 
     @property
     def style_built_in(self) -> str:
-        """The ``Word.Style`` value (``"TableGrid"``), or ``"Other"``."""
-        return built_in_of(self.style_id)
+        """The **effective** style's ``Word.Style`` value (``"TableGrid"``), or ``"Other"``."""
+        return built_in_of(self.effective_style_id)
 
     @style_built_in.setter
     def style_built_in(self, value: str) -> None:

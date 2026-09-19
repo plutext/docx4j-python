@@ -1,14 +1,14 @@
-"""``Font``: the Office JS run properties, and what it reads until CR-002 Phase B.
+"""``Font``: the Office JS run properties, and the formatting it reads.
 
-CR-003 section 6: reads report the **direct** formatting of the first run in
-scope; Office JS reports effective formatting, which needs CR-002 Phase B's
-``PropertyResolver``. The styled case below is marked ``xfail`` so that it flips
-the day the resolver lands rather than being written then.
+CR-003 section 6, closed by CR-002 Phase B (section 15.1): reads report the
+**effective** formatting of the first run in scope, as Office JS does ---
+document defaults, paragraph style, character style, direct --- and
+``get_font(direct=True)`` reads the run's own ``w:rPr``, which is what these
+reads were before the resolver landed.
 """
 
 from __future__ import annotations
 
-import pytest
 from conftest import reloaded, sample
 
 
@@ -83,7 +83,7 @@ def test_the_empty_values_remove_the_element(new_package):
     assert r_pr.color is None
     assert r_pr.highlight is None
     assert r_pr.u is None
-    assert font.to_dict() == {
+    assert paragraph.get_font(direct=True).to_dict() == {
         "bold": False,
         "italic": False,
         "underline": "None",
@@ -97,6 +97,8 @@ def test_the_empty_values_remove_the_element(new_package):
         "highlight_color": None,
         "style": "",
     }
+    # the effective read still reports the document defaults underneath
+    assert font.size == 11.0
 
 
 def test_a_write_reaches_every_run_a_read_only_the_first(new_package):
@@ -111,7 +113,9 @@ def test_a_write_reaches_every_run_a_read_only_the_first(new_package):
 
 def test_repr_says_what_the_font_is(new_package):
     paragraph = new_package.body.insert_paragraph("x")
-    assert repr(paragraph.font) == "<Font paragraph plain>"
+    assert repr(paragraph.get_font(direct=True)) == "<Font paragraph plain>"
+    # effective, the document defaults give it a size
+    assert repr(paragraph.font) == "<Font paragraph 11.0pt>"
     paragraph.font.bold = True
     paragraph.font.size = 11
     assert repr(paragraph.font) == "<Font paragraph bold 11.0pt>"
@@ -122,18 +126,22 @@ def test_font_reads_direct_formatting_of_a_run_in_a_real_document():
     paragraph = package.body.paragraphs[0]
     assert paragraph.text == "Testing"
     # whatever the run says directly is what is reported
-    assert paragraph.font.to_dict()["size"] == paragraph.font.size
+    assert paragraph.get_font(direct=True).to_dict()["size"] == (
+        paragraph.get_font(direct=True).size
+    )
 
 
-@pytest.mark.xfail(reason="CR-002 Phase B: effective formatting", strict=True)
 def test_font_reports_the_effective_formatting_of_a_styled_paragraph(new_package):
-    """Office JS reports effective formatting; Phase B reports direct only.
+    """Office JS reports effective formatting, and so does this (CR-002 §15.1).
 
-    ``Heading 1`` in docx4j's default styles is bold and 14pt; a paragraph in
-    that style with no direct run formatting therefore *should* read
-    ``bold=True``, and will once CR-002 Phase B's ``PropertyResolver`` lands.
-    Until then the run says nothing and the font reports nothing.
+    ``Heading 1`` in docx4j's default styles is bold and 14 pt; a paragraph in
+    that style with no direct run formatting therefore reads ``bold=True`` and
+    ``size=14``, where the direct read reports nothing at all. This test was
+    ``xfail`` until the resolver landed, as CR-003 section 6 said it would be.
     """
     paragraph = new_package.body.insert_paragraph("Heading", style="Heading 1")
     assert paragraph.runs[0].r_pr is None, "nothing is set directly"
     assert paragraph.font.size == 14
+    assert paragraph.font.bold is True
+    direct = paragraph.get_font(direct=True)
+    assert direct.size == 0 and direct.bold is False

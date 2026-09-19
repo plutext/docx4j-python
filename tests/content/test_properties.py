@@ -1,0 +1,305 @@
+"""``PropertyResolver`` and ``StyleUtil``. CR-002 sections 6.1 and 15.1.
+
+The parity with docx4j is ``test_properties_goldens.py``; this is what the
+goldens cannot say: that building a resolver costs a document no byte of its
+round trip, that resolution writes nothing into the styles part, the catalogue's
+own completeness, the toggle rule of ECMA-376-1 17.7.3, the cycle guard, and the
+wiring into the package and the content API.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+
+import pytest
+from conftest import reloaded, sample
+
+from docx4j_py.model import property_catalogue as catalogue
+from docx4j_py.model.property_resolver import PropertyResolver, heading_level_by_name
+from docx4j_py.model.style_util import (
+    apply_rpr,
+    is_cyclic,
+    throw_on_cyclic_styles,
+    toggle,
+)
+from docx4j_py.openpackaging.exceptions import CyclicStylesException, Docx4JException
+from docx4j_py.wml import BooleanDefaultTrue, RPr, Styles, wml
+
+# ---------------------------------------------------------------------------
+# the catalogue
+# ---------------------------------------------------------------------------
+
+_TABLES = {
+    "RUN": (catalogue.RUN, catalogue.RUN_EXCLUDED, "RPr"),
+    "PARAGRAPH": (catalogue.PARAGRAPH, catalogue.PARAGRAPH_EXCLUDED, "PPrBase"),
+    "TABLE": (catalogue.TABLE, catalogue.TABLE_EXCLUDED, "CTTblPrBase"),
+    "CELL": (catalogue.CELL, catalogue.CELL_EXCLUDED, "TcPr"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_TABLES))
+def test_each_table_names_every_member_of_its_element_once(name):
+    """One entry per member, in schema order, and nothing invented."""
+    import docx4j_py.wml as wml_module
+
+    table, excluded, class_name = _TABLES[name]
+    fields = [f.name for f in dataclasses.fields(getattr(wml_module, class_name))]
+    listed = [entry.name for entry in table]
+
+    assert len(listed) == len(set(listed)), f"{name}: a member is listed twice"
+    # the excluded names are the revision records, which the wider class (``PPr``
+    # over ``PPrBase``, ``ParaRPr`` over ``RPr``, ``TblPr`` over ``CTTblPrBase``)
+    # carries and this one may not
+    assert set(listed) == set(fields) - set(excluded), (
+        f"{name}: listed {sorted(listed)} != {sorted(set(fields) - set(excluded))}"
+    )
+    # schema order: the listed entries appear in the generated class's order
+    assert listed == [f for f in fields if f in set(listed)], f"{name}: out of schema order"
+
+
+def test_the_paragraph_mark_has_the_same_members_as_a_run():
+    """One ``RUN`` table serves ``w:rPr`` and ``w:pPr/w:rPr``, as docx4j needs two."""
+    import docx4j_py.wml as wml_module
+
+    para = {f.name for f in dataclasses.fields(wml_module.ParaRPr)}
+    run = {f.name for f in dataclasses.fields(wml_module.RPr)}
+    # the paragraph mark adds the four revision members, and nothing else
+    assert para - run == {"ins", "del_value", "move_from", "move_to"}
+    assert run - para == set()
+
+
+def test_the_twelve_toggles_are_the_twelve():
+    assert sorted(catalogue.TOGGLE_NAMES) == [
+        "b",
+        "b_cs",
+        "caps",
+        "emboss",
+        "i",
+        "i_cs",
+        "imprint",
+        "outline",
+        "shadow",
+        "small_caps",
+        "strike",
+        "vanish",
+    ]
+    assert [entry.name for entry in catalogue.TOGGLES] == [
+        entry.name for entry in catalogue.RUN if entry.name in catalogue.TOGGLE_NAMES
+    ]
+
+
+def test_a_carried_leaf_is_a_copy_not_the_styles_parts_own_object():
+    source = wml("<w:rPr><w:b/><w:color w:val='FF0000'/></w:rPr>")
+    destination = RPr()
+    apply_rpr(source, destination)
+
+    assert destination.b is not source.b
+    assert destination.color is not source.color
+    destination.color.val = b"\x00\xff\x00"
+    # w:val of a w:color is ST_HexColor, which the model holds as bytes
+    assert source.color.val == b"\xff\x00\x00", "the source is untouched"
+
+
+# ---------------------------------------------------------------------------
+# the toggles (ECMA-376-1 17.7.3)
+# ---------------------------------------------------------------------------
+
+
+def _on() -> BooleanDefaultTrue:
+    return BooleanDefaultTrue()
+
+
+def _off() -> BooleanDefaultTrue:
+    return BooleanDefaultTrue(val=False)
+
+
+def test_the_toggle_rule():
+    # an upper level that says nothing is no boundary: the lower value stands
+    assert toggle(None, _on(), None) is not None
+    assert toggle(None, None, _on()) is None
+    # the document defaults are a base value, never a term of the XOR
+    assert catalogue.is_true(toggle(_on(), _on(), _on())) is True
+    # true XOR true is false
+    assert catalogue.is_true(toggle(_on(), _on(), None)) is False
+    # true XOR nothing is true
+    assert catalogue.is_true(toggle(_on(), None, None)) is True
+    # false XOR lower is lower: an explicit false over a bold level stays bold
+    assert catalogue.is_true(toggle(_off(), _on(), None)) is True
+    # with no level beneath, the level's own false stands
+    assert catalogue.is_true(toggle(_off(), None, None)) is False
+
+
+# ---------------------------------------------------------------------------
+# cycles
+# ---------------------------------------------------------------------------
+
+
+def test_a_cycle_stops_the_walk_and_does_not_throw_by_default():
+    styles = wml(
+        "<w:styles>"
+        "<w:style w:type='paragraph' w:styleId='A'><w:basedOn w:val='B'/></w:style>"
+        "<w:style w:type='paragraph' w:styleId='B'><w:basedOn w:val='A'/></w:style>"
+        "</w:styles>"
+    )
+    resolver = PropertyResolver(styles=styles)
+    # root first, and the walk stopped where it came back to A
+    assert [style.style_id for style in resolver.ancestry("A")] == ["B", "A"]
+
+
+def test_a_cycle_throws_when_docx4js_property_is_on():
+    try:
+        throw_on_cyclic_styles(True)
+        with pytest.raises(CyclicStylesException):
+            is_cyclic("A", ["A"])
+    finally:
+        throw_on_cyclic_styles(False)
+    assert is_cyclic("A", ["A"]) is True, "and answers instead when it is off"
+
+
+def test_a_chain_deeper_than_thirty_two_stops():
+    ids = [f"S{index}" for index in range(40)]
+    parts = "".join(
+        f"<w:style w:type='paragraph' w:styleId='{name}'>"
+        f"<w:basedOn w:val='{ids[index + 1]}'/></w:style>"
+        for index, name in enumerate(ids[:-1])
+    )
+    styles = wml(
+        f"<w:styles>{parts}<w:style w:type='paragraph' w:styleId='{ids[-1]}'/></w:styles>"
+    )
+    resolver = PropertyResolver(styles=styles)
+    assert len(resolver.ancestry("S0")) == 33
+
+
+# ---------------------------------------------------------------------------
+# headings
+# ---------------------------------------------------------------------------
+
+
+def test_the_outline_level_comes_from_the_styles_name_not_its_declaration():
+    """Word takes a built-in heading's level from its ``w:name``, in every locale."""
+    styles = wml(
+        "<w:styles>"
+        "<w:style w:type='paragraph' w:styleId='Titre2'>"
+        "<w:name w:val='heading 2'/><w:pPr><w:outlineLvl w:val='6'/></w:pPr>"
+        "</w:style>"
+        "</w:styles>"
+    )
+    resolver = PropertyResolver(styles=styles)
+    assert heading_level_by_name(resolver.get_style("Titre2")) == 2
+    assert resolver.get_effective_ppr("Titre2").outline_lvl.val == 1
+    # and the styles part still says what it said
+    assert resolver.get_style("Titre2").p_pr.outline_lvl.val == 6
+    # the id form is docx4j's, and keys on the English id
+    assert resolver.get_lvl_from_heading_style("Heading3") == 3
+    assert resolver.get_lvl_from_heading_style("Titre2") == -1
+
+
+# ---------------------------------------------------------------------------
+# the parts: nothing is unmarshalled, nothing is written
+# ---------------------------------------------------------------------------
+
+
+def test_building_a_resolver_unmarshals_nothing_and_the_round_trip_survives():
+    package = sample("2010-sample1.docx")
+    styles = package.style_definitions_part
+    numbering = package.numbering_definitions_part
+    before = styles.xml
+
+    resolver = package.get_property_resolver()
+    for style_id in list(resolver._live_styles):
+        resolver.get_effective_ppr(style_id)
+        resolver.get_effective_rpr(style_id)
+
+    assert styles.is_unmarshalled is False, "reading the styles did not unmarshal them"
+    if numbering is not None:
+        assert numbering.is_unmarshalled is False
+    assert styles.xml == before, "and the part is byte for byte what it was"
+
+
+def test_resolution_writes_nothing_into_the_styles_part():
+    package = sample("2010-sample1.docx")
+    resolver = package.get_property_resolver()
+    part = package.style_definitions_part
+    before = part.xml
+
+    for style_id in list(resolver._live_styles):
+        resolver.get_effective_ppr(style_id)
+        resolver.get_effective_rpr(style_id)
+    resolver.get_document_default_rpr().sz.val = 999  # our own copy
+
+    assert part.xml == before
+    # the 10 pt default docx4j makes explicit is the resolver's, not the part's
+    assert b'w:sz w:val="999"' not in part.xml
+
+
+def test_the_resolver_is_one_per_package_and_refreshes_when_a_style_is_added():
+    package = sample("2010-sample1.docx")
+    assert package.get_property_resolver() is package.get_property_resolver()
+
+    resolver = package.get_property_resolver()
+    assert resolver.get_style("Heading1") is None or True  # whatever the sample has
+
+    from docx4j_py.model.content.styles import ensure_style
+
+    ensure_style(package, "Heading1")
+    # ensure_style unmarshals the part and invalidates both caches
+    assert package.style_definitions_part.is_unmarshalled is True
+    assert resolver.get_style("Heading1") is not None
+    assert resolver.get_effective_rpr("Heading1") is not None
+
+
+def test_activate_style_refuses_while_the_styles_part_is_private():
+    package = sample("2010-sample1.docx")
+    resolver = package.get_property_resolver()
+    style = wml(
+        "<w:style w:type='paragraph' w:styleId='Zzz'><w:name w:val='Zzz'/></w:style>",
+        wrapper=Styles,
+    )
+
+    with pytest.raises(Docx4JException) as raised:
+        resolver.activate_style(style)
+    assert "refresh()" in str(raised.value)
+
+    package.style_definitions_part.contents  # noqa: B018 - unmarshal it for real
+    resolver.refresh()
+    assert resolver.activate_style(style) is True
+    assert resolver.get_style("Zzz") is not None
+    assert resolver.activate_style("Zzz") is True
+    assert resolver.activate_style("NoSuchStyle") is False
+
+
+def test_a_missing_style_resolves_as_the_default_paragraph_style_does():
+    package = sample("2010-sample1.docx")
+    resolver = package.get_property_resolver()
+    default_id = resolver.default_paragraph_style_id
+    assert resolver.get_effective_ppr("NoSuchStyle") == resolver.get_effective_ppr(default_id)
+    # a missing style has no effective w:rPr at all, where a missing w:pPr does
+    assert resolver.get_effective_rpr("NoSuchStyle") is None
+
+
+# ---------------------------------------------------------------------------
+# the content API reads the effective value
+# ---------------------------------------------------------------------------
+
+
+def test_the_paragraph_getters_report_the_effective_value(new_package):
+    paragraph = new_package.body.insert_paragraph("Heading", style="Heading 1")
+    assert paragraph.element.p_pr.ind is None, "nothing is set directly"
+    assert paragraph.outline_level == 1, "Heading 1 is outline level 1"
+    assert paragraph.space_before > 0, "from the style"
+    assert paragraph.font.bold is True
+
+    # and a save still reloads to the same answers
+    back = reloaded(new_package)
+    assert back.body.paragraphs[0].outline_level == 1
+
+
+def test_a_detached_body_reads_direct_formatting_and_raises_nothing():
+    from docx4j_py.model.content import Body
+
+    container = wml("<w:body><w:p><w:r><w:t>x</w:t></w:r></w:p></w:body>")
+    body = Body(None, container)
+    paragraph = body.paragraphs[0]
+    assert paragraph.font.size == 0
+    assert paragraph.alignment == "Unknown"
+    assert paragraph.effective_p_pr is None

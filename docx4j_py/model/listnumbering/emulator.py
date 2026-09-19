@@ -39,6 +39,7 @@ its markers from here).
 from __future__ import annotations
 
 import dataclasses
+import logging
 from typing import Any
 
 from docx4j_py.model.listnumbering.definitions import (
@@ -64,6 +65,8 @@ __all__ = [
     "invalidate_styles",
     "labels_for",
 ]
+
+logger = logging.getLogger(__name__)
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -527,6 +530,105 @@ class Emulator:
             current = style.based_on
         return None
 
+    # -- getInd: the indent a level contributes (docx4j NumberingDefinitionsPart)
+
+    def get_ind(self, num_pr: Any) -> Any:
+        """The ``w:ind`` a ``w:numPr``'s level contributes. docx4j ``getInd(NumPr)``.
+
+        A **model** ``w:ind`` with no parent, or None. This is the
+        :class:`~docx4j_py.model.style_util.NumberingIndents` seam the paragraph
+        merge asks per layer, so that a style stating a ``w:numPr`` brings the
+        level's indent with it (docx4j ``StyleUtil.apply(PPrBase, PPrBase,
+        NumberingDefinitionsPart)``).
+        """
+        if num_pr is None:
+            return None
+        ilvl = _value(getattr(num_pr, "ilvl", None))
+        num_id = _value(getattr(num_pr, "num_id", None))
+        if num_id is None:
+            # w:numPr without a w:numId: docx4j logs and answers null
+            return None
+        # w:ilvl (and its w:val) is optional; its absence means level 0
+        return self.ind_of(str(num_id), "0" if ilvl is None else str(ilvl))
+
+    def ind_of(self, num_id: str, ilvl: str | int | None = "0") -> Any:
+        """The ``w:ind`` of a level of a list. docx4j ``getInd(String, String)``.
+
+        The instance's ``w:lvlOverride/w:lvl`` is asked first and the abstract
+        ``w:lvl`` only where it answers nothing --- docx4j asks each through
+        ``getIndFromLvl``, which is :meth:`_ind_from_lvl`, rather than merging
+        the two levels' indents.
+        """
+        definition = self.instance_list_definitions.get(num_id)
+        if definition is None:
+            return None
+        level = definition.level("0" if ilvl is None else str(ilvl))
+        if level is None:
+            return None
+        if level.override_element is not None:
+            ind = self._ind_from_lvl(level.override_element)
+            if ind is not None:
+                return ind
+        return self._ind_from_lvl(level.abstract_element)
+
+    def _ind_from_lvl(self, lvl: Any) -> Any:
+        """docx4j ``NumberingDefinitionsPart.getIndFromLvl``.
+
+        A ``w:ind`` the level states itself is the level's indent (ECMA-376
+        17.9.24, and measured: docx4j CR-014 claim 7, probe P5). Otherwise, the
+        ``w:pStyle`` named as a sibling of the level's ``w:pPr`` contributes its
+        own ``w:ind``, or the first one found walking its ``w:basedOn`` chain
+        (docx4j 17.1.1). A style reference *inside* the level's ``w:pPr``, and
+        not also beside it, contributes nothing.
+        """
+        if lvl is None:
+            return None
+        p_pr = lvl.find(_w("pPr"))
+        if p_pr is not None:
+            ind = p_pr.find(_w("ind"))
+            if ind is not None:
+                return _ind_model(ind)
+        p_style = lvl.find(_w("pStyle"))
+        style_id = None if p_style is None else p_style.get(_w("val"))
+        if not style_id:
+            return None
+        return self._ind_from_style_chain(style_id)
+
+    def _ind_from_style_chain(self, style_id: str) -> Any:
+        """The first ``w:pPr/w:ind`` found walking a style's ``w:basedOn`` chain.
+
+        docx4j reads the style through ``PropertyResolver.getStyle`` --- the
+        style as the part states it, not a resolved one --- so this does too;
+        without a resolver the emulator's own lxml reading of the styles part
+        stands in, which is the fallback docx4j's ``getIndFromLvl`` keeps for
+        the same reason (it may be called while the resolver is initialising).
+        """
+        from docx4j_py.child import deep_copy
+
+        resolver = _resolver_of(self._package)
+        seen: set[str] = set()
+        current: str | None = style_id
+        while current is not None and current not in seen:
+            seen.add(current)
+            if resolver is not None:
+                style = resolver.get_style(current)
+                if style is None:
+                    logger.warning("Couldn't find style %s", current)
+                    return None
+                p_pr = style.p_pr
+                if p_pr is not None and p_pr.ind is not None:
+                    return deep_copy(p_pr.ind)
+                current = getattr(getattr(style, "based_on", None), "val", None)
+                continue
+            entry = self.styles.get(current)
+            if entry is None:
+                logger.warning("Couldn't find style %s", current)
+                return None
+            if entry.ind is not None:
+                return _ind_model_of(entry.ind)
+            current = entry.based_on
+        return None
+
     # -- docx4j's entry points ---------------------------------------------
 
     @staticmethod
@@ -585,6 +687,60 @@ def _value(obj: Any) -> Any:
     """``w:val`` as a plain value, whether the model made it an enum or not."""
     val = getattr(obj, "val", None)
     return getattr(val, "value", val)
+
+
+#: ``w:ind``'s twelve attributes, schema name to model attribute name.
+_IND_ATTRIBUTES: tuple[tuple[str, str], ...] = (
+    ("left", "left"),
+    ("leftChars", "left_chars"),
+    ("right", "right"),
+    ("rightChars", "right_chars"),
+    ("start", "start"),
+    ("startChars", "start_chars"),
+    ("end", "end"),
+    ("endChars", "end_chars"),
+    ("hanging", "hanging"),
+    ("hangingChars", "hanging_chars"),
+    ("firstLine", "first_line"),
+    ("firstLineChars", "first_line_chars"),
+)
+
+
+def _ind_model(element: Any) -> Any:
+    """An lxml ``w:ind`` as the model's ``w:ind``, attribute for attribute."""
+    from docx4j_py.wml import CtPprBaseInd
+
+    ind = CtPprBaseInd()
+    for schema_name, attribute in _IND_ATTRIBUTES:
+        value = _as_int(element.get(_w(schema_name)))
+        if value is not None:
+            setattr(ind, attribute, value)
+    return ind
+
+
+def _ind_model_of(indent: Indent) -> Any:
+    """An :class:`~docx4j_py.model.listnumbering.Indent` as the model's ``w:ind``."""
+    from docx4j_py.wml import CtPprBaseInd
+
+    return CtPprBaseInd(
+        left=indent.left,
+        right=indent.right,
+        hanging=indent.hanging,
+        first_line=indent.first_line,
+    )
+
+
+def _resolver_of(package: Any) -> Any:
+    """The package's property resolver, or None where it has no styles to resolve."""
+    if package is None:
+        return None
+    get = getattr(package, "get_property_resolver", None)
+    if get is None:
+        return None
+    try:
+        return get()
+    except Exception:  # noqa: BLE001 - no resolver is a fallback, not a failure
+        return None
 
 
 def _read_styles(package: Any) -> tuple[dict[str, StyleNumbering], str | None]:
@@ -701,6 +857,11 @@ def invalidate_styles(package: Any) -> None:
     emulator = getattr(package, "_numbering_emulator", None)
     if emulator is not None:
         emulator.refresh(styles=True)
+    # the property resolver read the same part: its style chains and its
+    # effective properties are stale too (CR-002 section 6.1)
+    refresh = getattr(package, "refresh_property_resolver", None)
+    if refresh is not None:
+        refresh()
 
 
 def invalidate_labels(package: Any) -> None:

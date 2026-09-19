@@ -4,13 +4,20 @@ CR-003 section 3.2. A ``Font`` is not a thing in the tree: it is a view over the
 ``w:rPr`` of however many runs its scope covers --- every run of a paragraph, or
 just the runs a :class:`~docx4j_py.model.content.Range` has split out.
 
-**Reads report the first run in scope's direct formatting.** Office JS reports
-*effective* formatting, which needs the style hierarchy and the document
-defaults; CR-002 Phase B's ``PropertyResolver`` supplies those, and CR-003
-section 6 says so explicitly: until it lands the views read direct formatting
-and say so. ``tests/content/test_font.py`` carries the styled case marked
-``xfail`` so that the day the resolver arrives the test flips rather than being
-written then.
+**Reads report the first run in scope's effective formatting**, as Office JS
+does: the document defaults, the paragraph style's run properties, the run's
+character style and then its direct formatting, resolved by CR-002 Phase B's
+:class:`~docx4j_py.model.property_resolver.PropertyResolver` (CR-002 section
+15.1; CR-003 section 6, which this closes). ``paragraph.get_font(direct=True)``
+and ``range.get_font(direct=True)`` read the run's own ``w:rPr`` instead, which
+is what a caller reproducing markup wants and what these reads were until Phase
+B; a font over something with no package behind it reads direct, because there
+is no hierarchy to resolve against.
+
+The **python-docx facade** (:mod:`docx4j_py.docx`) keeps python-docx's own
+tri-state semantics --- ``None`` means *inherited*, and python-docx does not
+report effective values either --- and is deliberately not switched (CR-003
+section 20.3).
 
 **Writes apply to every run in scope.** Both directions go through CR-001's one
 name-to-``w:rPr`` mapping, :func:`~docx4j_py.wml.builders.apply_run_options` and
@@ -34,7 +41,7 @@ __all__ = ["Font"]
 class Font:
     """A subset of Office JS ``Word.Font``, over the ``w:rPr`` of a scope."""
 
-    __slots__ = ("_holders", "_record", "_scope", "_tracking")
+    __slots__ = ("_context", "_direct", "_holders", "_record", "_scope", "_tracking")
 
     def __init__(
         self,
@@ -43,6 +50,8 @@ class Font:
         scope: str = "",
         record: Any = None,
         tracking: Callable[[], Any] | None = None,
+        context: Callable[[], tuple[Any, Any]] | None = None,
+        direct: bool = False,
     ) -> None:
         """Build the view.
 
@@ -62,24 +71,45 @@ class Font:
                 package whose ``change_tracking_mode`` is on, or None. When it
                 returns one, each run's properties as they stand are recorded in
                 ``w:rPrChange`` before the write (CR-003 section 3.8).
+            context: called on every read; returns
+                ``(property_resolver, w:pPr)`` --- the resolver of the package
+                this font's runs are in and the ``w:pPr`` of the paragraph they
+                are in --- or ``(None, None)`` where there is no package to
+                resolve against. None for a font that never resolves.
+            direct: read the run's own ``w:rPr`` and not the effective one.
         """
         self._holders = holders
         self._scope = scope
         self._record = record
         self._tracking = tracking
+        self._context = context
+        self._direct = direct
 
     # -- the mapping -------------------------------------------------------
 
-    def _read(self) -> dict[str, Any]:
+    def _direct_r_pr(self) -> Any:
         holders = self._holders()
-        return read_run_options(getattr(holders[0], "r_pr", None) if holders else None)
+        return getattr(holders[0], "r_pr", None) if holders else None
+
+    def _read(self) -> dict[str, Any]:
+        r_pr = self._direct_r_pr()
+        if not self._direct and self._context is not None:
+            resolver, p_pr = self._context()
+            if resolver is not None:
+                return read_run_options(resolver.get_effective_rpr(r_pr, p_pr))
+        return read_run_options(r_pr)
+
+    def _read_direct(self) -> dict[str, Any]:
+        return read_run_options(self._direct_r_pr())
 
     def _apply(self, **options: Any) -> None:
         if self._record is None:
             self._write(**options)
             return
         name = next(iter(options))
-        with self._record(name, lambda: self._read().get(name)):
+        # the change report is about what the *markup* says, either side of the
+        # write, so it reads direct formatting even where this font resolves
+        with self._record(name, lambda: self._read_direct().get(name)):
             self._write(**options)
 
     def _write(self, **options: Any) -> None:

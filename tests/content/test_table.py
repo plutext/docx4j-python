@@ -64,9 +64,13 @@ def test_insert_table_sizes_the_grid_from_the_section(new_package, table):
 
 def test_insert_table_sets_no_style_unless_one_is_asked_for(new_package):
     plain = new_package.body.insert_table(1, 1)
-    assert plain.style_id == ""
-    assert plain.style == ""
+    assert plain.style_id == "", "the markup names no style"
+    # ...and the effective style of a table that names none is Word's built-in
+    # Normal Table, which is what it is drawn with (CR-002 section 15.1)
+    assert plain.style == "Normal Table"
+    # Office JS's Word.Style has no name for Word's built-in Normal Table
     assert plain.style_built_in == "Other"
+    assert plain.reaches_default_table_style is True
 
     styled = new_package.body.insert_table(1, 1, style="Table Grid")
     assert styled.style_id == "TableGrid"

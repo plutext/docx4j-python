@@ -62,6 +62,7 @@ class XmlPart(Part, Generic[T]):
         "_bytes",
         "_contents",
         "_options",
+        "_private_contents",
         "_source_ns_map",
         "root_name",
         "skipped",
@@ -77,6 +78,7 @@ class XmlPart(Part, Generic[T]):
         """Build the part; `root_name` is the qualified name of its root element."""
         super().__init__(part_name, content_type, relationship_type)
         self._contents: Any = None
+        self._private_contents: Any = None
         self._bytes: bytes | None = None
         #: ``{namespace}localName`` of the root, when the class alone does not say.
         self.root_name = root_name
@@ -156,11 +158,35 @@ class XmlPart(Part, Generic[T]):
         """docx4j's spelling of :attr:`contents`, for code that reads across."""
         return self.contents
 
+    def read_contents(self) -> T:
+        """The typed content, **without** marking the part unmarshalled.
+
+        CR-002 section 6.1. A resolution utility --- the property resolver, the
+        numbering definitions, the font selector --- has to read the styles,
+        numbering, theme and font table parts of every document it is built
+        over. Reading :attr:`contents` would mark each of them for
+        re-marshalling, so a document whose styles nobody edited would lose its
+        byte-for-byte round trip the moment something asked for an effective
+        property.
+
+        The tree is unmarshalled once into a private slot and cached there. Once
+        something else unmarshals the part for real, that live tree wins and the
+        private copy is dropped: a caller therefore never sees a stale tree, and
+        never writes into one nobody will save.
+        """
+        if self._contents is not None:
+            self._private_contents = None
+            return self._contents  # type: ignore[return-value]
+        if self._private_contents is None:
+            self._unmarshal(private=True)
+        return self._private_contents  # type: ignore[return-value]
+
     def set_contents(self, value: T) -> None:
         """Replace the content and wire its parent pointers. docx4j ``setContents``."""
         from docx4j_py.child import link_parents
         from docx4j_py.runtime import context
 
+        self._private_contents = None
         self._contents = value
         self._bytes = None
         if value is not None:
@@ -170,6 +196,7 @@ class XmlPart(Part, Generic[T]):
         """Replace the content with raw XML; unmarshalled on the next access."""
         self._bytes = bytes(data)
         self._contents = None
+        self._private_contents = None
         self.skipped = []
 
     def set_xml(self, xml: str) -> None:
@@ -186,7 +213,7 @@ class XmlPart(Part, Generic[T]):
             )
         return data
 
-    def _unmarshal(self) -> None:
+    def _unmarshal(self, private: bool = False) -> None:
         from docx4j_py.child import link_parents
         from docx4j_py.runtime import context, parser
 
@@ -229,6 +256,9 @@ class XmlPart(Part, Generic[T]):
             # was linked as it was built (CR-002 section 12.14).
             link_parents(obj, context=context())
 
+        if private:
+            self._private_contents = obj
+            return
         self._contents = obj
         self._bytes = None
 

@@ -135,7 +135,9 @@ def test_line_spacing_reads_the_auto_rule(new_package):
     paragraph.element.p_pr = wml("<w:pPr><w:spacing w:line='480' w:lineRule='exact'/></w:pPr>")
     assert paragraph.line_spacing == 24
     paragraph.element.p_pr = None
-    assert paragraph.line_spacing == 0
+    # nothing direct: the read is now the effective one, and docx4j's default
+    # styles put w:line 276 auto in w:docDefaults (CR-002 section 15.1)
+    assert paragraph.line_spacing == pytest.approx(13.8)
 
 
 def test_outline_level(new_package):

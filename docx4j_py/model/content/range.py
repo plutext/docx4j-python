@@ -164,13 +164,21 @@ class Range:
 
     @property
     def font(self) -> Font:
-        """The direct formatting of exactly this span.
+        """The formatting of exactly this span.
 
         Asking for it splits nothing; a read reports the first run the span
-        touches. A **write** splits the runs at the boundaries first --- the
-        start backwards and the end forwards to the nearest grapheme boundary,
-        so a cluster is never cut in two (CR-003 section 3.12) --- so that only
-        the span is touched.
+        touches, **effective** as Office JS reports it (CR-002 section 15.1).
+        A **write** splits the runs at the boundaries first --- the start
+        backwards and the end forwards to the nearest grapheme boundary, so a
+        cluster is never cut in two (CR-003 section 3.12) --- so that only the
+        span is touched.
+        """
+        return self.get_font()
+
+    def get_font(self, *, direct: bool = False) -> Any:
+        """:attr:`font`, or the **direct** formatting when `direct` is given.
+
+        CR-002 section 15.1, as :meth:`Paragraph.get_font` is.
         """
 
         def holders() -> list[Any]:
@@ -185,6 +193,8 @@ class Range:
             scope=f"{self.start}:{self.end}",
             record=self.paragraph.formatting,
             tracking=self.paragraph.font_tracking,
+            context=self.paragraph.resolution_context,
+            direct=direct,
         )
 
     # -- spans that cross a run holder (CR-003 section 3.4) ----------------

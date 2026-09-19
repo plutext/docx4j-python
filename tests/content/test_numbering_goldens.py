@@ -314,7 +314,7 @@ def test_every_numbering_golden_has_its_fixture() -> None:
         )
     }
     have = {path.stem for path in _goldens()}
-    # ``fonts-modesOfApplication`` and ``tracked-changes`` number paragraphs too,
-    # but their fixtures are CR-002 Phase B's (fonts, revisions) and are not
-    # copied here; everything whose subject is numbering is.
-    assert numbering - have == {"fonts-modesOfApplication", "tracked-changes"}
+    # CR-002 Phase B copied the rest of the parity set, so every golden that
+    # numbers anything --- ``fonts-modesOfApplication`` and ``tracked-changes``
+    # among them --- now has its fixture here and runs.
+    assert numbering - have == set()

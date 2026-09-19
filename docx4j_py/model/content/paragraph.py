@@ -38,6 +38,7 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.content.font import Font
+from docx4j_py.model.property_resolver import resolver_of
 from docx4j_py.model.content.reports import (
     TextExcerpt,
     moved_by_delete,
@@ -309,14 +310,22 @@ class Paragraph:
             p_pr.spacing.parent = p_pr
         return p_pr.spacing
 
+    def _read_p_pr(self, *, direct: bool = False) -> Any:
+        """The ``w:pPr`` a **getter** reads: the effective one unless asked otherwise.
+
+        Every setter goes through :meth:`_p_pr` instead, which is the
+        paragraph's own and is where a write belongs.
+        """
+        return self.element.p_pr if direct else self.effective_p_pr
+
     @property
     def _ind_or_none(self) -> Any:
-        p_pr = self.element.p_pr
+        p_pr = self._read_p_pr()
         return getattr(p_pr, "ind", None) if p_pr is not None else None
 
     @property
     def _spacing_or_none(self) -> Any:
-        p_pr = self.element.p_pr
+        p_pr = self._read_p_pr()
         return getattr(p_pr, "spacing", None) if p_pr is not None else None
 
     @property
@@ -326,7 +335,7 @@ class Paragraph:
         ``start`` and ``end`` map like ``left`` and ``right``, so a document
         written by a right-to-left Word reads the same (CR-003 section 3.12).
         """
-        p_pr = self.element.p_pr
+        p_pr = self._read_p_pr()
         value = _value(getattr(p_pr, "jc", None)) if p_pr is not None else None
         return _JC_TO_ALIGNMENT.get(value or "", "Unknown")  # type: ignore[return-value]
 
@@ -447,7 +456,7 @@ class Paragraph:
     @property
     def outline_level(self) -> int:
         """``w:outlineLvl + 1``, 1 to 9; ``10`` for body text, as Office JS."""
-        p_pr = self.element.p_pr
+        p_pr = self._read_p_pr()
         value = _value(getattr(p_pr, "outline_lvl", None)) if p_pr is not None else None
         return 10 if value is None else int(value) + 1
 
@@ -532,18 +541,61 @@ class Paragraph:
 
     @property
     def font(self) -> Font:
-        """The direct formatting of the runs (CR-003 section 4: over the runs).
+        """The formatting of the runs (CR-003 section 4: over the runs).
 
-        Reads report the first run; writes go to every run. Not the paragraph
-        mark's ``w:pPr/w:rPr``, which is a different thing and is what Word
-        calls the paragraph mark's font.
+        Reads report the first run's **effective** formatting --- the document
+        defaults, the paragraph style, the run's character style and its direct
+        formatting, through
+        :class:`~docx4j_py.model.property_resolver.PropertyResolver` --- as
+        Office JS does; writes go to every run and are direct as they always
+        were. :meth:`get_font` with ``direct=True`` reads the run's own
+        ``w:rPr``. Not the paragraph mark's ``w:pPr/w:rPr``, which is a
+        different thing and is what Word calls the paragraph mark's font.
+        """
+        return self.get_font()
+
+    def get_font(self, *, direct: bool = False) -> Font:
+        """:attr:`font`, or the **direct** formatting when `direct` is given.
+
+        CR-002 section 15.1: a caller reproducing markup wants what the run
+        itself says, which is what these reads were before the resolver landed.
         """
         return Font(
             lambda: runs_of(self.element),
             scope="paragraph",
             record=self.formatting,
             tracking=self.font_tracking,
+            context=self.resolution_context,
+            direct=direct,
         )
+
+    def resolution_context(self) -> tuple[Any, Any]:
+        """The package's property resolver and this paragraph's ``w:pPr``.
+
+        ``(None, None)`` where there is no package --- a detached body --- so
+        that every view over it reads direct formatting and nothing raises.
+        """
+        return resolver_of(self.parent_body.package), self.element.p_pr
+
+    @property
+    def effective_p_pr(self) -> Any:
+        """The ``w:pPr`` which actually applies, or the paragraph's own.
+
+        The resolved object is **shared and cached** by the resolver when the
+        paragraph states no direct formatting: copy it before changing it.
+        """
+        resolver = resolver_of(self.parent_body.package)
+        p_pr = self.element.p_pr
+        return p_pr if resolver is None else resolver.get_effective_ppr(p_pr)
+
+    @property
+    def effective_paragraph_mark_r_pr(self) -> Any:
+        """The ``w:rPr`` of the paragraph mark which actually applies, or its own."""
+        resolver = resolver_of(self.parent_body.package)
+        p_pr = self.element.p_pr
+        if resolver is None:
+            return getattr(p_pr, "r_pr", None)
+        return resolver.get_effective_paragraph_mark_rpr(p_pr)
 
     def font_tracking(self) -> Any:
         """What :class:`Font` needs to record ``w:rPrChange``, or None (section 3.8).
