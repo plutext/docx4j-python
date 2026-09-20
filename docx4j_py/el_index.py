@@ -96,7 +96,7 @@ UNDERSTOOD: dict[str, str] = {
     "c15": "http://schemas.microsoft.com/office/drawing/2012/chart",
     "c16": "http://schemas.microsoft.com/office/drawing/2014/chart",
     "c16ac": "http://schemas.microsoft.com/office/drawing/2014/chart/ac",
-    "c173": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
+    "c16r3": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
     "cdr": "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing",
     "cdr14": "http://schemas.microsoft.com/office/drawing/2010/chartDrawing",
     "comp": "http://schemas.openxmlformats.org/drawingml/2006/compatibility",

@@ -917,7 +917,7 @@ codegen/generate.sh --check                           # regenerate twice and pro
 
 [`codegen/README.md`](codegen/README.md) explains how the bindings are generated, the docx4j name
 tables in `codegen/names/` and the `el` tables in `codegen/el_tables/`. `schemas/PATCHES.md`
-lists every change to docx4j's schema copy and the docx4j commit it is taken from (`58cce65a8`,
+lists every change to docx4j's schema copy and the docx4j commit it is taken from (`c363a969f`,
 2026-09-20: the bindings carry Word's `w16du:dateUtc`, `w16se:symEx`, `w16cid:durableId`,
 `w14:noSpellErr` and the other extension attributes docx4j's CR-023 admitted, and
 `mc:AlternateContent` is typed in `w:p`, `w:numPicBullet`, charts and spreadsheet drawings).

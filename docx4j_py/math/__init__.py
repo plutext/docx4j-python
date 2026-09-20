@@ -237,7 +237,7 @@ class CTCtrlPr(Child):
     class Meta:
         name = "CT_CtrlPr"
 
-    r_pr_or_ins_or_del: None | RPr | Ins2 | Del2 = field(
+    r_pr_or_ins_or_del: None | RPr | Ins2 | Del2 | CTTextCharacterProperties = field(
         default=None,
         metadata={
             "type": "Elements",
@@ -256,6 +256,11 @@ class CTCtrlPr(Child):
                     "name": "del",
                     "type": ForwardRef("Del2"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                },
+                {
+                    "name": "rPr",
+                    "type": ForwardRef("CTTextCharacterProperties"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/main",
                 },
             ),
         },
@@ -1625,12 +1630,20 @@ class CTR(Child):
             "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
         },
     )
-    schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr: None | RPr = field(
+    r_pr_1: None | RPr = field(
         default=None,
         metadata={
             "name": "rPr",
             "type": "Element",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+        },
+    )
+    r_pr_2: None | CTTextCharacterProperties = field(
+        default=None,
+        metadata={
+            "name": "rPr",
+            "type": "Element",
+            "namespace": "http://schemas.openxmlformats.org/drawingml/2006/main",
         },
     )
     content: list[
@@ -2753,6 +2766,7 @@ class CTOMathArg(Child):
 # Imported below the classes, not above them: these names are only needed
 # once the classes exist, and importing them earlier would not be possible
 # where two modules depend on each other.
+from docx4j_py.dml.main import CTTextCharacterProperties
 from docx4j_py.mce import AlternateContent
 from docx4j_py.shared_types import (
     StOnOff,

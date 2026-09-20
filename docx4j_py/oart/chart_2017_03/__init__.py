@@ -16,7 +16,6 @@ class CTBooleanFalse(Child):
         default=None,
         metadata={
             "type": "Attribute",
-            "namespace": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
             "schema_default": "false",
         },
     )

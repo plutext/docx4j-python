@@ -38,6 +38,7 @@ from docx4j_py.openpackaging import (  # noqa: E402
     WordprocessingMLPackage,
     XmlPart,
 )
+from docx4j_py.traversal import element_name, iter_nodes  # noqa: E402
 
 SAMPLES = sorted((ROOT / "samples").glob("*.doc*")) + sorted((ROOT / "samples").glob("*.dot*"))
 PPTX_XLSX = sorted((ROOT / "samples").glob("*.pptx")) + sorted((ROOT / "samples").glob("*.xlsx"))
@@ -113,42 +114,40 @@ def test_the_pptx_and_xlsx_chart_parts_keep_their_alternate_content():
                     continue
                 assert b"AlternateContent" in part.xml, part.part_name
                 report = canon.compare(source[part.part_name.store_name], part.xml)
-                # Identical but for the residual the next test pins.
-                residual = [
-                    d
-                    for d in report.diffs
-                    if not (d.category == "attribute-dropped" and d.path.endswith("dispNaAsBlank"))
-                ]
-                assert residual == [], (
+                assert report.diffs == [], (
                     f"{path.name} {part.part_name}: "
-                    f"{[(d.category, d.detail) for d in residual[:5]]}"
+                    f"{[(d.category, d.detail) for d in report.diffs[:5]]}"
                 )
 
 
-def test_the_c16r3_chart_boolean_is_the_one_known_unmarshal_gap():
-    """A finding, pinned so that fixing it is visible.
+def test_the_c16r3_chart_boolean_keeps_its_val():
+    """The residual of the gap above, closed by docx4j `c363a969f`.
 
-    It was hidden inside the count of the gap above: ``c16r3:dispNaAsBlank``
-    (``dataDisplayOptions16``, ``[MS-ODRAWXML]``'s 2017/03 chart namespace) is
-    written by Office with an *unqualified* ``val``, but docx4j's
-    ``odrawxml/office_drawing_2017_03_chart_.xsd`` is
-    ``attributeFormDefault="qualified"``, so the binding looks for
-    ``c16r3:val`` and the skipped-content report records the attribute. Two
-    attributes in two parts; docx4j's own binding has the same blind spot, so
-    the fix is a docx4j schema hand-off (CR-002 section 12.5), not a patch here.
+    ``c16r3:dispNaAsBlank`` (``dataDisplayOptions16``, ``[MS-ODRAWXML]``'s
+    2017/03 chart namespace) is written by Office with an *unqualified*
+    ``val``; docx4j's ``odrawxml/office_drawing_2017_03_chart_.xsd`` said
+    ``attributeFormDefault="qualified"`` (as the specification's own schema
+    text does, wrongly), so the binding looked for ``c16r3:val`` and dropped
+    the one Office writes, flipping the option to its default. The schema is
+    ``unqualified`` now, the value is typed, and every pptx and xlsx fixture
+    unmarshals with nothing skipped at all.
     """
-    lost = []
     for path in PPTX_XLSX:
         with OpcPackage.load(path) as pkg:
             pkg.unmarshal_all()
-            lost.extend(pkg.skipped)
-    assert lost, "if this is empty the gap is closed; delete this test"
-    for name, node in lost:
-        assert (node.kind, node.qname, node.parent_class) == ("attribute", "val", "CTBooleanFalse"), (
-            name,
-            node,
-        )
-    assert len(lost) == 2
+            assert list(pkg.skipped) == [], path.name
+            for part in pkg.parts.parts():
+                if isinstance(part, XmlPart) and "/charts/chart" in part.part_name.name:
+                    chart = part.contents
+                    options = [
+                        node
+                        for node in iter_nodes(chart)
+                        if type(node).__name__ == "CTBooleanFalse"
+                        and element_name(node).endswith("}dispNaAsBlank")
+                    ]
+                    assert options, part.part_name
+                    assert all(node.val is True for node in options), part.part_name
+                    assert b'c16r3:dispNaAsBlank val="1"' in part.xml, part.part_name
 
 
 def test_loading_is_lazy():

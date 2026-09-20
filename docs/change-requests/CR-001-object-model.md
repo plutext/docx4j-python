@@ -1068,5 +1068,39 @@ record). The user opened them in Word on 2026-09-20 and reported them good.
    OMML's `CT_R` and `CT_CtrlPr` in `shared-math-2ed.xsd` admit `a:rPr` through a new model group
    `EG_TextRunPropertiesInMath` in `dml-textCharacter.xsd` (property `rPrDml`); two xsd files, no
    new namespace. Its fixtures are `loadAndSave.pptx` slide 2 and `loadAndSave.xlsx` drawing 1 (16
-   `m:r` and 7 `m:ctrlPr` each). Not taken here: it landed after this refresh's copy, and it is
-   the next refresh's, or Phase D's, first item.
+   `m:r` and 7 `m:ctrlPr` each). **Taken the same evening**, with the second change below, as
+   section 14.11.
+
+### 14.11 Follow-up refresh to docx4j `c363a969f`, 2026-09-20
+
+Three files, copied verbatim a few hours after 14.10, once docx4j's session reported them:
+
+- `shared/shared-math-2ed.xsd` and `dml/dml-textCharacter.xsd` --- docx4j CR-025 (`34948f8e9`):
+  OMML's `CT_R` and `CT_CtrlPr` admit DrawingML's `a:rPr`, the answer to 14.10's watch item 5.
+  Generated: `math.CTR.r_pr_or_ins_or_del` gains `CTTextCharacterProperties` in its union and
+  `math.CTCtrlPr` a second `rPr` field. **One generated field name moves:** the `w:rPr` of
+  `m:ctrlPr` was `schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr` (xsdata's
+  namespace-qualified disambiguation against `m:rPr`) and is `r_pr_1` now, with the `a:rPr`
+  `r_pr_2` --- a third same-named element switches the generator to numbering. Nothing
+  hand-written used the old name (`grep` over `docx4j_py/`, `tests/`, `docs/`); it is a model
+  member that a consumer could have touched, so it is noted here and in CR-007's changelog
+  material. `codegen/names/dml.json` gains `rPr: CTTextCharacterProperties` (the element's
+  entry, derived from XJC as every entry is).
+- `odrawxml/office_drawing_2017_03_chart_.xsd` --- docx4j `c363a969f`, the hand-off of 14.10
+  (sent to the docx4j session, which measured the same loss in JAXB) taken up: `attributeFormDefault="unqualified"`, with docx4j's
+  comment that [MS-ODRAWXML] 5.31's own schema text has the wrong form, so
+  `c16r3:dispNaAsBlank/@val` is read typed and written back. With it the prefix table
+  (`docx4j_py/namespaces.py`, kept level with `NamespacePrefixMappings.java`) renames docx4j's
+  made-up `c173` to Office's `c16r3`; nothing generated depends on the prefix, and a read
+  accepts any prefix, so it is one line and the `MC_IGNORABLE_PREFIXES` entry.
+
+Numbers: `generate.sh --check` byte identical, 238 modules, 564 `ClassNames` lines as before
+(282 warnings, each printed twice by the check's two runs); fast suite 1,912 passed, 2 skipped;
+corpus round trip 50/50 canonically identical, 0 differences, 0 skipped; goldens zero
+differences. CR-002 section 12.5's residual is closed: `loadAndSave.pptx` and `loadAndSave.xlsx`
+now unmarshal **every part with nothing skipped**, and
+`test_the_c16r3_chart_boolean_keeps_its_val` replaces the pinned gap with the closed state (the
+option reads `True` and is written `c16r3:dispNaAsBlank val="1"`).
+
+The acceptance artefacts are unaffected --- none holds a chart or an equation --- and were not
+regenerated for this; the next marshalling change regenerates them as the rule says.

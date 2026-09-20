@@ -296,6 +296,7 @@
     "lum": "CTPercentage",
     "lumMod": "CTPercentage",
     "lumOff": "CTPercentage",
+    "rPr": "CTTextCharacterProperties",
     "red": "CTPercentage",
     "redMod": "CTPercentage",
     "redOff": "CTPercentage",

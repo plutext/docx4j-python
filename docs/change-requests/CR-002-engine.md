@@ -583,7 +583,12 @@ writes the attribute unqualified; docx4j's `odrawxml/office_drawing_2017_03_char
 own JAXB binding has the same blind spot, so the fix is a hand-off to docx4j (the schema's
 `attributeFormDefault`, or `form="unqualified"` on that one attribute) rather than a patch
 here — a chart namespace is outside `schemas/PATCHES.md`'s WML remit, and it costs nothing on the
-ordinary path, where those parts are never unmarshalled.
+ordinary path, where those parts are never unmarshalled. **Closed the same day**: docx4j
+`c363a969f` made the schema `attributeFormDefault="unqualified"` (and its prefix `c16r3`, not
+`c173`); the copy was taken (CR-001 section 14.11) and
+`test_the_c16r3_chart_boolean_keeps_its_val` now asserts the closed state --- every part of both
+fixtures unmarshals with nothing skipped, and the option is written back `c16r3:dispNaAsBlank
+val="1"`. There is no known unmarshal gap over `samples/` any more.
 
 Two parts are `DefaultXmlPart` (an lxml tree) rather than typed, for the same reason — their
 namespaces are outside `schemas/wml/wml.xsd`'s import closure and so have no bindings in this
