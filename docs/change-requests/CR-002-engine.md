@@ -536,6 +536,23 @@ includes `settings.xml` and `webSettings.xml` (which the `CT_StylePaneFilter` pa
    `wp:wpc`, ...) map to `wps:` / `wpg:` / `wpc:` by root name, children by nearest such
    ancestor, not to transitional `wp:` (docx4j `3f4776c35`). The fixtures and
    `StrictLoadTest.java` are the oracle.
+
+   **The repair side, measured the same day** against the XSLT's four repair classes (docx4j-11's
+   list), on fragments through `wml()` strict and `runtime.parser(lenient=True)`: (1) a decimal
+   in a twips attribute (Google Docs, pandoc: `w:spacing/@w:after="8.5"`,
+   `w:ind/@w:hanging="141.99999999999994"`) and (2) SSRS's empty `w:rsidR=""` /
+   `w:pgMar/@w:header=""` are **kept as the raw string** --- the fork's converter fails, warns
+   (`ConverterWarning`), and leaves the `str` in the `int` field, so the value round-trips byte for
+   byte and the content API's arithmetic still reads it (`space_after` 0.425 cm), but it is not
+   typed and **the skipped-content report does not carry it**: a fidelity gap in the report, not in
+   the file, and the later CR's first item (the report gains `kind="value"` for a converter
+   failure; the rounding and dropping docx4j applies follow). (3) `wordml201011:*` attributes and
+   (4) the malformed nesting (`w:r` in `w:r`, `w:p` in `w:r` or `w:hyperlink`) are **dropped and
+   reported**, never silently: the subtree is a `SkippedNode(kind="element")` in `part.skipped`,
+   `wml()` raises `FragmentError`, `LoadOptions(strict=True)` raises. No hoisting or splitting is
+   done; docx4j 17.2.0's `MalformedNestingTest.java` (17 shapes) is the oracle when it is. The
+   trigger differs from docx4j's retry-after-`UnmarshalException`: every parse is the lenient one
+   with the report, once.
 8. **An absolute relationship target is treated as external** even when `TargetMode="External"` is
    missing. `samples/tables.docx` has `file:///D:\…\logo.png`, and docx4j throws
    `IllegalArgumentException` on it from `URIHelper.resolvePartUri`; making one malformed
