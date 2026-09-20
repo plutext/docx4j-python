@@ -9,7 +9,9 @@
 #
 # The generator needs the virtual environment's bin on PATH (it shells out to
 # `ruff` by bare name) and it validates its own output by importing the whole
-# output package. What is hand written under docx4j_py/ is listed in
+# output package. The environment is .venv-fork unless DOCX4J_PY_VENV names
+# another one (CR-007's consumer test runs this against the built wheel in a
+# clean venv). What is hand written under docx4j_py/ is listed in
 # codegen/clean.py; the pre-Phase-B baseline is not there at all, it is
 # baseline/docx4j_py/generated/, see baseline/docx4j_py/__init__.py.
 #
@@ -22,7 +24,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-VENV="$ROOT/.venv-fork"
+VENV="${DOCX4J_PY_VENV:-$ROOT/.venv-fork}"
 export PATH="$VENV/bin:$PATH"
 
 if [ "${1:-}" = "--check" ]; then
