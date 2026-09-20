@@ -556,19 +556,41 @@ a test), and `ContentTypeManager.add_content_type` writes an `Override` for a PN
 
 ### 12.5 The one gap found, and it is not WordprocessingML
 
-The DrawingML **chart** and **spreadsheet-drawing** schemas in this build do not declare
-`mc:AlternateContent` on `c:chartSpace` or on the anchors, so unmarshalling one of those parts
-drops it — the skipped-content report says so, which is the report doing its job. It costs 5 items
-in 3 parts of `loadAndSave.pptx` and `loadAndSave.xlsx`. It does **not** affect any round trip,
-because nothing unmarshals those parts unless a caller asks: both files still save byte for byte.
-WordprocessingML has the wildcards it needs (CR-001's `anyAttribute` patch and the compound fields
-the generator produces); the chart namespaces get the same treatment when CR-001 Phase D generates
-PML and SML. `tests/openpackaging/test_round_trip.py` pins the gap so that closing it is visible.
+*As found, 2026-09-12.* The DrawingML **chart** and **spreadsheet-drawing** schemas in this build
+do not declare `mc:AlternateContent` on `c:chartSpace` or on the anchors, so unmarshalling one of
+those parts drops it — the skipped-content report says so, which is the report doing its job. It
+costs 5 items in 3 parts of `loadAndSave.pptx` and `loadAndSave.xlsx`. It does **not** affect any
+round trip, because nothing unmarshals those parts unless a caller asks: both files still save
+byte for byte. WordprocessingML has the wildcards it needs (CR-001's `anyAttribute` patch and the
+compound fields the generator produces); the chart namespaces get the same treatment when CR-001
+Phase D generates PML and SML. `tests/openpackaging/test_round_trip.py` pins the gap so that
+closing it is visible.
 
-Three parts are `DefaultXmlPart` (an lxml tree) rather than typed, for the same reason — their
+**Closed 2026-09-20, by the schema refresh** (CR-001 section 14.10). docx4j's CR-024
+(`bcb4c7f57`) made `dml-chart.xsd` admit `mc:AlternateContent` beside `c:style` and
+`dml-spreadsheetDrawing.xsd` admit it in `EG_Anchor`, `EG_ObjectChoices` and `CT_GroupShape`, and
+the regenerated `dml.chart` and `dml.spreadsheet_drawing` packages carry it as a typed
+`AlternateContent` in the compound fields (`ChartSpace.alternate_content`, the anchors' `content`).
+The 5 items in 3 parts were **3 elements and 2 attributes**: the three `mc:AlternateContent`
+(`c:chartSpace` in both charts, `xdr:oneCellAnchor` in the drawing) are kept now and the three
+parts marshal canonically identical to their source, which
+`test_the_pptx_and_xlsx_chart_parts_keep_their_alternate_content` asserts. **The two attributes
+are a second gap the first one's count had hidden**, pinned in its place by
+`test_the_c16r3_chart_boolean_is_the_one_known_unmarshal_gap`: `c16r3:dispNaAsBlank/@val`
+(`dataDisplayOptions16`, [MS-ODRAWXML]'s 2017/03 chart namespace), one in each chart. Office
+writes the attribute unqualified; docx4j's `odrawxml/office_drawing_2017_03_chart_.xsd` is
+`attributeFormDefault="qualified"`, so the binding looks for `c16r3:val` and drops `val`. docx4j's
+own JAXB binding has the same blind spot, so the fix is a hand-off to docx4j (the schema's
+`attributeFormDefault`, or `form="unqualified"` on that one attribute) rather than a patch
+here — a chart namespace is outside `schemas/PATCHES.md`'s WML remit, and it costs nothing on the
+ordinary path, where those parts are never unmarshalled.
+
+Two parts are `DefaultXmlPart` (an lxml tree) rather than typed, for the same reason — their
 namespaces are outside `schemas/wml/wml.xsd`'s import closure and so have no bindings in this
-build: `commentsIds.xml` (`w16cid`), `commentsExtensible.xml` (`w16cex`) and
-`customXml/itemPropsN.xml` (`ds:datastoreItem`, in `officeDocument/2006/customXml`). Nothing is
+build: `commentsExtensible.xml` (`w16cex`) and `customXml/itemPropsN.xml` (`ds:datastoreItem`, in
+`officeDocument/2006/customXml`). `commentsIds.xml` (`w16cid`) was a third until the refresh
+brought `w16cid.xsd` into the closure; its `CTCommentsIds` is generated now, though the part is
+still registered as a tree (a typed part is CR-001 Phase D's or a later CR's to add). Nothing is
 lost: a tree holds everything, and a part that is never parsed is copied verbatim. The chart style,
 chart colour style, `chartex` and diagram-drawing parts are trees for the same reason.
 

@@ -209,8 +209,10 @@ def _build_default() -> PartRegistry:
     registry.register(ContentTypes.MS_WORD_KEYMAP, lambda n, ct: wml.KeyMapCustomizationsPart(n))
     registry.register(ContentTypes.OFFICEDOCUMENT_VBA_DATA, lambda n, ct: wml.VbaDataPart(n))
     registry.register(ContentTypes.VML_DRAWING, lambda n, ct: wml.VMLPart(n))
-    # commentsIds and commentsExtensible: w16cid / w16cex are outside this
-    # build's schema closure (CR-001 section 13.5), so they are trees.
+    # commentsIds and commentsExtensible are trees: w16cex is outside this
+    # build's schema closure (CR-001 section 13.5), and w16cid, generated
+    # since the 2026-09-20 schema refresh, is still consumed as a tree by the
+    # comments part half of CR-003 Phase G (CR-002 section 12.5).
     registry.register(
         ContentTypes.WORDPROCESSINGML_COMMENTS_IDS,
         lambda n, ct: DefaultXmlPart(n, ct, Namespaces.COMMENTS_IDS),

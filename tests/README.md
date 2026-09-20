@@ -210,6 +210,21 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > as it did) with the Heading styles in **Aptos Display**; the Design tab's Fonts gallery should
 > show the Office theme selected rather than nothing.
 
+> **2026-09-20, regenerated, awaiting Word check.** The eleven artefacts were regenerated after
+> the **schema refresh** of CR-001 section 14.10 (`schemas/` re-copied from docx4j `58cce65a8`,
+> the object model regenerated: the CR-023 extension attributes, `w16se:symEx`, `w15symex` and
+> `w16cid` bindings, `mc:AlternateContent` admitted in `w:p`, `w:numPicBullet`, the charts and the
+> spreadsheet drawings, the w14 checkbox booleans). The schema is a marshalling input, so this is
+> a regeneration by the rule below. Against the artefacts built from the commit before
+> (`1647045`), **147 parts were compared, seven differ, and every difference is a wall-clock
+> date** --- `docProps/core.xml` in artefacts 3, 4 and 5, `word/comments.xml` in 7 and 8,
+> `word/document.xml` in 8 and 10; with the dates scrubbed, zero parts differ, which is what the
+> corpus round trip (50/50 canonically identical, nothing skipped) and the full suite (1,948
+> passed) predict: nothing in the eleven artefacts uses the markup the refresh admitted. **No Word
+> check has been made on this regeneration.** The user's decision of 2026-09-19 (a dates-only
+> difference needs no Word re-check) would apply; the artefacts are in `out/acceptance/` for the
+> user to decide.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

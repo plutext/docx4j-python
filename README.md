@@ -917,7 +917,10 @@ codegen/generate.sh --check                           # regenerate twice and pro
 
 [`codegen/README.md`](codegen/README.md) explains how the bindings are generated, the docx4j name
 tables in `codegen/names/` and the `el` tables in `codegen/el_tables/`. `schemas/PATCHES.md`
-lists every change to docx4j's schema copy.
+lists every change to docx4j's schema copy and the docx4j commit it is taken from (`58cce65a8`,
+2026-09-20: the bindings carry Word's `w16du:dateUtc`, `w16se:symEx`, `w16cid:durableId`,
+`w14:noSpellErr` and the other extension attributes docx4j's CR-023 admitted, and
+`mc:AlternateContent` is typed in `w:p`, `w:numPicBullet`, charts and spreadsheet drawings).
 
 ## Layout
 
@@ -928,7 +931,7 @@ docx4j_py/            one package per XML namespace, generated; codegen/generate
   wml/builders.py       hand written: p, r, t, tbl, tr, tc, br, tab, the run options, rpr_to_elements
   wml/pictures.py       hand written: inline_picture, image_size, emu_for (CR-003 Phase A)
   wml/sdt.py            hand written: sdt, sdt_pr, sdt_property, sdt_kind_of, next_sdt_id
-  dml/ math/ mce/ w14/ w15/ ...   the namespaces WordprocessingML embeds, the same shape
+  dml/ math/ mce/ w14/ w15/ w16cid/ w15symex/ ...   the namespaces WordprocessingML embeds, the same shape
   relationships/ docprops/        the .rels classes and the three properties parts
   child.py              hand written: Child, ChildList, link_parents, iter_children, deep_copy(_as)
   namespaces.py         hand written: docx4j's prefix table; UNDERSTOOD is generated

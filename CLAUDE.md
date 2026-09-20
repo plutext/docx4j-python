@@ -139,7 +139,9 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 - **The schema copy** (`schemas/`). docx4j's `xsd/` tree copied verbatim apart from the patches in
   `schemas/PATCHES.md`, each marked in the XSD by a comment beginning `docx4j-python`
   (`grep -rn 'docx4j-python' schemas/`). `default="..."` is never stripped. Record any new patch
-  in `PATCHES.md` with its marker. `docx4j_python__ROOT.xsd` is ours: the single entry point that
+  in `PATCHES.md` with its marker. `PATCHES.md` names the docx4j commit the copy is from; a
+  refresh re-copies the closure verbatim and re-patches by marker (CR-001 section 14.10 is the
+  precedent, with the checks it made). `docx4j_python__ROOT.xsd` is ours: the single entry point that
   collects `wml/wml.xsd`, `relationships.xsd` and the `docProps/` schemas.
 - **The name tables** (`codegen/names/*.json`). Schema type and element names mapped to docx4j's
   Java class names, derived mechanically by `derive_names.py`; only `wml_overrides.json` is hand
