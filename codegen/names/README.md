@@ -24,7 +24,12 @@ exactly four top-level keys, in this order: `namespace`, `java_package`, `types`
 Which namespaces get a file: the **intersection** of (a) the `targetNamespace` values found in
 `schemas/` — i.e. WML's import closure as staged in this repo — and (b) the namespaces docx4j's
 Java packages declare in their `package-info.java`. 54 namespaces qualify (CR-002 section 9 added seven: the package relationships and the docProps family). Both directions of the
-difference are listed under [Namespaces with no table](#namespaces-with-no-table).
+difference are listed under [Namespaces with no table](#namespaces-with-no-table). The 2026-09-20
+schema refresh (docx4j `58cce65a8`, CR-001 section 14.10) added two: `w15symex.json` (`CT_SymEx`,
+`w16se:symEx`) and `w16cid.json` (`CT_CommentsIds`, `CT_CommentId`), 58 files; the other 56 came
+out byte identical, docx4j's changes since `6b8048aab` being attributes and element references on
+existing classes. The three attribute-only w16 schemas that arrived with them have no Java package
+and no table.
 
 ## Files
 
@@ -372,7 +377,7 @@ No package declared an empty `@XmlSchema` namespace, and no namespace is claimed
 
 ## Namespaces with no table
 
-### In the `schemas/` closure but with no usable docx4j package (8)
+### In the `schemas/` closure but with no usable docx4j package (12)
 
 * `http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes` — `org.docx4j.sharedtypes`
   exists (7 enums, `ST_OnOff`, `ST_CalendarType`, …) but has no `package-info.java`; the namespace
@@ -386,34 +391,40 @@ No package declared an empty `@XmlSchema` namespace, and no namespace is claimed
   (`r:id`, `r:embed`); docx4j generates no classes for it. Note `org.docx4j.relationships` is the
   *package* relationships namespace (`…/package/2006/relationships`), a different thing.
 * `http://www.w3.org/XML/1998/namespace` — `xml:space`, `xml:lang`; no classes.
+* `http://purl.org/dc/dcmitype/` — CR-002 section 9's docProps closure; enumerations only, no
+  docx4j package.
+* `http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash` (`w16sdtdh:storeItemChecksum`),
+  `…/word/2023/wordml/word16du` (`w16du:dateUtc`), `…/word/2024/wordml/sdtformatlock`
+  (`w16sdtfl:formattingAllowed`) — attribute-only, docx4j CR-023; no classes on either side.
 
-### docx4j packages whose namespace is outside the closure (not emitted, 24 under `org.docx4j`)
+### docx4j packages whose namespace is outside the closure (not emitted, 18 under `org.docx4j`)
 
 All VML — `urn:schemas-microsoft-com:vml` (`org.docx4j.vml`), `…:office:word`
 (`org.docx4j.vml.wordprocessingDrawing`), `…:office:office` (`org.docx4j.vml.officedrawing`),
-`…:office:excel`, `…:office:powerpoint`, `urn:docx4j:vml:root` — plus the package-level parts:
-`…/package/2006/relationships` (`org.docx4j.relationships`),
-`…/package/2006/metadata/core-properties` (`org.docx4j.docProps.core`),
-`http://purl.org/dc/elements/1.1/`, `http://purl.org/dc/terms/`,
-`…/officeDocument/2006/extended-properties`, `…/officeDocument/2006/custom-properties`,
-`…/officeDocument/2006/docPropsVTypes`, `…/officeDocument/2006/bibliography`,
+`…:office:excel`, `…:office:powerpoint`, `urn:docx4j:vml:root` — plus
+`…/officeDocument/2006/bibliography`,
 `…/officeDocument/2006/customXml`, `…/office/2006/xmlPackage`, `…/office/2006/coverPageProps`,
 `…/office/2006/encryption` (+ the two `keyEncryptor` namespaces),
 `…/office/webextensions/{taskpanes,webextension}/2010/11`,
-`…/office/word/2015/wordml/symex` (`org.docx4j.w15symex`), and
-`…/office/word/2016/wordml/cid` (`org.docx4j.w16cid`).
+`…/office/word/2018/wordml` (`org.docx4j.w16`), `…/office/word/2018/wordml/cex`
+(`org.docx4j.w16cex`) and `…/office/word/2026/wordml/cei` (`org.docx4j.cei`) — the three
+`xsd/wml/` schemas docx4j binds through its `ROOT.xsd` that `wml.xsd` does not import.
+`…/office/word/2015/wordml/symex` (`org.docx4j.w15symex`) and `…/office/word/2016/wordml/cid`
+(`org.docx4j.w16cid`) were in this list until docx4j's CR-023 made `wml.xsd` import them, and
+the package relationships and docProps namespaces (`org.docx4j.relationships`,
+`org.docx4j.docProps.*`, Dublin Core) until CR-002 section 9 added their schemas.
 The `org.xlsx4j.*` and `org.pptx4j.*` trees are likewise outside the closure except
 `org.xlsx4j.schemas.microsoft.com.office.excel.x2010.spreadsheetDrawing`, which is in it and *is*
 emitted.
 
-**`vml` and `w16cid` in particular are worth a second look**: `w:pict` content is VML, and
-`w16cid` is common in modern `.docx` files, but neither namespace is reachable from the `.xsd`
-files currently in `schemas/`. If either is added to `schemas/`, re-running the script picks it up
-automatically — no change to the script is needed.
+**`vml` in particular is worth a second look**: `w:pict` content is VML, but the namespace is
+not reachable from the `.xsd` files currently in `schemas/`. If it is added to `schemas/`,
+re-running the script picks it up automatically — no change to the script is needed, as the
+2026-09-20 refresh showed for `w16cid`.
 
 ### ObjectFactory declarations dropped because their namespace has no table
 
-255 `@XmlElementDecl`s point at namespaces outside the emitted set and were discarded. The largest
+263 `@XmlElementDecl`s (255 at Phase B) point at namespaces outside the emitted set and were discarded. The largest
 groups: `…/spreadsheetml/2006/main` (52), `…/office/powerpoint/2010/main` (30),
 `urn:schemas-microsoft-com:vml` (21), `…/officeDocument/2006/bibliography` (19),
 `urn:schemas-microsoft-com:office:office` (18), `http://purl.org/dc/elements/1.1/` (16),

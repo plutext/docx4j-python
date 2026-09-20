@@ -1,0 +1,11 @@
+{
+  "namespace": "http://schemas.microsoft.com/office/word/2016/wordml/cid",
+  "java_package": "org.docx4j.w16cid",
+  "types": {
+    "CT_CommentId": "CTCommentId",
+    "CT_CommentsIds": "CTCommentsIds"
+  },
+  "elements": {
+    "commentsIds": "CTCommentsIds"
+  }
+}
