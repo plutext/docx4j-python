@@ -109,6 +109,10 @@ PREFIXES: dict[str, str] = {
     "w16sdtdh": "http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash",
     "w16du": "http://schemas.microsoft.com/office/word/2023/wordml/word16du",
     "w16sdtfl": "http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock",
+    # docx4j CR-023 (2026-09-20): a comment entity, and the reactions namespace Word
+    # names in commentsExtensible.xml's mc:Ignorable, which must be declared on save
+    "cei": "http://schemas.microsoft.com/office/word/2026/wordml/cei",
+    "cr": "http://schemas.microsoft.com/office/comments/2020/reactions",
     # PowerPoint
     "p14": "http://schemas.microsoft.com/office/powerpoint/2010/main",
     "p15": "http://schemas.microsoft.com/office/powerpoint/2012/main",
