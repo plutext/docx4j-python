@@ -9,8 +9,8 @@ docx4j-xsdata[lxml]==26.2.1` into a clean 3.12 environment imports `26.2.1` from
 **Phase B implemented 2026-09-20** (section 10): this package is `docx4j 0.1.0`, built and gated
 against the wheel in a clean 3.12 environment with the fork from PyPI (the fast suite 1,669
 passed against the installed wheel, the eleven acceptance artefacts regenerated from it and
-canonically identical to the checkout's), **awaiting the user's Word check of `out/acceptance/`,
-the TestPyPI dry run, the tag `v0.1.0` and the release** (10.9). The outward-facing steps ---
+canonically identical to the checkout's; **the Word check of those eleven passed the same
+evening**), **awaiting the push, the TestPyPI dry run, the tag `v0.1.0` and the release** (10.9). The outward-facing steps ---
 pushes, the GitHub repository rename, the PyPI publisher settings, the releases themselves ---
 are the user's, and are listed as such. **Done 2026-09-20 by the user**: the rename (`plutext/docx4j-xsdata`, section
 3.6's housekeeping with it), the PyPI and TestPyPI accounts, and the four pending trusted
@@ -576,8 +576,8 @@ Regenerated from the installed wheel (10.4 step 6) and compared with the checkou
 equal, binary entries byte for byte, XML entries in `scripts/canon.py`'s prefix-insensitive
 normal form once `dcterms:created` / `dcterms:modified` and every `w:date` are scrubbed. Result:
 **11 artefacts, 147 entries compared, 0 differ beyond the wall-clock dates.** `tests/README.md`
-records it as "2026-09-20, regenerated from the installed 0.1.0 wheel, awaiting Word check"; **no
-Word check has been made**, and section 4.5 point 4 says this one is not waived.
+records it. Section 4.5 point 4 says this one is not waived, and it was not: **the user opened
+all eleven in Word the same evening and reported success** (no repair prompt, nothing amiss).
 
 ### 10.8 Departures from sections 4 to 6
 
@@ -615,10 +615,7 @@ Word check has been made**, and section 4.5 point 4 says this one is not waived.
    <https://test.pypi.org/project/docx4j/0.1.0/>: the readme rendered (the table, the fences,
    the links), the wheel and the sdist listed, the author, the URLs and the classifiers as 10.1.
    If the upload step fails, the first thing to check is the pending publisher's settings.
-3. **The Word check** of `out/acceptance/` --- the eleven artefacts there are the wheel's (10.7)
-   --- against `tests/README.md`'s checklist, and the record there updated from "awaiting Word
-   check" to what was found. A failure here is a release blocker: fix, re-run
-   `scripts/release_check.sh`, check again.
+3. ~~The Word check~~ --- **done, passed** (10.7, `tests/README.md`'s record).
 4. `git tag -a v0.1.0 -m "docx4j 0.1.0"` on the last commit, then `git push origin v0.1.0`.
 5. A GitHub release for the tag (title `v0.1.0`, notes from `CHANGELOG.md`'s entry, not a
    pre-release, **Publish release**). Publishing it runs the workflow's `release` path: the tag

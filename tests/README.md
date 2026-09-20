@@ -224,7 +224,7 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > passed) predict: nothing in the eleven artefacts uses the markup the refresh admitted. The user opened
 > the artefacts in Word the same day and reported them good: no repair prompt, nothing amiss.
 
-> **2026-09-20, regenerated from the installed 0.1.0 wheel, awaiting Word check.** CR-007 Phase B
+> **2026-09-20, from the installed 0.1.0 wheel, passed.** CR-007 Phase B
 > (section 10): the eleven artefacts in `out/acceptance/` were built by `scripts/release_check.sh`
 > from the **wheel** `dist/docx4j-0.1.0-py3-none-any.whl` installed into a clean CPython 3.12
 > virtual environment with `docx4j-xsdata 26.2.1` resolved from PyPI --- `scripts/acceptance.py`
@@ -237,8 +237,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > scrubbed): **11 artefacts, 147 entries compared, 0 differ beyond the wall-clock dates**; the
 > entry lists are equal and every binary entry is byte for byte. The suite against the wheel
 > was 1,669 passed, 17 skipped (the goldens, without `../docx4j-core-ts`) and the smoke script
-> read every packaged resource. **No Word check has been made on this regeneration**; it is the
-> user's, before the tag.
+> read every packaged resource. **The user opened all eleven in Word the same evening and reported success**: no repair
+> prompt, nothing amiss --- the release gate of CR-007 section 4.5 point 4 is met.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
