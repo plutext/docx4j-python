@@ -1653,6 +1653,7 @@ class CTR(Child):
         | CtRSeparator
         | CtRContinuationSeparator
         | CtRSym
+        | SymEx
         | CtRPgNum
         | CtRCr
         | CtRTab
@@ -1769,6 +1770,11 @@ class CTR(Child):
                     "name": "sym",
                     "type": ForwardRef("CtRSym"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                },
+                {
+                    "name": "symEx",
+                    "type": ForwardRef("SymEx"),
+                    "namespace": "http://schemas.microsoft.com/office/word/2015/wordml/symex",
                 },
                 {
                     "name": "pgNum",
@@ -2753,6 +2759,7 @@ from docx4j_py.shared_types import (
     StXalign,
     StYalign,
 )
+from docx4j_py.w15symex import SymEx
 from docx4j_py.wml import (
     Br,
     CommentRangeEnd,

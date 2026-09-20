@@ -356,6 +356,15 @@ if TYPE_CHECKING:
     from docx4j_py.w15 import (
         DocId as W15DocId,
     )
+    from docx4j_py.w15symex import (
+        CTSymEx,
+        SymEx,
+    )
+    from docx4j_py.w16cid import (
+        CommentsIds,
+        CTCommentId,
+        CTCommentsIds,
+    )
     from docx4j_py.wml import (
         RT,
         Body,
@@ -1310,6 +1319,11 @@ __all__ = [
     "RepeatingSection",
     "WebExtensionCreated",
     "WebExtensionLinked",
+    "CTSymEx",
+    "SymEx",
+    "CTCommentId",
+    "CTCommentsIds",
+    "CommentsIds",
     "Body1",
     "BooleanDefaultFalse",
     "WmlBooleanDefaultTrue",
@@ -2229,6 +2243,11 @@ __lazy_imports__ = {
     "RepeatingSection": ("docx4j_py.w15", "RepeatingSection"),
     "WebExtensionCreated": ("docx4j_py.w15", "WebExtensionCreated"),
     "WebExtensionLinked": ("docx4j_py.w15", "WebExtensionLinked"),
+    "CTSymEx": ("docx4j_py.w15symex", "CTSymEx"),
+    "SymEx": ("docx4j_py.w15symex", "SymEx"),
+    "CTCommentId": ("docx4j_py.w16cid", "CTCommentId"),
+    "CTCommentsIds": ("docx4j_py.w16cid", "CTCommentsIds"),
+    "CommentsIds": ("docx4j_py.w16cid", "CommentsIds"),
     "Body1": ("docx4j_py.wml", "Body1"),
     "BooleanDefaultFalse": ("docx4j_py.wml", "BooleanDefaultFalse"),
     "WmlBooleanDefaultTrue": ("docx4j_py.wml", "BooleanDefaultTrue"),
@@ -2885,7 +2904,9 @@ def __getattr__(name: str) -> object:
 # isort: off
 import docx4j_py.customxml  # noqa: F401
 import docx4j_py.dml.main  # noqa: F401
+import docx4j_py.oart.main_2010  # noqa: F401
 import docx4j_py.dml.chart_drawing  # noqa: F401
+import docx4j_py.mce  # noqa: F401
 import docx4j_py.dml.chart  # noqa: F401
 import docx4j_py.dml.compatibility  # noqa: F401
 import docx4j_py.dml.diagram  # noqa: F401
@@ -2904,9 +2925,8 @@ import docx4j_py.docprops.custom  # noqa: F401
 import docx4j_py.docprops.extended  # noqa: F401
 import docx4j_py.mathml  # noqa: F401
 import docx4j_py.inkml  # noqa: F401
-import docx4j_py.mce  # noqa: F401
 import docx4j_py.shared_types  # noqa: F401
-import docx4j_py.oart.main_2010  # noqa: F401
+import docx4j_py.w15symex  # noqa: F401
 import docx4j_py.math  # noqa: F401
 import docx4j_py.wml  # noqa: F401
 import docx4j_py.w14  # noqa: F401
@@ -2938,6 +2958,7 @@ import docx4j_py.oart.spreadsheet_drawing_2010  # noqa: F401
 import docx4j_py.oart.svg_2016  # noqa: F401
 import docx4j_py.oart.theme_2012  # noqa: F401
 import docx4j_py.relationships  # noqa: F401
+import docx4j_py.w16cid  # noqa: F401
 import docx4j_py.wne  # noqa: F401
 import docx4j_py.word.msink  # noqa: F401
 import docx4j_py.word.wp15  # noqa: F401

@@ -145,7 +145,7 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
   Java class names, derived mechanically by `derive_names.py`; only `wml_overrides.json` is hand
   written (the scoped `t@r` and friends, giving `RT`, `RInstrText`, `RDelInstrText`). Tables are
   matched by the `namespace` key inside each file, not by file name. `Meta.name` always stays the
-  schema's name. The expected ~225 `ClassNames` warnings are explained in `codegen/names/README.md`
+  schema's name. The expected ~280 `ClassNames` warnings are explained in `codegen/names/README.md`
   and CR-001 section 13.3.
 - **The `el` tables** (`codegen/el_tables/<namespace>.json`). Written by `generate_el.py` from the
   `XmlContext` metadata, never from the schema, and committed for review. The `overrides` object at

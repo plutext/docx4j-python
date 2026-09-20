@@ -479,6 +479,10 @@ What is left, and why it is acceptable:
   `codegen/derive_names.py` now drops candidate classes that the `types` section already names,
   which resolves `w:sdt` to `SdtBlock` outright and shows `w:sdtContent`, `w:customXml` and
   `cx:lvl` to have needed no entry at all — every candidate was already named by its type.
+- **The warning count.** Rule 2 reports every element entry it declines, so a regeneration prints
+  about 280 `ClassNames` warnings — 33 for inner-class values and the rest for element entries
+  naming a class the `types` section already names (280 before the 2026-09-20 schema refresh,
+  282 after it; section 14.10). They are the table's audit trail, not defects.
 
 ### 13.4 The output is reproducible
 

@@ -437,40 +437,50 @@ class CTGroupShape(Child):
             "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
         },
     )
-    content: list[CTShape | CTGroupShape | CTGraphicalObjectFrame | CTConnector | CTPicture] = (
-        field(
-            default_factory=ChildList,
-            metadata={
-                "type": "Elements",
-                "choices": (
-                    {
-                        "name": "sp",
-                        "type": ForwardRef("CTShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "grpSp",
-                        "type": ForwardRef("CTGroupShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "graphicFrame",
-                        "type": ForwardRef("CTGraphicalObjectFrame"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "cxnSp",
-                        "type": ForwardRef("CTConnector"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "pic",
-                        "type": ForwardRef("CTPicture"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                ),
-            },
-        )
+    content: list[
+        CTShape
+        | CTGroupShape
+        | CTGraphicalObjectFrame
+        | CTConnector
+        | CTPicture
+        | AlternateContent
+    ] = field(
+        default_factory=ChildList,
+        metadata={
+            "type": "Elements",
+            "choices": (
+                {
+                    "name": "sp",
+                    "type": ForwardRef("CTShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "grpSp",
+                    "type": ForwardRef("CTGroupShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "graphicFrame",
+                    "type": ForwardRef("CTGraphicalObjectFrame"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "cxnSp",
+                    "type": ForwardRef("CTConnector"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "pic",
+                    "type": ForwardRef("CTPicture"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+            ),
+        },
     )
 
 
@@ -493,40 +503,51 @@ class CTAbsoluteAnchor(Child):
             "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
         },
     )
-    content: None | CTShape | CTGroupShape | CTGraphicalObjectFrame | CTConnector | CTPicture = (
-        field(
-            default=None,
-            metadata={
-                "type": "Elements",
-                "choices": (
-                    {
-                        "name": "sp",
-                        "type": ForwardRef("CTShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "grpSp",
-                        "type": ForwardRef("CTGroupShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "graphicFrame",
-                        "type": ForwardRef("CTGraphicalObjectFrame"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "cxnSp",
-                        "type": ForwardRef("CTConnector"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "pic",
-                        "type": ForwardRef("CTPicture"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                ),
-            },
-        )
+    content: (
+        None
+        | CTShape
+        | CTGroupShape
+        | CTGraphicalObjectFrame
+        | CTConnector
+        | CTPicture
+        | AlternateContent
+    ) = field(
+        default=None,
+        metadata={
+            "type": "Elements",
+            "choices": (
+                {
+                    "name": "sp",
+                    "type": ForwardRef("CTShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "grpSp",
+                    "type": ForwardRef("CTGroupShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "graphicFrame",
+                    "type": ForwardRef("CTGraphicalObjectFrame"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "cxnSp",
+                    "type": ForwardRef("CTConnector"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "pic",
+                    "type": ForwardRef("CTPicture"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+            ),
+        },
     )
     client_data: None | CTAnchorClientData = field(
         default=None,
@@ -558,40 +579,51 @@ class CTOneCellAnchor(Child):
             "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
         },
     )
-    content: None | CTShape | CTGroupShape | CTGraphicalObjectFrame | CTConnector | CTPicture = (
-        field(
-            default=None,
-            metadata={
-                "type": "Elements",
-                "choices": (
-                    {
-                        "name": "sp",
-                        "type": ForwardRef("CTShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "grpSp",
-                        "type": ForwardRef("CTGroupShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "graphicFrame",
-                        "type": ForwardRef("CTGraphicalObjectFrame"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "cxnSp",
-                        "type": ForwardRef("CTConnector"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "pic",
-                        "type": ForwardRef("CTPicture"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                ),
-            },
-        )
+    content: (
+        None
+        | CTShape
+        | CTGroupShape
+        | CTGraphicalObjectFrame
+        | CTConnector
+        | CTPicture
+        | AlternateContent
+    ) = field(
+        default=None,
+        metadata={
+            "type": "Elements",
+            "choices": (
+                {
+                    "name": "sp",
+                    "type": ForwardRef("CTShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "grpSp",
+                    "type": ForwardRef("CTGroupShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "graphicFrame",
+                    "type": ForwardRef("CTGraphicalObjectFrame"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "cxnSp",
+                    "type": ForwardRef("CTConnector"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "pic",
+                    "type": ForwardRef("CTPicture"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+            ),
+        },
     )
     client_data: None | CTAnchorClientData = field(
         default=None,
@@ -623,40 +655,51 @@ class CTTwoCellAnchor(Child):
             "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
         },
     )
-    content: None | CTShape | CTGroupShape | CTGraphicalObjectFrame | CTConnector | CTPicture = (
-        field(
-            default=None,
-            metadata={
-                "type": "Elements",
-                "choices": (
-                    {
-                        "name": "sp",
-                        "type": ForwardRef("CTShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "grpSp",
-                        "type": ForwardRef("CTGroupShape"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "graphicFrame",
-                        "type": ForwardRef("CTGraphicalObjectFrame"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "cxnSp",
-                        "type": ForwardRef("CTConnector"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                    {
-                        "name": "pic",
-                        "type": ForwardRef("CTPicture"),
-                        "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
-                    },
-                ),
-            },
-        )
+    content: (
+        None
+        | CTShape
+        | CTGroupShape
+        | CTGraphicalObjectFrame
+        | CTConnector
+        | CTPicture
+        | AlternateContent
+    ) = field(
+        default=None,
+        metadata={
+            "type": "Elements",
+            "choices": (
+                {
+                    "name": "sp",
+                    "type": ForwardRef("CTShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "grpSp",
+                    "type": ForwardRef("CTGroupShape"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "graphicFrame",
+                    "type": ForwardRef("CTGraphicalObjectFrame"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "cxnSp",
+                    "type": ForwardRef("CTConnector"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "pic",
+                    "type": ForwardRef("CTPicture"),
+                    "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+            ),
+        },
     )
     client_data: None | CTAnchorClientData = field(
         default=None,
@@ -681,9 +724,7 @@ class CTDrawing(Child):
     class Meta:
         name = "CT_Drawing"
 
-    two_cell_anchor_or_one_cell_anchor_or_absolute_anchor: list[
-        CTTwoCellAnchor | CTOneCellAnchor | CTAbsoluteAnchor
-    ] = field(
+    content: list[CTTwoCellAnchor | CTOneCellAnchor | CTAbsoluteAnchor | AlternateContent] = field(
         default_factory=ChildList,
         metadata={
             "type": "Elements",
@@ -702,6 +743,11 @@ class CTDrawing(Child):
                     "name": "absoluteAnchor",
                     "type": ForwardRef("CTAbsoluteAnchor"),
                     "namespace": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
             ),
         },
@@ -735,6 +781,7 @@ from docx4j_py.dml.main import (
     CTTransform2D,
     Graphic,
 )
+from docx4j_py.mce import AlternateContent
 
 
 # CR-001 Phase C: el, the fragment helpers and the text sugar, reached

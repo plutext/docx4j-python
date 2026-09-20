@@ -5996,6 +5996,14 @@ class CTChartSpace(Child):
             "namespace": "http://schemas.openxmlformats.org/drawingml/2006/chart",
         },
     )
+    alternate_content: None | AlternateContent = field(
+        default=None,
+        metadata={
+            "name": "AlternateContent",
+            "type": "Element",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        },
+    )
     clr_map_ovr: None | CTColorMapping = field(
         default=None,
         metadata={
@@ -6091,6 +6099,7 @@ from docx4j_py.dml.main import (
     CTShapeProperties,
     CTTextBody,
 )
+from docx4j_py.mce import AlternateContent
 
 
 # CR-001 Phase C: el, the fragment helpers and the text sugar, reached

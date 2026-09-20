@@ -88,24 +88,67 @@ def test_a_pptx_and_an_xlsx_load_through_the_generic_path():
             assert pkg.get_main_part() is not None
 
 
-def test_the_pptx_and_xlsx_chart_parts_are_the_one_known_unmarshal_gap():
+def test_the_pptx_and_xlsx_chart_parts_keep_their_alternate_content():
+    """The gap CR-002 section 12.5 pinned, closed by the 2026-09-20 schema refresh.
+
+    Until docx4j's CR-024 (`bcb4c7f57`) the DrawingML *chart* and *spreadsheet
+    drawing* schemas did not declare ``mc:AlternateContent`` on ``c:chartSpace``
+    or on the anchors, so unmarshalling one of those parts dropped it: three
+    elements in three parts of these two files. ``dml-chart.xsd`` and
+    ``dml-spreadsheetDrawing.xsd`` admit it now, so the element is typed, kept
+    and written back canonically identical (``canon.compare`` below).
+    """
+    for path in PPTX_XLSX:
+        source = source_entries(path)
+        with OpcPackage.load(path) as pkg:
+            pkg.unmarshal_all()
+            for name, node in pkg.skipped:
+                assert node.kind != "element", (name, node)
+            for part in pkg.parts.parts():
+                if not isinstance(part, XmlPart):
+                    continue
+                if not part.part_name.name.startswith(("/ppt/charts/", "/xl/charts/", "/xl/drawings/")):
+                    continue
+                if b"AlternateContent" not in source[part.part_name.store_name]:
+                    continue
+                assert b"AlternateContent" in part.xml, part.part_name
+                report = canon.compare(source[part.part_name.store_name], part.xml)
+                # Identical but for the residual the next test pins.
+                residual = [
+                    d
+                    for d in report.diffs
+                    if not (d.category == "attribute-dropped" and d.path.endswith("dispNaAsBlank"))
+                ]
+                assert residual == [], (
+                    f"{path.name} {part.part_name}: "
+                    f"{[(d.category, d.detail) for d in residual[:5]]}"
+                )
+
+
+def test_the_c16r3_chart_boolean_is_the_one_known_unmarshal_gap():
     """A finding, pinned so that fixing it is visible.
 
-    The DrawingML *chart* and *spreadsheet drawing* schemas in this build do not
-    declare ``mc:AlternateContent`` on ``c:chartSpace`` or on the anchors, so
-    unmarshalling one of those parts drops it --- the skipped-content report
-    says so, which is the report doing its job. WordprocessingML has the
-    wildcards it needs (CR-001 ``schemas/PATCHES.md``); the chart namespaces get
-    them when CR-001 Phase D generates PML and SML. Until then those parts are
-    never unmarshalled by the engine itself, so a pptx or xlsx still round-trips
-    byte for byte (the test above).
+    It was hidden inside the count of the gap above: ``c16r3:dispNaAsBlank``
+    (``dataDisplayOptions16``, ``[MS-ODRAWXML]``'s 2017/03 chart namespace) is
+    written by Office with an *unqualified* ``val``, but docx4j's
+    ``odrawxml/office_drawing_2017_03_chart_.xsd`` is
+    ``attributeFormDefault="qualified"``, so the binding looks for
+    ``c16r3:val`` and the skipped-content report records the attribute. Two
+    attributes in two parts; docx4j's own binding has the same blind spot, so
+    the fix is a docx4j schema hand-off (CR-002 section 12.5), not a patch here.
     """
-    lost = 0
+    lost = []
     for path in PPTX_XLSX:
         with OpcPackage.load(path) as pkg:
             pkg.unmarshal_all()
-            lost += len(pkg.skipped)
-    assert lost > 0, "if this is zero the gap is closed; delete this test"
+            lost.extend(pkg.skipped)
+    assert lost, "if this is empty the gap is closed; delete this test"
+    for name, node in lost:
+        assert (node.kind, node.qname, node.parent_class) == ("attribute", "val", "CTBooleanFalse"), (
+            name,
+            node,
+        )
+    assert len(lost) == 2
 
 
 def test_loading_is_lazy():

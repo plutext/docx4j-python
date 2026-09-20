@@ -10841,7 +10841,7 @@ class CTTextParagraph(Child):
             "namespace": "http://schemas.openxmlformats.org/drawingml/2006/main",
         },
     )
-    r_or_br_or_fld: list[CTRegularTextRun | CTTextLineBreak | CTTextField] = field(
+    content: list[CTRegularTextRun | CTTextLineBreak | CTTextField | M] = field(
         default_factory=ChildList,
         metadata={
             "type": "Elements",
@@ -10860,6 +10860,11 @@ class CTTextParagraph(Child):
                     "name": "fld",
                     "type": ForwardRef("CTTextField"),
                     "namespace": "http://schemas.openxmlformats.org/drawingml/2006/main",
+                },
+                {
+                    "name": "m",
+                    "type": ForwardRef("M"),
+                    "namespace": "http://schemas.microsoft.com/office/drawing/2010/main",
                 },
             ),
         },
@@ -11329,6 +11334,12 @@ class Tbl(CTTable):
     class Meta:
         name = "tbl"
         namespace = "http://schemas.openxmlformats.org/drawingml/2006/main"
+
+
+# Imported below the classes, not above them: these names are only needed
+# once the classes exist, and importing them earlier would not be possible
+# where two modules depend on each other.
+from docx4j_py.oart.main_2010 import M
 
 
 # CR-001 Phase C: el, the fragment helpers and the text sugar, reached

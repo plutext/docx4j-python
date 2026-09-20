@@ -239,6 +239,14 @@ class CTCommentsEx(Child):
             "namespace": "http://schemas.microsoft.com/office/word/2012/wordml",
         },
     )
+    ignorable: None | str = field(
+        default=None,
+        metadata={
+            "name": "Ignorable",
+            "type": "Attribute",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        },
+    )
     other_attributes: dict[str, str] = field(
         default_factory=dict,
         metadata={
@@ -258,6 +266,14 @@ class CTPeople(Child):
         metadata={
             "type": "Element",
             "namespace": "http://schemas.microsoft.com/office/word/2012/wordml",
+        },
+    )
+    ignorable: None | str = field(
+        default=None,
+        metadata={
+            "name": "Ignorable",
+            "type": "Attribute",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
         },
     )
     other_attributes: dict[str, str] = field(

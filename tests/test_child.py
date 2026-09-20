@@ -521,10 +521,27 @@ class TestGeneratedPackage:
         assert obj.body.get_parent() is None
 
     def test_mc_ignorable_survives_on_a_font_table(self, parser, serializer):
-        """The anyAttribute schema patch, from the object model's side."""
+        """The anyAttribute schema patch, from the object model's side.
+
+        Until the 2026-09-20 schema refresh ``w:fonts`` declared no
+        ``mc:Ignorable`` and the wildcard caught it; docx4j's CR-023 declares
+        it, so it is the typed field now and the wildcard is empty, but still
+        there for the next undeclared root attribute (PATCHES.md 2).
+        """
         with zipfile.ZipFile(ROOT / "samples" / "tables.docx") as z:
             data = z.read("word/fontTable.xml")
         fonts = parser.from_bytes(data, wml.Fonts)
-        assert fonts.other_attributes
-        assert any("Ignorable" in k for k in fonts.other_attributes)
+        assert fonts.ignorable == "w14"
+        assert fonts.other_attributes == {}
         assert "Ignorable" in serializer.render(fonts)
+
+    def test_an_undeclared_root_attribute_survives_on_a_font_table(self, parser, serializer):
+        """The wildcard itself, with an attribute no schema declares."""
+        with zipfile.ZipFile(ROOT / "samples" / "tables.docx") as z:
+            data = z.read("word/fontTable.xml")
+        data = data.replace(
+            b"<w:fonts ", b'<w:fonts xmlns:w16x="urn:docx4j:test:w16x" w16x:future="1" ', 1
+        )
+        fonts = parser.from_bytes(data, wml.Fonts)
+        assert fonts.other_attributes == {"{urn:docx4j:test:w16x}future": "1"}
+        assert 'future="1"' in serializer.render(fonts)

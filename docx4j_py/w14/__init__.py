@@ -62,6 +62,21 @@ class CTLongHexNumber(Child):
 
 
 @dataclass(slots=True, kw_only=True)
+class CTOnOff(Child):
+    class Meta:
+        name = "CT_OnOff"
+
+    val: None | bool = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+            "schema_default": "true",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class CTPercentage(Child):
     class Meta:
         name = "CT_Percentage"
@@ -600,20 +615,6 @@ class CTNumSpacing(Child):
 
 
 @dataclass(slots=True, kw_only=True)
-class CTOnOff(Child):
-    class Meta:
-        name = "CT_OnOff"
-
-    val: None | StOnOff = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class CTPathShadeProperties(Child):
     class Meta:
         name = "CT_PathShadeProperties"
@@ -774,6 +775,36 @@ class CTReflection(Child):
 
 
 @dataclass(slots=True, kw_only=True)
+class CTSdtCheckbox(Child):
+    class Meta:
+        name = "CT_SdtCheckbox"
+
+    checked: None | CTOnOff = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+        },
+    )
+    checked_state: None | CTSdtCheckboxSymbol = field(
+        default=None,
+        metadata={
+            "name": "checkedState",
+            "type": "Element",
+            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+        },
+    )
+    unchecked_state: None | CTSdtCheckboxSymbol = field(
+        default=None,
+        metadata={
+            "name": "uncheckedState",
+            "type": "Element",
+            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class CTStyleSet(Child):
     class Meta:
         name = "CT_StyleSet"
@@ -837,6 +868,13 @@ class Bevel(WmlCtempty):
 
 
 @dataclass(slots=True, kw_only=True)
+class ConflictMode(CTOnOff):
+    class Meta:
+        name = "conflictMode"
+        namespace = "http://schemas.microsoft.com/office/word/2010/wordml"
+
+
+@dataclass(slots=True, kw_only=True)
 class CustomXmlConflictDelRangeEnd(WmlCtmarkup):
     class Meta:
         name = "customXmlConflictDelRangeEnd"
@@ -854,6 +892,13 @@ class CustomXmlConflictDelRangeStart(WmlCttrackChange):
 class DefaultImageDpi(CTDefaultImageDpi):
     class Meta:
         name = "defaultImageDpi"
+        namespace = "http://schemas.microsoft.com/office/word/2010/wordml"
+
+
+@dataclass(slots=True, kw_only=True)
+class DiscardImageEditingData(CTOnOff):
+    class Meta:
+        name = "discardImageEditingData"
         namespace = "http://schemas.microsoft.com/office/word/2010/wordml"
 
 
@@ -1091,36 +1136,6 @@ class CTSchemeColor(Child):
 
 
 @dataclass(slots=True, kw_only=True)
-class CTSdtCheckbox(Child):
-    class Meta:
-        name = "CT_SdtCheckbox"
-
-    checked: None | CTOnOff = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
-        },
-    )
-    checked_state: None | CTSdtCheckboxSymbol = field(
-        default=None,
-        metadata={
-            "name": "checkedState",
-            "type": "Element",
-            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
-        },
-    )
-    unchecked_state: None | CTSdtCheckboxSymbol = field(
-        default=None,
-        metadata={
-            "name": "uncheckedState",
-            "type": "Element",
-            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class CTStylisticSets(Child):
     class Meta:
         name = "CT_StylisticSets"
@@ -1180,16 +1195,9 @@ class CTWordContentPart(Child):
 
 
 @dataclass(slots=True, kw_only=True)
-class ConflictMode(CTOnOff):
+class Checkbox(CTSdtCheckbox):
     class Meta:
-        name = "conflictMode"
-        namespace = "http://schemas.microsoft.com/office/word/2010/wordml"
-
-
-@dataclass(slots=True, kw_only=True)
-class DiscardImageEditingData(CTOnOff):
-    class Meta:
-        name = "discardImageEditingData"
+        name = "checkbox"
         namespace = "http://schemas.microsoft.com/office/word/2010/wordml"
 
 
@@ -1401,13 +1409,6 @@ class CTSolidColorFillProperties(Child):
             ),
         },
     )
-
-
-@dataclass(slots=True, kw_only=True)
-class Checkbox(CTSdtCheckbox):
-    class Meta:
-        name = "checkbox"
-        namespace = "http://schemas.microsoft.com/office/word/2010/wordml"
 
 
 @dataclass(slots=True, kw_only=True)

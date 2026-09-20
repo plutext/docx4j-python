@@ -205,6 +205,14 @@ class CTDataBinding(Child):
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
         },
     )
+    store_item_checksum: None | str = field(
+        default=None,
+        metadata={
+            "name": "storeItemChecksum",
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash",
+        },
+    )
 
 
 @dataclass(slots=True, kw_only=True)
@@ -6442,6 +6450,14 @@ class CTTrackChange(CTMarkup):
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
         },
     )
+    date_utc: None | XmlDateTime = field(
+        default=None,
+        metadata={
+            "name": "dateUtc",
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2023/wordml/word16du",
+        },
+    )
 
 
 @dataclass(slots=True, kw_only=True)
@@ -9720,7 +9736,7 @@ class NumberingNumPicBullet(Child):
     class Meta:
         global_type = False
 
-    pict_or_drawing: None | Pict | Drawing = field(
+    pict_or_drawing_or_alternate_content: None | Pict | Drawing | AlternateContent = field(
         default=None,
         metadata={
             "type": "Elements",
@@ -9734,6 +9750,11 @@ class NumberingNumPicBullet(Child):
                     "name": "drawing",
                     "type": ForwardRef("Drawing"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
             ),
         },
@@ -10520,6 +10541,14 @@ class Fonts(Child):
         default_factory=ChildList,
         metadata={
             "type": "Element",
+        },
+    )
+    ignorable: None | str = field(
+        default=None,
+        metadata={
+            "name": "Ignorable",
+            "type": "Attribute",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
         },
     )
     other_attributes: dict[str, str] = field(
@@ -13323,6 +13352,14 @@ class CTWebSettings(Child):
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
         },
     )
+    ignorable: None | str = field(
+        default=None,
+        metadata={
+            "name": "Ignorable",
+            "type": "Attribute",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        },
+    )
     other_attributes: dict[str, str] = field(
         default_factory=dict,
         metadata={
@@ -13524,6 +13561,14 @@ class SdtPr(Child):
                     "namespace": "http://schemas.microsoft.com/office/word/2012/wordml",
                 },
             ),
+        },
+    )
+    formatting_allowed: None | StOnOff = field(
+        default=None,
+        metadata={
+            "name": "formattingAllowed",
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock",
         },
     )
 
@@ -14668,6 +14713,7 @@ class CTSimpleField(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtSimpleFieldHyperlink
         | CTRel
@@ -14830,6 +14876,11 @@ class CTSimpleField(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "fldSimple",
@@ -15150,6 +15201,14 @@ class NumberingAbstractNum(Child):
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
         },
     )
+    restart_numbering_after_break: None | StOnOff = field(
+        default=None,
+        metadata={
+            "name": "restartNumberingAfterBreak",
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2012/wordml",
+        },
+    )
 
 
 @dataclass(slots=True, kw_only=True)
@@ -15284,6 +15343,14 @@ class NumberingNum(Child):
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
         },
     )
+    durable_id: None | int = field(
+        default=None,
+        metadata={
+            "name": "durableId",
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2016/wordml/cid",
+        },
+    )
 
 
 @dataclass(slots=True, kw_only=True)
@@ -15327,6 +15394,7 @@ class CTMathRunTrackChange(CTTrackChange):
         | CtMathRunTrackChangeSeparator
         | CtMathRunTrackChangeContinuationSeparator
         | CtMathRunTrackChangeSym
+        | SymEx
         | CtMathRunTrackChangePgNum
         | CtMathRunTrackChangeCr
         | CtMathRunTrackChangeTab
@@ -15441,6 +15509,11 @@ class CTMathRunTrackChange(CTTrackChange):
                     "name": "sym",
                     "type": ForwardRef("CtMathRunTrackChangeSym"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                },
+                {
+                    "name": "symEx",
+                    "type": ForwardRef("SymEx"),
+                    "namespace": "http://schemas.microsoft.com/office/word/2015/wordml/symex",
                 },
                 {
                     "name": "pgNum",
@@ -15605,6 +15678,7 @@ class R(Child):
         | RSeparator
         | RContinuationSeparator
         | RSym
+        | SymEx
         | RPgNum
         | RCr
         | RTab
@@ -15699,6 +15773,11 @@ class R(Child):
                 {
                     "name": "sym",
                     "type": ForwardRef("RSym"),
+                },
+                {
+                    "name": "symEx",
+                    "type": ForwardRef("SymEx"),
+                    "namespace": "http://schemas.microsoft.com/office/word/2015/wordml/symex",
                 },
                 {
                     "name": "pgNum",
@@ -15823,6 +15902,7 @@ class CtDir(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtDirHyperlink
         | CTRel
@@ -15987,6 +16067,11 @@ class CtDir(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -16062,6 +16147,7 @@ class CtBdo(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtBdoHyperlink
         | CTRel
@@ -16226,6 +16312,11 @@ class CtBdo(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -16289,6 +16380,7 @@ class CTSdtContentRun(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtSdtContentRunHyperlink
         | CTRel
@@ -16453,6 +16545,11 @@ class CTSdtContentRun(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -16548,6 +16645,7 @@ class CTCustomXmlRun(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtCustomXmlRunHyperlink
         | CTRel
@@ -16712,6 +16810,11 @@ class CTCustomXmlRun(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -16790,6 +16893,7 @@ class CTSmartTagRun(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtSmartTagRunHyperlink
         | CTRel
@@ -16952,6 +17056,11 @@ class CTSmartTagRun(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "fldSimple",
@@ -17980,6 +18089,7 @@ class CtBdoHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtBdoHyperlink
         | CTRel
@@ -18144,6 +18254,11 @@ class CtBdoHyperlink(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -18245,6 +18360,7 @@ class CtCustomXmlRunHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtCustomXmlRunHyperlink
         | CTRel
@@ -18409,6 +18525,11 @@ class CtCustomXmlRunHyperlink(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -18510,6 +18631,7 @@ class CtDirHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtDirHyperlink
         | CTRel
@@ -18674,6 +18796,11 @@ class CtDirHyperlink(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -18775,6 +18902,7 @@ class CtSdtContentRunHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtSdtContentRunHyperlink
         | CTRel
@@ -18939,6 +19067,11 @@ class CtSdtContentRunHyperlink(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -19040,6 +19173,7 @@ class CtSimpleFieldHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtSimpleFieldHyperlink
         | CTRel
@@ -19204,6 +19338,11 @@ class CtSimpleFieldHyperlink(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -19305,6 +19444,7 @@ class CtSmartTagRunHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | CtSmartTagRunHyperlink
         | CTRel
@@ -19469,6 +19609,11 @@ class CtSmartTagRunHyperlink(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -19570,6 +19715,7 @@ class PHyperlink(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | PHyperlink
         | CTRel
@@ -19732,6 +19878,11 @@ class PHyperlink(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "fldSimple",
@@ -19905,6 +20056,7 @@ class P(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTSimpleField
         | PHyperlink
         | CTRel
@@ -20040,6 +20192,11 @@ class P(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "fldSimple",
                     "type": ForwardRef("CTSimpleField"),
                 },
@@ -20106,6 +20263,14 @@ class P(Child):
         default=None,
         metadata={
             "name": "textId",
+            "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+        },
+    )
+    no_spell_err: None | StOnOff = field(
+        default=None,
+        metadata={
+            "name": "noSpellErr",
             "type": "Attribute",
             "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
         },
@@ -22861,6 +23026,14 @@ class Comments(Child):
             "type": "Element",
         },
     )
+    ignorable: None | str = field(
+        default=None,
+        metadata={
+            "name": "Ignorable",
+            "type": "Attribute",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        },
+    )
     other_attributes: dict[str, str] = field(
         default_factory=dict,
         metadata={
@@ -22967,6 +23140,14 @@ class GlossaryDocument(Child):
             "type": "Element",
         },
     )
+    ignorable: None | str = field(
+        default=None,
+        metadata={
+            "name": "Ignorable",
+            "type": "Attribute",
+            "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        },
+    )
     other_attributes: dict[str, str] = field(
         default_factory=dict,
         metadata={
@@ -23062,6 +23243,7 @@ from docx4j_py.w15 import (
 from docx4j_py.w15 import (
     DocId as W15DocId,
 )
+from docx4j_py.w15symex import SymEx
 from docx4j_py.xml_ns import SpaceValue
 
 

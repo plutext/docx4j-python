@@ -790,6 +790,14 @@ class CTTextMath(Child):
     class Meta:
         name = "CT_TextMath"
 
+    schemas_openxmlformats_org_office_document_2006_math_element: None | object = field(
+        default=None,
+        metadata={
+            "type": "Wildcard",
+            "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+        },
+    )
+
 
 @dataclass(slots=True, kw_only=True)
 class CTUseLocalDpi(Child):

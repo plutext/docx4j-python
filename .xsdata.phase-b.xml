@@ -99,6 +99,21 @@
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2006/wordml" replace="wne"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordml" replace="w14"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2012/wordml" replace="w15"/>
+    <!--
+      docx4j CR-023 (schema refresh of 2026-09-20, CR-001 section 14.10): the
+      extensions Word writes on ISO elements, imported by wml.xsd. Two carry
+      classes and take docx4j's package names (org.docx4j.w15symex, whose
+      prefix is w16se, and org.docx4j.w16cid); the other three declare a
+      single global attribute each (w16du:dateUtc, w16sdtdh:storeItemChecksum,
+      w16sdtfl:formattingAllowed), which the generator binds as fields of the
+      classes that reference them, so no module is written for them and the
+      entries are here for the day one of them gains an element.
+    -->
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2015/wordml/symex" replace="w15symex"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2016/wordml/cid" replace="w16cid"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash" replace="w16sdtdh"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2023/wordml/word16du" replace="w16du"/>
+    <Substitution type="package" search="http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock" replace="w16sdtfl"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" replace="word.wpc"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" replace="word.wp14"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" replace="word.wpg"/>

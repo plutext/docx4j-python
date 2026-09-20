@@ -48,11 +48,13 @@ so they are collected there by `xsd:import`.
 
 `.venv-fork` has the fork (`docx4j-xsdata`, the renamed xsdata 26.2 + seven options) installed
 editable from `~/git/docx4j-xsdata`. 4 seconds. The warnings are the six unmodified xsdata gives
-(five duplicate `xml:` types, one absent `CT_GeoHierarchyEntity`) plus about 225 from
-`<ClassNames>`, which are the name table reporting what it deliberately did not do: 33 entries
-whose docx4j value is an inner Java class (`R.Cr`, `P.Hyperlink`) and therefore not a Python
-class name, and the element entries that name a class the `types` section already names. Both
-are expected and are explained in `names/README.md` and CR-001 section 13.3.
+(five duplicate `xml:` types, one absent `CT_GeoHierarchyEntity`) plus about 280 from
+`<ClassNames>` (282 at the 2026-09-20 schema refresh, 280 before it: `w16cid:commentsIds` and
+`w16se:symEx` each name a class their type already names), which are the name table reporting
+what it deliberately did not do: 33 entries whose docx4j value is an inner Java class (`R.Cr`,
+`P.Hyperlink`) and therefore not a Python class name, and 249 element entries that name a class
+the `types` section already names. Both are expected and are explained in `names/README.md` and
+CR-001 section 13.3.
 
 `clean.py` deletes everything under `docx4j_py/` that is not in its `KEEP` list, so that a
 renamed namespace cannot leave a stale module behind and the generator's own import check (it
@@ -293,7 +295,8 @@ It also turns each namespace module into a package (above), writes `docx4j_py/el
 (namespace URI → `el` module) and a footer on each package `__init__.py` that resolves `el` and
 the hand-written helpers lazily.
 
-**2,058 element names over 58 namespaces**, 225 scope-qualified names, 35 renamed for a Python
+**2,061 element names over 60 namespaces** (2,058 over 58 before the 2026-09-20 schema
+refresh added `w15symex` and `w16cid`), 225 scope-qualified names, 35 renamed for a Python
 keyword or builtin, 153 names that take more than one class. WML alone: 604, 135, 7 and 83.
 
 `el_tables/<namespace>.json` is committed **for a human to review**: which class each name
