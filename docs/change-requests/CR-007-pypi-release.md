@@ -5,8 +5,11 @@ recommendation accepted** (section 8 records each as decided). Nothing implement
 fork's release) is ready to start; Phase B (this package) follows it and is not started until
 Phase A's distribution resolves from PyPI. The outward-facing steps --- pushes, the GitHub
 repository rename, the PyPI publisher settings, the releases themselves --- are the user's, and
-are listed as such. **The rename is done** (2026-09-20, `plutext/docx4j-xsdata`; section 3.6's
-housekeeping with it); the rest waits.
+are listed as such. **Done 2026-09-20 by the user**: the rename (`plutext/docx4j-xsdata`, section
+3.6's housekeeping with it), the PyPI and TestPyPI accounts, and the four pending trusted
+publishers --- `docx4j-xsdata` from `plutext/docx4j-xsdata` and `docx4j` from
+`plutext/docx4j-python`, workflow `publish.yml`, no environment, on both indexes. What remains is
+the work of sections 3 and 4 and, at the end of each, the tag and the release.
 
 Companion: the xsdata fork's `docs/fork/REBASING.md` (its "Publishing" section already fixes the
 tag scheme this CR adopts) and docx4j-core-ts's `RELEASING.md` (the release procedure this CR
