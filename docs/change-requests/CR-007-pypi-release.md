@@ -1,9 +1,11 @@
 # CR-007: Publishing to PyPI --- the fork first, then the package
 
-**Status:** Proposed 2026-09-20. Nothing implemented. Phase A (the fork's release) is ready to
-start; Phase B (this package) follows it and is not started until Phase A's distribution resolves
-from PyPI. The outward-facing steps --- pushes, a GitHub repository rename, the PyPI publisher
-settings, the releases themselves --- are the user's, and are listed as such.
+**Status:** Proposed 2026-09-20; **the ten open questions decided 2026-09-20, every
+recommendation accepted** (section 8 records each as decided). Nothing implemented. Phase A (the
+fork's release) is ready to start; Phase B (this package) follows it and is not started until
+Phase A's distribution resolves from PyPI. The outward-facing steps --- pushes, the GitHub
+repository rename, the PyPI publisher settings, the releases themselves --- are the user's, and
+are listed as such; the rename is the one that can happen before any code moves (section 3.6).
 
 Companion: the xsdata fork's `docs/fork/REBASING.md` (its "Publishing" section already fixes the
 tag scheme this CR adopts) and docx4j-core-ts's `RELEASING.md` (the release procedure this CR
@@ -103,6 +105,26 @@ The wheel is `docx4j_xsdata*` (`[tool.setuptools.packages.find]`), the sdist is 
    `codegen/generate.sh --check` byte identical, and the fast suite green. The fork's features
    exist for this package, so this package is the acceptance test.
 3. `twine check` clean; TestPyPI shows the README rendered.
+
+### 3.6 The repository rename, first
+
+Renaming `plutext/xsdata` to `plutext/docx4j-xsdata` on GitHub is independent of everything
+else in this CR and is the one step that is better done before Phase A starts than after: the
+fork's `pyproject.toml` URLs, README, tag scheme and this CR already say `docx4j-xsdata`, and a
+trusted publisher is registered against a repository name, so the pending publisher of section
+3.3 should be created against the final one. GitHub redirects the old name for clones, fetches
+and links, so nothing breaks in the meantime; what follows the rename is housekeeping in Phase A:
+
+- `git remote set-url origin https://github.com/plutext/docx4j-xsdata.git` in the local
+  checkout (the redirect would carry it, but a remote should say where it points);
+- `docs/fork/REBASING.md` (three mentions of `plutext/xsdata`: the remotes table, "The fork
+  lives at", the `origin` row) and this repository's CR-001 section 4 ("**Repository:**
+  `plutext/xsdata`");
+- "Sync fork" and the upstream remote are unaffected --- the rename does not change that the
+  repository is a GitHub fork of `tefra/xsdata`.
+
+A fork on GitHub keeps its fork relationship through a rename; upstream pull requests still
+default to `tefra/xsdata` as the base, which `REBASING.md` already warns about.
 
 ## 4. Phase B: this package's release
 
@@ -262,30 +284,30 @@ check, not a memory of what was done last time.
 Neither phase waits on CR-001 Phase D: a WordprocessingML-only `0.1.0` is a coherent product, and
 the facade is the on-ramp python-docx users need now. PML and SML arrive as `0.2` and `0.3`.
 
-## 8. Open questions (recommendations for decision)
+## 8. Open questions (decided 2026-09-20: every recommendation accepted)
 
-1. **Distribution name.** `docx4j` (recommended: the brand, free today, what a docx4j user types)
+1. **Distribution name.** *Decided: `docx4j`.* `docx4j` (recommended: the brand, free today, what a docx4j user types)
    or `docx4j-py` (matches the import name and the current `pyproject.toml`; no "why is the
    import different" question). Whichever is not taken should not be squatted with a placeholder
    --- PyPI removes those.
-2. **Fork version.** `26.2.1` under `REBASING.md`'s scheme (recommended) or `0.26.2`.
-3. **Dependency bound.** `>=26.2.1,<26.3` (recommended) or `==26.2.1`. The exact pin is safer
+2. **Fork version.** *Decided: `26.2.1`.* `26.2.1` under `REBASING.md`'s scheme (recommended) or `0.26.2`.
+3. **Dependency bound.** *Decided: `>=26.2.1,<26.3`.* `>=26.2.1,<26.3` (recommended) or `==26.2.1`. The exact pin is safer
    for the generated bindings and worse for a consumer who needs a fork fix; the range trusts
    the rebase rule that a fork release on the same base is additive.
-4. **Python floor.** `>=3.12`, the tested versions (recommended), or `>=3.10` to match the fork.
+4. **Python floor.** *Decided: `>=3.12`.* `>=3.12`, the tested versions (recommended), or `>=3.10` to match the fork.
    Widening is one CI matrix change later; narrowing after a release is a breaking change.
-5. **PyPI readme.** A separate short `docs/pypi-readme.md` with its own executing test
+5. **PyPI readme.** *Decided: a separate `docs/pypi-readme.md`, tested.* A separate short `docs/pypi-readme.md` with its own executing test
    (recommended) or `README.md` as it is (969 lines, the agents section, the layout section).
-6. **First publish.** Through `publish.yml` with a PyPI pending publisher, so no token ever
+6. **First publish.** *Decided: through `publish.yml` with a pending publisher.* Through `publish.yml` with a PyPI pending publisher, so no token ever
    exists (recommended), or by hand with `twine` and an account token as core-ts's first npm
    release was. Either way TestPyPI first.
-7. **The fork's GitHub repository name.** Rename `plutext/xsdata` to `plutext/docx4j-xsdata`
+7. **The fork's GitHub repository name.** *Decided: rename; the user does it before Phase A (section 3.6).* Rename `plutext/xsdata` to `plutext/docx4j-xsdata`
    (recommended: everything else already says so, GitHub redirects) or change the URLs to the
    current name.
-8. **The readme test.** `tests/test_readme.py` executing the fences (recommended) or a step in
+8. **The readme test.** *Decided: `tests/test_readme.py`.* `tests/test_readme.py` executing the fences (recommended) or a step in
    `RELEASING.md` run by hand.
-9. **The sdist.** With `tests/`, `samples/`, `schemas/` and `codegen/` so its suite runs
+9. **The sdist.** *Decided: with `tests/`, `samples/`, `schemas/` and `codegen/`.* With `tests/`, `samples/`, `schemas/` and `codegen/` so its suite runs
    (recommended, about 3 MB more) or the wheel's contents only.
-10. **`Typing :: Typed`.** Add `py.typed` and claim it (recommended: the annotations are
+10. **`Typing :: Typed`.** *Decided: `py.typed` in `0.1.0`.* Add `py.typed` and claim it (recommended: the annotations are
     complete, and a facade user with mypy gets the model's types) or leave it for `0.2` after a
     mypy run over `docx4j_py/` has been done, which it has not.
