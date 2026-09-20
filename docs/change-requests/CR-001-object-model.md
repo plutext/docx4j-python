@@ -68,7 +68,7 @@ serialiser beyond what section 8 accepts, and schema validation.
 
 ## 4. The fork
 
-- **Repository:** `plutext/xsdata`, branched from the 26.2 tag, rebased onto upstream tags as
+- **Repository:** `plutext/docx4j-xsdata` (renamed from `plutext/xsdata` on 2026-09-20, CR-007 section 3.6), branched from the 26.2 tag, rebased onto upstream tags as
   they appear. Upstream released ten times in 2024, twice in 2025 and twice so far in 2026, and
   has one maintainer with about 1,430 commits to the next contributor's seven; tracking it is
   cheap and owning the fork is also insurance.

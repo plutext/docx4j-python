@@ -5,7 +5,8 @@ recommendation accepted** (section 8 records each as decided). Nothing implement
 fork's release) is ready to start; Phase B (this package) follows it and is not started until
 Phase A's distribution resolves from PyPI. The outward-facing steps --- pushes, the GitHub
 repository rename, the PyPI publisher settings, the releases themselves --- are the user's, and
-are listed as such; the rename is the one that can happen before any code moves (section 3.6).
+are listed as such. **The rename is done** (2026-09-20, `plutext/docx4j-xsdata`; section 3.6's
+housekeeping with it); the rest waits.
 
 Companion: the xsdata fork's `docs/fork/REBASING.md` (its "Publishing" section already fixes the
 tag scheme this CR adopts) and docx4j-core-ts's `RELEASING.md` (the release procedure this CR
@@ -113,7 +114,8 @@ else in this CR and is the one step that is better done before Phase A starts th
 fork's `pyproject.toml` URLs, README, tag scheme and this CR already say `docx4j-xsdata`, and a
 trusted publisher is registered against a repository name, so the pending publisher of section
 3.3 should be created against the final one. GitHub redirects the old name for clones, fetches
-and links, so nothing breaks in the meantime; what follows the rename is housekeeping in Phase A:
+and links, so nothing breaks in the meantime. **Done 2026-09-20**, with its housekeeping the same
+day (fork commit on `docx4j`, CR-001 section 4 here):
 
 - `git remote set-url origin https://github.com/plutext/docx4j-xsdata.git` in the local
   checkout (the redirect would carry it, but a remote should say where it points);
