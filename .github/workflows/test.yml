@@ -1,0 +1,63 @@
+name: test
+
+# CR-007 section 4.4, modelled on docx4j-core-ts's test.yml. The matrix installs this package
+# with its dev extra, so the xsdata fork comes from PyPI as docx4j-xsdata --- what a consumer
+# gets, not a checkout --- and runs the fast suite. One job on 3.14 runs the whole suite (the
+# corpus round trip, the el regeneration and the timings, whose thresholds are checkout-machine
+# numbers and are never loosened for a runner) and proves the bindings regenerate byte identical
+# against the fork as installed from PyPI. The parity goldens skip: ../docx4j-core-ts is not
+# checked out here, which tests/content/goldens.py expects.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fast:
+    name: Python ${{ matrix.python }}, fast suite
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install with the dev extra (docx4j-xsdata from PyPI)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev]
+          python -c 'import docx4j_xsdata, sys; print(sys.version); print("docx4j-xsdata", docx4j_xsdata.__version__, docx4j_xsdata.__file__)'
+      - name: Fast suite
+        run: python -m pytest -m "not slow"
+
+  full:
+    name: Python 3.14, full suite and generate.sh --check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install with the dev extra (docx4j-xsdata from PyPI)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev]
+          python -c 'import docx4j_xsdata; print("docx4j-xsdata", docx4j_xsdata.__version__)'
+      - name: Full suite
+        run: python -m pytest
+      - name: The bindings regenerate byte identical
+        # generate.sh puts $DOCX4J_PY_VENV/bin on PATH for ruff and docx4j-xsdata; with
+        # setup-python there is no virtual environment, so the interpreter's prefix is the one
+        # whose bin/ holds them.
+        run: |
+          export DOCX4J_PY_VENV="$(python -c 'import sys; print(sys.prefix)')"
+          codegen/generate.sh --check
+          git status --short docx4j_py

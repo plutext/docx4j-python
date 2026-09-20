@@ -9,6 +9,12 @@ Import time is measured **cold**, in a subprocess with no `__pycache__` for the
 package, because that is the number a short-lived process pays and the one
 CR-001 section 8 accepted a long-lived process to avoid.
 
+The whole module is marked ``slow`` (CR-007 section 4.4): the thresholds are
+checkout-machine numbers --- the cold import is 0.97 s here against a 2.0 s
+budget --- and a CI runner is slower by a factor nobody controls, so the matrix
+jobs skip these and the one full-suite job runs them. The thresholds are never
+loosened for a runner.
+
     .venv-fork/bin/python -m pytest tests/test_performance.py -q
 """
 
@@ -23,6 +29,8 @@ import zipfile
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.slow
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
