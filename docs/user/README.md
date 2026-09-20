@@ -1,0 +1,11 @@
+# User guides
+
+How-to documents for `docx4j` users, each run against the corpus on the date it states, showing
+the markup that results. The change requests under [`../change-requests/`](../change-requests/README.md)
+are the design record; these are the "how do I" answers.
+
+- [hyperlinks.md](hyperlinks.md) --- adding a link to a paragraph (markdown, the typed tree), the
+  markup, a defect at the end of a link in 0.1.0, and the proposal for `Range.hyperlink`.
+- [properties.md](properties.md) --- adding or altering a property in `docProps/core.xml`,
+  `app.xml` and `custom.xml`: the facade for core, the typed parts for all three, creating a
+  missing part.

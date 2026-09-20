@@ -4245,7 +4245,7 @@ and the runs all go through verbs phases B, C and H already had checked.
 With this phase **every phase of CR-003 is implemented**. What is still owed,
 by whom:
 
-* **Hyperlinks** (2026-09-21, `docs/hyperlinks.md`): the API has no verb for a link ---
+* **Hyperlinks** (2026-09-21, `docs/user/hyperlinks.md`): the API has no verb for a link ---
   `insert_markdown` and the typed tree are the ways --- because `Range.hyperlink` and
   `getHyperlinkRanges()` are not in core-ts's subset declaration the member list is derived
   from. That document proposes them in Office JS's shape, an `insert_hyperlink` sugar as the
