@@ -33,6 +33,7 @@ REVISION HISTORY
 20130709 - [MS-DOCX] w14, w15 - most bits, but not rPr extensions, conflict extensions, or calendar type extensions
 
 20180526 - Add mc:AlternateContent to w:r
+20260919 - Add mc:AlternateContent to w:p (EG_PContent) and w:numPicBullet (CR-021 phase 2)
            Add w14 text effects to rPr 
            
 20181124   Add w14 EG_RPrOpenType to rPr. (since docx4j 6.1.0)   
@@ -167,6 +168,11 @@ PRINCIPLES:
 	targetNamespace="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 	xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"	
 	xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"	
+	xmlns:w16se="http://schemas.microsoft.com/office/word/2015/wordml/symex"
+	xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid"
+	xmlns:w16sdtdh="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash"
+	xmlns:w16du="http://schemas.microsoft.com/office/word/2023/wordml/word16du"
+	xmlns:w16sdtfl="http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock"
 	xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
 	xmlns:xjc="https://jakarta.ee/xml/ns/jaxb/xjc"
 	xmlns:ci="http://jaxb.dev.java.net/plugin/code-injector"
@@ -218,6 +224,18 @@ PRINCIPLES:
 		schemaLocation="../mce/markup-compatibility-2006-MINIMAL.xsd"/>
 	<xsd:import id="w15" namespace="http://schemas.microsoft.com/office/word/2012/wordml"
 		schemaLocation="w15_word_2012_wordml.xsd"/>
+
+	<!-- since docx4j 17.1.1 (CR-023): the extensions Word writes on ISO elements, [MS-DOCX] 2.2 -->
+	<xsd:import id="w16se" namespace="http://schemas.microsoft.com/office/word/2015/wordml/symex"
+		schemaLocation="w15symex.xsd"/>
+	<xsd:import id="w16cid" namespace="http://schemas.microsoft.com/office/word/2016/wordml/cid"
+		schemaLocation="w16cid.xsd"/>
+	<xsd:import id="w16sdtdh" namespace="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash"
+		schemaLocation="w16sdtdh.xsd"/>
+	<xsd:import id="w16du" namespace="http://schemas.microsoft.com/office/word/2023/wordml/word16du"
+		schemaLocation="w16du.xsd"/>
+	<xsd:import id="w16sdtfl" namespace="http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock"
+		schemaLocation="w16sdtfl.xsd"/>
 		
   	<xsd:import id="offmacro" namespace="http://schemas.microsoft.com/office/word/2006/wordml"
 		schemaLocation="../offmacro/office-word-2006-wordml.xsd"/>	
@@ -3386,6 +3404,8 @@ PRINCIPLES:
 						<xsd:documentation>Annotation Date</xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
+				<!-- docx4j 17.1.1 (CR-023): Word 365 writes the UTC date on every tracked change ([MS-DOCX] 2.12.2.1) -->
+				<xsd:attribute ref="w16du:dateUtc" use="optional"/>
 			</xsd:extension>
 		</xsd:complexContent>
 	</xsd:complexType>
@@ -6750,6 +6770,8 @@ PRINCIPLES:
 				</xsd:complexType>
 				
 			</xsd:element>
+			<!-- docx4j 17.1.1 (CR-023): a symbol beyond the BMP, [MS-DOCX] 2.2.11 -->
+			<xsd:element ref="w16se:symEx" minOccurs="0"/>
 			<xsd:element name="pgNum" minOccurs="0">
 				<xsd:annotation>
 					<xsd:documentation>Page Number Block</xsd:documentation>
@@ -8181,6 +8203,8 @@ PRINCIPLES:
 				<xsd:documentation>Custom XML Data Storage ID</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
+		<!-- docx4j 17.1.1 (CR-023): [MS-DOCX] 2.2.12 (w15:dataBinding shares this type) -->
+		<xsd:attribute ref="w16sdtdh:storeItemChecksum" use="optional"/>
 	</xsd:complexType>
 	
 	<xsd:element name="id">
@@ -8627,6 +8651,8 @@ PRINCIPLES:
 			<xsd:element ref="w15:webExtensionCreated"  minOccurs="0"/>
 			<xsd:element ref="w15:webExtensionLinked"  minOccurs="0"/>
 		</xsd:choice>
+		<!-- docx4j 17.1.1 (CR-023): [MS-DOCX] 2.13 (with contentLocked / sdtContentLocked) -->
+		<xsd:attribute ref="w16sdtfl:formattingAllowed" use="optional"/>
 	</xsd:complexType>
 	<xsd:complexType name="CT_SdtEndPr">
 		<xsd:choice maxOccurs="unbounded">
@@ -9319,6 +9345,12 @@ PRINCIPLES:
 		<xsd:choice>
 			<xsd:group ref="EG_ContentRunContent" minOccurs="0"
 				maxOccurs="unbounded"/>
+			<!-- docx4j 17.1.1 (CR-021 phase 2): Word writes mc:AlternateContent as a child
+			     of w:p (a wpg drawing group, its Choice holding a w:r/w:drawing) and keeps it
+			     there on re-save; admitted so that load keeps both branches, as in w:r.
+			     The exporters, TraversalUtil (McMode.READ) and TextUtils take one branch
+			     through org.docx4j.jaxb.McSelection. -->
+			<xsd:element ref="mc:AlternateContent" minOccurs="0" maxOccurs="unbounded" />
 			<xsd:element name="fldSimple" type="CT_SimpleField" minOccurs="0"
 				maxOccurs="unbounded">
 				<xsd:annotation>
@@ -9467,6 +9499,8 @@ PRINCIPLES:
 				</xsd:annotation>
 			</xsd:attribute>
 			<xsd:attributeGroup ref="w14:AG_Parids"  />
+			<!-- docx4j 17.1.1 (CR-023): [MS-DOCX] 2.2.4 -->
+			<xsd:attribute ref="w14:noSpellErr" use="optional"/>
 			
 		</xsd:complexType>
 	</xsd:element>
@@ -12800,9 +12834,11 @@ PRINCIPLES:
 				</xsd:annotation>
 			</xsd:element>
 		</xsd:sequence>
-		<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
-		<xsd:anyAttribute namespace="##other" processContents="lax"/>
-	</xsd:complexType>
+			<!-- docx4j 17.1.1 (CR-023): Word writes mc:Ignorable on this root; kept -->
+		<xsd:attribute ref="mc:Ignorable" use="optional"/>
+	<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
+	<xsd:anyAttribute namespace="##other" processContents="lax"/>
+</xsd:complexType>
 	<xsd:simpleType name="ST_FrameScrollbar">
 		<xsd:annotation>
 			<xsd:documentation>Frame Scrollbar Visibility</xsd:documentation>
@@ -13801,6 +13837,7 @@ PRINCIPLES:
 					</xsd:complexType>
 				</xsd:element>
 			</xsd:sequence>
+			<xsd:attribute ref="mc:Ignorable" use="optional" />
 			<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
 			<xsd:anyAttribute namespace="##other" processContents="lax"/>
 		</xsd:complexType>
@@ -14553,9 +14590,11 @@ PRINCIPLES:
 					
 				</xsd:element>
 			</xsd:sequence>
-			<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
-			<xsd:anyAttribute namespace="##other" processContents="lax"/>
-		</xsd:complexType>
+				<!-- docx4j 17.1.1 (CR-023): Word writes mc:Ignorable on this root; kept -->
+		<xsd:attribute ref="mc:Ignorable" use="optional"/>
+	<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
+	<xsd:anyAttribute namespace="##other" processContents="lax"/>
+</xsd:complexType>
 		
 	</xsd:element>
 	<xsd:element name="numbering">
@@ -14576,8 +14615,11 @@ PRINCIPLES:
 								<annox:annotate target="class">@jakarta.xml.bind.annotation.XmlRootElement(name="numPicBullet")</annox:annotate>
 							</xsd:appinfo>
 						</xsd:annotation>
-						<!-- 2025 recent versions of Word use mc:AlternateContent here,
-						     but since numPicBullet is so little used, this will suffice -->
+						<!-- Word 365 writes mc:AlternateContent here (a Choice Requires="v" holding
+						     w:pict, a Fallback holding w:drawing - the reverse of a text box);
+						     admitted in docx4j 17.1.1 (CR-021 phase 2) so that load keeps both
+						     branches; until then the preprocessor kept the Fallback's w:drawing.
+						     A reader takes one branch through org.docx4j.jaxb.McSelection. -->
 						<xsd:choice minOccurs="1" maxOccurs="1">
 							<xsd:element name="pict" type="CT_Picture">
 								<xsd:annotation>
@@ -14586,6 +14628,7 @@ PRINCIPLES:
 								</xsd:annotation>
 							</xsd:element>
 							<xsd:element name="drawing" type="CT_Drawing" /> <!-- added in 2025 04 -->
+							<xsd:element ref="mc:AlternateContent" />
 						</xsd:choice>
 						<xsd:attribute name="numPicBulletId"
 							type="ST_DecimalNumber" use="required">
@@ -14726,6 +14769,8 @@ PRINCIPLES:
 									ID</xsd:documentation>
 							</xsd:annotation>
 						</xsd:attribute>
+						<!-- docx4j 17.1.1 (CR-023): [MS-DOCX] 2.2.10 -->
+						<xsd:attribute ref="w15:restartNumberingAfterBreak" use="optional"/>
 					</xsd:complexType>
 					
 				</xsd:element>
@@ -14815,6 +14860,8 @@ PRINCIPLES:
 									ID</xsd:documentation>
 							</xsd:annotation>
 						</xsd:attribute>
+						<!-- docx4j 17.1.1 (CR-023): Word 365 writes w16cid:durableId (the decimal form, [MS-DOCX] 2.8.2.2) on w:num -->
+						<xsd:attributeGroup ref="w16cid:decimaldurableId"/>
 					</xsd:complexType>
 					
 				</xsd:element>
@@ -15467,9 +15514,11 @@ PRINCIPLES:
 					</xsd:annotation>
 				</xsd:element>
 			</xsd:sequence>
-			<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
-			<xsd:anyAttribute namespace="##other" processContents="lax"/>
-		</xsd:complexType>
+				<!-- docx4j 17.1.1 (CR-023): Word writes mc:Ignorable on this root; kept -->
+		<xsd:attribute ref="mc:Ignorable" use="optional"/>
+	<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
+	<xsd:anyAttribute namespace="##other" processContents="lax"/>
+</xsd:complexType>
 	</xsd:element>
 	
 	<!-- 

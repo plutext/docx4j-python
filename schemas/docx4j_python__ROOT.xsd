@@ -7,7 +7,7 @@
   entry points are collected here instead. Everything below is reached by
   import, and each import's own closure comes with it.
 
-    wml/wml.xsd                                 WordprocessingML and its 91-file closure
+    wml/wml.xsd                                 WordprocessingML and its 95-file closure
     relationships.xsd                           the .rels parts             (CR-002 section 9)
     docProps/opc-coreProperties.xsd             docProps/core.xml, and Dublin Core with it
     docProps/shared-documentPropertiesExtended.xsd   docProps/app.xml

@@ -1,0 +1,54 @@
+<!--  from https://msdn.microsoft.com/en-us/library/mt791835(v=office.12).aspx -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ xmlns:w12="http://schemas.openxmlformats.org/wordprocessingml/2006/main" 
+ elementFormDefault="qualified" attributeFormDefault="qualified" blockDefault="#all" 
+ xmlns="http://schemas.microsoft.com/office/word/2016/wordml/cid" 
+ targetNamespace="http://schemas.microsoft.com/office/word/2016/wordml/cid"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
+    xmlns:xjc="https://jakarta.ee/xml/ns/jaxb/xjc"
+    xmlns:annox="urn:jaxb.jvnet.org:annox"
+    jaxb:extensionBindingPrefixes="annox"
+    jaxb:version="3.0">
+ 
+   <xsd:import id="w12" namespace="http://schemas.openxmlformats.org/wordprocessingml/2006/main" 
+    schemaLocation="wml.xsd"/>
+
+    <xsd:import id="mce" namespace="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                schemaLocation="../mce/markup-compatibility-2006-MINIMAL.xsd"/>
+    
+        <xsd:annotation>
+        <xsd:appinfo>
+            <xsd:appinfo>
+                <jaxb:globalBindings>
+                </jaxb:globalBindings>
+            </xsd:appinfo>
+            <jaxb:schemaBindings>
+                <jaxb:package name="org.docx4j.w16cid"/>
+            </jaxb:schemaBindings>
+        </xsd:appinfo>
+    </xsd:annotation>
+    
+   <!-- [MS-DOCX] 23.0 section 5.4 (2026-09-20, CR-023): the durableId Word writes on w:num is the decimal form of
+        this attribute group (2.8.2.2); the hex global attribute is 2.8.2.1 -->
+   <xsd:attributeGroup name="decimaldurableId">
+     <xsd:attribute name="durableId" type="w12:ST_DecimalNumber" use="optional"/>
+   </xsd:attributeGroup>
+   <xsd:attribute name="durableId" type="w12:ST_LongHexNumber"/>
+   <xsd:complexType name="CT_CommentsIds">
+       <xsd:annotation>
+           <xsd:appinfo>
+               <annox:annotate target="class">@jakarta.xml.bind.annotation.XmlRootElement(name="commentsIds")</annox:annotate>
+           </xsd:appinfo>
+       </xsd:annotation>
+     <xsd:sequence>
+       <xsd:element name="commentId" type="CT_CommentId" minOccurs="0" maxOccurs="unbounded"/>
+     </xsd:sequence>
+       <xsd:attribute ref="mc:Ignorable" use="optional" />
+   </xsd:complexType>
+   <xsd:complexType name="CT_CommentId" >
+     <xsd:attribute name="paraId" type="w12:ST_LongHexNumber"/>
+     <xsd:attribute name="durableId" type="w12:ST_LongHexNumber"/>
+   </xsd:complexType>
+   <xsd:element name="commentsIds" type="CT_CommentsIds"/>
+ </xsd:schema>

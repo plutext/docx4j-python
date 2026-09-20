@@ -1,12 +1,28 @@
 # Patches to the schema copy
 
-`schemas/` is docx4j's `xsd/` tree — the 91-file transitive closure of `wml/wml.xsd`, plus
-`relationships.xsd` and `docProps/` (CR-002 section 9) and `docx4j_python__ROOT.xsd`, which is not
+`schemas/` is docx4j's `xsd/` tree — the 95-file transitive closure of `wml/wml.xsd`, plus
+`relationships.xsd` and `docProps/` (CR-002 section 9), docx4j's own `wml/wml__ROOT.xsd` (kept
+from the first copy, referenced by nothing here) and `docx4j_python__ROOT.xsd`, which is not
 a docx4j schema at all but the one entry point `codegen/generate.sh` hands the generator — copied
 verbatim except for the patches listed here. Every patch is marked in the XSD by a
 comment beginning `docx4j-python:` on the line before it, so
 `grep -rn 'docx4j-python' schemas/` finds all of them and a re-copy from docx4j can be
 re-patched mechanically.
+
+**The copy is from docx4j commit `58cce65a8` (2026-09-20).** It was first taken at `6b8048aab`
+(2026-09-05, 90 files in the WML closure) and refreshed on 2026-09-20 (CR-001 section 14.10):
+docx4j's CR-018, CR-021 phase 2, CR-023 and CR-024 and the lax mce wildcards changed nine files
+of the closure (`wml/wml.xsd`, `wml/w14_word_2010_wordml.xsd`, `wml/w15_word_2012_wordml.xsd`,
+`dml/dml-chart.xsd`, `dml/dml-documentProperties.xsd`, `dml/dml-spreadsheetDrawing.xsd`,
+`dml/dml-textParagraph.xsd`, `mce/markup-compatibility-2006-MINIMAL.xsd`,
+`odrawxml/oart14docprop.xsd`) and added five that `wml/wml.xsd` now imports (`wml/w15symex.xsd`,
+`wml/w16cid.xsd`, `wml/w16du.xsd`, `wml/w16sdtdh.xsd`, `wml/w16sdtfl.xsd`, docx4j's CR-023).
+Line endings are docx4j's: four files docx4j normalised to LF came across as LF
+(`dml-textParagraph`, the mce schema, `oart14docprop`, `w15_word_2012_wordml`), and two the first
+copy had normalised itself went back to docx4j's CRLF (`customXml/shared-customXmlSchemaProperties.xsd`,
+`dml/dml-stylesheet.xsd`), which is why their diffs at the refresh are whole-file. `cei.xsd`,
+`w16cex.xsd` and `w16.xsd` exist in docx4j's `xsd/wml/` but are outside `wml.xsd`'s closure (bound
+through docx4j's `ROOT.xsd`) and are not copied; SML (`xsd/xlsx`, `sml`) is CR-001 Phase D's.
 
 Nothing else is changed. In particular `default="..."` is **not** stripped — the schema
 default is kept and the generator's `<SchemaDefaults>metadata</SchemaDefaults>` option puts
@@ -23,6 +39,9 @@ anonymous types are promoted to named `CT_Dir` and `CT_Bdo`; semantics are uncha
 accepts the original, so docx4j's own build is unaffected.
 
 Its marker reads `docx4j-python patch:` rather than `docx4j-python:`; both match the grep.
+
+**Status at the 2026-09-20 refresh: kept.** docx4j `58cce65a8` still declares the two anonymous
+types inside the group.
 
 ## 2. `xsd:anyAttribute` on every part-root complexType (Phase B)
 
@@ -54,29 +73,35 @@ declarations are left exactly where they were.
 
 ### The 21 part-root complexTypes patched
 
-| File | Type | Part | Already had `mc:Ignorable`? |
-|---|---|---|---|
-| `wml/wml.xsd` | `w:document` (anonymous) | `word/document.xml` | yes |
-| `wml/wml.xsd` | `w:styles` (anonymous) | `word/styles.xml`, `stylesWithEffects.xml` | yes |
-| `wml/wml.xsd` | `w:numbering` (anonymous) | `word/numbering.xml` | yes |
-| `wml/wml.xsd` | `w:fonts` (anonymous) | `word/fontTable.xml` | **no** |
-| `wml/wml.xsd` | `w:comments` (anonymous) | `word/comments.xml` | **no** |
-| `wml/wml.xsd` | `w:hdr` (anonymous) | `word/headerN.xml` | yes |
-| `wml/wml.xsd` | `w:ftr` (anonymous) | `word/footerN.xml` | yes |
-| `wml/wml.xsd` | `w:glossaryDocument` (anonymous) | `word/glossary/document.xml` | **no** |
-| `wml/wml.xsd` | `CT_Settings` | `word/settings.xml` | yes |
-| `wml/wml.xsd` | `CT_WebSettings` | `word/webSettings.xml` | **no** |
-| `wml/wml.xsd` | `CT_Footnotes` | `word/footnotes.xml` | yes |
-| `wml/wml.xsd` | `CT_Endnotes` | `word/endnotes.xml` | yes |
-| `wml/wml.xsd` | `CT_Recipients` | mail-merge recipients part | **no** |
-| `wml/w15_word_2012_wordml.xsd` | `CT_CommentsEx` | `word/commentsExtended.xml` | no |
-| `wml/w15_word_2012_wordml.xsd` | `CT_People` | `word/people.xml` | no |
-| `offmacro/office-word-2006-wordml.xsd` | `CT_VbaSuppData` | `word/vbaData.xml` | no |
-| `offmacro/office-word-2006-wordml.xsd` | `CT_Tcg` | `word/attachedToolbars.bin` companion | no |
-| `customXml/shared-customXmlSchemaProperties.xsd` | `sl:schemaLibrary` (anonymous) | custom XML schema library part | no |
-| `dml/dml-stylesheet.xsd` | `a:theme` (anonymous) | `word/theme/themeN.xml` | no |
-| `dml/dml-stylesheet.xsd` | `CT_BaseStylesOverride` | `a:themeOverride` part | no |
-| `dml/dml-stylesheet.xsd` | `CT_EmptyElement` | `a:themeManager` part | no |
+**Status at the 2026-09-20 refresh: all 21 kept.** docx4j's CR-018 and CR-023 declared
+`mc:Ignorable` on six more of these roots (the last column), which makes `mc:Ignorable` a typed
+field there as it already was on the others; the wildcard stays for every attribute the schema
+does not declare (a future `w16*` root attribute), and docx4j added no `anyAttribute` of its own to
+any of the 21. Each wildcard is re-inserted as the last child, after docx4j's new declaration.
+
+| File | Type | Part | Had `mc:Ignorable` at `6b8048aab`? | At `58cce65a8`? |
+|---|---|---|---|---|
+| `wml/wml.xsd` | `w:document` (anonymous) | `word/document.xml` | yes | yes |
+| `wml/wml.xsd` | `w:styles` (anonymous) | `word/styles.xml`, `stylesWithEffects.xml` | yes | yes |
+| `wml/wml.xsd` | `w:numbering` (anonymous) | `word/numbering.xml` | yes | yes |
+| `wml/wml.xsd` | `w:fonts` (anonymous) | `word/fontTable.xml` | **no** | yes (CR-023) |
+| `wml/wml.xsd` | `w:comments` (anonymous) | `word/comments.xml` | **no** | yes (CR-018) |
+| `wml/wml.xsd` | `w:hdr` (anonymous) | `word/headerN.xml` | yes | yes |
+| `wml/wml.xsd` | `w:ftr` (anonymous) | `word/footerN.xml` | yes | yes |
+| `wml/wml.xsd` | `w:glossaryDocument` (anonymous) | `word/glossary/document.xml` | **no** | yes (CR-023) |
+| `wml/wml.xsd` | `CT_Settings` | `word/settings.xml` | yes | yes |
+| `wml/wml.xsd` | `CT_WebSettings` | `word/webSettings.xml` | **no** | yes (CR-023) |
+| `wml/wml.xsd` | `CT_Footnotes` | `word/footnotes.xml` | yes | yes |
+| `wml/wml.xsd` | `CT_Endnotes` | `word/endnotes.xml` | yes | yes |
+| `wml/wml.xsd` | `CT_Recipients` | mail-merge recipients part | **no** | no |
+| `wml/w15_word_2012_wordml.xsd` | `CT_CommentsEx` | `word/commentsExtended.xml` | no | yes (CR-018) |
+| `wml/w15_word_2012_wordml.xsd` | `CT_People` | `word/people.xml` | no | yes (CR-018) |
+| `offmacro/office-word-2006-wordml.xsd` | `CT_VbaSuppData` | `word/vbaData.xml` | no | no |
+| `offmacro/office-word-2006-wordml.xsd` | `CT_Tcg` | `word/attachedToolbars.bin` companion | no | no |
+| `customXml/shared-customXmlSchemaProperties.xsd` | `sl:schemaLibrary` (anonymous) | custom XML schema library part | no | no |
+| `dml/dml-stylesheet.xsd` | `a:theme` (anonymous) | `word/theme/themeN.xml` | no | no |
+| `dml/dml-stylesheet.xsd` | `CT_BaseStylesOverride` | `a:themeOverride` part | no | no |
+| `dml/dml-stylesheet.xsd` | `CT_EmptyElement` | `a:themeManager` part | no | no |
 
 Deliberately **not** patched, though they are the types of global elements:
 
@@ -92,13 +117,18 @@ and harmless, but it is the one patch that widens a type used outside a part roo
 
 * `lxml.etree.XMLSchema` parses each patched schema with exactly the same result as before the
   patch (`wml.xsd`, `w15_…`, `office-word-2006-wordml.xsd` all carry one pre-existing,
-  unrelated error about a `chartex` QName; `dml-stylesheet.xsd` and the customXml schema are
-  valid before and after).
+  unrelated error about a `chartex` QName; the customXml schema is valid before and after;
+  `dml-stylesheet.xsd` was valid at `6b8048aab` and since docx4j's CR-021 phase 3 rewrote
+  `odrawxml/oart14docprop.xsd` reports, patched or not, an import-order error about `a:AG_Locking`
+  that only lxml's standalone parse of that one file sees — the generator starts from the root).
 * `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **26** marker comments in the
   schemas: 21 wildcards, one for `CT_Dir`/`CT_Bdo`, three for patches 3 and 4 (the new
-  complexType, the element's `type=`, and the swap), and one for patch 5 (`@title`; it was 25
-  before CR-003 Phase A). A twenty-seventh is in `docx4j_python__ROOT.xsd`, which is ours in
-  its entirety and not a patch.
+  complexType, the element's `type=`, and the swap), and one in `docx4j_python__ROOT.xsd`, which
+  is ours in its entirety and not a patch. (It was 27 between CR-003 Phase A and the 2026-09-20
+  refresh, when patch 5 was retired.) Twenty-five patch markers, then.
+* The refresh itself: each re-patched file differs from the previous copy by exactly docx4j's
+  own commits (the hunks of `git diff` between the two copies, less the marker lines, equal
+  `git diff 6b8048aab..58cce65a8 -- xsd/<file>`).
 * Round trip: `attribute-dropped` falls from 10 to 0 (see `codegen/README.md`).
 
 ## 3. `w:stylePaneFormatFilter`: `CT_StylePaneFilter` (CR-002 Phase A)
@@ -106,6 +136,9 @@ and harmless, but it is the one patch that widens a type used outside a part roo
 `wml/wml.xsd`, two marked places: the new `CT_StylePaneFilter` complexType, just after
 `CT_ShortHexNumber`, and the `w:stylePaneFormatFilter` element declaration in `CT_Settings`,
 whose `type=` changes from `CT_ShortHexNumber` to it.
+
+**Status at the 2026-09-20 refresh: kept**; docx4j `58cce65a8` still types the element
+`CT_ShortHexNumber` and declares no `CT_StylePaneFilter`.
 
 **Why.** ECMA-376 2nd edition types this element `CT_StylePaneFilter`, with fifteen `ST_OnOff`
 attributes; docx4j's copy is 1st edition and types it `CT_ShortHexNumber`, which declares only
@@ -136,6 +169,9 @@ round-trips.
 
 `wml/wml.xsd`, in `CT_Settings`: the two element declarations are swapped.
 
+**Status at the 2026-09-20 refresh: kept**; docx4j `58cce65a8` still declares
+`w15:chartTrackingRefBased` first.
+
 **Why.** docx4j's copy declares `w15:chartTrackingRefBased` first. Every `settings.xml` in
 `samples/` that has both writes `w14:docId` first, so a serialiser that followed the schema
 reordered two elements of a part it had only read —
@@ -143,7 +179,11 @@ reordered two elements of a part it had only read —
 `child-order` difference. Both elements are `minOccurs="0"` and nothing depends on their relative
 order.
 
-## 5. `CT_NonVisualDrawingProps/@title` (CR-003 Phase A)
+## 5. `CT_NonVisualDrawingProps/@title` (CR-003 Phase A) — retired 2026-09-20
+
+**Retired at the 2026-09-20 refresh, subsumed by docx4j commit `d487076d3` (CR-018 item 2,
+2026-09-16):** docx4j's `dml-documentProperties.xsd` carries the identical attribute, so the copy
+is docx4j's file verbatim and no marker remains. The text below is the record of the patch.
 
 `dml/dml-documentProperties.xsd`, in `CT_NonVisualDrawingProps`, between `descr` and `hidden`:
 

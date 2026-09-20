@@ -48,7 +48,7 @@ fi
 python "$ROOT/codegen/clean.py"
 
 # The generator takes one SOURCE, so the entry points live in one root schema:
-# wml/wml.xsd and its 91-file closure, plus the four CR-002 section 9 added
+# wml/wml.xsd and its 95-file closure, plus the four CR-002 section 9 added
 # (relationships and the three docProps parts), which nothing in WML imports.
 docx4j-xsdata generate -c .xsdata.phase-b.xml schemas/docx4j_python__ROOT.xsd
 

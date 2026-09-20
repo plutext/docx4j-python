@@ -153,8 +153,8 @@
 			</xsd:element>
       <xsd:element name="fmtScheme" type="CT_StyleMatrix" minOccurs="0" maxOccurs="1" />
     </xsd:sequence>
-  	<!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
-  	<xsd:anyAttribute namespace="##other" processContents="lax"/>
+    <!-- docx4j-python: part root; anyAttribute so mc:Ignorable and future root attributes survive the round trip (CR-001 section 7) -->
+    <xsd:anyAttribute namespace="##other" processContents="lax"/>
   </xsd:complexType>
   <xsd:complexType name="CT_ClipboardStyleSheet">
     <xsd:sequence>
