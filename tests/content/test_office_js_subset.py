@@ -156,12 +156,19 @@ def test_the_list_is_committed_and_names_its_source(subset):
 def test_every_implemented_member_is_there_with_the_right_kind(subset):
     missing: list[str] = []
     wrong_kind: list[str] = []
+    omitted: list[str] = []
     later: dict[str, list[str]] = {}
 
     for interface, members in subset["interfaces"].items():
         cls = CLASSES.get(interface)
         for member in members:
             if member["extension"] or interface == "SearchOptions":
+                continue
+            if not member.get("implemented", True):
+                omitted.append(f"{interface}.{member['name']}: {member['reason']}")
+                assert kind_of(cls, member["name"]) is None if cls is not None else True, (
+                    f"{interface}.{member['name']} is recorded as omitted but exists"
+                )
                 continue
             where = f"{interface}.{member['name']}"
             if member["phase"] not in PHASES or cls is None:
@@ -180,6 +187,7 @@ def test_every_implemented_member_is_there_with_the_right_kind(subset):
         for phase, names in sorted(later.items())
     )
     print(f"\nlater phases still to come -- {summary}")
+    print(f"deliberately omitted -- {omitted}")
     assert not missing and not wrong_kind, (
         f"Phases {', '.join(PHASES)} owe {missing or 'nothing'}; "
         f"wrong kind: {wrong_kind or 'none'}. "

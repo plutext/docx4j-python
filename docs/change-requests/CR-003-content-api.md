@@ -3294,6 +3294,14 @@ CR-015 measured (section 18.5).
     caller that has no resolver to ask. `resolve` gained the two reason strings the walk could
     not produce, `"style 'X' has a w:numPr without a w:numId val"` and `"cyclic styles at X"`,
     so the module is docx4j's logic end to end.
+    *2026-09-20: docx4j-core-ts's own Phase H landed and its subset declaration now
+    carries `listOrNullObject` and `listItemOrNullObject`; they are recorded as deliberate
+    omissions in `tests/office_js_subset.json` (an `OMITTED` table in the derivation script,
+    as the python-docx one has) rather than implemented. The four other members that
+    declaration has and section 3.10 did not name --- `level_existences`, `get_level_font`,
+    `set_level_alignment`, `set_level_starting_number` --- were added the same day, so the
+    hand-carried "ahead of docx4j-core-ts" block in `scripts/office_js_subset.py` is gone and
+    the JSON is wholly derived again.*
 
 ### 18.3 What the markdown exporter gained, and two things it had wrong
 

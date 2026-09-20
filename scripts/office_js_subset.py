@@ -11,11 +11,9 @@ from ``@types/office-js`` with ``load``/``sync``/``context`` removed and arrays
 for collections; this script parses the interfaces, snake_cases the member
 names, tags each member with the CR-003 phase that owns it, and writes the JSON.
 
-One block is **not** derived: :data:`AHEAD_OF_TS`, the list interfaces of CR-003
-Phase H. docx4j-core-ts's own phase H is still proposed, so its declaration has
-no ``List`` or ``ListItem`` and none of the list members of ``Paragraph`` and
-``Body``; the block is written here in the same TypeScript, parsed by the same
-parser, and deleted when the TypeScript declaration gains them.
+The list interfaces of CR-003 Phase H were hand-carried here "ahead of docx4j-core-ts"
+from 2026-09-17 until 2026-09-20, when the TypeScript engine's own phase H landed (its
+commit e2ca8dc) and the block was deleted; everything is derived again.
 
     scripts/office_js_subset.py                 # rewrite tests/office_js_subset.json
     scripts/office_js_subset.py --check         # fail if it would change
@@ -61,50 +59,20 @@ ALIASES: dict[str, str] = {
     "InlinePicture.getBase64ImageSrc": "get_base64",
 }
 
-#: **Ahead of docx4j-core-ts; delete when its Phase H lands.** The TypeScript
-#: engine's ``office-js-subset.ts`` has no list interfaces, because its own
-#: phase H is still proposed (its CR-002 section 3.9), and this package's Phase
-#: H landed first (CR-003 section 18). The block is written in the same
-#: TypeScript the script parses, so the members it produces have exactly the
-#: shape every other interface's do; when the TypeScript declaration gains the
-#: interfaces, delete this constant and the two lines that splice it in, and the
-#: JSON will not change.
-AHEAD_OF_TS = """
-  export interface List {
-    readonly id: number;
-    readonly levelTypes: ArrayLike<string>;
-    readonly paragraphs: ArrayLike<Paragraph>;
-    levelExists(level: number): boolean;
-    getLevelParagraphs(level: number): ArrayLike<Paragraph>;
-    getLevelString(level: number): string;
-    setLevelNumbering(level: number, listNumbering: string, formatString?: string): void;
-    setLevelBullet(level: number, listBullet: string, charCode?: number, fontName?: string): void;
-    setLevelIndents(level: number, textIndent: number, bulletNumberPickerIndent: number): void;
-    insertParagraph(paragraphText: string, insertLocation: InsertLocation): Paragraph;
-  }
-  export interface ListItem {
-    level: number;
-    readonly listString: string;
-    readonly siblingIndex: number;
-    getAncestor(parentOnly?: boolean): Paragraph;
-    getDescendants(directChildrenOnly?: boolean): ArrayLike<Paragraph>;
-  }
-  export interface ParagraphLists {
-    readonly isListItem: boolean;
-    readonly list: List;
-    readonly listItem: ListItem;
-    startNewList(): List;
-    attachToList(listId: number, level: number): void;
-    detachFromList(): void;
-  }
-  export interface BodyLists {
-    readonly lists: ArrayLike<List>;
-  }
-"""
-
-#: Where the members of the two "ahead of" interfaces really belong: Office JS
-#: has them on ``Paragraph`` and ``Body``, and this package does too.
-AHEAD_OF_TS_MERGE = {"ParagraphLists": "Paragraph", "BodyLists": "Body"}
+#: ``Interface.officeJsName`` -> why this package does not offer the member. The
+#: hand-kept list of deliberate omissions (as ``scripts/python_docx_subset.py``
+#: keeps one); the JSON carries ``implemented: false`` and the reason, and the
+#: test does not require them. CR-003 section 18.2 item 12: no null-object
+#: members --- a Python caller tests ``paragraph.list is None``.
+OMITTED: dict[str, str] = {
+    "Paragraph.listOrNullObject": (
+        "no null-object members in this package (CR-003 section 18.2 item 12): "
+        "paragraph.list is None when the paragraph is not a list item"
+    ),
+    "Paragraph.listItemOrNullObject": (
+        "no null-object members (CR-003 section 18.2 item 12): paragraph.list_item is None"
+    ),
+}
 
 #: The CR-003 phase that owns each interface, where every member is one phase's.
 PHASE_BY_INTERFACE: dict[str, str] = {
@@ -118,6 +86,8 @@ PHASE_BY_INTERFACE: dict[str, str] = {
     "TableCell": "C",
     "InlinePicture": "C",
     "ContentControl": "C",
+    "List": "H",
+    "ListItem": "H",
     "Comment": "G",
     "TrackedChange": "F",
     "Document": "F",
@@ -132,10 +102,6 @@ PHASE_BY_INTERFACE: dict[str, str] = {
     "ListContentControl": "E",
     "PictureContentControl": "E",
     "RepeatingSectionContentControl": "E",
-    "List": "H",
-    "ListItem": "H",
-    "ParagraphLists": "H",
-    "BodyLists": "H",
 }
 
 #: Members of a Phase B interface that a later phase owns. ``Interface.name``
@@ -169,7 +135,7 @@ PHASE_BY_MEMBER: dict[str, str] = {
     "ContentControl.pictureContentControl": "E",
     "ContentControl.repeatingSectionContentControl": "E",
     "ContentControl.groupContentControl": "E",
-    # the list members of Body and Paragraph, ahead of docx4j-core-ts
+    # the list members of Body and Paragraph, Phase H
     "Body.lists": "H",
     "Paragraph.isListItem": "H",
     "Paragraph.list": "H",
@@ -295,6 +261,8 @@ def parse(text: str) -> dict[str, list[dict[str, Any]]]:
                     "readonly": bool(match.group(1)) and kind == "property",
                     "phase": phase_of(interface, name),
                     "extension": "extension" in note.lower(),
+                    "implemented": f"{interface}.{name}" not in OMITTED,
+                    **({"reason": OMITTED[f"{interface}.{name}"]} if f"{interface}.{name}" in OMITTED else {}),
                     **({"note": note} if note else {}),
                 }
             )
@@ -306,18 +274,8 @@ def parse(text: str) -> dict[str, list[dict[str, Any]]]:
 def build(source: Path) -> dict[str, Any]:
     """The whole JSON document, from the TypeScript declaration.
 
-    Plus :data:`AHEAD_OF_TS`, the list interfaces this package implements and
-    docx4j-core-ts does not declare yet; its ``ParagraphLists`` and
-    ``BodyLists`` members are merged into ``Paragraph`` and ``Body``, which is
-    where Office JS has them.
     """
     interfaces = parse(source.read_text(encoding="utf-8"))
-    for name, members in parse(AHEAD_OF_TS).items():
-        target = AHEAD_OF_TS_MERGE.get(name, name)
-        for member in members:
-            member["phase"] = phase_of(target, member["office_js"])
-            member["name"] = python_name(target, member["office_js"])
-        interfaces.setdefault(target, []).extend(members)
     return {
         "_": (
             "The Office JS members docx4j-python promises, derived from "

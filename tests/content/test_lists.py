@@ -657,3 +657,56 @@ def test_a_fresh_nsid_steps_past_one_the_part_already_has():
     seed = f"7E706046:{numbering.abstract_num[0].abstract_num_id}"
     assert fresh_nsid(numbering, seed) != taken
     assert fresh_nsid(numbering, "anything") == fresh_nsid(numbering, "anything")
+
+
+# -- the four members docx4j-core-ts's own Phase H declared (2026-09-20) -------
+
+
+def test_level_existences_say_which_levels_the_definition_states():
+    _package, the_list = numbered("One")
+    assert the_list.level_existences == [True] * 9, "docx4j's default decimal set states all nine"
+    assert the_list.level_existences == [the_list.level_exists(i) for i in range(9)]
+
+
+def test_the_level_font_reads_and_writes_the_labels_rPr():
+    package, the_list = numbered("One", "Two")
+    font = the_list.get_level_font(0)
+    assert font.bold is False, "the default definition's level 0 says nothing; a Font reads False"
+    font.bold = True
+    font.name = "Arial"
+    assert the_list.get_level_font(0).bold is True
+    assert the_list.get_level_font(0).name == "Arial"
+    report = package.last_change
+    assert report.operation == "list.level_font"
+    assert "/word/numbering.xml" in list(report.parts_touched)
+    # the labels themselves are unchanged: the counting does not read the font
+    assert [p.list_item.list_string for p in the_list.paragraphs] == ["1.", "2."]
+
+
+def test_the_level_font_of_a_shared_definition_writes_an_override():
+    package, first = numbered("One")
+    second = package.body.insert_paragraph("Other").start_new_list(like=first)
+    second.get_level_font(0).italic = True
+    numbering = package.numbering_definitions_part.contents
+    assert len(numbering.abstract_num) == 1, "no copy: the change is an instance override"
+    assert first.get_level_font(0).italic is False
+    assert second.get_level_font(0).italic is True
+
+
+def test_set_level_alignment_writes_lvlJc_and_refuses_the_rest():
+    package, the_list = numbered("One")
+    the_list.set_level_alignment(0, "Right")
+    from docx4j_py.fragments import to_xml
+
+    numbering = package.numbering_definitions_part.contents
+    assert '<w:lvlJc w:val="right"/>' in to_xml(numbering.abstract_num[0].lvl[0])
+    with pytest.raises(ContentError, match="alignment"):
+        the_list.set_level_alignment(0, "Justified")
+
+
+def test_set_level_starting_number_writes_w_start_and_the_labels_follow():
+    _package, the_list = numbered("One", "Two")
+    the_list.set_level_starting_number(0, 5)
+    assert [p.list_item.list_string for p in the_list.paragraphs] == ["5.", "6."]
+    with pytest.raises(ContentError, match="starting number"):
+        the_list.set_level_starting_number(0, -1)

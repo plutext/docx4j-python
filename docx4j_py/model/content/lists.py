@@ -640,6 +640,103 @@ class List:
             change.touched(self.address)
             change.text(after=f"level {int(level)} = {kind}")
 
+    @property
+    def level_existences(self) -> list[bool]:
+        """Office JS ``levelExistences``: whether the definition states each of the nine levels."""
+        definition = self.definition
+        return [bool(definition is not None and definition.level_exists(ilvl)) for ilvl in range(LEVELS)]
+
+    def _level_element(self, ilvl: int) -> Any:
+        """The typed ``w:lvl`` a read sees: this ``w:num``'s override, else the definition's."""
+        part = numbering_part_of(self.package, create=False)
+        if part is None:
+            return None
+        numbering = part.contents
+        num = _typed_num(numbering, self.id)
+        if num is None:
+            return None
+        for override in num.lvl_override or ():
+            if int(override.ilvl or 0) == ilvl and override.lvl is not None:
+                return override.lvl
+        abstract = _typed_abstract(numbering, _value(num.abstract_num_id))
+        if abstract is None:
+            return None
+        return next((lvl for lvl in (abstract.lvl or ()) if int(lvl.ilvl or 0) == ilvl), None)
+
+    def get_level_font(self, level: int) -> Any:
+        """Office JS ``getLevelFont``: the ``Font`` of a level's label (its ``w:rPr``).
+
+        A read sees the level as the emulator does (this list's override level
+        when it has one, else the definition's). A write goes through the same
+        rule as every other level setter: a definition another list shares is
+        left alone and the change lands in a ``w:lvlOverride/w:lvl`` on this
+        ``w:num`` (section 18.8), and it records a ``ChangeReport``. Direct
+        values only: a label inherits nothing.
+        """
+        import contextlib
+
+        from docx4j_py.model.content.font import Font
+
+        ilvl = int(level)
+        if not 0 <= ilvl < LEVELS:
+            raise ContentError(
+                f"a list level is 0 to {LEVELS - 1}, not {level}",
+                code="list.level_invalid",
+                hint=f"pass a level between 0 and {LEVELS - 1}",
+            )
+
+        @contextlib.contextmanager
+        def record(name: str, read: Any) -> Any:
+            with recording(self.body, "list.level_font") as change:
+                change.text(before=f"level {ilvl} {name}={read()}")
+                self._writable_level(ilvl, change)
+                yield
+                change.touched(self.address)
+                change.text(after=f"level {ilvl} {name}={read()}")
+
+        return Font(
+            lambda: [holder for holder in (self._level_element(ilvl),) if holder is not None],
+            scope=f"list {self.id} level {ilvl}",
+            record=record,
+            direct=True,
+        )
+
+    def set_level_alignment(self, level: int, alignment: str) -> None:
+        """Office JS ``setLevelAlignment``: the label's ``w:lvlJc`` (``"Left"``, ``"Centered"``, ``"Right"``)."""
+        from docx4j_py.model.content.paragraph import _ALIGNMENT_TO_JC
+
+        jc = _ALIGNMENT_TO_JC.get(str(alignment))
+        if jc is None or jc not in ("left", "center", "right", "start", "end"):
+            raise ContentError(
+                f"a level's alignment is 'Left', 'Centered' or 'Right', not {alignment!r}",
+                code="list.alignment_invalid",
+                hint="pass one of the three Word.Alignment values a list label takes",
+            )
+        with recording(self.body, "list.set_level_alignment") as change:
+            lvl = self._writable_level(level, change)
+            lvl.lvl_jc = el.lvlJc(val=jc)
+            lvl.lvl_jc.parent = lvl
+            change.touched(self.address)
+            change.text(after=f"level {int(level)} alignment {alignment}")
+
+    def set_level_starting_number(self, level: int, starting_number: int) -> None:
+        """Office JS ``setLevelStartingNumber``: the level's ``w:start``."""
+        from docx4j_py.wml import CtLvlStart
+
+        start = int(starting_number)
+        if start < 0:
+            raise ContentError(
+                f"a level's starting number is 0 or more, not {starting_number}",
+                code="list.start_invalid",
+                hint="pass a non-negative integer",
+            )
+        with recording(self.body, "list.set_level_starting_number") as change:
+            lvl = self._writable_level(level, change)
+            lvl.start = CtLvlStart(val=start)
+            lvl.start.parent = lvl
+            change.touched(self.address)
+            change.text(after=f"level {int(level)} starts at {start}")
+
     def set_level_indents(
         self, level: int, text_indent: float, bullet_number_picker_indentation: float
     ) -> None:
