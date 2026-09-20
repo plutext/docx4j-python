@@ -54,10 +54,15 @@ def test_the_prefixes_docx4j_names():
     assert ns.W_NAMESPACE_DECLARATION == f'xmlns:w="{ns.WML_NS}"'
 
 
-def test_the_table_is_a_bijection():
-    assert len(ns.NAMESPACE_TO_PREFIX) == len(ns.PREFIXES)
+def test_the_table_is_a_bijection_but_for_the_forward_only_prefixes():
+    """docx4j CR-024: ``x`` resolves to the main SpreadsheetML namespace, which maps back to ``s``."""
+    assert len(ns.NAMESPACE_TO_PREFIX) == len(ns.PREFIXES) - len(ns.FORWARD_ONLY_PREFIXES)
     for prefix, uri in ns.PREFIXES.items():
+        if prefix in ns.FORWARD_ONLY_PREFIXES:
+            assert ns.NAMESPACE_TO_PREFIX[uri] != prefix
+            continue
         assert ns.NAMESPACE_TO_PREFIX[uri] == prefix
+    assert ns.PREFIXES["x"] == ns.PREFIXES["s"]
 
 
 def test_ns_map_leaves_out_xml():

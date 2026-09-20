@@ -35,6 +35,7 @@ analogues of docx4j's ``Namespaces.W_NAMESPACE_DECLARATION``.
 from __future__ import annotations
 
 __all__ = [
+    "FORWARD_ONLY_PREFIXES",
     "MC_IGNORABLE_PREFIXES",
     "NAMESPACE_TO_PREFIX",
     "PREFIXES",
@@ -138,6 +139,17 @@ PREFIXES: dict[str, str] = {
     "xr3": "http://schemas.microsoft.com/office/spreadsheetml/2016/revision3",
     "xr6": "http://schemas.microsoft.com/office/spreadsheetml/2016/revision6",
     "xr10": "http://schemas.microsoft.com/office/spreadsheetml/2016/revision10",
+    # docx4j CR-022 (2026-09-20): the Excel 2010/2013 extension schemas
+    "x12ac": "http://schemas.microsoft.com/office/spreadsheetml/2011/1/ac",
+    "x16": "http://schemas.microsoft.com/office/spreadsheetml/2014/11/main",
+    "xr16": "http://schemas.microsoft.com/office/spreadsheetml/2017/revision16",
+    # docx4j CR-024 (2026-09-20): Excel names x16r2 in styles.xml's mc:Ignorable; the
+    # slicer and timeline drawing namespaces, and the extension-list one
+    "x16r2": "http://schemas.microsoft.com/office/spreadsheetml/2015/02/main",
+    "oel": "http://schemas.microsoft.com/office/2019/extlst",
+    "sle": "http://schemas.microsoft.com/office/drawing/2010/slicer",
+    "sle15": "http://schemas.microsoft.com/office/drawing/2012/slicer",
+    "tsle": "http://schemas.microsoft.com/office/drawing/2012/timeslicer",
     # newer DrawingML, several of the prefixes invented by docx4j
     "a13cmd": "http://schemas.microsoft.com/office/drawing/2013/main/command",
     "c16ac": "http://schemas.microsoft.com/office/drawing/2014/chart/ac",
@@ -207,6 +219,17 @@ PREFIXES: dict[str, str] = {
 #: URI -> prefix; the direction ``getPreferredPrefixStatic`` answers in.
 NAMESPACE_TO_PREFIX: dict[str, str] = {uri: prefix for prefix, uri in PREFIXES.items()}
 
+#: Prefixes that resolve to a namespace the table already names under another
+#: prefix, added to :data:`PREFIXES` **after** the inverse is built so that the
+#: URI still maps back to its own prefix. docx4j CR-024 (2026-09-20): Excel
+#: binds ``x`` to the main SpreadsheetML namespace on its slicer, slicer-cache
+#: and timeline parts and names it in ``mc:Ignorable="x xr10"``, so a writer
+#: must be able to declare ``x`` while the main namespace stays the default.
+FORWARD_ONLY_PREFIXES: dict[str, str] = {
+    "x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+}
+PREFIXES.update(FORWARD_ONLY_PREFIXES)
+
 #: The WordprocessingML namespace, docx4j's ``Namespaces.NS_WORD12``.
 WML_NS = PREFIXES["w"]
 
@@ -275,7 +298,16 @@ MC_IGNORABLE_PREFIXES: frozenset[str] = frozenset(
         "x14ac",
         "x15",
         "x15ac",
+        "x16r2",
+        "x",
+        "xr",
+        "xr2",
+        "xr3",
+        "xr6",
+        "xr10",
+        "xr16",
         "xdr14",
+        "cr",
     }
 )
 
