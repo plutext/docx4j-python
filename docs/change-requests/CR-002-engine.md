@@ -520,7 +520,22 @@ includes `settings.xml` and `webSettings.xml` (which the `CT_StylePaneFilter` pa
 7. **The MCE preprocessor is markup compatibility only.** docx4j's `mc-preprocessor.xslt` also
    imports Strict documents and repairs the malformed nesting Google Docs, pandoc and SSRS emit.
    The Strict import is here, at the relationship level (`RelationshipsPart.import_strict`, and
-   `Load3`'s `wasStrict` flag); the nesting repairs are not, and are a later CR.
+   `Load3`'s `wasStrict` flag); the nesting repairs are not, and are a later CR. **Measured
+   2026-09-21** on docx4j's four Word-saved strict fixtures
+   (`docx4j-core-tests/src/test/resources/strict/`): `load()` sets `was_strict` and rewrites the
+   relationship types, but the parts' *content* stays in the `purl.oclc.org` namespaces the model
+   does not know, so the main part parses to a `Document` whose `w:body` is **skipped** (reported
+   by the skipped-content report, so nothing is lost silently; `pkg.body` then raises
+   `body.no_content`). A strict document is therefore loadable and saveable byte for byte but has
+   no typed content. The part-level conversion is the later CR, and it takes docx4j's two fixes of
+   2026-09-21 as rules from the start: (1) strict universal measures to transitional integers ---
+   ×2 for the half-point family (`sz`, `szCs`, `kern`, `position`, `hps`, `hpsRaise`,
+   `hpsBaseText`), ×20 for every other point value including `w:line` under `lineRule="auto"`
+   (docx4j `7892cb501`); (2) the 2010 shape, group and canvas elements that strict keeps in the
+   wordprocessingDrawing namespace (`wp:wsp`, `wp:spPr`, `wp:txbx`, `wp:bodyPr`, `wp:wgp`,
+   `wp:wpc`, ...) map to `wps:` / `wpg:` / `wpc:` by root name, children by nearest such
+   ancestor, not to transitional `wp:` (docx4j `3f4776c35`). The fixtures and
+   `StrictLoadTest.java` are the oracle.
 8. **An absolute relationship target is treated as external** even when `TargetMode="External"` is
    missing. `samples/tables.docx` has `file:///D:\…\logo.png`, and docx4j throws
    `IllegalArgumentException` on it from `URIHelper.resolvePartUri`; making one malformed
