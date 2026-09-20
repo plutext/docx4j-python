@@ -21,6 +21,15 @@ CR-003 is implemented**. Over 16 real documents, every part not touched is writt
 byte, all 141 typed WordprocessingML parts unmarshal and re-serialise canonically identical to
 the source, and nothing is dropped. Saved output opens in Word.
 
+**WordprocessingML only, for now.** `.pptx` and `.xlsx` load and save through the generic OPC
+path, every part byte for byte, but nothing in them is typed: PresentationML and SpreadsheetML
+are CR-001 Phase D (the object model) and CR-002 Phase C (the engine), with their content APIs
+in [CR-004](docs/change-requests/CR-004-pml-content-api.md) and
+[CR-005](docs/change-requests/CR-005-sml-content-api.md). The package is on PyPI as **`docx4j`**
+(`pip install docx4j`; the import name is `docx4j_py`, as python-docx imports as `docx`), released
+by [CR-007](docs/change-requests/CR-007-pypi-release.md) with [`docs/pypi-readme.md`](docs/pypi-readme.md)
+as its page --- a short version of this file whose every example the test suite executes.
+
 ```python
 from docx4j_py import load
 
@@ -154,6 +163,7 @@ header), and the `w:drawing` sized from the image's own header --- PNG, JPEG, GI
 here, no Pillow --- and scaled down to the text column as docx4j's `CxCy.scale` does. Sizes are
 points, as Office JS reports them.
 
+<!-- fragment -->
 ```python
 picture = body.insert_inline_picture(png_bytes, width=180, alt_text_description="A pangolin")
 
@@ -175,6 +185,7 @@ refers to it by relationship id; `inline_picture` writes the `w:drawing` exactly
 `BinaryPartAbstractImage.createImageInline` does, and `image_size` reads the size and the density
 out of the header, so the low-level route is there when the parts are what you are working on:
 
+<!-- fragment -->
 ```python
 from docx4j_py.openpackaging import ImagePart, AddPartBehaviour
 from docx4j_py.wml import el, r, emu_for, image_size, inline_picture
@@ -206,6 +217,7 @@ package really has a relationship of that id, so a numeric `wp:docPr/@id` is nev
 Styles and numbering are **not** merged: that is docx4j's `MergeDocx`. A bare `w:p` / `w:tbl`
 fragment is accepted too, which is what `insert_xml` takes.
 
+<!-- fragment -->
 ```python
 from docx4j_py import load
 
@@ -368,6 +380,7 @@ print(to_xml(p("Hello ", r("World", bold=True), style="Heading1"), pretty=True))
 </w:p>
 ```
 
+<!-- fragment -->
 ```python
 main.xml                                            # bytes: the whole word/document.xml, as save() writes it
 repr(second)                                        # the dataclass: P(p_pr=None, content=[R(r_pr=None, content=[RT(value='This is ...
@@ -375,6 +388,7 @@ repr(second)                                        # the dataclass: P(p_pr=None
 
 Traversal is metadata-driven, so it needs no per-class code and covers every namespace:
 
+<!-- fragment -->
 ```python
 from docx4j_py.wml import (text_of, walk, walk_all, find, iter_nodes, run_items_of,
                            deep_copy, deep_copy_as, PPrBase)
@@ -395,7 +409,8 @@ Content controls have their own builders, over a `w:sdtPr` the model keeps as on
 docx4j does:
 
 ```python
-from docx4j_py.wml import p, sdt, sdt_property, sdt_kind_of, next_sdt_id
+from docx4j_py.wml import p
+from docx4j_py.wml.sdt import sdt, sdt_property, sdt_kind_of, next_sdt_id   # the module, not the package: see CR-003 section 11
 
 control = sdt([p("Acme Ltd")], kind="RichText", tag="customer", id=next_sdt_id(document))
 sdt_kind_of(control.sdt_pr)                # Office JS Word.ContentControlType: 'RichText'
@@ -552,6 +567,7 @@ an agent can act on: an address that is gone names the nearest surviving one, an
 container cannot hold names what it takes, a style that does not exist lists the five closest
 names, a span that crosses a hyperlink says where to split.
 
+<!-- fragment -->
 ```python
 pkg.element_at("body/99")
 # AddressError: nothing at 'body/99'; the nearest surviving address is 'body/6'
@@ -897,9 +913,17 @@ do not. There is no background thread: `sweep()` is the server's to call.
 
 ## Running it
 
-The bindings import `docx4j_xsdata`, the forked runtime, which `.venv-fork` has installed
+`pip install docx4j` is the released package (`RELEASING.md` is how it gets there). In a
+checkout, the bindings import `docx4j_xsdata`, the forked runtime --- published as
+[`docx4j-xsdata`](https://pypi.org/project/docx4j-xsdata/) --- which `.venv-fork` has installed
 editable from `~/git/docx4j-xsdata` (branch `docx4j`; `docs/fork/CHANGES.md` there lists every
 difference from upstream xsdata).
+
+Every ```` ```python ```` fence in this file and in `docs/pypi-readme.md` is executed by
+`tests/test_readme.py`, in order, in one namespace per file, from a temporary directory holding
+`samples/` and an `in.docx`. A fence that is a fragment --- it uses a name nothing defines, or it
+shows an error --- is marked with `<!-- fragment -->` on the line before it, which the test skips;
+the PyPI readme may carry no such marker.
 
 ```bash
 .venv-fork/bin/python -m pytest                       # the suite
@@ -968,5 +992,8 @@ docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
 
 ## Licence
 
-Apache-2.0, as docx4j is (see [LICENSE](LICENSE)). The forked generator and runtime are MIT, as xsdata is.
+Apache-2.0, as docx4j is (see [LICENSE](LICENSE)). [NOTICE](NOTICE) names what the wheel carries
+from docx4j --- `KnownStyles.xml`, the default styles, numbering and font table, the three Office
+theme parts and the font substitution tables under `docx4j_py/resources/`, all Apache-2.0 --- and
+ships in the wheel beside the licence. The forked generator and runtime are MIT, as xsdata is.
 The schemas under `schemas/` are derived from ECMA-376 and keep the terms stated in their own headers.
