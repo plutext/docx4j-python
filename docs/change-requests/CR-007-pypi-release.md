@@ -1,11 +1,12 @@
 # CR-007: Publishing to PyPI --- the fork first, then the package
 
 **Status:** Proposed 2026-09-20; **the ten open questions decided 2026-09-20, every
-recommendation accepted** (section 8 records each as decided). **Phase A implemented 2026-09-20
-(section 9), awaiting the user's release**: the fork's four commits are on its `docx4j` branch,
-unpushed, the wheel built and gated; what remains of Phase A is the push, the TestPyPI dispatch,
-the tag and the GitHub release. Phase B (this package) follows it and is not started until
-Phase A's distribution resolves from PyPI. The outward-facing steps --- pushes, the GitHub
+recommendation accepted** (section 8 records each as decided). **Phase A implemented and released 2026-09-20**
+(section 9): `docx4j-xsdata 26.2.1` is on PyPI (<https://pypi.org/project/docx4j-xsdata/>,
+wheel 259,739 B and sdist uploaded 2026-09-20 10:12 UTC by `publish.yml` from the GitHub release
+of tag `docx4j-v26.2.1`, after the TestPyPI dry run the same evening; `pip install
+docx4j-xsdata[lxml]==26.2.1` into a clean 3.12 environment imports `26.2.1` from PyPI). Phase B
+(this package) is unblocked. The outward-facing steps --- pushes, the GitHub
 repository rename, the PyPI publisher settings, the releases themselves --- are the user's, and
 are listed as such. **Done 2026-09-20 by the user**: the rename (`plutext/docx4j-xsdata`, section
 3.6's housekeeping with it), the PyPI and TestPyPI accounts, and the four pending trusted
