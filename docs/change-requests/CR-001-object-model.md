@@ -1040,7 +1040,7 @@ the fork's suite 1,556 passed. Recorded in `docs/UPSTREAM.md` as report 16.
 
 **Word acceptance.** The eleven artefacts were regenerated; against the ones built the commit
 before, seven of 147 parts differ and every difference is a wall-clock date (`tests/README.md`'s
-record). No Word check has been made on them.
+record). The user opened them in Word on 2026-09-20 and reported them good.
 
 **Departures and decisions.**
 
@@ -1062,4 +1062,11 @@ record). No Word check has been made on them.
    no typed part in this build reaches a DrawingML `a:p` that could hold it — PML parts are trees
    until Phase D — so nothing changes for a document today. docx4j's decision (`processContents=skip`
    on `CT_TextMath`, or OMML admitting `a:rPr`) reaches this repository at the next refresh; if
-   Phase D types PML before then, it inherits the question.
+   Phase D types PML before then, it inherits the question. **Answered the same day:** docx4j's
+   CR-025 (`docs/developer/change-requests/CR-025-omml-in-drawingml-text.md`, at `34948f8e9` on
+   its `VERSION_17_1_1` branch, to be renamed `VERSION_17_2_0`, unpushed) chose the second ---
+   OMML's `CT_R` and `CT_CtrlPr` in `shared-math-2ed.xsd` admit `a:rPr` through a new model group
+   `EG_TextRunPropertiesInMath` in `dml-textCharacter.xsd` (property `rPrDml`); two xsd files, no
+   new namespace. Its fixtures are `loadAndSave.pptx` slide 2 and `loadAndSave.xlsx` drawing 1 (16
+   `m:r` and 7 `m:ctrlPr` each). Not taken here: it landed after this refresh's copy, and it is
+   the next refresh's, or Phase D's, first item.
