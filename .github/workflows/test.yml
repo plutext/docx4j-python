@@ -60,4 +60,7 @@ jobs:
         run: |
           export DOCX4J_PY_VENV="$(python -c 'import sys; print(sys.prefix)')"
           codegen/generate.sh --check
-          git status --short docx4j_py
+          # --check proves two generations agree with each other; this proves they
+          # agree with the committed tree
+          git status --short docx4j_py codegen/el_tables
+          test -z "$(git status --short docx4j_py codegen/el_tables)"
