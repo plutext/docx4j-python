@@ -4245,6 +4245,14 @@ and the runs all go through verbs phases B, C and H already had checked.
 With this phase **every phase of CR-003 is implemented**. What is still owed,
 by whom:
 
+* **Hyperlinks** (2026-09-21, `docs/hyperlinks.md`): the API has no verb for a link ---
+  `insert_markdown` and the typed tree are the ways --- because `Range.hyperlink` and
+  `getHyperlinkRanges()` are not in core-ts's subset declaration the member list is derived
+  from. That document proposes them in Office JS's shape, an `insert_hyperlink` sugar as the
+  first extension member, a facade `add_hyperlink`, and records a defect: `insert_text` at
+  `"End"` after a link extends the link's run instead of closing the link as Word does
+  (its section 3; the fix is one condition in `splice`).
+
 * **The three extensions section 19.6 asked for, none of them taken.** Phase J
   needed none of them: a `Paragraph.mark_font` over `w:pPr/w:rPr` has no
   python-docx counterpart (python-docx has no paragraph-mark font either); a
