@@ -17,6 +17,7 @@ from pathlib import Path
 #: Paths under ``docx4j_py/`` that ``codegen/generate.sh`` does not own,
 #: relative to the package root.
 KEEP = {
+    "py.typed",  # CR-007 section 4.2: the PEP 561 marker, an empty file; Typing :: Typed
     "child.py",  # CR-001 section 5: Child, ChildList, link_parents, deep_copy
     "namespaces.py",  # section 7: docx4j's prefix table
     "runtime.py",  # section 8: the shared context, warm_up

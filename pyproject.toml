@@ -1,14 +1,45 @@
 [project]
-name = "docx4j-py"
-version = "0.0.1"
-description = "Feasibility experiment: xsdata-generated WordprocessingML bindings for Python (a docx4j analogue)"
+# The distribution is `docx4j`, the import name `docx4j_py` (CR-007 section 4.1, as
+# python-docx / docx). The release procedure is RELEASING.md.
+name = "docx4j"
+version = "0.1.0"
+description = "docx4j for Python: ECMA-376 WordprocessingML as typed objects, the Open Packaging engine, and a content API in Office JS's vocabulary with a python-docx facade"
+readme = "docs/pypi-readme.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Plutext Pty Ltd", email = "jharrop@plutext.com" }]
+keywords = [
+    "docx",
+    "docx4j",
+    "wordprocessingml",
+    "ooxml",
+    "office-open-xml",
+    "python-docx",
+    "mcp",
+    "agents",
+]
+classifiers = [
+    # no License classifier: the SPDX `license` field above replaces it (PEP 639)
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Office Suites",
+    "Topic :: Text Processing :: Markup :: XML",
+    "Typing :: Typed",
+]
 dependencies = [
-    # the runtime the generated bindings in docx4j_py/* import (CR-001 section 4);
-    # installed editable from ~/git/docx4j-xsdata into .venv-fork
-    "docx4j-xsdata[lxml]==26.2",
+    # the runtime the generated bindings in docx4j_py/* import (CR-001 section 4):
+    # the xsdata fork, published as docx4j-xsdata (CR-007 section 3). A range,
+    # not a pin (decided question 3): a fork release on the same upstream base
+    # is additive by its REBASING.md rule, and the upper bound is where the
+    # base moves and the bindings are regenerated. Never against an unreleased
+    # fork (RELEASING.md).
+    "docx4j-xsdata[lxml]>=26.2.1,<26.3",
     # CR-003 section 3.5 and decided question 6: the one dependency the content
     # API adds, for `insert_markdown` only, imported lazily inside the call.
     # `to_markdown` needs nothing. A lower bound, not a pin: markdown-it-py is
@@ -16,9 +47,16 @@ dependencies = [
     "markdown-it-py>=3.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/plutext/docx4j-python"
+Source = "https://github.com/plutext/docx4j-python"
+Changelog = "https://github.com/plutext/docx4j-python/blob/main/CHANGELOG.md"
+Issues = "https://github.com/plutext/docx4j-python/issues"
+docx4j = "https://www.docx4java.org"
+
 [project.optional-dependencies]
 dev = [
-    "docx4j-xsdata[cli,lxml]==26.2",
+    "docx4j-xsdata[cli,lxml]>=26.2.1,<26.3",
     "pytest",
 ]
 # baseline/docx4j_py/generated is the pre-Phase-B baseline: the output of
@@ -43,11 +81,37 @@ parity = [
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
+# What ships is CR-007 section 4.7; scripts/release_check.sh reads both archives
+# back and asserts it.
+
 [tool.hatch.build.targets.wheel]
+# the package and everything under it that git tracks: the 238 modules,
+# resources/ (the warm-up parts, KnownStyles.xml, docx4j's default parts and the
+# font tables) and py.typed. hatchling honours .gitignore, so no __pycache__.
 packages = ["docx4j_py"]
 
-[tool.hatch.build.targets.wheel.force-include]
-# nothing from baseline/ or codegen/ ships
+[tool.hatch.build.targets.sdist]
+# the wheel's contents plus what its suite needs to run from `pip download
+# --no-binary` (decided question 9): tests/ with its fixtures, samples/,
+# scripts/, codegen/ and schemas/ with the generator's config, and the
+# documents. Not baseline/, out/, .venv*, .claude/, .github/ or the caches.
+include = [
+    "docx4j_py/",
+    "tests/",
+    "samples/",
+    "schemas/",
+    "codegen/",
+    "scripts/",
+    "docs/",
+    ".xsdata.phase-b.xml",
+    "pyproject.toml",
+    "README.md",
+    "CHANGELOG.md",
+    "RELEASING.md",
+    "REPORT.md",
+    "LICENSE",
+    "NOTICE",
+]
 
 [tool.pytest.ini_options]
 # .venv-fork/bin/python -m pytest            everything

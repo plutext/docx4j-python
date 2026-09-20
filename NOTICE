@@ -1,0 +1,41 @@
+docx4j (for Python; import name docx4j_py)
+Copyright 2026 Plutext Pty Ltd
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This package is a Python counterpart of docx4j (https://github.com/plutext/docx4j,
+Apache License 2.0): the object model is generated from docx4j's own schema tree and
+carries docx4j's class names; the Open Packaging layer (packages, parts, relationships,
+content types), the typed parts, and the style, numbering and font resolution follow
+docx4j's design and names. The design is shared with @docx4j/core-ts
+(https://github.com/plutext/docx4j-core-ts, Apache License 2.0).
+
+The wheel carries these files taken from docx4j's docx4j-core module (Apache License
+2.0), under docx4j_py/resources/:
+
+  KnownStyles.xml                     org/docx4j/openpackaging/parts/WordprocessingML/KnownStyles.xml,
+                                      Word's built-in style definitions as docx4j ships them
+  openpackaging/styles.xml            docx4j's default styles, numbering and font table for a new
+  openpackaging/numbering.xml         document, from the same directory (transcoded to UTF-8)
+  openpackaging/fontTable.xml
+  fonts/theme-2007.xml                the three Office theme parts, from the same directory, byte
+  fonts/theme-2013.xml                for byte
+  fonts/theme-2023.xml
+  fonts/substitutions.json            docx4j's font substitution tables (org/docx4j/fonts/
+  fonts/families.json                 font-substitutes.xml, substitutions/FontSubstitutions.xml,
+  fonts/registry.json                 microsoft/MicrosoftFonts.xml, word-line-metrics.properties)
+                                      as JSON, written by scripts/generate_fonts.py; each file's
+                                      _source object names the docx4j commit it was read from
+
+The warm-up parts (warmup_document.xml, warmup_styles.xml) were written for this package.
+
+The generated modules import docx4j-xsdata (https://github.com/plutext/docx4j-xsdata), a
+fork of xsdata (https://github.com/tefra/xsdata, Copyright Christodoulos Tsoulloftas),
+which is a dependency of this package and is distributed under the MIT License; it is not
+included in this distribution.
+
+The XML schemas the object model is generated from (schemas/ in the source distribution,
+not in the wheel) are ECMA-376 Office Open XML's, as docx4j's xsd tree carries them, with
+the patches listed in schemas/PATCHES.md; they keep the terms stated in their own headers.
+The sample documents under samples/ and tests/fixtures/ (source distribution only) are
+docx4j's test fixtures, Apache License 2.0.
