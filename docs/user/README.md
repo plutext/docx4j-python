@@ -9,3 +9,6 @@ are the design record; these are the "how do I" answers.
 - [properties.md](properties.md) --- adding or altering a property in `docProps/core.xml`,
   `app.xml` and `custom.xml`: the facade for core, the typed parts for all three, creating a
   missing part.
+- [find-replace.md](find-replace.md) --- `search`, `find` and `replace_text` over the main
+  document part, the headers and footers, the notes, or every body of the document; the options;
+  tracked; a dry run; where a match is not found.

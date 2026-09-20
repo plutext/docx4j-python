@@ -29,7 +29,7 @@ in [CR-004](docs/change-requests/CR-004-pml-content-api.md) and
 (`pip install docx4j`; the import name is `docx4j_py`, as python-docx imports as `docx`), released
 by [CR-007](docs/change-requests/CR-007-pypi-release.md) with [`docs/pypi-readme.md`](docs/pypi-readme.md)
 as its page --- a short version of this file whose every example the test suite executes.
-The "how do I" answers --- hyperlinks, document properties --- are under
+The "how do I" answers --- hyperlinks, document properties, find and replace --- are under
 [`docs/user/`](docs/user/README.md).
 
 ```python
