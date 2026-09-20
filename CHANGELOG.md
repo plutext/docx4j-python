@@ -1,0 +1,89 @@
+# Changelog
+
+The distribution `docx4j` (import name `docx4j_py`), on PyPI at
+<https://pypi.org/project/docx4j/>. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and the versions [Semantic Versioning](https://semver.org/) as far as `0.x` goes: what each
+surface promises in `0.x` is the table at the end of this file. Each entry summarises what a
+change request delivered and links the CR's own implementation notes, which are the record; the
+CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
+
+## [0.1.0] --- 2026-09-20
+
+The first release: WordprocessingML only. `.pptx` and `.xlsx` load and save through the generic
+OPC path with every part byte for byte, but nothing in them is typed; PresentationML and
+SpreadsheetML are CR-001 Phase D and CR-002 Phase C, for `0.2` and `0.3`.
+
+### Added
+
+- **The object model** ([CR-001](docs/change-requests/CR-001-object-model.md), Phases A to C,
+  sections [12](docs/change-requests/CR-001-object-model.md#12-phase-a-implementation-notes-2026-09-12),
+  [13](docs/change-requests/CR-001-object-model.md#13-phase-b-implementation-notes-2026-09-12) and
+  [14](docs/change-requests/CR-001-object-model.md#14-phase-c-implementation-notes-2026-09-12)):
+  the whole of WordprocessingML and what it embeds (DrawingML, OMML, VML, `w14` to `w16`, the
+  relationships and `docProps` schemas) as slotted dataclasses generated from docx4j's own schema
+  tree by the xsdata fork, one package per namespace under docx4j's class names; every object a
+  `Child` with a parent pointer and `deep_copy`; the `el` object factory (2,061 element names over
+  63 namespaces), the `p` / `r` / `t` / `tbl` sugar, `wml(...)` fragments and `to_xml`, `walk`,
+  `find`, `text_of` and the rest of the traversal; lenient parsing with a per-part skipped-content
+  report; `warm_up()`; docx4j's prefix table. Refreshed to docx4j `c363a969f` on 2026-09-20
+  ([14.10](docs/change-requests/CR-001-object-model.md#1410-schema-refresh-2026-09-20) and
+  [14.11](docs/change-requests/CR-001-object-model.md#1411-follow-up-refresh-to-docx4j-c363a969f-2026-09-20)).
+- **The Open Packaging engine** ([CR-002](docs/change-requests/CR-002-engine.md), Phases A and B,
+  sections [12](docs/change-requests/CR-002-engine.md#12-phase-a-implementation-notes-2026-09-12)
+  and [15](docs/change-requests/CR-002-engine.md#15-phase-b-implementation-notes-2026-09-19)):
+  `PartStore` and `PartSink` (zip, directory, memory, flat OPC), `PartName`, content types,
+  relationships, typed parts with lazy `contents`, `load` and `save` with every untouched part
+  written back byte for byte and every re-marshalled one canonically identical to its source,
+  lossless `mc:AlternateContent` with a resolving traversal, `mc:Ignorable` on write,
+  `create_package` (Word 2013+ compatibility mode, a theme part); and docx4j's resolution
+  utilities --- `PropertyResolver` and `StyleUtil` over a property catalogue, the numbering
+  emulator, and `org.docx4j.fonts`' decision half --- with zero differences on all 45 of docx4j's
+  parity goldens. Departures from docx4j are section 12.3.
+- **The content API** ([CR-003](docs/change-requests/CR-003-content-api.md), every phase,
+  sections [10](docs/change-requests/CR-003-content-api.md#10-phase-a-implementation-notes-2026-09-16)
+  to [20](docs/change-requests/CR-003-content-api.md#20-phase-j-implementation-notes-2026-09-18)):
+  `Body`, `Paragraph`, `Range`, `Font`, `Table`, `TableRow`, `TableCell`, `InlinePicture`,
+  `ContentControl`, `Comment`, `TrackedChange`, `List` and `ListItem` in Office JS's vocabulary;
+  the agent surface --- paraId-first addresses, `outline()`, `find()`, `describe()`, a
+  `ChangeReport` on every mutating call, `dry_run`, `DocumentSession`, errors with a `code` and a
+  `hint`; markdown out and in with addresses; tracked changes and comments as the audit trail, with
+  `accept_all()` and `reject_all()`; custom XML parts, XML mapping and the typed content-control
+  kinds with `describe()` / `fill()` for templates; `insert_ooxml` from a flat OPC package;
+  `to_api_script`, the reveal codes; and the **python-docx facade** `docx4j_py.docx` (305 of
+  python-docx 1.2.0's 312 members, a parity test with python-docx as the judge).
+- **Packaging** ([CR-007](docs/change-requests/CR-007-pypi-release.md), Phase B, section 10):
+  the distribution `docx4j` with `py.typed`, `NOTICE`, this changelog, `RELEASING.md`, a short PyPI
+  readme whose every example the suite executes (`tests/test_readme.py`), CI on Python 3.12 to
+  3.14, and `scripts/release_check.sh`, which builds the wheel and gates it in a clean environment.
+
+### Dependencies
+
+- `docx4j-xsdata[lxml] >=26.2.1,<26.3` --- the xsdata fork the generated modules import, published
+  as [docx4j-xsdata 26.2.1](https://pypi.org/project/docx4j-xsdata/26.2.1/) by CR-007 Phase A
+  (section 9). The upper bound is where the fork's upstream base moves and the bindings are
+  regenerated.
+- `markdown-it-py >=3.0`, imported on the first `insert_markdown`.
+- Python 3.12 or later.
+
+### Notes
+
+- **One generated field name is not what an earlier checkout had**: the `w:rPr` of `m:ctrlPr`
+  (`math.CTCtrlPr`) was `schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr` and is
+  `r_pr_1`, with the `a:rPr` docx4j CR-025 admitted as `r_pr_2` (CR-001 section 14.11). Nothing
+  released carried the old name, so this is a note, not a breaking change.
+- `from docx4j_py.wml import sdt` is the content-control builder until something imports the
+  module `docx4j_py.wml.sdt`, after which it is the module (CR-003 section 11.5); write
+  `from docx4j_py.wml.sdt import sdt`, which is unambiguous.
+
+### What `0.x` promises
+
+| Surface | Stability in `0.x` |
+|---|---|
+| `docx4j_py.load`, `create_package`, `WordprocessingMLPackage`, the parts, `PartStore` / `PartSink` | Stable: docx4j's names and behaviour; departures are recorded in CR-002 section 12.3 |
+| The content API (`Body`, `Paragraph`, `Range`, `Table`, ..., the agent surface, markdown) | Stable in shape: Office JS's vocabulary is borrowed, not invented; a member may be added in a minor, none renamed |
+| `docx4j_py.docx`, the python-docx facade | Stable: its promise is `tests/python_docx_subset.json`, 305 of 312 members |
+| The generated model (`docx4j_py.wml` and the rest, `el`) | Regenerates with the schema; class and field names are docx4j's and do not move, but a schema refresh adds fields and classes in a minor |
+| `docx4j_py.model` (resolver, `StyleUtil`, fonts, numbering) | Stable: docx4j's, zero differences on the goldens |
+| Anything under `codegen/`, `scripts/`, `baseline/` | Not shipped in the wheel; in the source distribution for the suite |
+
+[0.1.0]: https://github.com/plutext/docx4j-python/releases/tag/v0.1.0
