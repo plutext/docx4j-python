@@ -5,10 +5,14 @@ recommendation accepted** (section 8 records each as decided). **Phase A impleme
 (section 9): `docx4j-xsdata 26.2.1` is on PyPI (<https://pypi.org/project/docx4j-xsdata/>,
 wheel 259,739 B and sdist uploaded 2026-09-20 10:12 UTC by `publish.yml` from the GitHub release
 of tag `docx4j-v26.2.1`, after the TestPyPI dry run the same evening; `pip install
-docx4j-xsdata[lxml]==26.2.1` into a clean 3.12 environment imports `26.2.1` from PyPI). Phase B
-(this package) is unblocked. The outward-facing steps --- pushes, the GitHub
-repository rename, the PyPI publisher settings, the releases themselves --- are the user's, and
-are listed as such. **Done 2026-09-20 by the user**: the rename (`plutext/docx4j-xsdata`, section
+docx4j-xsdata[lxml]==26.2.1` into a clean 3.12 environment imports `26.2.1` from PyPI).
+**Phase B implemented 2026-09-20** (section 10): this package is `docx4j 0.1.0`, built and gated
+against the wheel in a clean 3.12 environment with the fork from PyPI (the fast suite 1,669
+passed against the installed wheel, the eleven acceptance artefacts regenerated from it and
+canonically identical to the checkout's), **awaiting the user's Word check of `out/acceptance/`,
+the TestPyPI dry run, the tag `v0.1.0` and the release** (10.9). The outward-facing steps ---
+pushes, the GitHub repository rename, the PyPI publisher settings, the releases themselves ---
+are the user's, and are listed as such. **Done 2026-09-20 by the user**: the rename (`plutext/docx4j-xsdata`, section
 3.6's housekeeping with it), the PyPI and TestPyPI accounts, and the four pending trusted
 publishers --- `docx4j-xsdata` from `plutext/docx4j-xsdata` and `docx4j` from
 `plutext/docx4j-python`, workflow `publish.yml`, no environment, on both indexes. What remains is
@@ -426,3 +430,199 @@ checkout, and the first on 3.12.
 
 `tests/README.md` is unchanged: nothing in Phase A touches marshalling or the acceptance
 artefacts, so no Word check was due.
+
+## 10. Phase B implementation notes (2026-09-20)
+
+Phase B is built and gated; the release itself is the user's (10.9). Everything of sections 4.1
+to 4.7, 5 and 6 is in this repository, in six commits on `main` above `215ada7`, in the order the
+work was done:
+
+| Commit | What |
+|---|---|
+| `944d941` | `pyproject.toml` as `docx4j 0.1.0` (10.1), `docx4j_py/py.typed` in `KEEP`, `NOTICE`, `dist/` git-ignored |
+| `fefe751` | `docs/pypi-readme.md`, `tests/test_readme.py`, `README.md`'s status, marker and licence paragraphs |
+| `ebcb8e0` | `CHANGELOG.md`, `RELEASING.md` |
+| `bacebc0` | `.github/workflows/test.yml` and `publish.yml`; `tests/test_performance.py` marked `slow` |
+| `4398fa8` | `scripts/release_check.sh`, `scripts/compare_acceptance.py` |
+| the last | this section, the Status line, `docs/change-requests/README.md`, `CLAUDE.md`, `tests/README.md`, the registry |
+
+Nothing was pushed, tagged or published, and nothing in the model, the engine or the content API
+changed: the wheel's `docx4j_py/` is the committed tree, plus the empty `py.typed`.
+
+### 10.1 The metadata as shipped
+
+`METADATA` in the wheel, read back by `scripts/release_check.sh`: `Name: docx4j`, `Version:
+0.1.0`, the one-sentence `Summary` of section 4.2, `Author-email: Plutext Pty Ltd
+<jharrop@plutext.com>`, `License-Expression: Apache-2.0` with `License-File: LICENSE` and
+`License-File: NOTICE` (both under `dist-info/licenses/`), the eight keywords, `Requires-Python:
+>=3.12`, `Requires-Dist: docx4j-xsdata[lxml]<26.3,>=26.2.1` and `markdown-it-py>=3.0`, the three
+extras (`dev` with the same fork range, `baseline`, `parity`), the five project URLs (Homepage,
+Source, Changelog, Issues, docx4j) and `Description-Content-Type: text/markdown` carrying
+`docs/pypi-readme.md`. Classifiers: `Development Status :: 3 - Alpha`, `Intended Audience ::
+Developers`, `Operating System :: OS Independent`, `Programming Language :: Python :: 3` / `3.12` /
+`3.13` / `3.14`, `Topic :: Office/Business :: Office Suites`, `Topic :: Text Processing :: Markup
+:: XML`, `Typing :: Typed`; no `License ::` classifier (PEP 639). The `readme` is a path under
+`docs/`, which hatchling accepts. The stale "feasibility experiment" comments are gone.
+
+### 10.2 What ships, measured
+
+Built by `scripts/release_check.sh` (build 1.6.1, twine 15.0.0, CPython 3.12.13 from uv, in a
+scratch virtual environment), `twine check --strict` passing on both:
+
+| | Size | Contents |
+|---|---|---|
+| `docx4j-0.1.0-py3-none-any.whl` | 1,006,075 B (983 KiB), 256 files | `docx4j_py/` only: the 238 modules, the 18 files under `resources/` (309 KB: `KnownStyles.xml`, the two warm-up parts, the three default parts, the three theme parts, the three font tables and their four `__init__.py`), `py.typed`; `dist-info/` with `METADATA`, `WHEEL`, `RECORD`, `licenses/LICENSE`, `licenses/NOTICE`. Every one of the 250 git-tracked files under `docx4j_py/` is in it (asserted); no `__pycache__`, nothing from `codegen/`, `scripts/` or `baseline/`. 5.9 MB installed |
+| `docx4j-0.1.0.tar.gz` | 3,464,829 B (3.3 MiB), 658 entries | `docx4j_py/` 251, `tests/` 125 (the fixtures included), `samples/` 16, `schemas/` 106, `codegen/` 126, `scripts/` 14, `docs/` 10, and at the top `pyproject.toml`, `README.md`, `CHANGELOG.md`, `RELEASING.md`, `REPORT.md`, `LICENSE`, `NOTICE`, `.xsdata.phase-b.xml` (the generator's config, so `codegen/generate.sh` runs from the sdist), `PKG-INFO` and the `.gitignore` hatchling adds |
+
+Section 4.7 expected "two to three megabytes" for the wheel: the 13 MB of source it counted was
+the checkout with its `__pycache__`, and 148,000 lines of dataclass source compress to under a
+megabyte. The readme says "about 1 MB compressed, 6 MB installed". The sdist is configured with
+an explicit `include` list (`[tool.hatch.build.targets.sdist]`) rather than hatchling's
+default-everything-not-ignored, so that `.github/`, `CLAUDE.md`, `.xsdata.xml` and the caches
+stay out and what is in is the list section 4.7 gives; the wheel keeps `packages =
+["docx4j_py"]`, whose git-aware file selection is what excludes `__pycache__`.
+
+### 10.3 The readme test
+
+`tests/test_readme.py` (section 4.5 point 5): every ```` ```python ```` fence of a file is one
+parametrised test, executed in order in one namespace per file, so a later fence sees what an
+earlier one bound, and running one fence by `-k` runs its predecessors first; a failure is
+reported once, on the fence that raised, with the later ones failing by its name. The working
+directory is a temporary workspace per file with a copy of `samples/`, an `in.docx` and a
+`report.docx` --- `samples/sample-docx.docx` with a *Chapter 1* heading and a paragraph carrying
+`first` and `quick brown fox` prepended, because no corpus document holds the phrases the
+examples search for --- and an `in.pptx` (`loadAndSave.pptx`) for the generic OPC example. The
+docstring records the recipe.
+
+| File | Fences | Executed | Marked `<!-- fragment -->` |
+|---|---|---|---|
+| `docs/pypi-readme.md` | 7 | 7 | 0 (and the test asserts none may be) |
+| `README.md` | 37 | 31 | 6: the two `png_bytes` fences (the picture verbs and the part underneath), the `package_xml` one (`insert_ooxml`), `main.xml` (a continuation of the `png_bytes` fence), the traversal listing (`walk_all(document, on_node, on_wildcard)` with no such callbacks) and the `AddressError` demonstration |
+
+The marker is documented in `README.md`'s *Running it*, which a test also asserts. One README
+fence was changed, not marked: `from docx4j_py.wml import p, sdt, ...` is the ambiguous form of
+the wart CR-003 section 11.5 recorded --- once the content API has imported the module
+`docx4j_py.wml.sdt`, the package attribute is the module, not the builder --- and it failed on
+the first run; it now reads `from docx4j_py.wml.sdt import sdt, ...`, which is unambiguous, and
+`CHANGELOG.md` notes the wart. The generator-side rename the CR-003 note leaves open is not done
+here: it is a model change, and 4.7 says none is made for the release. 47 tests, 2 s.
+
+### 10.4 The release check, summarised
+
+`scripts/release_check.sh` (section 6), run 2026-09-20 on the tree of the last commit (the sizes above are that run's; the wheel differs from the `4398fa8` build only in the readme text `METADATA` carries), with
+`uv venv -p 3.12` twice (a build venv and the clean one), the whole run about four minutes:
+
+| Step | Result |
+|---|---|
+| 1 build | `dist/docx4j-0.1.0-py3-none-any.whl` and `docx4j-0.1.0.tar.gz`, `twine check --strict` PASSED on both |
+| 2 contents | the `unzip -l` listing printed (the 126 namespace `__init__.py` / `el.py` elided); the 15 must-haves present, no `__pycache__`, no foreign top-level entry, every git-tracked file present; the sdist's 17 must-haves present, nothing git-ignored |
+| 3 the clean venv | CPython 3.12.13; `uv pip install dist/docx4j-0.1.0-py3-none-any.whl pytest` resolved **11 packages from PyPI**: `docx4j-xsdata 26.2.1`, lxml 6.1.3, markdown-it-py 4.2.0, mdurl, typing-extensions, pytest 9.1.1 and its four; `docx4j_py` and `docx4j_xsdata` both import from the venv's `site-packages` (asserted) |
+| 4 smoke | from `<scratch>/smoke/`, outside the repository: `import docx4j_py` 0.60 s from site-packages; `warm_up()`; `2010-sample1.docx` loaded, a Heading 1 inserted (the definition from `resources/KnownStyles.xml`, `styles.xml` in `parts_touched`), markdown with a list and a table (`numbering.xml` created from `resources/openpackaging/`), a tracked edit and a comment by an `Author`, `pkg.font_mapper` and `fonts_in_use()` (`resources/fonts/`), `outline()`, a typed `p(...)` and a `wml(...)` fragment appended, saved, reloaded with nothing skipped and the heading, the comment and the tracked text read back; the facade over the saved file (a heading, runs, `Pt(14)`, a Table Grid table) saved and read back; `create_package()` (the default parts and the theme part) saved, reloaded, `describe()` read. Every packaged resource is read on this path |
+| 5 the suite against the wheel | the sdist unpacked in the scratch directory, its `docx4j_py/` removed, `import docx4j_py` asserted to resolve to site-packages, then `pytest -m "not slow" --ignore=tests/test_codegen_el.py -p no:cacheprovider`: **1,669 passed, 17 skipped, 39 deselected, 44 s**. The 17 skips are the seven golden tests and the Office JS subset's derivation check (`../docx4j-core-ts` is not beside a scratch directory), python-docx's two, the `ruff` one, and the six README fragments; `test_codegen_el.py` is ignored because it tests the checkout (`git ls-files`, `KEEP` against the tree). The checkout's fast suite is 1,949 passed; the difference is the 264 golden parametrisations that collapse to skips, the 7 ignored and the 4 timing tests now `slow` (10.6) |
+| 6 acceptance | `out/acceptance/` written **from the installed wheel** (`scripts/acceptance.py` copied beside a copy of `samples/`, its `sys.path.insert(0, ROOT)` finding no checkout, asserted); against the eleven built from the checkout by `.venv-fork` the same minute: **11 artefacts, 147 entries compared, 0 differ beyond the wall-clock dates** (10.7) |
+
+The one thing the smoke found was not a packaging fault: the facade's `paragraph.runs` after
+`add_run` on a document whose `w:trackRevisions` is on lists no new run, because python-docx's
+`runs` is the direct `w:r` children and a tracked insertion is inside `w:ins`. That is
+python-docx's semantics kept, as CR-003 section 20 requires; the smoke turns tracking off before
+the facade half and says why.
+
+### 10.5 CI as written
+
+`.github/workflows/test.yml` on push and pull request to `main`, `permissions: contents: read`,
+`checkout@v6` and `setup-python@v6` as the fork's workflows use: a `fast` job over `3.12`, `3.13`
+and `3.14` (`fail-fast: false`) that `pip install .[dev]` --- the fork **from PyPI** --- prints
+the fork's version and file, and runs `pytest -m "not slow"`; a `full` job on `3.14` that runs the
+whole suite and then `codegen/generate.sh --check` with `DOCX4J_PY_VENV` set to `sys.prefix`,
+since with `setup-python` there is no virtual environment and the interpreter's prefix is the one
+whose `bin/` holds `ruff` and `docx4j-xsdata`; `git status --short docx4j_py` is printed
+afterwards for information, not as a gate (a different ruff on the runner could reformat, and
+CR-001 section 13.4's reproducibility claim is two generations against each other, which the
+`--check` is). The install is not editable: every test inserts the checkout root on `sys.path`,
+the generator inserts the working directory, and `generate_el.py` inserts the root, so the
+checkout is what is tested either way. The goldens skip because `tests/content/goldens.py` looks
+for `../docx4j-core-ts/test/golden/`, which a runner does not have; the fast run against the
+wheel in 10.4 is the same shape and shows exactly that.
+
+`.github/workflows/publish.yml` is the fork's `publish.yml` with the tag scheme changed: on
+`release: [published]` and `workflow_dispatch`, `permissions: id-token: write`, one job on 3.12
+that installs `build` and `twine`, on `release` reads the version with `python -c "import tomllib;
+..."` and fails unless the tag is `v` plus it, builds with `python -m build`, runs `twine check
+--strict dist/*`, and publishes with `pypa/gh-action-pypi-publish@release/v1` --- to TestPyPI
+(`repository-url`) on a dispatch, to PyPI on a release. The pending publishers the user registered
+(project `docx4j`, owner `plutext`, repository `docx4j-python`, workflow `publish.yml`, no
+environment) match the file's name and location. Neither workflow has run: this machine cannot run
+GitHub Actions, no `actionlint` or `yamllint` is installed, and both files were checked by reading
+and by parsing as YAML (`jobs: [fast, full]` and `[build-publish]`). The first run is the push and
+the TestPyPI dispatch of 10.9.
+
+### 10.6 The timing tests
+
+Section 4.4 says the timing thresholds are marked `slow` "if a runner fails them". Decided here
+before any runner has: `tests/test_performance.py` is marked `slow` as a module (`pytestmark`),
+because its cold-import budget is 2.0 s and the checkout measures **0.97 s** --- a GitHub runner
+is slower by a factor nobody controls, and the first CI run should not fail on a number that says
+nothing about the release. The four tests still run in the `full` job and in every local full
+suite; no threshold was loosened. The other timed assertions (`test_change_report` under 1 ms an
+insert against 40 µs measured, the outline under 1 s, markdown under 5 s against 7 ms, the engine
+import under 100 ms, already `slow`) have an order of magnitude of headroom and stay in the fast
+suite.
+
+### 10.7 The acceptance artefacts
+
+Regenerated from the installed wheel (10.4 step 6) and compared with the checkout's by
+`scripts/compare_acceptance.py` --- a script rather than a hand comparison, because the
+`tests/README.md` entries since 2026-09-19 have all made the same comparison: the zip entry lists
+equal, binary entries byte for byte, XML entries in `scripts/canon.py`'s prefix-insensitive
+normal form once `dcterms:created` / `dcterms:modified` and every `w:date` are scrubbed. Result:
+**11 artefacts, 147 entries compared, 0 differ beyond the wall-clock dates.** `tests/README.md`
+records it as "2026-09-20, regenerated from the installed 0.1.0 wheel, awaiting Word check"; **no
+Word check has been made**, and section 4.5 point 4 says this one is not waived.
+
+### 10.8 Departures from sections 4 to 6
+
+1. **The wheel is a megabyte**, not two to three (10.2); the resources are 309 KB, not 376.
+2. **`test_performance.py` marked `slow` pre-emptively** (10.6), where 4.4 waited for a runner
+   to fail.
+3. **`scripts/compare_acceptance.py`** is a third script beside the two section 6 names, so the
+   comparison the Word-check record needs is not done by hand.
+4. **A README fence changed rather than marked**: the `sdt` import (10.3). Everything else in
+   `README.md` is as it was, plus the six markers, the status paragraph, the *Running it*
+   paragraphs and the licence paragraph section 4.6 asks for.
+5. **Two classifiers beyond 4.2's list**: `Intended Audience :: Developers` and `Operating System
+   :: OS Independent`, both true and both what PyPI's search facets use.
+6. **The sdist's `include` list** (10.2) rather than the default; `.xsdata.phase-b.xml` added to
+   it because `codegen/generate.sh` needs it; `.gitignore` is in the sdist because hatchling puts
+   it there.
+7. **`NOTICE` in `license-files`**, so it ships in the wheel under `dist-info/licenses/` as 4.7
+   asks, which is the only place hatchling puts a top-level file into a wheel without
+   `force-include`.
+8. **The suite against the wheel runs from the sdist**, with `test_codegen_el.py` ignored, rather
+   than from a copy of `tests/` plus `samples/`: it proves the sdist's suite runs, which decided
+   question 9 was for, and the ignored file is the one whose subject is the checkout.
+9. **The `CHANGELOG.md` entry links section anchors** of the CRs' implementation notes, as 4.6
+   asks; the anchors are GitHub's heading slugs and were checked against the headings.
+
+### 10.9 What the user does next
+
+1. `git push origin main` (six new commits above `215ada7`; no force). `test.yml` runs on the
+   push: three fast jobs and the full one. If the `full` job fails only on
+   `tests/test_performance.py`, the runner is slower than 10.6 allowed for; the number is not
+   loosened, and the test stays `slow` --- consider excluding it from CI by marker or accept the
+   runner's number in the CR.
+2. Actions tab of `plutext/docx4j-python`, `publish.yml`, **Run workflow** on `main`: the
+   `workflow_dispatch` path publishes to TestPyPI. Check
+   <https://test.pypi.org/project/docx4j/0.1.0/>: the readme rendered (the table, the fences,
+   the links), the wheel and the sdist listed, the author, the URLs and the classifiers as 10.1.
+   If the upload step fails, the first thing to check is the pending publisher's settings.
+3. **The Word check** of `out/acceptance/` --- the eleven artefacts there are the wheel's (10.7)
+   --- against `tests/README.md`'s checklist, and the record there updated from "awaiting Word
+   check" to what was found. A failure here is a release blocker: fix, re-run
+   `scripts/release_check.sh`, check again.
+4. `git tag -a v0.1.0 -m "docx4j 0.1.0"` on the last commit, then `git push origin v0.1.0`.
+5. A GitHub release for the tag (title `v0.1.0`, notes from `CHANGELOG.md`'s entry, not a
+   pre-release, **Publish release**). Publishing it runs the workflow's `release` path: the tag
+   check, the build, `twine check`, PyPI.
+6. Confirm <https://pypi.org/project/docx4j/0.1.0/> resolves and `pip install docx4j==0.1.0` into
+   a clean environment imports `docx4j_py`; then `python/CR-007.B` in the portfolio registry to
+   `done`, and this CR's Status line to "released".

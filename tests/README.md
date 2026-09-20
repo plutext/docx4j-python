@@ -1,7 +1,7 @@
 # Tests
 
 ```bash
-.venv-fork/bin/python -m pytest                    # everything, 1,580 tests (57 s)
+.venv-fork/bin/python -m pytest                    # everything, 1,997 tests (70 s)
 .venv-fork/bin/python -m pytest -m "not slow"      # without the corpus round trip and the timings
 .venv-fork/bin/python -m pytest tests/openpackaging # the engine, CR-002
 .venv-fork/bin/python -m pytest tests/content      # the views, CR-003 Phase B
@@ -27,7 +27,7 @@ VIRTUAL_ENV=/tmp/pydocx uv pip install python-docx==1.2.0 pytest -e ~/git/docx4j
 | `test_names.py` | CR-001 §6 | docx4j's class names, and that renaming never touched `Meta.name` |
 | `test_skipped_report.py` | CR-001 §7 | the fork's skipped-content report catches an unknown element and attribute |
 | `test_roundtrip.py` | CR-001 §9 | `scripts/roundtrip.py` over `samples/`, zero differences |
-| `test_performance.py` | CR-001 §8 | model import time, parse throughput, the `link_parents` budget |
+| `test_performance.py` | CR-001 §8, CR-007 §4.4 | model import time, parse throughput, the `link_parents` budget; the whole module is `slow` since CR-007, because its thresholds are checkout-machine numbers and a CI runner is not one |
 | `test_el.py`, `test_codegen_el.py` | CR-001 §6.2 | the `el` factory and its reviewed tables |
 | `test_builders.py`, `test_fragments.py` | CR-001 §6.2 | the `p`/`r`/`t`/`tbl` sugar, `wml(...)` and `to_xml` |
 | `test_traversal.py` | CR-001 §6.2 | `walk`, `find`, `text_of` against an independent lxml extraction |
@@ -83,6 +83,7 @@ VIRTUAL_ENV=/tmp/pydocx uv pip install python-docx==1.2.0 pytest -e ~/git/docx4j
 | `agent/test_api_script_workflows.py` | CR-003 §3.11, §7 | reveal codes tool-shaped: one block on request, a budgeted script that says where it stopped, `script_blocks` as the machine-readable half, the script run back into a fresh document, generating a script recording no change, and (slow) the whole corpus parsed, executed and proved deterministic |
 | `agent/test_markdown_workflows.py` | CR-003 §3.5, §7 | the coarse workflow (markdown in, markdown out) and the fine one (read with addresses, edit by address); `dry_run`, determinism, the markdown budget |
 | `test_codegen_el.py` (the last two) | CR-003 §13 | every tracked hand-written path under `docx4j_py/` is inside `codegen/clean.py`'s `KEEP` |
+| `test_readme.py` | CR-007 §4.5 | every ```` ```python ```` fence of `docs/pypi-readme.md` (the PyPI page: 7 fences, none may be marked) and of `README.md` (37 fences, 31 executed, 6 marked `<!-- fragment -->` and skipped by name) executed **in order in one namespace per file**, one parametrised test per fence, from a temporary workspace holding `samples/`, an `in.docx` / `report.docx` (`sample-docx.docx` with a *Chapter 1* heading and a paragraph carrying the phrases the examples search for prepended) and an `in.pptx`; that the PyPI readme carries no marker; and that `README.md`'s *Running it* explains it |
 
 ## Fixtures
 
@@ -223,6 +224,22 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > passed) predict: nothing in the eleven artefacts uses the markup the refresh admitted. The user opened
 > the artefacts in Word the same day and reported them good: no repair prompt, nothing amiss.
 
+> **2026-09-20, regenerated from the installed 0.1.0 wheel, awaiting Word check.** CR-007 Phase B
+> (section 10): the eleven artefacts in `out/acceptance/` were built by `scripts/release_check.sh`
+> from the **wheel** `dist/docx4j-0.1.0-py3-none-any.whl` installed into a clean CPython 3.12
+> virtual environment with `docx4j-xsdata 26.2.1` resolved from PyPI --- `scripts/acceptance.py`
+> run from a copy beside a copy of `samples/`, so its `sys.path` insert finds no checkout ---
+> rather than from the checkout with `.venv-fork` as every earlier run was. Packaging is a
+> marshalling input by the rule below (a resource missing from the wheel changes what is
+> written), so CR-007 section 4.5 point 4 says this run is **not** waived for a dates-only
+> difference. Against the artefacts built from the checkout the same minute
+> (`scripts/compare_acceptance.py`, `scripts/canon.py`'s normal form with the wall-clock dates
+> scrubbed): **11 artefacts, 147 entries compared, 0 differ beyond the wall-clock dates**; the
+> entry lists are equal and every binary entry is byte for byte. The suite against the wheel
+> was 1,669 passed, 17 skipped (the goldens, without `../docx4j-core-ts`) and the smoke script
+> read every packaged resource. **No Word check has been made on this regeneration**; it is the
+> user's, before the tag.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
@@ -230,6 +247,7 @@ check by hand:
 
 ```bash
 .venv-fork/bin/python scripts/acceptance.py      # writes out/acceptance/
+scripts/release_check.sh                         # for a release: the same eleven, from the built wheel (CR-007)
 ```
 
 `out/` is in `.gitignore`, so the eleven files are built rather than committed; the script takes

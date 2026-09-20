@@ -30,7 +30,13 @@ the xsdata fork's CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`) 
 throughput work, whose **Phase A is this engine's `XmlPart._marshal` and is implemented**
 (2026-09-19, CR-002 section 12.13 and that CR's section 8: one render into an lxml tree and one
 serialisation, `Symbols.docx` 887 ms to 484 ms); its Phases B to D are the fork's.
-`REPORT.md` is the original xsdata feasibility experiment.
+`REPORT.md` is the original xsdata feasibility experiment. CR-007 (PyPI): **Phase A released**
+(`docx4j-xsdata 26.2.1` on PyPI, 2026-09-20, section 9) and **Phase B implemented** (section 10,
+2026-09-20): this package is the distribution **`docx4j` 0.1.0** (import name `docx4j_py`),
+`pyproject.toml` depends on `docx4j-xsdata[lxml]>=26.2.1,<26.3`, `RELEASING.md` is the
+procedure, `CHANGELOG.md` the record, `docs/pypi-readme.md` the PyPI page (every fence executed
+by `tests/test_readme.py`), `scripts/release_check.sh` the wheel gates; awaiting the user's Word
+check of `out/acceptance/` and the tag `v0.1.0`. WordprocessingML only until CR-001 D and CR-002 C.
 
 ## Environments and commands
 
@@ -59,24 +65,40 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/bench_marshal.py         # parse and marshal, part by part (--json)
 .venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
 .venv-fork/bin/python scripts/generate_fonts.py        # docx4j_py/resources/fonts/ from ../docx4j
+scripts/release_check.sh                               # CR-007: build the wheel and sdist into dist/, twine check, a clean
+                                                       # 3.12 venv with the wheel and the fork from PyPI, the smoke script,
+                                                       # the fast suite against the wheel, out/acceptance/ from the wheel
+scripts/compare_acceptance.py out/acceptance-checkout out/acceptance   # canonical, dates scrubbed
 
 .venv/bin/python scripts/roundtrip.py                  # the baseline, upstream xsdata
 python codegen/derive_names.py                         # re-derive codegen/names/ from docx4j's XJC output
 ```
 
 `pyproject.toml` sets `addopts = "-q --strict-markers"` and turns `DeprecationWarning` into an
-error; the only marker is `slow`. `scripts/roundtrip.py` exits non-zero on any parse failure, any
-real difference or any skipped content. `codegen/generate.sh` puts `.venv-fork/bin` on `PATH`
-itself, because the generator shells out to `ruff` by bare name. `derive_names.py` reads
+error; the only marker is `slow` (the corpus round trip, the el regeneration and, since CR-007,
+`tests/test_performance.py`, whose thresholds are checkout-machine numbers). `scripts/roundtrip.py`
+exits non-zero on any parse failure, any real difference or any skipped content.
+`codegen/generate.sh` puts `$DOCX4J_PY_VENV/bin` (default `.venv-fork/bin`) on `PATH` itself,
+because the generator shells out to `ruff` by bare name; CI sets `DOCX4J_PY_VENV` to the
+interpreter's prefix. `derive_names.py` reads
 `../docx4j/docx4j-generated-objects/target/generated-sources/xjc` by default
 (`codegen/names/README.md`).
+
+CI (`.github/workflows/`, CR-007 section 4.4): `test.yml` runs the fast suite on 3.12, 3.13 and
+3.14 with the fork **from PyPI** and the full suite plus `generate.sh --check` on 3.14;
+`publish.yml` publishes to PyPI from a GitHub release of tag `v<version>` by trusted publishing
+(TestPyPI on `workflow_dispatch`). `RELEASING.md` is the procedure; never tag, push or publish
+from a session --- those are the user's.
 
 `scripts/reproduce.sh` reproduces `REPORT.md` with upstream xsdata: it regenerates the
 git-ignored baseline in `baseline/docx4j_py/generated/` (running xsdata inside `baseline/`, since
 xsdata writes relative to the working directory) and never touches `docx4j_py/`.
 
 `tests/README.md` maps each test file to its CR section and holds the manual Word acceptance
-checklist, with the record of each run. After any change to marshalling, the prefix table, content
+checklist, with the record of each run. `tests/test_readme.py` executes every ```` ```python ````
+fence of `docs/pypi-readme.md` and `README.md` in order (a README fence that is a fragment is
+marked `<!-- fragment -->` on the line before it; the PyPI readme may carry no marker), so a
+readme example that stops working fails the suite. After any change to marshalling, the prefix table, content
 types, the zip writer, `create_package`, the markdown importer or the content API's inserts,
 regenerate `out/acceptance/` and ask for a Word check: saved output must open without a repair
 prompt. Markup that makes Word hang or quietly refuse an operation is logged in
@@ -87,6 +109,7 @@ prompt. Markup that makes Word hang or quietly refuse an operation is logged in
 Almost everything under `docx4j_py/` is generated and owned by `codegen/generate.sh`. The
 hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by path:
 
+- `py.typed`: the PEP 561 marker, empty (CR-007)
 - `child.py`: `Child`, `ChildList`, `link_parents`, `iter_children` (with the `mce` mode),
   `deep_copy`
 - `namespaces.py`: docx4j's prefix table (`UNDERSTOOD` in it is re-exported from generated
@@ -217,7 +240,7 @@ section 12.3.
   spreadsheet-drawing `mc:AlternateContent` gap (CR-002 section 12.5) is pinned so that closing it
   is visible.
 
-`out/`, `baseline/`, `.venv*` and `.claude/` are git-ignored; `out/` is rebuilt by the scripts.
+`out/`, `dist/`, `baseline/`, `.venv*` and `.claude/` are git-ignored; `out/` and `dist/` are rebuilt by the scripts.
 
 ## Portfolio task registry
 
