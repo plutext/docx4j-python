@@ -26,6 +26,9 @@ F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member 
 `tests/python_docx_subset.json`.
 CR-004 (PresentationML content API and python-pptx facade), CR-005 (SpreadsheetML, fidelity first,
 openpyxl facade) and CR-006 (the MCP server's contract; code in `../docx4j-mcp-py`) proposed 2026-09-19;
+**CR-007 (PyPI) closed 2026-09-20**: `docx4j 0.1.0` is on PyPI over `docx4j-xsdata 26.2.1`, both
+published by trusted publishing from a GitHub release (`RELEASING.md`; the fork's is its
+`REBASING.md` "Releasing"), the gates being `scripts/release_check.sh` plus the Word check;
 the xsdata fork's CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`) proposes the
 throughput work, whose **Phase A is this engine's `XmlPart._marshal` and is implemented**
 (2026-09-19, CR-002 section 12.13 and that CR's section 8: one render into an lxml tree and one
