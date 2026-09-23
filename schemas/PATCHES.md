@@ -170,7 +170,15 @@ round-trips.
 `wml/wml.xsd`, in `CT_Settings`: the two element declarations are swapped.
 
 **Status at the 2026-09-20 refresh: kept**; docx4j `58cce65a8` still declares
-`w15:chartTrackingRefBased` first.
+`w15:chartTrackingRefBased` first. **Subsumed at docx4j `dae2dfc8b`** (2026-09-23, on its
+`VERSION_17_2_1` branch, reported by the docx4j session): docx4j now declares `w14:docId`,
+`w15:chartTrackingRefBased`, `w15:docId` in that order --- **exactly this patch's order**,
+measured on Word 365 output --- with `SettingsDocIdOrderTest` pinning it. So this patch retires at
+the next refresh, and nothing this repository writes changes: the two corpus documents that carry
+all three already write them in that order and the round trip is clean either way. docx4j's note
+that **Word Online writes `w15:chartTrackingRefBased` first** is the accepted cost on both sides:
+a serialiser that follows the schema reorders those two elements of a Word Online document it had
+only read, which `canon.py` reports as `child-order`. No such document is in `samples/`.
 
 **Why.** docx4j's copy declares `w15:chartTrackingRefBased` first. Every `settings.xml` in
 `samples/` that has both writes `w14:docId` first, so a serialiser that followed the schema
