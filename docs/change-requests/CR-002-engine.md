@@ -629,7 +629,16 @@ build: `commentsExtensible.xml` (`w16cex`) and `customXml/itemPropsN.xml` (`ds:d
 brought `w16cid.xsd` into the closure; its `CTCommentsIds` is generated now, though the part is
 still registered as a tree (a typed part is CR-001 Phase D's or a later CR's to add). Nothing is
 lost: a tree holds everything, and a part that is never parsed is copied verbatim. The chart style,
-chart colour style, `chartex` and diagram-drawing parts are trees for the same reason.
+chart colour style, `chartex` and diagram-drawing parts are trees for the same reason, and so is
+`/word/bibliography.xml`: `shared-bibliography.xsd` is imported by docx4j's all-namespaces
+`xsd/ROOT.xsd`, never by `wml/wml.xsd`, so the `b:` namespace is outside our closure and the part
+takes the registry's `+xml` fallback. **This is why docx4j's CR-027 does not reach us** (reported
+2026-09-25): Word writes an undeclared `Version="6"` on every `b:Sources` it saves and docx4j's
+typed part dropped it until `b1fa34947` added the attribute; measured here, the tree keeps
+`Version="6"` and the part's bytes are unchanged even after the tree is read. Whenever a later CR
+types the bibliography part, it takes that attribute with it --- and the CR's SpreadsheetML half
+(revision `uid` attributes on twelve host types, three attribute-only schema files under
+`xsd/xlsx/`, `xcalcf:calcFeatures`) belongs to CR-001 Phase D, whose recorded inputs it joins.
 
 ### 12.6 MCE: what "resolve" actually changed
 
