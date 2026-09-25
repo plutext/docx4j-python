@@ -634,8 +634,20 @@ chart colour style, `chartex` and diagram-drawing parts are trees for the same r
 `xsd/ROOT.xsd`, never by `wml/wml.xsd`, so the `b:` namespace is outside our closure and the part
 takes the registry's `+xml` fallback. **This is why docx4j's CR-027 does not reach us** (reported
 2026-09-25): Word writes an undeclared `Version="6"` on every `b:Sources` it saves and docx4j's
-typed part dropped it until `b1fa34947` added the attribute; measured here, the tree keeps
-`Version="6"` and the part's bytes are unchanged even after the tree is read. Whenever a later CR
+typed part dropped it until `b1fa34947` added the attribute.
+
+Where Word actually puts a bibliography is worth recording, because it is not the part name:
+in `loadAndSave.docx` (docx4j's fixture) `b:Sources` is **`customXml/item1.xml`**, with its
+`itemProps1.xml` naming the bibliography namespace in `ds:schemaRefs`, and docx4j types it by
+**sniffing the root element** on load --- a custom XML part whose root unmarshals to `b:Sources`
+becomes its `BibliographyPart` --- not by part name or content type. Here that part is a
+`CustomXmlDataStoragePart`, which is a tree, so measured on that document end to end:
+`Version="6"` and `StyleName="APA"` read off the tree, and `customXml/item1.xml` is **byte
+identical through load and save** and stays so after the tree has been read (CR-003 Phase E's
+engine change: parsing an lxml part for reading does not adopt it). `pkg.custom_xml_parts` sees it
+and `get_item` finds it by its `ds:itemID`, so the content API reaches a bibliography today as
+custom XML. If this engine ever types custom XML items by root element, as docx4j does, that is
+where `b:Sources` appears, and the attribute goes with it. Whenever a later CR
 types the bibliography part, it takes that attribute with it --- and the CR's SpreadsheetML half
 (revision `uid` attributes on twelve host types, three attribute-only schema files under
 `xsd/xlsx/`, `xcalcf:calcFeatures`) belongs to CR-001 Phase D, whose recorded inputs it joins.
