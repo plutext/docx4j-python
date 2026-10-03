@@ -1,9 +1,11 @@
 # CR-008: Table conditions in the `PropertyResolver` --- a paragraph's table context handed to the resolver, and the table style decided by name
 
 **Status:** Proposed 2026-10-04, on docx4j CR-030's hand-off (its section 9). Nothing implemented.
+Amended the same day for CR-030's D11 (docx4j `0349796f9`): a band size stated nowhere means no
+banding (section 3.1).
 Not scheduled; Jason decides. Three questions are open (section 9).
 **Depends on:** docx4j CR-030 (done 2026-10-04: commits `3577e5181`, `ecaa95c1d`, `8c387f484`,
-`446d65c5d`, `843ac12df` on `VERSION_17_3_1`, local and not yet pushed) and this repository's
+`446d65c5d`, `843ac12df`, and `0349796f9` for D11, on `VERSION_17_3_1`, local and not yet pushed) and this repository's
 CR-002 Phase B (implemented, section 15), whose item 6 of section 15.1 --- "table conditional
 formatting stays out, as docx4j's own `table-conditions` CR has it" --- this CR lifts. The parity
 gate of Phase A also needs goldens which do not exist yet (section 6 and question 1).
@@ -69,6 +71,17 @@ in ECMA-376-1 17.7.6 order, `PRECEDENCE`), `formats_text`, and `key`. The writer
 (`row_conditions`, `h_band_rows`, `v_band_cols`, `conditional_tr_pr`, `conditional_tc_pr`,
 `has_tbl_header`) are ported with it although nothing here calls them yet: they are small, and
 CR-003's table views and a later layout consumer read rows and cells the same way.
+
+**A band size stated nowhere means no banding** (CR-030 D11, docx4j `0349796f9`, after the
+hand-off; Word's probes T9 `tables-banding-merged-row` and T10 `tables-banding-band-size`). Word
+bands no row of a table where neither the style chain nor the table's own `w:tblPr` states a
+`w:tblStyleRowBandSize`, whatever `w:tblLook` and the style's band conditions say; a size stated
+by the table alone is enough. So `row_band_size` and `col_band_size` return **0** where absent
+(docx4j took it as 1 until this commit), and `at_position`, `h_band_rows` and `v_band_cols` treat
+0 as no banding; a `w:cnfStyle` cache stays authoritative. The columns follow the rows' rule,
+which Word was not asked about. T10 also confirms that a row whose every cell continues a
+vertical merge still counts for the bands after it. The port is from `0349796f9`, not from the
+hand-off's `843ac12df`.
 
 ### 3.2 `TableContext` and `CellContext` (`model/table/context.py`)
 
@@ -208,8 +221,9 @@ generated classes are imported inside functions, never at module level.
   5.3. The twelve `tables-*` documents are copied into `tests/fixtures/` with provenance, and a
   test per probe asserts the measured reading: T1, T2 and T7 for the name rule (text and cell
   margins), T3 and T8 for the story boundaries, T5 and T6 for the exception in modes 12, 14 and
-  15, with the setting on, off and absent. These hold the rules whether or not a golden exists.
-- **Units** for the condition arithmetic: `w:gridBefore`, spans, band sizes other than 1, the
+  15, with the setting on, off and absent. The two banding probes of D11 (T9, T10) join them:
+  no band size, no bands; the table's own size alone; the fully merged row counted. These hold the rules whether or not a golden exists.
+- **Units** for the condition arithmetic: `w:gridBefore`, spans, band sizes other than 1 and absent (0, no banding), the
   look's gates, the `w:cnfStyle` caches against the position, nested tables, a row-level and a
   cell-level `w:sdt`.
 - **Parity.** The Java harness which writes the goldens lives in `../docx4j-core-ts/test/java/`
