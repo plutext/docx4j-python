@@ -5,7 +5,7 @@ Amended the same day for CR-030's D11 (docx4j `0349796f9`): a band size stated n
 banding (section 3.1).
 Not scheduled; Jason decides. Three questions are open (section 9).
 **Depends on:** docx4j CR-030 (done 2026-10-04: commits `3577e5181`, `ecaa95c1d`, `8c387f484`,
-`446d65c5d`, `843ac12df`, and `0349796f9` for D11, on `VERSION_17_3_1`, local and not yet pushed) and this repository's
+`446d65c5d`, `843ac12df`, and `0349796f9` for D11; shipped in docx4j 17.3.1, Maven Central 2026-10-07) and this repository's
 CR-002 Phase B (implemented, section 15), whose item 6 of section 15.1 --- "table conditional
 formatting stays out, as docx4j's own `table-conditions` CR has it" --- this CR lifts. The parity
 gate of Phase A also needs goldens which do not exist yet (section 6 and question 1).
@@ -253,9 +253,11 @@ the extended goldens arrive.
 
 ## 8. Risks
 
-- **docx4j `VERSION_17_3_1` is not pushed**, so the oracle is a local tree. The commits are named
-  above; if the branch is rebased before it is pushed, the hashes here and in the tests'
-  provenance are re-stated.
+- ~~**docx4j `VERSION_17_3_1` is not pushed**, so the oracle is a local tree.~~ Closed 2026-10-08:
+  docx4j 17.3.1 is on Maven Central (2026-10-07) with the commits named above, so the hashes here
+  and in the tests' provenance stand; the strict fixtures and `ParityAccessors` are unchanged
+  by the release, so the 45 goldens of CR-002 Phase B stand too. `VERSION_17_3_2` is the next
+  development branch.
 - **The goldens are not this repository's to extend.** If core-ts's CR-007 is not scheduled, the
   in-context parity gate stays open and the probes are the only measure. They are Word's own
   readings, which is the stronger oracle, but they are twelve documents and not a corpus.
