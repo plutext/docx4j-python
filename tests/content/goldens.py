@@ -241,42 +241,15 @@ class Pin:
     reason: str
 
 
-#: Where this package is ahead of the goldens. CR-009 Phase A ported docx4j
-#: CR-034's colour merge rules (docx4j ``2e381ef26``, 17.3.3) before the goldens
-#: were regenerated at that commit, which docx4j-core-ts's CR-008 phase 1 does;
-#: CR-009 section 2 measured these two as the only comparisons that move. Each
-#: pin marks its (test, golden) pair ``xfail(strict=True)``, so the regeneration
-#: turns it into an unexpected pass and the pin comes out.
-PINS: tuple[Pin, ...] = (
-    Pin(
-        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
-        golden="fonts-modesOfApplication",
-        where=(
-            "fonts-modesOfApplication/main[5] 'This is a simple document, with some text "
-            "in a new font, and an rPr.' run 3: effectiveRPr"
-        ),
-        reason=(
-            "CR-009 Phase A, docx4j CR-034's 'a colour inherits as one': Heading1's w:color "
-            "is accent1 with themeShade BF, the run's character style SubtleReference states "
-            "accent2 C0504D with no shade, so the run is plain accent2; the golden, recorded "
-            "before docx4j 2e381ef26, keeps the leaked themeShade BF. Waits for docx4j-core-ts "
-            "CR-008 phase 1 to regenerate the goldens at docx4j 2e381ef26 or later"
-        ),
-    ),
-    Pin(
-        test="test_every_table_resolves_as_docx4j_resolves_it",
-        golden="invoice2013",
-        where="invoice2013: table 0: effectiveTableStyle",
-        reason=(
-            "CR-009 Phase A, docx4j CR-034's 'auto states a colour' and 'a colour inherits as "
-            "one': the table's own w:tblBorders state none with color auto over TableGrid's "
-            "single 000000 themeColor text1, so auto replaces the reference; the golden, "
-            "recorded before docx4j 2e381ef26, keeps themeColor text1 beside auto. Waits for "
-            "docx4j-core-ts CR-008 phase 1 to regenerate the goldens at docx4j 2e381ef26 or "
-            "later"
-        ),
-    ),
-)
+#: Where this package is ahead of the goldens: one :class:`Pin` per comparison
+#: expected to differ until docx4j-core-ts regenerates them, each marking its
+#: (test, golden) pair ``xfail(strict=True)`` so that the regeneration turns it
+#: into an unexpected pass and the pin comes out. Empty since 2026-10-12: CR-009
+#: Phase A's two pins (``fonts-modesOfApplication`` main[5] run 3 and
+#: ``invoice2013`` table 0, docx4j CR-034's colour merge) came out when
+#: docx4j-core-ts regenerated the goldens at docx4j ``2e381ef26`` (its ``1f78b94``,
+#: CR-008 phase 1); CR-009 section 10.4.
+PINS: tuple[Pin, ...] = ()
 
 
 class PinnedDifference(AssertionError):

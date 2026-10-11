@@ -3,8 +3,9 @@
 **Status:** Proposed 2026-10-12, on docx4j CR-034's hand-off (the docx4j session, 2026-10-12,
 after its phase 3). **Decided 2026-10-12: all three recommendations of section 9 accepted**;
 **Phase A (the merge rules) implemented 2026-10-12** (section 10): the catalogue mirrors
-`StyleUtil` at docx4j `2e381ef26`, exactly the two comparisons of section 2 move and are pinned
-`xfail(strict=True)` until docx4j-core-ts regenerates the goldens, and no content-API answer over
+`StyleUtil` at docx4j `2e381ef26`, exactly the two comparisons of section 2 move, pinned
+`xfail(strict=True)` until docx4j-core-ts regenerated the goldens at `2e381ef26` the same day
+(its `1f78b94`), when the pins came out (10.10), and no content-API answer over
 the 64 corpus documents changes; Phase B (the WordprocessingML resolver) is new scope; Phase C
 (DrawingML and SpreadsheetML) waits for a consumer.
 **Depends on:** docx4j CR-034 (phases 0 to 3 done 2026-10-12: `3dbe4eee5` the resolver,
@@ -398,9 +399,29 @@ content-API read reports a table style's border reference. Section 2's claim hol
 
 - Nothing more from the merge: a colour now reaches the resolver whole, so a resolver over the
   effective properties never sees a reference with a stranger's tint or shade.
-- The pins come out when docx4j-core-ts regenerates at `2e381ef26` or later: the two pairs then
-  fail as unexpected passes and the two `Pin`s are deleted from `goldens.PINS`.
+- ~~The pins come out when docx4j-core-ts regenerates at `2e381ef26` or later.~~ Done the same
+  day (10.10).
 - 10.7's measurement is the baseline for `Font.color` reporting the drawn colour: Phase B should
   move content-API answers only where a theme reference meets a stale cache, and the same
   measurement says where.
 - `CHANGELOG.md`'s Unreleased entry records Phase A; Phase B adds to it.
+
+### 10.10 The goldens regenerated, the pins out (2026-10-12)
+
+At this repository's request (Jason's), docx4j-core-ts ported the same rules (its CR-008 phase 1,
+`9f4fab9`) and regenerated its 62 parity goldens and 62 XPath goldens at exactly docx4j
+`2e381ef26` (`1f78b94`; `docx4j-core-17.3.3-SNAPSHOT.jar`, SHA-256 `f805ae4be89897e3`, every header
+naming `2e381ef26`). It reports that exactly the two comparisons of section 2 moved, as measured
+here, and nothing else; zero differences on its side, 811 of 811.
+
+Here the two pinned pairs became `[XPASS(strict)]` failures, as 10.4 meant them to, and the two
+`Pin`s came out: `goldens.PINS` is empty, the mechanism kept for the next time this package is
+ahead of the goldens. `invoice2013` passes; `fonts-modesOfApplication` main[5] run 3 agrees, and
+the pair still fails at main[8], the docx4j `fb2a764f7` difference of 10.6, now with nothing
+pinned in front of it. The three golden files: properties 133 passed and 2 failed (`NumberingIndents`
+and `fonts-modesOfApplication`, both `fb2a764f7`), numbering 45 passed and 1 failed (the fixture
+`tables-numbered-in-cell`, 10.6), fonts 90 passed.
+
+docx4j `2e381ef26` is still local; until docx4j pushes `VERSION_17_3_3`, docx4j-core-ts's weekly
+parity run, which measures the pushed branch, will propose moving these two back, and that session
+closes such a PR unmerged. Nothing here depends on it: this repository reads the sibling checkout.

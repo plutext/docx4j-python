@@ -1130,10 +1130,11 @@ order nor the class a member happens to be is part of the contract.
    and fill (each its own) and every border edge --- because Word draws the reference over the
    value written beside it. `is_empty_color`, `is_empty_u`, `merge_color`, `merge_u`, `merge_shd`
    and `merge_border` mirror that commit, in place of docx4j CR-015's attribute-by-attribute
-   merge, which this catalogue first mirrored. The goldens, recorded before it, still hold the
-   old merge in two comparisons (`fonts-modesOfApplication` `main[5]` run 3 and `invoice2013`
-   table 0), which `tests/content/goldens.py`'s `PINS` mark `xfail(strict=True)` comparison by
-   comparison until docx4j-core-ts regenerates them; nothing else in the goldens moved.
+   merge, which this catalogue first mirrored. The goldens recorded before it held the old merge
+   in two comparisons (`fonts-modesOfApplication` `main[5]` run 3 and `invoice2013` table 0),
+   pinned `xfail(strict=True)` in `tests/content/goldens.py`'s `PINS` until docx4j-core-ts
+   regenerated them at `2e381ef26` the same day (its `1f78b94`); nothing else in the goldens
+   moved, and the pins are out (CR-009 section 10.10).
 
 **Quirks reproduced deliberately**, each because a golden records it:
 
