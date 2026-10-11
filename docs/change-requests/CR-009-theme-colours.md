@@ -1,9 +1,9 @@
 # CR-009: Theme colours --- the colour merge rules docx4j CR-034 changed, and its colour resolver
 
 **Status:** Proposed 2026-10-12, on docx4j CR-034's hand-off (the docx4j session, 2026-10-12,
-after its phase 3). Nothing implemented. Not scheduled; Jason decides. Phase A (the merge rules) is
-small and parity-bound; Phase B (the WordprocessingML resolver) is new scope; Phase C (DrawingML
-and SpreadsheetML) waits for a consumer. Three questions are open (section 9).
+after its phase 3). **Decided 2026-10-12: all three recommendations of section 9 accepted**; Phase
+A (the merge rules, small and parity-bound) in progress; Phase B (the WordprocessingML resolver) is
+new scope; Phase C (DrawingML and SpreadsheetML) waits for a consumer.
 **Depends on:** docx4j CR-034 (phases 0 to 3 done 2026-10-12: `3dbe4eee5` the resolver,
 `2e381ef26` the outputs and `StyleUtil`, on `VERSION_17_3_3`, local and not yet pushed) and this
 repository's CR-002 Phase B (implemented, section 15), whose property catalogue mirrors
@@ -216,19 +216,22 @@ that leaks a shade resolves the wrong colour).
   are read from the sibling checkout and the tests skip without it; CI runs without them, as it
   does without the goldens.
 
-## 9. Open questions (recommendations for decision)
+## 9. Questions (decided 2026-10-12, every recommendation accepted)
 
 1. **Port Phase A before the goldens are regenerated, with the two pins?** *Recommendation: yes.*
+   **Decided 2026-10-12: yes.**
    The rule is measured (Word's PDF of 3229) and the Java is committed; the pins are strict, so
    the regeneration cannot pass silently. The alternative is to wait for docx4j-core-ts's
    regeneration and port the same day, which ties a half-day correction to two other
    repositories' schedules.
-2. **Does `Font.color` report the drawn colour?** *Recommendation: yes*, in Phase B: Office JS's
+2. **Does `Font.color` report the drawn colour?** *Recommendation: yes*, in Phase B
+   (**decided 2026-10-12: yes**): Office JS's
    `font.color` is what Word shows, the content API's reads have been effective since CR-002
    Phase B, and the written value stays reachable through the typed tree and `to_dict()`'s new
    keys. The alternative, a separate `Font.resolved_color`, keeps 0.1.0's answer for a stale cache
    that Word itself does not draw.
-3. **Does the python-docx facade gain a resolved colour?** *Recommendation: no*, not in this CR:
+3. **Does the python-docx facade gain a resolved colour?** *Recommendation: no*, not in this CR
+   (**decided 2026-10-12: no**):
    python-docx's `ColorFormat.rgb` is the written value and the facade promises python-docx's
    semantics (CR-003 section 20); a caller who wants Word's drawing has the content API. Revisit if
    `docx4j-mcp-py` asks for colours, which CR-006 does not.
