@@ -10,16 +10,19 @@ every test over them skips when it is absent.
 
 This module is what the three golden tests share: where the goldens are, which
 fixture each belongs to, the harness's ``Walk`` over a story, its ``textOf``,
-and the comparison of a property value --- an XML string docx4j marshalled with
-**its** prefixes --- as an **object tree**, never as text.
+the comparison of a property value --- an XML string docx4j marshalled with
+**its** prefixes --- as an **object tree**, never as text, and :data:`PINS`, the
+differences this package expects until the goldens are regenerated.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 from conftest import FIXTURES, ROOT
 
 from docx4j_py.child import iter_children
@@ -217,3 +220,129 @@ def same(ours: Any, theirs: Any, where: str, name: str | None = None,
         f"{where}:\n  ours   {None if ours is None else to_xml(ours, name=name)}"
         f"\n  docx4j {theirs}"
     )
+
+
+# ---------------------------------------------------------------------------
+# pinned differences
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class Pin:
+    """One comparison of one golden that is expected to differ, and why.
+
+    ``where`` is the comparison's label exactly as the test hands it to
+    :func:`same`, so a pin covers that comparison and nothing else.
+    """
+
+    test: str
+    golden: str
+    where: str
+    reason: str
+
+
+#: Where this package is ahead of the goldens. CR-009 Phase A ported docx4j
+#: CR-034's colour merge rules (docx4j ``2e381ef26``, 17.3.3) before the goldens
+#: were regenerated at that commit, which docx4j-core-ts's CR-008 phase 1 does;
+#: CR-009 section 2 measured these two as the only comparisons that move. Each
+#: pin marks its (test, golden) pair ``xfail(strict=True)``, so the regeneration
+#: turns it into an unexpected pass and the pin comes out.
+PINS: tuple[Pin, ...] = (
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="fonts-modesOfApplication",
+        where=(
+            "fonts-modesOfApplication/main[5] 'This is a simple document, with some text "
+            "in a new font, and an rPr.' run 3: effectiveRPr"
+        ),
+        reason=(
+            "CR-009 Phase A, docx4j CR-034's 'a colour inherits as one': Heading1's w:color "
+            "is accent1 with themeShade BF, the run's character style SubtleReference states "
+            "accent2 C0504D with no shade, so the run is plain accent2; the golden, recorded "
+            "before docx4j 2e381ef26, keeps the leaked themeShade BF. Waits for docx4j-core-ts "
+            "CR-008 phase 1 to regenerate the goldens at docx4j 2e381ef26 or later"
+        ),
+    ),
+    Pin(
+        test="test_every_table_resolves_as_docx4j_resolves_it",
+        golden="invoice2013",
+        where="invoice2013: table 0: effectiveTableStyle",
+        reason=(
+            "CR-009 Phase A, docx4j CR-034's 'auto states a colour' and 'a colour inherits as "
+            "one': the table's own w:tblBorders state none with color auto over TableGrid's "
+            "single 000000 themeColor text1, so auto replaces the reference; the golden, "
+            "recorded before docx4j 2e381ef26, keeps themeColor text1 beside auto. Waits for "
+            "docx4j-core-ts CR-008 phase 1 to regenerate the goldens at docx4j 2e381ef26 or "
+            "later"
+        ),
+    ),
+)
+
+
+class PinnedDifference(AssertionError):
+    """A pinned comparison differed, as its :class:`Pin` expects.
+
+    A pinned pair is marked ``xfail(strict=True, raises=PinnedDifference)``, so
+    any *other* difference in the same golden --- a plain ``AssertionError`` ---
+    still fails the test, and a pinned comparison that no longer differs makes
+    the pair an unexpected pass.
+    """
+
+
+def _pins(test: str, golden: str) -> list[Pin]:
+    return [pin for pin in PINS if pin.test == test and pin.golden == golden]
+
+
+def goldens_for(test: str) -> list[Any]:
+    """:func:`all_goldens`, one ``pytest.param`` each, a pinned pair marked ``xfail``."""
+    params = []
+    for path in all_goldens():
+        pins = _pins(test, path.stem)
+        marks = (
+            [
+                pytest.mark.xfail(
+                    strict=True,
+                    raises=PinnedDifference,
+                    reason="; ".join(pin.reason for pin in pins),
+                )
+            ]
+            if pins
+            else []
+        )
+        params.append(pytest.param(path, id=path.stem, marks=marks))
+    return params
+
+
+def each_golden(function: Any) -> Any:
+    """Parametrise a test over :func:`goldens_for` its own name: its pins marked ``xfail``."""
+    return pytest.mark.parametrize("golden", goldens_for(function.__name__))(function)
+
+
+class Comparisons:
+    """:func:`same` for one test over one golden, which knows that pair's pins.
+
+    An unpinned difference raises at once, as :func:`same` does. A pinned one is
+    held, the rest of the golden is still compared, and :meth:`finish` raises
+    :class:`PinnedDifference` with what was held.
+    """
+
+    def __init__(self, test: str, golden: Path) -> None:
+        self._pins = {pin.where: pin for pin in _pins(test, golden.stem)}
+        self._held: list[str] = []
+
+    def same(self, ours: Any, theirs: Any, where: str, name: str | None = None,
+             wrapper: type | str | None = None) -> None:
+        """:func:`same`, a pinned difference held for :meth:`finish`."""
+        pin = self._pins.get(where)
+        if pin is None:
+            same(ours, theirs, where, name=name, wrapper=wrapper)
+            return
+        try:
+            same(ours, theirs, where, name=name, wrapper=wrapper)
+        except AssertionError as error:
+            self._held.append(f"{error}\n  pinned: {pin.reason}")
+
+    def finish(self) -> None:
+        """Raise :class:`PinnedDifference` if a pinned comparison differed."""
+        if self._held:
+            raise PinnedDifference("\n".join(self._held))

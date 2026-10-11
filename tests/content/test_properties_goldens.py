@@ -14,6 +14,11 @@ Everything is compared **as an object tree**: docx4j marshalled its answers
 with its own prefixes, so both sides go through one unmarshal and ours through
 a marshal first, and neither prefixes nor attribute order nor the class a
 member happens to be is part of the contract (CR-002 §12.12).
+
+A comparison named in ``goldens.PINS`` is expected to differ until the goldens
+are regenerated (CR-009 Phase A: two, where this package already merges colours
+as docx4j 17.3.3 does); its (test, golden) pair is ``xfail(strict=True)`` and
+every other comparison of the golden is still held to zero differences.
 """
 
 from __future__ import annotations
@@ -27,12 +32,12 @@ from goldens import (
     W_PPR,
     W_RPR,
     W_STYLE,
-    all_goldens,
+    Comparisons,
     children_of,
+    each_golden,
     fixture_for,
     read,
     runs_of,
-    same,
     story,
     walk,
 )
@@ -53,22 +58,25 @@ def _resolver(golden: Path) -> tuple[Any, Any, dict[str, Any]]:
     return package, package.get_property_resolver(), recorded
 
 
-@pytest.mark.parametrize("golden", all_goldens(), ids=lambda path: path.stem)
-def test_the_styles_resolve_as_docx4j_resolves_them(golden: Path) -> None:
+@each_golden
+def test_the_styles_resolve_as_docx4j_resolves_them(
+    golden: Path, request: pytest.FixtureRequest
+) -> None:
     """The document defaults and every style id in the part."""
     _package, resolver, recorded = _resolver(golden)
+    check = Comparisons(request.node.originalname, golden)
     styles = recorded["styles"]
 
     assert resolver.default_paragraph_style_id == styles["defaultParagraphStyleId"], (
         f"{golden.stem}: default paragraph style"
     )
-    same(
+    check.same(
         resolver.get_document_default_ppr(),
         styles["documentDefaults"]["pPr"],
         f"{golden.stem}: document default w:pPr",
         name=W_PPR,
     )
-    same(
+    check.same(
         resolver.get_document_default_rpr(),
         styles["documentDefaults"]["rPr"],
         f"{golden.stem}: document default w:rPr",
@@ -81,24 +89,28 @@ def test_the_styles_resolve_as_docx4j_resolves_them(golden: Path) -> None:
         assert str(getattr(style.type_value, "value", style.type_value)) == want["type"]
         assert getattr(style.based_on, "val", None) == want["basedOn"]
         assert bool(style.default) == want["isDefault"]
-        same(
+        check.same(
             resolver.get_effective_ppr(style_id),
             want["effectivePPr"],
             f"{golden.stem}: effectivePPr({style_id!r})",
             name=W_PPR,
         )
-        same(
+        check.same(
             resolver.get_effective_rpr(style_id),
             want["effectiveRPr"],
             f"{golden.stem}: effectiveRPr({style_id!r})",
             name=W_RPR,
         )
+    check.finish()
 
 
-@pytest.mark.parametrize("golden", all_goldens(), ids=lambda path: path.stem)
-def test_every_paragraph_and_run_resolves_as_docx4j_resolves_it(golden: Path) -> None:
+@each_golden
+def test_every_paragraph_and_run_resolves_as_docx4j_resolves_it(
+    golden: Path, request: pytest.FixtureRequest
+) -> None:
     """``effectivePPr``, ``paragraphMarkRPr`` and every run's ``effectiveRPr``."""
     package, resolver, recorded = _resolver(golden)
+    check = Comparisons(request.node.originalname, golden)
     compared = 0
 
     for key, recorded_story in recorded["stories"].items():
@@ -113,13 +125,13 @@ def test_every_paragraph_and_run_resolves_as_docx4j_resolves_it(golden: Path) ->
         for (paragraph, _state), want in zip(found, expected, strict=True):
             where = f"{golden.stem}/{key}[{want['index']}] {want['text']!r}"
             p_pr = paragraph.p_pr
-            same(
+            check.same(
                 resolver.get_effective_ppr(p_pr),
                 want["effectivePPr"],
                 f"{where}: effectivePPr",
                 name=W_PPR,
             )
-            same(
+            check.same(
                 resolver.get_effective_paragraph_mark_rpr(p_pr),
                 want["paragraphMarkRPr"],
                 f"{where}: paragraphMarkRPr",
@@ -132,7 +144,7 @@ def test_every_paragraph_and_run_resolves_as_docx4j_resolves_it(golden: Path) ->
                 f"{where}: {len(runs)} runs, docx4j walked {len(want['runs'])}"
             )
             for index, (run, run_want) in enumerate(zip(runs, want["runs"], strict=True)):
-                same(
+                check.same(
                     resolver.get_effective_rpr(run.r_pr, p_pr),
                     run_want["effectiveRPr"],
                     f"{where} run {index}: effectiveRPr",
@@ -141,12 +153,16 @@ def test_every_paragraph_and_run_resolves_as_docx4j_resolves_it(golden: Path) ->
                 compared += 1
 
     assert compared > 0
+    check.finish()
 
 
-@pytest.mark.parametrize("golden", all_goldens(), ids=lambda path: path.stem)
-def test_every_table_resolves_as_docx4j_resolves_it(golden: Path) -> None:
+@each_golden
+def test_every_table_resolves_as_docx4j_resolves_it(
+    golden: Path, request: pytest.FixtureRequest
+) -> None:
     """The effective table style of every ``w:tbl`` of the main story."""
     package, resolver, recorded = _resolver(golden)
+    check = Comparisons(request.node.originalname, golden)
     tables = _tables_of(package.main_document_part.contents.body)
     assert len(tables) == len(recorded["tables"]), (
         f"{golden.stem}: {len(tables)} tables, docx4j found {len(recorded['tables'])}"
@@ -155,7 +171,7 @@ def test_every_table_resolves_as_docx4j_resolves_it(golden: Path) -> None:
         where = f"{golden.stem}: table {want['index']}"
         tbl_pr = table.tbl_pr
         assert getattr(getattr(tbl_pr, "tbl_style", None), "val", None) == want["tblStyle"]
-        same(
+        check.same(
             resolver.get_effective_table_style(tbl_pr),
             want["effectiveTableStyle"],
             f"{where}: effectiveTableStyle",
@@ -164,6 +180,7 @@ def test_every_table_resolves_as_docx4j_resolves_it(golden: Path) -> None:
         assert resolver.reaches_default_table_style(tbl_pr) == want[
             "reachesDefaultTableStyle"
         ], f"{where}: reachesDefaultTableStyle"
+    check.finish()
 
 
 def _tables_of(root: Any) -> list[Any]:

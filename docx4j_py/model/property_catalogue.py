@@ -69,8 +69,12 @@ def copy_leaf(value: Any) -> Any:
 
 
 def _empty_scalar(value: Any) -> bool:
-    """docx4j ``StyleUtil.isEmpty(String)``: absent, or the empty string."""
-    return value is None or value == ""
+    """docx4j ``StyleUtil.isEmpty(String)``: absent, or the empty string.
+
+    The model holds an ``ST_HexColor`` as ``bytes`` (``w:val=""`` parses to
+    ``b""``), where docx4j holds a ``String``, so ``b""`` is the empty string too.
+    """
+    return value is None or value == "" or value == b""
 
 
 def _attr(source: Any, destination: Any) -> Any:
@@ -83,9 +87,14 @@ def _empty_theme_colour(value: Any) -> bool:
     return value is None or getattr(value, "value", value) == "none"
 
 
-def _theme_colour(source: Any, destination: Any) -> Any:
-    """``none`` does not override an inherited theme colour."""
-    return destination if _empty_theme_colour(source) else source
+def _states_colour(value: Any, theme_colour: Any) -> bool:
+    """docx4j ``StyleUtil.statesColour``: whether a colour's value or theme reference is stated.
+
+    Where it is, the colour inherits as one (:func:`_merge_colour`). ``auto`` ---
+    the ``STHexColorAuto`` member --- is a stated value, as it is a non-empty
+    ``String`` to docx4j; a theme reference of ``none`` is not a stated reference.
+    """
+    return not _empty_scalar(value) or not _empty_theme_colour(theme_colour)
 
 
 # ---------------------------------------------------------------- emptiness
@@ -126,13 +135,30 @@ def is_empty_r_fonts(value: Any) -> bool:
 
 
 def is_empty_color(value: Any) -> bool:
-    """docx4j ``isEmpty(Color)``: no ``w:val``."""
-    return value is None or _empty_scalar(value.val)
+    """docx4j ``isEmpty(Color)``: no value and no theme attribute (since docx4j 17.3.3).
+
+    A ``w:color`` stating only a theme colour is not empty, so a style's
+    ``w:themeColor="accent1"`` with no ``w:val`` is inherited, where before
+    docx4j's CR-034 only ``w:val`` counted and it was dropped. As in the Java,
+    the reference counts when it is present at all, ``none`` included.
+    """
+    return value is None or (
+        _empty_scalar(value.val)
+        and value.theme_color is None
+        and _empty_scalar(value.theme_tint)
+        and _empty_scalar(value.theme_shade)
+    )
 
 
 def is_empty_u(value: Any) -> bool:
-    """docx4j ``isEmpty(U)``: neither a kind nor a colour."""
-    return value is None or (value.val is None and _empty_scalar(value.color))
+    """docx4j ``isEmpty(U)``: neither a kind nor a colour, the theme attributes counted (17.3.3)."""
+    return value is None or (
+        value.val is None
+        and _empty_scalar(value.color)
+        and value.theme_color is None
+        and _empty_scalar(value.theme_tint)
+        and _empty_scalar(value.theme_shade)
+    )
 
 
 def is_empty_lang(value: Any) -> bool:
@@ -431,32 +457,60 @@ def merge_r_fonts(source: Any, destination: Any) -> Any:
     return out
 
 
+#: The four attributes of one colour, as :func:`_merge_colour` takes them: the
+#: value, the theme reference, its tint and its shade.
+_COLOR = ("val", "theme_color", "theme_tint", "theme_shade")
+#: ``w:u``'s colour, ``w:shd``'s pattern colour and a border's colour.
+_COLOR_ATTRIBUTE = ("color", "theme_color", "theme_tint", "theme_shade")
+#: ``w:shd``'s fill.
+_FILL = ("fill", "theme_fill", "theme_fill_tint", "theme_fill_shade")
+
+
+def _merge_colour(source: Any, destination: Any, names: tuple[str, str, str, str]) -> None:
+    """A colour inherits **as one** (docx4j 17.3.3, its CR-034).
+
+    Where the source states a value or a theme reference (:func:`_states_colour`),
+    its value, reference, tint and shade replace the destination's together,
+    ``None`` included; otherwise a tint or a shade stated alone still inherits on
+    its own. Word draws a theme reference over the value written beside it, so
+    taken attribute by attribute --- CR-015's merge, before 17.3.3 --- a run's
+    ``w:val="auto"`` under a style's ``w:themeColor="accent1"`` kept the style's
+    reference, and a character style's plain ``accent2`` kept a paragraph style's
+    ``w:themeShade``, where Word draws the first black and the second in the
+    plain accent.
+
+    ``names`` is the colour's four attribute names, value first: :data:`_COLOR`,
+    :data:`_COLOR_ATTRIBUTE` or :data:`_FILL`.
+    """
+    value, theme_colour, tint, shade = names
+    if _states_colour(getattr(source, value), getattr(source, theme_colour)):
+        for name in names:
+            setattr(destination, name, getattr(source, name))
+    else:
+        setattr(destination, tint, _attr(getattr(source, tint), getattr(destination, tint)))
+        setattr(destination, shade, _attr(getattr(source, shade), getattr(destination, shade)))
+
+
 def merge_color(source: Any, destination: Any) -> Any:
-    """``w:color``: each attribute inherits on its own."""
+    """docx4j ``apply(Color, Color)``: ``w:color`` inherits as one (:func:`_merge_colour`)."""
     from docx4j_py.wml import Color
 
     if is_empty_color(source):
         return destination
     out = Color() if destination is None else destination
-    out.theme_color = _theme_colour(source.theme_color, out.theme_color)
-    out.theme_shade = _attr(source.theme_shade, out.theme_shade)
-    out.theme_tint = _attr(source.theme_tint, out.theme_tint)
-    out.val = _attr(source.val, out.val)
+    _merge_colour(source, out, _COLOR)
     return out
 
 
 def merge_u(source: Any, destination: Any) -> Any:
-    """``w:u``: the kind and the colour attributes each inherit on their own."""
+    """docx4j ``apply(U, U)``: the kind inherits on its own, the colour as one."""
     from docx4j_py.wml import U
 
     if is_empty_u(source):
         return destination
     out = U() if destination is None else destination
     out.val = _attr(source.val, out.val)
-    out.color = _attr(source.color, out.color)
-    out.theme_color = _theme_colour(source.theme_color, out.theme_color)
-    out.theme_tint = _attr(source.theme_tint, out.theme_tint)
-    out.theme_shade = _attr(source.theme_shade, out.theme_shade)
+    _merge_colour(source, out, _COLOR_ATTRIBUTE)
     return out
 
 
@@ -474,38 +528,38 @@ def merge_lang(source: Any, destination: Any) -> Any:
 
 
 def merge_shd(source: Any, destination: Any) -> Any:
-    """``w:shd``: per attribute, the enums only where the source states them."""
+    """docx4j ``apply(CTShd, CTShd)``: the pattern inherits on its own, each colour as one.
+
+    The pattern colour and the fill are two colours (:func:`_merge_colour`), so a
+    direct ``w:shd`` stating only a pattern keeps an inherited ``w:themeFill``
+    (CR-015), and one stating a fill replaces the inherited fill's reference.
+    """
     from docx4j_py.wml import CTShd
 
     if is_empty_shd(source):
         return destination
     out = CTShd() if destination is None else destination
-    out.color = _attr(source.color, out.color)
-    out.fill = _attr(source.fill, out.fill)
     out.val = _attr(source.val, out.val)
-    out.theme_tint = _attr(source.theme_tint, out.theme_tint)
-    out.theme_shade = _attr(source.theme_shade, out.theme_shade)
-    out.theme_fill_tint = _attr(source.theme_fill_tint, out.theme_fill_tint)
-    out.theme_fill_shade = _attr(source.theme_fill_shade, out.theme_fill_shade)
-    out.theme_color = _theme_colour(source.theme_color, out.theme_color)
-    out.theme_fill = _theme_colour(source.theme_fill, out.theme_fill)
+    _merge_colour(source, out, _COLOR_ATTRIBUTE)
+    _merge_colour(source, out, _FILL)
     return out
 
 
 def merge_border(source: Any, destination: Any) -> Any:
-    """``w:bdr`` and every edge of a border set: per attribute."""
+    """docx4j ``apply(CTBorder, CTBorder)``, for ``w:bdr`` and every edge of a border set.
+
+    ``w:val``, ``w:sz`` and ``w:space`` each inherit on their own, the colour as
+    one (:func:`_merge_colour`).
+    """
     from docx4j_py.wml import CTBorder
 
     if is_empty_border(source):
         return destination
     out = CTBorder() if destination is None else destination
-    out.color = _attr(source.color, out.color)
     out.space = _attr(source.space, out.space)
     out.sz = _attr(source.sz, out.sz)
-    out.theme_color = _theme_colour(source.theme_color, out.theme_color)
-    out.theme_shade = _attr(source.theme_shade, out.theme_shade)
-    out.theme_tint = _attr(source.theme_tint, out.theme_tint)
     out.val = _attr(source.val, out.val)
+    _merge_colour(source, out, _COLOR_ATTRIBUTE)
     return out
 
 

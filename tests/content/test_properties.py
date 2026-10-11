@@ -3,7 +3,8 @@
 The parity with docx4j is ``test_properties_goldens.py``; this is what the
 goldens cannot say: that building a resolver costs a document no byte of its
 round trip, that resolution writes nothing into the styles part, the catalogue's
-own completeness, the toggle rule of ECMA-376-1 17.7.3, the cycle guard, and the
+own completeness, the toggle rule of ECMA-376-1 17.7.3, the colour merge rules of
+docx4j 17.3.3 (CR-009 Phase A, ahead of the goldens), the cycle guard, and the
 wiring into the package and the content API.
 """
 
@@ -23,7 +24,21 @@ from docx4j_py.model.style_util import (
     toggle,
 )
 from docx4j_py.openpackaging.exceptions import CyclicStylesException, Docx4JException
-from docx4j_py.wml import BooleanDefaultTrue, RPr, Styles, wml
+from docx4j_py.wml import (
+    BooleanDefaultTrue,
+    Color,
+    CTBorder,
+    CTShd,
+    RPr,
+    STBorder,
+    STHexColorAuto,
+    STShd,
+    STThemeColor,
+    Styles,
+    U,
+    UnderlineEnumeration,
+    wml,
+)
 
 # ---------------------------------------------------------------------------
 # the catalogue
@@ -127,6 +142,111 @@ def test_the_toggle_rule():
     assert catalogue.is_true(toggle(_off(), _on(), None)) is True
     # with no level beneath, the level's own false stands
     assert catalogue.is_true(toggle(_off(), None, None)) is False
+
+
+# ---------------------------------------------------------------------------
+# a colour inherits as one (docx4j 17.3.3, its CR-034; CR-009 Phase A)
+# ---------------------------------------------------------------------------
+# docx4j's StyleUtilMergeRulesTest, the three CR-034 cases. Its areEqual
+# assertions have no counterpart: the catalogue compares nothing.
+
+
+def _hex(value: str) -> bytes:
+    """An ``ST_HexColor``, which the model holds as bytes."""
+    return bytes.fromhex(value)
+
+
+def test_a_colour_stating_a_value_replaces_an_inherited_theme_reference():
+    """Word draws a reference over the value beside it: a run's red must not keep accent1."""
+    inherited = Color(val=_hex("0F4761"), theme_color=STThemeColor.ACCENT1, theme_shade="BF")
+    direct = Color(val=_hex("FF0000"))
+
+    merged = catalogue.merge_color(direct, inherited)
+    assert merged.val == _hex("FF0000")
+    assert merged.theme_color is None
+    assert merged.theme_shade is None
+
+
+def test_a_colour_stating_only_a_theme_reference():
+    """Not empty, so inherited, and it replaces a value; a tint alone still inherits."""
+    theme_only = Color(theme_color=STThemeColor.ACCENT2)
+    assert catalogue.is_empty_color(theme_only) is False
+    assert catalogue.merge_color(theme_only, None).theme_color is STThemeColor.ACCENT2
+
+    inherited = Color(val=_hex("FF0000"))
+    merged = catalogue.merge_color(theme_only, inherited)
+    assert merged.val is None
+    assert merged.theme_color is STThemeColor.ACCENT2
+
+    # a tint alone still inherits on its own
+    merged = catalogue.merge_color(Color(theme_tint="99"), merged)
+    assert merged.theme_color is STThemeColor.ACCENT2
+    assert merged.theme_tint == "99"
+
+
+def test_shading_fill_border_and_underline_colours_inherit_as_one():
+    shd = CTShd(
+        val=STShd.CLEAR,
+        color=STHexColorAuto.AUTO,
+        fill=_hex("156082"),
+        theme_fill=STThemeColor.ACCENT1,
+    )
+    merged_shd = catalogue.merge_shd(CTShd(fill=_hex("FFFF00")), shd)
+    assert merged_shd.fill == _hex("FFFF00")
+    assert merged_shd.theme_fill is None
+    assert merged_shd.color is STHexColorAuto.AUTO, "the pattern colour is its own"
+    assert merged_shd.val is STShd.CLEAR
+
+    border = CTBorder(
+        val=STBorder.SINGLE, sz=4, color=_hex("156082"), theme_color=STThemeColor.ACCENT1
+    )
+    merged_border = catalogue.merge_border(CTBorder(color=_hex("FF0000")), border)
+    assert merged_border.color == _hex("FF0000")
+    assert merged_border.theme_color is None
+    assert merged_border.val is STBorder.SINGLE
+
+    u = U(val=UnderlineEnumeration.SINGLE, color=_hex("156082"), theme_color=STThemeColor.ACCENT1)
+    red_u = U(color=_hex("FF0000"))
+    merged_u = catalogue.merge_u(red_u, u)
+    assert merged_u.val is UnderlineEnumeration.SINGLE
+    assert merged_u.color == _hex("FF0000")
+    assert merged_u.theme_color is None
+
+    assert catalogue.is_empty_u(U(theme_color=STThemeColor.ACCENT4)) is False
+
+
+def test_auto_states_a_colour_and_none_does_not():
+    """The model's own spellings: ``auto`` is an enum member, the hex is bytes.
+
+    Corpus document 3229's case, through the resolver: a run's own
+    ``w:color w:val="auto"`` under a style coloured accent1 shaded BF is black
+    in Word, so nothing of the style's colour survives.
+    """
+    styles = wml(
+        "<w:styles>"
+        "<w:style w:type='paragraph' w:styleId='Accent'>"
+        "<w:rPr><w:color w:val='365F91' w:themeColor='accent1' w:themeShade='BF'/></w:rPr>"
+        "</w:style>"
+        "</w:styles>"
+    )
+    resolver = PropertyResolver(styles=styles)
+    p_pr = wml("<w:pPr><w:pStyle w:val='Accent'/></w:pPr>")
+    r_pr = wml("<w:rPr><w:color w:val='auto'/></w:rPr>")
+    effective = resolver.get_effective_rpr(r_pr, p_pr)
+    assert effective.color.val is STHexColorAuto.AUTO
+    assert effective.color.theme_color is None
+    assert effective.color.theme_shade is None
+
+    # a reference of none states nothing: the value and the shade beneath stay
+    inherited = Color(val=_hex("365F91"), theme_color=STThemeColor.ACCENT1, theme_shade="BF")
+    merged = catalogue.merge_color(Color(theme_color=STThemeColor.NONE), inherited)
+    assert merged.val == _hex("365F91")
+    assert merged.theme_color is STThemeColor.ACCENT1
+    assert merged.theme_shade == "BF"
+    # but it is not empty, as the Java's getThemeColor() == null is not
+    assert catalogue.is_empty_color(Color(theme_color=STThemeColor.NONE)) is False
+    # and an empty value is docx4j's empty string
+    assert catalogue.is_empty_color(Color(val=b"")) is True
 
 
 # ---------------------------------------------------------------------------
