@@ -282,6 +282,34 @@ values and say so (section 3.2); without CR-005, chart creation is refused (sect
 Nineteen days for A to E; F when its dependencies land. Each phase ends with implementation
 notes in this CR, the status line and the index updated, the README's example executed.
 
+**Hand-off from docx4j CR-035 phase 2 (2026-10-12, docx4j `276325167` on `VERSION_17_3_3`,
+unpushed; its CR section 4.2 the design, section 11 the record).** The chart read model exists in
+Java and has a JSON oracle, which Phase C's `Chart` reads and Phase F's creation are measured
+against the way CR-002 Phase B is measured against the parity goldens: consumed from the sibling
+checkout, nothing copied. `org.docx4j.model.chart`: `Charts.in(pkg)`, every chart a docx, pptx or
+xlsx places, in document order, as a `ChartRef` (host part, anchor, extent, name, the `c:` or
+`cx:` chart part, whether it sat in an `mc:AlternateContent` Choice, as every chartex waterfall
+does); `ChartModel.read(chart, hostTheme)`, groups, series, axes, title, legend and chart-wide
+settings, the series through one adapter over the eight `ser` classes, series hidden by Excel's
+chart filter (`c15:filtered*Series`) included and marked hidden, data keyed by `c:pt/@idx` with
+`ptCount` (a gap is null, `#N/A` kept as text), fills automatic where unstated and solid colours
+resolved in the host's theme through CR-034 (here CR-009 Phase C); `ChartExModel` from the chartex
+caches; `ChartCells`, the data from the cells and where it differs from the caches. The **shown**
+values follow MS-OI29500 and are part of the oracle: a title with no text shows "Chart Title" or
+the name of a single named series (2.1.1561); a series with no name is "SeriesN" with N = idx + 1
+(2.1.1565); `varyColors` is ignored with more than one series and on area, stock and filled radar
+(2.1.1571); a pie shows only its first series (2.1.1519); data-label positions have per-kind
+defaults (2.1.1456); each kind has its own supported `dispBlanksAs` values and default (2.1.1452).
+The oracle: `../docx4j/docx4j-core-tests/src/test/resources/charts/json/`, 32 goldens (29 charts,
+3 chartex), one per chart part of every fixture in `charts/` (its `README.md`), format version 1:
+fixed member order, two-space indent, cache numbers as written, gaps as null. The fixtures include
+16 Excel-made probes (`p2-*`: every chart kind, a combination chart on a secondary axis, a
+chartsheet, gaps, multi-level categories, a filtered series and category, a chart pasted into
+PowerPoint). A measured fact for `replace_data` and for creation: Excel hides a filtered category
+by narrowing every series' `c:f` to a union of the visible cells, such as
+`(Sheet1!$A$2:$A$3,Sheet1!$A$5)`, the cache holding only those points and the full range in
+`c15:fullRef`; it does not use `categoryFilterExceptions`. CR-005 Phase G shares this oracle.
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary: PowerPoint JS or python-pptx as the primary API.** Recommendation: PowerPoint

@@ -255,6 +255,18 @@ serialiser; it is a dependency for the experience, not the design.
 
 Seventeen days for A to F. Section 2's constraints are Phase A's acceptance test.
 
+**Hand-off from docx4j CR-035 phase 2 (2026-10-12, docx4j `276325167` on `VERSION_17_3_3`,
+unpushed).** Phase D's `Chart` read and Phase G's creation have an oracle: docx4j's chart read
+model (`org.docx4j.model.chart`: `Charts.in`, `ChartModel`, `ChartExModel`, `ChartCells`) and its
+32 JSON goldens in `../docx4j/docx4j-core-tests/src/test/resources/charts/json/`, one per chart
+part of every fixture in `charts/`, 16 of them Excel-made probes (`p2-*`) covering every chart
+kind, a chartsheet, gaps and `#N/A`, multi-level categories, a filtered series and category, and a
+combination chart on a secondary axis. The detail, the MS-OI29500 "shown" rules and Excel's
+filtered-category markup (`c:f` narrowed to a union of the visible cells, the full range in
+`c15:fullRef`) are recorded once, in CR-004 section 8, which this CR shares; `ChartCells` --- the
+data from the cells against the caches --- is the piece a workbook needs that a deck does not.
+Consumed from the sibling checkout, nothing copied, as the parity goldens are.
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary.** Recommendation: Excel JS for the content API, openpyxl for the facade, for the
