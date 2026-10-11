@@ -1122,6 +1122,18 @@ order nor the class a member happens to be is part of the contract.
 6. **Table conditional formatting stays out**, as docx4j's own `table-conditions` CR has it.
    `apply_tbl_style_pr_list` merges a style's `w:tblStylePr` per condition, because
    `apply(Style, Style)` does; nothing applies a condition to a cell.
+7. **The colour merge rules are docx4j 17.3.3's, ahead of the goldens** (2026-10-12,
+   [CR-009](CR-009-theme-colours.md) Phase A, its section 10). docx4j's CR-034 (`2e381ef26`) made
+   `isEmpty(Color)` and `isEmpty(U)` count the theme attributes, and made a colour inherit **as
+   one**: where a layer states a value or a theme reference, its value, reference, tint and shade
+   replace the ones beneath together --- in `w:color`, `w:u`'s colour, `w:shd`'s pattern colour
+   and fill (each its own) and every border edge --- because Word draws the reference over the
+   value written beside it. `is_empty_color`, `is_empty_u`, `merge_color`, `merge_u`, `merge_shd`
+   and `merge_border` mirror that commit, in place of docx4j CR-015's attribute-by-attribute
+   merge, which this catalogue first mirrored. The goldens, recorded before it, still hold the
+   old merge in two comparisons (`fonts-modesOfApplication` `main[5]` run 3 and `invoice2013`
+   table 0), which `tests/content/goldens.py`'s `PINS` mark `xfail(strict=True)` comparison by
+   comparison until docx4j-core-ts regenerates them; nothing else in the goldens moved.
 
 **Quirks reproduced deliberately**, each because a golden records it:
 

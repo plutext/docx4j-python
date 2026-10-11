@@ -1,9 +1,12 @@
 # CR-009: Theme colours --- the colour merge rules docx4j CR-034 changed, and its colour resolver
 
 **Status:** Proposed 2026-10-12, on docx4j CR-034's hand-off (the docx4j session, 2026-10-12,
-after its phase 3). **Decided 2026-10-12: all three recommendations of section 9 accepted**; Phase
-A (the merge rules, small and parity-bound) in progress; Phase B (the WordprocessingML resolver) is
-new scope; Phase C (DrawingML and SpreadsheetML) waits for a consumer.
+after its phase 3). **Decided 2026-10-12: all three recommendations of section 9 accepted**;
+**Phase A (the merge rules) implemented 2026-10-12** (section 10): the catalogue mirrors
+`StyleUtil` at docx4j `2e381ef26`, exactly the two comparisons of section 2 move and are pinned
+`xfail(strict=True)` until docx4j-core-ts regenerates the goldens, and no content-API answer over
+the 64 corpus documents changes; Phase B (the WordprocessingML resolver) is new scope; Phase C
+(DrawingML and SpreadsheetML) waits for a consumer.
 **Depends on:** docx4j CR-034 (phases 0 to 3 done 2026-10-12: `3dbe4eee5` the resolver,
 `2e381ef26` the outputs and `StyleUtil`, on `VERSION_17_3_3`, local and not yet pushed) and this
 repository's CR-002 Phase B (implemented, section 15), whose property catalogue mirrors
@@ -235,3 +238,169 @@ that leaks a shade resolves the wrong colour).
    python-docx's `ColorFormat.rgb` is the written value and the facade promises python-docx's
    semantics (CR-003 section 20); a caller who wants Word's drawing has the content API. Revisit if
    `docx4j-mcp-py` asks for colours, which CR-006 does not.
+
+## 10. Phase A: implementation notes (2026-10-12)
+
+Phase A is done. The property catalogue mirrors docx4j's `StyleUtil` at `2e381ef26` for the four
+elements that carry a colour, the parity goldens move in exactly the two comparisons section 2
+measured and nowhere else, and those two are pinned until docx4j-core-ts regenerates the goldens.
+No content-API answer over the 64 corpus documents changes.
+
+### 10.1 What landed
+
+| file | lines | what changed |
+|---|---:|---|
+| `docx4j_py/model/property_catalogue.py` | 1,180 (+87, −33) | `is_empty_color` and `is_empty_u` count the theme attributes; `_states_colour` (docx4j's `statesColour`) and `_merge_colour`, the one rule the four merges share; `merge_color`, `merge_u`, `merge_shd` and `merge_border` rewritten over it; `_theme_colour` (the enum-by-enum rule) removed, nothing else using it; `_empty_scalar` counting `b""` (10.8 item 2) |
+| `tests/content/test_properties.py` | 425 (+122, −2) | four tests: the three CR-034 cases of `StyleUtilMergeRulesTest`, and one for this model's spellings (10.3) |
+| `tests/content/goldens.py` | 348 (+131, −2) | `Pin`, `PINS`, `PinnedDifference`, `goldens_for`, `each_golden` and `Comparisons`: the pins (10.4) |
+| `tests/content/test_properties_goldens.py` | 203 (+33, −16) | its three tests parametrised through `each_golden` and comparing through `Comparisons` |
+
+`merge_p_bdr`, `_merge_tbl_borders` and `_merge_tc_borders` call `merge_border` edge by edge and
+needed nothing; `unset_catalogue` and `has_direct_formatting_of` go through the same `is_empty_*`
+functions (section 3 item 3). Nothing in the engine, the content API or the facade changed, and
+nothing that writes: no Word check, and the `slow` round trip was not run.
+
+### 10.2 The rules as built
+
+1. **Emptiness.** `is_empty_color` is true only when `w:val`, `w:themeColor`, `w:themeTint` and
+   `w:themeShade` are all absent (the value, tint and shade also when empty); `is_empty_u` the
+   same over `w:val` (the kind), `w:color` and the three. As in the Java, the reference counts when
+   it is present at all (`getThemeColor() == null`, not `isEmpty(STThemeColor)`): a `w:color`
+   stating only `w:themeColor="none"` is not empty, so its merge creates the destination element
+   and changes nothing in it, as docx4j's does.
+2. **`_states_colour(value, theme_colour)`** is `not _empty_scalar(value) or not
+   _empty_theme_colour(theme_colour)`. `STHexColorAuto.AUTO` is not empty, so `auto` states a
+   colour; `none` is not a stated reference.
+3. **`_merge_colour(source, destination, names)`** takes the colour's four attribute names, value
+   first: `_COLOR` (`w:color`'s `val`, `theme_color`, `theme_tint`, `theme_shade`),
+   `_COLOR_ATTRIBUTE` (the same with `color`, for `w:u`, `w:shd`'s pattern colour and every border)
+   or `_FILL` (`fill`, `theme_fill`, `theme_fill_tint`, `theme_fill_shade`). Where the source
+   states the colour, all four are the source's, `None` included; otherwise the tint and the shade
+   go through `_attr` on their own. `merge_shd` calls it once per group, so the two are
+   independent and CR-015's rule (a `themeFill` survives a direct `w:shd` stating only a pattern)
+   holds. `w:u`'s kind, `w:shd`'s pattern and a border's `val`, `sz` and `space` stay on `_attr`.
+
+### 10.3 The tests
+
+- `test_a_colour_stating_a_value_replaces_an_inherited_theme_reference`,
+  `test_a_colour_stating_only_a_theme_reference` and
+  `test_shading_fill_border_and_underline_colours_inherit_as_one`: docx4j's three cases, built
+  from the typed classes with the hex as `bytes`. The Java's `areEqual` assertions are not ported:
+  the catalogue compares nothing (section 3 item 1).
+- `test_auto_states_a_colour_and_none_does_not`: corpus document 3229's case through a
+  `PropertyResolver` (a paragraph style coloured `accent1` shaded `BF`, a run's own
+  `w:color w:val="auto"`: the effective colour is `auto` with no reference and no shade), a
+  `w:themeColor="none"` over an inherited accent leaving it whole, `none` alone not empty, and
+  `b""` empty.
+
+Each of the four fails on the catalogue before this phase and passes on it after.
+
+### 10.4 The pins
+
+`goldens.PINS` is the one place: a `Pin(test, golden, where, reason)` per expected difference,
+`where` being the comparison's label exactly as the test hands it to `same()`. `each_golden`
+parametrises a test over `goldens_for(its name)`, which marks a pinned (test, golden) pair
+`xfail(strict=True, raises=PinnedDifference)`; `Comparisons.same` holds a pinned comparison's
+difference and carries on comparing the rest of the golden, and `finish()` raises
+`PinnedDifference` with what it held. So:
+
+- the regeneration, or anything else that makes a pinned comparison agree, turns the pair into an
+  unexpected pass, which `strict` makes a failure naming the pin to remove (checked by running the
+  goldens with the catalogue of `3b0eb9c`: both pairs `[XPASS(strict)]`);
+- any **other** difference in a pinned golden is a plain `AssertionError`, which `raises=` does
+  not accept, so it fails exactly as it would without the pin.
+
+That is finer than section 3 asked for (a mark per pair), for a reason found on the day: in the
+goldens docx4j-core-ts committed during this session (10.6), `fonts-modesOfApplication`'s pinned
+pair also differs in an unrelated comparison, which a mark on the pair would have reported as the
+expected failure. The two pins:
+
+| test | golden | comparison | ours | the golden's |
+|---|---|---|---|---|
+| `test_every_paragraph_and_run_resolves_as_docx4j_resolves_it` | `fonts-modesOfApplication` | `main[5] ... run 3: effectiveRPr` | `<w:color w:val="C0504D" w:themeColor="accent2"/>` | the same with `w:themeShade="BF"`, leaked from `Heading1`'s `accent1` |
+| `test_every_table_resolves_as_docx4j_resolves_it` | `invoice2013` | `table 0: effectiveTableStyle` | six edges `w:val="none" w:color="auto" w:sz="0" w:space="0"` | each with `w:themeColor="text1"` beside `auto`, kept from `TableGrid`'s `single 000000 text1` under the table's own `w:tblBorders` |
+
+Each `reason` names the golden, the rule ("a colour inherits as one"; "auto states a colour") and
+what it waits for: docx4j-core-ts CR-008 phase 1 regenerating the goldens at docx4j `2e381ef26` or
+later. Then both pins come out; the mechanism can stay for the next.
+
+### 10.5 The numbers
+
+Measured first against the goldens docx4j-core-ts had committed when the session began
+(`48251956c`, recorded at docx4j `0349796f9`), taken out with `git archive` into a scratch
+directory and `goldens.GOLDENS` pointed at it, because its working tree was being regenerated at
+the time (10.6):
+
+- `test_properties_goldens.py`: 135 tests over the 45 goldens with a fixture here (of 62
+  committed; the other 17 are docx4j-core-ts's table-condition probes, CR-008's, and
+  `invoice_Saxon_XPath2`): **133 passed, 2 xfailed**. Its 4,415 comparisons (1,647 `w:pPr`, 2,760
+  `w:rPr`, 8 table styles): **4,413 equal, the 2 pinned differ**.
+- `test_numbering_goldens.py`: 45 passed, 1 failed (`test_every_numbering_golden_has_its_fixture`,
+  10.6, before this phase too). `test_fonts_goldens.py`: 90 passed.
+- Over the three files, with a recorder in place of `same()` that does not stop at the first
+  difference: **5,147 comparisons, 0 differing before** (the catalogue of `3b0eb9c`) **and 2
+  after**, the two of section 2. Nothing else moves.
+
+The fast suite (`-m "not slow"`) gains the 4 tests. Against those goldens: 1,949 passed, 8 skipped,
+2 xfailed, 2 failed (10.6). Against the sibling as it stood by the end, with the goldens of
+`3c01dbf`: 1,948 passed, 8 skipped, 1 xfailed, 4 failed, where `3b0eb9c` gives 1,945 passed, 8
+skipped, 4 failed --- the same four tests, none of them this phase's (10.6).
+
+### 10.6 The sibling checkout on the day
+
+- **The goldens were regenerated during this session.** At 10:19 a docx4j-core-ts session rewrote
+  62 of the 64 golden files at docx4j `856afc5da` (the `docx4j-17.3.2` tag) and committed them at
+  10:31 as `3c01dbf` (its CR-001 section 22). 17.3.2 does **not** contain `2e381ef26`, so those
+  goldens keep the attribute-by-attribute merge and the same two comparisons move against them,
+  pinned as above. They also carry docx4j `fb2a764f7` (17.3.2: a paragraph mark's `w:rStyle`
+  resolved as a level over the paragraph style), which docx4j-core-ts ported and this repository
+  has not: `NumberingIndents/footer:rId10[1]` and `fonts-modesOfApplication/main[8]`,
+  `paragraphMarkRPr`, differ before this phase and after it. That is a parity item of its own, not
+  this CR's; the second sits in a pinned pair and fails as a plain difference (10.4).
+- **Two failures predate this phase** and are the sibling's committed state:
+  `test_every_numbering_golden_has_its_fixture` (docx4j-core-ts `9189ab6` added the golden
+  `tables-numbered-in-cell`, a CR-008 fixture this repository has not copied) and
+  `test_office_js_subset.py::test_the_script_would_write_what_is_committed` (docx4j-core-ts
+  `d64ab67`, 2026-09-25, added `Range.hyperlink` after `tests/office_js_subset.json` was derived
+  on 2026-09-20).
+- docx4j's `2e381ef26` is still local: `origin/VERSION_17_3_3` is at `f6b87cd2f`, 17 commits
+  behind (risk 2 stands).
+
+### 10.7 The content API
+
+A throwaway script (not committed) over the 64 documents of `samples/` and `tests/fixtures/`, run
+with the catalogue before and after: **10,685 resolver answers** --- the effective `w:rPr` and
+`w:pPr` of every style, `effectivePPr` and the paragraph mark of every paragraph and the
+`effectiveRPr` of every run in all 113 stories (main, headers, footers, notes, comments; loaded
+with `mce_preprocess=True`, so text boxes count), the effective style of every table --- and
+**1,422 content-API answers**: `Font.to_dict()` of every paragraph of every body of
+`pkg.bodies()`, `pkg.describe()` and `pkg.to_markdown()`. **3 resolver answers change and 0
+content-API answers.** The three are section 2's two: `fonts-modesOfApplication`'s run, and
+`invoice2013`'s table 0 twice, the document being in both directories byte for byte. The content
+API sees neither: `Font.color` reports the effective `w:val`, `C0504D` before and after, and no
+content-API read reports a table style's border reference. Section 2's claim holds.
+
+### 10.8 Departures
+
+1. **`areEqual` is not ported** (section 3 item 1), nor the `areEqual` assertions of docx4j's
+   three tests.
+2. **`_empty_scalar` counts `b""`.** Section 3 item 3 says `_empty_scalar` already handles the
+   model's `bytes`. It did for every non-empty value, but `w:val=""` parses to `b""`, which it
+   called non-empty where docx4j's `isEmpty("")` is true, so `_states_colour` would have called an
+   empty value stated. Fixed in the one place, for every caller (`is_empty_shd`,
+   `is_empty_border` and `is_empty_u` too), towards docx4j. No colour attribute in the 64
+   documents is empty, so nothing measured moves.
+3. **One `_merge_colour` over attribute-name tuples** in place of the Java's four hand-written
+   blocks: an idiom, not a semantic; the four merges cannot drift apart.
+4. **The pins are per comparison**, not per pair (10.4).
+
+### 10.9 What Phase B needs
+
+- Nothing more from the merge: a colour now reaches the resolver whole, so a resolver over the
+  effective properties never sees a reference with a stranger's tint or shade.
+- The pins come out when docx4j-core-ts regenerates at `2e381ef26` or later: the two pairs then
+  fail as unexpected passes and the two `Pin`s are deleted from `goldens.PINS`.
+- 10.7's measurement is the baseline for `Font.color` reporting the drawn colour: Phase B should
+  move content-API answers only where a theme reference meets a stale cache, and the same
+  measurement says where.
+- `CHANGELOG.md`'s Unreleased entry records Phase A; Phase B adds to it.

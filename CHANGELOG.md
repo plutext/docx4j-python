@@ -7,6 +7,25 @@ surface promises in `0.x` is the table at the end of this file. Each entry summa
 change request delivered and links the CR's own implementation notes, which are the record; the
 CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
+## [Unreleased]
+
+### Changed
+
+- **The colour merge rules are docx4j 17.3.3's** ([CR-009](docs/change-requests/CR-009-theme-colours.md),
+  Phase A, section [10](docs/change-requests/CR-009-theme-colours.md#10-phase-a-implementation-notes-2026-10-12)):
+  in the property catalogue a `w:color` or `w:u` stating only a theme colour is no longer empty,
+  so it is inherited, and a colour inherits **as one** --- where a layer states a value or a theme
+  reference, its value, reference, tint and shade replace the ones beneath together (`w:color`,
+  `w:u`'s colour, `w:shd`'s pattern colour and fill, each its own, and every border edge), where
+  0.1.0 merged them attribute by attribute. Effective properties --- the `PropertyResolver`'s, and
+  the content API's reads through it --- change only where a colour carries a theme reference, and
+  both towards what Word draws and towards docx4j 17.3.3 (its CR-034): a run's own
+  `w:color w:val="auto"` under a theme-coloured style is `auto`, no longer the style's reference,
+  and a character style's theme colour no longer keeps a paragraph style's tint or shade. Over the
+  64 documents of `samples/` and `tests/fixtures/` two effective answers change and no content-API
+  answer does. Two parity goldens, recorded before docx4j 17.3.3, are pinned `xfail(strict)` until
+  they are regenerated.
+
 ## [0.1.0] --- 2026-09-20
 
 The first release: WordprocessingML only. `.pptx` and `.xlsx` load and save through the generic
@@ -86,4 +105,5 @@ SpreadsheetML are CR-001 Phase D and CR-002 Phase C, for `0.2` and `0.3`.
 | `docx4j_py.model` (resolver, `StyleUtil`, fonts, numbering) | Stable: docx4j's, zero differences on the goldens |
 | Anything under `codegen/`, `scripts/`, `baseline/` | Not shipped in the wheel; in the source distribution for the suite |
 
+[Unreleased]: https://github.com/plutext/docx4j-python/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/plutext/docx4j-python/releases/tag/v0.1.0
