@@ -280,6 +280,61 @@ recorded once, in CR-004 section 8, which this CR shares. For a workbook they ar
 rules: the table and cell writes are the ones Phase G's own cell writer must make the way Excel
 makes them.
 
+**Hand-off from docx4j CR-036 phase 2 (2026-10-12, docx4j `334d80f07` on `VERSION_17_3_3`,
+unpushed; its CR section 9 the hand-off, section 11 the findings).** Phase G's chart **creation**
+has a Java design and an oracle gated on Excel, in `org.docx4j.model.chart`:
+
+- `ChartType`, twelve kinds (`COLUMN_` and `BAR_` `CLUSTERED`, `STACKED`, `STACKED_100`; `LINE`,
+  `LINE_MARKERS`; `PIE`; `DOUGHNUT`; `AREA`; `SCATTER`), each with its template and Excel's default
+  chart style id.
+- `ChartDefinition`, XDDF-shaped, a list of groups (`series()` and the axes are the first group's;
+  `ChartCreator` refuses a second group for now): categories all text, all numbers or all dates
+  (with a date format, `m/d/yyyy` by default); `xValues()` the categories for a scatter; a
+  categories header (Word's `" "` by default); `title(text)`, `noTitle()` or Office's own;
+  `legend(position)`, `noLegend()` or the default; axis titles and number formats;
+  `dataLabels(bool)`; `fromData(type, categories, names, values)` in `setData`'s shape.
+  `LegendPosition`: `b`, `t`, `l`, `r`, `tr`.
+- `ChartCreator(random)`: `inSheet(sheet, definition, dataAt, placeAt)` and
+  `fromCells(sheet, area, type, placeAt)`, a seeded `Random` reproducing a workbook.
+  `ChartSettings` (`setTitle`, `removeTitle`, `setLegend`, `removeLegend`, `setAxisTitle`,
+  `setNumberFormat`, `setDataLabels`) on **any** chart. Also `Tables.create` (a table made as
+  Excel makes one) and `SheetCells.setNumberFormat`.
+- Templates, Excel's byte for byte, in
+  `../docx4j/docx4j-core/src/main/resources/org/docx4j/model/chart/templates/`: one per type,
+  `date-axis.xml`, eight `style-<id>.xml` and `colors-10.xml`. A port reads or copies these rather
+  than writing its own.
+
+The rules measured, which a port must reproduce (its findings 1 to 6):
+
+1. **Settings XML is Excel's on every type.** Text properties from the chart style part's entry
+   plus Excel's defaults (`b="0"`, `i="0"`, `u="none"`, `strike="noStrike"`, `baseline="0"`), the
+   `fontRef` colour written as a `solidFill`, `+mn-lt`/`+mn-ea`/`+mn-cs`; an axis title on a left
+   or right axis rotated `-5400000`. Data labels: a pie's or doughnut's `leaderLines` in `c:` (with
+   an empty `c15` extension), every other kind's in the `c15` extension; no `dLblPos`.
+2. **Axes by the categories.** Dates give a `c:dateAx` (format linked, `majorTickMark` `out`, no
+   `lblAlgn` or `noMultiLvlLbl`, `baseTimeUnit` `days`, or `months` when every date is the same day
+   of the month, or `years` when also the same month); an area chart over text a `c:catAx`
+   (`lblAlgn` `ctr`, `noMultiLvlLbl` `0`, its tick marks kept); numbers a `numRef` on the
+   `c:catAx`; a scatter's x axis takes the x values' number format, none for text.
+3. **Defaults by count.** One series has no legend (a pie or doughnut keeps it); a scatter gains a
+   legend at the bottom from two series; the seventh and eighth colours are the colour style's
+   variation `lumMod 60000`; every series of a pie or doughnut gets the first's `c:dPt`.
+4. **`fromCells` reads the area as Excel does.** An empty corner means a header row and a header
+   column; otherwise a header row if row 1 holds no number, and a header column if the first
+   column below the header is text or dates; series down the columns if there are more data rows
+   than data columns (a tie gives rows); no names, no `c:tx`; no categories, no `c:cat` and a
+   `c:catAx` without `numFmt`.
+5. **Excel's cache spellings** of the built-in formats: 14 is `m/d/yyyy`, 16 is `d\-mmm` (the
+   hyphen escaped).
+
+The oracle: the `p1-*`, `p2-*` and `p6-*` workbooks in
+`../docx4j/docx4j-core-tests/src/test/resources/charts/authoring/`, each with a `.txt` of its
+series formulas. `ChartCreatorTest` is the gate: 106 charts compared with Excel's part for part
+(the chart part through `ChartGate`, ids aside; the drawing; the cells; P6's tables). Excel's own
+check passed on 108 workbooks: no repair, Excel's Select Data ranges, the Chart Design tools
+working, and every picture Excel's own, pixel for pixel. Creation in `.docx` and `.pptx` is
+docx4j CR-036 phase 3, next there (CR-004 Phase F).
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary.** Recommendation: Excel JS for the content API, openpyxl for the facade, for the

@@ -349,6 +349,17 @@ docx4j's `326b88bd2` (CR-035 phase 3) also gives `ChartTable`, a chart as its ti
 categories-down, series-across table with numbers formatted by format code in the US locale, as
 docx4j's markdown export writes it: the shape for a chart in `to_markdown` and `describe()`.
 
+**Hand-off from docx4j CR-036 phase 2 (2026-10-12, docx4j `334d80f07`, unpushed).** Charts
+**created** in an xlsx: `ChartType`, `ChartDefinition`, `ChartCreator`, `ChartSettings` and Excel's
+own chart templates, with an oracle of 106 Excel-made charts and Excel's check on 108 workbooks.
+The design and its measured rules (docx4j's findings 1 to 6) are recorded in CR-005 section 8, whose Phase G it serves
+directly. For this CR it is the half of Phase F's creation that a deck shares: the definition, the
+templates, the settings XML and the style and colour parts. Creation in `.pptx` and `.docx`, the
+chart placed in a slide or a document over an embedded workbook, is docx4j CR-036 phase 3, next
+in docx4j, and becomes this CR's oracle when it lands. `ChartSettings` (title, legend, axis
+titles, number formats, data labels) works on any chart, so it also bears on Phase C's edits of
+an existing chart.
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary: PowerPoint JS or python-pptx as the primary API.** Recommendation: PowerPoint

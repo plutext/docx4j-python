@@ -156,6 +156,11 @@ servers; the shared tool names and path policy make that unremarkable. `anonymiz
 Phase A is ready now and is the MCP server's first release, as CR-003 section 8 said of its
 phases B, D and K.
 
+A create-chart tool is not in this contract yet. When one is added, for Phase C first, docx4j's
+CR-036 (`ChartCreator` and `ChartSettings`, handed off 2026-10-12 and recorded in CR-005
+section 8) is its natural backing in Java, and CR-005 Phase G's port of it is the backing here;
+creation in a deck or a document waits on docx4j CR-036 phase 3 and CR-004 Phase F.
+
 ## 8. Open questions (recommendations for decision)
 
 1. **Repository placement.** Recommendation: `../docx4j-mcp-py`, as decided; this CR stays here as
