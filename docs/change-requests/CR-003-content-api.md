@@ -19,7 +19,7 @@ eight refused with a reason each. What the CR leaves open is section 20.8.
 **Section 21, 2026-10-12: `Range.hyperlink`**, the member docx4j-core-ts added to the subset on
 2026-09-25 (its `d64ab67`), get and set with core-ts's Word-measured rules at its HEAD; the
 re-derived `tests/office_js_subset.json` has 231 members, 229 implemented and the two null-object
-members omitted as before. Awaiting the Word check of acceptance artefact 6; the rest of
+members omitted as before. The Word check of acceptance artefact 6 passed on 2026-10-12 (section 21.7); the rest of
 `docs/user/hyperlinks.md`'s proposal stays open (21.8).
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
@@ -4626,6 +4626,10 @@ jumps to the heading; Insert > Link on each shows the address or "Place in This 
 bookmark. **Not in any artefact yet**: the form of 21.2 for a link over a tracked insertion
 (`w:hyperlink` holding the `w:ins`), which is new markup from this engine's setter and the thing a
 check should open next, with Accept All and Reject All.
+
+**Passed, 2026-10-12** (Jason: "out/acceptance/6-tables-and-pictures.docx is ok"): artefact 6
+opens in Word without a repair prompt and its two links are as described. The tracked form above
+is still unopened.
 
 ### 21.8 What stays open
 

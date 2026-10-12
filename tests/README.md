@@ -242,7 +242,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > read every packaged resource. **The user opened all eleven in Word the same evening and reported success**: no repair
 > prompt, nothing amiss --- the release gate of CR-007 section 4.5 point 4 is met.
 
-> **2026-10-12, awaiting the Word check.** CR-003 section 21 (`Range.hyperlink`) changed the
+> **2026-10-12, Word check passed** (the user, the same day: "out/acceptance/6-tables-and-pictures.docx
+> is ok"). CR-003 section 21 (`Range.hyperlink`) changed the
 > content API's inserts, so the artefacts were regenerated and **artefact 6** gained two links set
 > through the new setter (its row below says what to look for). Against the artefacts built from the
 > commit before, `scripts/compare_acceptance.py` finds 11 artefacts, 147 entries compared, and **one
