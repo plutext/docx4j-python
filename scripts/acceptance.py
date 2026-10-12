@@ -44,7 +44,11 @@ Eleven files, each testing a different half of the save path:
     ``insert_ooxml``. It exercises the image part under a free
     ``/word/media/imageN.png``, its relationship and its content type, the
     ``pkg:package`` reader, and a table whose grid is sized from the loaded
-    document's own ``w:sectPr``.
+    document's own ``w:sectPr``. Since CR-003 section 21 it ends with a
+    paragraph whose two links were set through ``Range.hyperlink``: an external
+    one (a relationship of the main part) and an internal one to a bookmark on
+    the "Tables and pictures" heading, which adds the ``Hyperlink`` character
+    style to a ``styles.xml`` that did not define it.
 ``7-comments.docx``
     a **loaded** document (``samples/2010-sample1.docx``, which has no comment
     parts at all) given, through CR-003 Phase G's content API, a comment on a
@@ -327,7 +331,10 @@ def tables_and_pictures(out: Path) -> Path:
     pkg.id_seed = 20260917
     body = pkg.body
 
-    body.insert_paragraph("Tables and pictures", style="Heading 1")
+    heading = body.insert_paragraph("Tables and pictures", style="Heading 1")
+    # the target of the internal link at the end (CR-003 section 21)
+    heading.element.content.insert(0, el.bookmarkStart(id=100, name="tables_and_pictures"))
+    heading.element.content.append(el.bookmarkEnd(id=100))
     table = body.insert_table(
         3,
         3,
@@ -347,6 +354,14 @@ def tables_and_pictures(out: Path) -> Path:
     )
 
     body.insert_ooxml(package_xml)
+
+    # CR-003 section 21: two links set through Range.hyperlink, on a document
+    # whose styles.xml has no Hyperlink style until the first one is set
+    links = body.insert_paragraph(
+        "Set through Range.hyperlink: the docx4j site, and back to the tables."
+    )
+    links.search("the docx4j site")[0].hyperlink = "https://www.docx4java.org/"
+    links.search("back to the tables")[0].hyperlink = "#tables_and_pictures"
     pkg.save(target)
     return target
 

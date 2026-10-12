@@ -9,6 +9,27 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`Range.hyperlink`** ([CR-003](docs/change-requests/CR-003-content-api.md), section
+  [21](docs/change-requests/CR-003-content-api.md#21-rangehyperlink-2026-10-12)): Office JS's read
+  and write of a link, the one member docx4j-core-ts added to the Office JS subset the content API
+  promises (`tests/office_js_subset.json`, now 231 members). The value is `address#location`: the
+  address becomes an external relationship of the range's own part (a header's paragraph relates
+  from the header) and the `r:id`, the location the `w:anchor`; reading gives the link the range is
+  in, or `""`. Setting follows what docx4j-core-ts measured in Word: the runs are split at the
+  span's boundaries and wrapped in one `w:hyperlink` with `w:history`, each taking the `Hyperlink`
+  character style in place of its own and losing its direct colour (the style defined in
+  `styles.xml` when the document lacks it); a span over another link's edge takes that link in,
+  one inside a link replaces it; `""` or None unlinks, the runs staying; a caret, or a span across a
+  content control, a field or a tracked change, is refused with `SpanError` before anything
+  changes. Under change tracking the restyle is a `w:rPrChange`, and a link over a tracked
+  insertion holds the `w:ins`. The call records a `"hyperlink"` `ChangeReport` naming the `.rels`
+  it wrote, and a `dry_run` now takes back a relationship added with no part behind it.
+  `docs/user/hyperlinks.md` is brought up to date; `get_hyperlink_ranges`, an `insert_hyperlink`
+  sugar, the facade's `add_hyperlink` and the fix for text appended after a link joining it remain
+  proposals.
+
 ### Changed
 
 - **The colour merge rules are docx4j 17.3.3's** ([CR-009](docs/change-requests/CR-009-theme-colours.md),

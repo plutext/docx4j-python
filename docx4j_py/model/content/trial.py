@@ -34,6 +34,12 @@ What it copies and what it does not:
   ``insert_markdown`` makes when a list needs one --- is still not un-created,
   because nothing reports it; the docstring of anything that adds a part says
   which of the two it is.
+* **a relationship added with no part behind it** --- the external hyperlink
+  relationship ``Range.hyperlink`` writes (CR-003 section 21) --- is reported
+  through :func:`note_added_relationship` and taken away again by
+  :meth:`TrialPackage.discard_added_relationships`, with the relationships part
+  itself when the call created it, and the part's id allocator put back so that
+  the commit after a trial allocates the id the trial reported.
 * ``trial.save()`` is refused: a trial is not a document.
 """
 
@@ -44,7 +50,7 @@ from typing import Any
 from docx4j_py.child import deep_copy, link_parents
 from docx4j_py.model.content.errors import ContentError
 
-__all__ = ["TrialPackage", "TrialPart", "dry_run"]
+__all__ = ["TrialPackage", "TrialPart", "dry_run", "note_added_relationship"]
 
 
 class TrialPart:
@@ -177,6 +183,7 @@ class TrialPackage:
     __slots__ = (
         "__weakref__",
         "_added",
+        "_added_relationships",
         "_assigns_para_ids",
         "_author",
         "_change_tracker",
@@ -204,6 +211,7 @@ class TrialPackage:
         #: The trial's own custom XML collection, over its copies (Phase E).
         self._custom_xml_parts: Any = None
         self._added: list[tuple[Any, Any, Any, bool]] = []
+        self._added_relationships: list[tuple[Any, Any, bool, int | None]] = []
         self._changes: list[Any] = []
         self._current_change: Any = None
         self._assigns_para_ids = package.assigns_para_ids
@@ -331,6 +339,37 @@ class TrialPackage:
             removed.append(part.part_name)
         self._added.clear()
         return removed
+
+    def note_added_relationship(
+        self, relationships_part: Any, relationship: Any, *, created: bool, allocator: int | None
+    ) -> None:
+        """Record a relationship a trial verb added with no part behind it.
+
+        Called by :func:`note_added_relationship`, which is a no-op on a real
+        package; :meth:`discard_added_relationships` undoes it.
+        """
+        self._added_relationships.append((relationships_part, relationship, created, allocator))
+
+    def discard_added_relationships(self) -> int:
+        """Remove the relationships this trial added; returns how many.
+
+        Newest first, so that each relationships part's id allocator ends where
+        it was before the trial's first one. A relationships part the trial
+        created is detached from its source part again once it is empty.
+        """
+        count = 0
+        for rels, relationship, created, allocator in reversed(self._added_relationships):
+            rels.remove_relationship(relationship)
+            if allocator is not None:
+                # the allocator only counts upwards; putting it back is what
+                # makes the commit after the trial allocate the trial's id
+                rels._next_id = allocator
+            source = getattr(rels, "source_p", None)
+            if created and len(rels) == 0 and getattr(source, "relationships_part", None) is rels:
+                source.relationships_part = None
+            count += 1
+        self._added_relationships.clear()
+        return count
 
     # -- the agent surface -------------------------------------------------
     #
@@ -574,6 +613,33 @@ class dry_run:
         return self.trial
 
     def __exit__(self, *exc_info: object) -> None:
-        """Drop the copies and the parts the trial added. The document is as it was."""
+        """Drop the copies and what the trial added. The document is as it was."""
+        self.trial.discard_added_relationships()
         self.trial.discard_added_parts()
         self.trial._parts.clear()
+
+
+def note_added_relationship(
+    package: Any,
+    relationships_part: Any,
+    relationship: Any,
+    *,
+    created: bool,
+    allocator: int | None,
+) -> None:
+    """Tell a trial about a relationship added during it, so it can be un-added.
+
+    The counterpart, for a relationship with no part behind it, of
+    :func:`docx4j_py.model.content.picture.note_added_part`; a no-op on a real
+    package.
+
+    Args:
+        package: the body's package --- a :class:`TrialPackage` or the real one.
+        relationships_part: the ``.rels`` the relationship went into.
+        relationship: the relationship.
+        created: whether this call created `relationships_part`.
+        allocator: the part's id allocator before the call, to be put back.
+    """
+    note = getattr(package, "note_added_relationship", None)
+    if note is not None:
+        note(relationships_part, relationship, created=created, allocator=allocator)

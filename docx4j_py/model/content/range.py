@@ -13,10 +13,14 @@ splits the runs at the boundaries so that a write touches the span and nothing
 else. Phase B splits and does not merge back: two adjacent runs whose ``w:rPr``
 ends up identical stay two runs, which Word tolerates and a later phase can
 tidy.
+
+:attr:`Range.hyperlink` (CR-003 section 21) reads and writes a link in Office
+JS's ``address#location`` shape; :mod:`.hyperlinks` holds the rules.
 """
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, deep_copy
@@ -34,6 +38,7 @@ from docx4j_py.model.content.text_model import (
     find_all,
     search_pattern,
 )
+from docx4j_py.model.content.tracking import REVISION_NAMES
 from docx4j_py.traversal import element_name
 from docx4j_py.wml import to_xml
 
@@ -199,35 +204,57 @@ class Range:
 
     # -- spans that cross a run holder (CR-003 section 3.4) ----------------
 
-    def holder_boundaries(self) -> list[int]:
+    def holder_boundaries(
+        self, *, revisions: bool = False, unwrapped: Collection[Any] = ()
+    ) -> list[int]:
         """The offsets at which this span enters or leaves a run holder.
 
         A ``w:hyperlink``, a run-level ``w:sdt``, a ``w:ins`` and the other run
         holders own their runs; an operation that has to sit in exactly one of
         them --- a content control at range level (Phase C), a comment anchor
         (Phase G) --- cannot span two. These are the offsets to split at.
+
+        Args:
+            revisions: count the four revision holders (``w:ins``, ``w:del``,
+                ``w:moveFrom``, ``w:moveTo``) as holders too, for an operation
+                that wraps the runs it covers in a new holder of its own
+                (:attr:`hyperlink`, CR-003 section 21).
+            unwrapped: holders the operation removes before it wraps; a run in
+                one counts as being where the holder is.
         """
+        seen_through = {id(holder) for holder in unwrapped}
         out: list[int] = []
         previous: Any = None
         for segment in self.paragraph.segments():
             if segment.end <= self.start or segment.start >= self.end:
                 continue
             holder = getattr(segment.run, "parent", None)
+            while holder is not None and id(holder) in seen_through:
+                holder = getattr(holder, "parent", None)
             name = element_name(holder)
-            key = id(holder) if name in RUN_HOLDER_NAMES else None
+            owns = name in RUN_HOLDER_NAMES or (revisions and name in REVISION_NAMES)
+            key = id(holder) if owns else None
             if previous is not None and key != previous[0]:
                 out.append(max(self.start, segment.start))
             previous = (key, holder)
         return out
 
-    def require_one_holder(self, operation: str = "this operation") -> None:
+    def require_one_holder(
+        self,
+        operation: str = "this operation",
+        *,
+        revisions: bool = False,
+        unwrapped: Collection[Any] = (),
+    ) -> None:
         """Refuse a span that crosses a run holder, saying where to split.
+
+        `revisions` and `unwrapped` are :meth:`holder_boundaries`'.
 
         Raises:
             SpanError: the span covers runs in more than one holder; the message
                 names the offsets to split at.
         """
-        boundaries = self.holder_boundaries()
+        boundaries = self.holder_boundaries(revisions=revisions, unwrapped=unwrapped)
         if not boundaries:
             return
         where = ", ".join(str(offset) for offset in boundaries)
@@ -237,6 +264,49 @@ class Range:
             code="range.crosses_holder",
             hint=f"split the span at {boundaries[0]}, or use get_range() on each part",
         )
+
+    # -- hyperlinks (CR-003 section 21) -------------------------------------
+
+    @property
+    def hyperlink(self) -> str:
+        """Office JS ``Range.hyperlink``: the link this span is in, as ``address#location``.
+
+        Read: the first ``w:hyperlink`` the span touches --- its relationship's
+        target for an ``r:id``, ``#`` and the ``w:anchor`` for a location in this
+        document, both for a link that has both --- or ``""`` where there is
+        none. An empty range reads the link it lies in, or ends at the end of.
+
+        Written: the links the span touches are removed and its runs wrapped in
+        one new ``w:hyperlink``, split at the span's boundaries as :attr:`font`
+        splits them. The address before any ``#`` becomes an external
+        relationship of **this span's part** (a header's paragraph relates from
+        the header part) and the ``r:id``; what follows the ``#`` becomes the
+        ``w:anchor``. The runs take the ``Hyperlink`` character style in place
+        of their own and lose their direct colour, as Word styles a link it
+        makes, and the style's definition is added to ``styles.xml`` when the
+        document lacks it. A span that crosses a link's edge takes that whole
+        link in; one inside a link replaces it with a link over the span alone.
+        ``""`` (or None) removes the links the span touches, their runs staying
+        and the style coming off. Records a ``"hyperlink"``
+        :class:`~docx4j_py.model.content.reports.ChangeReport` naming the
+        relationships part it wrote; under change tracking the restyle is a
+        ``w:rPrChange``. The rules, and where each is Word's, are in
+        :mod:`docx4j_py.model.content.hyperlinks`.
+
+        Raises:
+            SpanError: on a write, the span is empty --- Office JS refuses it
+                --- or would put the link across a content control, a field or
+                a tracked change; nothing has changed.
+        """
+        from docx4j_py.model.content.hyperlinks import hyperlink_of
+
+        return hyperlink_of(self)
+
+    @hyperlink.setter
+    def hyperlink(self, value: str | None) -> None:
+        from docx4j_py.model.content.hyperlinks import set_hyperlink
+
+        set_hyperlink(self, value)
 
     # -- editing -----------------------------------------------------------
 

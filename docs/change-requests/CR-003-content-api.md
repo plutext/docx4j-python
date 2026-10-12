@@ -16,6 +16,11 @@ and 17.11: a repeat's list in `fill()`, and `pkg.compatibility_mode`); **H 2026-
 **J 2026-09-18** (section 20, the python-docx facade), whose own committed member list
 `tests/python_docx_subset.json` has 305 of python-docx 1.2.0's 312 members implemented (`ParagraphFormat.tab_stops` joined on 2026-09-18) and
 eight refused with a reason each. What the CR leaves open is section 20.8.
+**Section 21, 2026-10-12: `Range.hyperlink`**, the member docx4j-core-ts added to the subset on
+2026-09-25 (its `d64ab67`), get and set with core-ts's Word-measured rules at its HEAD; the
+re-derived `tests/office_js_subset.json` has 231 members, 229 implemented and the two null-object
+members omitted as before. Awaiting the Word check of acceptance artefact 6; the rest of
+`docs/user/hyperlinks.md`'s proposal stays open (21.8).
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting needs CR-002 Phase B (`PropertyResolver`); until it lands the views read direct
@@ -4251,7 +4256,9 @@ by whom:
   from. That document proposes them in Office JS's shape, an `insert_hyperlink` sugar as the
   first extension member, a facade `add_hyperlink`, and records a defect: `insert_text` at
   `"End"` after a link extends the link's run instead of closing the link as Word does
-  (its section 3; the fix is one condition in `splice`).
+  (its section 3; the fix is one condition in `splice`). *2026-10-12:* core-ts's subset gained
+  `Range.hyperlink`, which **section 21** implements; `get_hyperlink_ranges`, the sugar, the
+  facade's `add_hyperlink` and the defect stay open (21.8).
 
 * **The three extensions section 19.6 asked for, none of them taken.** Phase J
   needed none of them: a `Paragraph.mark_font` over `w:pPr/w:rPr` has no
@@ -4383,3 +4390,256 @@ and style 'X' is not numbered", "level L of numId N is linked to a paragraph sty
 val", which arise before `resolve` here (a package with no numbering part answers `None`
 one level up; the style walk does not detect a cycle, CR-002 Phase B's resolver will) ---
 recorded rather than imitated.
+
+## 21. `Range.hyperlink` (2026-10-12)
+
+**Why.** docx4j-core-ts added `hyperlink` to its `Word.Range` subset on 2026-09-25 (its `d64ab67`,
+its CR-002 section 20, at the editor's request), and `tests/office_js_subset.json` is derived from
+that declaration (section 11.4). The fast suite's one failure was
+`test_the_script_would_write_what_is_committed`; re-deriving the list with
+`scripts/office_js_subset.py` adds exactly one member --- `Range.hyperlink`, a read/write property,
+Phase B, not an extension: 26 interfaces, **231 members** --- after which
+`test_every_implemented_member_is_there_with_the_right_kind` asked for it. The member is the
+vocabulary half of `docs/user/hyperlinks.md` section 5.1; the rest of that proposal (the
+`insert_hyperlink` sugar, `get_hyperlink_ranges`, the facade's `add_hyperlink`, the section 3
+defect) is **not** in this section and its open questions stay open (21.8).
+
+The behaviour is docx4j-core-ts's **at its HEAD** (`1f78b94`), not at `d64ab67`: five commits after
+it changed the setter, each from a check run in Word through Office JS (its `test/README.md`
+checks 15, 16 and 19; its CR-002 section 25) --- `25e7e68` (`w:history`), `34f9d59` (the
+`Hyperlink` style, and removing only the links the range touches), `4c9b2c8` (a link over the edge
+of another takes it in), `4e17e63` (a new link's identical text runs become one) and `581a009` (a
+caret is refused). Java docx4j is the markup oracle (`P.Hyperlink`; `MainDocumentPart` and the
+`HyperlinkTest` sample: an external relationship of type `.../relationships/hyperlink`, then the
+element with its `r:id` and `w:history`).
+
+### 21.1 What landed
+
+| file | what |
+|---|---|
+| `docx4j_py/model/content/hyperlinks.py` (new, 494 lines) | the getter and the setter: `links_of`, `hyperlink_of`, `set_hyperlink`, the pre-check, unwrap, wrap, the split of a revision around a link, the restyle and the run merge |
+| `docx4j_py/model/content/range.py` | `Range.hyperlink`, a property delegating to the module; `holder_boundaries` and `require_one_holder` gain `revisions=` (the four revision holders count as holders) and `unwrapped=` (holders the operation removes first are seen through), both off by default so the comment and content control callers are unchanged |
+| `docx4j_py/model/content/trial.py` | `note_added_relationship` and `TrialPackage.discard_added_relationships`: a relationship added with **no part behind it** is undone when a `dry_run` ends, with its relationships part when the call created it, and the part's id allocator put back |
+| `tests/office_js_subset.json` | re-derived, never hand-edited: the one new member |
+| `tests/content/test_hyperlinks.py` (new) | 29 tests (21.5) |
+| `scripts/acceptance.py` | artefact 6 gains a bookmark on its heading and a closing paragraph with an external and an internal link (21.7) |
+
+`model/` is in `codegen/clean.py`'s `KEEP` as a directory, so the new module needs no entry.
+
+### 21.2 The rules, as built
+
+* **Read.** The first `w:hyperlink` the range touches, as Office JS's `address#location`: the
+  target of the relationship its `r:id` names **in the range's own part**, then `#` and the
+  `w:anchor` when there is one; `""` where the range touches no link. A non-empty range touches a
+  link whose text it overlaps; an **empty** range one it lies in or sits at either end of (Office
+  JS reads a caret just after a link as in it, check 19 case K; the start edge is unmeasured and
+  counted in). A link is where its accepted-view text is, so one holding no text is in no range.
+* **Write.** `value.partition("#")`: what precedes the first `#` is the address, what follows the
+  location. An address becomes a **new** external relationship of the range's part --- a header's
+  paragraph relates from the header part, whose `.rels` is created when it has none --- and the
+  `r:id`; the location becomes `w:anchor`; `w:history` is written on every new link (Word and
+  docx4j both write it). The links the range touches are unwrapped, their runs staying where they
+  were; then the runs are split at the span's boundaries on grapheme boundaries, as `Range.font`
+  splits them, and the slice of the run-level list **from the first run to the last** goes into
+  one new `w:hyperlink` --- a bookmark, a comment marker or a `w:proofErr` between them goes in
+  with them.
+* **The edge rule** (check 16): a range that crosses a link's edge is extended over the whole of
+  that link, so linking "beta gamma" after "alpha beta" gives one link over "alpha beta gamma"
+  (case F); a range inside a link replaces it with a link over the range alone (case G); and `""`
+  on part of a link removes all of it (case H).
+* **The style** (check 15): every run of the new link takes `w:rStyle w:val="Hyperlink"` in place
+  of any character style it had (case C), and loses its direct `w:color` (case D); the rest of its
+  direct formatting stays. A link removed takes `Hyperlink` off the runs that carry it, and a
+  `w:rPr` left empty goes (case E). The `Hyperlink` definition is added to `styles.xml` from
+  docx4j's `KnownStyles.xml` when the document lacks it (`define_built_in`, section 14.9's rule);
+  a document that has it keeps its styles part byte for byte, because the check reads the part's
+  bytes without unmarshalling it.
+* **The run merge**: adjacent runs of the new link that hold nothing but `w:t` and whose `w:rPr`
+  are equal become one run, as Word writes case F. Runs that differ at all --- a `w:rPrChange`
+  under tracking among them --- stay apart.
+* **`""` or None** removes the links the range touches and wraps nothing. The relationship stays:
+  it is harmless and may be shared, and docx4j-core-ts leaves it too.
+* **Refused, before anything changes**, with `SpanError` (nothing unwrapped, split or related, and
+  no `ChangeReport`): an empty range (`range.empty`; Office JS refuses it, check 19); a range whose
+  runs would not sit in one run-level list once the touched links are unwrapped --- across a
+  content control, a field, a smart tag, or into or out of a tracked insertion
+  (`range.crosses_holder`, through `require_one_holder(revisions=True, unwrapped=...)`); a range
+  with a tracked change **between** its runs, which is how a `w:del` shows, since it has no
+  accepted-view text for the holder walk to see (`range.crosses_holder`, the message naming the
+  element); and a range that covers no text (`range.no_text`). An address on a body with no part
+  is `ContentError` `hyperlink.no_part`; a location alone needs no part.
+* **A range inside a tracked insertion.** `CT_RunTrackChange` holds `EG_ContentRunContent`, which
+  has no `w:hyperlink`, so a link cannot be in a `w:ins`; a `w:ins` can be in a link. The insertion
+  is split at the span: the part before keeps the element and its `w:id`, the span's runs go into a
+  revision of the same kind and attributes with a new id **inside** the link, and the part after
+  into another; an insertion wholly covered goes into the link as it is. The ids come from the
+  package's tracker, or, with tracking off, from one made for the call over the same annotation id
+  space. Rejecting the insertion leaves the link empty.
+* **Change tracking.** The restyle is a formatting revision: each run's properties as they stood are
+  recorded in `w:rPrChange` before the write, as `Font` records them, unless the run is this
+  author's own insertion; so `insert_text(...)` then `.hyperlink = ...` under tracking records no
+  formatting change. The wrap itself is not a revision --- Word has no markup for one (open
+  question 2 of `docs/user/hyperlinks.md` 5.8, answered as it recommended and as docx4j-core-ts
+  does). Rejecting takes the style off and leaves the link.
+* **`ChangeReport`**: operation `"hyperlink"` (a property with its own name, as `placeholder_text`
+  is), the paragraph's address, `text_before` / `text_after` as `hyperlink=<value>` (the shape of a
+  `"format"` report), and `parts_touched` naming the body's part, the `.rels` when a relationship
+  was added, and `/word/styles.xml` when the style was defined.
+* **`dry_run`**: the relationship goes into the real part's `.rels` (a trial shares the part graph,
+  section 12.5) and is taken out when the block ends, with the `.rels` itself when the call created
+  it; the allocator is put back, so the commit after a trial gets the `rId` the trial reported.
+* **`to_api_script`**: a paragraph holding a `w:hyperlink` is one `insert_xml`, as before and as
+  docx4j-core-ts's `toApiScript` does; the setter is not emitted (21.8).
+
+On a created document, with the `search()` that finds the span included, a read is 55 us, a
+write 161 us (a read for the report's `text_before` among it) and a removal 71 us.
+
+### 21.3 Differences from docx4j-core-ts, each deliberate
+
+1. **`w:history="1"`**, where core-ts writes `true`: both are `ST_OnOff`, and this package
+   marshals every boolean numeric, as Word writes them (CLAUDE.md). Not a difference in behaviour.
+2. **The style is defined in the setter**, synchronously, through `define_built_in`; core-ts's
+   setter cannot await, so it asks the package (`requireStyles`) and `saveTo` splices the
+   definition in. The saved document is the same; here `styles.xml` is named in the
+   `ChangeReport`, and a read before the save already sees the style.
+3. **The empty-range refusal is `SpanError` with code `range.empty`**, this package's error scheme
+   (section 3.1), where core-ts throws its `GeneralException` with `code` `'GeneralException'`,
+   Office JS's own.
+4. **None is accepted as `""`**, the Python spelling of "no link".
+5. **Every refusal comes before any change.** core-ts unwraps the touched links and adds the
+   relationship *before* its one-holder check, so a refused call leaves the links it touched
+   unwrapped and an orphan relationship behind. Measured on its build: a link inside a run-level
+   content control, then `"see this"` linked across the control's edge --- refused, and the
+   control's link reads `""` afterwards. Here it still reads its address
+   (`test_a_span_crossing_a_content_control_is_refused_and_a_link_it_touches_survives`). **A core-ts
+   defect, for its session.**
+6. **What lies between the first run and the last goes into the link.** core-ts replaces as many
+   items of the run list as there are runs, starting at the first run; with a `w:bookmarkStart`
+   between two runs that drops the bookmark and leaves the second run twice --- measured on its
+   build, "alpha beta gamma" became "alpha betabeta gamma". Here the slice goes in whole
+   (`test_a_bookmark_between_the_runs_goes_into_the_link_and_no_text_moves`). **A core-ts defect**,
+   which corrupts text.
+7. **A range inside a tracked insertion puts the link outside the `w:ins`** (21.2). core-ts puts the
+   `w:hyperlink` inside the `w:ins` --- measured on its build:
+   `<w:ins ...><w:hyperlink xsi:type="w:P.Hyperlink" ...>`, which the schema does not allow, as its
+   own CR-002 section 37 item 4 records for the holders `trackInsertedBlocks` writes. This package
+   could not marshal that form even if it wanted it (the serialiser names the element
+   `w:PHyperlink`, there being no `w:hyperlink` in `CT_RunTrackChange`). The form chosen here is
+   the one core-ts writes for a run holder in an insertion and that Word leaves empty on a reject
+   (its check 30). **A core-ts defect, and a form not yet opened in Word** (21.7).
+8. **A tracked deletion between the runs is refused.** core-ts does not see it --- a `w:del` has no
+   accepted-view text --- and by item 6 would lose it. Refusing is core-ts's own stated rule, "a
+   range spanning a tracked change is refused".
+9. **No settle under tracking.** A link made and removed under tracking leaves its `w:rPrChange`,
+   recording the original properties, where core-ts's `settleRPrChange` (its check 24) drops a
+   record whose properties are back to what it recorded. This package's `Font` setters do not
+   settle either; porting check 24 is its own item, for every formatting write at once
+   (`test_a_link_made_and_removed_under_tracking_keeps_its_recorded_original` pins today's
+   behaviour).
+10. **The range's own offsets are snapped** to grapheme boundaries by the split, as `Range.font`
+    snaps them (section 11.3); core-ts does not snap. A range extended by the edge rule keeps its
+    own offsets in both.
+
+Not ported, because it is not the setter: core-ts's `8cfdef9` (`insertText('Before')` on a
+link's range goes into the link, its check 32) changes `Range.insert_text`, and belongs with the
+section 3 defect of `docs/user/hyperlinks.md` (21.8).
+
+### 21.4 Differences from `docs/user/hyperlinks.md` section 5.1, each following docx4j-core-ts
+
+1. **A span crossing a link's edge** was to be refused with `SpanError`; Word takes the link in
+   (check 16 case F), and so does this. A span crossing any **other** run holder is still refused.
+2. **The style** was to be `Hyperlink` on each run's `w:rStyle`; Word also **replaces** a run's own
+   character style and **removes** its direct colour (check 15 cases C and D), and so does this.
+3. **An empty range** was not mentioned; Office JS refuses it (check 19), and so does this.
+4. **Inside a tracked insertion**, 5.1 said the `w:hyperlink` "goes inside" the `w:ins`. It cannot
+   (item 7 of 21.3); the insertion goes inside the link.
+5. **`get_hyperlink_ranges()`** is not added: it is not in core-ts's subset, which is the list this
+   package promises.
+6. **The `ChangeReport`** names `/word/styles.xml` as well as the paragraph and the `.rels`, when the
+   style is defined.
+7. **`to_api_script`** was to emit two calls for the sugar; there is no sugar, and the setter is not
+   emitted (21.8).
+
+What 5.1 said and this does: `""` or None unwraps with the style coming off and the relationship
+staying; the tracking recommendation of open question 2; `dry_run` un-adding the relationship.
+
+### 21.5 Tests and numbers
+
+`tests/content/test_hyperlinks.py`, 29 tests. core-ts's three of section 20 (an external link over
+a span with its `r:id`, `TargetMode="External"` relationship and `w:history`, read back after a save
+and reload, `""` outside it; an anchor with no relationship, an address with a location, and removal
+leaving the runs; reading what Word wrote in `hyperlink_dupe.docx`); its checks 15, 16 and 19 held to
+the paragraph XML Word wrote, compared by exclusive canonicalisation with `w:rsid*`, the `w14`
+attributes and the relationship id taken out; the links removed being only the ones touched; the
+style defined where absent and the styles part byte for byte where present. Then this package's:
+**every `w:hyperlink` in `samples/` and `tests/fixtures/` reads back its relationship target or
+`#anchor`** --- 23 links in 7 documents (`comments-modern`, `hyperlink`, `hyperlink_dupe`,
+`loadAndSave`, `sample-docx`, `toc`, `tracked-changes`), over a range on the link's text, a caret
+inside it and a caret at its end; `to_markdown` and the python-docx facade reading the setter's
+links; a header's link related from the header (`header-no-rels.docx`, whose `.rels` is created);
+each refusal with the document and the relationships unchanged; a link over part of an insertion
+splitting it into three revisions with three ids, every parent pointer right, and a reject leaving
+the link empty; the bookmark case of 21.3 item 6; the `ChangeReport`; a refused call recording none;
+`dry_run` byte for byte with the commit getting the trial's `rId`, and a header `.rels` created in a
+trial detached again; tracking (a `w:rPrChange` by the author, a `"Formatted"` change, the reject;
+none over the author's own insertion; the unsettled record of 21.3 item 9); `to_api_script`.
+
+The fast suite: **1,989 passed, 8 skipped**, with nothing failing. The subset: 231 members, 229
+implemented, the two null-object members omitted as before (section 18.2 item 12).
+
+### 21.6 Found on the way, and not fixed here
+
+1. **The markdown importer's link relationship escapes a `dry_run`, and its report does not name
+   the `.rels`.** `insert_markdown("[x](https://example.com/)")` in a trial leaves the relationship
+   on the real package, and the report's `parts_touched` is the body and `styles.xml` only ---
+   `docs/user/hyperlinks.md` section 2.1 said the report named the relationships part, which it
+   did not. The fix is the one this section added: `note_added_relationship` and `change.part(rels)`
+   in `open_hyperlink`.
+2. **`trial.header_parts()[i].body` is the real header's body**: `TrialPart` has no `body`, so its
+   `__getattr__` hands back the real part's, and an edit through it in a `dry_run` changes the real
+   document. `trial.bodies()` gives the copies; a `body` property on `TrialPart` would close it.
+3. **`to_api_script`'s fallback for a linked paragraph carries the `r:id` and not the
+   relationship**, so the executed script's link names a relationship the target document does not
+   have, or one it has for something else.
+4. **The markdown importer under change tracking.** A link in a new paragraph keeps its runs out of
+   any `w:ins` (`insert_markdown("see [x](https://example.com/) now")` tracks "see " and " now"
+   and not "x", so rejecting leaves the link's text); and a one-paragraph fragment with a link
+   merged into an existing paragraph (`paragraph.insert_markdown("[y](...)", location="End")`) puts
+   the `w:hyperlink` **inside** the `w:ins`, which `CT_RunTrackChange` does not allow and which the
+   serialiser writes as `<w:PHyperlink ...>` --- not WordprocessingML at all. The form of 21.2, a
+   link holding its `w:ins`, is what both should write.
+
+Items 5 to 7 of 21.3 are docx4j-core-ts's, for its session.
+
+### 21.7 What the Word check is for
+
+Artefact 6 (`6-tables-and-pictures.docx`, a loaded `2010-sample1.docx`, whose `styles.xml` has no
+`Hyperlink` style) gains a bookmark `tables_and_pictures` around its "Tables and pictures" heading
+and, at the end, the paragraph "Set through Range.hyperlink: the docx4j site, and back to the
+tables." with **the docx4j site** linked to `https://www.docx4java.org/` (a relationship of the
+main part) and **back to the tables** to `#tables_and_pictures`. Against the artefacts built the
+commit before, `scripts/compare_acceptance.py` finds 11 artefacts, 147 entries, and **one artefact
+differing**: artefact 6's `word/document.xml`, its `.rels` and `word/styles.xml`; the other ten are
+identical once the dates are scrubbed. In Word: no repair prompt; both link texts blue and
+underlined in the Hyperlink style; Ctrl+click on the first opens docx4java.org and on the second
+jumps to the heading; Insert > Link on each shows the address or "Place in This Document" with the
+bookmark. **Not in any artefact yet**: the form of 21.2 for a link over a tracked insertion
+(`w:hyperlink` holding the `w:ins`), which is new markup from this engine's setter and the thing a
+check should open next, with Accept All and Reject All.
+
+### 21.8 What stays open
+
+* `docs/user/hyperlinks.md` section 5.8's questions **1** (the `insert_hyperlink` sugar, the first
+  extension member), **3** (the facade's `add_hyperlink`) and **4** (fixing the section 3 defect,
+  `insert_text` at `"End"` after a link extending it, now or with the sugar) are the user's and
+  undecided. Question **2** is answered by what core-ts does and this follows: the restyle is a
+  `w:rPrChange`, the wrap no revision.
+* **`get_hyperlink_ranges()`**, until core-ts's subset declares it.
+* **`to_api_script` emitting the setter.** It waits on question 4: the script inserts a link's text
+  and then the text after it with `insert_text`, and today the text after a link at `"End"` joins
+  the link's run, so the emitted script would not reproduce the paragraph.
+* **The settle of check 24** (21.3 item 9), for `Font` and the restyle together.
+* **The `HYPERLINK` field form** (`docs/user/hyperlinks.md` 5.4): the getter reads `w:hyperlink`
+  only, and gives `""` for a field-form link.
+* The four defects of 21.6, the fourth the most serious: it writes markup that is not
+  WordprocessingML.

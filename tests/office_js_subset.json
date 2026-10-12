@@ -1630,6 +1630,15 @@
         "implemented": true
       },
       {
+        "office_js": "hyperlink",
+        "name": "hyperlink",
+        "kind": "property",
+        "readonly": false,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
         "office_js": "insertText",
         "name": "insert_text",
         "kind": "method",
