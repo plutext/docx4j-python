@@ -18,7 +18,7 @@ Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (eng
 **B implemented** — B on 2026-09-19 (section 15): `PropertyResolver` and `StyleUtil` over a
 property catalogue, the numbering emulator completed (resolution through the resolver, docx4j's
 whole format registry, `getInd` and the label's `w:rPr`), and `org.docx4j.fonts`' decision half,
-with **zero differences on all 45 of docx4j's parity goldens**, which this repository consumes
+with **zero differences on all 46 of docx4j's parity goldens with a fixture here**, which this repository consumes
 from `../docx4j-core-ts/test/golden/` and never builds — C (PML, SML, flat OPC, less the
 flat OPC read half) proposed; CR-003 (content API) **every phase implemented** --- A, B, D, K, C, G,
 F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member of

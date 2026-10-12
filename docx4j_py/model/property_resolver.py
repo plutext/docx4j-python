@@ -545,9 +545,9 @@ class PropertyResolver:
     def get_effective_paragraph_mark_rpr(self, p_pr: Any) -> Any:
         """The run properties of the paragraph mark.
 
-        Document defaults, the paragraph style's run properties, then the
-        ``w:pPr``'s own ``w:rPr``. What sizes an empty paragraph, and what a list
-        label starts from.
+        Document defaults, the paragraph style's run properties, the mark's
+        character style, then the ``w:pPr``'s own ``w:rPr``. What sizes an empty
+        paragraph, and what a list label starts from.
         """
         from docx4j_py.child import deep_copy
         from docx4j_py.wml import RPr
@@ -556,8 +556,29 @@ class PropertyResolver:
         apply_rpr(self.get_chain_rpr(self._paragraph_style_of(p_pr)), effective, RPr)
         mark = getattr(p_pr, "r_pr", None)
         if mark is not None:
-            apply_rpr(mark, effective, RPr)
+            self._apply_mark_rpr(mark, effective)
         return effective
+
+    def _apply_mark_rpr(self, mark: Any, effective: Any) -> None:
+        """The mark's character style (``w:pPr/w:rPr/w:rStyle``) as a level, then its direct formatting.
+
+        The order :meth:`_apply_character_style_and_direct` gives a run. docx4j
+        ``applyMarkRPr``, since 17.3.2 (``fb2a764f7``): until then the mark's
+        ``w:rStyle`` was copied as an attribute and never resolved, so an empty
+        paragraph whose mark names a 9pt character style was sized at its
+        paragraph style's 12pt.
+        """
+        from docx4j_py.wml import RPr
+
+        run_style_id = getattr(getattr(mark, "r_style", None), "val", None)
+        if run_style_id is not None:
+            if self._live_style(run_style_id) is None:
+                self._log_missing(run_style_id)
+            else:
+                apply_style_level(
+                    self.get_chain_rpr(run_style_id), effective, self._document_default_rpr
+                )
+        apply_rpr(mark, effective, RPr)
 
     def has_direct_rpr_formatting(self, r_pr: Any) -> bool:
         """Whether the run states any formatting of its own. docx4j ``hasDirectRPrFormatting``."""

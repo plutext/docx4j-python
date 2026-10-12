@@ -1135,6 +1135,17 @@ order nor the class a member happens to be is part of the contract.
    pinned `xfail(strict=True)` in `tests/content/goldens.py`'s `PINS` until docx4j-core-ts
    regenerated them at `2e381ef26` the same day (its `1f78b94`); nothing else in the goldens
    moved, and the pins are out (CR-009 section 10.10).
+8. **A paragraph mark's character style is resolved** (2026-10-12, docx4j 17.3.2's `fb2a764f7`,
+   which docx4j-core-ts ported in its `3c01dbf`). `get_effective_paragraph_mark_rpr` applies the
+   mark's `w:pPr/w:rPr/w:rStyle` as a style level over the paragraph style's run properties, then
+   the mark's direct formatting, the order a run gets (`_apply_mark_rpr` beside
+   `_apply_character_style_and_direct`); until then the `w:rStyle` was copied and never read, so
+   an empty paragraph whose mark names a 9pt character style was sized at its paragraph style's
+   12pt (docx4j's corpus 9698). The goldens regenerated at 17.3.2 recorded it in two comparisons,
+   `NumberingIndents` `footer:rId10[1]` and `fonts-modesOfApplication` `main[8]`, both
+   `paragraphMarkRPr`, which are the only two marks in `samples/` and `tests/fixtures/` that name
+   a character style; docx4j's `PropertyResolverOrderTest` case is ported into
+   `tests/content/test_properties.py`.
 
 **Quirks reproduced deliberately**, each because a golden records it:
 

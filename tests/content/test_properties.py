@@ -397,6 +397,39 @@ def test_a_missing_style_resolves_as_the_default_paragraph_style_does():
     assert resolver.get_effective_rpr("NoSuchStyle") is None
 
 
+def test_the_paragraph_marks_character_style_is_resolved_then_its_direct_formatting():
+    """docx4j ``PropertyResolverOrderTest`` (17.3.2, ``fb2a764f7``).
+
+    Corpus document 9698's empty cell paragraphs: the mark names a 9pt
+    character style and overrides its font, and Word sizes the empty line at
+    9pt, where the mark's ``w:rStyle`` was copied and never read before.
+    """
+    styles = wml(
+        "<w:styles>"
+        "<w:docDefaults><w:rPrDefault><w:rPr><w:sz w:val='28'/></w:rPr></w:rPrDefault>"
+        "</w:docDefaults>"
+        "<w:style w:type='character' w:styleId='Small'>"
+        "<w:rPr><w:rFonts w:ascii='Trebuchet MS' w:hAnsi='Trebuchet MS'/><w:sz w:val='18'/></w:rPr>"
+        "</w:style>"
+        "</w:styles>"
+    )
+    resolver = PropertyResolver(styles=styles)
+    marked = wml(
+        "<w:pPr><w:rPr><w:rStyle w:val='Small'/><w:rFonts w:ascii='Times New Roman'/></w:rPr></w:pPr>"
+    )
+    mark = resolver.get_effective_paragraph_mark_rpr(marked)
+    assert mark.sz.val == 18, "the mark's character style gives its size"
+    assert mark.r_fonts.ascii == "Times New Roman", "the mark's direct font wins over the style's"
+
+    marked.r_pr.sz = wml("<w:sz w:val='40'/>")
+    assert resolver.get_effective_paragraph_mark_rpr(marked).sz.val == 40, "direct size over the style's"
+
+    missing = wml("<w:pPr><w:rPr><w:rStyle w:val='Missing'/></w:rPr></w:pPr>")
+    assert resolver.get_effective_paragraph_mark_rpr(missing).sz.val == 28, "a missing style is ignored"
+
+    assert resolver.get_effective_rpr(None, marked).sz.val == 28, "the runs are not touched by the mark's style"
+
+
 # ---------------------------------------------------------------------------
 # the content API reads the effective value
 # ---------------------------------------------------------------------------
