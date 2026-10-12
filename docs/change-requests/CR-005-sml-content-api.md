@@ -267,6 +267,19 @@ filtered-category markup (`c:f` narrowed to a union of the visible cells, the fu
 data from the cells against the caches --- is the piece a workbook needs that a deck does not.
 Consumed from the sibling checkout, nothing copied, as the parity goldens are.
 
+**Hand-off from docx4j CR-035 phase 4 (2026-10-12, docx4j `b7a811bbf` on `VERSION_17_3_3`,
+unpushed).** Phase G's chart data has an oracle gated on Excel: `ChartDataEditor`, which keeps a
+chart's cells, table, references and caches in step through every data edit, with the limited cell
+writers under it (`org.xlsx4j.model`'s `CellRef`, `AreaRef`, `SheetCells`, `Tables`), and 21
+Excel-made before and after workbook pairs in
+`../docx4j/docx4j-core-tests/src/test/resources/charts/edit/`. The rules (a new series' `idx`,
+`c16:uniqueId` and inherited formatting; the table's growth, column ids and duplicate names; a new
+cell's style and the row spans; the caches' `ptCount`, blanks, errors and `formatCode`; the
+chart-filter unions; D10's formula cells and `fullCalcOnLoad`; D12's series kept by position) are
+recorded once, in CR-004 section 8, which this CR shares. For a workbook they are more than chart
+rules: the table and cell writes are the ones Phase G's own cell writer must make the way Excel
+makes them.
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary.** Recommendation: Excel JS for the content API, openpyxl for the facade, for the

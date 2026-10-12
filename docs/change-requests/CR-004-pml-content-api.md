@@ -310,6 +310,45 @@ by narrowing every series' `c:f` to a union of the visible cells, such as
 `(Sheet1!$A$2:$A$3,Sheet1!$A$5)`, the cache holding only those points and the full range in
 `c15:fullRef`; it does not use `categoryFilterExceptions`. CR-005 Phase G shares this oracle.
 
+**Hand-off from docx4j CR-035 phase 4 (2026-10-12, docx4j `b7a811bbf` on `VERSION_17_3_3`,
+unpushed; CR-035 is done; its CR sections 4.4 the design, 8 decisions D10 to D12, 11 every
+measured rule).** A chart's data has a Java editor gated on Excel's own edits, which is the
+oracle for `replace_data` (Phase C, once the embedded workbook can be written: question 3) and for
+Phase F's creation. `org.docx4j.model.chart.ChartDataEditor(chart, workbook)`, or `of(chart)` for
+an xlsx: `setValue`, `setBlank`, `setError`, `setCategory`, `setSeriesName`, `addCategory`,
+`removeCategory`, `addSeries`, `removeSeries`, `setData`, `refreshCaches`, each keeping the cells,
+the table, the chart's references and its caches in step, for series in columns or rows, Excel's
+chart-filter unions and multi-level categories; under it limited cell writers in
+`org.xlsx4j.model` (`CellRef`, `AreaRef`, `SheetCells`, `Tables`). The oracle:
+`../docx4j/docx4j-core-tests/src/test/resources/charts/edit/`, 21 cases (`e1` to `e7`, `r1` to
+`r14`), each a before and an after workbook made by Excel and a note of the `=SERIES` formulas
+and table ranges, held by `ChartDataEditorTest` (27 tests: chart part, cells, spans, dimension and
+table compared part by part with Excel's after-workbook); every docx4j output opened in Excel
+without repair, with the same Select Data ranges. The rules Excel was measured to follow:
+
+- **A new series**: `idx` and `order` one above every series', filtered ones included;
+  `c16:uniqueId` the `idx` as 8 hex digits plus the chart's shared suffix; no data labels (r10);
+  its formatting from the last series still in its automatic colour, recoloured by the colour
+  style's cycle on fill, line and marker (r9, r11).
+- **The table**: `ref` and `autoFilter` grow; a new `tableColumn` takes id max + 1, a fresh
+  `xr3:uid` and its header cell's text as its name; a duplicate name becomes "Series 12" in the
+  cell and the table (r7). A new cell takes the style of the cell before it (r8b); row spans are
+  the extent of each 16-row block.
+- **Caches**: `ptCount` is the number of cells named, one `c:pt` per non-empty cell (a blank point
+  dropped, `ptCount` kept); an error cached as `#N/A`; a cache's `formatCode` kept as written
+  (Excel spells built-in formats its own way, `d\-mmm`). Numbers compared as numbers: Excel writes
+  2.2 as `2.2000000000000002`.
+- **Excel's chart filter**: the unions and `c15:fullRef` grow, the filtered series' too (r12, r13).
+- **D12**: deleting a middle table column, Excel keeps series by position (r1, r5);
+  `removeSeries` removes the named series with its formatting. Removing series from the end keeps
+  formatting by position, as python-pptx's `replace_data` does and docx4j's `setData` does.
+- **D10**: formula cells are not overwritten unless asked; `fullCalcOnLoad` is set when the
+  workbook has formulas.
+
+docx4j's `326b88bd2` (CR-035 phase 3) also gives `ChartTable`, a chart as its title over a
+categories-down, series-across table with numbers formatted by format code in the US locale, as
+docx4j's markdown export writes it: the shape for a chart in `to_markdown` and `describe()`.
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary: PowerPoint JS or python-pptx as the primary API.** Recommendation: PowerPoint
