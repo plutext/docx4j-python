@@ -156,6 +156,7 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
             hint="call insert_content_control on a paragraph or on the body",
         )
     span.require_one_holder("insert_content_control")
+    _require_no_revision_between(span)
 
     paragraph = span.paragraph
     body = paragraph.parent_body
@@ -174,24 +175,66 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
                 code="range.no_holder",
                 hint="use get_range() on a paragraph that holds runs",
             )
-        index = len(items)
-        for run in runs:
-            for position, item in enumerate(items):
-                if item is run:
-                    index = min(index, position)
-                    break
-        if not runs:
-            index = _offset_index(items, paragraph, span.start)
         identifier = next_sdt_id(_root_of(body))
-        control = sdt(list(runs), kind=kind, id=identifier, form="run")
-        for run in runs:
-            items.remove(run)
-        items.insert(index, control)
+        if runs:
+            # the whole slice from the first run to the last, so that what lies
+            # between them --- a bookmark, a comment's range markers --- goes into
+            # the control and keeps its place (docx4j-core-ts CR-002 section 43)
+            first = _position(items, runs[0])
+            last = _position(items, runs[-1])
+            control = sdt(list(items[first : last + 1]), kind=kind, id=identifier, form="run")
+            items[first : last + 1] = [control]
+        else:
+            control = sdt([], kind=kind, id=identifier, form="run")
+            items.insert(_offset_index(items, paragraph, span.start), control)
         link_parents(control)
         view = _control(body, control, items)
         change.touched(paragraph)
         change.text(after=view.text)
         return view
+
+
+def _require_no_revision_between(span: Any) -> None:
+    """Refuse, before anything changes, a tracked change between the span's first run and its last.
+
+    A ``w:del`` or ``w:moveFrom`` there has no text in the accepted view, so
+    :meth:`Range.require_one_holder` does not see it; wrapping the slice would
+    move it into the control. ``Range.hyperlink`` refuses the same span
+    (CR-003 section 21.3 item 8), as docx4j-core-ts does since its CR-002
+    section 43.
+    """
+    from docx4j_py.model.content.errors import SpanError
+    from docx4j_py.model.content.tracking import REVISION_NAMES
+    from docx4j_py.traversal import element_name
+
+    segments = [
+        segment
+        for segment in span.paragraph.segments()
+        if segment.end > span.start and segment.start < span.end
+    ]
+    if not segments:
+        return
+    owner = segments[0].run_owner
+    first = _position(owner, segments[0].run)
+    last = _position(owner, segments[-1].run)
+    for item in owner[first : last + 1]:
+        name = element_name(item)
+        if name in REVISION_NAMES:
+            raise SpanError(
+                f"the range {span.start}:{span.end} holds a tracked change "
+                f"(w:{(name or '').rpartition('}')[2]}) between its runs, "
+                "which a content control would have to wrap",
+                code="range.crosses_holder",
+                hint="accept or reject the tracked change first, or wrap a span on one side of it",
+            )
+
+
+def _position(items: list, element: Any) -> int:
+    """Where `element` is in `items`, by identity."""
+    for position, item in enumerate(items):
+        if item is element:
+            return position
+    raise ValueError("the element is not in this list")  # pragma: no cover - found through it
 
 
 def _offset_index(items: list, paragraph: Any, offset: int) -> int:

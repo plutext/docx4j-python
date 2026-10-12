@@ -4647,3 +4647,32 @@ is still unopened.
   only, and gives `""` for a field-form link.
 * The four defects of 21.6, the fourth the most serious: it writes markup that is not
   WordprocessingML.
+
+### 21.9 docx4j-core-ts's reply, and the same slice in `insert_content_control` (2026-10-12)
+
+The four core-ts defects of 21.3 (items 5 to 8) were reported to the docx4j-core-ts session the
+same day, at Jason's request. It reproduced all four on its 0.4.0 code (three worse than measured
+here: "alpha betata gamma" for the bookmark, the `w:hyperlink` marshalled with an `xsi:type`
+inside the `w:ins`, the `w:del` lost and "ta" doubled) and fixed them in its CR-002 section 43,
+following this section's design: every refusal first, judged on the range as it would be once the
+touched links are unwrapped; the whole slice from the first run to the last wrapped; a link over
+runs in a `w:ins` or `w:moveTo` placed between the revision's halves, holding a revision of the
+same kind with a new `w:id`. Four tests, its suite 815 of 815; **not committed when reported**,
+awaiting Jason. It found the same slice in its `insertContentControl` and fixed that too.
+
+**This package had it as well**, in a milder form: `insert_content_control_in_range` moved the
+span's runs alone into the control and left what lay between them after it, so a bookmark between
+two runs stopped marking the second, and a `w:del` between them moved past the wrapped text (its
+rejected view read differently). Fixed here the same day
+(`docx4j_py/model/customxml/insert.py`): the control takes the whole slice, and a tracked change
+between the span's first run and its last (`_require_no_revision_between`, the rule of item 8) is
+refused before anything splits. Two tests in `tests/content/test_controls_typed.py`, both failing
+before. The acceptance artefacts regenerated: 11, 147 entries, 0 differing beyond the dates, so
+no Word check.
+
+One thing core-ts recorded that bears on 21.7's unopened form: **Word's own markup for a link set
+on inserted text** (its check 30) is a `HYPERLINK` **field** inside the one `w:ins`, not a
+`w:hyperlink` at all, and neither engine's getter reads the field form (21.8). The form both
+engines now write, a `w:hyperlink` holding a `w:ins`, is valid and is what core-ts writes for a
+content control over inserted text, but it is not Word's; the Word check of it, with Accept All and
+Reject All, is still to be made.

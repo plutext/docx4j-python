@@ -356,6 +356,54 @@ def test_a_span_that_crosses_a_run_holder_is_refused(new_package):
     assert "insert_content_control" in error.value.message
 
 
+def test_what_lies_between_the_runs_goes_into_the_control_and_keeps_its_place(new_package):
+    """A bookmark between two runs of the span goes inside, in its place.
+
+    Until 2026-10-12 the runs alone were moved into the control and the
+    bookmark was left after it, so it no longer marked "beta"; docx4j-core-ts
+    found the same slice in its own insertContentControl (its CR-002 section 43).
+    """
+    body = new_package.body
+    body.insert_xml(
+        '<w:p><w:r><w:t xml:space="preserve">alpha </w:t></w:r>'
+        '<w:bookmarkStart w:id="5" w:name="bm"/><w:r><w:t>beta</w:t></w:r><w:bookmarkEnd w:id="5"/>'
+        '<w:r><w:t xml:space="preserve"> gamma</w:t></w:r></w:p>'
+    )
+    paragraph = body.paragraphs[-1]
+
+    control = paragraph.search("alpha beta")[0].insert_content_control("RichText")
+
+    assert paragraph.text == "alpha beta gamma"
+    assert control.text == "alpha beta"
+    inside = control.get_xml()
+    assert inside.index("alpha") < inside.index("<w:bookmarkStart") < inside.index("beta")
+    xml = paragraph.get_xml()
+    assert xml.count("<w:bookmarkStart") == 1 and xml.count("<w:bookmarkEnd") == 1
+    assert xml.index("beta") < xml.index("<w:bookmarkEnd") < xml.index("gamma")
+
+
+def test_a_tracked_deletion_between_the_runs_is_refused_before_anything_changes(new_package):
+    """A ``w:del`` has no accepted-view text, so only an explicit check finds it."""
+    body = new_package.body
+    body.insert_xml(
+        '<w:p><w:r><w:t xml:space="preserve">alpha </w:t></w:r>'
+        '<w:del w:id="9" w:author="A" w:date="2026-01-01T00:00:00Z">'
+        '<w:r><w:delText xml:space="preserve">gone </w:delText></w:r></w:del>'
+        "<w:r><w:t>beta gamma</w:t></w:r></w:p>"
+    )
+    paragraph = body.paragraphs[-1]
+    before = paragraph.get_xml()
+
+    with pytest.raises(SpanError) as error:
+        paragraph.search("alpha beta")[0].insert_content_control("RichText")
+
+    assert error.value.code == "range.crosses_holder"
+    assert paragraph.get_xml() == before, "nothing split, nothing moved"
+    # a span on one side of it is fine
+    paragraph.search("beta")[0].insert_content_control("RichText")
+    assert paragraph.text == "alpha beta gamma"
+
+
 def test_a_repeating_section_is_refused_at_run_level(new_package):
     paragraph = new_package.body.insert_paragraph("The quick brown fox")
 

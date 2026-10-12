@@ -52,6 +52,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   where 0.1.0 copied the `w:rStyle` and never read it. It sizes an empty paragraph and starts a
   list label's run properties, so both follow the mark's character style, as Word draws them.
 
+### Fixed
+
+- **`Range.insert_content_control` keeps what lies between the runs it wraps**
+  ([CR-003](docs/change-requests/CR-003-content-api.md) section 21.9): the control takes the whole
+  slice from the span's first run to its last, so a bookmark or a comment's range markers between
+  them go inside in their place, where 0.1.0 moved the runs alone and left the rest after the
+  control; and a tracked deletion or move between the runs is refused (`range.crosses_holder`)
+  before anything changes, as `Range.hyperlink` refuses it. docx4j-core-ts found and fixed the same
+  slice in its `insertContentControl`.
+
 ## [0.1.0] --- 2026-09-20
 
 The first release: WordprocessingML only. `.pptx` and `.xlsx` load and save through the generic
