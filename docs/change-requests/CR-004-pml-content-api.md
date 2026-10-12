@@ -360,6 +360,98 @@ in docx4j, and becomes this CR's oracle when it lands. `ChartSettings` (title, l
 titles, number formats, data labels) works on any chart, so it also bears on Phase C's edits of
 an existing chart.
 
+**Hand-off from docx4j CR-036 phase 3 (2026-10-12, docx4j `9ca75ced2`, with `d556a02e0` a line-ending
+change only, both on `VERSION_17_3_3`, unpushed; CR-036 is done; its CR sections 4.4 the design and
+11 "Phase 3" the record).** Charts **created** in a deck and a document, and deleted, measured
+against PowerPoint's and Word's own Insert Chart. This is Phase F's oracle. `ChartCreator`:
+
+- `inSlide(slide_part, definition, x, y, cx, cy)` adds the `p:graphicFrame` to the slide's
+  `p:spTree` and returns it;
+- `inDocument(package, definition[, cx, cy])` returns the `w:r` holding the `wp:inline` for the
+  caller to place, at 5,486,400 × 3,200,400 EMU (Office's 6 × 3.5 in, `DEFAULT_WIDTH` and
+  `DEFAULT_HEIGHT`) where no size is given;
+- `inNewParagraph(package, definition)` appends that run in a new paragraph and returns the
+  `ChartRef`;
+- static `delete(ChartRef)`, for a docx, a pptx or an xlsx.
+
+The rules a port must reproduce:
+
+1. **The embedded workbook.** It is Word's own for the type, and PowerPoint's is identical apart
+   from random ids, times and the window's `xWindow`/`yWindow`. It holds one sheet with the
+   default data at A1 in `Table1`. The table has **no** `autoFilter` and **no** `tableStyleInfo`
+   name, where Excel's own tables have both. The area chart's date column has `dataDxfId` 0, the
+   column widths are Word's for the type, and B1 is selected.
+   - These ship byte for byte as
+     `../docx4j/docx4j-core/src/main/resources/org/docx4j/model/chart/templates/workbook/<type>.xlsx`.
+   - Creation empties Sheet1's cells and the shared strings, then writes the definition at A1 with
+     the writer `inSheet` uses (CR-005 Phase G's).
+   - It sets `Table1`'s `ref` and makes fresh uids: the sheet's `xr:uid`, the table's and its
+     columns' uids, the `workbookView`'s `xr2:uid` and the `revisionPtr`'s `documentId` GUID.
+2. **A document's chart part** is Excel's template (CR-005 section 8) with Word's host step:
+   - `c:printSettings` is removed;
+   - `c:externalData` gets an `r:id` for the `package` relationship to the workbook, with
+     `c:autoUpdate` 0. That relationship is rId3, after the style's rId1 and the colours' rId2.
+   - a scatter series' `a:ln` width goes from 38100 to 19050;
+   - each `c:dPt` of a pie or doughnut gets a `c16:uniqueId`: `2 × idx + 1` as eight hex digits,
+     with a suffix different from the series'.
+3. **A deck's chart part** is PowerPoint's own, with its own style part per type
+   (`templates/pptx/<type>.xml` and `style-<id>.xml`; PowerPoint writes the style part with no XML
+   declaration). The colour part is the shared one, and there are no per-point ids.
+4. **The legend is the template's.** Word's and PowerPoint's insert starts from their own default
+   data, so a chart they make keeps its template's legend whatever the data. PowerPoint's
+   one-series scatter has a legend; Word's, which is Excel's part, has none. Excel's insert-time
+   defaults (no legend for one series, a scatter's legend from two series; CR-005 section 8 rule 3)
+   apply to an xlsx only.
+5. **The drawing.**
+   - In a document: `<w:r><w:rPr><w:noProof/></w:rPr><w:drawing>` holding a `wp:inline`.
+     `distT`, `distB`, `distL` and `distR` are 0. `wp14:anchorId` and `wp14:editId` are random
+     eight-hex-digit values with the top bit clear. Then `wp:extent`, a `wp:effectExtent` of 0s,
+     and a `wp:docPr` whose `id` is a random unused 31-bit value and whose `name` is "Chart n" (n
+     counts the main document's charts). Then `wp:cNvGraphicFramePr` and the `a:graphic`.
+   - On a slide: `p:cNvPr`'s `id` is the slide's highest id plus 1, its name "Chart " followed by
+     that id minus 1. It carries an `a16:creationId` GUID, and `p:nvPr` an `p:extLst` with a
+     random unsigned 32-bit `p14:modId`. `p:xfrm` is as given.
+6. **Names.** The chart, style and colour parts are `/ppt/charts/chartN.xml` (or `/word/charts/`),
+   `styleN` and `colorsN`. The workbooks are `embeddings/Microsoft_Excel_Worksheet.xlsx`, then
+   `Microsoft_Excel_Worksheet1.xlsx`, `...2`. They are typed by
+   `<Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>`,
+   with no override.
+7. **Delete** removes:
+   - the run holding the drawing (only the drawing, where the run holds more), the slide's frame
+     or the sheet's anchor;
+   - the chart part and its targets (style, colours, workbook) with their overrides;
+   - the `xlsx` `Default`, when no `.xlsx` part remains.
+
+   The oracle is `p3-no-chart.docx`, Word's document without a chart: after deleting Word's
+   chart, the parts and content types are equal to it.
+8. **The embedded workbook's core properties** follow `docx4j.properties`, not the template's
+   probe account and times:
+   - `dc:creator` is `docx4j.dc.creator.value` where `docx4j.dc.write` is set, otherwise none;
+   - the times follow the new `docx4j.dcterms.write`. False, the default, writes none. True writes
+     the current time as a `dcterms:W3CDTF` value in UTC, to the second.
+
+   This library has no properties file, and its `create_package` always writes `created` and
+   `modified` (CR-002 section 12.8). Which rule the embedded workbook follows here is left for
+   Phase F to decide.
+
+The oracle: `p3-*.docx` (plus `p3-no-chart.docx`) and `p4-*.pptx` in
+`../docx4j/docx4j-core-tests/src/test/resources/charts/authoring/`. The gate is
+`ChartCreatorHostTest`. Each of the twelve types is made in Word's own P3 document and on
+PowerPoint's own P4 slide, after Office's chart is deleted, and compared with Office's own part for
+part, random ids aside. All 24 are identical, and so are the data sets and Word's two charts.
+Office's check passed: every document opens, *Edit Data* and the Chart Design tools work, and the
+28 PDFs are Word's and PowerPoint's own pixel for pixel.
+
+Left for later in docx4j too: floating (anchored) charts in a document; charts in headers,
+footers, layouts and masters; combination charts and secondary axes; a chart copied with its
+workbook; chartex creation, which is commercial.
+
+**Creation in a document has no phase here.** CR-003 follows Word JS, which has no chart insertion,
+and python-docx has none either. The docx half is recorded above beside the deck's because the two
+are one phase in docx4j, sharing the workbook and the definition. If it is wanted, it is a small
+phase after CR-005 Phase G: Excel's template, Word's host step in rule 2, rule 5's run, and the
+workbook writer.
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary: PowerPoint JS or python-pptx as the primary API.** Recommendation: PowerPoint

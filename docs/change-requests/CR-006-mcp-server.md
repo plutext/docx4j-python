@@ -156,10 +156,17 @@ servers; the shared tool names and path policy make that unremarkable. `anonymiz
 Phase A is ready now and is the MCP server's first release, as CR-003 section 8 said of its
 phases B, D and K.
 
-A create-chart tool is not in this contract yet. When one is added, for Phase C first, docx4j's
-CR-036 (`ChartCreator` and `ChartSettings`, handed off 2026-10-12 and recorded in CR-005
-section 8) is its natural backing in Java, and CR-005 Phase G's port of it is the backing here;
-creation in a deck or a document waits on docx4j CR-036 phase 3 and CR-004 Phase F.
+A create-chart tool is not in this contract yet. If one is added, docx4j's CR-036 is its natural
+backing in Java: `ChartCreator` and `ChartSettings`, handed off 2026-10-12 and recorded in CR-005
+section 8 and CR-004 section 8. That CR was finished the same day, and since its phase 3 a chart
+can be created in all three formats: `inSheet` for an xlsx, `inNewParagraph` for a docx, `inSlide`
+for a pptx. A delete-chart tool would be `ChartCreator.delete`, for any host.
+
+Here, the backing would be:
+
+- CR-005 Phase G's port for workbooks;
+- CR-004 Phase F's port for decks;
+- for documents, a phase this library does not have yet (CR-004 section 8).
 
 ## 8. Open questions (recommendations for decision)
 

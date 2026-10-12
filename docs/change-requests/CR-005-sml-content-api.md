@@ -335,6 +335,24 @@ check passed on 108 workbooks: no repair, Excel's Select Data ranges, the Chart 
 working, and every picture Excel's own, pixel for pixel. Creation in `.docx` and `.pptx` is
 docx4j CR-036 phase 3, next there (CR-004 Phase F).
 
+**Hand-off from docx4j CR-036 phase 3 (2026-10-12, docx4j `9ca75ced2`, unpushed; CR-036 is
+done).** This is chart creation in a deck and a document, and `ChartCreator.delete` for any host,
+an xlsx's anchor included. The rules are recorded once, in CR-004 section 8. For this CR, three
+of them matter:
+
+- **Phase G's cell writer is the one that fills the embedded workbook.** Creation empties Word's
+  template workbook for the type and writes the definition at A1 with `inSheet`'s writer. It sets
+  `Table1`'s `ref` and makes the sheet's, the table's, the columns', the window's and the
+  revision's ids afresh.
+- **Word's tables are not Excel's.** Word's template workbooks
+  (`templates/workbook/<type>.xlsx`, byte for byte) have no `autoFilter` and no table style name,
+  where a table Excel creates has both.
+- **Excel's insert-time legend defaults** (rule 3 above) stay an xlsx's alone. A chart made in a
+  deck or a document keeps its template's legend.
+
+The workbook's core properties follow docx4j's `docx4j.dc.write` and the new `docx4j.dcterms.write`
+(CR-004 section 8, rule 8).
+
 ## 9. Open questions (recommendations for decision)
 
 1. **Vocabulary.** Recommendation: Excel JS for the content API, openpyxl for the facade, for the

@@ -746,6 +746,13 @@ documents are unaffected: their properties parts are copied byte for byte unless
 nothing is rewritten at save time (decided question 2). Tests in
 `tests/openpackaging/test_docprops_defaults.py`; artefacts 3 and 4 regenerated for a re-check.
 
+docx4j 17.3.3 adds an opt-in `docx4j.dcterms.write`, which defaults to false, in its CR-036
+phase 3 (`9ca75ced2`, 2026-10-12). When true, every save sets `dcterms:modified` to the current
+time, and sets `dcterms:created` too on a new package that has none. docx4j's default still
+rewrites nothing at save, so decided question 2 stands and nothing changes here. The setting has
+no counterpart in this library. It bears on the core properties of a chart's embedded workbook
+(CR-004 section 8, rule 8).
+
 ### 12.9 Deferred to Phase B and C
 
 * ~~**Phase B**~~ **implemented 2026-09-19, section 15**: `PropertyResolver` and `StyleUtil`; the
