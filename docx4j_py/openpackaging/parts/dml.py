@@ -2,9 +2,12 @@
 
 CR-002 section 5.4: "chart/diagram parts typed where the model has classes".
 Six of them do (chart, chart user shapes, the four diagram parts) plus the theme
-and the theme override; the three Microsoft extension parts --- chart style,
-chart colour style and ``chartex`` --- have no classes in this build's schema
-closure, so they are :class:`DefaultXmlPart`\\ s and lose nothing.
+and the theme override. The three Microsoft extension parts --- chart style,
+chart colour style and ``chartex`` --- are :class:`DefaultXmlPart`\\ s, lxml
+trees that lose nothing. Their namespaces do have generated classes
+(``docx4j_py.oart``), but a part is typed only once its binding has been proven
+over Office's own files. The chartex binding failed that test until docx4j
+CR-040 (CR-001 section 14.12): it read a histogram's bins as empty text.
 """
 
 from __future__ import annotations

@@ -61,6 +61,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   control; and a tracked deletion or move between the runs is refused (`range.crosses_holder`)
   before anything changes, as `Range.hyperlink` refuses it. docx4j-core-ts found and fixed the same
   slice in its `insertContentControl`.
+- **The chartex binding reads a histogram's bins**
+  ([CR-001](docs/change-requests/CR-001-object-model.md) section 14.12). Excel writes them as
+  `<cx:binSize val="10"/>` and `<cx:binCount val="6"/>`. `docx4j_py.oart.chartex_2014` typed them
+  as element text, as [MS-ODRAWXML] does, so it read `""` and could not write the object back.
+  - `CTBinning.bin_size_or_bin_count` is now a `CTBinSize` or a `CTBinCount`, each with a `val`.
+  - The schema file is docx4j CR-040's (`28bdf831c`), copied verbatim.
+  - Loading and saving a package was never affected: the engine keeps a chartex part as an XML tree.
 
 ## [0.1.0] --- 2026-09-20
 

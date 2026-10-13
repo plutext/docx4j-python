@@ -150,6 +150,43 @@ def test_the_c16r3_chart_boolean_keeps_its_val():
                     assert b'c16r3:dispNaAsBlank val="1"' in part.xml, part.part_name
 
 
+@pytest.mark.parametrize(
+    ("name", "kind", "value"),
+    [("manual-binwidth-10.xlsx", "CTBinSize", 10.0), ("manual-bincount-6.xlsx", "CTBinCount", 6)],
+)
+def test_a_histograms_bins_are_read_typed_and_written_back(name, kind, value):
+    """docx4j CR-040 (``28bdf831c``), CR-001 section 14.12.
+
+    Excel writes a histogram's bins as ``<cx:binSize val="10"/>`` or
+    ``<cx:binCount val="6"/>``, where [MS-ODRAWXML]'s ``CT_Binning`` has them
+    as text; the binding read them as ``""`` and could not write that back.
+    docx4j's schema binds them as Excel writes them. The engine keeps a chartex
+    part as a tree, so this is the generated binding's test, through the
+    parser and serialiser directly; the fixtures are docx4j's, Excel-saved.
+    """
+    from docx4j_py.fragments import to_xml
+    from docx4j_py.oart.chartex_2014 import ChartSpace
+    from docx4j_py.runtime import parser
+
+    source = source_entries(ROOT / "tests" / "fixtures" / name)
+    (chart,) = [n for n in source if n.startswith("xl/charts/chartEx")]
+
+    def binning(xml: bytes) -> object:
+        read = parser()
+        space = read.from_bytes(xml, ChartSpace)
+        assert list(read.skipped) == []
+        (bins,) = [n for n in iter_nodes(space) if type(n).__name__ == "CTBinning"]
+        return space, bins
+
+    space, bins = binning(source[chart])
+    assert type(bins.bin_size_or_bin_count).__name__ == kind
+    assert bins.bin_size_or_bin_count.val == value
+    assert bins.interval_closed.value == "r"
+
+    _, again = binning(to_xml(space).encode())
+    assert again.bin_size_or_bin_count.val == value
+
+
 def test_loading_is_lazy():
     """docx4j's rule: load costs the relationships, nothing else."""
     with OpcPackage.load(ROOT / "samples" / "toc.docx") as pkg:

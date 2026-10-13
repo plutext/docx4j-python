@@ -8,20 +8,14 @@
     "aliases": {}
   },
   "counts": {
-    "element_names": 98,
-    "simple_type_elements": 14,
+    "element_names": 100,
+    "simple_type_elements": 12,
     "scoped_names": 6,
     "keyword_renames": 2,
     "collisions": 6
   },
   "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
   "simple_type_elements": {
-    "binCount": [
-      "int"
-    ],
-    "binSize": [
-      "float"
-    ],
     "binary": [
       "bytes"
     ],
@@ -187,6 +181,8 @@
     "aggregation": "CTAggregation",
     "axis": "CTAxis",
     "axisId": "CTAxisId",
+    "binCount": "CTBinCount",
+    "binSize": "CTBinSize",
     "binning": "CTBinning",
     "catScaling": "CTCategoryAxisScaling",
     "chart": "Chart",

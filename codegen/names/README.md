@@ -33,7 +33,10 @@ and no table.
 
 ## Files
 
-54 files, 1425 type entries and 516 element entries in total.
+56 files besides `wml_overrides.json`, 1430 type entries and 519 element entries in total. These
+figures were recounted on 2026-10-14, when docx4j CR-040 (`28bdf831c`) added `CT_BinSize` and
+`CT_BinCount` to the chartex table (CR-001 section 14.12). The table below has not been
+recounted, apart from that row.
 
 | file | namespace | java package | types | elements |
 | --- | --- | --- | ---: | ---: |
@@ -62,7 +65,7 @@ and no table.
 | `drawing_2012_main.json` | `http://schemas.microsoft.com/office/drawing/2012/main` | `org.docx4j.com.microsoft.schemas.office.drawing.x2012.main` | 4 | 4 |
 | `drawing_2013_main_command.json` | `http://schemas.microsoft.com/office/drawing/2013/main/command` | `org.docx4j.com.microsoft.schemas.office.drawing.x2013.main.command` | 25 | 6 |
 | `drawing_2014_chart.json` | `http://schemas.microsoft.com/office/drawing/2014/chart` | `org.docx4j.com.microsoft.schemas.office.drawing.x2014.chart` | 11 | 9 |
-| `drawing_2014_chartex.json` | `http://schemas.microsoft.com/office/drawing/2014/chartex` | `org.docx4j.com.microsoft.schemas.office.drawing.x2014.chartex` | 110 | 4 |
+| `drawing_2014_chartex.json` | `http://schemas.microsoft.com/office/drawing/2014/chartex` | `org.docx4j.com.microsoft.schemas.office.drawing.x2014.chartex` | 112 | 4 |
 | `drawing_2014_main.json` | `http://schemas.microsoft.com/office/drawing/2014/main` | `org.docx4j.com.microsoft.schemas.office.drawing.x2014.main` | 4 | 5 |
 | `drawing_201611_diagram.json` | `http://schemas.microsoft.com/office/drawing/2016/11/diagram` | `org.docx4j.com.microsoft.schemas.office.drawing.x201611.diagram` | 4 | 1 |
 | `drawing_201611_main.json` | `http://schemas.microsoft.com/office/drawing/2016/11/main` | `org.docx4j.com.microsoft.schemas.office.drawing.x201611.main` | 1 | 1 |

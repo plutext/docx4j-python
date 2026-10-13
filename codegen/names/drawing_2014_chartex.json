@@ -9,6 +9,8 @@
     "CT_AxisTitle": "CTAxisTitle",
     "CT_AxisUnits": "CTAxisUnits",
     "CT_AxisUnitsLabel": "CTAxisUnitsLabel",
+    "CT_BinCount": "CTBinCount",
+    "CT_BinSize": "CTBinSize",
     "CT_Binning": "CTBinning",
     "CT_CategoryAxisScaling": "CTCategoryAxisScaling",
     "CT_Chart": "CTChart",

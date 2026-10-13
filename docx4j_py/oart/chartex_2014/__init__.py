@@ -83,6 +83,32 @@ class CTAxisId(Child):
 
 
 @dataclass(slots=True, kw_only=True)
+class CTBinCount(Child):
+    class Meta:
+        name = "CT_BinCount"
+
+    val: None | int = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class CTBinSize(Child):
+    class Meta:
+        name = "CT_BinSize"
+
+    val: None | float = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class CTCopyrights(Child):
     class Meta:
         name = "CT_Copyrights"
@@ -683,19 +709,19 @@ class CTBinning(Child):
     class Meta:
         name = "CT_Binning"
 
-    bin_size_or_bin_count: None | float | int = field(
+    bin_size_or_bin_count: None | CTBinSize | CTBinCount = field(
         default=None,
         metadata={
             "type": "Elements",
             "choices": (
                 {
                     "name": "binSize",
-                    "type": float,
+                    "type": ForwardRef("CTBinSize"),
                     "namespace": "http://schemas.microsoft.com/office/drawing/2014/chartex",
                 },
                 {
                     "name": "binCount",
-                    "type": int,
+                    "type": ForwardRef("CTBinCount"),
                     "namespace": "http://schemas.microsoft.com/office/drawing/2014/chartex",
                 },
             ),

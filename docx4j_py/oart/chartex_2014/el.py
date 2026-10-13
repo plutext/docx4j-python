@@ -35,6 +35,8 @@ from docx4j_py.oart.chartex_2014 import (
     CTAxisTitle,
     CTAxisUnits,
     CTAxisUnitsLabel,
+    CTBinCount,
+    CTBinSize,
     CTBinning,
     CTCategoryAxisScaling,
     CTChart,
@@ -141,6 +143,14 @@ def axis(**kwargs: Any) -> CTAxis:
 def axisId(**kwargs: Any) -> CTAxisId:
     """``{http://schemas.microsoft.com/office/drawing/2014/chartex}axisId`` -> :class:`docx4j_py.oart.chartex_2014.CTAxisId`."""
     return CTAxisId(**kwargs)
+
+def binCount(**kwargs: Any) -> CTBinCount:
+    """``{http://schemas.microsoft.com/office/drawing/2014/chartex}binCount`` -> :class:`docx4j_py.oart.chartex_2014.CTBinCount`."""
+    return CTBinCount(**kwargs)
+
+def binSize(**kwargs: Any) -> CTBinSize:
+    """``{http://schemas.microsoft.com/office/drawing/2014/chartex}binSize`` -> :class:`docx4j_py.oart.chartex_2014.CTBinSize`."""
+    return CTBinSize(**kwargs)
 
 def binning(**kwargs: Any) -> CTBinning:
     """``{http://schemas.microsoft.com/office/drawing/2014/chartex}binning`` -> :class:`docx4j_py.oart.chartex_2014.CTBinning`."""
@@ -548,6 +558,8 @@ QNAME_TO_CLASS: dict[str, type] = {
     "{http://schemas.microsoft.com/office/drawing/2014/chartex}aggregation": CTAggregation,
     "{http://schemas.microsoft.com/office/drawing/2014/chartex}axis": CTAxis,
     "{http://schemas.microsoft.com/office/drawing/2014/chartex}axisId": CTAxisId,
+    "{http://schemas.microsoft.com/office/drawing/2014/chartex}binCount": CTBinCount,
+    "{http://schemas.microsoft.com/office/drawing/2014/chartex}binSize": CTBinSize,
     "{http://schemas.microsoft.com/office/drawing/2014/chartex}binning": CTBinning,
     "{http://schemas.microsoft.com/office/drawing/2014/chartex}catScaling": CTCategoryAxisScaling,
     "{http://schemas.microsoft.com/office/drawing/2014/chartex}chart": Chart,
@@ -650,6 +662,8 @@ ELEMENTS: dict[str, type] = {
     "aggregation": CTAggregation,
     "axis": CTAxis,
     "axisId": CTAxisId,
+    "binCount": CTBinCount,
+    "binSize": CTBinSize,
     "binning": CTBinning,
     "catScaling": CTCategoryAxisScaling,
     "chart": Chart,
@@ -755,6 +769,8 @@ CLASS_TO_QNAME: dict[type, str] = {
     CTAxisTitle: "{http://schemas.microsoft.com/office/drawing/2014/chartex}title",
     CTAxisUnits: "{http://schemas.microsoft.com/office/drawing/2014/chartex}units",
     CTAxisUnitsLabel: "{http://schemas.microsoft.com/office/drawing/2014/chartex}unitsLabel",
+    CTBinCount: "{http://schemas.microsoft.com/office/drawing/2014/chartex}binCount",
+    CTBinSize: "{http://schemas.microsoft.com/office/drawing/2014/chartex}binSize",
     CTBinning: "{http://schemas.microsoft.com/office/drawing/2014/chartex}binning",
     CTCategoryAxisScaling: "{http://schemas.microsoft.com/office/drawing/2014/chartex}catScaling",
     CTChart: "{http://schemas.microsoft.com/office/drawing/2014/chartex}chart",
@@ -852,6 +868,8 @@ __all__ = [
     "axis",
     "axisId",
     "axis_title",
+    "binCount",
+    "binSize",
     "binning",
     "catScaling",
     "chart",

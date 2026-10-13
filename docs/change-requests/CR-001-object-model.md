@@ -1105,7 +1105,7 @@ option reads `True` and is written `c16r3:dispNaAsBlank val="1"`).
 The acceptance artefacts are unaffected --- none holds a chart or an equation --- and were not
 regenerated for this; the next marshalling change regenerates them as the rule says.
 
-### 14.12 Hand-off from docx4j CR-040: a histogram's bins as `@val` (2026-10-14, pending)
+### 14.12 Hand-off from docx4j CR-040: a histogram's bins as `@val` (2026-10-14, ported the same day)
 
 docx4j's session reported a chartex schema correction that this schema copy shares. The docx4j
 CR is `docs/developer/change-requests/CR-040-chartex-binning-val-elements.md`, committed as
@@ -1176,3 +1176,35 @@ upstream xsdata behaves the same way:
 - raise under `fail_on_unknown_attributes`.
 
 Not started; it is the user's to schedule.
+
+**Ported, 2026-10-14.** docx4j committed CR-040 as `28bdf831c` on `VERSION_17_3_3` (unpushed),
+with the schema patch, the two fixtures and `ChartExBinningTest`. Excel's check passed (Jason's),
+and Excel accepts `val="10.0"`, which is how JAXB writes an `xsd:double`. The port followed the
+plan above:
+
+- **The schema.** `schemas/odrawxml/office_drawing_2014_chartex.xsd` is copied verbatim from
+  `28bdf831c`. Its only difference from the previous copy is docx4j's patch, and the line endings
+  are unchanged. `schemas/PATCHES.md` names the commit and says the change is docx4j's, not a
+  patch of this repository's.
+- **The names.** `codegen/derive_names.py`, run over docx4j's XJC output rebuilt that morning,
+  changes one table: `drawing_2014_chartex.json` gains `CT_BinCount: CTBinCount` and
+  `CT_BinSize: CTBinSize`. The other tables came out byte identical. The names README's totals
+  were recounted.
+- **The generated code.**
+  - `docx4j_py.oart.chartex_2014` gains `CTBinSize` (`val: float`) and `CTBinCount` (`val: int`).
+  - `CTBinning.bin_size_or_bin_count` becomes `None | CTBinSize | CTBinCount`, where it was
+    `None | float | int`. This is the one change to an existing member: a consumer that set a
+    bare number there now sets an object.
+  - `el` gains `binSize` and `binCount` (camelCase, as the el naming rules of 14.2 give them). The el table's simple-type elements drop from 14 to 12.
+  - `generate.sh --check` is byte identical, with 239 modules. There are 282 `ClassNames`
+    warnings, the count 14.11 recorded.
+- **The test.** `test_a_histograms_bins_are_read_typed_and_written_back` in
+  `tests/openpackaging/test_round_trip.py` runs over the two fixtures, which are copied unchanged
+  into `tests/fixtures/` so that CI runs it too. Each fixture's chartex part is read through the
+  binding (10.0 or 6, `intervalClosed` `r`, nothing skipped), written back with `to_xml` and read
+  again. Both cases fail on the old binding. The writer produces `<cx:binSize val="10.0"/>` and
+  `<cx:binCount val="6"/>`.
+- **`dml.py`'s docstring** is corrected, and `CHANGELOG.md` has a Fixed entry.
+
+The fork gap above is unchanged and still unscheduled. With this schema, Excel's bins no longer
+meet it.
