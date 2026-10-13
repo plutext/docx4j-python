@@ -4512,13 +4512,13 @@ write 161 us (a read for the report's `text_before` among it) and a removal 71 u
    content control, then `"see this"` linked across the control's edge --- refused, and the
    control's link reads `""` afterwards. Here it still reads its address
    (`test_a_span_crossing_a_content_control_is_refused_and_a_link_it_touches_survives`). **A core-ts
-   defect, for its session.**
+   defect, for its session.** *Fixed there in `70afad5` (21.9), so no longer a difference.*
 6. **What lies between the first run and the last goes into the link.** core-ts replaces as many
    items of the run list as there are runs, starting at the first run; with a `w:bookmarkStart`
    between two runs that drops the bookmark and leaves the second run twice --- measured on its
    build, "alpha beta gamma" became "alpha betabeta gamma". Here the slice goes in whole
    (`test_a_bookmark_between_the_runs_goes_into_the_link_and_no_text_moves`). **A core-ts defect**,
-   which corrupts text.
+   which corrupts text. *Fixed there in `70afad5` (21.9), so no longer a difference.*
 7. **A range inside a tracked insertion puts the link outside the `w:ins`** (21.2). core-ts puts the
    `w:hyperlink` inside the `w:ins` --- measured on its build:
    `<w:ins ...><w:hyperlink xsi:type="w:P.Hyperlink" ...>`, which the schema does not allow, as its
@@ -4526,10 +4526,12 @@ write 161 us (a read for the report's `text_before` among it) and a removal 71 u
    could not marshal that form even if it wanted it (the serialiser names the element
    `w:PHyperlink`, there being no `w:hyperlink` in `CT_RunTrackChange`). The form chosen here is
    the one core-ts writes for a run holder in an insertion and that Word leaves empty on a reject
-   (its check 30). **A core-ts defect, and a form not yet opened in Word** (21.7).
+   (its check 30). **A core-ts defect, and a form not yet opened in Word** (21.7). *Fixed there in
+   `70afad5` (21.9): core-ts now writes this form too.*
 8. **A tracked deletion between the runs is refused.** core-ts does not see it --- a `w:del` has no
    accepted-view text --- and by item 6 would lose it. Refusing is core-ts's own stated rule, "a
-   range spanning a tracked change is refused".
+   range spanning a tracked change is refused". *Fixed there in `70afad5` (21.9), `w:moveFrom`
+   included, so no longer a difference.*
 9. **No settle under tracking.** A link made and removed under tracking leaves its `w:rPrChange`,
    recording the original properties, where core-ts's `settleRPrChange` (its check 24) drops a
    record whose properties are back to what it recorded. This package's `Font` setters do not
@@ -4659,6 +4661,14 @@ touched links are unwrapped; the whole slice from the first run to the last wrap
 runs in a `w:ins` or `w:moveTo` placed between the revision's halves, holding a revision of the
 same kind with a new `w:id`. Four tests, its suite 815 of 815; **not committed when reported**,
 awaiting Jason. It found the same slice in its `insertContentControl` and fixed that too.
+**Committed 2026-10-13** as core-ts `70afad5` on `main`, unpushed. The four tests are in
+`test/content.test.mjs`, and each fails on the code before the fix. Of 21.3's ten differences,
+items 1 to 4, 9 and 10 remain.
+
+core-ts's section 43 also says that its `insertContentControl`'s revision branch now applies only
+where the run sits directly in the revision. Before, a run in a hyperlink inside an insertion took
+index `-1` there. This package can't reach that case, because it can't put a `w:hyperlink` inside
+a `w:ins` (21.3 item 7).
 
 **This package had it as well**, in a milder form: `insert_content_control_in_range` moved the
 span's runs alone into the control and left what lay between them after it, so a bookmark between
