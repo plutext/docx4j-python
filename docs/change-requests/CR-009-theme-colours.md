@@ -9,7 +9,7 @@ after its phase 3). **Decided 2026-10-12: all three recommendations of section 9
 the 64 corpus documents changes; Phase B (the WordprocessingML resolver) is new scope; Phase C
 (DrawingML and SpreadsheetML) waits for a consumer.
 **Depends on:** docx4j CR-034 (phases 0 to 3 done 2026-10-12: `3dbe4eee5` the resolver,
-`2e381ef26` the outputs and `StyleUtil`, on `VERSION_17_3_3`, local and not yet pushed) and this
+`2e381ef26` the outputs and `StyleUtil`, on `VERSION_17_3_3`, pushed by 2026-10-13) and this
 repository's CR-002 Phase B (implemented, section 15), whose property catalogue mirrors
 `StyleUtil`. Phase C also depends on CR-001 Phase D (the PML and SML models) and has no consumer
 before CR-004 and CR-005.
@@ -175,6 +175,63 @@ workbook. The DrawingML half can be built against `docx4j_py.dml` as generated t
 the SpreadsheetML half wait for CR-001 Phase D and CR-002 Phase C, and its consumers are CR-004
 (a shape's fill as PowerPoint draws it) and CR-005 (a cell's fill). Not before one of them asks.
 
+**Luminance rounding (docx4j `691620fb7`, CR-034 section 11 "Follow-up: luminance rounding",
+pushed on `VERSION_17_3_3`; handed off 2026-10-13).** docx4j's CR-037 chart gate found Excel chart
+styles whose text, `tx1` at `lumMod 50000 lumOff 50000`, Office draws as 7F7F7F where docx4j drew
+808080. A colour whose last change is a luminance transform is now converted and rounded as Office
+does:
+
+- **Where it applies.** The last transform other than an alpha one decides. If it is `lum`,
+  `lumOff` or `lumMod`, the rule applies. `alpha`, `alphaOff` and `alphaMod` don't count.
+- **`lumMod`** is `l * val / 100000.0`, in that order, not `l *= val / 100000`.
+- **Back from HSL**, `l` clamped first, by Foley and van Dam's form
+  (`ColorMath.hslToRgbFoley`), not the CSS form:
+
+  ```
+  m2 = l * (1 + s) if l <= 0.5 else l + s - l * s
+  m1 = 2 * l - m2
+  red   = foley(m1, m2, h + 1/3)
+  green = foley(m1, m2, h)
+  blue  = foley(m1, m2, h - 1/3)
+
+  foley(m1, m2, h):
+      h -= floor(h)
+      m1 + (m2 - m1) * 6 * h            if h < 1/6
+      m2                                if h < 1/2
+      m1 + (m2 - m1) * (2/3 - h) * 6    if h < 2/3
+      m1                                otherwise
+  ```
+
+- **Each final channel rounded half down**: `math.ceil(clamp01(v) * 255 - 0.5)`
+  (`ColorMath.channelHalfDown`). Never `round()`, which rounds half to even.
+
+The exact form matters because luminance results often land on exactly half a unit, and Office
+rounds those halves both ways. With this form and this order of operations, the direction follows
+the floating-point error: exactly .5, or just below, goes down; just above goes up. That predicts
+29 of 30 halves. Python's floats are IEEE doubles, so the same expressions in the same order give
+Java's bits. **Don't simplify algebraically, and don't round early.** Comments at the code should
+say so, as docx4j's do.
+
+Unchanged, and still rounded half up through the CSS form: `hue`, `sat` and their `Off` and `Mod`
+variants, `comp`, and every other transform. `WordColors` (Phase B's `word_colors`, Word's
+`themeTint` and `themeShade`) and `SpreadsheetColors` are unchanged too.
+
+The oracle is `readings.tsv`, unchanged; docx4j now matches more of it. In P3
+(`tc-p3-transforms.docx` and `.pptx`), the luminance and colour-picker cases are exact in 97 of 98
+per host, up from 85. Newly exact in both hosts: T041, T173 to T175, T240, T300, T335, T350, T365,
+T369, T370 and T380. T239 (`tx2 lumMod 25000`) is still one unit off: docx4j's red is
+3.5000000000000018, Office's 3. No case of any family got worse. docx4j's `ThemeColourProbesTest`
+holds the luminance families exact but one (`Tally.luminanceOff() <= 1`), and Phase C's vector
+test holds the same bar.
+
+**Reproduced here on 2026-10-13** with a 60-line script in the scratchpad (nothing committed). It
+ported the three pieces above, read each P3 probe's theme, and covered every `shape fill` case
+written as a `schemeClr` with only `lum`, `lumOff` and `lumMod` children:
+
+- **182 of 184** are exact against `readings.tsv`;
+- the two misses are T239 in each host (ours 040A10, Office's 030A10);
+- the same script rounding half up gets 164.
+
 ## 6. Noted, not in scope: a hyperlinked TOC's entries
 
 Coming in docx4j (in its working tree on 2026-10-12 as a CR-034 follow-up, not yet committed): Word
@@ -207,8 +264,10 @@ that leaks a shade resolves the wrong colour).
   docx4j-core-ts regenerates them (the pins of section 3); port it after and every theme-coloured
   golden is red the morning they land. The pins are the cheaper side, and they name what they
   wait for.
-- **docx4j `VERSION_17_3_3` is not pushed**, so the oracle is a local tree; the hashes above are
-  re-stated if the branch is rebased, as CR-008 risk 1 was closed when 17.3.1 shipped.
+- ~~**docx4j `VERSION_17_3_3` is not pushed**, so the oracle is a local tree; the hashes above are
+  re-stated if the branch is rebased, as CR-008 risk 1 was closed when 17.3.1 shipped.~~ Closed
+  2026-10-13: `origin/VERSION_17_3_3` holds `2e381ef26`, `3dbe4eee5` and the luminance follow-up
+  `691620fb7`, with the hashes unchanged.
 - **Answers change under callers of 0.1.0.** Phase A in the two cases of section 2 and their
   kind; Phase B wherever `Font.color` meets a theme reference, from the cached value to the drawn
   one, which differ only where the cache is stale (20 attributes in 7 of docx4j's 561 corpus
@@ -425,3 +484,5 @@ and `fonts-modesOfApplication`, both `fb2a764f7`), numbering 45 passed and 1 fai
 docx4j `2e381ef26` is still local; until docx4j pushes `VERSION_17_3_3`, docx4j-core-ts's weekly
 parity run, which measures the pushed branch, will propose moving these two back, and that session
 closes such a PR unmerged. Nothing here depends on it: this repository reads the sibling checkout.
+*2026-10-13:* the branch is pushed with `2e381ef26` in it, so the weekly run now measures the same
+rules.
