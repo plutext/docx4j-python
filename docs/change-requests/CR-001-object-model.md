@@ -1104,3 +1104,75 @@ option reads `True` and is written `c16r3:dispNaAsBlank val="1"`).
 
 The acceptance artefacts are unaffected --- none holds a chart or an equation --- and were not
 regenerated for this; the next marshalling change regenerates them as the rule says.
+
+### 14.12 Hand-off from docx4j CR-040: a histogram's bins as `@val` (2026-10-14, pending)
+
+docx4j's session reported a chartex schema correction that this schema copy shares. The docx4j
+CR is `docs/developer/change-requests/CR-040-chartex-binning-val-elements.md`, committed as
+`e748bae04`. **docx4j's XSD change, its test and its fixtures are not committed yet**: on
+2026-10-14 they sit in docx4j's working tree, and the Office check is with Jason.
+
+- **Excel writes a histogram's bins as attributes:**
+  `<cx:binning intervalClosed="r"><cx:binSize val="10"/></cx:binning>`, and
+  `<cx:binCount val="6"/>`.
+- **[MS-ODRAWXML] rev 21.0 types them as text.** Its `CT_Binning`
+  (`schemas/odrawxml/office_drawing_2014_chartex.xsd`, line 405 here) has `binSize` as an
+  `xsd:double` element and `binCount` as an `xsd:unsignedInt` element, both with text content.
+  The Open XML SDK does the same.
+- **Excel refuses the text form.** docx4j's Enterprise session tried seven encodings, and only
+  `@val` opens.
+- **docx4j's patch** adds `CT_BinSize` (a required `val`, `xsd:double`) and `CT_BinCount` (a
+  required `val`, `xsd:unsignedInt`), and points `CT_Binning`'s two elements at them. It is
+  commented in place as a departure from the source.
+- **The oracle:** `docx4j-core-tests/src/test/resources/charts/chartex/manual-binwidth-10.xlsx`
+  and `manual-bincount-6.xlsx`. Both are Excel-saved with synthetic data. docx4j's test is
+  `ChartExBinningTest`: read 10 and 6, save, read back the same.
+- **No other element of that schema has the trap**, by docx4j's reading. The other simple-typed
+  elements are strings, and Office writes those as text too.
+
+**Measured here on 2026-10-14**, with a scratch script over the two fixtures (nothing committed):
+
+- **The engine loses nothing.** `ChartExSpacePart` is a `DefaultXmlPart`, an lxml tree (CR-002
+  section 12.5). Both workbooks load as an `OpcPackage` with nothing skipped, and save with
+  `<cx:binSize val="10"/>` and `<cx:binCount val="6"/>` intact, even after `contents` is read.
+- **The generated binding has the trap, silently.**
+  `parser().from_bytes(chartex, docx4j_py.oart.chartex_2014.ChartSpace)` gives
+  `CTBinning.bin_size_or_bin_count == ""`: the `val` is gone, **and the skipped-content report
+  is empty**. Marshalling that object back raises `SerializerError: XmlElements undefined
+  choice: bin_size_or_bin_count for <class 'str'>`.
+- `docx4j_py/openpackaging/parts/dml.py`'s docstring is out of date. It says chartex has "no
+  classes in this build's schema closure", but `docx4j_py/oart/chartex_2014` has been generated
+  since the first commit (`a6bf811`, 2026-09-12). The part should stay a tree, and this trap is one more reason.
+
+**The port, when docx4j commits.** Copy `odrawxml/office_drawing_2014_chartex.xsd` verbatim, as
+14.11 copied its three files: it is docx4j's departure, so it needs no `docx4j-python` marker. Then:
+
+- name the commit in `schemas/PATCHES.md`;
+- add the two new types to `codegen/names/` (re-derived from docx4j's XJC output, which gains
+  `CTBinSize` and `CTBinCount`);
+- regenerate and run `generate.sh --check`;
+- add a test over the two fixtures through the typed binding (read 10 and 6, marshal, read back
+  the same), skipping without the sibling checkout as the vectors do;
+- correct `dml.py`'s docstring.
+
+No Word or Excel check is needed here, because the engine's own output does not change.
+
+**A gap in the fork, found by the same measurement.** An attribute on an element of **simple**
+type is dropped with no skipped-content entry, and strict parsing doesn't raise either
+(checked: `fail_on_unknown_properties` and `fail_on_unknown_attributes` both on, the bin-width
+fixture parses without error). The
+reason is in the fork's parser: `ElementNode` builds a `PrimitiveNode` for such an element
+(`docx4j_xsdata/formats/dataclass/parsers/nodes/element.py`, line 610) and never gives it the
+element's attributes. The report records attributes only in `ElementNode.bind_attrs`, so these
+never reach it.
+
+This breaks CLAUDE.md's "nothing may be dropped silently" for any schema whose simple-typed
+element meets an attribute, which is exactly the shape of Excel's bins against MS-ODRAWXML. The
+WordprocessingML corpus never meets that shape, which is why the round trip has been clean.
+
+The fix belongs in the fork, with tests under its `tests/fork/`, and in `docs/UPSTREAM.md`, since
+upstream xsdata behaves the same way:
+- report the element's attributes, other than `xsi:*`, as skipped;
+- raise under `fail_on_unknown_attributes`.
+
+Not started; it is the user's to schedule.
