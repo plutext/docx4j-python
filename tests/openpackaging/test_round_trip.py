@@ -187,6 +187,53 @@ def test_a_histograms_bins_are_read_typed_and_written_back(name, kind, value):
     assert again.bin_size_or_bin_count.val == value
 
 
+@pytest.mark.parametrize(
+    ("name", "chart"),
+    [("waterfall.docx", "word/charts/chartEx1.xml"), ("waterfall.pptx", "ppt/charts/chartEx1.xml")],
+)
+def test_a_chartex_external_datas_auto_update_is_read_qualified(name, chart):
+    """docx4j CR-040 phase 2 (``14fcb2f4e``), CR-001 section 14.12.
+
+    Word and PowerPoint write ``<cx:externalData r:id="rId1" cx:autoUpdate="0"/>``,
+    the attribute in the chartex namespace, where [MS-ODRAWXML] declares it
+    unqualified; the binding reported Office's attribute as skipped and wrote
+    none. docx4j's schema binds it qualified. The engine keeps the part as a
+    tree, re-serialised or not; the binding is read and written directly, as
+    for the bins above. The fixtures are docx4j's, saved by Word and PowerPoint.
+    """
+    from lxml import etree
+
+    from docx4j_py.fragments import to_xml
+    from docx4j_py.oart.chartex_2014 import ChartSpace
+    from docx4j_py.runtime import parser
+
+    cx = "{http://schemas.microsoft.com/office/drawing/2014/chartex}"
+    path = ROOT / "tests" / "fixtures" / name
+
+    def external_data(xml: bytes) -> object:
+        read = parser()
+        space = read.from_bytes(xml, ChartSpace)
+        assert list(read.skipped) == []
+        (data,) = [n for n in iter_nodes(space) if type(n).__name__ == "CTExternalData"]
+        return space, data
+
+    space, data = external_data(source_entries(path)[chart])
+    assert (data.id, data.auto_update) == ("rId1", False)
+
+    written = to_xml(space).encode()
+    (element,) = etree.fromstring(written).iter(f"{cx}externalData")
+    assert element.get(f"{cx}autoUpdate") == "0"
+    assert element.get("autoUpdate") is None
+    _, again = external_data(written)
+    assert again.auto_update is False
+
+    with OpcPackage.load(path) as pkg:
+        pkg.get_part(f"/{chart}").mark_modified()
+        saved = entries(pkg.save())[chart]
+    (element,) = etree.fromstring(saved).iter(f"{cx}externalData")
+    assert element.get(f"{cx}autoUpdate") == "0"
+
+
 def test_loading_is_lazy():
     """docx4j's rule: load costs the relationships, nothing else."""
     with OpcPackage.load(ROOT / "samples" / "toc.docx") as pkg:

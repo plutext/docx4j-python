@@ -7,7 +7,8 @@ chart colour style and ``chartex`` --- are :class:`DefaultXmlPart`\\ s, lxml
 trees that lose nothing. Their namespaces do have generated classes
 (``docx4j_py.oart``), but a part is typed only once its binding has been proven
 over Office's own files. The chartex binding failed that test until docx4j
-CR-040 (CR-001 section 14.12): it read a histogram's bins as empty text.
+CR-040 (CR-001 section 14.12): it read a histogram's bins as empty text, and
+skipped the ``cx:autoUpdate`` that Word and PowerPoint write qualified.
 """
 
 from __future__ import annotations

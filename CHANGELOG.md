@@ -68,6 +68,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   - `CTBinning.bin_size_or_bin_count` is now a `CTBinSize` or a `CTBinCount`, each with a `val`.
   - The schema file is docx4j CR-040's (`28bdf831c`), copied verbatim.
   - Loading and saving a package was never affected: the engine keeps a chartex part as an XML tree.
+- **The chartex binding reads `cx:externalData`'s `cx:autoUpdate`**
+  ([CR-001](docs/change-requests/CR-001-object-model.md) section 14.12). Word and PowerPoint write
+  it in the chartex namespace, `cx:autoUpdate="0"`, where [MS-ODRAWXML] declares it unqualified.
+  So `CTExternalData.auto_update` read `None`, the skipped-content report named the attribute,
+  and writing the object back left it out. It now reads `False` and is written back qualified.
+  - The schema file is docx4j CR-040 phase 2's (`14fcb2f4e`), copied verbatim.
+  - Loading and saving a package was never affected.
 
 ## [0.1.0] --- 2026-09-20
 

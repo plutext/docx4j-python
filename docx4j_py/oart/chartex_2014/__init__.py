@@ -212,6 +212,7 @@ class CTExternalData(Child):
         metadata={
             "name": "autoUpdate",
             "type": "Attribute",
+            "namespace": "http://schemas.microsoft.com/office/drawing/2014/chartex",
         },
     )
 

@@ -1105,7 +1105,7 @@ option reads `True` and is written `c16r3:dispNaAsBlank val="1"`).
 The acceptance artefacts are unaffected --- none holds a chart or an equation --- and were not
 regenerated for this; the next marshalling change regenerates them as the rule says.
 
-### 14.12 Hand-off from docx4j CR-040: a histogram's bins as `@val` (2026-10-14, ported the same day)
+### 14.12 Hand-off from docx4j CR-040: a histogram's bins as `@val`, and `cx:autoUpdate` qualified (2026-10-14 and 2026-10-15, each ported the same day)
 
 docx4j's session reported a chartex schema correction that this schema copy shares. The docx4j
 CR is `docs/developer/change-requests/CR-040-chartex-binning-val-elements.md`, committed as
@@ -1208,3 +1208,51 @@ plan above:
 
 The fork gap above is unchanged and still unscheduled. With this schema, Excel's bins no longer
 meet it.
+
+**Phase 2: `cx:externalData`'s `cx:autoUpdate`, ported 2026-10-15.** docx4j's session handed off
+a second correction to the same schema, committed as `14fcb2f4e` on `VERSION_17_3_3` (unpushed;
+docx4j CR-040 section 7).
+
+- **Word and PowerPoint write the attribute qualified:**
+  `<cx:externalData r:id="rId1" cx:autoUpdate="0"/>`, in the chartex namespace.
+  [MS-ODRAWXML]'s `CT_ExternalData` declares `autoUpdate` with no `form`, under
+  `attributeFormDefault="unqualified"`. All 14 of docx4j's chartex parts that carry the element
+  write it qualified, and no other chartex attribute is written qualified.
+- **docx4j's patch** gives the attribute `form="qualified"`, commented in place. The oracle is
+  `ChartExExternalDataTest` over `charts/waterfall.docx` and `charts/waterfall.pptx`, Word's and
+  PowerPoint's *Insert Chart > Waterfall*. A load and save keeps `cx:autoUpdate="0"`, written
+  qualified and read back as `false`. docx4j ran no Office check: Office opens a file without the
+  attribute and writes it back itself.
+
+**Measured here first**, with a scratch script over the two fixtures:
+
+- **The engine kept it.** Both files load with nothing skipped. Saved with the chartex part forced
+  through lxml (`mark_modified()`), each still writes `cx:autoUpdate="0"`.
+- **The binding lost it, but said so.** `CTExternalData.auto_update` read `None`. The parse
+  reported `{chartex}autoUpdate` as a skipped attribute at `chartSpace/chartData/externalData`,
+  so strict parsing would raise. Marshalling the object back wrote `<cx:externalData r:id="rId1"/>`.
+  Unlike the bins, this is the report working. `CT_ExternalData` is a complex type, so its
+  attributes pass through `ElementNode.bind_attrs`, and the fork gap above does not apply.
+
+**The port** followed phase 1's:
+
+- **The schema.** `schemas/odrawxml/office_drawing_2014_chartex.xsd` is copied verbatim from
+  `14fcb2f4e`. Its only difference from the `28bdf831c` copy is docx4j's five-line change.
+  `schemas/PATCHES.md` names the commit.
+- **No type was added**, so the name tables are unchanged, and so are the el tables.
+- **The generated code** changes by one line: `CTExternalData.auto_update` gains the chartex
+  namespace in its metadata. `generate.sh --check` is byte identical, with 239 modules and 282
+  `ClassNames` warnings.
+- **The test.** `test_a_chartex_external_datas_auto_update_is_read_qualified` in
+  `tests/openpackaging/test_round_trip.py` runs over the two fixtures, copied unchanged into
+  `tests/fixtures/`.
+  - Each chartex part is read through the binding (`id` `rId1`, `auto_update` `False`, nothing
+    skipped).
+  - It is written back with `to_xml`, as `cx:autoUpdate="0"` in the chartex namespace with no
+    unqualified `autoUpdate`, and read again.
+  - The package is also saved with the part marked modified, and keeps the attribute.
+  - Both cases fail on the old binding, on the skipped report.
+- `dml.py`'s docstring and `CHANGELOG.md` say so.
+
+No Office check is needed here. The engine's output is unchanged, and the binding now writes the
+form Office itself writes (`0`, since booleans serialise numeric).
