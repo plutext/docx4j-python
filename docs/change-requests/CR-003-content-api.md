@@ -4794,6 +4794,8 @@ Three findings go further than the hand-off:
 
 ### 22.4 What stays open
 
+*Scheduled by the user on 2026-10-16 as [CR-010](CR-010-tracked-changes-as-word-resolves-them.md), whose phases follow the order below.*
+
 Nothing was changed. Phase F (section 16) built tracking to Office JS's API over the body, and
 CR-043 is now the measured rule set for every story. Bringing this package to it is new work for
 the user to schedule.
