@@ -1120,45 +1120,42 @@ class Body(Sequence):
         """Every tracked change in this body, in document order (Office JS).
 
         A :class:`~docx4j_py.model.content.tracked_change.TrackedChange` per
-        ``w:ins``, ``w:del``, ``w:moveFrom``, ``w:moveTo``, ``w:rPrChange``,
-        ``w:pPrChange``, paragraph mark and table row revision.
+        change as Office JS groups them (CR-010 section 3.2): touching pieces
+        of one type by one author are one change; a text box's changes follow
+        the story they are in. The listing is
+        :mod:`docx4j_py.model.revisions`', over this body's story.
         """
         from docx4j_py.model.content.tracked_change import tracked_changes_of_body
 
         return tracked_changes_of_body(self)
 
     def accept_all(self) -> int:
-        """Accept every tracked change; returns how many (Office JS's ``acceptAll``).
+        """Accept every tracked change in this body's story; returns how many were listed.
 
-        One pass in **reverse document order**, so that a paragraph join never
-        disturbs a change still to do. A ``w:ins`` is unwrapped, a ``w:del``
-        removed, a deleted paragraph mark joins its paragraph with the next and
-        a deleted row removed, as docx4j's ``AcceptTrackedChanges`` does; unlike
-        that conversion preprocessor, this also drops ``w:rPrChange`` and
-        ``w:pPrChange``, which is what accepting means for a document that is
-        saved again (CR-003 section 4).
+        Word's Accept All, as docx4j CR-043 section 3.2 measured it: last change
+        first, listing again until nothing is left, then a sweep; the story's
+        content controls, text boxes (both ``mc:AlternateContent`` branches)
+        and equations with it, and Word's side effects in other parts --- a
+        note goes with its reference, a comment with its range, a part with
+        its last reference. The table, cell and section records are listed and
+        left for CR-010 Phase B.
         """
-        with recording(self, "accept_all") as change:
-            changes = self.get_tracked_changes()
-            for tracked in reversed(changes):
-                tracked.accept()
-            if changes:
-                self._tidy_runs()
-            change.touched(self.prefix)
-            change.text(after=self.text)
-            return len(changes)
+        return self._resolve_all(True)
 
     def reject_all(self) -> int:
-        """Reject every tracked change; returns how many. The mirror of :meth:`accept_all`."""
-        with recording(self, "reject_all") as change:
-            changes = self.get_tracked_changes()
-            for tracked in reversed(changes):
-                tracked.reject()
-            if changes:
+        """Reject every tracked change in this body's story; returns how many. The mirror of :meth:`accept_all`."""
+        return self._resolve_all(False)
+
+    def _resolve_all(self, accept: bool) -> int:
+        from docx4j_py.model.content.tracked_change import accept_or_reject_body
+
+        with recording(self, "accept_all" if accept else "reject_all") as change:
+            count = accept_or_reject_body(self, accept)
+            if count:
                 self._tidy_runs()
             change.touched(self.prefix)
             change.text(after=self.text)
-            return len(changes)
+            return count
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A range over this body's first or last paragraph (Office JS's shape)."""

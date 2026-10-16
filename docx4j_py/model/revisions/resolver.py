@@ -1,0 +1,805 @@
+"""Accepting and rejecting one change. docx4j ``org.docx4j.model.revisions.Resolver``.
+
+CR-043 section 3.2, row by row; CR-010 section 4. A port of docx4j's
+``Resolver`` (itself core-ts's ``TrackedChange.accept`` / ``reject``) onto this
+model, with Word's own rules where its saves differ from core-ts's: fields and
+content controls go whole, a note goes with its reference, a bookmark touching
+removed content goes whole; and the forms core-ts does not reach (math, text
+boxes).
+
+Lists here are ``ChildList``\\ s, which set a member's parent when it is put in
+and clear it when it is taken out --- so content moving between lists is always
+taken out of the one first (CLAUDE.md, CR-010 risk 3).
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from docx4j_py.model.revisions import props, trees
+from docx4j_py.model.revisions.change import (
+    CellT,
+    FieldT,
+    GroupT,
+    HolderT,
+    MarkPropsT,
+    MarkT,
+    MathRunT,
+    MathStructT,
+    Para,
+    ParaPropsT,
+    RowT,
+    RunPropsT,
+    RunT,
+    SectionT,
+    TableT,
+    TrackedChange,
+)
+from docx4j_py.model.revisions.removals import Removals
+from docx4j_py.model.revisions.trees import Revision
+
+__all__ = ["resolve", "resolve_pieces"]
+
+
+def resolve(change: TrackedChange, accept: bool, removals: Removals) -> None:
+    """Accept or reject one change (a group's pieces with it)."""
+    _Op(change, removals).run(accept)
+
+
+def resolve_pieces(pieces: list[TrackedChange], accept: bool, removals: Removals) -> None:
+    """The changes of a group, or the cells of a row: runs last first, then marks last first.
+
+    So that a join never strands a piece still to do.
+    """
+    marks = [piece for piece in pieces if isinstance(piece.target, MarkT)]
+    rest = [piece for piece in pieces if not isinstance(piece.target, MarkT)]
+    for piece in reversed(rest):
+        resolve(piece, accept, removals)
+    for piece in reversed(marks):
+        resolve(piece, accept, removals)
+
+
+class _Op:
+    """One resolution: the change, and where what it removes is recorded."""
+
+    __slots__ = ("change", "removals", "story")
+
+    def __init__(self, change: TrackedChange, removals: Removals) -> None:
+        self.change = change
+        self.removals = removals
+        self.story = change.story
+
+    def run(self, accept: bool) -> None:
+        t = self.change.target
+        if not isinstance(t, GroupT):
+            self.removals.touched(self.story)
+        if isinstance(t, RunT):
+            self.run_revision(t, accept)
+        elif isinstance(t, MarkT):
+            self.mark(t, accept)
+        elif isinstance(t, RunPropsT):
+            self.run_properties(t, accept)
+        elif isinstance(t, ParaPropsT):
+            self.paragraph_properties(t, accept)
+        elif isinstance(t, MarkPropsT):
+            self.mark_properties(t, accept)
+        elif isinstance(t, RowT):
+            self.row(t, accept)
+        elif isinstance(t, GroupT):
+            resolve_pieces(t.pieces, accept, self.removals)
+        elif isinstance(t, FieldT):
+            self.field(t, accept)
+        elif isinstance(t, HolderT):
+            self.holder(t, accept)
+        elif isinstance(t, MathRunT):
+            self.math_run(t, accept)
+        elif isinstance(t, MathStructT):
+            self.math_structure(t, accept)
+        elif isinstance(t, (TableT, SectionT, CellT)):
+            # listed, resolved by CR-010 Phase B (docx4j CR-043 phase 2)
+            return
+
+    # -- runs ------------------------------------------------------------------
+
+    def run_revision(self, t: RunT, accept: bool) -> None:
+        move = t.revision in (Revision.MOVE_FROM, Revision.MOVE_TO)
+        if move and (_Moves.resolve(self, t, accept) or _Moves.resolve_rangeless(self, t, accept)):
+            return
+        kept = (t.revision in (Revision.INS, Revision.MOVE_TO)) == accept
+        if kept:
+            if t.revision in (Revision.DEL, Revision.MOVE_FROM):
+                self.restore_deleted(t.item, t.owner)
+            else:
+                self.unwrap(t.item, t.owner)
+        else:
+            self.remove_revision(t.item, t.owner)
+
+    def mark(self, t: MarkT, accept: bool) -> None:
+        para = self.change.para
+        if para is None:
+            return
+        self.drop_mark(para, t.ins)
+        if t.ins != accept:
+            self.join_with_next(para)
+
+    def run_properties(self, t: RunPropsT, accept: bool) -> None:
+        run = t.run
+        if accept:
+            if run.r_pr is not None:
+                run.r_pr.r_pr_change = None
+            props.prune_run(run)
+        else:
+            props.restore_r_pr(run, t.record)
+
+    def paragraph_properties(self, t: ParaPropsT, accept: bool) -> None:
+        para = self.change.para
+        if para is None:
+            return
+        p = para.p
+        if accept:
+            if p.p_pr is not None:
+                p.p_pr.p_pr_change = None
+            props.prune_paragraph(p)
+        else:
+            props.restore_p_pr(p, t.record.p_pr, self.story.package)
+
+    def mark_properties(self, t: MarkPropsT, accept: bool) -> None:
+        para = self.change.para
+        if para is None:
+            return
+        p = para.p
+        if accept:
+            if p.p_pr is not None and p.p_pr.r_pr is not None:
+                p.p_pr.r_pr.r_pr_change = None
+            props.prune_paragraph(p)
+        else:
+            props.restore_mark_properties(p, t.record)
+
+    # -- rows ------------------------------------------------------------------
+
+    def row(self, t: RowT, accept: bool) -> None:
+        """An accepted insertion keeps the row, its content's own revisions going with the marker.
+
+        An accepted deletion takes the row and everything in it away; a table
+        left with no rows goes (check 30, C13, C25).
+        """
+        if t.ins == accept:
+            tr_pr = t.tr.tr_pr
+            if tr_pr is not None:
+                if t.ins:
+                    tr_pr.ins = None
+                else:
+                    tr_pr.del_value = None
+                if trees.is_empty(tr_pr):
+                    t.tr.tr_pr = None
+            for inner in reversed(t.inner):
+                resolve(inner, accept, self.removals)
+        else:
+            self.remove(t.owner, t.tr)
+            from docx4j_py.model.revisions.tables import rows_of
+
+            if not rows_of(t.tbl):
+                self.remove(t.tbl_owner, t.tbl)
+
+    # -- fields and controls ---------------------------------------------------
+
+    def field(self, t: FieldT, accept: bool) -> None:
+        """Word's inserted field: accepted, its ``w:ins`` pieces unwrapped; rejected, the whole field goes.
+
+        Its separator and result too (C01, C16), last first; a bookmark, a
+        comment's range or a proofing mark between its pieces stays where it
+        stood.
+        """
+        r_class = trees.cls("R")
+        for element in reversed(t.span):
+            owner = self.current_owner(t.owner, element)
+            if trees.revision_of(element) is Revision.INS:
+                if accept:
+                    self.unwrap(element, owner)
+                else:
+                    self.remove_revision(element, owner)
+            elif not accept and isinstance(element, r_class):
+                self.remove(owner, element)
+
+    def holder(self, t: HolderT, accept: bool) -> None:
+        """A content control or custom XML element inserted: accepted, its four markers go.
+
+        Rejected, the element goes and what is left of its content stands in
+        its place --- nothing, once the insertions inside it have been rejected
+        with it (check 30, C16b).
+        """
+        self.remove(t.owner, t.outer_start)
+        self.remove(t.owner, t.outer_end)
+        items = trees.children(t.holder)
+        if items is not None:
+            _remove_quietly(items, t.inner_end)
+            _remove_quietly(items, t.inner_start)
+        if accept:
+            return
+        owner = self.current_owner(t.owner, t.holder)
+        index = trees.index_of(owner, t.holder)
+        if index < 0:
+            return
+        moved = list(items) if items is not None else []
+        if items is not None:
+            items.clear()
+        trees.splice(owner, index, 1, moved)
+
+    # -- math ------------------------------------------------------------------
+
+    def math_run(self, t: MathRunT, accept: bool) -> None:
+        """``w:ins`` / ``w:del`` inside an ``m:r``: kept, its content is unwrapped into the run.
+
+        Not kept, it goes, and a run left with no text goes with it (CR-043
+        section 3.2).
+        """
+        run = t.run
+        content = run.content
+        index = trees.index_of(content, t.item)
+        if index < 0:
+            return
+        if t.ins == accept:
+            item = t.item
+            moved = list(item.content)
+            item.content.clear()
+            if not t.ins:
+                moved = [_restored_text(entry) for entry in moved]
+            # the w:ins's own m:rPr and w:rPr become the run's, where it has none
+            math_r_pr = getattr(item, "r_pr", None)
+            word_r_pr = getattr(item, "schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr", None)
+            if math_r_pr is not None and run.r_pr is None:
+                item.r_pr = None
+                run.r_pr = math_r_pr
+                math_r_pr.parent = run
+            if word_r_pr is not None and run.r_pr_1 is None:
+                item.schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr = None
+                run.r_pr_1 = word_r_pr
+                word_r_pr.parent = run
+            del content[index]
+            trees.splice(content, index, 0, moved)
+        else:
+            self.removals.discard(self.story, t.item)
+            del content[index]
+            track = trees.cls("CTMathRunTrackChange")
+            has_text = any(
+                trees.item_text(entry) is not None or isinstance(entry, track) for entry in content
+            )
+            if not has_text and t.run_owner is not None:
+                self.remove(t.run_owner, run)
+
+    def math_structure(self, t: MathStructT, accept: bool) -> None:
+        """An equation structure inserted or deleted (its ``m:ctrlPr``'s ``w:ins`` / ``w:del``).
+
+        Kept, the marker goes and its recorded run properties become the
+        control's; not kept, the structure goes whole, from the list that holds
+        it, as Word's Accept All and Reject All did (an inserted ``m:sSup``, a
+        deleted ``m:acc``: ``tracked-changes-equations.docx``).
+        """
+        if t.ins == accept or t.struct_item is None:
+            ctrl_pr = t.ctrl_pr
+            marker = ctrl_pr.r_pr_or_ins_or_del
+            if marker is t.marker:
+                live = props.r_pr_of(getattr(marker, "r_pr", None))
+                ctrl_pr.r_pr_or_ins_or_del = live
+                if live is not None:
+                    from docx4j_py.child import link_parents
+
+                    link_parents(live)
+                    live.parent = ctrl_pr
+        else:
+            self.remove(t.struct_owner, t.struct_item)
+
+    # -- the operations on lists -------------------------------------------------
+
+    def current_owner(self, owner: list | None, item: Any) -> list | None:
+        """The list `item` is in now: `owner` as it was listed, else the one its parent keeps."""
+        if trees.index_of(owner, item) >= 0:
+            return owner
+        actual = trees.list_of(getattr(item, "parent", None))
+        if actual is not None and trees.index_of(actual, item) >= 0:
+            return actual
+        return owner
+
+    def remove(self, owner: list | None, item: Any) -> None:
+        """Takes `item` out of its list, recording what it took with it."""
+        if owner is None:
+            return
+        items = self.current_owner(owner, item)
+        index = trees.index_of(items, item)
+        if index < 0:
+            return
+        self.removals.discard(self.story, item)
+        del items[index]
+        if isinstance(item, trees.cls("R")) or trees.revision_of(item) is not None:
+            self.drop_emptied_bookmarks(items, index)
+
+    def drop_emptied_bookmarks(self, items: list, at: int) -> None:
+        """A bookmark around content that went, left with nothing in it, goes too (C11b).
+
+        Only a bookmark whose start stood before the content and whose end after
+        it: one that was empty already stays.
+        """
+        start = at - 1
+        while start >= 0:
+            candidate = items[start]
+            if _has_text(candidate):
+                break
+            if trees.name(candidate) == "bookmarkStart":
+                mark_id = trees.marker_id(candidate)
+                for end in range(at, len(items)):
+                    after = items[end]
+                    if trees.name(after) == "bookmarkEnd" and trees.marker_id(after) == mark_id:
+                        del items[end]
+                        del items[start]
+                        at -= 1
+                        break
+                    if _has_text(after):
+                        break
+            start -= 1
+
+    def unwrap(self, item: Any, owner: list | None) -> None:
+        """A ``w:ins`` or ``w:moveTo`` kept: its content takes its place."""
+        items = self.current_owner(owner, item)
+        index = trees.index_of(items, item)
+        if index < 0:
+            return
+        inner = trees.run_items(item)
+        moved = list(inner) if inner is not None else []
+        if inner is not None:
+            inner.clear()
+        del items[index]
+        trees.splice(items, index, 0, moved)
+
+    def restore_deleted(self, item: Any, owner: list | None) -> None:
+        """A ``w:del`` or ``w:moveFrom`` kept: its runs come back, deleted text become text again."""
+        restore_text(trees.run_items(item))
+        self.unwrap(item, owner)
+
+    def remove_revision(self, item: Any, owner: list | None) -> None:
+        """A revision taken away with its content, and the comments on it, by where their markers were.
+
+        core-ts ``removeRevision``, check 32: a comment whose range start was
+        inside goes with the text it was on, markers, reference and entry, once
+        nothing with text is left in its range; one whose markers lie outside
+        loses only its range markers when its range is left empty (Word 2010
+        and 15, the editor's ``review-for-word`` saves).
+        """
+        items = self.current_owner(owner, item)
+        index = trees.index_of(items, item)
+        if index < 0:
+            return
+        inner = trees.run_items(item)
+        kept: list[Any] = []
+        if inner is not None:
+            kept = [entry for entry in inner if trees.name(entry) in ("commentRangeStart", "commentRangeEnd")]
+        inside = [trees.marker_id(entry) for entry in kept if trees.name(entry) == "commentRangeStart"]
+        outside: list[int | None] = []
+        for s in range(index):
+            if trees.name(items[s]) != "commentRangeStart":
+                continue
+            comment_id = trees.marker_id(items[s])
+            for e in range(index + 1, len(items)):
+                if trees.name(items[e]) == "commentRangeEnd" and trees.marker_id(items[e]) == comment_id:
+                    outside.append(comment_id)
+        if inner is not None:
+            for entry in kept:
+                position = trees.index_of(inner, entry)
+                if position >= 0:
+                    del inner[position]
+        self.removals.discard(self.story, item)
+        del items[index]
+        trees.splice(items, index, 0, kept)
+        self.drop_emptied_bookmarks(items, index)
+        for comment_id in dict.fromkeys([*inside, *outside]):
+            if comment_id is None:
+                continue
+            start = next(
+                (
+                    s
+                    for s, entry in enumerate(items)
+                    if trees.name(entry) == "commentRangeStart" and trees.marker_id(entry) == comment_id
+                ),
+                -1,
+            )
+            if start < 0 or not _range_is_empty(items, start, comment_id):
+                continue
+            if comment_id in inside:
+                self.removals.remove_comment(comment_id)
+            else:
+                for s in range(len(items) - 1, -1, -1):
+                    entry = items[s]
+                    if trees.name(entry) in ("commentRangeStart", "commentRangeEnd") and trees.marker_id(
+                        entry
+                    ) == comment_id:
+                        del items[s]
+
+    # -- paragraph marks ---------------------------------------------------------
+
+    def drop_mark(self, para: Para, ins: bool) -> None:
+        p_pr = para.p.p_pr
+        if p_pr is None or p_pr.r_pr is None:
+            return
+        if ins:
+            p_pr.r_pr.ins = None
+        else:
+            p_pr.r_pr.del_value = None
+        props.prune_paragraph(para.p)
+
+    def join_with_next(self, para: Para) -> None:
+        """A paragraph mark taken away: the paragraph joins the next one in its list.
+
+        The result keeps the next paragraph's properties and ``w14:paraId``,
+        for markup Word did not write as well (checks 18, 22, 33; C10, C10b).
+        Range markers between the two (a bookmark's end, a comment's) go into
+        the joined paragraph where they stood. With no paragraph next in the
+        same list --- a story's, a cell's, a control's last, or a table next ---
+        the mark is only dropped: a join never crosses a container's boundary
+        (U1).
+        """
+        container = self.current_owner(para.container, para.p)
+        index = trees.index_of(container, para.p)
+        if index < 0:
+            return
+        j = index + 1
+        while j < len(container) and _is_marker(container[j]):
+            j += 1
+        following = container[j] if j < len(container) else None
+        if not isinstance(following, trees.cls("P")):
+            r_pr = para.p.p_pr.r_pr if para.p.p_pr is not None else None
+            if r_pr is not None:
+                r_pr.ins = None
+                r_pr.del_value = None
+            props.prune_paragraph(para.p)
+            return
+        # the properties the first paragraph loses: a section break's header and
+        # footer references among them (C06), whose parts may now be unreferenced (D7)
+        if para.p.p_pr is not None:
+            self.removals.discard(self.story, para.p.p_pr)
+        moved = list(para.p.content)
+        para.p.content.clear()
+        markers = [container[k] for k in range(index + 1, j)]
+        for _ in markers:
+            del container[index + 1]
+        moved.extend(markers)
+        trees.splice(following.content, 0, 0, moved)
+        del container[index]
+
+    # -- helpers ---------------------------------------------------------------
+
+
+def _is_marker(item: Any) -> bool:
+    local = trees.name(item)
+    return local.endswith(("RangeStart", "RangeEnd")) or local in (
+        "bookmarkStart",
+        "bookmarkEnd",
+        "permStart",
+        "permEnd",
+        "proofErr",
+    )
+
+
+def _remove_quietly(items: list, item: Any) -> None:
+    index = trees.index_of(items, item)
+    if index >= 0:
+        del items[index]
+
+
+def _has_text(item: Any) -> bool:
+    """True when run-level content shows text in the accepted view."""
+    if isinstance(item, trees.cls("R")):
+        return trees.has_text(item)
+    revision = trees.revision_of(item)
+    if revision in (Revision.DEL, Revision.MOVE_FROM):
+        return False
+    items = trees.run_items(item)
+    if items is None:
+        return False
+    return any(_has_text(entry) for entry in items)
+
+
+def _range_is_empty(items: list, start: int, comment_id: int) -> bool:
+    """True when nothing with text stands between a comment's range start and its end in the same list."""
+    for index in range(start + 1, len(items)):
+        entry = items[index]
+        if trees.name(entry) == "commentRangeEnd" and trees.marker_id(entry) == comment_id:
+            return True
+        if _has_text(entry):
+            return False
+    return False  # the end is elsewhere: text may be
+
+
+# ---------------------------------------------------------------------------
+# w:t <-> w:delText
+# ---------------------------------------------------------------------------
+
+
+def _restored_text(item: Any) -> Any:
+    """``w:delText`` as ``w:t``, ``w:delInstrText`` as ``w:instrText``; anything else as it is."""
+    local = trees.name(item)
+    if local not in ("delText", "delInstrText"):
+        return item
+    from docx4j_py.wml import el
+
+    made = getattr(el, "t" if local == "delText" else "instrText")(getattr(item, "value", "") or "")
+    space = getattr(item, "space", None)
+    if space is not None:
+        made.space = space
+    return made
+
+
+def _deleted_text(item: Any) -> Any:
+    """``w:t`` as ``w:delText``, ``w:instrText`` as ``w:delInstrText``."""
+    local = trees.name(item)
+    if local not in ("t", "instrText") or trees.is_math(item):
+        return item
+    from docx4j_py.wml import el
+
+    made = getattr(el, "delText" if local == "t" else "delInstrText")(getattr(item, "value", "") or "")
+    space = getattr(item, "space", None)
+    if space is not None:
+        made.space = space
+    return made
+
+
+def restore_text(items: list | None) -> None:
+    """Deleted text become text again in every run under `items`."""
+    _rename_text(items, _restored_text)
+
+
+def delete_text(items: list | None) -> None:
+    """Text become deleted text in every run under `items`."""
+    _rename_text(items, _deleted_text)
+
+
+def _rename_text(items: list | None, rename: Any) -> None:
+    if not items:
+        return
+    r_class = trees.cls("R")
+    for item in items:
+        if isinstance(item, r_class):
+            content = item.content
+            for index, entry in enumerate(list(content)):
+                renamed = rename(entry)
+                if renamed is not entry:
+                    content[index] = renamed
+        elif trees.revision_of(item) is None:
+            _rename_text(trees.run_items(item), rename)
+
+
+# ---------------------------------------------------------------------------
+# moves
+# ---------------------------------------------------------------------------
+
+
+class _Piece:
+    """One piece of move markup: a range start or end, a half, a moved mark, or what stands inside a range."""
+
+    __slots__ = ("from_", "id", "item", "kind", "name", "names", "owner", "para")
+
+    def __init__(self, kind: str, from_: bool) -> None:
+        self.kind = kind
+        self.from_ = from_
+        self.id: int | None = None
+        self.name: str | None = None
+        self.item: Any = None
+        self.owner: list | None = None
+        self.names: list[str] = []
+        self.para: Para | None = None
+
+
+class _Moves:
+    """Moves (core-ts ``resolveMove``, check 18 and check 20).
+
+    Word pairs the halves by the ``w:name`` on their range starts; a half
+    belongs to the move whose range of its side is open where it stands.
+    Either half accepts or rejects the whole move.
+    """
+
+    @staticmethod
+    def pieces_of(story_root: list) -> list[_Piece]:
+        """Every piece of move markup in a story, in document order."""
+        out: list[_Piece] = []
+        _Moves._visit(story_root, False, {}, {}, out)
+        return out
+
+    @staticmethod
+    def _visit(items: list, run_level: bool, open_from: dict, open_to: dict, out: list[_Piece]) -> None:
+        p_class = trees.cls("P")
+        for item in items:
+            local = trees.name(item)
+            if local.startswith(("moveFromRange", "moveToRange")):
+                from_ = local.startswith("moveFrom")
+                start = local.endswith("Start")
+                piece = _Piece("START" if start else "END", from_)
+                piece.id = trees.marker_id(item)
+                piece.item = item
+                piece.owner = items
+                if start:
+                    piece.name = getattr(item, "name", None) or ""
+                    (open_from if from_ else open_to)[piece.id] = piece.name
+                else:
+                    (open_from if from_ else open_to).pop(piece.id, None)
+                out.append(piece)
+                continue
+            revision = trees.revision_of(item)
+            if revision in (Revision.MOVE_FROM, Revision.MOVE_TO):
+                from_ = revision is Revision.MOVE_FROM
+                piece = _Piece("HALF", from_)
+                piece.item = item
+                piece.owner = items
+                piece.names = list((open_from if from_ else open_to).values())
+                out.append(piece)
+            elif run_level:
+                for from_ in (True, False):
+                    opened = open_from if from_ else open_to
+                    if not opened:
+                        continue
+                    piece = _Piece("INNER", from_)
+                    piece.item = item
+                    piece.owner = items
+                    piece.names = list(opened.values())
+                    out.append(piece)
+            nested = trees.children(item)
+            if nested is not None:
+                _Moves._visit(nested, isinstance(item, p_class), open_from, open_to, out)
+            if isinstance(item, p_class):
+                p_pr = item.p_pr
+                r_pr = p_pr.r_pr if p_pr is not None else None
+                for from_ in (True, False):
+                    if r_pr is None or (r_pr.move_from if from_ else r_pr.move_to) is None:
+                        continue
+                    piece = _Piece("MARK", from_)
+                    piece.para = Para(item, items)
+                    piece.names = list((open_from if from_ else open_to).values())
+                    out.append(piece)
+
+    @staticmethod
+    def _half_of(pieces: list[_Piece], item: Any) -> _Piece | None:
+        for piece in pieces:
+            if piece.kind == "HALF" and piece.item is item:
+                return piece
+        return None
+
+    @staticmethod
+    def resolve(op: _Op, t: RunT, accept: bool) -> bool:
+        """Accepting keeps the destination and removes the source, paragraph marks and all.
+
+        Rejecting the other way round, taking with it what was typed into the
+        destination (check 20's "keep original location text"); the four range
+        markers go either way. A destination whose source is gone is kept either
+        way (check 20 case 12). False for a half in no named range.
+        """
+        pieces = _Moves.pieces_of(op.story.root)
+        half = _Moves._half_of(pieces, t.item)
+        if half is None or not half.names:
+            return False
+        name = half.names[0]
+        ids = {piece.id for piece in pieces if piece.kind == "START" and piece.name == name}
+        mine = [
+            piece
+            for piece in pieces
+            if (piece.kind == "START" and piece.name == name)
+            or (piece.kind == "END" and piece.id in ids)
+            or (piece.kind in ("HALF", "MARK", "INNER") and name in piece.names)
+        ]
+        any_from = any(piece.from_ for piece in mine)
+        any_to = any(not piece.from_ for piece in mine)
+        orphan = not any_from
+        kept_from = not (accept or orphan)
+        broken = orphan or not any_to
+
+        # the markers first: a range end between two paragraphs would stop a join below
+        for piece in mine:
+            if piece.kind in ("START", "END"):
+                owner = op.current_owner(piece.owner, piece.item)
+                if owner is not None:
+                    _remove_quietly(owner, piece.item)
+        if kept_from:
+            for piece in mine:
+                if piece.kind == "INNER" and not piece.from_:
+                    op.remove(piece.owner, piece.item)
+        for piece in mine:
+            if piece.kind != "HALF":
+                continue
+            if piece.from_ == kept_from:
+                if piece.from_:
+                    op.restore_deleted(piece.item, piece.owner)
+                else:
+                    op.unwrap(piece.item, piece.owner)
+            else:
+                op.remove(piece.owner, piece.item)
+        # the paragraph marks last, last first, so that a join never disturbs one still to do
+        marks = [piece for piece in mine if piece.kind == "MARK"]
+        for piece in reversed(marks):
+            _Moves._resolve_mark(op, piece, piece.from_ == kept_from)
+        if broken:
+            _Moves.dissolve_broken(op)
+        return True
+
+    @staticmethod
+    def _resolve_mark(op: _Op, mark: _Piece, kept: bool) -> None:
+        """A moved paragraph's mark: kept, the marker goes; not kept, the paragraph goes when empty, else joins the next."""
+        para = mark.para
+        p = para.p
+        r_pr = p.p_pr.r_pr if p.p_pr is not None else None
+        if r_pr is not None:
+            if mark.from_:
+                r_pr.move_from = None
+            else:
+                r_pr.move_to = None
+        if kept:
+            props.prune_paragraph(p)
+        elif not p.content:
+            op.remove(para.container, p)  # the moved paragraph, emptied: gone, as in Word
+        else:
+            op.join_with_next(para)
+
+    @staticmethod
+    def resolve_rangeless(op: _Op, t: RunT, accept: bool) -> bool:
+        """A move half in no named range (check 20 cases 13 and 14).
+
+        A ``w:moveTo`` resolved as an insertion, a ``w:moveFrom`` as a deletion,
+        its paragraph's mark with it; then what is left of the broken pair is
+        dissolved.
+        """
+        pieces = _Moves.pieces_of(op.story.root)
+        half = _Moves._half_of(pieces, t.item)
+        if half is None or half.names:
+            return False
+        keep = (not half.from_) == accept
+        if not keep:
+            op.remove(t.owner, t.item)
+        elif not half.from_:
+            op.unwrap(t.item, t.owner)
+        else:
+            op.restore_deleted(t.item, t.owner)
+        para = op.change.para
+        if para is not None:
+            for piece in pieces:
+                if piece.kind != "MARK" or piece.from_ != half.from_ or piece.para.p is not para.p or piece.names:
+                    continue
+                _Moves._resolve_mark(op, piece, keep)
+                break
+        _Moves.dissolve_broken(op)
+        return True
+
+    @staticmethod
+    def dissolve_broken(op: _Op) -> None:
+        """Every move half and moved mark that cannot be paired, turned into the plain ``w:ins`` or ``w:del`` it stands for.
+
+        As Word saved each broken pair in check 20.
+        """
+        pieces = _Moves.pieces_of(op.story.root)
+        named_from = {piece.name for piece in pieces if piece.kind == "START" and piece.from_}
+        named_to = {piece.name for piece in pieces if piece.kind == "START" and not piece.from_}
+        for piece in pieces:
+            other = named_to if piece.from_ else named_from
+            if any(name in other for name in piece.names):
+                continue
+            if piece.kind == "HALF":
+                _to_plain_revision(piece.item, piece.owner, piece.from_)
+            elif piece.kind == "MARK":
+                r_pr = piece.para.p.p_pr.r_pr
+                if piece.from_ and r_pr.move_from is not None:
+                    r_pr.del_value = r_pr.move_from
+                    r_pr.move_from = None
+                if not piece.from_ and r_pr.move_to is not None:
+                    r_pr.ins = r_pr.move_to
+                    r_pr.move_to = None
+
+
+def _to_plain_revision(item: Any, owner: list | None, from_: bool) -> None:
+    """A ``w:moveFrom`` become the plain ``w:del`` of the same runs, or a ``w:moveTo`` the plain ``w:ins``; it keeps its id."""
+    index = trees.index_of(owner, item)
+    if index < 0:
+        return
+    from docx4j_py.wml import RunDel, RunIns
+
+    inner = trees.run_items(item) or []
+    moved = list(inner)
+    inner.clear()
+    if from_:
+        delete_text(moved)
+    plain = (RunDel if from_ else RunIns)(id=item.id, author=item.author, date=item.date, date_utc=item.date_utc)
+    trees.splice(plain.content, 0, 0, moved)
+    owner[index] = trees.fit(plain, owner)

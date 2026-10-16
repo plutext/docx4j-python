@@ -70,7 +70,9 @@ def test_the_audit_trail_is_the_documents_own():
     assert {c.date for c in changes} == {WHEN}
 
     first = changes[0].to_dict()
-    assert set(first) == {"type", "author", "date", "text", "id", "kind", "address"}
+    # CR-010: the part the change is in joins the summary, since the listing covers every story
+    assert set(first) == {"type", "author", "date", "text", "id", "kind", "address", "part"}
+    assert first["part"] == "/word/document.xml"
     assert first["author"] == "Claude"
     assert json.loads(json.dumps(changes[0].to_dict()))["date"] == "2026-09-17T12:00:00+00:00"
 

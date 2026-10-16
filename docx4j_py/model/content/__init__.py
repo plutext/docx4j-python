@@ -455,8 +455,15 @@ def _set_package_tracked_change_date(self: object, value: object) -> None:
 
 
 def _package_get_tracked_changes(self: object) -> list:
-    """Every tracked change in the main document part, in document order."""
-    return list(self.body.get_tracked_changes())  # type: ignore[attr-defined]
+    """Every tracked change in every story, story by story (CR-010 section 3.2).
+
+    The main document, the footnotes, endnotes and comments, then the headers
+    and footers in the order the sections reference them; a text box's after
+    the story it is in. Over :func:`docx4j_py.model.revisions.tracked_changes`.
+    """
+    from docx4j_py.model.content.tracked_change import tracked_changes_of_package
+
+    return tracked_changes_of_package(self)
 
 
 def _package_custom_xml_parts(self: object) -> object:

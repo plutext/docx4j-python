@@ -600,9 +600,9 @@ def _tracked_changes(body: Body) -> int:
     can act on never disagree. It unmarshals nothing beyond this body's own
     part, which was read to make the outline anyway.
     """
-    from docx4j_py.model.content.tracked_change import tracked_changes_of_body
+    from docx4j_py.model.content.tracked_change import count_tracked_changes
 
-    return len(tracked_changes_of_body(body))
+    return count_tracked_changes(body)
 
 
 def comments_in(package: Any) -> int:

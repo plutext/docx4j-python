@@ -1,9 +1,10 @@
-"""``TrackedChange``: Office JS ``Word.TrackedChange`` over Word's revision markup.
+"""``TrackedChange``: Office JS ``Word.TrackedChange``, the view over the revisions engine.
 
-CR-003 section 3.8, Phase F. The reading half; :mod:`.tracking` is the writing
-half. A view like :class:`~docx4j_py.model.content.paragraph.Paragraph` and
-:class:`~docx4j_py.model.content.range.Range`: it holds the markup it is over,
-nothing is cached, and two views of the same markup compare equal.
+CR-003 section 3.8 (Phase F) and CR-010 section 3.2. The reading half; the
+writing half is :mod:`.tracking`, and the engine underneath both readers is
+:mod:`docx4j_py.model.revisions` --- the port of docx4j's
+``org.docx4j.model.revisions`` (docx4j CR-043), which lists, accepts and
+rejects tracked changes **as Word's Review tab resolves them**, in every story.
 
 ::
 
@@ -11,43 +12,33 @@ nothing is cached, and two views of the same markup compare equal.
         print(change.type, change.author, change.text)
     pkg.body.accept_all()
 
-What a change may be over (ECMA-376 17.13.5): a ``w:ins``, ``w:del``,
-``w:moveFrom`` or ``w:moveTo`` around runs; a paragraph mark's
-``w:pPr/w:rPr/w:ins`` or ``w:pPr/w:rPr/w:del``; a run's ``w:rPrChange`` or a
-paragraph's ``w:pPrChange``; a row's ``w:trPr/w:ins`` or ``w:trPr/w:del``.
+What one change is follows Office JS's grouping, measured against Word (CR-043
+section 3.1): touching insertions, deletions or formatting changes by one
+author are **one** change, whatever their dates; another author or type splits;
+a revision nested in another is listed apart; a move is never grouped. A
+paragraph's mark is a piece whose text is ``\\r``, so a deleted paragraph is one
+change, ``"Two.\\r"``. Office JS's members keep their shape (``type``,
+``author``, ``date``, ``text``, ``get_range()``, ``accept()``, ``reject()``,
+``to_dict()``); the extensions are ``id``, ``element``, ``kind`` (docx4j's finer
+kind, :class:`~docx4j_py.model.revisions.Kind`), ``target``, ``address``,
+``part`` and ``pieces``.
 
-**Accepting** follows docx4j's
-``org.docx4j.convert.out.common.preprocess.AcceptTrackedChanges``: a ``w:ins``
-is unwrapped, a ``w:del`` removed, a deleted paragraph mark joins its paragraph
-with the next --- the joined paragraph keeps the first one's content and
-``w14:paraId`` and takes the second one's properties --- and a deleted row is
-removed. Unlike that conversion preprocessor, which leaves formatting revisions
-alone because the current properties are what the document shows, accepting here
-also **drops** ``w:rPrChange`` and ``w:pPrChange``: this document is saved
-again (CR-003 section 4). **Rejecting** is the mirror.
+**A view is valid until the next accept or reject on its package**, as Office
+JS's is: a join removes a paragraph. A stale view's ``accept()`` and
+``reject()`` raise :class:`~.errors.TrackedChangeError` with the code
+``tracking.gone``; list again.
 """
 
 from __future__ import annotations
 
-import dataclasses
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import link_parents
 from docx4j_py.model.content.enums import TrackedChangeTypeValue
-from docx4j_py.model.content.errors import TrackedChangeError
-from docx4j_py.model.content.text_model import W_DEL_TEXT, block_children_of, item_text
-from docx4j_py.model.content.tracking import (
-    REVISION_NAMES,
-    date_of,
-    merge_runs,
-    prune_paragraph_properties,
-    restore_p_pr,
-    restore_r_pr,
-    to_restored_text,
-)
+from docx4j_py.model.content.text_model import item_text
+from docx4j_py.model.content.tracking import REVISION_NAMES
 from docx4j_py.traversal import element_name, run_items_of
-from docx4j_py.wml import P, R, Tbl
+from docx4j_py.wml import R
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
@@ -56,74 +47,43 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = [
     "TrackedChange",
-    "TrackedChangeTarget",
-    "changes_in_row",
-    "folded_in_row",
-    "join_with_next",
+    "accept_or_reject_body",
     "tracked_changes_of_body",
+    "tracked_changes_of_package",
     "tracked_changes_of_paragraph",
-    "tracked_changes_of_row",
 ]
 
 #: How much of the text a ``repr`` shows.
 _PREVIEW = 30
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
-class TrackedChangeTarget:
-    """Which piece of revision markup a :class:`TrackedChange` is over.
-
-    An extension: Office JS has no such member, and docx4j-core-ts carries the
-    same thing as a discriminated union.
-    """
-
-    kind: str
-    """One of ``"run"``, ``"mark"``, ``"run_properties"``,
-    ``"paragraph_properties"``, ``"row"``."""
-    value: Any
-    """What carries ``w:id``, ``w:author`` and ``w:date``: a ``CT_TrackChange``,
-    a ``w:rPrChange`` or a ``w:pPrChange``."""
-    element: Any = None
-    """The element the change is on: the ``w:ins``, the ``w:tr``, the ``w:r``,
-    the ``w:p``."""
-    owner: list | None = None
-    """The live list holding :attr:`element`, for the kinds that are removed."""
-    mark: str | None = None
-    """``"ins"`` or ``"del"`` for a mark or a row; the revision kind for a run."""
-
-    def to_dict(self) -> dict[str, Any]:
-        """The JSON-ready view: the kind and, where there is one, the mark."""
-        out: dict[str, Any] = {"kind": self.kind}
-        if self.mark is not None:
-            out["mark"] = self.mark
-        return out
-
-
 class TrackedChange:
-    """A subset of Office JS ``Word.TrackedChange`` over one piece of revision markup."""
+    """A subset of Office JS ``Word.TrackedChange``, over one change the engine listed."""
 
-    __slots__ = ("body", "paragraph", "target")
+    __slots__ = ("_paragraph", "body", "change")
 
-    def __init__(
-        self, target: TrackedChangeTarget, paragraph: Paragraph | None, body: Body | None = None
-    ) -> None:
-        """Build the view over the markup, the paragraph it is in and its body."""
-        #: What the change is over (an extension).
-        self.target = target
-        #: The paragraph the change is in; None for a row revision.
-        self.paragraph = paragraph
-        #: The body it was collected from, for :attr:`address`; may be None.
-        self.body = body if body is not None else getattr(paragraph, "parent_body", None)
+    def __init__(self, change: Any, body: Body | None = None) -> None:
+        """Build the view over the engine's change and the body it was listed from."""
+        #: The engine's change (:class:`docx4j_py.model.revisions.TrackedChange`).
+        self.change = change
+        #: The body the change was listed from, for :attr:`paragraph` and
+        #: :attr:`address`; None for a change in a text box, whose content is
+        #: a typed island rather than the live tree (CR-010 section 3.5).
+        self.body = body
+        self._paragraph: Any = False
 
     # -- identity ----------------------------------------------------------
 
+    def _anchors(self) -> tuple[int, ...]:
+        return tuple(id(piece.target.value()) for piece in self.change.pieces)
+
     def __eq__(self, other: object) -> bool:
         """Two views of the same markup are equal (CR-003 section 3.1)."""
-        return isinstance(other, TrackedChange) and other.target.value is self.target.value
+        return isinstance(other, TrackedChange) and other._anchors() == self._anchors()
 
     def __hash__(self) -> int:
         """Hashes by the markup's identity."""
-        return hash(id(self.target.value))
+        return hash(self._anchors())
 
     def __str__(self) -> str:
         """The text the change covers."""
@@ -143,435 +103,311 @@ class TrackedChange:
 
     @property
     def type(self) -> TrackedChangeTypeValue:
-        """Office JS ``Word.TrackedChangeType``: ``"Added"``, ``"Deleted"`` or ``"Formatted"``.
-
-        ``"None"`` is in Office JS's list and is never produced here: every
-        piece of markup a change is over is one of the three.
-        """
-        target = self.target
-        if target.kind == "run":
-            return "Added" if target.mark in ("ins", "moveTo") else "Deleted"
-        if target.kind in ("mark", "row"):
-            return "Added" if target.mark == "ins" else "Deleted"
-        return "Formatted"
+        """Office JS ``Word.TrackedChangeType``: ``"Added"``, ``"Deleted"`` or ``"Formatted"``."""
+        return self.change.type  # type: ignore[no-any-return]
 
     @property
     def author(self) -> str:
-        """``w:author``: who made the change."""
-        return str(getattr(self.target.value, "author", "") or "")
+        """``w:author``: who made the change; a group's is its first piece's."""
+        return str(self.change.author or "")
 
     @property
     def date(self) -> datetime.datetime | None:
-        """``w:date``, when the markup carries one; None when it does not."""
-        return date_of(getattr(self.target.value, "date", None))
+        """When: ``w16du:dateUtc`` where the markup has it, else ``w:date``; None when neither."""
+        return self.change.date  # type: ignore[no-any-return]
 
     @property
     def text(self) -> str:
-        """The text the change covers; ``""`` for a paragraph mark.
+        """The text the change covers, as Office JS gives it.
 
-        A deletion's text is the **deleted** text (its ``w:delText``), which is
-        what the original view shows and what ``to_markdown(view="markup")``
-        renders between ``{--`` and ``--}``.
+        A deletion's is the **deleted** text; a paragraph mark is ``\\r``; a row
+        its cells a tab apart and then ``\\r\\n``; a field's is its result.
         """
-        target = self.target
-        if target.kind == "run":
-            return _revision_text(target.element)
-        if target.kind == "run_properties":
-            return _revision_text_of_runs([target.element])
-        if target.kind == "paragraph_properties":
-            return self.paragraph.text if self.paragraph is not None else ""
-        if target.kind == "row":
-            return _row_text(target.element)
-        return ""
+        return self.change.text  # type: ignore[no-any-return]
 
     def get_range(self) -> Range | None:
-        """The range the change covers, or None when it has no paragraph.
+        """The range the change covers in its first paragraph, or None when it has none.
 
         A deletion is a **collapsed** range where it sits in the accepted text,
-        because its text is not in that view at all; a mark or a ``w:pPrChange``
-        is the whole paragraph; a row revision has no range.
+        because its text is not in that view at all; a mark, a ``w:pPrChange``
+        or an equation's change is the whole paragraph; a row revision, a
+        table's or a section's records and a text box's change have no range.
+        A change over several paragraphs gives its range in the first.
         """
         from docx4j_py.model.content.range import Range
+        from docx4j_py.model.revisions.change import (
+            FieldT,
+            HolderT,
+            MarkPropsT,
+            MarkT,
+            RunPropsT,
+            RunT,
+        )
 
         paragraph = self.paragraph
         if paragraph is None:
             return None
-        target = self.target
-        if target.kind == "run":
-            start, end = _span_of(paragraph, target.element)
-            return Range(paragraph, start, end)
-        if target.kind == "run_properties":
-            covered = [s for s in paragraph.segments() if s.run is target.element]
-            if not covered:
-                return paragraph.get_range("Start")
-            return Range(paragraph, covered[0].start, covered[-1].end)
-        return paragraph.get_range("Whole")
+        element = paragraph.element
+        spans: list[tuple[int, int]] = []
+        whole = False
+        length = len(paragraph.text)
+        for piece in self.change.pieces:
+            if piece.para is None or piece.para.p is not element:
+                continue
+            t = piece.target
+            if isinstance(t, RunT):
+                spans.append(_span_of(paragraph, t.item))
+            elif isinstance(t, FieldT):
+                first, last = _span_of(paragraph, t.span[0]), _span_of(paragraph, t.span[-1])
+                spans.append((first[0], last[1]))
+            elif isinstance(t, HolderT):
+                spans.append(_span_of(paragraph, t.holder))
+            elif isinstance(t, RunPropsT):
+                covered = [s for s in paragraph.segments() if s.run is t.run]
+                at = _accepted_offset_of(element, t.run)
+                spans.append((covered[0].start, covered[-1].end) if covered else (at, at))
+            elif isinstance(t, (MarkT, MarkPropsT)):
+                spans.append((length, length))
+            else:
+                whole = True
+        if whole or not spans or all(isinstance(p.target, (MarkT, MarkPropsT)) for p in self.change.pieces):
+            return paragraph.get_range("Whole")
+        return Range(paragraph, min(s for s, _ in spans), max(e for _, e in spans))
 
     def accept(self) -> None:
-        """Keep the change: a ``w:ins`` unwrapped, a ``w:del`` removed, a mark joined.
+        """Keep the change, as Word's Review tab does (docx4j CR-043 section 3.2).
+
+        An insertion stays and loses its markup, a deletion goes (a deleted
+        paragraph mark joins its paragraph with the next, which keeps its
+        properties and ``w14:paraId``), a formatting change's record is
+        dropped; either half of a move keeps the whole move. What goes takes
+        with it the notes it references, the bookmarks and comments touching
+        it, and the parts nothing else references.
 
         Raises:
-            TrackedChangeError: the markup is no longer in the tree.
+            TrackedChangeError: ``tracking.gone`` when the package has been
+                changed by an accept or reject since this was listed; list again.
         """
-        target = self.target
-        if target.kind == "run":
-            memory = split_runs_of(self.body)
-            if target.mark in ("ins", "moveTo"):
-                _unwrap(target, memory)
-            else:
-                _remove(target, "accept", memory)
-            return
-        if target.kind == "mark":
-            if target.mark == "ins":
-                _drop_mark(self.paragraph, "ins")
-            else:
-                join_with_next(self._require_paragraph())
-            return
-        if target.kind == "run_properties":
-            r_pr = getattr(target.element, "r_pr", None)
-            if r_pr is not None:
-                r_pr.r_pr_change = None
-            return
-        if target.kind == "paragraph_properties":
-            paragraph = self._require_paragraph().element
-            if paragraph.p_pr is not None:
-                paragraph.p_pr.p_pr_change = None
-            prune_paragraph_properties(paragraph)
-            return
-        if target.mark == "ins":
-            # the cell-level insertions this row is made of are folded into it
-            # (CR-003 section 16.10), so accepting the row accepts them
-            for inner in reversed(folded_in_row(self)):
-                inner.accept()
-            tr_pr = getattr(target.element, "tr_pr", None)
-            if tr_pr is not None:
-                tr_pr.ins = None
-                _prune_row_properties(target.element)
-        else:
-            _remove_row(target, "accept")  # the content goes with the row
+        self.change.accept()
+        self._tidy()
 
     def reject(self) -> None:
-        """Put back what was there: a ``w:ins`` removed, a ``w:del`` restored.
+        """Put back what was there: an insertion goes, a deletion stays and loses its markup.
 
         Raises:
-            TrackedChangeError: the markup is no longer in the tree.
+            TrackedChangeError: ``tracking.gone``, as :meth:`accept`.
         """
-        target = self.target
-        if target.kind == "run":
-            memory = split_runs_of(self.body)
-            if target.mark in ("ins", "moveTo"):
-                _remove(target, "reject", memory)
-            else:
-                _restore_deleted(target, memory)
-            return
-        if target.kind == "mark":
-            if target.mark == "del":
-                _drop_mark(self.paragraph, "del")
-            else:
-                paragraph = self._require_paragraph()
-                join_with_next(
-                    paragraph,
-                    fallback_to_previous=True,
-                    keep_properties=True,
-                )
-                # the break this mark recorded is gone, so the mark goes with
-                # it: keeping the surviving paragraph's own properties (16.10)
-                # means nothing else takes it away (CR-003 section 16.11)
-                _drop_mark(paragraph, "ins")
-            return
-        if target.kind == "run_properties":
-            from docx4j_py.wml import RPr, rpr_from_elements
+        self.change.reject()
+        self._tidy()
 
-            restore_r_pr(target.element, rpr_from_elements(target.value.r_pr, cls=RPr))
-            return
-        if target.kind == "paragraph_properties":
-            restore_p_pr(self._require_paragraph().element, target.value.p_pr)
-            return
-        if target.mark == "del":
-            for inner in reversed(folded_in_row(self)):
-                inner.reject()
-            tr_pr = getattr(target.element, "tr_pr", None)
-            if tr_pr is not None:
-                tr_pr.del_value = None
-                _prune_row_properties(target.element)
-        else:
-            _remove_row(target, "reject")  # the content goes with the row
+    def _tidy(self) -> None:
+        """The halves of a run this session split, side by side again, joined (CR-003 section 16.12)."""
+        body = self.body
+        if body is not None and getattr(body.package, "_split_runs", None):
+            body._tidy_runs()
 
     # -- the extensions ----------------------------------------------------
 
     @property
     def id(self) -> int | None:
-        """The annotation id (``w:id``). Extension: Office JS has no id."""
-        value = getattr(self.target.value, "id", None)
-        return value if isinstance(value, int) else None
-
-    @property
-    def element(self) -> Any:
-        """The markup this change is over. Extension."""
-        return self.target.element if self.target.element is not None else self.target.value
+        """The annotation id (``w:id``); a group's is its first piece's. Extension."""
+        return self.change.id  # type: ignore[no-any-return]
 
     @property
     def kind(self) -> str:
-        """``"run"``, ``"mark"``, ``"run_properties"``, ``"paragraph_properties"``, ``"row"``."""
-        return self.target.kind
+        """docx4j's finer kind (``"run_insertion"``, ``"paragraph_mark_deletion"``, ``"move"``, ...). Extension.
+
+        A :class:`~docx4j_py.model.revisions.Kind`, which is a ``str``; a
+        group of pieces of different kinds is ``"insertion"``, ``"deletion"``
+        or ``"formatting"``.
+        """
+        return self.change.kind  # type: ignore[no-any-return]
+
+    @property
+    def target(self) -> Any:
+        """What the engine's change is over (its target). Extension."""
+        return self.change.target
+
+    @property
+    def element(self) -> Any:
+        """The markup this change is over: a ``w:ins``, a mark's record, a run, a row. Extension."""
+        from docx4j_py.model.revisions.change import RowT, RunPropsT
+
+        t = self.change.pieces[0].target
+        if isinstance(t, RunPropsT):
+            return t.run
+        if isinstance(t, RowT):
+            return t.tr
+        return t.value()
+
+    @property
+    def part(self) -> Any:
+        """The part the change is in: the main document part, a header, the notes, the comments. Extension."""
+        return self.change.part
+
+    @property
+    def pieces(self) -> list[TrackedChange]:
+        """The single changes this one groups, each a view that can be accepted or rejected on its own. Extension."""
+        pieces = self.change.pieces
+        if len(pieces) == 1 and pieces[0] is self.change:
+            return [self]
+        return [TrackedChange(piece, self.body) for piece in pieces]
+
+    @property
+    def paragraph(self) -> Paragraph | None:
+        """The paragraph the change starts in, or None for a row, a table's or section's records, a text box's."""
+        if self._paragraph is not False:
+            return self._paragraph  # type: ignore[no-any-return]
+        found = None
+        para = self.change.para
+        if para is not None and self.body is not None and self.change.story.island is None:
+            from docx4j_py.model.content.paragraph import Paragraph
+
+            found = Paragraph(para.p, para.container, self.body)
+        self._paragraph = found
+        return found
 
     @property
     def address(self) -> str:
-        """The address of the paragraph (or the row) the change is in. Extension."""
-        if self.paragraph is not None:
-            return self.paragraph.address
-        if self.body is not None and self.target.element is not None:
-            from docx4j_py.model.content.addresses import ordinal_of
+        """The address of the paragraph (or the row, or the table) the change is in. Extension."""
+        paragraph = self.paragraph
+        if paragraph is not None:
+            return paragraph.address
+        if self.body is None or self.change.story.island is not None:
+            return ""
+        from docx4j_py.model.content.addresses import ordinal_of
+        from docx4j_py.model.revisions.change import CellT, RowT, TableT
 
-            return ordinal_of(self.body, self.target.element) or ""
-        return ""
+        t = self.change.pieces[0].target
+        element = t.tr if isinstance(t, (RowT, CellT)) else t.tbl if isinstance(t, TableT) else None
+        if element is None:
+            return ""
+        return ordinal_of(self.body, element) or ""
 
     def to_dict(self) -> dict[str, Any]:
         """A JSON-ready summary: what a tool result says about one revision."""
         date = self.date
+        part = self.part
         return {
             "type": self.type,
             "author": self.author,
             "date": date.isoformat() if date is not None else None,
             "text": self.text,
             "id": self.id,
-            "kind": self.target.kind,
+            "kind": str(self.kind),
             "address": self.address,
+            "part": str(part.part_name) if part is not None and hasattr(part, "part_name") else None,
         }
 
-    # -- helpers -----------------------------------------------------------
-
-    def _require_paragraph(self) -> Paragraph:
-        if self.paragraph is None:
-            raise TrackedChangeError(
-                "this tracked change has no paragraph",
-                code="tracking.no_paragraph",
-                hint="collect it through body.get_tracked_changes(), which carries one",
-            )
-        return self.paragraph
-
 
 # ---------------------------------------------------------------------------
-# what accepting and rejecting do
+# listing and resolving, over the engine
 # ---------------------------------------------------------------------------
 
 
-def _index_of(items: list, element: Any) -> int:
-    for index, item in enumerate(items):
-        if item is element:
-            return index
-    return -1
+def _key(body: Body) -> Any:
+    """What a body's views go stale with: its package, or its container when it has none."""
+    return body.package if body.package is not None else body.container
 
 
-def split_runs_of(body: Body | None) -> tuple[dict[int, int] | None, set[int] | None]:
-    """What this package remembers of its splits: the halves, and the spaces (16.12)."""
-    package = getattr(body, "package", None) if body is not None else None
-    return getattr(package, "_split_runs", None), getattr(package, "_split_spaces", None)
+def tracked_changes_of_body(body: Body) -> list[TrackedChange]:
+    """Every tracked change in a body's story, in document order, and its text boxes'."""
+    from docx4j_py.model import revisions
+
+    changes = revisions.tracked_changes_of(body.package, revisions.body_stories(body), key=_key(body))
+    return [TrackedChange(change, body) for change in changes]
 
 
-def _remove(target: TrackedChangeTarget, verb: str, memory: tuple = (None, None)) -> None:
-    """Take the element out of the list holding it."""
-    owner = target.owner
-    index = _index_of(owner, target.element) if owner is not None else -1
-    if index < 0:
-        raise TrackedChangeError(
-            f"this tracked change is no longer in the document, so it cannot be {verb}ed",
-            code="tracking.gone",
-            hint="call get_tracked_changes() again after accepting or rejecting others",
-        )
-    del owner[index]
-    merge_runs(owner, index, *memory)
+def count_tracked_changes(body: Body) -> int:
+    """How many changes :func:`tracked_changes_of_body` lists, without the views."""
+    from docx4j_py.model import revisions
+    from docx4j_py.model.revisions.lister import Lister
+
+    return len(Lister(body.package, True, revisions.body_stories(body)).list())
 
 
-def _remove_row(target: TrackedChangeTarget, verb: str) -> None:
-    """Take a row out, and the table with it when that was its last row.
+def accept_or_reject_body(body: Body, accept: bool) -> int:
+    """Resolve a body's story completely, and Word's side effects in other parts; the count listed."""
+    from docx4j_py.model import revisions
 
-    A departure from docx4j's ``AcceptTrackedChanges``, which is a conversion
-    preprocessor and leaves the husk: a ``w:tbl`` with no ``w:tr`` in it is not
-    valid WordprocessingML, and this document is saved again (CR-003 section
-    16).
-    """
-    row = target.element
-    table = getattr(row, "parent", None)
-    _remove(target, verb)
-    while table is not None and isinstance(table, Tbl):
-        from docx4j_py.model.content.text_model import rows_of
-
-        if rows_of(table):
-            return
-        holder = getattr(table, "parent", None)
-        items = block_children_of(holder) if holder is not None else None
-        index = _index_of(items, table) if items is not None else -1
-        if index < 0:
-            return
-        del items[index]
-        table = None
+    return revisions.resolve_all(body.package, accept, stories=revisions.body_stories(body), key=_key(body))
 
 
-def _unwrap(target: TrackedChangeTarget, memory: tuple = (None, None)) -> None:
-    """A ``w:ins`` or ``w:moveTo`` accepted: its runs take its place."""
-    owner = target.owner
-    index = _index_of(owner, target.element) if owner is not None else -1
-    if index < 0:
-        raise TrackedChangeError(
-            "this tracked change is no longer in the document, so it cannot be accepted",
-            code="tracking.gone",
-            hint="call get_tracked_changes() again after accepting or rejecting others",
-        )
-    items = list(run_items_of(target.element) or ())
-    parent = getattr(target.element, "parent", None)
-    owner[index : index + 1] = items
-    for item in items:
-        item.parent = parent
-    # the boundaries the revision vacated: the halves of a run this API split
-    # for it are side by side again (CR-003 section 16.12)
-    merge_runs(owner, index + len(items), *memory)
-    merge_runs(owner, index, *memory)
+def tracked_changes_of_paragraph(paragraph: Paragraph) -> list[TrackedChange]:
+    """The changes starting in one paragraph, cut at its end (Office JS ``Paragraph.getTrackedChanges``)."""
+    from docx4j_py.model import revisions
+    from docx4j_py.model.revisions.generation import Generation
+    from docx4j_py.model.revisions.lister import Lister
+
+    body = paragraph.parent_body
+    stories = revisions.body_stories(body)
+    story = _story_holding(stories, paragraph.element)
+    lister = Lister(body.package, True, stories)
+    changes = lister.paragraph_changes(paragraph.element, paragraph.container, story)
+    generation = Generation.of(_key(body))
+    out = []
+    for change in changes:
+        revisions._stamp(change, generation)
+        view = TrackedChange(change, body)
+        view._paragraph = paragraph
+        out.append(view)
+    return out
 
 
-def _restore_deleted(target: TrackedChangeTarget, memory: tuple = (None, None)) -> None:
-    """A ``w:del`` or ``w:moveFrom`` rejected: its runs come back as ``w:t``."""
-    for item in run_items_of(target.element) or ():
-        if isinstance(item, R):
-            to_restored_text(item)
-    _unwrap(target, memory)
+def _story_holding(stories: list, element: Any) -> Any:
+    """The story whose root holds `element`, by its parents; the first when none says."""
+    if len(stories) == 1:
+        return stories[0]
+    owners = {id(story.root_owner): story for story in stories}
+    current = element
+    for _ in range(64):
+        if current is None:
+            break
+        found = owners.get(id(current))
+        if found is not None:
+            return found
+        current = getattr(current, "parent", None)
+    return stories[0]
 
 
-def _prune_row_properties(row: Any) -> None:
-    """Drop a ``w:trPr`` a row revision emptied, so no husk is left (16.12)."""
-    tr_pr = getattr(row, "tr_pr", None)
-    if tr_pr is None:
-        return
-    if (
-        tr_pr.ins is None
-        and tr_pr.del_value is None
-        and tr_pr.tr_pr_change is None
-        and not tr_pr.content
-    ):
-        row.tr_pr = None
+def tracked_changes_of_package(package: Any) -> list[TrackedChange]:
+    """Every tracked change in every story of a package (CR-010 section 3.2)."""
+    from docx4j_py.model import revisions
 
+    main = getattr(package, "main_document_part", None)
+    bodies: dict[int, Any] = {}
 
-def _drop_mark(paragraph: Paragraph | None, which: str) -> None:
-    """Take ``w:ins`` or ``w:del`` off a paragraph mark and tidy up after it."""
-    if paragraph is None:
-        return
-    p_pr = paragraph.element.p_pr
-    r_pr = p_pr.r_pr if p_pr is not None else None
-    if r_pr is not None:
-        if which == "ins":
-            r_pr.ins = None
-        else:
-            r_pr.del_value = None
-    prune_paragraph_properties(paragraph.element)
+    def body_for(part: Any) -> Any:
+        if part is None:
+            return None
+        found = bodies.get(id(part))
+        if found is None:
+            found = package.body if part is main else getattr(part, "body", None)
+            bodies[id(part)] = found
+        return found
 
-
-def join_with_next(
-    paragraph: Paragraph,
-    *,
-    fallback_to_previous: bool = False,
-    keep_properties: bool = False,
-) -> None:
-    """Join a paragraph with the next one, as docx4j's ``AcceptTrackedChanges`` does.
-
-    The paragraph takes the next one's content **and its properties**, so the
-    mark that survives is the next one's and the ``w14:paraId`` that survives is
-    this one's. Called when a deleted mark is accepted and when an inserted one
-    is rejected.
-
-    `keep_properties` is the **reject** direction's difference: the paragraph
-    that survives is one the document already had --- the break after it is what
-    was inserted --- so it keeps its own ``w:pPr`` rather than taking the new
-    paragraph's, which would strip the formatting of a paragraph nobody edited
-    (CR-003 section 16.10). Its caller then drops the ``w:ins`` from that
-    ``w:pPr`` itself, since replacing the properties wholesale is what used to
-    carry the mark away (section 16.11).
-
-    `fallback_to_previous` is for the second case at the end of a container,
-    where a paragraph this package inserted carries its own mark (CR-003 section
-    4) and there is nothing after it to join with: the paragraph then goes, its
-    content joining the one before. With neither neighbour the mark is dropped.
-    """
-    container = paragraph.container
-    index = _index_of(container, paragraph.element)
-    following = container[index + 1] if 0 <= index < len(container) - 1 else None
-    element = paragraph.element
-    if not isinstance(following, P):
-        previous = container[index - 1] if fallback_to_previous and index > 0 else None
-        if isinstance(previous, P):
-            for item in list(element.content):
-                previous.content.append(item)
-                item.parent = previous
-            link_parents(previous)
-            del container[index]
-            return
-        _drop_mark(paragraph, "ins")
-        _drop_mark(paragraph, "del")
-        return
-    if keep_properties and _following_survives(element, following):
-        # rejecting an insertion: the paragraph that survives is the **original**
-        # one, with its own element, attributes, ``w14:paraId`` and properties
-        # (CR-003 section 16.12). Whatever is left in the inserted one --- another
-        # author's runs --- goes to the front of it.
-        for offset, item in enumerate(list(element.content)):
-            following.content.insert(offset, item)
-            item.parent = following
-        link_parents(following)
-        del container[index]
-        return
-    for item in list(following.content):
-        element.content.append(item)
-        item.parent = element
-    if not keep_properties:
-        element.p_pr = following.p_pr
-        if element.p_pr is not None:
-            element.p_pr.parent = element
-    link_parents(element)
-    element.parent = getattr(following, "parent", None) or element.parent
-    del container[index + 1]
+    out = []
+    for change in revisions.tracked_changes(package):
+        story = change.story
+        body = None if story.island is not None else body_for(story.part)
+        out.append(TrackedChange(change, body))
+    return out
 
 
 # ---------------------------------------------------------------------------
-# the text of a revision, and where it sits
+# where a revision sits in the accepted text
 # ---------------------------------------------------------------------------
-
-
-def _revision_text(element: Any) -> str:
-    """The text a run-level revision covers, its ``w:delText`` counted."""
-    return _revision_text_of_runs(run_items_of(element) or [])
-
-
-def _revision_text_of_runs(items: list) -> str:
-    out: list[str] = []
-
-    def visit(entries: list) -> None:
-        for entry in entries:
-            if isinstance(entry, R):
-                for child in getattr(entry, "content", None) or ():
-                    qname = element_name(child)
-                    if qname == W_DEL_TEXT:
-                        value = getattr(child, "value", None)
-                        out.append(value if isinstance(value, str) else "")
-                        continue
-                    text = item_text(qname, child)
-                    if text is not None:
-                        out.append(text)
-                continue
-            nested = run_items_of(entry)
-            if nested is not None:
-                visit(nested)
-
-    visit(items)
-    return "".join(out)
 
 
 def _span_of(paragraph: Paragraph, element: Any) -> tuple[int, int]:
-    """A run-level revision's span in the paragraph's accepted text."""
+    """A run-level item's span in the paragraph's accepted text; collapsed where it is not in it."""
     from docx4j_py.model.content.tracking import revision_of
 
     inside = [
         segment
         for segment in paragraph.segments()
-        if (found := revision_of(segment.run)) is not None and found.element is element
+        if _within(segment.run, element)
+        or ((found := revision_of(segment.run)) is not None and found.element is element)
     ]
     if inside:
         return inside[0].start, inside[-1].end
@@ -579,7 +415,19 @@ def _span_of(paragraph: Paragraph, element: Any) -> tuple[int, int]:
     return at, at
 
 
-def _accepted_offset_of(paragraph: P, target: Any) -> int:
+def _within(run: Any, element: Any) -> bool:
+    """True when `run` is `element` or stands somewhere under it."""
+    current = run
+    for _ in range(16):
+        if current is None:
+            return False
+        if current is element:
+            return True
+        current = getattr(current, "parent", None)
+    return False
+
+
+def _accepted_offset_of(paragraph: Any, target: Any) -> int:
     """How much accepted text comes before `target` in the paragraph."""
     position = 0
     found = -1
@@ -614,237 +462,3 @@ def _accepted_run_text(run: R) -> str:
         if text is not None:
             out.append(text)
     return "".join(out)
-
-
-# ---------------------------------------------------------------------------
-# collecting
-# ---------------------------------------------------------------------------
-
-
-def tracked_changes_of_paragraph(paragraph: Paragraph) -> list[TrackedChange]:
-    """The tracked changes of one paragraph, in document order."""
-    out: list[TrackedChange] = []
-    element = paragraph.element
-    p_pr = element.p_pr
-    if p_pr is not None and p_pr.p_pr_change is not None:
-        out.append(
-            TrackedChange(
-                TrackedChangeTarget("paragraph_properties", p_pr.p_pr_change, element),
-                paragraph,
-            )
-        )
-    r_pr = p_pr.r_pr if p_pr is not None else None
-    if r_pr is not None and r_pr.ins is not None:
-        out.append(
-            TrackedChange(TrackedChangeTarget("mark", r_pr.ins, element, mark="ins"), paragraph)
-        )
-    if r_pr is not None and r_pr.del_value is not None:
-        out.append(
-            TrackedChange(
-                TrackedChangeTarget("mark", r_pr.del_value, element, mark="del"), paragraph
-            )
-        )
-    _collect_run_level(paragraph, element.content, out)
-    return out
-
-
-def _collect_run_level(paragraph: Paragraph, items: list, out: list[TrackedChange]) -> None:
-    for item in items:
-        name = element_name(item)
-        if name in REVISION_NAMES:
-            kind = (name or "").rpartition("}")[2]
-            out.append(
-                TrackedChange(
-                    TrackedChangeTarget("run", item, item, owner=items, mark=kind), paragraph
-                )
-            )
-            nested = run_items_of(item)
-            if nested is not None:
-                _collect_run_level(paragraph, nested, out)
-            continue
-        if isinstance(item, R):
-            r_pr = getattr(item, "r_pr", None)
-            if r_pr is not None and r_pr.r_pr_change is not None:
-                out.append(
-                    TrackedChange(
-                        TrackedChangeTarget("run_properties", r_pr.r_pr_change, item), paragraph
-                    )
-                )
-            continue
-        nested = run_items_of(item)
-        if nested is not None:
-            _collect_run_level(paragraph, nested, out)
-
-
-#: The attributes that make a ``w:p`` element the document's own: Word's
-#: revision save ids and the stable paragraph id an address is built on.
-_PARAGRAPH_ATTRIBUTES = (
-    "para_id",
-    "text_id",
-    "rsid_r",
-    "rsid_del",
-    "rsid_p",
-    "rsid_rdefault",
-    "rsid_rpr",
-)
-
-
-def _following_survives(element: P, following: P) -> bool:
-    """Which of the two paragraphs a rejected insertion leaves standing.
-
-    The **original** one, in both forms of the mark (CR-003 section 16.12). By
-    reject time the inserted paragraph's runs have already been rejected, so the
-    one still holding content is the original; when that does not decide it ---
-    both empty, or both holding content --- the one carrying more of the
-    document's own attributes wins, and a genuine tie goes to the **next**
-    paragraph, which is the original in the own-mark form.
-    """
-    mine, theirs = bool(element.content), bool(following.content)
-    if mine != theirs:
-        return not mine
-    return _attributes_of(following) >= _attributes_of(element)
-
-
-def _attributes_of(paragraph: P) -> int:
-    """How many of a ``w:p``'s own attributes are set."""
-    return sum(getattr(paragraph, name, None) is not None for name in _PARAGRAPH_ATTRIBUTES)
-
-
-def _row_text(row: Any) -> str:
-    """A row's text, a cell paragraph per line, its ``w:delText`` counted."""
-    from docx4j_py.model.content.text_model import cells_of
-
-    lines: list[str] = []
-
-    def visit(blocks: list) -> None:
-        for block in blocks:
-            if isinstance(block, P):
-                lines.append(_revision_text_of_runs(block.content))
-                continue
-            children = block_children_of(block)
-            if children is not None:
-                visit(children)
-
-    for cell, _owner in cells_of(row):
-        children = block_children_of(cell)
-        if children is not None:
-            visit(children)
-    return "\n".join(lines)
-
-
-def changes_in_row(row: Any, body: Body | None = None) -> list[TrackedChange]:
-    """Every tracked change in a row's cells, the row's own revisions apart."""
-    from docx4j_py.model.content.paragraph import Paragraph
-    from docx4j_py.model.content.text_model import cells_of, rows_of
-
-    out: list[TrackedChange] = []
-
-    def visit(blocks: list) -> None:
-        for block in blocks:
-            if isinstance(block, P):
-                out.extend(tracked_changes_of_paragraph(Paragraph(block, blocks, body)))
-                continue
-            if isinstance(block, Tbl):
-                for nested, owner in rows_of(block):
-                    out.extend(tracked_changes_of_row(nested, owner, body))
-                    out.extend(changes_in_row(nested, body))
-                continue
-            children = block_children_of(block)
-            if children is not None:
-                visit(children)
-
-    for cell, _owner in cells_of(row):
-        children = block_children_of(cell)
-        if children is not None:
-            visit(children)
-    return out
-
-
-def folded_in_row(change: TrackedChange) -> list[TrackedChange]:
-    """The cell-level changes a row revision is **made of**, in document order.
-
-    CR-003 section 16.10: a row insertion or deletion is **one**
-    :class:`TrackedChange`, as Word's Reviewing pane shows one, and the cell
-    revisions of the same author and the same direction are folded into it ---
-    they are that same edit. Anything else inside the row --- another author's
-    change, a formatting revision --- is listed separately and is not touched by
-    accepting or rejecting the row.
-    """
-    if change.target.kind != "row":
-        return []
-    wanted = "Added" if change.target.mark == "ins" else "Deleted"
-    author = change.author
-    return [
-        inner
-        for inner in changes_in_row(change.target.element, change.body)
-        if inner.type == wanted and inner.author == author
-    ]
-
-
-def tracked_changes_of_row(row: Any, owner: list, body: Body | None = None) -> list[TrackedChange]:
-    """The ``w:trPr/w:ins`` and ``w:trPr/w:del`` revisions of a table row."""
-    tr_pr = getattr(row, "tr_pr", None)
-    out: list[TrackedChange] = []
-    if tr_pr is None:
-        return out
-    if tr_pr.ins is not None:
-        out.append(
-            TrackedChange(
-                TrackedChangeTarget("row", tr_pr.ins, row, owner=owner, mark="ins"), None, body
-            )
-        )
-    if tr_pr.del_value is not None:
-        out.append(
-            TrackedChange(
-                TrackedChangeTarget("row", tr_pr.del_value, row, owner=owner, mark="del"),
-                None,
-                body,
-            )
-        )
-    return out
-
-
-def tracked_changes_of_body(body: Body) -> list[TrackedChange]:
-    """Every tracked change in a body, in document order.
-
-    Tables are descended into: a row's own revisions first, then the changes in
-    its cells, which is the order accepting in reverse needs.
-    """
-    from docx4j_py.model.content.paragraph import Paragraph
-    from docx4j_py.model.content.text_model import cells_of, rows_of
-
-    out: list[TrackedChange] = []
-
-    def visit(items: list) -> None:
-        # ``items`` is the **live** list, and the views built here hold it: a
-        # paragraph join removes the next paragraph from the list it is in
-        # (CR-003 section 4), so a copy would leave it behind.
-        for item in list(items):
-            if isinstance(item, P):
-                out.extend(tracked_changes_of_paragraph(Paragraph(item, items, body)))
-                continue
-            if isinstance(item, Tbl):
-                for row, owner in rows_of(item):
-                    revisions = tracked_changes_of_row(row, owner, body)
-                    out.extend(revisions)
-                    if revisions:
-                        # the row's own revision folds the cell-level ones it is
-                        # made of; everything else in the row is still listed
-                        # a set of views: two of the same markup are equal and
-                        # hash alike, so this is an identity test on the markup
-                        folded = {c for revision in revisions for c in folded_in_row(revision)}
-                        out.extend(
-                            inner for inner in changes_in_row(row, body) if inner not in folded
-                        )
-                        continue
-                    for cell, _cell_owner in cells_of(row):
-                        children = block_children_of(cell)
-                        if children is not None:
-                            visit(children)
-                continue
-            children = block_children_of(item)
-            if children is not None:
-                visit(children)
-
-    visit(body.content)
-    return out

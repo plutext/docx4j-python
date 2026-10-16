@@ -349,10 +349,13 @@ def test_a_paragraph_inserted_in_the_middle_carries_its_own_mark():
 
     assert "<w:rPr><w:ins " in made.get_xml().replace("\n", ""), "its own mark"
     assert "<w:t>A new paragraph.</w:t>" in made.get_xml()
-    assert [(c.kind, c.type) for c in made.get_tracked_changes()] == [
-        ("mark", "Added"),
-        ("run", "Added"),
+    # CR-010: an inserted paragraph's text and mark are one change, as Office JS
+    # lists them (docx4j CR-043 section 3.1, core-ts check 23 "ins-paragraph")
+    changes = made.get_tracked_changes()
+    assert [(c.kind, c.type, c.text) for c in changes] == [
+        ("insertion", "Added", "A new paragraph.\r"),
     ]
+    assert [p.kind for p in changes[0].pieces] == ["run_insertion", "paragraph_mark_insertion"]
     assert last.get_tracked_changes() == [], "the paragraph after it is untouched"
 
 
@@ -364,9 +367,9 @@ def test_a_paragraph_appended_at_the_end_leaves_the_final_mark_alone():
     assert "<w:rPr><w:ins " not in made.get_xml().replace("\n", ""), "the final mark"
     assert "<w:ins " in made.get_xml(), "but the runs are an insertion"
     assert "<w:rPr><w:ins " in paragraph.get_xml().replace("\n", ""), "the mark before it"
-    assert [(c.kind, c.type) for c in package.body.get_tracked_changes()] == [
-        ("mark", "Added"),
-        ("run", "Added"),
+    # CR-010: the mark before it and the runs touch, so they are one change (check 23)
+    assert [(c.kind, c.type, c.text) for c in package.body.get_tracked_changes()] == [
+        ("insertion", "Added", "\rAppended at the end."),
     ]
 
     plain, _plain_paragraph = untracked()
@@ -374,25 +377,36 @@ def test_a_paragraph_appended_at_the_end_leaves_the_final_mark_alone():
     assert package.body.text == plain.body.text
 
     back = reloaded(package)
-    assert back.body.accept_all() == 2
+    assert back.body.accept_all() == 1
     assert back.body.text == plain.body.text
 
 
-def test_rejecting_an_appended_paragraph_joins_it_into_the_one_before():
+def test_rejecting_an_appended_paragraph_joins_it_into_the_one_after():
+    """CR-010 (docx4j CR-043 section 3.2, C10): the join keeps the **next** paragraph.
+
+    Rejecting an inserted mark joins the paragraph with the next one, and the
+    result keeps the next paragraph's properties and ``w14:paraId``, for markup
+    Word did not write too: Word's Reject All of C10 --- a Heading 1 paragraph
+    whose mark was inserted, before a Normal one --- left a Normal paragraph.
+    The appended paragraph here is that next one, so the text comes back and
+    the properties and the id are the appended paragraph's. Phase F kept the
+    original paragraph's (CR-003 section 16.10); Word does not.
+    """
     package, paragraph = tracked("First.")
     first_id = paragraph.para_id
     package.change_tracking_mode = "Off"
     paragraph.style_id = "Heading1"  # the document's own formatting, not a revision
     package.change_tracking_mode = "TrackAll"
-    package.body.insert_paragraph("Appended.")
+    appended = package.body.insert_paragraph("Appended.")
+    appended_id = appended.para_id
 
-    assert reloaded(package).body.reject_all() == 2
+    assert reloaded(package).body.reject_all() == 1
     back = reloaded(package)
     back.body.reject_all()
     paragraphs = back.body.paragraphs
     assert [p.text for p in paragraphs] == ["First."]
-    assert paragraphs[0].para_id == first_id, "the surviving paragraph is the one that was there"
-    assert paragraphs[0].style_id == "Heading1", "and it keeps its own properties"
+    assert paragraphs[0].para_id == appended_id != first_id, "the next paragraph survives (C10)"
+    assert paragraphs[0].style_id != "Heading1", "with its own properties, as Word's reject leaves it"
     assert back.body.get_tracked_changes() == [], "and the mark goes with the break"
     assert "w:ins" not in back.body.get_xml()
 
@@ -411,7 +425,7 @@ def test_a_fragment_appended_at_the_end_shifts_every_mark_back_one():
     assert marked == ["First.", "A heading", "para one"], "never the last one"
 
     back = reloaded(package)
-    assert back.body.reject_all() == 6
+    assert back.body.reject_all() == 1, "touching insertions by one author: one change (check 23)"
     assert [p.text for p in back.body.paragraphs] == ["First."], "no empty husk left behind"
     assert back.body.get_tracked_changes() == []
     assert "w:ins" not in back.body.get_xml()
@@ -425,8 +439,9 @@ def test_deleting_a_paragraph_marks_the_mark_and_the_content():
     paragraph.delete()
 
     assert [p.text for p in package.body.paragraphs] == ["", "Second."]
-    kinds = [(c.kind, c.type) for c in paragraph.get_tracked_changes()]
-    assert kinds == [("mark", "Deleted"), ("run", "Deleted")]
+    # CR-010: a deleted paragraph is one change, its text and its mark (check 22)
+    kinds = [(c.kind, c.type, c.text) for c in paragraph.get_tracked_changes()]
+    assert kinds == [("deletion", "Deleted", "The quick brown fox jumps over the lazy dog.\r")]
     assert paragraph.get_text(view="original") == "The quick brown fox jumps over the lazy dog."
 
     with pytest.raises(TrackedChangeError) as twice:
@@ -487,7 +502,7 @@ def test_a_run_this_author_inserted_takes_formatting_with_no_r_pr_change():
     span.font.bold = True
 
     assert "<w:rPrChange" not in paragraph.get_xml()
-    assert [c.kind for c in paragraph.get_tracked_changes()] == ["run"]
+    assert [c.kind for c in paragraph.get_tracked_changes()] == ["run_insertion"]
 
 
 # ---------------------------------------------------------------------------
@@ -509,10 +524,9 @@ def test_row_insertions_and_deletions_go_on_the_tr_pr_and_the_row_stays():
     xml = table.get_xml()
     assert "<w:trPr><w:ins " in xml and "<w:trPr><w:del " in xml
     assert table.row_count == 3, "a deleted row stays in the tree until accepted"
-    assert [c.type for c in package.body.get_tracked_changes() if c.kind == "row"] == [
-        "Deleted",
-        "Added",
-    ]
+    assert [
+        c.type for c in package.body.get_tracked_changes() if c.kind in ("row_insertion", "row_deletion")
+    ] == ["Deleted", "Added"]
 
     back = reloaded(package)
     assert back.body.tables[0].row_count == 3
@@ -538,7 +552,8 @@ def test_a_deleted_row_is_emptied_as_Word_empties_one():
     assert table.row_count == 2, "the row itself stays until the change is accepted"
 
     changes = package.body.get_tracked_changes()
-    assert [(c.kind, c.type, c.text) for c in changes] == [("row", "Deleted", "a\nb")]
+    # a row's text is its cells a tab apart, then \r\n, as Office JS gives it (checks 30, 31)
+    assert [(c.kind, c.type, c.text) for c in changes] == [("row_deletion", "Deleted", "a\tb\r\n")]
 
     back = reloaded(package)
     assert back.body.accept_all() == 1
@@ -577,7 +592,9 @@ def test_a_row_delete_and_a_table_delete_mark_rather_than_remove():
     assert table.row_count == 2
     table.delete()
     assert package.body.tables, "the table is still there"
-    assert len([c for c in package.body.get_tracked_changes() if c.kind == "row"]) == 2
+    # two deleted rows that touch, by one author: one change (check 31)
+    rows = [c for c in package.body.get_tracked_changes() if c.kind == "row_deletion"]
+    assert len(rows) == 1 and len(rows[0].pieces) == 2
 
     package.body.accept_all()
     assert package.body.tables == [], "every row accepted away takes the table with it"
@@ -593,10 +610,11 @@ def test_an_inserted_table_marks_every_row_and_every_paragraph():
     assert xml.count("<w:ins ") == 10, "and a w:ins around every cell's runs"
 
     changes = package.body.get_tracked_changes()
-    assert [(c.kind, c.type) for c in changes] == [("row", "Added"), ("row", "Added")], (
-        "one change per row: the cell-level insertions are folded into it (section 16.10)"
-    )
-    assert package.body.reject_all() == 2
+    # CR-010: the two inserted rows touch, so Office JS lists the table as one
+    # change, the cells' insertions belonging to their rows (check 31)
+    assert [(c.kind, c.type) for c in changes] == [("row_insertion", "Added")]
+    assert len(changes[0].pieces) == 2
+    assert package.body.reject_all() == 1
     assert package.body.tables == [], "and the emptied w:tbl goes with the rows"
 
 
@@ -637,7 +655,7 @@ def test_a_content_control_inherits_tracking_and_its_delete_does_not():
     control = package.body.content_controls[0]
 
     control.insert_text("Tracked through the paragraph primitives")
-    assert any(c.kind == "run" for c in package.body.get_tracked_changes())
+    assert any(c.kind == "run_insertion" for c in package.body.get_tracked_changes())
 
     before = len(package.body.content_controls)
     control.delete()
@@ -650,7 +668,9 @@ def test_markdown_inserted_while_tracking_is_on_is_one_report_and_all_insertions
 
     assert package.last_change.operation == "insert_markdown"
     added = [c for c in package.body.get_tracked_changes() if c.type == "Added"]
-    assert len(added) >= 4, "a mark and a run for each of the two blocks"
+    # CR-010: touching insertions by one author are one change (check 23)
+    assert len(added) == 1
+    assert len(added[0].pieces) >= 4, "a mark and a run for each of the two blocks"
     package.body.reject_all()
     assert [p.text for p in package.body.paragraphs] == [
         "The quick brown fox jumps over the lazy dog."
@@ -764,17 +784,13 @@ def test_the_tracked_changes_of_a_word_written_document():
     package = fixture("tracked-pprchange.docx")
     changes = package.body.get_tracked_changes()
 
-    assert [c.type for c in changes] == [
-        "Formatted",
-        "Added",
-        "Added",
-        "Added",
-        "Added",
-    ]
+    # CR-010: a paragraph's inserted text and its inserted mark are one change (check 23)
+    assert [c.type for c in changes] == ["Formatted", "Added", "Added"]
     assert {c.author for c in changes} == {"jharrop"}
     assert changes[0].kind == "paragraph_properties"
-    assert changes[1].kind == "mark"
-    assert changes[2].text.startswith("This document intentionally contains revisions")
+    assert changes[1].kind == "insertion"
+    assert [p.kind for p in changes[1].pieces] == ["run_insertion", "paragraph_mark_insertion"]
+    assert changes[1].text.startswith("This document intentionally contains revisions")
     assert changes[0].date == datetime.datetime(2012, 6, 27, 21, 15, tzinfo=datetime.UTC)
     assert isinstance(changes[0], TrackedChange)
     assert changes[0].to_dict()["address"] == "body/0"
@@ -785,12 +801,12 @@ def test_the_moves_the_formatting_change_and_the_rows_of_the_built_document():
     changes = package.body.get_tracked_changes()
 
     assert [(c.kind, c.type) for c in changes] == [
-        ("run", "Deleted"),
-        ("run", "Added"),
+        ("move", "Deleted"),
+        ("move", "Added"),
         ("run_properties", "Formatted"),
-        ("row", "Added"),
-        ("row", "Deleted"),
-    ], "the inserted row's own w:ins is folded into the row change (section 16.10)"
+        ("row_insertion", "Added"),
+        ("row_deletion", "Deleted"),
+    ], "the inserted row's own w:ins belongs to the row change (section 16.10, check 31)"
     assert changes[0].text == "Moved sentence.", "a w:moveFrom reads its w:delText"
     assert changes[1].text == "Moved sentence."
     assert package.body.get_text().splitlines()[0] == " Stays."
@@ -829,10 +845,13 @@ def test_accepting_a_deleted_paragraph_mark_joins_with_the_next():
     first_id = paragraph.para_id
     paragraph.delete()
 
+    second_id = second.para_id
     assert package.body.accept_all()
     paragraphs = package.body.paragraphs
     assert [p.text for p in paragraphs] == ["Second."]
-    assert paragraphs[0].para_id == first_id, "the first one's paraId survives"
+    # CR-010 (docx4j CR-043 section 3.2, C10b): the join keeps the next
+    # paragraph's properties **and its w14:paraId**
+    assert paragraphs[0].para_id == second_id != first_id, "the second one's paraId survives"
     assert paragraphs[0].style_id == "Heading1", "and the second one's properties"
 
 
@@ -864,22 +883,25 @@ def test_rejecting_both_mark_forms_of_a_loaded_document_leaves_the_source():
         return package
 
     package = edited()
-    assert [c.kind for c in package.get_tracked_changes()] == ["mark", "run", "mark", "run"]
+    # CR-010: each inserted paragraph's text and mark are one change (check 23)
+    assert [c.kind for c in package.get_tracked_changes()] == ["insertion", "insertion"]
 
-    assert package.body.reject_all() == 4, "what it actually undid"
+    assert package.body.reject_all() == 2, "what it actually undid"
     assert package.body.get_tracked_changes() == [], "nothing of the revisions is left"
     assert [p.text for p in package.body.paragraphs] == source
     xml = package.body.get_xml()
     assert "w:ins" not in xml and "w:del" not in xml
 
+    # CR-010: a view is valid until the next accept or reject, so one at a time
+    # is list, reject the last, list again (Office JS throws on a stale change)
     one_at_a_time = edited()
-    for change in reversed(one_at_a_time.get_tracked_changes()):
-        change.reject()
+    while changes := one_at_a_time.get_tracked_changes():
+        changes[-1].reject()
     assert one_at_a_time.get_tracked_changes() == []
     assert [p.text for p in one_at_a_time.body.paragraphs] == source
 
     accepted = edited()
-    assert accepted.body.accept_all() == 4
+    assert accepted.body.accept_all() == 2
     assert accepted.get_tracked_changes() == []
     assert [p.text for p in accepted.body.paragraphs] == [
         "My first 2010 document.",
@@ -928,8 +950,9 @@ def test_a_tracked_change_has_a_range_a_repr_and_a_to_dict():
         "date": "2026-09-17T12:00:00+00:00",
         "text": "slow",
         "id": insertion.id,
-        "kind": "run",
+        "kind": "run_insertion",
         "address": paragraph.address,
+        "part": "/word/document.xml",
     }
     assert insertion == package.body.get_tracked_changes()[1]
     assert len({insertion, package.body.get_tracked_changes()[1]}) == 1
@@ -1064,15 +1087,25 @@ def test_every_form_survives_a_save_and_a_reload():
 INVARIANT_DOCUMENTS = ("2010-sample1.docx", "sample-docx.docx", "DrawingML_GraphicData_wps.docx")
 
 
-def every_tracked_verb(package, word: str = "the") -> None:
-    """Every mutation Phase F tracks, over one body, in one session."""
+def every_tracked_verb(package, word: str = "the", *, at_end: bool = True) -> None:
+    """Every mutation Phase F tracks, over one body, in one session.
+
+    With `at_end` the paragraph and the markdown are appended at the end of the
+    body, which writes the form whose mark sits on the paragraph before
+    (CR-003 section 16.10); without it they go after the second paragraph,
+    each paragraph carrying its own mark.
+    """
     body = package.body
     body.replace_text(word, word.upper())
     body.paragraphs[0].insert_text("Start. ", location="Start")
     body.paragraphs[0].insert_text(" End.", location="End")
     body.paragraphs[0].insert_paragraph("Inserted after the first.", location="After")
-    body.insert_paragraph("Appended at the end.")
-    body.insert_markdown("## Heading\n\npara one\n\npara two\n")
+    if at_end:
+        body.insert_paragraph("Appended at the end.")
+        body.insert_markdown("## Heading\n\npara one\n\npara two\n")
+    else:
+        body.paragraphs[1].insert_paragraph("Appended at the end.", location="After")
+        body.paragraphs[2].insert_markdown("## Heading\n\npara one\n\npara two\n")
     body.paragraphs[2].delete()
     body.paragraphs[0].font.bold = True
     body.paragraphs[0].alignment = "Centered"
@@ -1116,7 +1149,9 @@ def test_rejecting_every_tracked_verb_gives_the_document_back(name):
     package = tracked_package(name)
     package.body.reject_all()          # the document's own, as the control did
     package.change_tracking_mode = "TrackAll"
-    every_tracked_verb(package)
+    # CR-010: the paragraphs go in the middle here, each with its own mark; the
+    # form appended at the end is held to Word's rule by the test after this one
+    every_tracked_verb(package, at_end=False)
     assert package.body.get_tracked_changes(), "the verbs really did write revisions"
 
     assert package.body.reject_all()
@@ -1129,6 +1164,41 @@ def test_rejecting_every_tracked_verb_gives_the_document_back(name):
     assert package.body.text == control.body.text
     assert package.outline().stats.tracked_changes == 0
     assert package.describe().authors["revisions"] == control.describe().authors["revisions"]
+
+
+@pytest.mark.parametrize("name", INVARIANT_DOCUMENTS)
+def test_rejecting_what_was_appended_at_the_end_follows_word(name):
+    """The appended form, rejected as Word rejects it (CR-010; docx4j CR-043 section 3.2, C10).
+
+    A paragraph appended at the end of a body carries no mark of its own: the
+    break it recorded is the **previous** paragraph's mark (CR-003 section
+    16.10). Rejecting that mark joins the previous paragraph into the next one,
+    and Word keeps the **next** paragraph's properties and ``w14:paraId``, for
+    markup it did not write too (C10). So the text, the paragraphs before and
+    the absence of any revision are the document's, and the body's last
+    paragraph carries the appended paragraph's properties and id, as Word's
+    Reject All leaves this markup. Phase F's tracker writes the shifted mark
+    without the ``w:pPrChange`` Word writes on the new paragraph (check 29),
+    which is what would carry the properties back; that is the tracker's, out
+    of CR-010's scope (CR-010 section 10).
+    """
+    control = sample(name)
+    control.body.reject_all()
+    package = tracked_package(name)
+    package.body.reject_all()
+    package.change_tracking_mode = "TrackAll"
+    every_tracked_verb(package)
+    appended_id = next(p.para_id for p in package.body.paragraphs if p.text == "para two")
+
+    assert package.body.reject_all()
+    assert package.body.text == control.body.text
+    assert package.body.get_tracked_changes() == []
+    xml = package.body.get_xml()
+    assert "<w:ins " not in xml and "<w:del " not in xml
+    before = [p.para_id for p in control.body.paragraphs]
+    after = [p.para_id for p in package.body.paragraphs]
+    assert after[:-1] == before[:-1], "every paragraph but the last keeps its id"
+    assert after[-1] == appended_id, "the last is the appended paragraph, as Word keeps the next (C10)"
 
 
 @pytest.mark.parametrize("name", INVARIANT_DOCUMENTS)

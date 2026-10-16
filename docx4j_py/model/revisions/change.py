@@ -1,0 +1,564 @@
+"""One tracked change, as Word's Review tab and Office JS present it. docx4j ``TrackedChange``.
+
+CR-010 section 3.1. Touching insertions, deletions or formatting changes by one
+author are one change, whatever their dates; a move is one change from either
+half. The engine's change is a **view**: it holds the markup it is over, and is
+valid until the next accept or reject on its package (a paragraph join can
+remove the paragraph it holds), after which :meth:`TrackedChange.accept` and
+:meth:`TrackedChange.reject` raise
+:class:`~docx4j_py.model.content.errors.TrackedChangeError` (``tracking.gone``).
+
+The content API's :class:`~docx4j_py.model.content.tracked_change.TrackedChange`
+is the view over this one (CR-010 section 3.2).
+"""
+
+from __future__ import annotations
+
+import datetime
+import enum
+from typing import Any
+
+from docx4j_py.model.revisions.trees import Revision
+
+__all__ = [
+    "Kind",
+    "TrackedChange",
+    "is_resolvable",
+]
+
+
+class Kind(enum.StrEnum):
+    """docx4j's finer kind of change (``TrackedChange.Kind``), in snake case."""
+
+    RUN_INSERTION = "run_insertion"
+    """``w:ins`` around runs, at any depth of run holder; and inside an ``m:r``."""
+    RUN_DELETION = "run_deletion"
+    """``w:del`` around runs; and inside an ``m:r``."""
+    MOVE = "move"
+    """``w:moveFrom`` and ``w:moveTo``, with their range markers: either half is the whole move."""
+    PARAGRAPH_MARK_INSERTION = "paragraph_mark_insertion"
+    """``w:pPr/w:rPr/w:ins``: an inserted paragraph mark."""
+    PARAGRAPH_MARK_DELETION = "paragraph_mark_deletion"
+    """``w:pPr/w:rPr/w:del``: a deleted paragraph mark."""
+    RUN_PROPERTIES = "run_properties"
+    """A run's ``w:rPrChange``."""
+    PARAGRAPH_MARK_PROPERTIES = "paragraph_mark_properties"
+    """A paragraph mark's ``w:rPrChange`` (``w:pPr/w:rPr/w:rPrChange``)."""
+    PARAGRAPH_PROPERTIES = "paragraph_properties"
+    """``w:pPrChange``."""
+    ROW_INSERTION = "row_insertion"
+    """``w:trPr/w:ins``."""
+    ROW_DELETION = "row_deletion"
+    """``w:trPr/w:del``."""
+    FIELD_INSERTION = "field_insertion"
+    """A field Word inserted: ``w:ins`` around its begin and instruction and around its end."""
+    CONTENT_CONTROL_INSERTION = "content_control_insertion"
+    """A content control or custom XML element inserted (``w:customXmlInsRangeStart`` around it)."""
+    MATH_STRUCTURE_INSERTION = "math_structure_insertion"
+    """An equation's structure (``m:sSup``, ``m:acc``, ...) inserted: a ``w:ins`` in its ``m:ctrlPr``."""
+    MATH_STRUCTURE_DELETION = "math_structure_deletion"
+    """An equation's structure deleted: a ``w:del`` in its ``m:ctrlPr``."""
+    INSERTION = "insertion"
+    """A group of insertions of different kinds (text, marks, rows, fields)."""
+    DELETION = "deletion"
+    """A group of deletions of different kinds."""
+    FORMATTING = "formatting"
+    """A group of run and mark formatting changes."""
+    TABLE_PROPERTIES = "table_properties"
+    """A table's property records, which Word writes as one set: one change per table.
+
+    Listed, and resolved by CR-010 Phase B."""
+    SECTION_PROPERTIES = "section_properties"
+    """``w:sectPrChange``: a section's properties. Listed, and resolved by CR-010 Phase B."""
+    CELL_INSERTION = "cell_insertion"
+    """``w:cellIns`` (Word no longer writes it). Listed, and resolved by CR-010 Phase B."""
+    CELL_DELETION = "cell_deletion"
+    """``w:cellDel``. Listed, and resolved by CR-010 Phase B."""
+
+
+#: The kinds Phase A lists but does not resolve: the table, cell and section
+#: records, which are CR-010 Phase B's (docx4j CR-043 phase 2). Listing them is
+#: what keeps the listing from reporting a document clean when it is not.
+UNRESOLVED_KINDS: frozenset[Kind] = frozenset(
+    {Kind.TABLE_PROPERTIES, Kind.SECTION_PROPERTIES, Kind.CELL_INSERTION, Kind.CELL_DELETION}
+)
+
+
+def is_resolvable(kind: Kind) -> bool:
+    """True when this release accepts and rejects a change of this kind."""
+    return kind not in UNRESOLVED_KINDS
+
+
+class GroupKind(enum.Enum):
+    """What a piece groups as."""
+
+    INS = "ins"
+    DEL = "del"
+    FORMAT = "format"
+
+
+# ---------------------------------------------------------------------------
+# what a change is over
+# ---------------------------------------------------------------------------
+
+
+class Para:
+    """A paragraph and the live list it stands in."""
+
+    __slots__ = ("container", "p")
+
+    def __init__(self, p: Any, container: list) -> None:
+        """Hold the ``w:p`` and its list."""
+        self.p = p
+        self.container = container
+
+
+class Target:
+    """What a change is over: the markup, and where it stands."""
+
+    __slots__ = ()
+
+    def value(self) -> Any:
+        """What carries ``w:id``, ``w:author`` and ``w:date``."""
+        raise NotImplementedError
+
+
+class RunT(Target):
+    """``w:ins``, ``w:del``, ``w:moveFrom`` or ``w:moveTo`` around run-level content."""
+
+    __slots__ = ("item", "owner", "revision")
+
+    def __init__(self, revision: Revision, item: Any, owner: list) -> None:
+        self.revision = revision
+        self.item = item
+        self.owner = owner
+
+    def value(self) -> Any:
+        return self.item
+
+
+class MarkT(Target):
+    """``w:pPr/w:rPr/w:ins`` or ``w:del``."""
+
+    __slots__ = ("ins", "marker")
+
+    def __init__(self, ins: bool, marker: Any) -> None:
+        self.ins = ins
+        self.marker = marker
+
+    def value(self) -> Any:
+        return self.marker
+
+
+class RunPropsT(Target):
+    """A run's ``w:rPrChange``."""
+
+    __slots__ = ("record", "run")
+
+    def __init__(self, run: Any, record: Any) -> None:
+        self.run = run
+        self.record = record
+
+    def value(self) -> Any:
+        return self.record
+
+
+class ParaPropsT(Target):
+    """A paragraph's ``w:pPrChange``."""
+
+    __slots__ = ("record",)
+
+    def __init__(self, record: Any) -> None:
+        self.record = record
+
+    def value(self) -> Any:
+        return self.record
+
+
+class MarkPropsT(Target):
+    """A paragraph mark's ``w:rPrChange``."""
+
+    __slots__ = ("record",)
+
+    def __init__(self, record: Any) -> None:
+        self.record = record
+
+    def value(self) -> Any:
+        return self.record
+
+
+class RowT(Target):
+    """A row's ``w:trPr/w:ins`` or ``w:del``, with the revisions of its own cells."""
+
+    __slots__ = ("inner", "ins", "marker", "owner", "tbl", "tbl_owner", "tr")
+
+    def __init__(
+        self, ins: bool, tr: Any, owner: list, marker: Any, inner: list, tbl: Any, tbl_owner: list
+    ) -> None:
+        self.ins = ins
+        self.tr = tr
+        self.owner = owner
+        self.marker = marker
+        self.inner = inner
+        self.tbl = tbl
+        self.tbl_owner = tbl_owner
+
+    def value(self) -> Any:
+        return self.marker
+
+
+class GroupT(Target):
+    """Touching pieces of one type by one author: Office JS's one change."""
+
+    __slots__ = ("kind", "pieces")
+
+    def __init__(self, kind: GroupKind, pieces: list[TrackedChange]) -> None:
+        self.kind = kind
+        self.pieces = pieces
+
+    def value(self) -> Any:
+        return self.pieces[0].target.value()
+
+
+class FieldT(Target):
+    """A field Word inserted: the items of `owner` from the first ``w:ins`` to the last."""
+
+    __slots__ = ("owner", "span")
+
+    def __init__(self, span: list, owner: list) -> None:
+        self.span = span
+        self.owner = owner
+
+    def value(self) -> Any:
+        return self.span[0]
+
+
+class HolderT(Target):
+    """A content control or custom XML element inserted: its two pairs of ``w:customXmlIns*`` markers."""
+
+    __slots__ = ("holder", "inner_end", "inner_start", "outer_end", "outer_start", "owner")
+
+    def __init__(
+        self, holder: Any, owner: list, outer_start: Any, outer_end: Any, inner_end: Any, inner_start: Any
+    ) -> None:
+        self.holder = holder
+        self.owner = owner
+        self.outer_start = outer_start
+        self.outer_end = outer_end
+        self.inner_end = inner_end
+        self.inner_start = inner_start
+
+    def value(self) -> Any:
+        return self.outer_start
+
+
+class MathRunT(Target):
+    """``w:ins`` or ``w:del`` inside an ``m:r``."""
+
+    __slots__ = ("ins", "item", "run", "run_owner")
+
+    def __init__(self, ins: bool, run: Any, item: Any, run_owner: list | None) -> None:
+        self.ins = ins
+        self.run = run
+        self.item = item
+        self.run_owner = run_owner
+
+    def value(self) -> Any:
+        return self.item
+
+
+class MathStructT(Target):
+    """A ``w:ins`` or ``w:del`` in an equation structure's ``m:ctrlPr``."""
+
+    __slots__ = ("ctrl_pr", "ins", "marker", "struct_item", "struct_owner")
+
+    def __init__(
+        self, ins: bool, ctrl_pr: Any, marker: Any, struct_item: Any, struct_owner: list | None
+    ) -> None:
+        self.ins = ins
+        self.ctrl_pr = ctrl_pr
+        self.marker = marker
+        self.struct_item = struct_item
+        self.struct_owner = struct_owner
+
+    def value(self) -> Any:
+        return self.marker
+
+
+class TableT(Target):
+    """A table's property records."""
+
+    __slots__ = ("record", "tbl")
+
+    def __init__(self, tbl: Any, record: Any) -> None:
+        self.tbl = tbl
+        self.record = record
+
+    def value(self) -> Any:
+        return self.record
+
+
+class SectionT(Target):
+    """``w:sectPrChange``."""
+
+    __slots__ = ("sect_pr", "text")
+
+    def __init__(self, sect_pr: Any, text: str) -> None:
+        self.sect_pr = sect_pr
+        self.text = text
+
+    def value(self) -> Any:
+        return self.sect_pr.sect_pr_change
+
+
+class CellT(Target):
+    """``w:cellIns`` or ``w:cellDel``."""
+
+    __slots__ = ("ins", "marker", "tc", "tr")
+
+    def __init__(self, ins: bool, tc: Any, tr: Any, marker: Any) -> None:
+        self.ins = ins
+        self.tc = tc
+        self.tr = tr
+        self.marker = marker
+
+    def value(self) -> Any:
+        return self.marker
+
+
+# ---------------------------------------------------------------------------
+# the view
+# ---------------------------------------------------------------------------
+
+
+class TrackedChange:
+    """One tracked change: the engine's, which the content API's view wraps."""
+
+    __slots__ = ("generation", "para", "story", "target", "twins")
+
+    def __init__(self, target: Target, para: Para | None, story: Any) -> None:
+        """Build the change over its target, the paragraph it is in and its story."""
+        #: What the change is over.
+        self.target = target
+        #: The paragraph the change is in; None for a row, a table's or a
+        #: section's records, or markup at block level.
+        self.para = para
+        #: The story the change is in.
+        self.story = story
+        #: The changes in a text box's ``mc:Fallback`` twin this one resolves
+        #: too (CR-043 section 3.1).
+        self.twins: list[TrackedChange] = []
+        #: The package's generation when this was listed; None for a piece
+        #: resolved through its group.
+        self.generation: Any = None
+
+    # -- Office JS's members ----------------------------------------------
+
+    @property
+    def type(self) -> str:
+        """Office JS ``Word.TrackedChangeType``: ``"Added"``, ``"Deleted"`` or ``"Formatted"``."""
+        t = self.target
+        if isinstance(t, RunT):
+            return "Added" if t.revision in (Revision.INS, Revision.MOVE_TO) else "Deleted"
+        if isinstance(t, (MarkT, RowT, CellT, MathRunT, MathStructT)):
+            return "Added" if t.ins else "Deleted"
+        if isinstance(t, GroupT):
+            if t.kind is GroupKind.INS:
+                return "Added"
+            return "Deleted" if t.kind is GroupKind.DEL else "Formatted"
+        if isinstance(t, (HolderT, FieldT)):
+            return "Added"
+        return "Formatted"
+
+    @property
+    def kind(self) -> Kind:
+        """docx4j's finer kind; a group's is its pieces' when they are of one kind."""
+        t = self.target
+        if isinstance(t, RunT):
+            if t.revision is Revision.INS:
+                return Kind.RUN_INSERTION
+            if t.revision is Revision.DEL:
+                return Kind.RUN_DELETION
+            return Kind.MOVE
+        if isinstance(t, MarkT):
+            return Kind.PARAGRAPH_MARK_INSERTION if t.ins else Kind.PARAGRAPH_MARK_DELETION
+        if isinstance(t, RunPropsT):
+            return Kind.RUN_PROPERTIES
+        if isinstance(t, MarkPropsT):
+            return Kind.PARAGRAPH_MARK_PROPERTIES
+        if isinstance(t, ParaPropsT):
+            return Kind.PARAGRAPH_PROPERTIES
+        if isinstance(t, RowT):
+            return Kind.ROW_INSERTION if t.ins else Kind.ROW_DELETION
+        if isinstance(t, FieldT):
+            return Kind.FIELD_INSERTION
+        if isinstance(t, HolderT):
+            return Kind.CONTENT_CONTROL_INSERTION
+        if isinstance(t, MathRunT):
+            return Kind.RUN_INSERTION if t.ins else Kind.RUN_DELETION
+        if isinstance(t, MathStructT):
+            return Kind.MATH_STRUCTURE_INSERTION if t.ins else Kind.MATH_STRUCTURE_DELETION
+        if isinstance(t, TableT):
+            return Kind.TABLE_PROPERTIES
+        if isinstance(t, SectionT):
+            return Kind.SECTION_PROPERTIES
+        if isinstance(t, CellT):
+            return Kind.CELL_INSERTION if t.ins else Kind.CELL_DELETION
+        assert isinstance(t, GroupT)
+        first = t.pieces[0].kind
+        for piece in t.pieces:
+            if piece.kind != first:
+                if t.kind is GroupKind.INS:
+                    return Kind.INSERTION
+                return Kind.DELETION if t.kind is GroupKind.DEL else Kind.FORMATTING
+        return first
+
+    @property
+    def author(self) -> str | None:
+        """``w:author``; a group's is its first piece's (one author by definition)."""
+        value = self.target.value()
+        return getattr(value, "author", None) if value is not None else None
+
+    @property
+    def date(self) -> datetime.datetime | None:
+        """When the change was made: ``w16du:dateUtc`` where present, else ``w:date``.
+
+        A group's is its first piece's; None when there is none. See
+        :func:`date_of` for how ``w:date`` is read.
+        """
+        return date_of(self.target.value())
+
+    @property
+    def id(self) -> int | None:
+        """The annotation id (``w:id``); a group's is its first piece's."""
+        value = self.target.value()
+        found = getattr(value, "id", None) if value is not None else None
+        return found if isinstance(found, int) else None
+
+    @property
+    def text(self) -> str:
+        """The text the change covers, as Office JS gives it.
+
+        A paragraph mark is ``\\r``, a row its cells a tab apart and then
+        ``\\r\\n``, a section's its text then ``\\f``; a deletion's is the
+        deleted text; a field's is its result.
+        """
+        from docx4j_py.model.revisions.texts import text_of
+
+        return text_of(self)
+
+    @property
+    def part(self) -> Any:
+        """The part the change is in: the main document part, a header, the notes, the comments."""
+        return self.story.part
+
+    @property
+    def pieces(self) -> list[TrackedChange]:
+        """The single changes this one groups, in document order; a change that is no group is its own one piece."""
+        if isinstance(self.target, GroupT):
+            return list(self.target.pieces)
+        return [self]
+
+    @property
+    def resolvable(self) -> bool:
+        """True when this release can accept and reject this change (Phase B's records cannot yet)."""
+        return all(is_resolvable(piece.kind) for piece in self.pieces)
+
+    def accept(self) -> None:
+        """Keep the change, as Word's Review tab does.
+
+        An insertion stays and loses its markup, a deletion goes (a deleted
+        paragraph mark joins its paragraph with the next), a formatting change's
+        record is dropped; either half of a move keeps the whole move. What goes
+        takes with it the notes it references, the bookmarks and comments
+        touching it, and the parts nothing else references (CR-043 section 3.2).
+
+        Raises:
+            TrackedChangeError: ``tracking.gone`` when the package has been
+                changed by an accept or reject since this was listed;
+                ``tracking.unsupported`` for a kind Phase B resolves.
+        """
+        self._resolve(True)
+
+    def reject(self) -> None:
+        """Put back what was there; either half of a move rejects the whole move."""
+        self._resolve(False)
+
+    def _resolve(self, accept: bool) -> None:
+        from docx4j_py.model.content.errors import TrackedChangeError
+        from docx4j_py.model.revisions.removals import Removals
+        from docx4j_py.model.revisions.resolver import resolve
+
+        if self.generation is None or not self.generation.is_current():
+            raise TrackedChangeError(
+                "this tracked change was listed before the last accept or reject on its "
+                "package, so it cannot be "
+                + ("accepted" if accept else "rejected"),
+                code="tracking.gone",
+                hint="call get_tracked_changes() again after accepting or rejecting others",
+            )
+        if not self.resolvable:
+            raise TrackedChangeError(
+                f"a {self.kind} change is listed but not yet resolved (CR-010 Phase B)",
+                code="tracking.unsupported",
+                hint="accept_all() and reject_all() leave it listed; Phase B resolves tables "
+                "and sections",
+            )
+        removals = Removals.for_story(self.story)
+        resolve(self, accept, removals)
+        for twin in self.twins:
+            resolve(twin, accept, removals)
+        removals.flush()
+        self.generation.advance()
+
+    def __repr__(self) -> str:
+        """``<TrackedChange run_insertion by 'Author A' in /word/document.xml 'text'>``."""
+        part = getattr(self.story.part, "part_name", None)
+        text = self.text.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+        return f"<TrackedChange {self.kind} by {self.author!r} in {part} {text!r}>"
+
+
+# ---------------------------------------------------------------------------
+# dates
+# ---------------------------------------------------------------------------
+
+
+def _as_datetime(value: Any) -> datetime.datetime | None:
+    if value is None:
+        return None
+    to_datetime = getattr(value, "to_datetime", None)
+    if to_datetime is not None:
+        try:
+            found = to_datetime()
+        except Exception:  # noqa: BLE001 - a date we cannot read is no date
+            return None
+    elif isinstance(value, datetime.datetime):
+        found = value
+    elif isinstance(value, str):
+        try:
+            found = datetime.datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    else:
+        return None
+    if found.tzinfo is None:
+        found = found.replace(tzinfo=datetime.UTC)
+    return found
+
+
+def date_of(value: Any) -> datetime.datetime | None:
+    """A revision's date: ``w16du:dateUtc`` where present (Word 365 writes both), else ``w:date``.
+
+    ``w16du:dateUtc`` is the true UTC. ``w:date`` is read **as it is written**
+    --- a ``Z`` as UTC --- which is a departure from docx4j CR-043 (it reads
+    ``w:date`` as Word's local wall-clock time, check 36): this package's own
+    tracker writes the true UTC in ``w:date`` and no ``w16du:dateUtc``
+    (CR-003 section 16.1), so reading it as local time would misread every
+    revision this package makes. CR-010 section 10 records it.
+    """
+    if value is None:
+        return None
+    utc = _as_datetime(getattr(value, "date_utc", None))
+    if utc is not None:
+        return utc
+    return _as_datetime(getattr(value, "date", None))
