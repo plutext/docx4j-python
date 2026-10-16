@@ -2256,6 +2256,10 @@ a delete and an insert, which is what this writes. `w:moveFromRangeStart` and it
 siblings are carried through untouched, as they always were. Section 3.8 asks for the forms to
 be covered by `TrackedChange`, which they are.
 
+*Measured against Word on 2026-10-16 (section 22): Word's Accept All and Reject All remove the
+four range markers, and pair a move's halves by `w:name` on its range starts. A move Word wrote
+between paragraphs (docx4j CR-043's C15) is left unresolved here.*
+
 ### 16.4 The numbers, measured
 
 Against the 200-page document of section 7 (2,000 paragraphs, 20 three-by-three tables), loaded
@@ -4686,3 +4690,133 @@ on inserted text** (its check 30) is a `HYPERLINK` **field** inside the one `w:i
 engines now write, a `w:hyperlink` holding a `w:ins`, is valid and is what core-ts writes for a
 content control over inserted text, but it is not Word's; the Word check of it, with Accept All and
 Reject All, is still to be made.
+
+## 22. Hand-off from docx4j CR-043: Word's Accept All and Reject All, measured (2026-10-16)
+
+docx4j's session reported its CR-043 done, with an agreement run against this package's
+`accept_all()` and `reject_all()`. Nothing here has changed yet. This section records what docx4j
+measured, what was confirmed here, and what is left for the user to schedule.
+
+### 22.1 What docx4j built, and the oracle
+
+- **The API.** `org.docx4j.model.revisions` lists, accepts and rejects tracked changes, in every
+  story. It follows docx4j-core-ts's engine and is held to Word 365's own Accept All and Reject
+  All saves. The commits are `062bd4a44`, `737c32139` and `00614748e` on `VERSION_17_3_3`
+  (unpushed), shipping in 17.3.3.
+- **The rules** are docx4j's `docs/developer/change-requests/CR-043-tracked-changes-accept-reject-api.md`
+  section 3.2: one row per kind of markup, each with the Word check that measured it. Its section
+  11 lists what Word has not been seen to do (U1 to U20), and section 14 is the run.
+- **The fixtures** are in `docx4j-core-tests/src/test/resources/revisions/`:
+  - `cr043/`: CR-043's own probe (`cr043-tracked.docx`, one tagged case per paragraph, C01 and
+    on) and Word's saves of it, plus Word's saves of `../tracked-changes-equations.docx`;
+  - `core-ts/checkNN/`: docx4j-core-ts's Word checks 18 to 36, with Word's saves;
+  - `editor/`: docx4j-ts-editor's review files.
+
+  Each began as a test file an engine built and was edited in Word by Jason, so none is a
+  business document.
+- **The run** is `revisions/agreement/`. `py_resolve.py` loads each fixture into this package,
+  calls `body.accept_all()` or `body.reject_all()` and saves; docx4j's `PortsAgreement` compares
+  the result structurally with docx4j's own.
+
+### 22.2 The run, as docx4j reported it
+
+Description lines differing from docx4j's, accept / reject. On every fixture but `25a`'s and
+`25e`'s accept, which no Word save covers, Word's own save takes docx4j's side.
+
+| Fixture | This package | docx4j-core-ts |
+|---|---|---|
+| `cr043-tracked` (the probe) | 42 / 60 | 10 / 14 |
+| `tracked-changes-equations` | 10 / 10 | 10 / 10 |
+| `revisions-word15` (core-ts's check 18) | 15 / 24 | 2 / 0 |
+| `review-for-word` (the editor's) | 2 / 4 | 0 / 0 |
+| check 28 | 12 / 12 | 0 / 0 |
+| check 25: `25a`, `25e` | 0 / 6, 0 / 2 | 0 |
+| checks 22, `26a`, `26d`, `33a` | 0 | 0 |
+
+Where this package differs, by docx4j's account:
+
+1. **Moves Word wrote with range markers between paragraphs** are left unresolved: the probe's
+   C15, three paragraphs moved into a table cell. The range markers and the moved paragraph marks
+   stay. Word pairs a move's halves by `w:name` on their range starts. Section 16.3 carried the
+   range markers through on purpose; Word removes them.
+2. **Check 25's list rules on reject** are not applied. A restored `w:ind` equal to the list
+   level's own should be dropped, and a `w:numPr` with no `w:ilvl` should get `w:ilvl` 0.
+3. **Fields go as units.** A PAGE field inserted, then rejected, goes whole (C01). This is the
+   field-awareness that section 16.2 item 3 said was missing.
+4. **A note whose reference goes** is removed from its part with it (the review file's tracked
+   footnote; C12's endnote).
+5. **A bookmark** with a marker inside removed content goes whole (C11, accept), and so does one
+   around content that goes and is left empty by it (C11b, reject).
+6. **A comment range emptied by the change** goes; this package keeps it (the review file,
+   reject).
+7. **Outside what this package resolves:** table, row, cell and grid property records (check 28),
+   `w:sectPrChange`, headers and footers, the content-control markers
+   (`w:customXmlInsRangeStart` and its siblings), and text boxes.
+
+### 22.3 Measured here (2026-10-16)
+
+`py_resolve.py` was rerun at HEAD over seven of the fixtures, into the scratchpad. The tracking
+code (`tracked_change.py`, `tracking.py`, `body.py`) is unchanged since `v0.1.0`, so these are
+0.1.0's results. Every resolution ran without an error. The revision markup left in each saved
+body, counted against Word's own saves of the same file:
+
+| Fixture, verb | Left here | Left by Word |
+|---|---|---|
+| probe, accept | `w:ins` 2, `w:del` 2, `w:moveFrom` 2, `w:moveTo` 2, the four move range markers, `w:rPrChange` 1, `w:sectPrChange` 1, the table's four records, `w:customXmlInsRangeStart` 2 | none |
+| probe, reject | the same | none |
+| check 28 (`28a`), either | `w:tblPrChange` 2, `w:tblGridChange` 2, `w:trPrChange` 2, `w:tcPrChange` 8 | none |
+| equations, either | `w:ins` 25, `w:del` 14 | none |
+
+docx4j's account is confirmed, item by item where a fixture holds it:
+
+- **C15:** the moved marks keep `w:pPr/w:rPr/w:moveFrom` (2) and `w:moveTo` (2, in the cell).
+- **25a and 25e, reject:** the paragraphs keep a `w:numPr` with no `w:ilvl` and a restored
+  `w:ind` where Word's save has `w:ilvl` 0 and no `w:ind`.
+- **The review file:** the footnotes part keeps two notes for one remaining reference; Word's
+  saves keep one.
+
+Three findings go further than the hand-off:
+
+- **C01 leaves a broken field, not just its result.** After `reject_all()` the paragraph holds a
+  lone `w:fldChar w:fldCharType="separate"` and the text `1`, with no begin and no end, because
+  the begin and the instruction were in one `w:ins` and the end in another.
+- **Math is not seen at all.** `tracked-changes-equations.docx` lists **0** changes, so
+  `accept_all()` resolves nothing. Word writes math revisions inside `m:r` and in a structure's
+  `m:ctrlPr`, and none of those are run-level `w:ins` or `w:del` in a paragraph's content.
+- **The listing says the document is clean when it is not.** After `accept_all()`,
+  `body.get_tracked_changes()` lists **0** changes on the probe and on `28a`, yet the markup in
+  the table above is still there: in the two text-box branches, on moved and formatted paragraph
+  marks, in the table and section records, at the content-control markers, and in math. An agent
+  that accepts everything and then checks the listing is told there is nothing left. Word would
+  still show those revisions. This is the difference with the most consequence here, because
+  the outline's `OutlineStats.tracked_changes` (16.2 item 8) counts the same listing, and CR-006
+  section 7 plans `get_tracked_changes`, `accept_all` and `reject_all` tools over it.
+
+### 22.4 What stays open
+
+Nothing was changed. Phase F (section 16) built tracking to Office JS's API over the body, and
+CR-043 is now the measured rule set for every story. Bringing this package to it is new work for
+the user to schedule.
+
+**Recommendation:** port it as one piece of work, in the order below, with docx4j's agreement run
+as the gate (the fixtures read from the sibling checkout, skipping without it, as the theme vectors
+do).
+
+1. **The listing and the sweep.** List and resolve what the body actually holds:
+   - mark-level moves and formatting;
+   - the table, row, cell, grid and section records;
+   - the content-control markers;
+   - text boxes, in both branches of `mc:AlternateContent`;
+   - math.
+
+   This closes the "listed clean, not clean" gap.
+2. **Fields as units.** C01's broken field is the one case where this package writes malformed
+   structure.
+3. **Moves paired by `w:name`, with their range markers.**
+4. **Notes, bookmarks and emptied comment ranges** go with the content that held them.
+5. **Check 25's list rules on reject.**
+6. **The other stories**: headers, footers, notes and comments, as docx4j's `acceptAll` covers
+   them.
+
+docx4j-core-ts follows the same rules and is closer to them (its differences are its known scope
+and C23), so its engine is the nearer model for the port's code, as for the rest of CR-003.
