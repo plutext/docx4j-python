@@ -252,10 +252,19 @@ docx4j repositories, in `../docx4j-portfolio/tasks.yaml` (ids `<repo>/<CR>[.<pha
 repository's key is `python`).
 
 - When a CR's status changes (a phase lands; a CR is proposed, deferred or abandoned) or its
-  **Depends on** changes, update the matching entry in `tasks.yaml` in the same session (`status`,
-  `depends_on`; add an entry for a new CR or phase).
-- Then run `python3 ../docx4j-portfolio/scripts/tasks.py check`. It reports `CHANGED` for each CR
-  whose Status line was edited; once the registry entry agrees, run `tasks.py accept` (and
-  `tasks.py graph` if dependencies changed).
+  **Depends on** changes, the matching entry in `tasks.yaml` changes in the same session
+  (`status`, `depends_on`; a new entry for a new CR or phase).
+- **Don't edit `tasks.yaml` directly** (the user's rule, 2026-10-17). Send the change to the
+  docx4j-portfolio session, the one working in `~/git/docx4j-portfolio` (find it by that directory
+  in `ListAgents`, not by its name's suffix, which changes): the entry id, the exact new
+  `status`, `depends_on` and `notes` (or the whole entry), and any CR Status line to re-baseline
+  in `scripts/status-snapshots.yaml`. It applies the change, runs `tasks.py check`, `graph` and
+  `accept`, and commits. The same holds for `scripts/status-snapshots.yaml` and
+  `docs/dependencies.md`.
+- Only if no docx4j-portfolio session is running may this session edit them directly. Then commit
+  only your own hunks, through a temporary index built from `HEAD` immediately before the commit
+  (never the shared index, and check `HEAD` hasn't moved), and run
+  `python3 ../docx4j-portfolio/scripts/tasks.py check` (then `accept`, and `graph` if dependencies
+  changed).
 - Before starting a CR or phase, check `python3 ../docx4j-portfolio/scripts/tasks.py blocked`: it
   may be waiting on work in another repository.
