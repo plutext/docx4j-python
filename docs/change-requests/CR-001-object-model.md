@@ -1175,7 +1175,7 @@ upstream xsdata behaves the same way:
 - report the element's attributes, other than `xsi:*`, as skipped;
 - raise under `fail_on_unknown_attributes`.
 
-Not started; it is the user's to schedule.
+Not started; it is the user's to schedule. *Fixed in the fork on 2026-10-16: see the end of this section.*
 
 **Ported, 2026-10-14.** docx4j committed CR-040 as `28bdf831c` on `VERSION_17_3_3` (unpushed),
 with the schema patch, the two fixtures and `ChartExBinningTest`. Excel's check passed (Jason's),
@@ -1256,3 +1256,26 @@ docx4j CR-040 section 7).
 
 No Office check is needed here. The engine's output is unchanged, and the binding now writes the
 form Office itself writes (`0`, since booleans serialise numeric).
+
+**The fork gap, fixed 2026-10-16** (the user scheduled it that day). The fork's stage 9
+(`~/git/docx4j-xsdata` `2559b77a`, `docs/fork/CHANGES.md` item 22; `docs/UPSTREAM.md` report 18)
+gives `ElementNode` a `drop_simple_attrs`, run before a `PrimitiveNode` or `StandardNode` is
+built for an element that carries attributes. Each attribute but `xsi:*` is now an unknown
+attribute: it raises under `fail_on_unknown_attributes`, and is otherwise reported. The report's
+`parent_qname` is the simple element and its path ends `.../{element}/@{attribute}`. The value
+still binds.
+
+- **Here, nothing changes.** The full suite passed (2,035, 8 skipped), and `scripts/roundtrip.py` is
+  clean (50 of 50 parts, nothing skipped).
+- **Over 754 packages, with every part unmarshalled**, the survey reports the same 623 skipped
+  items in 84 kinds with and without the stage, all Strict-namespace content (CR-002 section
+  12.3 item 7). The packages are `samples/`, `tests/fixtures/`, docx4j-core-tests' and
+  docx4j-core-ts's test resources, in docx, pptx and xlsx. None meets the shape, so the stage
+  closes the gap and changes no result.
+- **The fork's suite** passed (1,564), with eight new tests. The five that test the new behaviour
+  fail without it.
+
+It reaches users and CI with the fork's next release (`26.2.2`, the user's to publish, by the
+fork's `REBASING.md`). `pyproject.toml`'s floor rises to it then: this package is never released
+against an unreleased fork. Until then `.venv-fork`, which installs the fork editable, has it, and
+nothing in this repository's tests depends on it.
