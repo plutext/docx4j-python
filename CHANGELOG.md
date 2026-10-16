@@ -11,6 +11,17 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **Tracked changes listed, accepted and rejected as Word resolves them**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), Phase A,
+  section [10](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#10-phase-a-implementation-notes-2026-10-16)):
+  `docx4j_py.model.revisions`, the port of docx4j 17.3.3's `org.docx4j.model.revisions` (its
+  CR-043), with `tracked_changes(pkg)`, `accept_all(pkg)` and `reject_all(pkg)` over **every
+  story** --- the main document, footnotes, endnotes, comments, headers and footers --- and inside
+  them content controls, text boxes in both branches of `mc:AlternateContent` (made typed for the
+  resolution and written back in place, the rest of the branch untouched) and equations. Held to
+  Word 365's own Accept All and Reject All saves: against the eleven fixtures of docx4j's
+  agreement run, copied into `tests/fixtures/revisions/`, no line of the structural comparison
+  differs but the table and section property records, which are listed and left for Phase B.
 - **`Range.hyperlink`** ([CR-003](docs/change-requests/CR-003-content-api.md), section
   [21](docs/change-requests/CR-003-content-api.md#21-rangehyperlink-2026-10-12)): Office JS's read
   and write of a link, the one member docx4j-core-ts added to the Office JS subset the content API
@@ -32,6 +43,22 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **What one tracked change is, and the counts** ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md)
+  section 10): `get_tracked_changes()` groups as Office JS and Word's Review pane do --- touching
+  insertions, deletions or formatting changes by one author are **one** change, a paragraph's
+  mark a piece whose text is `\r` (so a deleted paragraph is one change, `"Two.\r"`), rows that
+  touch one change, a row's text its cells a tab apart then `\r\n` --- where 0.1.0 listed every
+  piece of markup apart; `accept_all()` and `reject_all()` count the same way. `kind` is docx4j's
+  finer kind (`"run_insertion"`, `"paragraph_mark_deletion"`, `"move"`, `"insertion"`, ...) where
+  it was `"run"`, `"mark"`, `"row"`; `to_dict()` gains `"part"`, and a change gains `part` and
+  `pieces`. **`pkg.get_tracked_changes()` lists every story**, not only the main document's. **A
+  view is valid until the next accept or reject on its package**, as Office JS's is: a stale
+  one's `accept()` / `reject()` raises `TrackedChangeError` (`tracking.gone`); list again. A
+  paragraph join keeps the **next** paragraph's properties and `w14:paraId` in both directions,
+  as Word's does (docx4j CR-043's C10 and C10b), where 0.1.0 kept the first one's id on an accept
+  and the original paragraph on a reject; so rejecting a paragraph this package appended at the
+  end of a body leaves the appended paragraph's properties, as Word's Reject All of the same
+  markup does. A date is `w16du:dateUtc` where the markup has it, else `w:date` as written.
 - **The colour merge rules are docx4j 17.3.3's** ([CR-009](docs/change-requests/CR-009-theme-colours.md),
   Phase A, section [10](docs/change-requests/CR-009-theme-colours.md#10-phase-a-implementation-notes-2026-10-12)):
   in the property catalogue a `w:color` or `w:u` stating only a theme colour is no longer empty,
@@ -54,6 +81,31 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **The tracked-change listing no longer reports a document clean when it is not**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md); CR-003
+  section 22.3): after `accept_all()` 0.1.0 listed no change while revisions Word still shows
+  remained in text boxes, on moved and formatted paragraph marks, in table, row, cell, grid and
+  section records, at content-control markers and in equations. Each is now listed, and each but
+  the records (CR-010 Phase B) is resolved; `OutlineStats.tracked_changes` counts the same listing.
+- **Rejecting an inserted field takes the whole field** (docx4j CR-043's C01, C16), where 0.1.0
+  left a lone `w:fldChar` separator and its result with no begin and no end.
+- **Equations' tracked changes are listed and resolved**, in all three of Word's forms: inside
+  `m:r`, an equation structure's `m:ctrlPr` (rejected, the structure goes whole) and `w:ins` /
+  `w:del` holding math. The equations fixture lists the 12 changes Word counts, where 0.1.0
+  listed none.
+- **Moves Word wrote with range markers are resolved** (C15, check 18): the halves are paired by
+  `w:name` on their range starts, the four range markers and the moved paragraph marks go, and
+  edited and broken moves resolve as Word's check 20 saves do.
+- **Rejecting a list change restores the list as Word does** (check 25): a restored `w:ind` equal
+  to the list level's own is dropped, and a `w:numPr` with no `w:ilvl` gets `w:ilvl` 0.
+- **A note goes with its reference** (C12; the editor's review file), **a bookmark touching
+  removed content goes whole** (C11, C11b), **a comment range emptied by a change goes**, and a
+  comment whose anchor goes takes its `commentsExtended`, `commentsIds` and `commentsExtensible`
+  entries and its replies with it; an image, a dropped section's headers and footers or a
+  hyperlink's relationship goes when nothing references it any more.
+- **Headers, footers, notes and comments are resolved too**, by
+  `docx4j_py.model.revisions.accept_all(pkg)` / `reject_all(pkg)`, as Word's Accept All covers
+  them; `Body.accept_all()` resolves its own story, with Word's side effects in other parts.
 - **`Range.insert_content_control` keeps what lies between the runs it wraps**
   ([CR-003](docs/change-requests/CR-003-content-api.md) section 21.9): the control takes the whole
   slice from the span's first run to its last, so a bookmark or a comment's range markers between

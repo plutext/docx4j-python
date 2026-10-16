@@ -641,7 +641,8 @@ pkg.get_tracked_changes()
 
 pkg.get_tracked_changes()[1].to_dict()
 # {'type': 'Deleted', 'author': 'Claude', 'date': '2026-09-17T01:07:23+00:00',
-#  'text': 'document', 'id': 2, 'kind': 'run', 'address': 'body/0'}
+#  'text': 'document', 'id': 2, 'kind': 'run_deletion', 'address': 'body/0',
+#  'part': '/word/document.xml'}
 
 pkg.body.paragraphs[0].text                    # the accepted view
 # 'Reviewed. My first 2010 report.'
@@ -652,10 +653,13 @@ pkg.save("out.docx")
 
 **A human reviews that in Word**, with Review → Accept and Reject, exactly as they would a
 colleague's edits; nothing about the markup says it came from a program except the author name
-you chose. `accept_all()` and `reject_all()` on a body do the same thing here, in one pass in
-reverse document order, as docx4j's `AcceptTrackedChanges` does — a `w:ins` unwrapped, a `w:del`
-removed, a deleted paragraph mark joined with the next, a deleted row dropped, and the
-`w:rPrChange` and `w:pPrChange` of a formatting change dropped with them:
+you chose. `accept_all()` and `reject_all()` on a body do the same thing here, **as Word's own
+Accept All and Reject All do** (`docx4j_py.model.revisions`, the port of docx4j's
+`org.docx4j.model.revisions`, held to Word's saves; CR-010): the changes are grouped as Word's
+Review pane lists them, a field or an inserted content control goes whole, a move goes by its
+name, a deleted paragraph mark joins the next paragraph, and a note, a comment, a bookmark or an
+image goes with the content that held it. `docx4j_py.model.revisions.accept_all(pkg)` does it in
+every story --- headers, footers, notes and comments too:
 
 ```python
 pkg.body.accept_all()

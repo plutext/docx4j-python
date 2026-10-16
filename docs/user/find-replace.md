@@ -171,8 +171,10 @@ header:rId11  [('Deleted', 'header'), ('Added', 'heading')]
 header:rId10  [('Deleted', 'header'), ('Added', 'heading')]
 ```
 
-As with `find`, **`pkg.get_tracked_changes()` is the main part's**; each body has its own, and
-`accept_all()` / `reject_all()` are per body too.
+Each body has its own `get_tracked_changes()`, and `accept_all()` / `reject_all()` are per body
+too. Unlike `find`, **`pkg.get_tracked_changes()` lists every story** --- the main document, the
+notes, the comments, the headers and the footers --- and `docx4j_py.model.revisions.accept_all(pkg)`
+and `reject_all(pkg)` resolve them all, as Word's Accept All does (CR-010).
 
 ### 3.6 Trying it first
 
