@@ -393,17 +393,21 @@ def test_u3_a_removed_comment_takes_its_replies_and_entries():
             "/word/commentsIds.xml",
             ContentTypes.WORDPROCESSINGML_COMMENTS_IDS,
             Namespaces.COMMENTS_IDS,
-            f"<w16cid:commentsIds {cid}>"
-            '<w16cid:commentId w16cid:paraId="0000000A" w16cid:durableId="1000000A"/>'
-            '<w16cid:commentId w16cid:paraId="0000000B" w16cid:durableId="1000000B"/></w16cid:commentsIds>',
+            (
+                f"<w16cid:commentsIds {cid}>"
+                '<w16cid:commentId w16cid:paraId="0000000A" w16cid:durableId="1000000A"/>'
+                '<w16cid:commentId w16cid:paraId="0000000B" w16cid:durableId="1000000B"/></w16cid:commentsIds>'
+            ),
         ),
         (
             "/word/commentsExtensible.xml",
             ContentTypes.WORDPROCESSINGML_COMMENTS_EXTENSIBLE,
             Namespaces.COMMENTS_EXTENSIBLE,
-            f"<w16cex:commentsExtensible {cex}>"
-            '<w16cex:commentExtensible w16cex:durableId="1000000A"/>'
-            '<w16cex:commentExtensible w16cex:durableId="1000000B"/></w16cex:commentsExtensible>',
+            (
+                f"<w16cex:commentsExtensible {cex}>"
+                '<w16cex:commentExtensible w16cex:durableId="1000000A"/>'
+                '<w16cex:commentExtensible w16cex:durableId="1000000B"/></w16cex:commentsExtensible>'
+            ),
         ),
     ):
         part = DefaultXmlPart(name, content_type, relationship)
@@ -467,7 +471,7 @@ def test_a_typed_island_leaves_the_rest_of_its_branch_unchanged():
     before = _alternate_content_xml(package)
     revisions.accept_all(package)
     after = _alternate_content_xml(package)
-    boxes = re.compile(r"<w:txbxContent>.*?</w:txbxContent>", re.S)
+    boxes = re.compile(r"<w:txbxContent>.*?</w:txbxContent>", re.DOTALL)
     # the fragment's namespace declarations are what its content uses: w16du
     # goes with the revisions that carried w16du:dateUtc, and nothing else does
     declarations = re.compile(r'\sxmlns:\w+="[^"]*"')
@@ -489,7 +493,7 @@ def test_a_text_box_with_no_revision_is_never_made_an_island():
     made: list = []
     original = islands.Island.__init__
 
-    def counting(self, node, holder):  # noqa: ANN001
+    def counting(self, node, holder):
         made.append(node)
         original(self, node, holder)
 

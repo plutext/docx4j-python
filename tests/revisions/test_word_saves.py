@@ -43,7 +43,7 @@ CASES = [
 
 
 def _id(case: tuple) -> str:
-    tracked, golden, accept, _records = case
+    _tracked, golden, accept, _records = case
     return f"{'accept' if accept else 'reject'}-{golden.rpartition('/')[2][:-5]}"
 
 
