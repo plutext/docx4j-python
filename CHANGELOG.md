@@ -21,7 +21,24 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   resolution and written back in place, the rest of the branch untouched) and equations. Held to
   Word 365's own Accept All and Reject All saves: against the eleven fixtures of docx4j's
   agreement run, copied into `tests/fixtures/revisions/`, no line of the structural comparison
-  differs but the table and section property records, which are listed and left for Phase B.
+  differs, the table, row, cell and section properties included since Phase B.
+- **Table, cell and section records resolved; filters and a report** ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md),
+  Phase B, section
+  [11](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#11-phase-b-implementation-notes-2026-10-16)):
+  the port of docx4j CR-043 phase 2. A table's property records (`w:tblPrChange`,
+  `w:tblGridChange`, `w:tblPrExChange`, `w:trPrChange`, `w:tcPrChange`) are one change per table
+  when they change anything, accepted by dropping them and rejected by restoring the table, grid,
+  rows and cells wholesale, a merged grid collapsed as Word's save collapses it; a section's
+  `w:sectPrChange` rejected is merged over the section; `w:cellIns` / `w:cellDel` remove a cell
+  and widen its neighbour; records that change nothing, `w:cellMerge`, `w:numberingChange` and
+  `w:numPr/w:ins`, which nothing lists, are swept by `accept_all` / `reject_all`. `accept()` and
+  `reject()` on any listed change now work, and `accept_all()` counts every change listed.
+  `TrackedChangeFilter` (authors, types, kinds, a date range, parts, a content control's content
+  or a bookmark's extent) is taken by `revisions.accept_all`, `reject_all` and
+  `tracked_changes(pkg, filter)`, and applies to single changes, so a group partly matched has
+  only its matching pieces resolved; a plain callable is still a filter. `revisions.report(pkg)`
+  counts by kind, author and part, with `to_dict()`. Phase A's `TrackedChange.resolvable`,
+  `is_resolvable` and the `tracking.unsupported` refusal are gone, unreleased.
 - **`Range.hyperlink`** ([CR-003](docs/change-requests/CR-003-content-api.md), section
   [21](docs/change-requests/CR-003-content-api.md#21-rangehyperlink-2026-10-12)): Office JS's read
   and write of a link, the one member docx4j-core-ts added to the Office JS subset the content API

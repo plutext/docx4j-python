@@ -6,7 +6,11 @@ follow docx4j's own decisions on the same questions (its D1, D4, D5 and D7). Pha
 them, and each stays open to the user until Phase C lands. **Phase A implemented 2026-10-16**
 (section 10): `docx4j_py.model.revisions`, every story, the content API rewired over it, and no
 line differing from Word's saves of the eleven agreement fixtures but the table and section
-records, which are Phase B's; phases B and C to come.
+records, which are Phase B's. **Phase B implemented 2026-10-16** (section 11): the table, grid,
+row, cell and section records resolved, the legacy forms swept, `TrackedChangeFilter` and
+`report(pkg)`; against Word's saves of the eleven fixtures (fifteen comparisons) **no line
+differs with the records shown**, by this package's `DocumentDescription` port and by docx4j's
+own; Phase C to come.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -571,3 +575,195 @@ package's side only.
 
 Phase C, beyond section 6: the tracker's appended-paragraph form (10.6), and the `w:date`
 convention (10.3 item 1), if the user wants them.
+
+## 11. Phase B implementation notes (2026-10-16)
+
+Phase B is done, on section 9's recommendations, ported from docx4j CR-043 phase 2 (`737c32139`,
+read as it stands at `00614748e`). The records Phase A listed and left --- a table's
+`w:tblPrChange`, `w:tblGridChange`, `w:tblPrExChange`, `w:trPrChange` and `w:tcPrChange`, a
+section's `w:sectPrChange`, a cell's `w:cellIns` and `w:cellDel` --- are accepted and rejected as
+Word's saves have them; the legacy forms nothing lists are swept; a filter and a report are
+added. Against Word 365's Accept All and Reject All saves of the eleven agreement fixtures **no
+line differs with the table, row, cell and section properties shown**, compared by
+`description.py` and, independently, by docx4j's own Java `DocumentDescription` (11.4). No case
+was found where docx4j's rule and Word's save disagree.
+
+```python
+from docx4j_py.model import revisions
+from docx4j_py.model.revisions import TrackedChangeFilter
+
+revisions.reject_all(pkg, TrackedChangeFilter(authors=["Author B"]))     # one reviewer's
+revisions.accept_all(pkg, TrackedChangeFilter().types("Added").within_bookmark("Terms"))
+revisions.tracked_changes(pkg, TrackedChangeFilter(kinds=[revisions.Kind.TABLE_PROPERTIES]))
+revisions.report(pkg).to_dict()   # {"total": 37, "by_kind": {...}, "by_author": {...}, "by_part": {...}}
+```
+
+### 11.1 What landed
+
+| piece | where | lines | signature |
+|---|---|---:|---|
+| the table, cell and section records (docx4j `Tables`, the resolving half) | `model/revisions/tables.py` | 567 (was 102) | `in_change(tr)`, `has_records(tbl)`, `record_of(tbl)` (None when the records change nothing), `change_text(tbl)`, `accept(tbl)`, `reject(tbl)`, `prune_row(tr)`, `collapse_grid(tbl)`, `remove_cell(tc, tr, removals, story)`, `cell_marker(tc_pr, local)`, `resolve_cell_merge(tc_pr, accept)`, `reject_section(sect_pr)`; `rows_of`, `cells_of` as before |
+| properties through their XML (docx4j `Props.canonical`, `inner`, `convert`) | `props.py` | 268 (was 176) | `element_of(value, local)`, `inner(element, skip, out)`, `canonical(value, local, skip=None)`, `convert(recorded, local, live)` |
+| the filter (docx4j `TrackedChangeFilter`) | `filter.py` (new) | 365 | `TrackedChangeFilter(*, authors, types, kinds, date_from, date_to, parts, within, within_bookmark)` and the setters `authors(*)`, `types(*)`, `kinds(*)`, `between(from, to)`, `parts(*)`, `within(control)`, `within_bookmark(name)`, each returning the filter; `range(pkg)`, `matches(piece, range)`, `bind(pkg)`; `Filter` (a `TrackedChangeFilter` or a callable), `matcher(filter, pkg)` |
+| the report (docx4j `TrackedChangesReport`) | `report.py` (new) | 65 | `TrackedChangesReport` with `total`, `by_kind`, `by_author`, `by_part`, `to_dict()` |
+| the module functions | `__init__.py` | 352 (was 245) | `tracked_changes(pkg, filter=None)`, `accept_all(pkg, filter=None)`, `reject_all(pkg, filter=None)`, `report(pkg)`; the sweep's phase-2 half; `TrackedChangeFilter`, `TrackedChangesReport` and `Filter` exported, `is_resolvable` gone |
+| the change | `change.py` | 566 | `anchor()` (where a change stands, for a range); `UNRESOLVED_KINDS`, `is_resolvable`, `TrackedChange.resolvable` and the `tracking.unsupported` refusal gone, as docx4j's `Kind.isResolvable()` went |
+| the resolver, the lister | `resolver.py`, `lister.py` | +30, +16 | the `TableT`, `SectionT` and `CellT` branches (`_Op.cell`); a table listed through `record_of`; `box_refs` public for the sweep |
+
+`Body.accept_all()`'s docstring says the records are resolved; nothing else in the content API
+changed, because its verbs already delegated to the engine: `TrackedChange.accept()` / `reject()`
+on a record now works, and `accept_all()` counts records. `codegen/generate.sh --check` reproduced
+the model byte for byte with the two new modules in place (`KEEP` holds `model` whole).
+
+### 11.2 The rules as built
+
+Every row of docx4j CR-043 section 3.2 that phase 2 covers, and section 11's U8, U9, U10, U13,
+U19 and U20, as docx4j builds them:
+
+1. **Listed when they change something** (checks 24 and 26's rule; U20): a table's records are
+   compared as canonical XML (attributes sorted, rsids left out) with the record and the row's
+   and cell's own markers left out; records that change nothing, and a grid's record alone, are
+   not listed. A table's change's text is every row's where the table's own properties or grid
+   changed, else the changed rows': the probe's C23 is `"C23 r2c1\tC23 r2c2\r\n"`.
+2. **Accepted**: every record goes, a `w:trPr` left empty with it.
+3. **Rejected**, wholesale: the table's `w:tblPr` and grid, and each row and cell in the change,
+   as recorded (through their XML, `props.convert`); a row in the change with no `w:trPrChange`
+   cleared (check 28); the row's own `w:ins` / `w:del` and the cell's `w:cellIns` / `w:cellDel` /
+   `w:cellMerge` kept. A merged grid is collapsed: the column edges no row's cells fall on are
+   merged, the columns past every row's last cell dropped with the rows' `w:gridAfter` /
+   `w:wAfter`, the spans recounted --- C23's five columns (720, 1280, 720, 1280, 720) back to two
+   (2000, 2000), as Word's save has them.
+4. **Either way**, a row's `w:tblPrEx` that only repeats the table's `w:tblPr` goes (C23).
+5. **A section's record rejected is merged** (check 18, C07): the recorded members laid over the
+   section, the rest left, a recorded `w:docGrid` of pitch 0 meaning none; the header and footer
+   references stay (U13). Accepted, the record goes.
+6. **Cells** (check 27, U10): an inserted cell accepted, or a deleted one rejected, loses its
+   marker; otherwise the cell goes and the one before it (else after it) spans its grid columns,
+   the widths added when both are `dxa`.
+7. **The sweep** (D4), after the rounds and only with no filter: records that change nothing,
+   accepted either way; `w:cellMerge`, a rejected one giving back the `w:vMerge` its
+   `w:vMergeOrig` recorded (U8); `w:numberingChange` in `w:numPr` and in `w:fldChar`, dropped
+   either way; `w:numPr/w:ins`, the marker dropped on accept, the `w:numPr` on reject (U9); and
+   phase 1's stray `w:customXmlIns*` markers. A record's own content is never looked into.
+8. **The filter** (section 3.1): every condition set must hold; it applies to single changes,
+   so a group partly matched has only its matching pieces resolved (U19); a range --- a content
+   control's content, a bookmark's extent walked in document order with a paragraph's mark after
+   its content --- is read once, before anything is resolved; `tracked_changes(pkg, filter)` lists
+   the changes any of whose pieces it matches; `accept_all` / `reject_all` count those, and sweep
+   nothing (what is swept belongs to no change).
+9. **The report**: counts by kind (in `Kind`'s order), author and part (in the order first
+   listed). There is no unresolved count: every kind listed is resolved, so the probe's
+   `accept_all` now counts 37 where Phase A counted 35.
+
+### 11.3 Departures
+
+None of docx4j's rules is built differently because Word's saves say otherwise: all fifteen
+comparisons are at zero with docx4j's rules as they are. What differs is vocabulary and
+mechanics:
+
+1. **The filter's vocabulary is Python's.** The conditions are keywords of the constructor as
+   well as docx4j's chained setters; types are Office JS's strings (`"Added"`, `"Deleted"`,
+   `"Formatted"`), kinds a `Kind` or its value; a part may be given by its name
+   (`"/word/footnotes.xml"`) as well as itself; `within` takes the model's control or the content
+   API's `ContentControl`; a naive datetime is read as UTC. A plain callable over a single change
+   is still a filter (10.3 item 5), with no range and no sweep.
+2. **A change in a text box kept as a wildcard tree is inside a range when its text box was.**
+   Its markup is a typed island made after the range is read (3.5), so the range holds the
+   wildcard `w:txbxContent`, not the island's objects; docx4j holds the typed objects themselves.
+   The difference shows only for a change a resolution brings out inside the box in a later round
+   (a move's nested deletion), which is outside the range here.
+3. **A bookmark in a story part with no revision markup** is found in the part's bytes, without
+   unmarshalling it (10.3 item 6's rule), and gives an empty range; docx4j walks every story. A
+   name found nowhere raises `ValueError` (docx4j `IllegalArgumentException`).
+4. **`report(pkg).to_dict()`** is docx4j's `toJson()` in Python's names: `total`, `by_kind` (the
+   kinds' snake-case values), `by_author`, `by_part`; a change with no author counts under `""`
+   where docx4j writes `"null"`.
+5. **Mechanics with no difference in behaviour**: `props.convert` and `canonical` go through
+   `to_xml` and the runtime parser (a conversion that would lose anything raises); the sweep walks
+   content lists only --- every form it sweeps stands on a table, a cell, a paragraph or a run ---
+   and makes a text box an island only when its wildcard tree holds revision markup, writing it
+   back only when the sweep changed it; a cell's `w:cellIns`, `w:cellDel` and `w:cellMerge` are
+   one choice field in the generated model (`cell_ins_or_cell_del_or_cell_merge`), as the schema
+   has them.
+
+### 11.4 The numbers
+
+**The tests.** `tests/revisions/`: **360** (348 before), of which 283 read docx4j's sibling
+checkout and skip without it.
+
+| file | tests | what changed |
+|---|---:|---|
+| `test_tracked_changes.py` | 42 (30) | docx4j's phase 2 tests ported: `tableRecords`, `recordsThatChangeNothing`, `sectionRecordMerges`, `cellsInsertedAndDeleted`, `legacyFormsSwept`, `filterByAuthorAndType`, `filterByKindSplitsAGroup`, `filterByDate`, `filterWithinABookmark`, `filterWithinAControl`; and a field's `w:numberingChange` swept, a record resolved through the content API, a filter by part (a part or its name), a filter with no condition sweeping nothing, the report over the probe; three Phase A tests replaced (11.5) |
+| `test_word_saves.py` | 31 (31) | every comparison with the records shown |
+| `test_every_fixture.py` | 257 (257) | nothing at all left, not "nothing resolvable" |
+| `test_one_change.py` | 30 (30) | unchanged |
+
+The fast suite is **2,358 passed, 8 skipped** (2,346 and 8 before), the whole suite **2,398
+passed, 8 skipped** (2,386 and 8).
+
+**Word's saves.** Each agreement fixture resolved by `revisions.accept_all` / `reject_all` (every
+story), saved, and compared with Word's own save; lines differing with the records shown, and in
+brackets with them left out, by this package's `description.py` and by docx4j's
+`DocumentDescription` (its Java class at `00614748e`, run over the same saved files):
+
+| comparison | before, `description.py` | before, Java | after, `description.py` | after, Java |
+|---|---|---|---|---|
+| `cr043-tracked` accept | 6 (0) | 6 (0) | **0 (0)** | **0 (0)** |
+| `cr043-tracked` reject | 16 (0) | 16 (0) | **0 (0)** | **0 (0)** |
+| `revisions-word15` accept (check 18) | 8 (0) | 8 (0) | **0 (0)** | **0 (0)** |
+| `revisions-word15` reject | 10 (0) | 10 (0) | **0 (0)** | **0 (0)** |
+| `28a-changes` accept (check 28) | 12 (0) | 12 (0) | **0 (0)** | **0 (0)** |
+| `28a-changes` reject | 12 (0) | 12 (0) | **0 (0)** | **0 (0)** |
+| `tracked-changes-equations` accept, reject; `review-for-word` accept, reject (Word 15's); `26a`, `26d`, `25a`, `25e` reject; `33a` accept | 0 (0) | 0 (0) | 0 (0) | 0 (0) |
+
+`test_word_saves.py` holds the same and Word 2010's two saves of `review-for-word`. Through the
+body's verbs (`body.accept_all()`, which docx4j's `py_resolve.py` calls) what is left is what
+Phase A left with the records hidden --- the probe's header, footer and endnote revisions, 12 / 18
+lines, and check 18's footnote revision, 2 / 0 --- which are those stories' own (3.3); the records
+add nothing.
+
+**The timings**, Phase A's 200-page benchmark (`body`'s 3,900 revisions; the median of five, two
+runs each, this machine): no change.
+
+| call | Phase A | Phase B |
+|---|---:|---:|
+| `body.get_tracked_changes()` | 20.8, 21.5 ms | 21.4, 21.1 ms |
+| `body.accept_all()` | 70.5, 69.5 ms | 70.7, 69.8 ms |
+| `body.reject_all()` | 86.9, 85.6 ms | 83.4, 84.5 ms |
+| `pkg.outline()` | 44.1, 44.0 ms | 43.6, 43.0 ms |
+
+**The acceptance artefacts**: `scripts/acceptance.py` into a scratch directory and
+`scripts/compare_acceptance.py` against `out/acceptance/`: all 11 identical, canonically, dates
+scrubbed. Nothing was regenerated and no Word check is asked for: that is Phase C's.
+
+### 11.5 Tests changed
+
+Each encoded Phase A's "listed but not resolved"; none encoded a rule Word contradicts.
+
+| test | was | is |
+|---|---|---|
+| `test_word_saves.py::CASES` and `test_resolving_every_story_gives_words_save` | a fourth column, "holds no Phase B records"; compared with `records=False`, and with `records=True` only where the column was set | three columns; every case compared with `records=True` (a superset of `records=False`'s lines) |
+| `test_word_saves.py::test_a_bodys_accept_all_gives_words_save_where_the_body_is_the_document` | the body's listing empty or holding only table and section records; `records=False` | the listing empty; `records=True` |
+| `test_word_saves.py::test_the_probe_resolved_leaves_only_phase_bs_records_listed` | count 35; the two records left, not resolvable | renamed `test_the_probe_resolved_leaves_nothing_listed`: 37 listed, a table's and a section's records among them; count 37; nothing left |
+| `revision_helpers.unresolved` (used by the three files above and `test_every_fixture.py`) | what is left that `resolvable` says this release resolves | everything left |
+| `test_every_fixture.py::test_every_change_one_by_one` | the listing filtered by `resolvable` | the whole listing |
+| `test_tracked_changes.py::test_a_tables_records_are_listed_and_left_for_phase_b` | listed, `resolvable` false, `reject()` raising `tracking.unsupported`, `accept_all` counting 1 and leaving it | `test_a_tables_records_are_one_change_accepted_or_rejected`, docx4j's `tableRecords`: rejected restores the recorded `w:tblW`, the report counts it, `accept_all` counts 1 and keeps the current one |
+| `test_tracked_changes.py::test_a_sections_record_is_listed` | listed, counted by `outline()` | `test_a_sections_record_rejected_is_merged`, docx4j's `sectionRecordMerges`, the listing and the `outline()` count kept |
+| `test_tracked_changes.py::test_a_cell_insertion_is_listed` | listed | `test_u10_cells_inserted_and_deleted`, docx4j's `cellsInsertedAndDeleted` |
+| `test_tracked_changes.py::test_every_story_is_resolved_by_the_package_verbs` | the body's records left | nothing left |
+| `test_tracked_changes.py::test_a_bodys_verbs_resolve_its_own_story_and_leave_the_others` | the main document part among the parts left, for its records | exactly the header, footer and endnotes parts left |
+
+`test_a_filter_resolves_the_pieces_it_matches` is kept, its docstring saying it holds the plain
+callable. No test of CR-003 Phase F's (`tests/content/`, `tests/agent/`) encoded the records, and
+none changed.
+
+### 11.6 What Phase C needs
+
+Section 6 as written: the content API's reads agreeing with the engine (`OutlineStats`, the
+markdown views and a test of the accepted view over the fixtures), the README and the PyPI page
+where counts changed, the CHANGELOG's "Changed" and "Fixed" entries, artefact 8
+regenerated with an accepted and a rejected copy and a Word check, CR-003 sections 16 and 22
+pointed here, and the hand-off to docx4j's session to rerun the agreement --- where python's column
+through the body's verbs is now the other stories' revisions alone (11.4). Beyond it, if the user
+wants them: the tracker's appended-paragraph form (check 29, 10.6) and the `w:date` convention
+(10.3 item 1).
