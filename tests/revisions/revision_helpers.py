@@ -35,8 +35,8 @@ def round_trip(package: WordprocessingMLPackage) -> WordprocessingMLPackage:
 
 
 def unresolved(package: Any) -> list[Any]:
-    """What is left that this release resolves, in any story or branch."""
-    return [change for change in Lister(package, False).list() if change.resolvable]
+    """What is left, in any story or branch (every text box branch's listed on its own)."""
+    return Lister(package, False).list()
 
 
 def assert_like_word(ours: Any, word: Any, *, records: bool, label: str) -> None:

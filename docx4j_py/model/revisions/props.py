@@ -6,6 +6,11 @@ is ``CtRprChangeRPr`` (every ``EG_RPrBase`` member a list), a mark's is
 through their XML; here the generated classes share their field names, so a
 record is copied member by member into the live class
 (:func:`~docx4j_py.wml.rpr_from_elements` for run properties, as Phase F did).
+The table, row, cell and section records go through their XML, as docx4j's do
+(:func:`convert`), since a ``w:sectPrChange/w:sectPr`` is a ``SectPrBase`` whose
+members are classes of their own; and two properties compare through their
+canonical XML (:func:`canonical`, docx4j ``Props.canonical``), which is how a
+record that changes nothing is told apart (CR-043 phase 2, U20).
 
 Check 25's list rules are here (:func:`restore_p_pr`): a restored ``w:ind``
 equal to the list level's own is dropped, and a ``w:numPr`` naming a list with
@@ -20,6 +25,10 @@ from typing import Any
 from docx4j_py.model.revisions import trees
 
 __all__ = [
+    "canonical",
+    "convert",
+    "element_of",
+    "inner",
     "prune_paragraph",
     "prune_run",
     "r_pr_of",
@@ -27,6 +36,89 @@ __all__ = [
     "restore_p_pr",
     "restore_r_pr",
 ]
+
+
+# ---------------------------------------------------------------------------
+# properties through their XML
+# ---------------------------------------------------------------------------
+
+
+def element_of(value: Any, local: str) -> Any:
+    """A properties object as an lxml element named ``w:<local>``; None for none."""
+    if value is None:
+        return None
+    from lxml import etree
+
+    from docx4j_py.fragments import to_xml
+
+    return etree.fromstring(to_xml(value, name=f"{{{trees.W_NS}}}{local}").encode("utf-8"))
+
+
+def inner(element: Any, skip: frozenset[str] | None, out: list[str]) -> None:
+    """An element's attributes and children, canonical (docx4j ``Props.inner``).
+
+    Attributes sorted, namespace declarations and rsids left out, blank text
+    ignored; `skip` names children of `element` itself that are left out.
+    """
+    attributes: dict[str, str] = {}
+    for key, value in element.attrib.items():
+        uri, _, local = key[1:].partition("}") if key.startswith("{") else ("", "", key)
+        if local.startswith("rsid"):
+            continue
+        attributes["{" + (uri or "null") + "}" + local] = value
+    for key in sorted(attributes):
+        out.append(f' {key}="{attributes[key]}"')
+    if element.text and element.text.strip():
+        out.append(element.text)
+    for child in element:
+        if not isinstance(child.tag, str):
+            continue
+        uri, _, local = child.tag[1:].partition("}")
+        if skip is not None and local in skip:
+            continue
+        out.append(f"<{{{uri}}}{local}")
+        inner(child, None, out)
+        out.append(">")
+        if child.tail and child.tail.strip():
+            out.append(child.tail)
+
+
+def canonical(value: Any, local: str, skip: frozenset[str] | None = None) -> str:
+    """`value`'s XML as ``w:<local>``, canonical; ``""`` for none or an element with nothing in it.
+
+    docx4j ``Props.canonical``: two properties compare equal when these are.
+    `skip` leaves out children by local name: the record itself, a row's or a
+    cell's own revision markers.
+    """
+    element = element_of(value, local)
+    if element is None:
+        return ""
+    out: list[str] = []
+    inner(element, skip, out)
+    return "".join(out)
+
+
+def convert(recorded: Any, local: str, live: type) -> Any:
+    """A recorded properties object (``CTTblPrBase``, ``SectPrBase``, ...) as the live class, through its XML.
+
+    docx4j ``Props.convert``: the record is written as ``w:<local>`` and read
+    back as `live`, its parent pointers linked. None for none. Anything the
+    live class would not keep raises, so nothing recorded is lost on the way.
+    """
+    if recorded is None:
+        return None
+    from docx4j_py.child import link_parents
+    from docx4j_py.fragments import to_xml
+    from docx4j_py.runtime import context, parser
+
+    xml = to_xml(recorded, name=f"{{{trees.W_NS}}}{local}")
+    xml_parser = parser(lenient=True, skipped_report=True)
+    restored = xml_parser.from_bytes(xml.encode("utf-8"), live)
+    lost = list(getattr(xml_parser.skipped, "items", ()) or ())
+    if lost:
+        raise ValueError(f"the recorded {local} would lose {len(lost)} item(s) as {live.__name__}: {lost[:3]}")
+    link_parents(restored, context=context())
+    return restored
 
 
 def r_pr_of(recorded: Any) -> Any:

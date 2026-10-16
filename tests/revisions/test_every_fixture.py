@@ -5,8 +5,8 @@ every ``.docx`` under its ``src/test/resources/revisions/`` (128 files: checks
 16 to 36, the editor's revisions and review sessions, the CR-043 probe), read
 from the sibling checkout and skipped without it:
 
-* accepted all and rejected all, nothing this release resolves is left in any
-  story or branch, and the result saves and loads again;
+* accepted all and rejected all, nothing is left in any story or branch, and
+  the result saves and loads again;
 * resolved one change at a time, listing again after each, accepting and
   rejecting in turn: each resolution takes its change away (the listing
   shrinks), and the result saves and loads again.
@@ -50,13 +50,13 @@ def test_every_change_one_by_one(path):
     package = load(path)
     accept = True
     for _round in range(500):
-        changes = [change for change in revisions.tracked_changes(package) if change.resolvable]
+        changes = revisions.tracked_changes(package)
         if not changes:
             break
         first = changes[0]
         (first.accept if accept else first.reject)()
         accept = not accept
-        after = [change for change in revisions.tracked_changes(package) if change.resolvable]
+        after = revisions.tracked_changes(package)
         assert len(after) < len(changes), f"{first!r} left {len(after)} of {len(changes)}"
     else:
         raise AssertionError("no end")

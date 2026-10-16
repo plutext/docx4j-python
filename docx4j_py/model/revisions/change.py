@@ -23,7 +23,6 @@ from docx4j_py.model.revisions.trees import Revision
 __all__ = [
     "Kind",
     "TrackedChange",
-    "is_resolvable",
 ]
 
 
@@ -65,28 +64,14 @@ class Kind(enum.StrEnum):
     FORMATTING = "formatting"
     """A group of run and mark formatting changes."""
     TABLE_PROPERTIES = "table_properties"
-    """A table's property records, which Word writes as one set: one change per table.
-
-    Listed, and resolved by CR-010 Phase B."""
+    """A table's property records (``w:tblPrChange``, ``w:tblGridChange``, ``w:trPrChange``,
+    ``w:tcPrChange``, ``w:tblPrExChange``), which Word writes as one set: one change per table."""
     SECTION_PROPERTIES = "section_properties"
-    """``w:sectPrChange``: a section's properties. Listed, and resolved by CR-010 Phase B."""
+    """``w:sectPrChange``: a section's properties (the body's last section, or a paragraph's)."""
     CELL_INSERTION = "cell_insertion"
-    """``w:cellIns`` (Word no longer writes it). Listed, and resolved by CR-010 Phase B."""
+    """``w:cellIns`` (Word no longer writes it, but reads it)."""
     CELL_DELETION = "cell_deletion"
-    """``w:cellDel``. Listed, and resolved by CR-010 Phase B."""
-
-
-#: The kinds Phase A lists but does not resolve: the table, cell and section
-#: records, which are CR-010 Phase B's (docx4j CR-043 phase 2). Listing them is
-#: what keeps the listing from reporting a document clean when it is not.
-UNRESOLVED_KINDS: frozenset[Kind] = frozenset(
-    {Kind.TABLE_PROPERTIES, Kind.SECTION_PROPERTIES, Kind.CELL_INSERTION, Kind.CELL_DELETION}
-)
-
-
-def is_resolvable(kind: Kind) -> bool:
-    """True when this release accepts and rejects a change of this kind."""
-    return kind not in UNRESOLVED_KINDS
+    """``w:cellDel`` (Word no longer writes it, but reads it)."""
 
 
 class GroupKind(enum.Enum):
@@ -459,10 +444,35 @@ class TrackedChange:
             return list(self.target.pieces)
         return [self]
 
-    @property
-    def resolvable(self) -> bool:
-        """True when this release can accept and reject this change (Phase B's records cannot yet)."""
-        return all(is_resolvable(piece.kind) for piece in self.pieces)
+    def anchor(self) -> Any:
+        """Where the change stands, for a range filter (docx4j ``TrackedChange.anchor``).
+
+        The markup object its position is taken from: a ``w:ins``, a mark's
+        record, a run, a row, a table, a section's properties; a group's is its
+        first piece's.
+        """
+        t = self.target
+        if isinstance(t, RunT):
+            return t.item
+        if isinstance(t, RunPropsT):
+            return t.run
+        if isinstance(t, RowT):
+            return t.tr
+        if isinstance(t, FieldT):
+            return t.span[0]
+        if isinstance(t, HolderT):
+            return t.holder
+        if isinstance(t, MathStructT):
+            return t.ctrl_pr
+        if isinstance(t, TableT):
+            return t.tbl
+        if isinstance(t, SectionT):
+            return t.sect_pr
+        if isinstance(t, CellT):
+            return t.tc
+        if isinstance(t, GroupT):
+            return t.pieces[0].anchor()
+        return t.value()
 
     def accept(self) -> None:
         """Keep the change, as Word's Review tab does.
@@ -475,8 +485,7 @@ class TrackedChange:
 
         Raises:
             TrackedChangeError: ``tracking.gone`` when the package has been
-                changed by an accept or reject since this was listed;
-                ``tracking.unsupported`` for a kind Phase B resolves.
+                changed by an accept or reject since this was listed.
         """
         self._resolve(True)
 
@@ -496,13 +505,6 @@ class TrackedChange:
                 + ("accepted" if accept else "rejected"),
                 code="tracking.gone",
                 hint="call get_tracked_changes() again after accepting or rejecting others",
-            )
-        if not self.resolvable:
-            raise TrackedChangeError(
-                f"a {self.kind} change is listed but not yet resolved (CR-010 Phase B)",
-                code="tracking.unsupported",
-                hint="accept_all() and reject_all() leave it listed; Phase B resolves tables "
-                "and sections",
             )
         removals = Removals.for_story(self.story)
         resolve(self, accept, removals)

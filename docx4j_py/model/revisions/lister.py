@@ -49,7 +49,7 @@ from docx4j_py.model.revisions.islands import Island, holds_revisions, is_wildca
 from docx4j_py.model.revisions.story import Story
 from docx4j_py.model.revisions.trees import Revision, View
 
-__all__ = ["BREAK", "Lister", "groupable", "package_stories", "story_parts"]
+__all__ = ["BREAK", "Lister", "box_refs", "groupable", "package_stories", "story_parts"]
 
 
 class _Break:
@@ -314,10 +314,12 @@ class Lister:
 
     def _table_tokens(self, tbl: Any, tbl_owner: list, into: list, ctx: _Ctx) -> None:
         # its property records are one change of their own where the table
-        # stands, kept apart (listed now, resolved by Phase B)
-        if tables.has_records(tbl):
+        # stands, kept apart; records that change nothing are not listed, and
+        # the sweep drops them (U20)
+        record = tables.record_of(tbl)
+        if record is not None:
             into.append(BREAK)
-            into.append(self._change(TableT(tbl, tables.record_of(tbl)), None, ctx))
+            into.append(self._change(TableT(tbl, record), None, ctx))
             into.append(BREAK)
         # a table is no break of its own: an inserted or deleted row groups with
         # the rows and the inserted text touching it, as Office JS lists them (check 31)
@@ -600,7 +602,7 @@ class Lister:
         # mc:AlternateContent; a run with none of them is not walked
         if not any(trees.name(item) in _BOX_HOLDERS for item in run.content):
             return
-        for ref in _box_refs(run, alternate=True):
+        for ref in box_refs(run, alternate=True):
             if ref[0] == "ac":
                 self._alternate(ref[1], ctx)
                 continue
@@ -609,7 +611,7 @@ class Lister:
                 ctx.boxes.append(_Box(story, []))
 
     def _alternate(self, ac: Any, ctx: _Ctx) -> None:
-        branches = [_box_refs(branch, alternate=False) for branch in _branches(ac)]
+        branches = [box_refs(branch, alternate=False) for branch in _branches(ac)]
         primary = next((branch for branch in branches if branch), None)
         if primary is None:
             return
@@ -660,7 +662,7 @@ def _branches(ac: Any) -> list[list]:
     return out
 
 
-def _box_refs(root: Any, *, alternate: bool) -> list[tuple]:
+def box_refs(root: Any, *, alternate: bool) -> list[tuple]:
     """The text boxes under `root` in document order, and (with `alternate`) the ``mc:AlternateContent`` met.
 
     Each is ``("typed", txbx, None)``, ``("wild", node, holder_list)`` or

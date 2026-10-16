@@ -22,10 +22,12 @@ is the view over these (CR-010 section 3.2): ``pkg.get_tracked_changes()``,
 ``Body`` / ``Paragraph`` / ``Range.get_tracked_changes()``, and
 ``Body.accept_all()`` / ``reject_all()``.
 
-Phase A (CR-010 section 4) lists the table, cell and section property records
-and leaves them to Phase B: ``accept_all`` and ``reject_all`` resolve every
-other kind and leave those listed, so the listing never says a document is
-clean while Word still shows a revision.
+Phase B (CR-010 section 5, docx4j CR-043 phase 2) resolves the table, grid,
+row, cell and section records too, sweeps the legacy forms nothing lists, and
+adds :class:`TrackedChangeFilter` and :func:`report`::
+
+    revisions.reject_all(pkg, TrackedChangeFilter(authors=["Author B"]))
+    revisions.report(pkg).to_dict()   # counts by kind, author and part
 
 Imported on first use: nothing under :mod:`docx4j_py.model.content` imports this
 at module level, and this imports no model class at module level.
@@ -36,38 +38,44 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from docx4j_py.model.revisions.change import Kind, TrackedChange, is_resolvable
+from docx4j_py.model.revisions.change import Kind, TrackedChange
+from docx4j_py.model.revisions.filter import Filter, TrackedChangeFilter, matcher
 from docx4j_py.model.revisions.generation import Generation
+from docx4j_py.model.revisions.report import TrackedChangesReport
 from docx4j_py.model.revisions.story import Story
 
 __all__ = [
+    "Filter",
     "Kind",
     "Story",
     "TrackedChange",
+    "TrackedChangeFilter",
+    "TrackedChangesReport",
     "accept_all",
     "body_stories",
-    "is_resolvable",
     "reject_all",
+    "report",
     "resolve_all",
     "tracked_changes",
     "tracked_changes_of",
 ]
 
-#: A filter: a callable taking one piece (a single change) and answering whether
-#: it is resolved. CR-010 Phase B gives the named ``TrackedChangeFilter``.
-Filter = Callable[[TrackedChange], bool]
 
-
-def tracked_changes(package: Any) -> list[TrackedChange]:
+def tracked_changes(package: Any, filter: Filter | None = None) -> list[TrackedChange]:
     """Every tracked change, story by story, each in document order, grouped as Office JS groups them.
 
     The main document, footnotes, endnotes, comments, then headers and footers
     in the order the sections reference them; a text box's changes after the
     story it is in, listed once from its ``mc:Choice`` (resolving one resolves
     its ``mc:Fallback`` twin too). The views are valid until the next accept or
-    reject on the package.
+    reject on the package. With a `filter`, the changes any of whose pieces it
+    matches.
     """
-    return tracked_changes_of(package, None)
+    match = matcher(filter, package)
+    changes = tracked_changes_of(package, None)
+    if match is None:
+        return changes
+    return [change for change in changes if any(match(piece) for piece in change.pieces)]
 
 
 def tracked_changes_of(package: Any, stories: list[Story] | None, key: Any = None) -> list[TrackedChange]:
@@ -93,24 +101,28 @@ def _stamp(change: TrackedChange, generation: Generation) -> None:
 def accept_all(package: Any, filter: Filter | None = None) -> int:
     """Accepts every change in every story; returns how many the listing had.
 
-    With a `filter`, only the pieces it matches are accepted, and nothing is
-    swept. Table, cell and section records are left listed (CR-010 Phase B).
+    With a `filter` (a :class:`TrackedChangeFilter`, or a callable over single
+    changes), only the pieces it matches are accepted, and nothing is swept;
+    the count is of the changes it matched.
     """
     return resolve_all(package, True, filter)
 
 
 def reject_all(package: Any, filter: Filter | None = None) -> int:
-    """Rejects every change in every story; returns how many the listing had."""
+    """Rejects every change in every story; returns how many the listing had. The mirror of :func:`accept_all`."""
     return resolve_all(package, False, filter)
 
 
-def _matching(change: TrackedChange, filter: Filter | None) -> list[TrackedChange]:
-    """The pieces of a change this release resolves and the filter matches (all of them with no filter)."""
-    return [
-        piece
-        for piece in change.pieces
-        if is_resolvable(piece.kind) and (filter is None or filter(piece))
-    ]
+def report(package: Any) -> TrackedChangesReport:
+    """The listing counted by kind, author and part (docx4j ``TrackedChanges.report``)."""
+    return TrackedChangesReport(tracked_changes(package))
+
+
+def _matching(change: TrackedChange, match: Callable[[TrackedChange], bool] | None) -> list[TrackedChange]:
+    """The pieces of a change the filter matches (all of them with no filter)."""
+    if match is None:
+        return change.pieces
+    return [piece for piece in change.pieces if match(piece)]
 
 
 def resolve_all(
@@ -129,12 +141,14 @@ def resolve_all(
     change of its own, and resolving a broken move leaves plain ``w:ins`` /
     ``w:del`` (core-ts ``Body.resolveAll``); then, with no filter, what is
     never listed is swept. Both branches of a text box's
-    ``mc:AlternateContent`` are walked.
+    ``mc:AlternateContent`` are walked. A filter's range is read once, before
+    anything is resolved.
     """
     from docx4j_py.model.revisions.lister import Lister
     from docx4j_py.model.revisions.removals import Removals
     from docx4j_py.model.revisions.resolver import resolve, resolve_pieces
 
+    match = matcher(filter, package)
     count = 0
     removals = Removals(package)
     left = None
@@ -146,10 +160,10 @@ def resolve_all(
         if round_ == 0:
             # how many the public listing has: there a text box's mc:Fallback
             # twins are attached to the mc:Choice's changes, not listed
-            count = sum(1 for change in changes if not change.story.twin and _matching(change, filter))
+            count = sum(1 for change in changes if not change.story.twin and _matching(change, match))
         matched = 0
         for change in reversed(changes):
-            pieces = _matching(change, filter)
+            pieces = _matching(change, match)
             if not pieces:
                 continue
             matched += 1
@@ -163,63 +177,156 @@ def resolve_all(
             break
         stalled = stalled + 1 if left is not None and matched >= left else 0
         left = matched
-    if filter is None:
-        _sweep(package, stories, removals)
+    if match is None:
+        _sweep(package, stories, accept, removals)
     removals.flush()
     Generation.of(key if key is not None else package).advance()
     return count
 
 
-def _sweep(package: Any, stories: list[Story] | None, removals: Any) -> None:
-    """What is never listed: a ``w:customXmlInsRangeStart`` or ``End`` left without the form of an inserted control.
+def _sweep(package: Any, stories: list[Story] | None, accept: bool, removals: Any) -> None:
+    """What is never listed (core-ts ``resolveUnlisted``, docx4j ``TrackedChanges.sweep``).
 
-    It marks nothing that can be found (docx4j phase 1's sweep; the legacy
-    forms of phase 2 are CR-010 Phase B's).
+    * a table's records that change nothing, dropped either way (U20);
+    * a ``w:cellMerge``, which Office JS cannot list: a rejected one gives the
+      merge it recorded back (U8);
+    * a ``w:numberingChange`` (in ``w:numPr`` and ``w:fldChar``), which records
+      the old number's text and not its definition: dropped either way;
+    * a ``w:numPr/w:ins``: accepted, the marker goes; rejected, the
+      ``w:numPr`` with it (U9);
+    * a ``w:customXmlInsRangeStart`` or ``End`` left without the form of an
+      inserted control, which marks nothing that can be found.
+
+    A record's own content is what was, not what is, and is not looked into.
     """
-    from docx4j_py.model.revisions import trees
     from docx4j_py.model.revisions.lister import package_stories
-
-    def stray(item: Any) -> bool:
-        return trees.name(item) in ("customXmlInsRangeStart", "customXmlInsRangeEnd")
 
     done: set[int] = set()
     for story in stories if stories is not None else package_stories(package):
         if id(story.root) in done:
             continue
         done.add(id(story.root))
-        _sweep_content(story.root, stray, removals)
+        if _sweep_content(story.root, accept, removals):
+            removals.touched(story)
 
 
-def _sweep_content(items: list, match: Callable[[Any], bool], removals: Any) -> None:
-    """Removes what `match` matches from a content list and the content lists under it.
-
-    Range markers stand only in content lists --- block, row, cell and run
-    level --- so only those are walked, and what a run holds only where a text
-    box (a drawing, a picture, ``mc:AlternateContent``) or an equation may hold
-    content of its own.
-    """
+def _stray(item: Any) -> bool:
     from docx4j_py.model.revisions import trees
 
-    r_class = trees.cls("R")
+    return trees.name(item) in ("customXmlInsRangeStart", "customXmlInsRangeEnd")
+
+
+#: The run children a text box can be inside.
+_BOX_HOLDERS = frozenset({"drawing", "pict", "object", "AlternateContent"})
+
+
+def _sweep_content(items: list, accept: bool, removals: Any) -> bool:
+    """Sweeps a content list and the content lists under it; True when anything changed.
+
+    The forms swept stand in content lists (markers), on what they hold
+    (tables, cells, paragraphs) or in a run (``w:fldChar``), so only those are
+    walked, and what a run holds only where a text box (a drawing, a picture,
+    ``mc:AlternateContent``) or an equation may hold content of its own.
+    """
+    from docx4j_py.model.revisions import tables, trees
+
+    r_class, p_class = trees.cls("R"), trees.cls("P")
+    tbl_class, tc_class = trees.cls("Tbl"), trees.cls("Tc")
+    changed = False
     stack = [items]
     while stack:
         current = stack.pop()
         for index in range(len(current) - 1, -1, -1):
             item = current[index]
-            if match(item):
+            if _stray(item):
                 del current[index]
+                changed = True
                 continue
             if isinstance(item, r_class):
                 for child in item.content:
-                    if trees.name(child) in ("drawing", "pict", "object", "AlternateContent"):
-                        removals.remove_everywhere(child, match)
+                    local = trees.name(child)
+                    if local in _BOX_HOLDERS:
+                        if removals.remove_everywhere(child, _stray):
+                            changed = True
+                        if _sweep_boxes(child, accept, removals):
+                            changed = True
+                    elif local == "fldChar" and _drop_numbering_change(child):
+                        changed = True
                 continue
             if trees.is_math(item):
-                removals.remove_everywhere(item, match)
+                if removals.remove_everywhere(item, _stray):
+                    changed = True
                 continue
+            if isinstance(item, p_class):
+                changed = _sweep_numbering(item.p_pr, accept) or changed
+            elif isinstance(item, tbl_class) and tables.has_records(item):
+                tables.accept(item)
+                changed = True
+            elif isinstance(item, tc_class) and tables.cell_marker(item.tc_pr, "cellMerge") is not None:
+                tables.resolve_cell_merge(item.tc_pr, accept)
+                changed = True
             nested = trees.children(item)
             if nested is not None:
                 stack.append(nested)
+    return changed
+
+
+def _sweep_numbering(p_pr: Any, accept: bool) -> bool:
+    """A paragraph's ``w:numPr/w:numberingChange`` dropped, and its ``w:numPr/w:ins`` resolved (U9)."""
+    num_pr = p_pr.num_pr if p_pr is not None else None
+    if num_pr is None:
+        return False
+    changed = False
+    if num_pr.numbering_change is not None:
+        num_pr.numbering_change = None
+        changed = True
+    if num_pr.ins is not None:
+        if accept:
+            num_pr.ins = None
+        else:
+            p_pr.num_pr = None
+        changed = True
+    return changed
+
+
+def _drop_numbering_change(fld_char: Any) -> bool:
+    """A ``w:fldChar``'s ``w:numberingChange`` dropped (one choice with ``w:fldData`` and ``w:ffData``)."""
+    from docx4j_py.model.revisions import trees
+
+    value = getattr(fld_char, "fld_data_or_ff_data_or_numbering_change", None)
+    if value is None or trees.name(value) != "numberingChange":
+        return False
+    fld_char.fld_data_or_ff_data_or_numbering_change = None
+    return True
+
+
+def _sweep_boxes(node: Any, accept: bool, removals: Any) -> bool:
+    """The text boxes under a run's drawing, picture or ``mc:AlternateContent``, every branch's, swept.
+
+    A text box kept as a wildcard tree is swept as a typed island (CR-010
+    section 3.5), and only when it holds revision markup; it is written back
+    only when the sweep changed it.
+    """
+    from docx4j_py.model.revisions.islands import Island, holds_revisions
+    from docx4j_py.model.revisions.lister import box_refs
+
+    changed = False
+    for kind, box, holder in box_refs(node, alternate=False):
+        if kind == "typed":
+            if _sweep_content(box.content, accept, removals):
+                changed = True
+            continue
+        if kind != "wild" or not holds_revisions(box):
+            continue
+        try:
+            island = Island(box, holder)
+        except ValueError:
+            continue
+        if _sweep_content(island.typed.content, accept, removals):
+            island.dirty = True
+            island.write_back()
+            changed = True
+    return changed
 
 
 def body_stories(body: Any) -> list[Story]:

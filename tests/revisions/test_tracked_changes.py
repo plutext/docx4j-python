@@ -1,12 +1,15 @@
 """The engine's contract and the rules no Word-made fixture holds. CR-010 section 4.
 
 The port of docx4j-core-tests' ``TrackedChangesTest`` (docx4j CR-043 section 12)
-as far as Phase A reaches: the grouping, dates, a stale view, a piece resolved
-on its own, the unmeasured rules of CR-043 section 11 (U1, U2, U3, U15, a
+(docx4j CR-043 sections 12 and 13): the grouping, dates, a stale view, a piece
+resolved on its own; the table, section and cell records (listed, accepted,
+rejected, reported; records that change nothing), a section merged, cells
+inserted and deleted, the legacy forms swept, and each filter (author and
+type, a kind splitting a group, dates, a bookmark's extent, a control's
+content); the unmeasured rules of CR-043 section 11 (U1, U2, U3, U15, a
 hyperlink's relationship in a deleted row, the text box twin, an equation
-structure) on handwritten markup; the table, section and cell records listed
-but left for Phase B. Then what this port adds: the typed islands (CR-010
-section 3.5), every story, and parts nobody reads left byte for byte.
+structure) on handwritten markup. Then what this port adds: the typed islands
+(CR-010 section 3.5), every story, and parts nobody reads left byte for byte.
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ from revision_helpers import (
 )
 
 from docx4j_py.model.content.errors import TrackedChangeError
+from docx4j_py.model.revisions import Kind, TrackedChangeFilter
 from docx4j_py.model.revisions.lister import Lister
 
 # ---------------------------------------------------------------------------
@@ -147,7 +151,7 @@ def test_a_piece_resolves_on_its_own():
 
 
 def test_a_filter_resolves_the_pieces_it_matches():
-    """A filter applies to single changes (U19): a group partly matched has only those pieces resolved."""
+    """A plain callable is still a filter (CR-010 section 10.3 item 5); it applies to single changes (U19)."""
     package = with_body(
         '<w:p><w:pPr><w:rPr><w:ins w:id="2" w:author="A"/></w:rPr></w:pPr>'
         + run("kept ")
@@ -169,7 +173,7 @@ def test_a_filter_resolves_the_pieces_it_matches():
 
 
 # ---------------------------------------------------------------------------
-# what Phase A lists and leaves to Phase B
+# the table, section and cell records (docx4j CR-043 phase 2)
 # ---------------------------------------------------------------------------
 
 TABLE_RECORD = (
@@ -179,45 +183,292 @@ TABLE_RECORD = (
 )
 
 
-def test_a_tables_records_are_listed_and_left_for_phase_b():
-    """docx4j phase 1: listed as one change per table, never resolved by Phase A, so never reported clean."""
+def test_a_tables_records_are_one_change_accepted_or_rejected():
+    """docx4j ``tableRecords``: one change; accepted the properties stay, rejected they are restored; reported."""
     package = with_body(TABLE_RECORD + "<w:p>" + ins(2, "A", "text") + "</w:p>")
     changes = revisions.tracked_changes(package)
     assert [str(change.kind) for change in changes] == ["table_properties", "run_insertion"]
     assert changes[0].text == "cell\r\n"
-    assert not changes[0].resolvable
-    with pytest.raises(TrackedChangeError) as unsupported:
-        changes[0].reject()
-    assert unsupported.value.code == "tracking.unsupported"
-    assert revisions.accept_all(package) == 1, "the count is of what was resolved"
-    left = revisions.tracked_changes(package)
-    assert [str(change.kind) for change in left] == ["table_properties"]
-    assert "tblPrChange" in body_xml(package)
+    assert revisions.report(package).to_dict() == {
+        "total": 2,
+        "by_kind": {"run_insertion": 1, "table_properties": 1},
+        "by_author": {"A": 2},
+        "by_part": {"/word/document.xml": 2},
+    }
+    changes[0].reject()
+    xml = body_xml(package)
+    assert 'w:w="5000" w:type="pct"' in xml
+    assert "tblPrChange" not in xml
+    assert len(revisions.tracked_changes(package)) == 1
+
+    accepted = with_body(TABLE_RECORD)
+    assert revisions.accept_all(accepted) == 1
+    xml = body_xml(accepted)
+    assert 'w:w="0" w:type="auto"' in xml
+    assert "tblPrChange" not in xml
 
 
-def test_a_sections_record_is_listed():
+def test_records_that_change_nothing_are_no_change():
+    """docx4j ``recordsThatChangeNothing`` (checks 24, 26; U20): not listed, and swept either way."""
     package = with_body(
-        "<w:p>" + run("text") + "</w:p><w:sectPr>"
+        '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>'
+        '<w:tblPrChange w:id="1" w:author="A"><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr></w:tblPrChange></w:tblPr>'
+        '<w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid><w:tr><w:tc><w:p>' + run("cell") + "</w:p></w:tc></w:tr></w:tbl><w:p/>"
+    )
+    assert revisions.tracked_changes(package) == []
+    revisions.reject_all(package)
+    assert "tblPrChange" not in body_xml(package)
+
+
+def test_a_sections_record_rejected_is_merged():
+    """docx4j ``sectionRecordMerges`` (C07, U13): the recorded members laid over it, a docGrid of pitch 0 meaning none."""
+    package = with_body(
+        "<w:p>" + run("text") + '</w:p><w:sectPr><w:headerReference w:type="default" r:id="rId99"/>'
+        '<w:pgSz w:w="11906" w:h="16838"/>'
         '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="720" w:header="708" w:footer="708" w:gutter="0"/>'
-        '<w:sectPrChange w:id="1" w:author="A"><w:sectPr>'
+        '<w:docGrid w:linePitch="299"/><w:sectPrChange w:id="1" w:author="A"><w:sectPr>'
         '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="2160" w:header="708" w:footer="708" w:gutter="0"/>'
-        "</w:sectPr></w:sectPrChange></w:sectPr>"
+        '<w:docGrid w:linePitch="0"/></w:sectPr></w:sectPrChange></w:sectPr>'
     )
     changes = revisions.tracked_changes(package)
     assert [str(change.kind) for change in changes] == ["section_properties"]
     assert changes[0].text == "text"
     assert package.outline().stats.tracked_changes == 1
+    changes[0].reject()
+    sect_pr = package.main_document_part.contents.body.sect_pr
+    assert sect_pr.pg_mar.left == 2160
+    assert sect_pr.pg_sz.w == 11906
+    assert sect_pr.doc_grid is None
+    assert sect_pr.sect_pr_change is None
+    assert len(sect_pr.header_reference_or_footer_reference) == 1
 
 
-def test_a_cell_insertion_is_listed():
-    package = with_body(
-        '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr>'
-        '<w:tc><w:tcPr><w:tcW w:w="1000" w:type="dxa"/></w:tcPr><w:p>' + run("one") + "</w:p></w:tc>"
-        '<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:cellIns w:id="1" w:author="A"/></w:tcPr><w:p>'
-        + run("two")
-        + "</w:p></w:tc></w:tr></w:tbl><w:p/>"
+CELLS = (
+    '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr>'
+    '<w:tc><w:tcPr><w:tcW w:w="1000" w:type="dxa"/></w:tcPr><w:p>' + run("one") + "</w:p></w:tc>"
+    '<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:cellIns w:id="1" w:author="A"/></w:tcPr><w:p>'
+    + run("two")
+    + "</w:p></w:tc></w:tr></w:tbl><w:p/>"
+)
+
+
+def test_u10_cells_inserted_and_deleted():
+    """docx4j ``cellsInsertedAndDeleted`` (check 27): the cell removed widens the one before, the widths added."""
+    package = with_body(CELLS)
+    changes = revisions.tracked_changes(package)
+    assert [str(change.kind) for change in changes] == ["cell_insertion"]
+    changes[0].reject()
+    xml = body_xml(package)
+    assert "two" not in xml
+    assert '<w:tcW w:w="3000" w:type="dxa"/><w:gridSpan w:val="2"/>' in xml
+
+    accepted = with_body(CELLS)
+    revisions.accept_all(accepted)
+    xml = body_xml(accepted)
+    assert "two" in xml
+    assert "cellIns" not in xml
+
+    deleted = with_body(CELLS.replace("cellIns", "cellDel"))
+    revisions.accept_all(deleted)
+    assert "two" not in body_xml(deleted)
+
+
+def test_u8_u9_the_legacy_forms_are_swept():
+    """docx4j ``legacyFormsSwept``: a cell merge, a numbering change and an inserted numPr, which nothing lists."""
+    body = (
+        '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid>'
+        '<w:tr><w:tc><w:tcPr><w:cellMerge w:id="1" w:author="A" w:vMerge="cont" w:vMergeOrig="rest"/></w:tcPr><w:p>'
+        + run("merged")
+        + "</w:p></w:tc></w:tr></w:tbl>"
+        '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/>'
+        '<w:numberingChange w:id="2" w:author="A" w:original="%1."/></w:numPr></w:pPr>' + run("numbered") + "</w:p>"
+        '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/><w:ins w:id="3" w:author="A"/></w:numPr></w:pPr>'
+        + run("listed")
+        + "</w:p>"
     )
-    assert [str(change.kind) for change in revisions.tracked_changes(package)] == ["cell_insertion"]
+    rejected = with_body(body)
+    assert revisions.tracked_changes(rejected) == []
+    revisions.reject_all(rejected)
+    xml = body_xml(rejected)
+    assert "cellMerge" not in xml and "numberingChange" not in xml
+    assert '<w:vMerge w:val="restart"/>' in xml
+    assert xml.count("<w:numPr>") == 1
+
+    accepted = with_body(body)
+    revisions.accept_all(accepted)
+    xml = body_xml(accepted)
+    assert "cellMerge" not in xml and "numberingChange" not in xml and "<w:ins" not in xml
+    assert "vMerge" not in xml
+    assert xml.count("<w:numPr>") == 2
+
+
+def test_a_fields_numbering_change_is_swept():
+    """U9: a ``w:fldChar``'s ``w:numberingChange`` goes too, either way; the field stays."""
+    field = (
+        '<w:p><w:r><w:fldChar w:fldCharType="begin"><w:numberingChange w:id="1" w:author="A" w:original="1."/>'
+        '</w:fldChar></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>'
+        '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+    )
+    for verb in (revisions.accept_all, revisions.reject_all):
+        package = with_body(field)
+        assert revisions.tracked_changes(package) == []
+        verb(package)
+        xml = body_xml(package)
+        assert "numberingChange" not in xml
+        assert xml.count("<w:fldChar ") == 2
+
+
+def test_a_records_change_resolves_through_the_content_api():
+    """Phase A's ``tracking.unsupported`` is gone: the content API's view accepts and rejects records, and counts them."""
+    package = with_body(TABLE_RECORD + "<w:p>" + ins(2, "A", "text") + "</w:p>")
+    first, _second = package.get_tracked_changes()
+    assert first.kind == "table_properties"
+    first.reject()
+    assert "tblPrChange" not in body_xml(package)
+    assert [change.kind for change in package.get_tracked_changes()] == ["run_insertion"]
+
+    counted = with_body(TABLE_RECORD + "<w:p>" + ins(2, "A", "text") + "</w:p>")
+    assert counted.body.accept_all() == 2
+    assert counted.body.get_tracked_changes() == []
+
+
+# ---------------------------------------------------------------------------
+# filters (docx4j CR-043 phase 2) and the report
+# ---------------------------------------------------------------------------
+
+
+def test_filter_by_author_and_type():
+    """docx4j ``filterByAuthorAndType``."""
+    package = with_body("<w:p>" + ins(1, "A", "a1 ") + run("x ") + dele(2, "A", "a2 ") + run("y ") + ins(3, "B", "b1") + "</w:p>")
+    assert revisions.accept_all(package, TrackedChangeFilter().authors("A")) == 2
+    assert text_of(paragraphs(package)[0])[:7] == "a1 x y "
+    left = revisions.tracked_changes(package)
+    assert [change.author for change in left] == ["B"]
+
+    typed = with_body("<w:p>" + ins(1, "A", "a1 ") + run("x ") + dele(2, "A", "a2 ") + "</w:p>")
+    revisions.reject_all(typed, TrackedChangeFilter(types=["Added"]))
+    assert [change.type for change in revisions.tracked_changes(typed)] == ["Deleted"]
+
+
+def test_filter_by_kind_splits_a_group():
+    """docx4j ``filterByKindSplitsAGroup`` (U19): only the group's matching pieces resolve."""
+    package = with_body(
+        '<w:p><w:pPr><w:rPr><w:ins w:id="2" w:author="A"/></w:rPr></w:pPr>'
+        + run("kept ")
+        + ins(1, "A", "inserted")
+        + "</w:p><w:p>"
+        + run("next")
+        + "</w:p>"
+    )
+    assert len(revisions.tracked_changes(package)) == 1
+    revisions.reject_all(package, TrackedChangeFilter().kinds(Kind.RUN_INSERTION))
+    left = revisions.tracked_changes(package)
+    assert [str(change.kind) for change in left] == ["paragraph_mark_insertion"]
+    assert len(paragraphs(package)) == 2
+
+
+def test_filter_by_date():
+    """docx4j ``filterByDate``: at or after the start, before the end; a naive datetime is UTC."""
+    body = (
+        '<w:p><w:ins w:id="1" w:author="A" w16du:dateUtc="2026-01-01T00:00:00Z">' + run("old ") + "</w:ins>"
+        + run("| ")
+        + '<w:ins w:id="2" w:author="A" w16du:dateUtc="2026-06-01T00:00:00Z">' + run("new") + "</w:ins></w:p>"
+    )
+    package = with_body(body)
+    revisions.reject_all(package, TrackedChangeFilter().between(datetime.datetime(2026, 3, 1, tzinfo=datetime.UTC), None))
+    assert text_of(paragraphs(package)[0]) == "old | "
+    assert len(revisions.tracked_changes(package)) == 1
+
+    naive = with_body(body)
+    revisions.reject_all(naive, TrackedChangeFilter(date_to=datetime.datetime(2026, 3, 1)))  # noqa: DTZ001 - naive is UTC
+    assert text_of(paragraphs(naive)[0]) == "| new"
+    undated = with_body("<w:p>" + ins(1, "A", "no date") + "</w:p>")
+    since = datetime.datetime(2000, 1, 1)  # noqa: DTZ001 - naive is read as UTC
+    assert revisions.accept_all(undated, TrackedChangeFilter(date_from=since)) == 0
+
+
+def test_filter_within_a_bookmark():
+    """docx4j ``filterWithinABookmark``: the changes between its start and its end."""
+    package = with_body(
+        "<w:p>" + ins(1, "A", "before ") + run("| ") + '<w:bookmarkStart w:id="9" w:name="here"/>' + ins(2, "A", "inside")
+        + '<w:bookmarkEnd w:id="9"/>' + run(" | ") + ins(3, "A", "after") + "</w:p>"
+    )
+    assert len(revisions.tracked_changes(package)) == 3
+    assert [change.text for change in revisions.tracked_changes(package, TrackedChangeFilter().within_bookmark("here"))] == [
+        "inside"
+    ]
+    revisions.reject_all(package, TrackedChangeFilter().within_bookmark("here"))
+    assert text_of(paragraphs(package)[0]) == "before |  | after"
+    with pytest.raises(ValueError, match="no bookmark named 'nowhere'"):
+        revisions.accept_all(package, TrackedChangeFilter(within_bookmark="nowhere"))
+
+
+def test_filter_within_a_content_control():
+    """docx4j ``filterWithinAControl``: the model's control, or the content API's view of it."""
+    from docx4j_py.wml import SdtBlock
+
+    body = (
+        "<w:p>" + run("one ") + "</w:p><w:sdt><w:sdtPr/><w:sdtContent><w:p>" + ins(1, "A", "inside")
+        + "</w:p></w:sdtContent></w:sdt><w:p>" + ins(2, "A", "outside") + "</w:p>"
+    )
+    package = with_body(body)
+    sdt = next(item for item in package.main_document_part.contents.body.content if isinstance(item, SdtBlock))
+    revisions.reject_all(package, TrackedChangeFilter().within(sdt))
+    assert [change.text for change in revisions.tracked_changes(package)] == ["outside"]
+
+    viewed = with_body(body)
+    control = viewed.body.content_controls[0]
+    assert revisions.accept_all(viewed, TrackedChangeFilter(within=control)) == 1
+    assert [change.text for change in revisions.tracked_changes(viewed)] == ["outside"]
+
+
+def test_filter_by_part():
+    """A part, or its name: the probe's endnotes resolved, every other story left."""
+    package = fixture("cr043/cr043-tracked.docx")
+    endnotes = package.main_document_part.endnotes_part
+    before = revisions.report(package).by_part
+    assert revisions.accept_all(package, TrackedChangeFilter(parts=["/word/endnotes.xml"])) == before["/word/endnotes.xml"]
+    after = revisions.report(package).by_part
+    assert "/word/endnotes.xml" not in after
+    assert after == {name: count for name, count in before.items() if name != "/word/endnotes.xml"}
+    assert revisions.reject_all(package, TrackedChangeFilter().parts(package.main_document_part)) == before["/word/document.xml"]
+    assert set(revisions.report(package).by_part) == {"/word/header2.xml", "/word/footer2.xml", "/word/header5.xml", "/word/footer5.xml"}
+    assert endnotes is package.main_document_part.endnotes_part
+
+
+def test_a_filter_with_no_condition_takes_everything_but_sweeps_nothing():
+    """A filter is a filter even with no condition: every change resolved, nothing unlisted swept (docx4j's rule)."""
+    package = with_body(TABLE_RECORD.replace('w:w="5000" w:type="pct"', 'w:w="0" w:type="auto"') + "<w:p>" + ins(2, "A", "text") + "</w:p>")
+    assert revisions.accept_all(package, TrackedChangeFilter()) == 1
+    assert "tblPrChange" in body_xml(package), "records that change nothing are swept only with no filter"
+    assert repr(TrackedChangeFilter(authors=["A"]).kinds("run_insertion")) == (
+        "TrackedChangeFilter(authors=['A'], kinds=['run_insertion'])"
+    )
+
+
+def test_the_report_counts_by_kind_author_and_part():
+    """docx4j ``TrackedChanges.report``: the probe, every story; ``to_dict`` plain for JSON."""
+    import json
+
+    package = fixture("cr043/cr043-tracked.docx")
+    report = revisions.report(package)
+    assert report.total == len(revisions.tracked_changes(package)) == 37
+    data = report.to_dict()
+    assert json.loads(json.dumps(data)) == data
+    assert list(data) == ["total", "by_kind", "by_author", "by_part"]
+    assert data["by_author"] == {"Author A": 35, "CR-043 base": 2}
+    assert data["by_part"] == {
+        "/word/document.xml": 28,
+        "/word/endnotes.xml": 5,
+        "/word/header2.xml": 1,
+        "/word/footer2.xml": 1,
+        "/word/header5.xml": 1,
+        "/word/footer5.xml": 1,
+    }
+    assert data["by_kind"]["table_properties"] == 1 and data["by_kind"]["section_properties"] == 1
+    assert list(data["by_kind"]) == [str(kind) for kind in revisions.Kind if str(kind) in data["by_kind"]]
+    revisions.accept_all(package)
+    assert revisions.report(package).to_dict() == {"total": 0, "by_kind": {}, "by_author": {}, "by_part": {}}
 
 
 # ---------------------------------------------------------------------------
@@ -510,8 +761,7 @@ def test_every_story_is_resolved_by_the_package_verbs():
     for verb in (revisions.accept_all, revisions.reject_all):
         package = fixture("cr043/cr043-tracked.docx")
         verb(package)
-        parts = {str(change.part.part_name) for change in revisions.tracked_changes(package)}
-        assert parts == {"/word/document.xml"}, "only Phase B's records are left, in the body"
+        assert revisions.tracked_changes(package) == []
         saved = round_trip(package)
         for part in saved.main_document_part.header_parts() + saved.main_document_part.footer_parts():
             assert "<w:ins " not in part.get_xml() and "<w:del " not in part.get_xml()
@@ -524,9 +774,8 @@ def test_a_bodys_verbs_resolve_its_own_story_and_leave_the_others():
     package = fixture("cr043/cr043-tracked.docx")
     package.body.accept_all()
     left = {str(change.part.part_name) for change in package.get_tracked_changes()}
-    assert "/word/document.xml" in left, "the table's and the section's records"
     # C06's deleted section break, accepted, took the first section's headers with it (D7)
-    assert {"/word/header5.xml", "/word/footer5.xml", "/word/endnotes.xml"} <= left
+    assert left == {"/word/header5.xml", "/word/footer5.xml", "/word/endnotes.xml"}
     assert package.get_part("/word/header2.xml") is None
 
 

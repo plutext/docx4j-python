@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from docx4j_py.model.revisions import props, trees
+from docx4j_py.model.revisions import props, tables, trees
 from docx4j_py.model.revisions.change import (
     CellT,
     FieldT,
@@ -95,9 +95,29 @@ class _Op:
             self.math_run(t, accept)
         elif isinstance(t, MathStructT):
             self.math_structure(t, accept)
-        elif isinstance(t, (TableT, SectionT, CellT)):
-            # listed, resolved by CR-010 Phase B (docx4j CR-043 phase 2)
+        elif isinstance(t, TableT):
+            if accept:
+                tables.accept(t.tbl)
+            else:
+                tables.reject(t.tbl)
+        elif isinstance(t, SectionT):
+            if accept:
+                t.sect_pr.sect_pr_change = None
+            else:
+                tables.reject_section(t.sect_pr)
+        elif isinstance(t, CellT):
+            self.cell(t, accept)
+
+    def cell(self, t: CellT, accept: bool) -> None:
+        """An inserted cell stays when accepted, a deleted one goes; rejected the other way round (check 27)."""
+        tc_pr = t.tc.tc_pr
+        if tc_pr is None:
             return
+        if t.ins == accept:
+            if tc_pr.cell_ins_or_cell_del_or_cell_merge is t.marker:
+                tc_pr.cell_ins_or_cell_del_or_cell_merge = None
+        else:
+            tables.remove_cell(t.tc, t.tr, self.removals, self.story)
 
     # -- runs ------------------------------------------------------------------
 
@@ -176,9 +196,7 @@ class _Op:
                 resolve(inner, accept, self.removals)
         else:
             self.remove(t.owner, t.tr)
-            from docx4j_py.model.revisions.tables import rows_of
-
-            if not rows_of(t.tbl):
+            if not tables.rows_of(t.tbl):
                 self.remove(t.tbl_owner, t.tbl)
 
     # -- fields and controls ---------------------------------------------------

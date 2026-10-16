@@ -1137,8 +1137,8 @@ class Body(Sequence):
         content controls, text boxes (both ``mc:AlternateContent`` branches)
         and equations with it, and Word's side effects in other parts --- a
         note goes with its reference, a comment with its range, a part with
-        its last reference. The table, cell and section records are listed and
-        left for CR-010 Phase B.
+        its last reference. The table, cell and section records are resolved
+        too (CR-010 Phase B): a reject restores them wholesale.
         """
         return self._resolve_all(True)
 

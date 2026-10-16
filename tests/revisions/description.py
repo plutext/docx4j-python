@@ -22,8 +22,9 @@ What Word's save normalises does not show:
   auto 0, a section's ``w:cols w:space="720"``, and a row's ``w:tblPrEx``
   repeating the table or holding zero top and bottom cell margins (C23, C25).
 
-``describe(pkg, records=False)`` leaves the table, row, cell and section
-properties out, as docx4j's phase 1 did: those records are CR-010 Phase B's.
+``describe(pkg)`` shows the table, row, cell and section properties (canonical
+XML) and the records' presence, as docx4j's phase 2 made it (CR-010 Phase B);
+``describe(pkg, records=False)`` leaves them out, as its phase 1 did.
 ``differing(a, b)`` is ``PortsAgreement.differing``: how many lines of one
 description the other lacks, both ways.
 """
