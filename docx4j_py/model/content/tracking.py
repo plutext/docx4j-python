@@ -84,6 +84,9 @@ __all__ = [
     "create_settings_part",
     "date_of",
     "delete_row_content",
+    "final_mark_properties",
+    "hand_back_final_mark",
+    "holds_final_mark",
     "insertion_mark_of",
     "mark_deleted",
     "mark_inserted",
@@ -91,12 +94,15 @@ __all__ = [
     "mode_of",
     "para_r_pr_of",
     "prune_paragraph_properties",
+    "record_final_mark",
     "restore_p_pr",
     "restore_r_pr",
     "revision_of",
     "row_pr_of",
+    "same_properties",
     "set_mode",
     "settings_part_for_write",
+    "settle_final_mark",
     "tidy_runs",
     "to_deleted_text",
     "to_restored_text",
@@ -605,8 +611,15 @@ def track_inserted_blocks(tracker: ChangeTracker, elements: list, container: lis
     paragraph before it --- an empty container, or a table --- nothing is marked
     and only the runs are wrapped, which is the honest answer: there is no
     earlier mark for the break to live on.
+
+    The shift moves the old final mark to the last paragraph of the insert, and
+    with it the properties that mark carried: when that paragraph's own differ
+    from them, it records them in a ``w:pPrChange``, as Word does after a Heading
+    1 (docx4j-core-ts check 29, 29a), so that rejecting the append gives the
+    heading back (:func:`record_final_mark`).
     """
     inserted = {id(item) for item in elements}
+    original: PPrBase | None = None
     for item in elements:
         if isinstance(item, Tbl):
             track_inserted_table(tracker, item)
@@ -624,7 +637,13 @@ def track_inserted_blocks(tracker: ChangeTracker, elements: list, container: lis
             continue
         previous = container[index - 1] if index > 0 else None
         if isinstance(previous, P) and not mark_inserted(previous):
+            if id(previous) not in inserted:
+                # the paragraph that ended the container until now: its mark
+                # passes to the last paragraph of this insert (check 29)
+                original = final_mark_properties(tracker, previous)
             tracker.mark_paragraph_inserted(previous)
+    if original is not None and container and isinstance(container[-1], P):
+        record_final_mark(tracker, container[-1], original)
 
 
 def _trails(container: list, index: int, inserted: set[int]) -> bool:
@@ -633,6 +652,130 @@ def _trails(container: list, index: int, inserted: set[int]) -> bool:
         if not isinstance(item, P) or id(item) not in inserted:
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# the final mark's properties (check 29)
+# ---------------------------------------------------------------------------
+
+
+def _base_of(p_pr: Any) -> PPrBase:
+    """A paragraph's properties as ``w:pPrChange`` records them: no mark, no section, no record."""
+    return deep_copy_as(p_pr, PPrBase) if p_pr is not None else PPrBase()
+
+
+def same_properties(p_pr: Any, original: Any) -> bool:
+    """True when a ``w:pPr`` holds what a recorded ``PPrBase`` does, the mark and section aside."""
+    return _base_of(p_pr) == _base_of(original)
+
+
+def final_mark_properties(tracker: ChangeTracker, previous: P) -> PPrBase:
+    """The properties the container's final mark had, read before an append moves it on.
+
+    Word's Enter at the end of a paragraph ends that paragraph with the **new**
+    mark and leaves the **old** one, and the properties it carries, on the new
+    line (docx4j-core-ts's check 29). So what the new last paragraph must be able
+    to go back to is `previous`'s properties --- or, when `previous` already
+    records a ``w:pPrChange``, what that records: the first original wins, as
+    :meth:`ChangeTracker.record_p_pr_change` has it. A record **this session**
+    wrote on a paragraph it appended earlier is the old mark's and moves on with
+    it, so it is taken off `previous`, which now ends in a new mark of its own.
+    """
+    p_pr = previous.p_pr
+    change = getattr(p_pr, "p_pr_change", None) if p_pr is not None else None
+    if change is None:
+        return _base_of(p_pr)
+    original = _base_of(change.p_pr)
+    if tracker.inserted(previous) and str(getattr(change, "author", "") or "") == tracker.author:
+        p_pr.p_pr_change = None
+        prune_paragraph_properties(previous)
+    return original
+
+
+def record_final_mark(tracker: ChangeTracker, paragraph: P, original: PPrBase) -> None:
+    """``w:pPrChange`` on the paragraph that took the old final mark, when its properties differ.
+
+    Word's form, measured (docx4j-core-ts check 29): Enter at the end of a
+    Heading 1, whose next style is Normal, gives the new line Normal properties
+    and a ``w:pPrChange`` recording Heading 1, by the typist (29a); after a
+    Normal paragraph there is nothing to record and Word writes none (29b).
+    Rejecting the append then joins the old paragraph into the new one, which
+    keeps the **next** paragraph's properties (CR-010, C10) --- the recorded
+    ones once the record is rejected --- so the heading comes back a heading.
+    """
+    if same_properties(paragraph.p_pr, original):
+        return
+    p_pr = paragraph.p_pr
+    if p_pr is None:
+        p_pr = el.pPr()
+        paragraph.p_pr = p_pr
+        p_pr.parent = paragraph
+    if p_pr.p_pr_change is not None:
+        return
+    change = CTPPrChange(p_pr=original, **tracker.markup())
+    p_pr.p_pr_change = change
+    link_parents(change)
+    change.parent = p_pr
+
+
+def holds_final_mark(paragraph: P, container: list) -> bool:
+    """True when an appended paragraph carries its container's old final mark (CR-003 16.10).
+
+    It is the last of its container, its own mark is unmarked, and the mark
+    before it records the insertion: :func:`track_inserted_blocks`'s shift. Its
+    properties are then the old mark's, so a write to them records a
+    ``w:pPrChange`` as a write to any paragraph the document had does (check
+    29), where a paragraph this session inserted otherwise records none.
+    """
+    if len(container) < 2 or container[-1] is not paragraph:
+        return False
+    previous = container[-2]
+    return isinstance(previous, P) and mark_inserted(previous) and not mark_inserted(paragraph)
+
+
+def settle_final_mark(tracker: ChangeTracker, paragraph: P, container: list) -> None:
+    """Drop the old final mark's record once the paragraph holding it is back to what it records.
+
+    After a property write on the paragraph that took the old final mark ---
+    ``insert_paragraph(style=...)`` sets the style after the insert --- so that
+    it carries a ``w:pPrChange`` exactly when its properties differ from the
+    old mark's, as Word's 29a and 29b do.
+    """
+    if not holds_final_mark(paragraph, container):
+        return
+    p_pr = paragraph.p_pr
+    change = getattr(p_pr, "p_pr_change", None) if p_pr is not None else None
+    if change is None or str(getattr(change, "author", "") or "") != tracker.author:
+        return
+    if same_properties(p_pr, change.p_pr):
+        p_pr.p_pr_change = None
+        prune_paragraph_properties(paragraph)
+
+
+def hand_back_final_mark(tracker: ChangeTracker, leaving: P, previous: P) -> None:
+    """An appended paragraph taken back: its record of the old mark goes back with the mark.
+
+    `previous` ends its container again. When it is a paragraph this session
+    appended earlier, the record :func:`final_mark_properties` moved off it
+    comes back to it; a paragraph the document had keeps its own properties,
+    which are the old mark's, and needs none.
+    """
+    p_pr = leaving.p_pr
+    change = getattr(p_pr, "p_pr_change", None) if p_pr is not None else None
+    if change is None or not tracker.inserted(previous):
+        return
+    if previous.p_pr is not None and previous.p_pr.p_pr_change is not None:
+        return
+    if same_properties(previous.p_pr, change.p_pr):
+        return
+    p_pr.p_pr_change = None
+    target = previous.p_pr
+    if target is None:
+        target = el.pPr()
+        previous.p_pr = target
+        target.parent = previous
+    target.p_pr_change = change
+    change.parent = target
 
 
 def track_inserted_paragraph_into(

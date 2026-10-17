@@ -219,8 +219,18 @@ class Paragraph:
             # set once, and the outer call gets there first
             change.text(before=f"{name}={read()}")
             yield
+            self._settle_final_mark()
             change.touched(self)
             change.text(after=f"{name}={read()}")
+
+    def _settle_final_mark(self) -> None:
+        """After a write: the old final mark's record kept only while it changes something (check 29)."""
+        tracker = self.change_tracker
+        if tracker is None or not tracker.inserted(self.element):
+            return
+        from docx4j_py.model.content.tracking import settle_final_mark
+
+        settle_final_mark(tracker, self.element, self.container)
 
     # -- style -------------------------------------------------------------
 
@@ -284,7 +294,9 @@ class Paragraph:
         what makes it the place a tracked write records ``w:pPrChange`` with the
         properties as they stood before it (CR-003 section 3.8). It is recorded
         once: a second write keeps the first original. A paragraph this author
-        inserted records nothing --- its properties are this author's too.
+        inserted records nothing --- its properties are this author's too ---
+        unless it is the one an append left holding the container's old final
+        mark, whose properties are that mark's (check 29, CR-010 section 12).
         """
         p_pr = self.element.p_pr
         if p_pr is None:
@@ -292,8 +304,14 @@ class Paragraph:
             self.element.p_pr = p_pr
             p_pr.parent = self.element
         tracker = self.change_tracker
-        if tracker is not None and not tracker.inserted(self.element):
-            tracker.record_p_pr_change(p_pr)
+        if tracker is not None:
+            if not tracker.inserted(self.element):
+                tracker.record_p_pr_change(p_pr)
+            else:
+                from docx4j_py.model.content.tracking import holds_final_mark
+
+                if holds_final_mark(self.element, self.container):
+                    tracker.record_p_pr_change(p_pr)
         return p_pr
 
     def _ind(self) -> Any:
@@ -1127,8 +1145,11 @@ class Paragraph:
             # so does the mark that recorded it --- which is the **previous**
             # paragraph's when this one is the last of its container (16.10)
             if mark is not self.element:
+                from docx4j_py.model.content.tracking import hand_back_final_mark
+
                 mark.p_pr.r_pr.ins = None
                 prune_paragraph_properties(mark)
+                hand_back_final_mark(tracker, self.element, mark)
             index = self.index
             if index >= 0:
                 del self.container[index]

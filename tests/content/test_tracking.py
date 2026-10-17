@@ -385,12 +385,16 @@ def test_rejecting_an_appended_paragraph_joins_it_into_the_one_after():
     """CR-010 (docx4j CR-043 section 3.2, C10): the join keeps the **next** paragraph.
 
     Rejecting an inserted mark joins the paragraph with the next one, and the
-    result keeps the next paragraph's properties and ``w14:paraId``, for markup
-    Word did not write too: Word's Reject All of C10 --- a Heading 1 paragraph
-    whose mark was inserted, before a Normal one --- left a Normal paragraph.
-    The appended paragraph here is that next one, so the text comes back and
-    the properties and the id are the appended paragraph's. Phase F kept the
-    original paragraph's (CR-003 section 16.10); Word does not.
+    result keeps the next paragraph's properties and ``w14:paraId``: Word's
+    Reject All of C10 --- a Heading 1 paragraph whose mark was inserted, before
+    a Normal one --- left a Normal paragraph. The appended paragraph here is that
+    next one, so the text comes back and the id is the appended paragraph's.
+    Phase F kept the original paragraph's (CR-003 section 16.10); Word does not.
+
+    Since CR-010 Phase C the appended paragraph also records the Heading 1 it
+    took the old final mark from, in a ``w:pPrChange``, as Word's own Enter
+    after a heading does (check 29, 29a): so the properties that come back are
+    the heading's, and the reject counts that record as a second change.
     """
     package, paragraph = tracked("First.")
     first_id = paragraph.para_id
@@ -400,15 +404,16 @@ def test_rejecting_an_appended_paragraph_joins_it_into_the_one_after():
     appended = package.body.insert_paragraph("Appended.")
     appended_id = appended.para_id
 
-    assert reloaded(package).body.reject_all() == 1
+    assert reloaded(package).body.reject_all() == 2
     back = reloaded(package)
     back.body.reject_all()
     paragraphs = back.body.paragraphs
     assert [p.text for p in paragraphs] == ["First."]
     assert paragraphs[0].para_id == appended_id != first_id, "the next paragraph survives (C10)"
-    assert paragraphs[0].style_id != "Heading1", "with its own properties, as Word's reject leaves it"
+    assert paragraphs[0].style_id == "Heading1", "with the heading's properties its record kept (check 29)"
     assert back.body.get_tracked_changes() == [], "and the mark goes with the break"
     assert "w:ins" not in back.body.get_xml()
+    assert "w:pPrChange" not in back.body.get_xml()
 
 
 def test_a_fragment_appended_at_the_end_shifts_every_mark_back_one():
