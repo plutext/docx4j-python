@@ -1011,7 +1011,7 @@ middle since Phase A (10.6), and passes unchanged.
   footnotes or the endnotes, none in the main story: section 3.3's design. On this package's
   suggestion its `py_resolve.py` now calls `revisions.accept_all` / `reject_all` ("python: every
   story" in its README), and section 14 carries a dated note of the rerun and of the departures
-  of 10.3 item 1 and 11.3; those edits are in docx4j's working tree, the user to commit.
+  of 10.3 item 1 and 11.3; committed in docx4j as `ad0aa771e` (`VERSION_17_3_4`, unpushed).
 - **CR-011**: the text and Markdown views by resolution (12.3).
 - **The `w:date` convention** (10.3 item 1), if the user wants it: Word's local wall-clock
   `w:date` and `w16du:dateUtc`, the one difference left in 12.2's markup.
