@@ -1001,8 +1001,17 @@ middle since Phase A (10.6), and passes unchanged.
   paragraph Normal, and each copy opens without a repair prompt and lists no revisions. If
   Word's own Accept All and Reject All are saved as `out/acceptance-word/8-word-accepted.docx`
   and `8-word-rejected.docx`, `scripts/compare_word_resolution.py` puts them against the copies.
-- **The hand-off to docx4j's session**, which the user makes: rerun the agreement and record
-  python's column; through the body's verbs it is the other stories' revisions alone (11.4).
+- ~~**The hand-off to docx4j's session**~~ **done 2026-10-18.** Asked the same day; docx4j's
+  session reran CR-043 section 14's python column with `PortsAgreement` (docx4j `1b3a68ccf`, this
+  repository at `e690217`, read only) over the eleven fixtures: through
+  `revisions.accept_all` / `reject_all`, **0 lines differ in all 22 comparisons** (11 fixtures,
+  accept and reject; section 14 had had the probe at 42 / 60). Through `Body.accept_all`, the
+  probe differs by 12 / 18 lines and check 18 by 2 / 0, the rest 0, as measured here (11.4), and
+  that session's grouping by story puts every one of those lines in a header, a footer, the
+  footnotes or the endnotes, none in the main story: section 3.3's design. On this package's
+  suggestion its `py_resolve.py` now calls `revisions.accept_all` / `reject_all` ("python: every
+  story" in its README), and section 14 carries a dated note of the rerun and of the departures
+  of 10.3 item 1 and 11.3; those edits are in docx4j's working tree, the user to commit.
 - **CR-011**: the text and Markdown views by resolution (12.3).
 - **The `w:date` convention** (10.3 item 1), if the user wants it: Word's local wall-clock
   `w:date` and `w16du:dateUtc`, the one difference left in 12.2's markup.
