@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-"""Write the eleven documents the Word acceptance checklist needs.
+"""Write the eleven artefacts the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Eleven files, each testing a different half of the save path:
+Eleven artefacts in thirteen files (8 has an accepted and a rejected copy beside
+it), each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -59,8 +60,12 @@ Eleven files, each testing a different half of the save path:
     half of section 3.9.
 ``8-tracked-changes.docx``
     a **loaded** document edited through CR-003 Phase F's content API with the
-    mode on: a replacement, an inserted paragraph, a deleted paragraph, a bold
-    run, a table row added and one deleted, and a comment on the replacement.
+    mode on: a replacement, an inserted paragraph, a paragraph appended after a
+    Heading 1 (the final-mark rule and check 29's ``w:pPrChange``), a deleted
+    paragraph, a bold run, a table row added and one deleted, and a comment on
+    the replacement. Beside it ``8-tracked-changes-accepted.docx`` and
+    ``8-tracked-changes-rejected.docx``: the same document resolved by CR-010's
+    ``revisions.accept_all`` and ``reject_all``, each listing nothing.
 ``9-template-filled.docx``
     ``samples/invoice2013.docx`` --- a Word-authored template with twenty
     bindings over ``/customXml/item1.xml`` --- **filled** through CR-003 Phase
@@ -396,8 +401,15 @@ def comments(out: Path) -> Path:
     return target
 
 
-def tracked_changes(out: Path) -> Path:
-    """8. A loaded document edited through the Phase F content API, tracking on."""
+def tracked_changes(out: Path) -> list[Path]:
+    """8. A loaded document edited through the Phase F content API, tracking on.
+
+    With two copies beside it, the same document resolved by CR-010's engine:
+    ``8-tracked-changes-accepted.docx`` (``revisions.accept_all``) and
+    ``8-tracked-changes-rejected.docx`` (``revisions.reject_all``), each saved and
+    read back listing nothing.
+    """
+    from docx4j_py.model import revisions
     from docx4j_py.model.content import Author
 
     target = out / "8-tracked-changes.docx"
@@ -413,10 +425,14 @@ def tracked_changes(out: Path) -> Path:
         style="TableGrid",
     )
     table.header_row_count = 1
-    # the last block of the body is a paragraph, so that the paragraph appended
-    # below has one before it to carry its mark (CR-003 section 16.10)
     body.insert_paragraph("This paragraph will be deleted, with its mark.")
     body.insert_paragraph("This paragraph will be made bold.")
+    # the last block of the body is a paragraph, so that the paragraph appended
+    # below has one before it to carry its mark (CR-003 section 16.10), and a
+    # Heading 1, so that the appended paragraph records the heading it took the
+    # old final mark from, as Word's Enter after a heading does (check 29,
+    # CR-010 section 12): Reject All must give the heading back as a heading
+    body.insert_paragraph("A heading the appended paragraph follows", style="Heading 1")
 
     pkg.change_tracking_mode = "TrackAll"
 
@@ -428,7 +444,8 @@ def tracked_changes(out: Path) -> Path:
     # an insertion where it can be seen --- after the first paragraph, not at the
     # very end --- and one appended, which exercises the final-mark rule of
     # CR-003 section 16.10 (the appended paragraph's own mark is left alone and
-    # the mark before it is marked instead, as Word does)
+    # the mark before it, the heading's, is marked instead, as Word does) and
+    # check 29's w:pPrChange on the appended paragraph, recording Heading 1
     body.paragraphs[0].insert_paragraph(
         "Added by an agent, right after the first paragraph.", location="After"
     )
@@ -439,7 +456,19 @@ def tracked_changes(out: Path) -> Path:
     table.delete_rows(2)
 
     pkg.save(target)
-    return target
+
+    # the same document resolved by the engine, every story, as Word's Accept
+    # All and Reject All resolve it (CR-010); each must list nothing
+    written = [target]
+    for suffix, resolve in (("accepted", revisions.accept_all), ("rejected", revisions.reject_all)):
+        copy = WordprocessingMLPackage.load(target)
+        resolve(copy)
+        resolved = out / f"8-tracked-changes-{suffix}.docx"
+        copy.save(resolved)
+        left = revisions.tracked_changes(WordprocessingMLPackage.load(resolved))
+        assert left == [], f"{resolved.name} still lists {left}"
+        written.append(resolved)
+    return written
 
 
 def template_filled(out: Path) -> Path:
@@ -672,11 +701,12 @@ def main(argv: list[str] | None = None) -> int:
         lists,
         python_docx_facade,
     ):
-        target = build(out)
-        with zipfile.ZipFile(target) as zf:
-            bad = zf.testzip()
-        size = target.stat().st_size
-        print(f"{target.relative_to(ROOT)}  {size:>8,} bytes  {'BAD' if bad else 'ok'}")
+        built = build(out)
+        for target in built if isinstance(built, list) else [built]:
+            with zipfile.ZipFile(target) as zf:
+                bad = zf.testzip()
+            size = target.stat().st_size
+            print(f"{target.relative_to(ROOT)}  {size:>8,} bytes  {'BAD' if bad else 'ok'}")
 
     print()
     print("Open each in Word. The checklist is tests/README.md.")
