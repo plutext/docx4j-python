@@ -12,33 +12,31 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 ### Added
 
 - **Tracked changes listed, accepted and rejected as Word resolves them**
-  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), Phase A,
-  section [10](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#10-phase-a-implementation-notes-2026-10-16)):
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), Phases A to C,
+  sections [10](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#10-phase-a-implementation-notes-2026-10-16)
+  to [12](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#12-phase-c-implementation-notes-2026-10-18)):
   `docx4j_py.model.revisions`, the port of docx4j 17.3.3's `org.docx4j.model.revisions` (its
   CR-043), with `tracked_changes(pkg)`, `accept_all(pkg)` and `reject_all(pkg)` over **every
   story** --- the main document, footnotes, endnotes, comments, headers and footers --- and inside
   them content controls, text boxes in both branches of `mc:AlternateContent` (made typed for the
-  resolution and written back in place, the rest of the branch untouched) and equations. Held to
-  Word 365's own Accept All and Reject All saves: against the eleven fixtures of docx4j's
-  agreement run, copied into `tests/fixtures/revisions/`, no line of the structural comparison
-  differs, the table, row, cell and section properties included since Phase B.
-- **Table, cell and section records resolved; filters and a report** ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md),
-  Phase B, section
-  [11](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#11-phase-b-implementation-notes-2026-10-16)):
-  the port of docx4j CR-043 phase 2. A table's property records (`w:tblPrChange`,
-  `w:tblGridChange`, `w:tblPrExChange`, `w:trPrChange`, `w:tcPrChange`) are one change per table
-  when they change anything, accepted by dropping them and rejected by restoring the table, grid,
-  rows and cells wholesale, a merged grid collapsed as Word's save collapses it; a section's
-  `w:sectPrChange` rejected is merged over the section; `w:cellIns` / `w:cellDel` remove a cell
-  and widen its neighbour; records that change nothing, `w:cellMerge`, `w:numberingChange` and
-  `w:numPr/w:ins`, which nothing lists, are swept by `accept_all` / `reject_all`. `accept()` and
-  `reject()` on any listed change now work, and `accept_all()` counts every change listed.
+  resolution and written back in place, the rest of the branch untouched) and equations. The
+  content API's `get_tracked_changes()`, `accept()`, `reject()`, `accept_all()` and
+  `reject_all()` are views over it. Every kind listed is resolved, a table's property records
+  among them (`w:tblPrChange`, `w:tblGridChange`, `w:tblPrExChange`, `w:trPrChange`,
+  `w:tcPrChange`: one change per table when they change anything, accepted by dropping them and
+  rejected by restoring the table, grid, rows and cells wholesale, a merged grid collapsed as
+  Word's save collapses it), a section's `w:sectPrChange` (rejected, merged over the section) and
+  `w:cellIns` / `w:cellDel` (a cell removed and its neighbour widened); records that change
+  nothing, `w:cellMerge`, `w:numberingChange` and `w:numPr/w:ins`, which nothing lists, are swept.
   `TrackedChangeFilter` (authors, types, kinds, a date range, parts, a content control's content
   or a bookmark's extent) is taken by `revisions.accept_all`, `reject_all` and
   `tracked_changes(pkg, filter)`, and applies to single changes, so a group partly matched has
-  only its matching pieces resolved; a plain callable is still a filter. `revisions.report(pkg)`
-  counts by kind, author and part, with `to_dict()`. Phase A's `TrackedChange.resolvable`,
-  `is_resolvable` and the `tracking.unsupported` refusal are gone, unreleased.
+  only its matching pieces resolved; a plain callable is a filter too. `revisions.report(pkg)`
+  counts by kind, author and part, with `to_dict()`. Held to Word 365's own Accept All and Reject
+  All saves: against the eleven fixtures of docx4j's agreement run, copied into
+  `tests/fixtures/revisions/`, no line of the structural comparison differs, the table, row, cell
+  and section properties included, by this package's port of docx4j's `DocumentDescription` and
+  by docx4j's own.
 - **`Range.hyperlink`** ([CR-003](docs/change-requests/CR-003-content-api.md), section
   [21](docs/change-requests/CR-003-content-api.md#21-rangehyperlink-2026-10-12)): Office JS's read
   and write of a link, the one member docx4j-core-ts added to the Office JS subset the content API
@@ -74,8 +72,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   paragraph join keeps the **next** paragraph's properties and `w14:paraId` in both directions,
   as Word's does (docx4j CR-043's C10 and C10b), where 0.1.0 kept the first one's id on an accept
   and the original paragraph on a reject; so rejecting a paragraph this package appended at the
-  end of a body leaves the appended paragraph's properties, as Word's Reject All of the same
-  markup does. A date is `w16du:dateUtc` where the markup has it, else `w:date` as written.
+  end of a body leaves the appended paragraph's element, with the properties it records (below:
+  a heading's, since Phase C). A date is `w16du:dateUtc` where the markup has it, else `w:date`
+  as written. `OutlineStats.tracked_changes` counts the same grouped listing, over the stories
+  the outline shows (the body's, and the package outline's headers and footers too), and is 0
+  once `accept_all` has run; `describe()`'s `tracking_on` is unchanged, since accepting and
+  rejecting never change `w:trackRevisions`.
 - **The colour merge rules are docx4j 17.3.3's** ([CR-009](docs/change-requests/CR-009-theme-colours.md),
   Phase A, section [10](docs/change-requests/CR-009-theme-colours.md#10-phase-a-implementation-notes-2026-10-12)):
   in the property catalogue a `w:color` or `w:u` stating only a theme colour is no longer empty,
@@ -102,8 +104,8 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md); CR-003
   section 22.3): after `accept_all()` 0.1.0 listed no change while revisions Word still shows
   remained in text boxes, on moved and formatted paragraph marks, in table, row, cell, grid and
-  section records, at content-control markers and in equations. Each is now listed, and each but
-  the records (CR-010 Phase B) is resolved; `OutlineStats.tracked_changes` counts the same listing.
+  section records, at content-control markers and in equations. Each is now listed and resolved,
+  and `OutlineStats.tracked_changes` counts the same listing.
 - **Rejecting an inserted field takes the whole field** (docx4j CR-043's C01, C16), where 0.1.0
   left a lone `w:fldChar` separator and its result with no begin and no end.
 - **Equations' tracked changes are listed and resolved**, in all three of Word's forms: inside
@@ -120,6 +122,14 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   comment whose anchor goes takes its `commentsExtended`, `commentsIds` and `commentsExtensible`
   entries and its replies with it; an image, a dropped section's headers and footers or a
   hyperlink's relationship goes when nothing references it any more.
+- **Rejecting a paragraph appended after a heading gives the heading back**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section 12;
+  docx4j-core-ts's check 29). With tracking on, a paragraph appended at the end of a body or a cell
+  takes the old final mark (CR-003 section 16.10), as Word's Enter at the end of a paragraph does;
+  when its properties differ from the paragraph before it --- a Normal paragraph after a Heading 1
+  --- it now records that paragraph's in a `w:pPrChange`, the markup Word writes, and a style set
+  on it afterwards (`insert_paragraph(style=...)`, the facade's `add_heading`) is recorded against
+  them. 0.1.0 wrote none, so Reject All, in Word as here, left the heading a Normal paragraph.
 - **Headers, footers, notes and comments are resolved too**, by
   `docx4j_py.model.revisions.accept_all(pkg)` / `reject_all(pkg)`, as Word's Accept All covers
   them; `Body.accept_all()` resolves its own story, with Word's side effects in other parts.

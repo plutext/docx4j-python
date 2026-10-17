@@ -10,7 +10,11 @@ records, which are Phase B's. **Phase B implemented 2026-10-16** (section 11): t
 row, cell and section records resolved, the legacy forms swept, `TrackedChangeFilter` and
 `report(pkg)`; against Word's saves of the eleven fixtures (fifteen comparisons) **no line
 differs with the records shown**, by this package's `DocumentDescription` port and by docx4j's
-own; Phase C to come.
+own. **Phase C implemented 2026-10-18** (section 12), awaiting the user's Word check of artefact
+8: the content API's counts held to the engine's listing, the text and Markdown views' agreement
+moved to CR-011 by the user's decision (their disagreement today pinned), the tracker's
+appended paragraph in Word's check 29 form, artefact 8 regenerated with an accepted and a
+rejected copy, and the documentation; the fifteen comparisons still at zero.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -230,6 +234,12 @@ Tests: docx4j's phase 2 tests (75 there).
   - `to_markdown(view="accepted")` reads as `accept_all()` would leave the document, and
     `view="markup"` shows every listed change.
   - A test holds the accepted view's agreement over the fixtures.
+
+  *The second and third items moved to CR-011 (section 12.3), by the user's decision of
+  2026-10-17 on the portfolio's text-extraction paper (`docs/text_extraction_behaviour_model.md`,
+  portfolio `2d8fd36`): its section 3.1 defines the views by Word's resolutions, and its section 10
+  gives this package a CR-011 that "folds CR-010 phase C's Markdown agreement", sequenced after
+  docx4j CR-046 phase 0's goldens. Phase C pins today's disagreement instead, measured.*
 - **The README's audit-trail example** and `docs/pypi-readme.md` are updated where the counts
   changed, and executed by `tests/test_readme.py`.
 - **`CHANGELOG.md`** gets a "Changed" entry for the grouping, the counts and the stale view, and a
@@ -271,6 +281,8 @@ measured rules from the start.
 ## 9. Questions
 
 Each recommendation follows docx4j's decision on the same question where it made one.
+*Phase C has landed (2026-10-18): the seven now stand as decided, on these recommendations,
+unless the user reopens them.*
 
 1. **Q1: the package and names**: `docx4j_py.model.revisions`, module functions
    `tracked_changes`, `accept_all`, `reject_all` and `report`, and docx4j's class names as
@@ -555,7 +567,8 @@ which is what carries the original properties back; the tracker writes none, so 
 append at the end of a Heading 1 leaves a Normal paragraph, in Word and here. That is the
 tracker's to fix (write check 29's `w:pPrChange`, or give the appended paragraph the properties it
 takes over), outside this CR's scope (section 2); Phase F's 16.10 heuristic hid it on this
-package's side only.
+package's side only. *Done in Phase C (section 12.2): the tracker writes
+check 29's `w:pPrChange`.*
 
 ### 10.7 What Phase B needs
 
@@ -766,4 +779,230 @@ regenerated with an accepted and a rejected copy and a Word check, CR-003 sectio
 pointed here, and the hand-off to docx4j's session to rerun the agreement --- where python's column
 through the body's verbs is now the other stories' revisions alone (11.4). Beyond it, if the user
 wants them: the tracker's appended-paragraph form (check 29, 10.6) and the `w:date` convention
-(10.3 item 1).
+(10.3 item 1). *Phase C (section 12) did all of it but the Markdown items, which moved to CR-011,
+the agreement rerun, which is docx4j's session's, and the `w:date` convention, left out.*
+
+## 12. Phase C implementation notes (2026-10-18)
+
+Phase C is done, on section 9's recommendations, with section 6's two Markdown items moved to
+CR-011 by the user's decision (12.3). The content API's counts are held to the engine's listing
+(12.4); the text and Markdown views' disagreement with `accept_all` is measured and pinned for
+CR-011; the tracker writes Word's check 29 form for a paragraph appended at the end of a
+container, which section 10.6 left open, so that rejecting an append after a heading gives the
+heading back (12.2); acceptance artefact 8 ends with a heading and has an accepted and a rejected
+copy beside it, with a script to put Word's own saves against them (12.5); and the CHANGELOG,
+CR-003 sections 16 and 22 and CR-006 section 7 point here. The fifteen comparisons with Word's
+saves are still at zero, by `description.py` and by docx4j's Java `DocumentDescription`. **No
+Word check has been made**: the user's check of artefact 8 is what this phase waits on.
+
+```python
+from docx4j_py.model import revisions
+from docx4j_py.model.content import Author
+
+pkg.author = Author("Author B")
+pkg.change_tracking_mode = "TrackAll"
+pkg.body.insert_paragraph("New")     # the body ends with a Heading 1: Word's 29a form
+# the heading:  <w:pPr><w:pStyle w:val="Heading1"/><w:rPr><w:ins .../></w:rPr></w:pPr>
+# "New":        <w:pPr><w:pPrChange ...><w:pPr><w:pStyle w:val="Heading1"/></w:pPr></w:pPrChange></w:pPr>
+revisions.reject_all(pkg)            # one paragraph, "Case a heading", Heading 1
+```
+
+### 12.1 What landed
+
+| piece | where | lines | signature |
+|---|---|---:|---|
+| check 29 in the tracker | `model/content/tracking.py` | 1,311 (was 1,149) | `final_mark_properties(tracker, previous)` (the old final mark's properties, read before the shift), `record_final_mark(tracker, paragraph, original)` (29a's `w:pPrChange` when they differ), `same_properties(p_pr, original)` (`CT_PPrBase`'s members compared in place), `holds_final_mark(paragraph, container)`, `settle_final_mark(tracker, paragraph, container)`, `hand_back_final_mark(tracker, leaving, previous)`; `track_inserted_blocks` calls the first two |
+| the paragraph view | `model/content/paragraph.py` | 1,682 (was 1,661) | `_p_pr()` records a `w:pPrChange` on the paragraph holding the old final mark, as on one the document had; `formatting(...)` settles the record after a write (`_settle_final_mark`); `_tracked_delete` hands the record back when an append is taken back |
+| `OutlineStats.tracked_changes`'s docstring | `model/content/reports.py` | +5 | it said "`w:ins`, `w:del` and `w:rPrChange` elements", stale since CR-003 Phase F; now the engine's listing over the outline's stories |
+| acceptance artefact 8 | `scripts/acceptance.py` | 717 (was 687) | a Heading 1 ends the body before the mode goes on; `8-tracked-changes-accepted.docx` and `8-tracked-changes-rejected.docx` written beside it by `revisions.accept_all` / `reject_all`, each asserted to list nothing when read back; a build may return several files |
+| Word's saves against ours | `scripts/compare_word_resolution.py` (new) | 97 | `compare(ours, word, *, records=True) -> (lines, diff)`; `main()`: artefact 8's two pairs (`out/acceptance/8-tracked-changes-{accepted,rejected}.docx` against `out/acceptance-word/8-word-{accepted,rejected}.docx`) or any pairs given; exit 0, 1 on a difference, 2 on a missing file |
+| the tests | `tests/revisions/test_appended_paragraph.py`, `test_content_api.py`, `test_compare_word_resolution.py` (new) | 300, 119, 75 | 12.5 |
+| the fixtures | `tests/fixtures/revisions/core-ts/check29/` | --- | `29-input.docx`, `29a-heading-end-tracked.docx`, `29b-normal-end-tracked.docx`, from docx4j-core-tests at `00614748e` (docx4j-core-ts's check 29, `25b50f5`); provenance in `tests/README.md` |
+
+`codegen/generate.sh --check` reproduced the model byte for byte; `KEEP` holds `model` whole.
+Nothing in `docx4j_py/model/revisions/` changed: the engine already resolves Word's 29a markup as
+Word does, so check 29 was the tracker's alone.
+
+### 12.2 Check 29, as built
+
+docx4j-core-ts's check 29 (its CR-002, "Enter at the end of a paragraph") measured Word's Enter
+at the end of a paragraph with tracking on: the paragraph before the caret ends with the **new**
+mark, inserted by the typist, and the new line keeps the **old** one. After a Heading 1, whose
+next style is Normal, the new line turns Normal and Word records that in a `w:pPrChange` on it
+holding Heading 1 (29a); after a Normal paragraph, nothing (29b). CR-003 section 16.10's shift
+already gave an appended paragraph the old final mark; the tracker now gives it the record too.
+
+1. **Where**: wherever 16.10's shift applies --- the insert's paragraphs end their container and
+   a paragraph the document had stands before them --- which is every route that appends, since
+   all go through `Body.insert_element`: `Body.insert_paragraph`, `Paragraph.insert_paragraph`
+   (`"After"` on the last paragraph), `insert_xml`, `insert_ooxml`, `insert_markdown`, a cell's
+   and a content control's `insert_paragraph`, and the facade's `add_paragraph` and
+   `add_heading`. In the middle of a container nothing changes: each inserted paragraph carries
+   its own mark, and there is no old mark to record.
+2. **What is recorded**: the properties of the paragraph that ended the container before the
+   insert, as `CT_PPrBase` holds them (the mark's `w:rPr`, the `w:sectPr` and any record left
+   out) --- or what that paragraph's own `w:pPrChange` records, the first original winning as
+   `record_p_pr_change` has it. A record this session wrote on a paragraph it appended earlier
+   is the old mark's and moves on with it: two appends after a heading leave the record on the
+   second only.
+3. **When**: only when the insert's last paragraph's properties differ, member by member.
+4. **After the insert**: the paragraph holding the old final mark (`holds_final_mark`: last in
+   its container, its own mark unmarked, the mark before it inserted) records a `w:pPrChange` on
+   a property write as a paragraph the document had does, where a paragraph this session
+   inserted otherwise records none (16.12 item 4). So `insert_paragraph(style=...)` and the
+   facade's `add_heading`, which set the style after the insert, record it against the old
+   mark: a Heading 2 appended after a Normal paragraph records Normal's empty `<w:pPr/>`. A write that
+   brings the paragraph back to what its record holds drops the record (`settle_final_mark`, after
+   every write through `formatting`), so `insert_paragraph("New", style="Heading 1")` after a
+   heading records nothing, as 29b would have it.
+5. **Taken back**: `Paragraph.delete()` on an appended paragraph (this author's own insertion,
+   16.10) hands its record back to the paragraph before it when that is one this session
+   appended; a paragraph the document had keeps its own properties, which are the old mark's.
+6. **Resolved**: by the engine unchanged. Rejected, the record restores Heading 1 and the join
+   keeps the next paragraph's properties (C10), so the heading comes back; accepted, the record
+   goes and the appended paragraph keeps its own.
+
+The markup, ours over 29-input cut after the heading, beside Word's 29a (ids and dates aside):
+
+| | the heading's `w:pPr` | the new paragraph |
+|---|---|---|
+| ours | `<w:pStyle w:val="Heading1"/><w:rPr><w:ins w:id="2" w:author="Author B" w:date="…"/></w:rPr>` | `<w:pPr><w:pPrChange w:id="3" w:author="Author B" w:date="…"><w:pPr><w:pStyle w:val="Heading1"/></w:pPr></w:pPrChange></w:pPr><w:ins w:id="1" …><w:r><w:t>New</w:t></w:r></w:ins>` |
+| Word's 29a | `<w:pStyle w:val="Heading1"/><w:rPr><w:ins w:id="0" w:author="Author B" w:date="…" w16du:dateUtc="…"/></w:rPr>` | `<w:pPr><w:pPrChange w:id="1" w:author="Author B" w:date="…" w16du:dateUtc="…"><w:pPr><w:pStyle w:val="Heading1"/></w:pPr></w:pPrChange></w:pPr><w:ins w:id="2" …><w:r><w:t>New</w:t></w:r></w:ins>` |
+
+The one difference is `w16du:dateUtc`, which this tracker does not write (10.3 item 1, out of
+this phase's scope). Described by `description.py` and by docx4j's Java `DocumentDescription`,
+ours and Word's are identical for 29a and 29b, tracked, accepted and rejected: six pairs, by each.
+
+Departures, each where Word is unmeasured:
+
+1. **Another author's record on the paragraph before** is what the new record records, and is
+   left where it is. Word's 29d moves an old mark's own revision on to the new line; this does
+   not move another author's revision, only this session's own record (item 2).
+2. **The mark's run properties** (`w:pPr/w:rPr`) are neither compared nor recorded: 29a's heading
+   has none, and `w:pPrChange` cannot hold them.
+3. **With no paragraph before** (an empty container, or a table) nothing is recorded, as 16.10
+   marks nothing there.
+
+### 12.3 The views: moved to CR-011
+
+Section 6 asked for `to_markdown(view="accepted")` to read as `accept_all()` would leave the
+document, `view="markup"` to show every listed change, and a test of the accepted view's
+agreement. On 2026-10-17 the user accepted every recommendation of the portfolio's
+text-extraction paper (`../docx4j-portfolio/docs/text_extraction_behaviour_model.md` section 9,
+portfolio `2d8fd36`). Its section 3.1 defines the views **by resolution** --- `accepted` is the
+text after Accept All on every story --- where both ports filter runs by their holders, and its
+section 10 gives docx4j-python a CR-011, "one text model replacing the five", which "folds CR-010
+phase C's Markdown agreement"; its section 10a sequences the ports after docx4j CR-046 phase 0's
+goldens. So the three items are CR-011's, and none was built here.
+
+What this phase does instead is pin the disagreement, measured over the eleven agreement
+fixtures: `get_text(view="accepted")` and `to_markdown(view="accepted")` against the same view
+after `revisions.accept_all`. Lines differing (ndiff's `+` and `-` lines):
+
+| fixture | `get_text` | `to_markdown` | what |
+|---|---:|---:|---|
+| `cr043-tracked` | 15 | 14 | C06's, C09's and C10b's deleted marks not joined; C13's deleted table and a deleted row of C14's left as empty lines |
+| `revisions-word15` | 7 | 5 | a deleted mark not joined ("Join this paragraph with the next one."); a moved paragraph's emptied source and a deleted row's three cells as lines |
+| `review-for-word` | 7 | 5 | the same deleted mark; a deleted row's cells and a deleted paragraph as lines |
+| `33a-deleted` | 1 | 2 | the deleted heading left (an empty line; `##` in the Markdown) |
+| `22-deleted` | 5 | 6 | the paper's example: `Four.\nFive \neight.` for `Four.Five eight.`; "Two." as an empty line |
+| the other six | 0 | 0 | |
+
+`tests/revisions/test_content_api.py` holds the six that agree and pins the five that differ as
+`xfail(strict=True)`, each with its reason, for both views: CR-011 closing one turns its test
+into an unexpected pass, which fails the suite until the pin is removed. Measured too and not
+pinned, for CR-011: `get_text(view="original")` against the text after `revisions.reject_all`
+differs on three (`cr043-tracked` 13 lines, `revisions-word15` 7, `review-for-word` 10). The
+`markup` view was not measured against the listing: what it should show for a mark, a row or a
+property change is the paper's D9, CR-011's to build.
+
+### 12.4 The counts, as found
+
+`OutlineStats.tracked_changes` already counted the engine's listing (Phase A rewired it through
+`count_tracked_changes`, the same `Lister` over `body_stories(body)` that `get_tracked_changes()`
+lists), and `describe()`'s `tracking_on` reads `w:trackRevisions`, which no resolution writes
+(section 3.3). Both hold over the eleven fixtures, and `test_content_api.py` now says so:
+
+- **every body's** `outline()` count is what that body's `get_tracked_changes()` lists, and what
+  the engine lists in that body's part;
+- **the package's** `outline()` adds the headers' and footers', which are the stories an outline
+  shows: on the probe 32 of `pkg.get_tracked_changes()`'s 37, the five endnote revisions outside
+  it; on check 18's file 26 of 28, the two footnote revisions outside it; elsewhere equal.
+  `pkg.get_tracked_changes()` and `revisions.report(pkg).total` count every story;
+- after `revisions.accept_all`, saved or not, every count is 0;
+- `tracking_on` is `change_tracking_mode != "Off"`, and is the same after `accept_all` and
+  `reject_all`, saved and loaded.
+
+The only change was the field's docstring (12.1). Whether the package outline should count the
+notes' and comments' revisions as well is a question for the user, not a defect: an outline
+shows neither, and its other counts (paragraphs, words) are of the same stories.
+
+### 12.5 The numbers
+
+**The tests.** `tests/revisions/`: **454** (360 before), of which 283 read docx4j's sibling
+checkout and skip without it, as before.
+
+| file | tests | what |
+|---|---:|---|
+| `test_appended_paragraph.py` (new) | 19 | check 29: the `w:pPr` written beside 29a's; 29a and 29b described as Word's files are (the paragraphs after the case cut from both); resolved both ways as Word's markup resolves; Reject All giving one Heading 1, Accept All both paragraphs with their own properties; every route that appends, the facade's and a table cell's included; `Paragraph.insert_paragraph("After")` copying a heading and needing no record; a style set after the insert; a fragment; the record moving with the old mark and coming back when the append is taken back; none in the middle |
+| `test_content_api.py` (new) | 55 | 12.4's counts (11) and `tracking_on` both ways (22); 12.3's views (22: 12 passing, 10 `xfail`) |
+| `test_compare_word_resolution.py` (new) | 20 | the script: each of `test_word_saves.py`'s 17 cases resolved, saved and compared with Word's save at 0 lines; artefact 8's layout with the probe's files; a difference counted and shown; pairs given, a save missing |
+
+The fast suite is **2,442 passed, 8 skipped, 10 xfailed** (2,358 passed and 8 skipped before),
+the whole suite **2,482 passed, 8 skipped, 10 xfailed** (2,398 and 8).
+
+**Word's saves.** The fifteen comparisons rerun (each agreement fixture resolved by
+`revisions.accept_all` / `reject_all`, saved, described against Word's save): **0 lines** in every
+one, with the records shown and without, by `description.py` and by docx4j's Java
+`DocumentDescription` --- as Phase B left them. `test_word_saves.py` holds the same.
+
+**Tracked appends**, 1,000 paragraphs appended at the end of a created body with tracking on
+(the median of five, this machine; before is `da7f8fd`):
+
+| appends | before | after |
+|---|---:|---:|
+| Normal, nothing recorded | 58 ms | 63 ms |
+| alternating Heading 1 and Normal, every append recording | 69 ms | 87 ms |
+| `style="Heading 1"` on each after a heading: a record written at the insert, settled by the style | 76 ms | 108 ms |
+
+The first version deep-copied both `w:pPr`s to compare them (111 ms alternating);
+`same_properties` compares members in place, and the record is copied only when it is written.
+The listing and resolving timings are Phase B's: nothing in the engine changed.
+
+**The acceptance artefacts.** `out/acceptance/` was copied aside, regenerated with
+`scripts/acceptance.py` and compared with `scripts/compare_acceptance.py` over the eleven
+artefacts both have: 147 entries compared, **ten artefacts identical** once the dates are
+scrubbed (1 to 7 and 9 to 11), and **artefact 8 differing**, in exactly `word/document.xml` (the
+heading, its inserted mark, the record on the appended paragraph, the ids after them) and
+`word/styles.xml` (the `Heading1` definition the style setter adds, the source defining none).
+Artefact 8 lists 9 changes: the replacement's two, the paragraph inserted near the top, the
+deleted and inserted rows, the deleted paragraph, the bold run, the appended paragraph with the
+heading's mark (`"\rAnd one appended at the very end."`), and the appended paragraph's record.
+Its two copies list none, read back. Rejected, the body ends with "A heading the appended
+paragraph follows" in Heading 1 (before this phase, Normal); accepted, with that heading in
+Heading 1 and the appended paragraph after it in Normal. The regeneration is recorded in `tests/README.md`, and artefact
+8's row says what to look for.
+
+### 12.6 Tests changed
+
+| test | was | is | why |
+|---|---|---|---|
+| `tests/content/test_tracking.py::test_rejecting_an_appended_paragraph_joins_it_into_the_one_after` | `reject_all() == 1`; the survivor is the appended paragraph with its own properties, `style_id != "Heading1"`, "as Word's reject leaves it" | `== 2` (the group and the record); the survivor is still the appended paragraph (its id, C10), now `style_id == "Heading1"`, and no `w:pPrChange` is left | the appended paragraph records the heading it followed, as Word's 29a does (12.2); 10.6 had named this as the tracker's to fix |
+| `tests/content/test_tracking.py::test_rejecting_what_was_appended_at_the_end_follows_word` (3 documents) | its docstring: the last paragraph "carries the appended paragraph's properties", the missing `w:pPrChange` being the tracker's, out of scope | one assertion more: the last paragraph's `w:pPr` is the source's last paragraph's, and the docstring says why | `sample-docx.docx`'s last paragraph states `w:ind w:left="0"`, which the appended paragraph now records and the reject gives back; the assertion fails on the tracker before this phase, for that document |
+
+No other existing test changed. The invariant test beside them (`test_rejecting_every_tracked_verb_gives_the_document_back`,
+the body canonically the source after every tracked verb and `reject_all()`) inserts in the
+middle since Phase A (10.6), and passes unchanged.
+
+### 12.7 What is left
+
+- **The user's Word check of artefact 8** and its two copies (`tests/README.md`, artefact 8's
+  row): Reject All in Word gives the heading back as Heading 1, Accept All leaves the appended
+  paragraph Normal, and each copy opens without a repair prompt and lists no revisions. If
+  Word's own Accept All and Reject All are saved as `out/acceptance-word/8-word-accepted.docx`
+  and `8-word-rejected.docx`, `scripts/compare_word_resolution.py` puts them against the copies.
+- **The hand-off to docx4j's session**, which the user makes: rerun the agreement and record
+  python's column; through the body's verbs it is the other stories' revisions alone (11.4).
+- **CR-011**: the text and Markdown views by resolution (12.3).
+- **The `w:date` convention** (10.3 item 1), if the user wants it: Word's local wall-clock
+  `w:date` and `w16du:dateUtc`, the one difference left in 12.2's markup.

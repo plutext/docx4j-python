@@ -2140,6 +2140,15 @@ Phase G; **71** of the new ones are `tests/content/test_tracking.py` (65) and
 was needed, the model was not regenerated and `codegen/generate_el.py` did not change at all:
 every Phase F name is reached through `docx4j_py.model.content`.
 
+*Since [CR-010](CR-010-tracked-changes-as-word-resolves-them.md) (2026-10-16 to 2026-10-18,
+its sections 10 to 12) the reading half is a view over `docx4j_py.model.revisions`, the port of
+docx4j CR-043: the listing groups as Word's Review pane does, `accept()`, `reject()`,
+`accept_all()` and `reject_all()` resolve as Word's Accept All and Reject All do, and Phase F's
+`TrackedChangeTarget`, `folded_in_row` and `join_with_next` are gone (CR-010 section 10.1;
+the Phase F tests Word contradicts are changed in its section 10.6). The writing half, the
+tracker, stays; CR-010 Phase C gave it check 29's form for an appended paragraph (16.10's
+pointer, CR-010 section 12).*
+
 ```python
 from docx4j_py import load
 from docx4j_py.model.content import Author
@@ -2480,6 +2489,14 @@ paragraph**, where a human can see it, a second one is appended at the very end 
 final-mark rule is exercised, and the table is written before both so that the body ends with a
 paragraph. Accepting gives the intended document, rejecting gives back exactly the document that
 was there before the mode went on, and the comment survives both.
+
+*CR-010 (2026-10-16 and 2026-10-18) took 16.10 further in two places. The engine's join keeps
+the **next** paragraph's properties and id in both directions, as Word's does (CR-010 section
+10.6, C10), so `keep_properties` went with Phase F's `join_with_next`. And Word's own form for
+Enter at the end of a paragraph records, on the new line, the properties the old mark carried
+when they differ --- a `w:pPrChange` holding Heading 1 after a heading (docx4j-core-ts check 29,
+29a) --- which this tracker now writes for the appended paragraph, so rejecting an append after a
+heading gives the heading back (CR-010 section 12).*
 
 ### 16.11 The last of it: the mark goes with the break it recorded
 
@@ -4795,6 +4812,10 @@ Three findings go further than the hand-off:
 ### 22.4 What stays open
 
 *Scheduled by the user on 2026-10-16 as [CR-010](CR-010-tracked-changes-as-word-resolves-them.md), whose phases follow the order below.*
+*Implemented: CR-010 Phases A, B and C (its sections 10, 11 and 12; 2026-10-16 to 2026-10-18).
+Every item below is done, and against Word's saves of the eleven agreement fixtures no line of
+the structural comparison differs, by this package's `DocumentDescription` port and by docx4j's;
+rerunning docx4j's agreement run, and recording python's column, is docx4j's session's.*
 
 Nothing was changed. Phase F (section 16) built tracking to Office JS's API over the body, and
 CR-043 is now the measured rule set for every story. Bringing this package to it is new work for

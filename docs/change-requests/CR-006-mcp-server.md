@@ -156,6 +156,18 @@ servers; the shared tool names and path policy make that unremarkable. `anonymiz
 Phase A is ready now and is the MCP server's first release, as CR-003 section 8 said of its
 phases B, D and K.
 
+The tracked-change tools of section 3 --- `get_tracked_changes`, `accept_all` and `reject_all`
+--- are backed by **`docx4j_py.model.revisions`** ([CR-010](CR-010-tracked-changes-as-word-resolves-them.md),
+implemented 2026-10-18): the listing groups as Word's Review pane does and covers every story,
+and accepting or rejecting resolves as Word's Accept All and Reject All do, held to Word's own
+saves. Over a document, the tools call the package's verbs --- `pkg.get_tracked_changes()`,
+`revisions.accept_all(pkg)` and `revisions.reject_all(pkg)`, every story --- rather than the
+body's, which resolve the main story only (CR-010 section 3.3); each change's `to_dict()` is the
+result row, with its `part`, and the count is what the verbs return. `TrackedChangeFilter` and
+`revisions.report(pkg)` are there for a tool that takes an author or wants a summary, and the
+`outline` tool's `stats.tracked_changes` counts the same listing over the stories an outline
+shows.
+
 A create-chart tool is not in this contract yet. If one is added, docx4j's CR-036 is its natural
 backing in Java: `ChartCreator` and `ChartSettings`, handed off 2026-10-12 and recorded in CR-005
 section 8 and CR-004 section 8. That CR was finished the same day, and since its phase 3 a chart

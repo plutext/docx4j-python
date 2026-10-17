@@ -200,7 +200,12 @@ class OutlineStats:
     comments: int = 0
     """``w:comment`` elements in the comments part, if there is one."""
     tracked_changes: int = 0
-    """``w:ins``, ``w:del`` and ``w:rPrChange`` elements."""
+    """The tracked changes the engine lists, grouped as Word's Review pane groups them.
+
+    A body's ``get_tracked_changes()`` count (CR-010); the package outline's adds
+    its headers' and footers', the stories it shows. Notes and comments are
+    ``pkg.get_tracked_changes()``'s and ``revisions.report(pkg)``'s.
+    """
     skipped: int = 0
     """What lenient parsing dropped (CR-002 section 8). Zero is the norm."""
 
