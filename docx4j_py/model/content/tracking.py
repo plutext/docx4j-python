@@ -619,7 +619,8 @@ def track_inserted_blocks(tracker: ChangeTracker, elements: list, container: lis
     heading back (:func:`record_final_mark`).
     """
     inserted = {id(item) for item in elements}
-    original: PPrBase | None = None
+    original: Any = None
+    shifted = False
     for item in elements:
         if isinstance(item, Tbl):
             track_inserted_table(tracker, item)
@@ -641,8 +642,9 @@ def track_inserted_blocks(tracker: ChangeTracker, elements: list, container: lis
                 # the paragraph that ended the container until now: its mark
                 # passes to the last paragraph of this insert (check 29)
                 original = final_mark_properties(tracker, previous)
+                shifted = True
             tracker.mark_paragraph_inserted(previous)
-    if original is not None and container and isinstance(container[-1], P):
+    if shifted and container and isinstance(container[-1], P):
         record_final_mark(tracker, container[-1], original)
 
 
@@ -659,17 +661,28 @@ def _trails(container: list, index: int, inserted: set[int]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _base_of(p_pr: Any) -> PPrBase:
-    """A paragraph's properties as ``w:pPrChange`` records them: no mark, no section, no record."""
-    return deep_copy_as(p_pr, PPrBase) if p_pr is not None else PPrBase()
+#: What ``w:pPrChange`` records of a ``w:pPr``: ``CT_PPrBase``'s members, no
+#: mark, no section and no record (filled on first use).
+_BASE_FIELDS: tuple[str, ...] = ()
 
 
 def same_properties(p_pr: Any, original: Any) -> bool:
-    """True when a ``w:pPr`` holds what a recorded ``PPrBase`` does, the mark and section aside."""
-    return _base_of(p_pr) == _base_of(original)
+    """True when a ``w:pPr`` holds what a recorded ``PPrBase`` does, the mark and section aside.
+
+    Member by member, so that nothing is copied to find out (either may be None).
+    """
+    global _BASE_FIELDS
+    if not _BASE_FIELDS:
+        _BASE_FIELDS = tuple(field.name for field in dataclasses.fields(PPrBase))
+    for name in _BASE_FIELDS:
+        mine = getattr(p_pr, name, None)
+        theirs = getattr(original, name, None)
+        if mine != theirs and (mine or None) != (theirs or None):
+            return False
+    return True
 
 
-def final_mark_properties(tracker: ChangeTracker, previous: P) -> PPrBase:
+def final_mark_properties(tracker: ChangeTracker, previous: P) -> Any:
     """The properties the container's final mark had, read before an append moves it on.
 
     Word's Enter at the end of a paragraph ends that paragraph with the **new**
@@ -680,19 +693,24 @@ def final_mark_properties(tracker: ChangeTracker, previous: P) -> PPrBase:
     :meth:`ChangeTracker.record_p_pr_change` has it. A record **this session**
     wrote on a paragraph it appended earlier is the old mark's and moves on with
     it, so it is taken off `previous`, which now ends in a new mark of its own.
+
+    Returns:
+        The ``w:pPr`` (or the recorded ``PPrBase``) itself, not a copy, or None
+        for a paragraph with no properties: :func:`record_final_mark` copies it
+        only when there is something to record.
     """
     p_pr = previous.p_pr
     change = getattr(p_pr, "p_pr_change", None) if p_pr is not None else None
     if change is None:
-        return _base_of(p_pr)
-    original = _base_of(change.p_pr)
+        return p_pr
+    original = change.p_pr
     if tracker.inserted(previous) and str(getattr(change, "author", "") or "") == tracker.author:
         p_pr.p_pr_change = None
         prune_paragraph_properties(previous)
     return original
 
 
-def record_final_mark(tracker: ChangeTracker, paragraph: P, original: PPrBase) -> None:
+def record_final_mark(tracker: ChangeTracker, paragraph: P, original: Any) -> None:
     """``w:pPrChange`` on the paragraph that took the old final mark, when its properties differ.
 
     Word's form, measured (docx4j-core-ts check 29): Enter at the end of a
@@ -712,7 +730,8 @@ def record_final_mark(tracker: ChangeTracker, paragraph: P, original: PPrBase) -
         p_pr.parent = paragraph
     if p_pr.p_pr_change is not None:
         return
-    change = CTPPrChange(p_pr=original, **tracker.markup())
+    recorded = deep_copy_as(original, PPrBase) if original is not None else PPrBase()
+    change = CTPPrChange(p_pr=recorded, **tracker.markup())
     p_pr.p_pr_change = change
     link_parents(change)
     change.parent = p_pr
