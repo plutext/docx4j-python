@@ -1181,11 +1181,12 @@ def test_rejecting_what_was_appended_at_the_end_follows_word(name):
     and Word keeps the **next** paragraph's properties and ``w14:paraId``, for
     markup it did not write too (C10). So the text, the paragraphs before and
     the absence of any revision are the document's, and the body's last
-    paragraph carries the appended paragraph's properties and id, as Word's
-    Reject All leaves this markup. Phase F's tracker writes the shifted mark
-    without the ``w:pPrChange`` Word writes on the new paragraph (check 29),
-    which is what would carry the properties back; that is the tracker's, out
-    of CR-010's scope (CR-010 section 10).
+    paragraph is the appended paragraph's element, with its id. Since CR-010
+    Phase C the appended paragraph also records, in the ``w:pPrChange`` Word
+    writes on the new line (check 29), the properties of the paragraph it
+    followed when its own differ --- ``sample-docx.docx``'s last paragraph
+    states ``w:ind w:left="0"`` --- so the properties that come back are the
+    document's too (CR-010 section 12).
     """
     control = sample(name)
     control.body.reject_all()
@@ -1204,6 +1205,17 @@ def test_rejecting_what_was_appended_at_the_end_follows_word(name):
     after = [p.para_id for p in package.body.paragraphs]
     assert after[:-1] == before[:-1], "every paragraph but the last keeps its id"
     assert after[-1] == appended_id, "the last is the appended paragraph, as Word keeps the next (C10)"
+    assert _p_pr_of(package.body.paragraphs[-1]) == _p_pr_of(control.body.paragraphs[-1]), (
+        "with the properties of the paragraph it followed, which its record kept (check 29)"
+    )
+
+
+def _p_pr_of(paragraph):
+    """A paragraph's ``w:pPr`` as XML, or None."""
+    from docx4j_py.fragments import to_xml
+
+    p_pr = paragraph.element.p_pr
+    return to_xml(p_pr) if p_pr is not None else None
 
 
 @pytest.mark.parametrize("name", INVARIANT_DOCUMENTS)

@@ -278,3 +278,23 @@ def test_an_insert_in_the_middle_carries_its_own_mark_and_no_record():
     package.body.insert_paragraph("Middle", location="Start")
     package.body.paragraphs[1].insert_paragraph("After intro", location="After", style="Normal")
     assert "pPrChange" not in package.body.get_xml()
+
+
+def test_a_cell_is_a_container_too():
+    """A paragraph appended at the end of a table cell after a heading: the same record, the same reject."""
+    package = create_package()
+    table = package.body.insert_table(1, 1, values=[["In the cell"]])
+    cell = table.cell(0, 0)
+    cell.body.paragraphs[0].style = "Heading 1"
+    package.body.insert_paragraph("After the table.")
+    package.author = Author(AUTHOR)
+    package.change_tracking_mode = "TrackAll"
+    cell.insert_paragraph("New")
+
+    in_cell = cell.body.paragraphs
+    assert in_cell[-1].element.p_pr.p_pr_change.p_pr.p_style.val == "Heading1"
+    assert in_cell[-2].element.p_pr.r_pr.ins.author == AUTHOR
+    for accept, expected in ((False, ["Heading1"]), (True, ["Heading1", "Normal"])):
+        resolved = _resolved(package, accept)
+        cell_paragraphs = resolved.body.tables[0].cell(0, 0).body.paragraphs
+        assert [p.style_id for p in cell_paragraphs] == expected
