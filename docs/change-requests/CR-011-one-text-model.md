@@ -397,6 +397,12 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
     real view.*
 11. **Q11, ahead of this CR: the dropped `Requires` declaration** (section 2). *Recommended: fix
     it now as a CR-002 defect, by Q3's mechanism, with its own Word check.*
+    docx4j's CR-049 (`ba40c53f4`) fixed the same class of fault in `XmlUtils`, which kept the
+    prefixes to declare in state shared between marshals. Ours keeps none (measured 2026-10-19: a
+    fragment serialised after `document.xml` declares only what it uses, and `styles.xml` only its
+    own `mc:Ignorable` prefixes), so the gap is only a Choice prefix that nothing but `Requires`
+    names. The check is `TextsPhase2Test`'s REQ-204 snapshot, which now compares namespace
+    declarations.
 
 ## 10. Risks
 
