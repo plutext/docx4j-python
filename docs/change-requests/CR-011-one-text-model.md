@@ -11,10 +11,13 @@ questions of section 9 carry recommendations.
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
 `../docx4j-portfolio/docs/text_extraction_specification_wd.md` at WD 0.14 (portfolio `cf56600`);
 this repository's CR-010 (implemented; its ten `xfail(strict)` pins are this CR's to close); for
-Q3, a fork release. **Updated 2026-10-19** on docx4j-25's note of `a41de133b` (unpushed): the suite
-is now cited at `a41de133b`, the goldens still as reviewed at `d9acdf5e2` and unchanged, and the
-specification is at WD 0.15 (portfolio `ac06ed7`, `7affcd0`). A suite row may combine options
-(REQ-1201; sections 3.6 and 6), and the choices docx4j CR-046 phase 2 made where WD 0.8 was silent
+Q3, a fork release. **Updated 2026-10-19** on docx4j-25's notes of `a41de133b` and `3dcbb3764`
+(both unpushed). The suite is now cited at `3dcbb3764`. That commit adds a third fixture,
+`extraction-probe-structure.docx`, with cases 55 to 57 (a table of contents, an interrupted list,
+an embedded workbook's hidden sheets) and four goldens; the eight earlier goldens are unchanged
+since `d9acdf5e2`. The specification is at WD 0.15 (portfolio `ac06ed7`, `7affcd0`). A suite row
+may now combine options, and every row needs its scenario's statements (REQ-1201; sections 3.6
+and 6). The choices docx4j CR-046 phase 2 made where WD 0.8 was silent
 are decided and normative (Jason, 19 October 2026): REQ-519's addresses, apart from the text-box
 segment, which stays a proposal (section 3.2); REQ-515's plain-text property lines; REQ-604's markup
 form of an equation; and REQ-512's hidden sheets and slides under `hidden: true`.
@@ -28,22 +31,28 @@ docx4j-core-ts's own text-model CR (its CR-012) is the sibling port, not yet ope
 
 The paper (its section 1) found that the three engines answer "what is the text of this
 document?" differently, and that this package answers it five ways. Measured here on 2026-10-18
-against docx4j's conformance suite (the probe, 54 cases, 941 checks), and again on 2026-10-19
-against the suite at `a41de133b` (944 checks):
+against docx4j's conformance suite (then two fixtures, 54 cases, 941 checks), and again on
+2026-10-19 against the suite at `3dcbb3764` (three fixtures, 57 cases, 1,023 checks):
 
 - **Five paths, five answers.** Of the probe's 164 tokens in the accepted view, `get_text()` gets
   121 to their expected count, `text_of` 121, `to_markdown` 119, the revisions engine's tree walk
   123 and the python-docx facade 106; the five disagree with each other on 25 tokens.
 - **Against the suite**, an adapter over today's `get_text(view=)` and `to_markdown(view=)`, with
   docx4j's statement set advertised so that only docx4j's 51 pending checks pend: **591 pass, 299
-  fail**. At `a41de133b` the result is **591 pass, 302 fail**. The three new failures are case 53's
-  hidden slide under `embedded: true; hidden: true` in each view, content that Q7 defers.
-  docx4j's own run: 890 pass, 0 fail, 51 pending (42 need the inspector, 9 an XHTML importer).
-  At `a41de133b` it is 893 pass, 0 fail, 51 pending.
+  fail** at `d9acdf5e2`, and **648 pass, 324 fail** at `3dcbb3764`. Of the 25 new failures, 15 are
+  content that Q7 defers: case 53's hidden slide under `embedded: true; hidden: true` (3, from
+  `a41de133b`) and case 57's embedded workbook (12). Another 6 are case 55's table-of-contents
+  entries, read by default (REQ-520). The other 4 are the new fixture's goldens. docx4j's own run is
+  890 pass, 0 fail, 51 pending at `d9acdf5e2` (42 need the inspector, 9 an XHTML importer), and
+  972 pass, 0 fail, 51 pending at `3dcbb3764`.
 - **Goldens: 3 of 8** pass (the external fixture's three plain-text views); the probe's four
-  differ by 66 to 106 lines, the external Markdown by a dropped linked picture.
-- **The failures, by class** (169 in the default scenarios): text boxes and `mc:Choice` content
-  not read (49), charts and SmartArt (27), `w:altChunk` not expanded and no warning (24), notes
+  differ by 66 to 106 lines, the external Markdown by a dropped linked picture. At `3dcbb3764` the
+  count is 3 of 12. The structure fixture's three plain-text goldens fail on the table of
+  contents' two entries (REQ-520). Its Markdown golden fails on those entries and on the
+  interrupted list: the indented paragraph's continuation, `4. 2.` written `  2.`, and the second
+  list's `1)` written `1.` (REQ-703, REQ-510).
+- **The failures, by class** (169 in the default scenarios at `d9acdf5e2`): text boxes and `mc:Choice`
+  content not read (49), charts and SmartArt (27), `w:altChunk` not expanded and no warning (24), notes
   not appended (12), no plain-text markup view (10), hidden text included (9), math and ruby (9),
   no metadata channel (9), run-level `mc:AlternateContent` not read (6), bound values not read
   (6), joins, table layout and note markers in the goldens (5), comments in markup (3).
@@ -222,10 +231,9 @@ Phase D puts every shipped reader on the model (REQ-202):
 
 ### 3.6 Tests and the oracle
 
-- **The suite**, copied from docx4j at `a41de133b` into `tests/fixtures/text-extraction/`, with the
-  goldens as reviewed at `d9acdf5e2`:
-  `phase0/` (the two fixtures, the five TSVs --- 172 token rows, 26 findings, 2 orders, 54 case
-  statements, 8 goldens --- and the eight goldens), `GOLDENS.md` (one level up in docx4j),
+- **The suite**, copied from docx4j at `3dcbb3764` into `tests/fixtures/text-extraction/`:
+  `phase0/` (the three fixtures, the five TSVs --- 188 token rows, 26 findings, 2 orders, 57 case
+  statements, 12 goldens --- and the twelve goldens), `GOLDENS.md` (one level up in docx4j),
   `LevelOwnerTest`'s three Word documents, and the understood list. Provenance in
   `tests/README.md`, as CR-010's fixtures have it.
 - **The harness**, `tests/text/conformance.py`: a port of `ExtractionConformance` --- REQ-1201's
@@ -235,17 +243,23 @@ Phase D puts every shipped reader on the model (REQ-202):
   column's scenario, and the supplemental ones), the combined option (since `a41de133b` and WD 0.15,
   a row's option column may name several options `; ` apart, as in `embedded: true; hidden: true`;
   the adapter sets each one, and the check needs each one's statement), the pending rule (a check
-  pends when any statement it needs is not in the adapter's `implemented()`), and `verify_golden`
-  (Markdown image
-  destinations written `…` on both sides). Its report is a TSV in docx4j's form.
+  pends when any statement it needs is not in the adapter's `implemented()`; since `3dcbb3764` a
+  findings, order or golden row also needs its scenario's statements, as a token row does, and a
+  golden, cut without an XHTML importer, needs `xhtml importer absent`), and `verify_golden`
+  (Markdown image destinations written `…` on both sides). Its report is a TSV in docx4j's form.
 - **The adapter**, `tests/text/adapter.py`, docx4j's `TextsAdapter` protocol:
   `implemented()` (the REQ ids this package meets, grown phase by phase) and
-  `extract(fixture, view, scenario, format) -> (text, findings)`.
+  `extract(fixture, view, scenario, format) -> (text, findings)`. Until Phase C it advertises
+  `xhtml importer absent`. Phase C's MHT expansion is built in here, not an optional dependency
+  as docx4j-ImportXHTML is in docx4j. The adapter therefore then takes the capability as a
+  parameter, with the expansion switched off by an adapter-only hook for the absent run. The suite
+  runs twice: absent, which is the gate's run and checks the goldens and case 44's default rows;
+  and present, which checks the nine rows that need an importer.
 - **The agreement test** (REQ-406): the walk against the resolved copy, as section 3.2.
 - **CR-010's ten pins** (`tests/revisions/test_content_api.py`) turn to passing tests in Phase D;
   `xfail(strict=True)` makes each one's closing visible.
 - **The gate**, at Phase D: no check fails; the only pending checks are docx4j's 51 and those of
-  any content Q7 defers, each named; 8 of 8 goldens; the agreement test at zero differences;
+  any content Q7 defers, each named; 12 of 12 goldens; the agreement test at zero differences;
   `LevelOwnerTest`'s 61 paragraphs as Word numbers them.
 
 ### 3.7 Out of scope
@@ -262,7 +276,7 @@ Phase D puts every shipped reader on the model (REQ-202):
 
 - Copy the suite (3.6) and port the harness and the adapter protocol.
 - An adapter over today's paths records the baseline of section 1 as the suite's first report
-  (591 pass, 302 fail, 51 pending of 944 at `a41de133b`; goldens 3 of 8), committed beside it.
+  (648 pass, 324 fail, 51 pending of 1,023 at `3dcbb3764`; goldens 3 of 12), committed beside it.
 - The agreement test, written now against today's views, `xfail(strict=True)` where they
   disagree.
 
@@ -295,8 +309,8 @@ Phase D puts every shipped reader on the model (REQ-202):
 - Tables `listed` and `grid`; page markers; `layout: indent`.
 - Deferred, pending and named (Q7): embedded SpreadsheetML and PresentationML packages, and OLE
   1.0 objects. REQ-512's hidden sheets and slides under `hidden: true`, decided on 2026-10-19, come
-  with those packages. Until then, case 53's hidden slide stays pending in its three
-  `embedded: true; hidden: true` checks, as the rest of case 53 does under `embedded: true`.
+  with those packages. Until then, case 53's slides and case 57's workbook stay pending under
+  `embedded: true` and `embedded: true; hidden: true`.
 
 ## 7. Phase D: every reader on the model (docx4j CR-046 phase 3)
 
@@ -362,8 +376,7 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
    This is a behaviour change in `0.x`, recorded in the CHANGELOG (section 7), and the README's
    examples show text.
 2. **The WD is a working draft.** It is at 0.15 and its goldens can be recut. Port from
-   `a41de133b`, whose goldens are those of `d9acdf5e2`, and record the commit; a recut is a
-   hand-off like any other.
+   `3dcbb3764` and record the commit; a recut is a hand-off like any other.
 3. **REQ-510 moves numbering labels** for every reader of the emulator, not only the text model.
    This package's parity goldens come from docx4j-core-ts (CLAUDE.md; 46 comparisons at zero
    differences), so they will differ until core-ts ports REQ-510 and regenerates; pin per
