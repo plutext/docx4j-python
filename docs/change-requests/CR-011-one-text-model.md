@@ -25,7 +25,11 @@ form of an equation; and REQ-512's hidden sheets and slides under `hidden: true`
 (section 2 the design, 4 the phases, 5 every statement and where docx4j meets it, 6 its decisions),
 and its code, `org.docx4j.model.text` (27 classes, 6,203 lines) and the harness
 `org.docx4j.textextraction.ExtractionConformance` with its engine adapter `TextsAdapter`.
-docx4j-core-ts's own text-model CR (its CR-012) is the sibling port, not yet opened.
+docx4j-core-ts's CR-012 (`docs/change-requests/CR-012-text-model.md`, proposed 2026-10-19, not yet
+committed there) is the sibling port. Four of its decisions touch this CR, and all four are Jason's:
+D2 (the Office JS readers keep Office JS's text) touches Q4 and section 3.5, D4 (the text-box
+address) section 3.2, D5 (text-box views read-only) Q9, and D9 (REQ-510 in the emulator first)
+risk 3.
 
 ## 1. Why
 
@@ -166,7 +170,8 @@ module for class where Python allows:
 3. **Scope.** The stories and content classes of WD section 5 under section 10's options: the main
    story; text boxes after their anchoring paragraph, once (REQ-518), with `textbox:` addresses
    (REQ-519, core-ts CR-002 section 3.3's grammar; decided in WD 0.15 apart from the text-box
-   segment, still a proposal after core-ts CR-010's D8, so that spelling may still move); notes as
+   segment, still a proposal after core-ts CR-010's D8: REQ-519's NOTE 2 gives the final spelling to
+   core-ts CR-012, whose D4 recommends keeping docx4j's `body/3/textbox:0/1`); notes as
    `[n]` with their text appended (REQ-502); headers and footers
    by section under `include` (REQ-503); comments in markup (REQ-504); field codes and
    `field.no_result` (REQ-505); hidden text out by default, resolved through the styles (REQ-507);
@@ -210,7 +215,13 @@ probe's case 6 does.
 
 ### 3.5 The readers
 
-Phase D puts every shipped reader on the model (REQ-202):
+Phase D puts every shipped reader on the model (REQ-202). That is Q4's first answer. Under the
+answer now recommended (Q4), which follows core-ts CR-012's D2, the first and fifth bullets change.
+The Office JS readers keep Office JS's text, documented as not the text model: `text` on
+`Paragraph`, `Body`, `Range`, `Table`, `TableCell` and `ContentControl`, `Comment.content`,
+`TrackedChange.text`, `search`, and `get_text` as core-ts's `getText`. `find` goes with `search`.
+`text_of` stays and is not deprecated. `outline()` and `to_markdown` go on the model as below,
+and the model itself is reached through `extract`.
 
 - `Paragraph`, `Body` and `Range` `text` and `get_text(view=)` become the model with the WD's
   defaults. This departs from Office JS, whose `body.paragraphs` leaves a text box out and whose
@@ -353,7 +364,22 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
    before this package releases.*
 4. **Q4: `Body.text` and `get_text`**: the model with the WD's defaults, the Office JS departure
    recorded; against keeping Office JS's `body.text` and adding the model beside it.
-   *Recommended: the model (REQ-202).*
+   *Recommended (revised 2026-10-19): keep the Office JS readers on Office JS's text, as core-ts
+   CR-012's D2 recommends, reader for reader (section 3.5).*
+   - The two ports should give one answer. This package's design follows core-ts (CLAUDE.md), and
+     this package's content API is held to Office JS's members (CR-003).
+   - Q5 and Q6 already keep the python-docx facade and `TrackedChange.text` off the model, because
+     their contract is another API's. D2 applies the same rule to the Office JS readers.
+   - Jason ruled on 2026-10-19 that core-ts's `textOf` stays, not deprecated. `text_of` is its
+     counterpart here.
+   - The model behind `Body.text` would make it disagree with what Word's own Office JS returns for
+     the same document: a text box left out, and U+0002 per note reference (core-ts check 42).
+   - Either answer conflicts with REQ-202 as written: under this one, the readers stay outside it.
+     Like core-ts, this CR would ask the specification for an exemption for a reader whose contract
+     is an emulated API, documented as that API's text. Q5's note for the WD becomes that request.
+   - It narrows the text-extraction paper's section 10 row ("one text model replacing the five"),
+     which the user accepted on 2026-10-17. So it is the user's call, for both ports at once. If D2
+     goes the other way, the first answer stands.
 5. **Q5: the python-docx facade**: keeps python-docx's semantics as a declared emulation outside
    REQ-202, with a note proposed for the WD. *Recommended.*
 6. **Q6: `TrackedChange.text`**: keeps Office JS's form, documented as describing a change, not
@@ -362,7 +388,10 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
    gate, until CR-001 D gives this package their models; `olefile` not added. *Recommended.*
 8. **Q8: Strict OOXML (REQ-203)**: its own engine CR. *Recommended.*
 9. **Q9: `find` and text boxes**: a match in a box carries a `textbox:` address; editing inside
-   a box through a `Range` is out of scope here. *Recommended.*
+   a box through a `Range` is out of scope here. *Recommended*, and core-ts CR-012's D5 does the
+   same: its text-box views are read-only, their mutators throwing, with writes left to a later CR
+   that maps a box's paragraphs between its two branches. Under the revised Q4, `find` stays with
+   `search` on Office JS's text, and the `textbox:` address comes with `outline()`'s entries.
 10. **Q10, ahead of this CR: `get_text(view="markup")`**, which returns neither view today.
     *Recommended: make it raise now, naming this CR, as a "Fixed" entry; Phase B gives it the
     real view.*
@@ -380,7 +409,9 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
 3. **REQ-510 moves numbering labels** for every reader of the emulator, not only the text model.
    This package's parity goldens come from docx4j-core-ts (CLAUDE.md; 46 comparisons at zero
    differences), so they will differ until core-ts ports REQ-510 and regenerates; pin per
-   comparison as CR-009 did (`tests/content/goldens.py` `PINS`).
+   comparison as CR-009 did (`tests/content/goldens.py` `PINS`). core-ts CR-012's D9 proposes
+   `Emulator.levelStyleId` as its phase 1, held to `LevelOwnerTest`'s Word labels, so the pins
+   should be short-lived.
 4. **The fork.** Q3 changes the fork's parser and writer, so this package cannot release on it
    until a fork release does (`RELEASING.md`: never against an unreleased fork).
 5. **No number-format engine.** `\#` switches and chart number formats need one; port docx4j's
