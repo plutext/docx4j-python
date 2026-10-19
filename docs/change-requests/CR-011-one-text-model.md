@@ -173,7 +173,12 @@ module for class where Python allows:
    segment, still a proposal after core-ts CR-010's D8: REQ-519's NOTE 2 gives the final spelling to
    core-ts CR-012, whose D4 recommends keeping docx4j's `body/3/textbox:0/1`); notes as
    `[n]` with their text appended (REQ-502); headers and footers
-   by section under `include` (REQ-503); comments in markup (REQ-504); field codes and
+   by section under `include` (REQ-503), their blocks at `header:<rId>/<n>` and
+   `footer:<rId>/<n>`, which `addresses.py` already writes (`footer:rId9/0` and `header:rId4/0`
+   to `header:rId7/0` on the probe, as docx4j's oracle has them). docx4j's own were wrong before
+   `8d32bf928`, its part's `toString()` prefixed (`org.docx4j.wml.Ftr@50bb1c1ffooter:rId9/0`, a
+   shadowed local in `Extractor.headerOrFooter`), so the port copies the form, not that code
+   before the fix; no fixture here was cut from it; comments in markup (REQ-504); field codes and
    `field.no_result` (REQ-505); hidden text out by default, resolved through the styles (REQ-507);
    placeholders flagged (REQ-508); bound values (REQ-509); list labels with REQ-510's owner; the
    table of contents under `toc` (REQ-520); and Phase C's content classes (section 6).
