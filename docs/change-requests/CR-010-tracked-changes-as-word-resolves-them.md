@@ -1183,3 +1183,20 @@ measurement and fix 2's proposal went to docx4j's session, for Jason's decision 
 and to core-ts's, with the four files. docx4j's session put it to him the same day and changes
 nothing until he rules; this package's resolver waits on that, so that the agreement run stays at
 zero. The empty parts above went to docx4j with it.
+
+**docx4j's ruling (2026-10-21).** Jason, on docx4j's CR-043, relayed by docx4j's session: "follow
+Word 365". docx4j makes three changes as a CR-043 follow-up in 17.3.4:
+
+1. When an accept or a reject leaves a comment's range with no content, the comment goes whole,
+   wherever its markers were: the markers, the reference run, the entry, the `commentsExtended`,
+   `commentsIds` and `commentsExtensible` entries, and the replies. A comment whose range was
+   empty to begin with is untouched.
+2. When no comment remains, the comment parts go (`comments`, `commentsExtended`, `commentsIds`,
+   `commentsExtensible`), with their relationships and content-type overrides.
+3. `people.xml` goes only when nothing left in the package names its authors, neither a comment
+   nor a revision. Word 365's removal was seen only with no revisions left.
+
+Accept All of a deletion with its comment's markers outside follows by symmetry. That is
+unmeasured, and docx4j's session proposes a probe for it. Fix 2 here ports those changes from
+docx4j's commit once it lands, with the user's go. Until then the review file's comparison and
+artefact 8's Reject All keep the differences recorded above.
