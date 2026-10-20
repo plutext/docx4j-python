@@ -12,19 +12,22 @@ from `608e40023` on unpushed, so the local clone is the oracle); the specificati
 `../docx4j-portfolio/docs/text_extraction_specification_wd.md` at WD 0.14 (portfolio `cf56600`);
 this repository's CR-010 (implemented; its ten `xfail(strict)` pins are this CR's to close); for
 Q3, a fork release. **Updated 2026-10-19** on docx4j-25's notes of `a41de133b` and `3dcbb3764`
-(both unpushed). The suite is now cited at `3dcbb3764`. That commit adds a third fixture,
+(both unpushed). The suite was then cited at `3dcbb3764`. That commit adds a third fixture,
 `extraction-probe-structure.docx`, with cases 55 to 57 (a table of contents, an interrupted list,
 an embedded workbook's hidden sheets) and four goldens; the eight earlier goldens are unchanged
-since `d9acdf5e2`. The specification is at WD 0.15 (portfolio `ac06ed7`, `7affcd0`). A suite row
-may now combine options, and every row needs its scenario's statements (REQ-1201; sections 3.6
-and 6). The choices docx4j CR-046 phase 2 made where WD 0.8 was silent
+since `d9acdf5e2`. The specification was then at WD 0.15 (portfolio `ac06ed7`, `7affcd0`). A
+suite row may now combine options, and every row needs its scenario's statements (REQ-1201;
+sections 3.6 and 6). The choices docx4j CR-046 phase 2 made where WD 0.8 was silent
 are decided and normative (Jason, 19 October 2026): REQ-519's addresses, apart from the text-box
 segment, which stays a proposal (section 3.2); REQ-515's plain-text property lines; REQ-604's markup
 form of an equation; and REQ-512's hidden sheets and slides under `hidden: true`.
 **Counterpart:** docx4j's `docs/developer/change-requests/CR-046-text-extraction-behaviour-model.md`
 (section 2 the design, 4 the phases, 5 every statement and where docx4j meets it, 6 its decisions),
-and its code, `org.docx4j.model.text` (27 classes, 6,203 lines) and the harness
-`org.docx4j.textextraction.ExtractionConformance` with its engine adapter `TextsAdapter`.
+and its code, `org.docx4j.model.text` (27 classes, 6,203 lines at `d9acdf5e2`; at `198d015a3`, 42
+and 12,456: the text model's 25 and 6,092, CR-053's HTML reader 3 and 973, and CR-050's inspector,
+out of scope here (section 3.7), 14 and 5,391), and the harness
+`org.docx4j.textextraction.ExtractionConformance` with its engine adapter `TextsAdapter` and
+`ExtractionInspection`, which names the inspection tables.
 docx4j-core-ts's CR-012 (`docs/change-requests/CR-012-text-model.md`) is the sibling port,
 proposed 2026-10-19 and **decided by Jason on 2026-10-21**: D1 to D9, all as recommended (core-ts
 `9b302ad`, pushed). Five of its decisions touch this CR: D1 (options keyed by the specification's
@@ -33,26 +36,40 @@ section 10 names verbatim) Q1, D2 (the Office JS readers keep Office JS's text) 
 the emulator first) risk 3. D2 decides core-ts's readers only (its section 6.1); Q4 here is still
 the user's.
 
-**Since then (2026-10-21).** The suite and the specification have moved on. docx4j `198d015a3`
-has five fixtures; the fifth is `extraction-probe-html.docx`, read only under `html reader present`.
-It also has CR-050's inspection rows, pending without REQ-901 to 907. The specification is at WD
-0.28 (portfolio `f2046e5`). docx4j CR-053's hand-off (`35e304770`, `1d108c0af`, `4a8833eea`,
-`198d015a3`) changes REQ-513. An HTML, XHTML or MHT chunk (an MHT's first `text/html` part) is
-read only by an *HTML reader*: a parser of the [HTML] algorithm and a reader of its tree as
-blocks. Without one, the chunk is not expanded and raises `altchunk.not_expanded` with its
-content type. The suite's scenario is now `html reader absent` (it was `xhtml importer absent`).
-A chunk is decoded by its BOM; else a meta charset in its first 1,024 bytes; else UTF-8 where
-valid; else windows-1252. There is no XML-declaration step and no UTF-16 sniff. Section 6's
-`lxml.html` and section 3.6's built-in MHT expansion predate this: libxml2's HTML parser does not
-follow the [HTML] algorithm (Q12). This CR still cites `3dcbb3764` and WD 0.15. The re-cite, with
-a baseline rerun, waits on the user.
+**Updated 2026-10-21** (the user: "start CR-011 re-cite"). The suite is cited at docx4j `198d015a3`
+and the specification at WD 0.28 (portfolio `f2046e5`). Since `3dcbb3764`, docx4j CR-050 (the
+inspector: `8d32bf928`, `1ae8f1479`, `4d9345199`, `c2643af0d`, `86449c013`) and CR-053 (`1d108c0af`,
+`4a8833eea`, `198d015a3`) have changed the suite; CR-053's hand-off (`d2d0a3861`) names those three
+and `35e304770`, its writing half. All are on `VERSION_17_3_4`, pushed the same day with the branch
+at `4b9c71288`, which does not touch the suite. The suite has five fixtures. The fourth,
+`extraction-probe-inspect.docx`, holds cases 58 to 67 (97 token rows, no golden). The fifth,
+`extraction-probe-html.docx`, is read only under `html reader present`, and only by an inspector.
+CR-050's inspection rows need REQ-901, 902 and 904 to 907 (the counts, REQ-903) and pend here
+(section 3.7). docx4j's own run is 1,565 passed and 19 pending of 1,584 assertions with no HTML
+reader, and 1,526 and 58 with one. CR-053 changes REQ-513 (WD 0.23 to 0.28). An HTML, XHTML or MHT
+chunk (an MHT's first `text/html` part) is read only by an *HTML reader*: a parser of the [HTML]
+algorithm and a reader of its tree as blocks. Without one, the chunk is not expanded and raises
+`altchunk.not_expanded` with its content type. The suite's scenario is now `html reader absent` (it
+was `xhtml importer absent`). A chunk is decoded by its BOM; else a meta charset in its first 1,024
+bytes; else UTF-8 where valid; else windows-1252. There is no XML-declaration step and no UTF-16
+sniff. What `display: none` hides in a chunk, by Word's subset of CSS, is hidden text, and a chunk
+of more than 50,000 elements is not expanded. Section 6's earlier `lxml.html` and section 3.6's
+built-in MHT expansion predated this: libxml2's HTML parser does not follow the [HTML] algorithm
+(Q12). Both are replaced, and the reader of the tree is Q13's. The harness's port counts docx4j's
+1,584 (section 3.6), and the baseline is rerun (section 1: 941 pass, 410 fail, 233 pending; 3 of 12
+goldens). WD 0.16 to 0.28's other changes in this CR's scope need no change of design: REQ-504
+leaves out a comment with no anchor (0.20); REQ-519's text-box segment is decided (0.27; section
+3.2); REQ-1201 and REQ-1203 make a row need its scenario's capability (0.16, 0.27; section 3.6);
+section 10's options are as they were. REQ-202's new exemption for a reader of an emulated API
+(0.27) bears on Q4 and Q5.
 
 ## 1. Why
 
 The paper (its section 1) found that the three engines answer "what is the text of this
 document?" differently, and that this package answers it five ways. Measured here on 2026-10-18
-against docx4j's conformance suite (then two fixtures, 54 cases, 941 checks), and again on
-2026-10-19 against the suite at `3dcbb3764` (three fixtures, 57 cases, 1,023 checks):
+against docx4j's conformance suite (then two fixtures, 54 cases, 941 checks), again on
+2026-10-19 against the suite at `3dcbb3764` (three fixtures, 57 cases, 1,023 checks), and on
+2026-10-21 at `198d015a3` (five fixtures, 67 cases, 1,584 checks):
 
 - **Five paths, five answers.** Of the probe's 164 tokens in the accepted view, `get_text()` gets
   121 to their expected count, `text_of` 121, `to_markdown` 119, the revisions engine's tree walk
@@ -65,17 +82,37 @@ against docx4j's conformance suite (then two fixtures, 54 cases, 941 checks), an
   entries, read by default (REQ-520). The other 4 are the new fixture's goldens. docx4j's own run is
   890 pass, 0 fail, 51 pending at `d9acdf5e2` (42 need the inspector, 9 an XHTML importer), and
   972 pass, 0 fail, 51 pending at `3dcbb3764`.
+- **At `198d015a3`** the same adapter, advertising docx4j's statements less the inspector's
+  (REQ-901 to 907, REQ-1204), gives **941 pass, 410 fail, 233 pending** of 1,584. The 233 are
+  docx4j's 19 (the checks that need an HTML reader) and the inspector's 214 (186 `inspect` rows, 4
+  inspections, 24 counts; section 3.7). On the three earlier fixtures 3 fewer fail. Case 36's
+  chunk text passes, now expected only with an HTML reader. Its new warning row fails, since
+  nothing here raises one. Case 47's warning row pends, now under `html reader present`. The fourth
+  fixture's 477 checks give 290 pass, 89 fail and 98 pending; the fifth's one check pends. Of the
+  89, 43 are in the default scenarios: text boxes (18), hidden text (9), bound values (6), notes
+  (3), run-level `mc:AlternateContent` (3), the chunk warning (3) and a comment in markup (1). The
+  other 46 are options that today's paths ignore: `field_codes: true` (18), `embedded: true` alone
+  or with `hidden: true` (15, of which case 66's workbook, 9, is content Q7 defers), `include:
+  headers` (6), `alt_text: true` (3), the chunk warning under `altchunks: false` (3) and `comments:
+  true` (1). docx4j's own run is 1,565 pass, 0 fail, 19 pending, and with docx4j-ImportXHTML 1,526
+  and 58.
 - **Goldens: 3 of 8** pass (the external fixture's three plain-text views); the probe's four
   differ by 66 to 106 lines, the external Markdown by a dropped linked picture. At `3dcbb3764` the
   count is 3 of 12. The structure fixture's three plain-text goldens fail on the table of
   contents' two entries (REQ-520). Its Markdown golden fails on those entries and on the
   interrupted list: the indented paragraph's continuation, `4. 2.` written `  2.`, and the second
-  list's `1)` written `1.` (REQ-703, REQ-510).
-- **The failures, by class** (169 in the default scenarios at `d9acdf5e2`): text boxes and `mc:Choice`
-  content not read (49), charts and SmartArt (27), `w:altChunk` not expanded and no warning (24), notes
-  not appended (12), no plain-text markup view (10), hidden text included (9), math and ruby (9),
-  no metadata channel (9), run-level `mc:AlternateContent` not read (6), bound values not read
-  (6), joins, table layout and note markers in the goldens (5), comments in markup (3).
+  list's `1)` written `1.` (REQ-703, REQ-510). At `198d015a3` it is still 3 of 12: the probe's
+  four, recut by `1d108c0af` without case 36's line, differ by 65 to 104 lines, the others as
+  before.
+- **The failures, by class** (169 in the default scenarios at `d9acdf5e2`): text boxes and
+  `mc:Choice` content not read (49), charts and SmartArt (27), `w:altChunk` not expanded and no
+  warning (24), notes not appended (12), no plain-text markup view (10), hidden text included (9),
+  math and ruby (9), no metadata channel (9), run-level `mc:AlternateContent` not read (6), bound
+  values not read (6), joins, table layout and note markers in the goldens (5), comments in markup
+  (3). At `198d015a3` they are 219: text boxes and `mc:Choice` 67, charts and SmartArt 27,
+  `w:altChunk` 24, hidden text 18, notes 15, bound values 12, the plain-text markup view 10, math
+  and ruby 9, metadata 9, run-level `mc:AlternateContent` 9, the goldens 9, the table of contents 6,
+  comments in markup 4.
 - **The views are filters, not resolutions** (paper section 3.1, REQ-401 to 406). `get_text()`
   against the text of a reloaded, resolved copy differs on 6 of CR-010's 11 fixtures and the probe
   in the accepted view and on 4 in the original; over docx4j's 139 revisions and text-extraction
@@ -128,7 +165,8 @@ What the model can stand on:
 - **The rest.** Hidden text: `PropertyResolver.get_effective_rpr` (`property_resolver.py:484`).
   Bound values: `XmlMapping.custom_xml_node` (`customxml/mapping.py:103`). Charts and SmartArt:
   the typed `dml.chart` and `dml.diagram` models. The block: `OutlineEntry`
-  (`reports.py:133`: address, para id, style id, level, text). HTML for `w:altChunk`: `lxml.html`.
+  (`reports.py:133`: address, para id, style id, level, text). HTML for `w:altChunk`: nothing that
+  conforms, since `lxml.html`'s libxml2 parser does not follow [HTML]'s algorithm (REQ-513, Q12).
   Not available: an OLE reader (`olefile` is not a dependency), a field evaluator, a number-format
   engine, and any SpreadsheetML or PresentationML model (CR-001 D).
 
@@ -185,17 +223,17 @@ module for class where Python allows:
    probe and, where the sibling checkout is present, docx4j's 139.
 3. **Scope.** The stories and content classes of WD section 5 under section 10's options: the main
    story; text boxes after their anchoring paragraph, once (REQ-518), with `textbox:` addresses
-   (REQ-519, core-ts CR-002 section 3.3's grammar; decided in WD 0.15 apart from the text-box
-   segment, still a proposal after core-ts CR-010's D8: REQ-519's NOTE 2 gives the final spelling to
-   core-ts CR-012, whose D4, decided, keeps docx4j's `body/3/textbox:0/1` as docx4j `608e40023`
-   implements it and asks the specification to mark the segment decided); notes as
+   (REQ-519, core-ts CR-002 section 3.3's grammar; decided in WD 0.15, and its text-box segment in
+   WD 0.27, which adopts core-ts CR-012's D4: docx4j's `body/3/textbox:0/1` as docx4j `608e40023`
+   implements it); notes as
    `[n]` with their text appended (REQ-502); headers and footers
    by section under `include` (REQ-503), their blocks at `header:<rId>/<n>` and
    `footer:<rId>/<n>`, which `addresses.py` already writes (`footer:rId9/0` and `header:rId4/0`
    to `header:rId7/0` on the probe, as docx4j's oracle has them). docx4j's own were wrong before
    `8d32bf928`, its part's `toString()` prefixed (`org.docx4j.wml.Ftr@50bb1c1ffooter:rId9/0`, a
    shadowed local in `Extractor.headerOrFooter`), so the port copies the form, not that code
-   before the fix; no fixture here was cut from it; comments in markup (REQ-504); field codes and
+   before the fix; no fixture here was cut from it; comments in markup, never one with no anchor
+   (REQ-504, WD 0.20); field codes and
    `field.no_result` (REQ-505); hidden text out by default, resolved through the styles (REQ-507);
    placeholders flagged (REQ-508); bound values (REQ-509); list labels with REQ-510's owner; the
    table of contents under `toc` (REQ-520); and Phase C's content classes (section 6).
@@ -264,11 +302,13 @@ and the model itself is reached through `extract`.
 
 ### 3.6 Tests and the oracle
 
-- **The suite**, copied from docx4j at `3dcbb3764` into `tests/fixtures/text-extraction/`:
-  `phase0/` (the three fixtures, the five TSVs --- 188 token rows, 26 findings, 2 orders, 57 case
-  statements, 12 goldens --- and the twelve goldens), `GOLDENS.md` (one level up in docx4j),
-  `LevelOwnerTest`'s three Word documents, and the understood list. Provenance in
-  `tests/README.md`, as CR-010's fixtures have it.
+- **The suite**, copied from docx4j at `198d015a3` into `tests/fixtures/text-extraction/`:
+  `phase0/` (the five fixtures; the five TSVs --- 285 token rows, 201 findings of which 186 are the
+  inspector's, 2 orders, 67 case statements, 12 goldens; the four inspection tables --- 186
+  findings and 4 statuses, and 17 findings and 1 status for the HTML reader's fixture; and the
+  twelve goldens), `GOLDENS.md` and `INSPECTION.md` (one level up in docx4j), `LevelOwnerTest`'s
+  three Word documents, and the understood list. Provenance in `tests/README.md`, as CR-010's
+  fixtures have it.
 - **The harness**, `tests/text/conformance.py`: a port of `ExtractionConformance` --- REQ-1201's
   normalisation (CriticMarkup's brackets stripped, then whitespace, `\p{Z}`, `*`, `_`, `\`, `{`,
   `}` and `$`; U+200B, tag characters and both hyphens kept; an occurrence inside a longer token
@@ -278,27 +318,46 @@ and the model itself is reached through `extract`.
   the adapter sets each one, and the check needs each one's statement), the pending rule (a check
   pends when any statement it needs is not in the adapter's `implemented()`; since `3dcbb3764` a
   findings, order or golden row also needs its scenario's statements, as a token row does, and a
-  golden, cut without an XHTML importer, needs `xhtml importer absent`), and `verify_golden`
-  (Markdown image destinations written `…` on both sides). Its report is a TSV in docx4j's form.
+  golden, cut without an HTML reader, needs `html reader absent`), and `verify_golden` (Markdown
+  image destinations written `…` on both sides). docx4j CR-050 and CR-053 add, since `3dcbb3764`:
+  - the capability is `html reader present` or `absent` (WD 0.27; it was `xhtml importer`), and a
+    token row whose option is `html reader present` (cases 36, 44 and 63) runs its default
+    scenario under `html reader absent`;
+  - `altchunks: false`'s supplemental rows take case 36 and `CHK63_SCRIPTED` as well;
+  - an `inspect` findings row is checked once, in `accepted`, an inspection being the package's;
+  - each of the first four fixtures' whole inspection is compared with `expected-inspection.tsv`
+    by occurrence (REQ-1204), needing REQ-901, 902 and 904 to 907 and `html reader absent`;
+  - the fifth fixture's is compared with `expected-inspection-html.tsv`, needing REQ-513 and `html
+    reader present` as well, and a row with a `pending` reason pends on its own;
+  - REQ-903's counts are checked for each of the four under six outputs (24 checks), needing
+    REQ-903 and `html reader absent`;
+  - a check needing any of REQ-901 to 907 is reported as the inspector's (CR-050).
+
+  Its report is a TSV in docx4j's form. Advertising docx4j's statements, the port counts docx4j's
+  1,584 assertions: 1,565 and 19 pending with `html reader absent`, 1,526 and 58 with `present`
+  (this CR's survey mirror, 2026-10-21).
 - **The adapter**, `tests/text/adapter.py`, docx4j's `TextsAdapter` protocol:
   `implemented()` (the REQ ids this package meets, grown phase by phase) and
-  `extract(fixture, view, scenario, format) -> (text, findings)`. Until Phase C it advertises
-  `xhtml importer absent`. Phase C's MHT expansion is built in here, not an optional dependency
-  as docx4j-ImportXHTML is in docx4j. The adapter therefore then takes the capability as a
-  parameter, with the expansion switched off by an adapter-only hook for the absent run. The suite
-  runs twice: absent, which is the gate's run and checks the goldens and case 44's default rows;
-  and present, which checks the nine rows that need an importer.
+  `extract(fixture, view, scenario, format) -> (text, findings)`; it has no `inspect` or `counts`
+  (section 3.7). It advertises `html reader absent` until the HTML reader exists (Q12, Q13). Then
+  it takes the capability as a parameter, the reader switched off by an adapter-only hook for the
+  absent run, and the suite runs twice. Absent is the gate's run: it checks the goldens and the
+  default rows of cases 36, 44 and 63, and leaves docx4j's 19 pending (the 18 checks that need a
+  reader, and the fifth fixture's inspection). Present, where html5lib imports, checks the 18 and
+  leaves the goldens and the absent run's rows pending.
 - **The agreement test** (REQ-406): the walk against the resolved copy, as section 3.2.
 - **CR-010's ten pins** (`tests/revisions/test_content_api.py`) turn to passing tests in Phase D;
   `xfail(strict=True)` makes each one's closing visible.
-- **The gate**, at Phase D: no check fails; the only pending checks are docx4j's 51 and those of
-  any content Q7 defers, each named; 12 of 12 goldens; the agreement test at zero differences;
-  `LevelOwnerTest`'s 61 paragraphs as Word numbers them.
+- **The gate**, at Phase D: in the `html reader absent` run no check fails; the only pending
+  checks are docx4j's 19, the inspector's 214 (186 `inspect` rows, 4 inspections and 24 counts;
+  section 3.7) and those of any content Q7 defers, each named; 12 of 12 goldens; the agreement
+  test at zero differences; `LevelOwnerTest`'s 61 paragraphs as Word numbers them.
 
 ### 3.7 Out of scope
 
-- **The inspector** (REQ-901 to 904; WD section 12): the paper's later CR (its D29), after the
-  model.
+- **The inspector** (REQ-901 to 907, REQ-903's counts in a result, and REQ-1204's check of it; WD
+  section 9 and section 12.1's inspector class): the paper's later CR (its D29), after the model.
+  docx4j's is CR-050 (`Inspect.of`). Its 214 checks of the suite pend here (section 3.6).
 - **Strict OOXML** (REQ-203, converted on load): an engine change, recommended as its own CR
   (Q8); the three Strict fixtures stay pending until then.
 - **HTML** (REQ-705): this package has no HTML serialiser.
@@ -309,7 +368,8 @@ and the model itself is reached through `extract`.
 
 - Copy the suite (3.6) and port the harness and the adapter protocol.
 - An adapter over today's paths records the baseline of section 1 as the suite's first report
-  (648 pass, 324 fail, 51 pending of 1,023 at `3dcbb3764`; goldens 3 of 12), committed beside it.
+  (941 pass, 410 fail, 233 pending of 1,584 at `198d015a3`; goldens 3 of 12), committed beside
+  it.
 - The agreement test, written now against today's views, `xfail(strict=True)` where they
   disagree.
 
@@ -335,7 +395,9 @@ and the model itself is reached through `extract`.
 - Charts (a chart's table and description, CR-047's axis titles), SmartArt and WordArt.
 - Embedded objects: an embedded WordprocessingML package through this engine; the glossary
   document (REQ-516).
-- `w:altChunk`: plain text, HTML and XHTML through `lxml.html`, MHT; `altchunks: false`.
+- `w:altChunk`: plain text; HTML, XHTML and MHT (its first `text/html` part) only through the HTML
+  reader of Q12 (its block half Q13's), else `altchunk.not_expanded`; RTF not expanded, as in
+  docx4j, for want of an RTF reader (REQ-513 since WD 0.23); `altchunks: false`.
 - Images: `ImageDescriber`, alt text, decorative pictures.
 - Metadata (REQ-515), and `fields_update_on_open`.
 - Math as LaTeX (OMML to LaTeX, docx4j's `OmmlToLatex`), ruby's base text.
@@ -399,15 +461,29 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
      counterpart here.
    - The model behind `Body.text` would make it disagree with what Word's own Office JS returns for
      the same document: a text box left out, and U+0002 per note reference (core-ts check 42).
-   - Either answer conflicts with REQ-202 as written: under this one, the readers stay outside it.
-     Like core-ts, this CR would ask the specification for an exemption for a reader whose contract
-     is an emulated API, documented as that API's text. Q5's note for the WD becomes that request.
+   - Until WD 0.27 either answer conflicted with REQ-202: under this one, the readers stay outside
+     it. Like core-ts, this CR was to ask the specification for an exemption for a reader whose
+     contract is an emulated API, documented as that API's text. Q5's note for the WD became that
+     request.
+   - **WD 0.27 grants it** (portfolio `804007d`, from core-ts CR-012's ask). REQ-202 now lets such a
+     reader stay outside the layers "if it is documented as that API's text and not the text
+     model, and each of the text model's runs records where its text lies in that API's text, so
+     that the two map onto each other". The second condition is new to this CR. Under this answer
+     each `TextRun` carries its source (its `w:r` and paragraph) and, where the run gives text to
+     Office JS's `text`, its offset in its paragraph's `text`, as core-ts CR-012's `officeOffset`
+     (its section 4.4), outside REQ-706's JSON. A run only the model writes (`[n]`, a list label,
+     a field code) has none, and text that `text` holds and the model leaves out is the gap
+     between two offsets. *Recommended*, with Phase D carrying the map.
    - It narrows the text-extraction paper's section 10 row ("one text model replacing the five"),
      which the user accepted on 2026-10-17. So it is the user's call. D2 is decided for core-ts
      only (its section 6.1): until Q4 is decided alike here, the two ports' paragraph text differs
      for the same document. Taking the first answer here would leave it differing for good.
 5. **Q5: the python-docx facade**: keeps python-docx's semantics as a declared emulation outside
-   REQ-202, with a note proposed for the WD. *Recommended.*
+   REQ-202, with a note proposed for the WD. *Recommended.* WD 0.27's exemption (Q4) covers it, so
+   the note is no longer needed. Its mapping condition is met by each run's source: python-docx's
+   `Paragraph.text` is its `w:r` and `w:hyperlink` children's text in order, so the facade `Run`
+   a model run lies in, or that it lies in none (a run in a `w:ins` or a content control), follows
+   from the run's `w:r`. *Recommended:* the source alone, no second offset.
 6. **Q6: `TrackedChange.text`**: keeps Office JS's form, documented as describing a change, not
    the text model. *Recommended.*
 7. **Q7: embedded SpreadsheetML, PresentationML and OLE 1.0**: deferred and pending, named in the
@@ -434,7 +510,37 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
     the reader is absent and a chunk raises `altchunk.not_expanded`, the suite's default run, and
     MHT goes the same way. *Recommended*, as docx4j keeps docx4j-ImportXHTML optional. The
     alternatives: `html5-parser` (C and faster, but its wheels are tied to lxml's version); or
-    `lxml.html`, section 6's plan, which does not follow the [HTML] algorithm.
+    `lxml.html`, section 6's earlier plan, which does not follow the [HTML] algorithm.
+    WD 0.16 to 0.28 add three duties. The reader fetches nothing a chunk refers to (REQ-513 since
+    0.16), and html5lib fetches nothing. It does not expand a chunk of more than 50,000 elements,
+    counted on the tree as parsed (0.27). And it decodes by WD section 9.2's Chunks rule (0.27,
+    0.28), so html5lib is to be handed text, not bytes: its own sniffing ([HTML]'s prescan of
+    1,024 bytes, then `chardet`'s guess where that is installed, then windows-1252) has no UTF-8
+    step and is not Word's.
+13. **Q13: the HTML reader's block half and Word's hiding rule** (REQ-513 at WD 0.27 and 0.28).
+    A reader is a parser and a reader of its tree as blocks; Q12 chooses the parser.
+    - docx4j's second half is docx4j-ImportXHTML. Before it, docx4j's own `HtmlChunks` rewrites
+      the chunk's CSS to what Word applies (`HtmlChunks`, `HtmlChunkImport` and `JsoupHtml`, 973
+      lines at `198d015a3`). This package has no importer, so the half would be written here: the
+      tree read directly as paragraphs, headings, lists with their numbers and tables, a table's
+      row groups in source order.
+    - Its hidden text is REQ-513's rule: a `style` attribute and the chunk's own `style` rules;
+      type, class, id and descendant selectors only; a rule inside any at-rule, or whose selector
+      list holds one selector Word ignores, dropped whole; elements outside [HTML401] transparent;
+      a host `w:style` defeating a type or class rule (`p`, `h1` to `h6`, `address`, `pre`,
+      `code`, a class by its exact name); a descendant's own `display` showing its content.
+    - REQ-513's chunk rules moved in six WD revisions over two days (0.23 to 0.28, Word's rounds 5
+      to 12). The suite checks the hiding rule only through the fifth fixture's inspection, which
+      needs the inspector (section 3.7). Its 18 checks under `html reader present` (cases 36, 44,
+      47 and 63) check only whether a chunk is expanded.
+    - core-ts CR-012 has no HTML reader either: its adapter advertises `html reader absent`, and
+      REQ-513's chunks are its phase 5e's.
+
+    *Recommended:* Phase C ships the reader absent: every HTML, XHTML and MHT chunk raises
+    `altchunk.not_expanded`, the gate's run. The reader comes as a phase of its own after D, on
+    Q12's answer: the parser, the decoder, the element limit and this block half, with docx4j's
+    `HtmlChunks` and `AltChunkHtmlReadingTest` as its oracle. The alternative, the block half in
+    Phase C, adds it to the phase that is most of this CR's work, against a rule still moving.
 
 ## 10. Risks
 
@@ -442,8 +548,9 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
    outline's counts and previews and `to_markdown` all return different text on the same document.
    This is a behaviour change in `0.x`, recorded in the CHANGELOG (section 7), and the README's
    examples show text.
-2. **The WD is a working draft.** It is at 0.15 and its goldens can be recut. Port from
-   `3dcbb3764` and record the commit; a recut is a hand-off like any other.
+2. **The WD is a working draft.** It is at 0.28 and its goldens can be recut, as `1d108c0af`
+   recut the probe's four. Port from `198d015a3` and record the commit; a recut is a hand-off like
+   any other.
 3. **REQ-510 moves numbering labels** for every reader of the emulator, not only the text model.
    This package's parity goldens come from docx4j-core-ts (CLAUDE.md; 46 comparisons at zero
    differences), so they will differ until core-ts ports REQ-510 and regenerates; pin per
