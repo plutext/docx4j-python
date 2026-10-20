@@ -10,7 +10,7 @@ The 61 roots, which were Phase A, are now Phase B, and VML is Phase C. The quest
 carry recommendations. **Implementation waits on the user's go.**
 **Depends on:**
 - **Phase A:**
-  - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, unpushed), whose
+  - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
     schema admissions the schema copy takes;
   - docx4j's published understood list (`understood-namespaces.txt`, CR-046), which CR-011's
     Q2 also ports;
