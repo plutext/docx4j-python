@@ -33,6 +33,20 @@ section 10 names verbatim) Q1, D2 (the Office JS readers keep Office JS's text) 
 the emulator first) risk 3. D2 decides core-ts's readers only (its section 6.1); Q4 here is still
 the user's.
 
+**Since then (2026-10-21).** The suite and the specification have moved on. docx4j `198d015a3`
+has five fixtures; the fifth is `extraction-probe-html.docx`, read only under `html reader present`.
+It also has CR-050's inspection rows, pending without REQ-901 to 907. The specification is at WD
+0.28 (portfolio `f2046e5`). docx4j CR-053's hand-off (`35e304770`, `1d108c0af`, `4a8833eea`,
+`198d015a3`) changes REQ-513. An HTML, XHTML or MHT chunk (an MHT's first `text/html` part) is
+read only by an *HTML reader*: a parser of the [HTML] algorithm and a reader of its tree as
+blocks. Without one, the chunk is not expanded and raises `altchunk.not_expanded` with its
+content type. The suite's scenario is now `html reader absent` (it was `xhtml importer absent`).
+A chunk is decoded by its BOM; else a meta charset in its first 1,024 bytes; else UTF-8 where
+valid; else windows-1252. There is no XML-declaration step and no UTF-16 sniff. Section 6's
+`lxml.html` and section 3.6's built-in MHT expansion predate this: libxml2's HTML parser does not
+follow the [HTML] algorithm (Q12). This CR still cites `3dcbb3764` and WD 0.15. The re-cite, with
+a baseline rerun, waits on the user.
+
 ## 1. Why
 
 The paper (its section 1) found that the three engines answer "what is the text of this
@@ -413,6 +427,12 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
     own `mc:Ignorable` prefixes), so the gap is only a Choice prefix that nothing but `Requires`
     names. The check is `TextsPhase2Test`'s REQ-204 snapshot, which now compares namespace
     declarations.
+12. **Q12: the HTML reader** (REQ-513 at WD 0.28). `html5lib`, a pure-Python parser of the
+    [HTML] algorithm that builds an lxml tree, as an optional extra (`docx4j[html]`). Without it
+    the reader is absent and a chunk raises `altchunk.not_expanded`, the suite's default run, and
+    MHT goes the same way. *Recommended*, as docx4j keeps docx4j-ImportXHTML optional. The
+    alternatives: `html5-parser` (C and faster, but its wheels are tied to lxml's version); or
+    `lxml.html`, section 6's plan, which does not follow the [HTML] algorithm.
 
 ## 10. Risks
 
