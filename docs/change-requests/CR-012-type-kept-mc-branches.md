@@ -269,7 +269,7 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
    - **`word`:** each element whose parent is a block, row or cell container is replaced by the
      content of the branch Word reads. The rule is ISO's: the first Choice whose `Requires` are
      understood, else the Fallback. It runs over docx4j's published understood list, matched by
-     namespace URI.
+     namespace URI, as docx4j's `McBlockLevel` and `McSplice` do (CR-051 section 3.2).
      - The outermost element goes first, and an element inside a discarded branch goes with it.
      - It is done on the lxml tree before the fork's parser runs, as `mce.py`'s preprocessor is.
        The selected content is then parsed typed by the ordinary path.
