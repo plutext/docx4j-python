@@ -1166,3 +1166,20 @@ Fix 2 is not taken: `docx4j_py/model/revisions/` is unchanged.
   user, beside fix 2, as a question for docx4j first.
 
 A Word check of the regenerated artefact 8 and its two copies is awaited.
+
+**Fix 2's measurement (2026-10-21).** Word 16's Reject All of the editor's
+`review-for-word.docx`, made by the user the same day and saved as
+`review-for-word-word365-rejected.docx` beside artefact 8's saves, removed Claude's comment
+"Changed from arrears, as agreed." and kept the other four. That comment is on a whole inserted
+paragraph, with its markers and its reference outside `w:ins` 43. Word 15 and Word 2010 kept all
+five. So current Word removes a comment whose range a rejection leaves empty, whatever the shape;
+what separates it from the older saves is the version. The engine's `revisions.reject_all` of the
+review file differs from Word 16's save by 6 lines, through `compare_word_resolution.py`: the
+comment, whose reference run the engine leaves at the start of the joined paragraph, and Word
+16's order for the reply markers in the file's section 13 (each reference after its own range
+end; the source has both ends, then both references). That order is a quirk of Word's save, not
+of the resolution, and the description does not yet allow for it. At the user's "yes", the
+measurement and fix 2's proposal went to docx4j's session, for Jason's decision on its CR-043,
+and to core-ts's, with the four files. docx4j's session put it to him the same day and changes
+nothing until he rules; this package's resolver waits on that, so that the agreement run stays at
+zero. The empty parts above went to docx4j with it.
