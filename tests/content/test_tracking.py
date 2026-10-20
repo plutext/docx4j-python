@@ -12,9 +12,11 @@ from __future__ import annotations
 import datetime
 import re
 import zipfile
+from typing import Any
 
 import pytest
 from conftest import (
+    FIXTURES,
     SAMPLES,
     fixture,
     moves_package,
@@ -683,31 +685,39 @@ def test_markdown_inserted_while_tracking_is_on_is_one_report_and_all_insertions
 
 
 def test_a_comment_made_while_tracking_is_on_is_a_comment_not_an_insertion():
-    """CR-003 section 15.6: the marker hoist must not be undone."""
+    """CR-010 section 12.8: Word's form, the start inside the ``w:ins``, the reference outside.
+
+    Before, CR-003 section 15.6's hoist put both range markers outside; the
+    comment is still no insertion of its own, which is what this pins.
+    """
     package, paragraph = tracked("Base text.")
     paragraph.insert_text("INSERTED ", location="Start")
     paragraph.search("INSERTED")[0].insert_comment("On the insertion.")
 
     xml = paragraph.get_xml()
-    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins "), "hoisted out of the w:ins"
-    assert xml.index("</w:ins>") < xml.index("<w:commentRangeEnd")
-    reference = xml[xml.index("<w:commentReference") - 200 : xml.index("<w:commentReference")]
-    assert "<w:ins " not in reference, "the reference run is not itself an insertion"
-    assert all(c.kind != "run" or c.author == "Claude" for c in package.body.get_tracked_changes())
+    first = xml[xml.index("<w:ins ") : xml.index("</w:ins>")]
+    assert re.search(r'<w:commentRangeStart w:id="0"/><w:r><w:t[^>]*>INSERTED</w:t></w:r>$', first)
+    assert "</w:ins><w:commentRangeEnd" in xml
+    assert _reference_runs_outside_insertions(xml)
+    # the rest of the insertion, the space, is a second w:ins after the reference run
+    assert xml.count("<w:ins ") == 2
+    assert all(c.author == "Claude" for c in package.body.get_tracked_changes())
 
     package.body.accept_all()
     assert [c.content for c in package.body.get_comments()] == ["On the insertion."]
+    assert [r.text for r in package.body.get_comments()[0].get_range()] == ["INSERTED"]
     assert package.body.paragraphs[0].text == "INSERTED Base text."
 
 
-def test_a_comment_inside_an_insertion_is_hoisted_out_of_it(tmp_path):
-    """CR-003 section 16.9: the defect that made a reject take the comment with it.
+def test_a_comment_inside_an_insertion_starts_inside_it_and_ends_after_it(tmp_path):
+    """CR-010 section 12.8, over CR-003 section 16.9's case.
 
     A comment on text that lies **wholly inside** this author's own ``w:ins``
-    --- which is what commenting on a replacement gives --- had its markers and
-    its reference run written *inside* the ``w:ins``, because the replacement's
-    ``w:del`` and ``w:ins`` carried a stale ``parent`` and the hoist of section
-    15.6 could not find the list they were in.
+    --- which is what commenting on a replacement gives. Section 16.9 found the
+    markers written inside the ``w:ins`` through a stale ``parent``; now the
+    start is meant to be there, as Word writes it, and the end and the reference
+    run are siblings of the ``w:ins``. The stale-parent lesson still holds: the
+    ``w:del`` and the ``w:ins`` of the replacement are children of the ``w:p``.
     """
     package = sample("2010-sample1.docx")
     package.author = Author("Claude")
@@ -716,24 +726,35 @@ def test_a_comment_inside_an_insertion_is_hoisted_out_of_it(tmp_path):
     package.body.replace_text("document", "report")
     package.body.range_of(package.find("report")[0]).insert_comment("why")
 
-    xml = package.body.paragraphs[0].get_xml()
-    assert "<w:commentRangeStart" in xml
-    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins "), "the start is a sibling"
-    assert xml.index("</w:ins>") < xml.index("<w:commentRangeEnd"), "and so is the end"
-    inside = xml[xml.index("<w:ins ") : xml.index("</w:ins>")]
-    assert "commentRange" not in inside and "commentReference" not in inside
-
-    # the markup the hoist rests on: the w:del and the w:ins of a replacement
-    # are children of the paragraph, not of one another
     paragraph = package.body.paragraphs[0]
+    xml = paragraph.get_xml()
+    inside = xml[xml.index("<w:ins ") : xml.index("</w:ins>")]
+    assert re.search(r'<w:ins [^>]*><w:commentRangeStart w:id="0"/><w:r>', inside), "first in it"
+    assert "commentRangeEnd" not in inside and "commentReference" not in inside
+    assert "</w:ins><w:commentRangeEnd" in xml, "the end follows it, as a sibling"
+    assert xml.count("<w:ins ") == 1, "the comment ends with the insertion: no split"
+    assert _reference_runs_outside_insertions(xml)
+
     from docx4j_py.traversal import element_name
 
     for item in paragraph.element.content:
         if element_name(item) in (f"{{{_W}}}ins", f"{{{_W}}}del"):
             assert item.parent is paragraph.element
+        if element_name(item) == f"{{{_W}}}ins":
+            assert item.content[0].parent is item, "the start's parent is the w:ins"
+        if element_name(item) in (f"{{{_W}}}commentRangeEnd", f"{{{_W}}}r"):
+            assert item.parent is paragraph.element
 
 
-def test_a_comment_on_an_insertion_survives_accepting_and_rejecting_it():
+def test_a_comment_on_an_insertion_stays_on_accept_and_goes_on_reject():
+    """CR-010 section 12.8: what current Word does with Word's form, and the engine with it.
+
+    Section 16.9 had the comment survive the rejection with an empty range; Word
+    16's Reject All of artefact 8 removed it, and with the start inside the
+    ``w:ins`` the engine's rule (a start inside removed text, nothing left in its
+    range) removes it too: the entry, the markers and the reference run.
+    """
+
     def commented():
         package = sample("2010-sample1.docx")
         package.author = Author("Claude")
@@ -751,12 +772,15 @@ def test_a_comment_on_an_insertion_survives_accepting_and_rejecting_it():
 
     rejected = commented()
     assert rejected.body.reject_all() == 2
-    comments = rejected.body.get_comments()
-    assert [c.content for c in comments] == ["why"], "the insertion did not take it with it"
-    assert [r.text for r in comments[0].get_range()] == [""], "an empty range, where it was"
+    assert rejected.body.get_comments() == []
+    assert rejected.body.paragraphs[0].text.startswith("My first 2010 document.")
+    assert "comment" not in rejected.main_document_part.get_xml()
+    again = reloaded(rejected)
+    assert again.body.get_comments() == []
+    assert "comment" not in again.main_document_part.get_xml()
 
 
-def test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_survives_both():
+def test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_goes_with_its_rejection():
     def commented():
         package = sample("2010-sample1.docx")
         package.author = Author("Claude")
@@ -767,17 +791,242 @@ def test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_survives_both():
         return package
 
     xml = commented().body.paragraphs[-1].get_xml()
-    assert xml.index("<w:commentRangeStart") < xml.index("<w:ins ")
     inside = xml[xml.index("<w:ins ") : xml.index("</w:ins>")]
-    assert "commentRange" not in inside and "commentReference" not in inside
+    assert "<w:commentRangeStart" in inside
+    assert "commentRangeEnd" not in inside and "commentReference" not in inside
+    assert xml.index("</w:ins>") < xml.index("<w:commentRangeEnd")
+    assert _reference_runs_outside_insertions(xml)
 
     accepted = reloaded(commented())
     accepted.body.accept_all()
-    assert [c.content for c in accepted.body.get_comments()] == ["about the new paragraph"]
+    comments = accepted.body.get_comments()
+    assert [c.content for c in comments] == ["about the new paragraph"]
+    assert [r.text for r in comments[0].get_range()] == ["A whole new paragraph."]
 
     rejected = reloaded(commented())
     rejected.body.reject_all()
-    assert [c.content for c in rejected.body.get_comments()] == ["about the new paragraph"]
+    assert rejected.body.get_comments() == []
+    assert "comment" not in rejected.main_document_part.get_xml()
+    assert reloaded(rejected).body.get_comments() == []
+
+
+# -- a comment on part of an insertion: Word's form (CR-010 section 12.8) ----
+
+#: Word 15's save of the editor's ``measure-base.docx``, section 1 done: the
+#: comment "M1" on "monthly" inside Claude's pending insertion (docx4j-core-ts
+#: CR-002 section 38 item 1).
+MEASURE_WORD15 = "revisions/editor/review/measure-word15.docx"
+
+
+def _reference_runs_outside_insertions(xml: str) -> bool:
+    """True when no ``w:commentReference`` lies inside a ``w:ins``."""
+    from lxml import etree
+
+    root = etree.fromstring(xml.encode())
+    references = root.iter(f"{{{_W}}}commentReference")
+    return all(not any(a.tag == f"{{{_W}}}ins" for a in r.iterancestors()) for r in references)
+
+
+def _shape(p: Any) -> list:
+    """A paragraph's run-level content as names and text: no ids, dates, rsids or properties.
+
+    The ``w:pPr`` is left out (Word marks the inserted paragraph's own mark; the
+    tracker, inserting a paragraph, marks the previous one's, as Word does on
+    Enter), and so are ``w:proofErr`` and bookmarks; a run keeps its text, its
+    character style and its other items' names; a revision keeps its author.
+    """
+    from lxml import etree
+
+    out: list = []
+    for child in p:
+        local = etree.QName(child).localname
+        if local in ("pPr", "proofErr", "bookmarkStart", "bookmarkEnd"):
+            continue
+        if local == "r":
+            items: list = []
+            for item in child:
+                name = etree.QName(item).localname
+                if name == "rPr":
+                    style = item.find(f"{{{_W}}}rStyle")
+                    if style is not None:
+                        items.append(("rStyle", style.get(f"{{{_W}}}val")))
+                elif name == "t":
+                    items.append(("t", item.text))
+                else:
+                    items.append((name,))
+            out.append(("r", items))
+        elif local in ("ins", "del", "moveFrom", "moveTo"):
+            out.append((local, child.get(f"{{{_W}}}author"), _shape(child)))
+        else:
+            out.append((local,))
+    return out
+
+
+def _word_paragraph(name: str, text: str) -> Any:
+    """The ``w:p`` of a Word-saved fixture whose text is `text`, as lxml."""
+    from lxml import etree
+
+    with zipfile.ZipFile(FIXTURES / name) as archive:
+        root = etree.fromstring(archive.read("word/document.xml"))
+    for p in root.iter(f"{{{_W}}}p"):
+        if "".join(t.text or "" for t in p.iter(f"{{{_W}}}t")) == text:
+            return p
+    raise AssertionError(f"no paragraph of {name} holds {text!r}")
+
+
+def _claudes_insertion(mode: str = "TrackAll"):
+    """Claude's pending insertion of the measured sentence, as a whole new paragraph."""
+    package = create_package()
+    package.id_seed = 20260917
+    package.author = Author("Claude", initials="C")
+    package.tracked_change_date = WHEN
+    package.body.insert_paragraph("Before.")
+    package.change_tracking_mode = "TrackAll"
+    package.body.insert_paragraph("The tenant pays rent monthly in advance.")
+    package.change_tracking_mode = mode
+    return package, package.body.paragraphs[-1]
+
+
+@pytest.mark.parametrize("mode", ["TrackAll", "Off"])
+def test_a_comment_on_part_of_an_insertion_splits_it_as_word_does(mode):
+    """CR-010 section 12.8: the paragraph Word 15 wrote, element for element.
+
+    Word: "Track Changes may be on or off: Word does not track comments", so
+    both. The start inside the ``w:ins`` before "monthly", the ``w:ins`` closed
+    after it, the end and the plain reference run, and the rest a second
+    ``w:ins`` by the same author at the same date under a **new** id.
+    """
+    from lxml import etree
+
+    package, paragraph = _claudes_insertion(mode)
+    comment = paragraph.search("monthly")[0].insert_comment("M1")
+
+    ours = etree.fromstring(paragraph.get_xml().encode())
+    word = _word_paragraph(MEASURE_WORD15, "The tenant pays rent monthly in advance.")
+    assert _shape(ours) == _shape(word)
+    assert _shape(ours) == [
+        (
+            "ins",
+            "Claude",
+            [
+                ("r", [("t", "The tenant pays rent ")]),
+                ("commentRangeStart",),
+                ("r", [("t", "monthly")]),
+            ],
+        ),
+        ("commentRangeEnd",),
+        ("r", [("rStyle", "CommentReference"), ("commentReference",)]),
+        ("ins", "Claude", [("r", [("t", " in advance.")])]),
+    ]
+
+    first, second = ours.findall(f"{{{_W}}}ins")
+    date = f"{{{_W}}}date"
+    assert first.get(date) == second.get(date) == "2026-09-17T12:00:00Z"
+    identifier = f"{{{_W}}}id"
+    document = etree.fromstring(package.main_document_part.get_xml().encode())
+    revision_ids = [
+        e.get(identifier)
+        for e in document.iter()
+        if etree.QName(e).localname in ("ins", "del", "bookmarkStart")
+    ]
+    assert revision_ids.count(second.get(identifier)) == 1, "a new id, used nowhere else"
+    assert int(second.get(identifier)) > int(first.get(identifier))
+
+    # the anchor is narrow, and the parents are wired
+    assert [r.text for r in comment.get_range()] == ["monthly"]
+    assert package.change_tracking_mode == mode
+    for item in paragraph.element.content:
+        assert item.parent is paragraph.element
+    for half in [e for e in paragraph.element.content if hasattr(e, "author")]:
+        assert all(item.parent is half for item in half.content)
+
+
+def test_a_comment_ending_with_its_insertion_does_not_split_it():
+    _package, paragraph = _claudes_insertion()
+    comment = paragraph.search("in advance.")[0].insert_comment("to the end")
+    xml = paragraph.get_xml()
+    assert xml.count("<w:ins ") == 1
+    assert re.search(
+        r'<w:commentRangeStart w:id="0"/><w:r><w:t>in advance\.</w:t></w:r></w:ins>'
+        r'<w:commentRangeEnd w:id="0"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/>'
+        r'</w:rPr><w:commentReference w:id="0"/></w:r></w:p>$',
+        xml,
+    )
+    assert [r.text for r in comment.get_range()] == ["in advance."]
+
+    # and on the whole of it: the start is the w:ins's first item
+    _package, paragraph = _claudes_insertion()
+    paragraph.insert_comment("on all of it")
+    xml = paragraph.get_xml()
+    assert xml.count("<w:ins ") == 1
+    assert re.search(r'<w:ins [^>]*><w:commentRangeStart w:id="0"/><w:r>', xml)
+    assert "</w:ins><w:commentRangeEnd" in xml
+
+
+def test_a_comment_on_someone_elses_insertion_with_tracking_off_takes_words_form():
+    """The form is Word's for any ``w:ins``, tracking on or off (core-ts does the same).
+
+    ``sample-docx.docx``: Jason Harrop's insertion "An insertion", in a document
+    whose annotation ids 0 to 2 are taken (a bookmark, the insertion, a deletion).
+    """
+    package = sample("sample-docx.docx")
+    package.id_seed = 20260917
+    assert package.change_tracking_mode == "Off"
+    span = package.body.search("An insertion")[0]
+    comment = span.paragraph.search("An", match_case=True)[0].insert_comment("the first word")
+
+    xml = span.paragraph.get_xml()
+    assert re.search(
+        r'<w:ins w:id="1" w:author="Jason Harrop" w:date="2007-12-09T10:14:00Z">'
+        r'<w:commentRangeStart w:id="0"/><w:r><w:t>An</w:t></w:r></w:ins>'
+        r'<w:commentRangeEnd w:id="0"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr>'
+        r'<w:commentReference w:id="0"/></w:r>'
+        r'<w:ins w:id="3" w:author="Jason Harrop" w:date="2007-12-09T10:14:00Z"><w:r>'
+        r'<w:t xml:space="preserve"> insertion</w:t></w:r></w:ins>',
+        xml,
+    ), "the second half one above the highest annotation id in use"
+    assert [r.text for r in comment.get_range()] == ["An"]
+    assert package.change_tracking_mode == "Off", "nothing turned tracking on"
+    changes = package.body.get_tracked_changes()
+    assert [(c.type, c.author, c.text) for c in changes] == [
+        ("Added", "Jason Harrop", "An insertion"),
+        ("Deleted", "Jason Harrop", " A deletion"),
+    ]
+
+
+def test_the_listing_after_a_split_is_one_insertion_and_reject_takes_the_comment():
+    """What ``get_tracked_changes()`` lists once a comment has split an insertion.
+
+    One change of two pieces: the plain reference run between the halves holds
+    no text and keeps nothing apart (check 23's grouping), which is what
+    docx4j-core-ts lists since its check 32 (A1: Office JS listed Word's own
+    form so). Its CR-002 section 38 had said two, before that check.
+    """
+    package, paragraph = tracked("Kept. ")
+    paragraph.insert_text("The tenant pays rent monthly in advance.", location="End")
+    comment = paragraph.search("monthly")[0].insert_comment("M1")
+    comment.reply("R1")
+
+    changes = package.body.get_tracked_changes()
+    assert [(c.type, c.text) for c in changes] == [
+        ("Added", "The tenant pays rent monthly in advance.")
+    ]
+    assert [p.text for p in changes[0].pieces] == ["The tenant pays rent monthly", " in advance."]
+
+    accepted = reloaded(package)
+    accepted.body.accept_all()
+    assert [r.text for r in accepted.body.get_comments()[0].get_range()] == ["monthly"]
+    assert [c.content for c in accepted.body.get_comments()[0].replies] == ["R1"]
+    assert "<w:ins" not in accepted.main_document_part.get_xml()
+
+    rejected = reloaded(package)
+    assert rejected.body.reject_all() == 1
+    assert rejected.body.get_comments() == [], "the comment and its reply"
+    assert re.search(
+        r'<w:p [^>]*><w:r><w:t xml:space="preserve">Kept\. </w:t></w:r></w:p>',
+        rejected.main_document_part.get_xml(),
+    ), "no marker and no reference run left"
+    assert reloaded(rejected).body.get_comments() == []
 
 
 # ---------------------------------------------------------------------------

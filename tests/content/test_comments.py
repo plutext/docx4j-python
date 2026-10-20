@@ -27,6 +27,7 @@ from conftest import (
     threaded_package,
 )
 
+from docx4j_py import create_package
 from docx4j_py.model.content import Author
 from docx4j_py.model.content.comments import (
     COMMENT_REFERENCE_STYLE,
@@ -356,18 +357,56 @@ def test_a_span_that_crosses_a_run_holder_is_refused_with_where_to_split():
     assert "split the span at" in raised.value.hint
 
 
-def test_the_markers_are_hoisted_out_of_a_tracked_insertion():
-    """CR-003 section 4: a comment is not a revision."""
+def test_a_comment_on_a_tracked_insertion_starts_inside_it():
+    """CR-003 section 4: a comment is not a revision; CR-010 section 12.8: Word's form.
+
+    The start inside the ``w:ins`` (an insertion that is not this author's, made
+    with tracking off), the end and the reference run after it. The insertion
+    starts mid-paragraph, so the range's offsets are the paragraph's, not the
+    ``w:ins``'s.
+    """
     package = sample("sample-docx.docx")
     package.id_seed = 20260917
     span = package.body.search("An insertion")[0]
     comment = span.insert_comment("about the insertion")
     xml = span.paragraph.get_xml()
     start = xml.index(f'<w:commentRangeStart w:id="{comment.id}"/>')
-    assert xml.index("<w:ins ") > start, "the start marker must be in front of the w:ins"
+    assert xml.index("<w:ins ") < start < xml.index("</w:ins>"), "the start is inside the w:ins"
     assert '<w:ins w:id="1"' in xml
+    assert xml.count("<w:ins ") == 1, "the comment ends with the insertion: no split"
     assert "</w:ins><w:commentRangeEnd" in xml
     assert comment.get_range()[0].text == "An insertion"
+
+
+def test_a_marker_inside_a_run_holder_has_its_offset_in_the_paragraph():
+    """A start inside a ``w:ins`` or a hyperlink that does not begin the paragraph.
+
+    Word's own form for a comment on inserted text (CR-010 section 12.8) puts the
+    start there; the offsets were the holder's own, so such a range read from
+    the paragraph's start.
+    """
+    package = create_package()
+    package.body.insert_xml(
+        '<w:p><w:r><w:t xml:space="preserve">Kept. </w:t></w:r>'
+        '<w:ins w:id="1" w:author="Word" w:date="2026-09-30T13:34:00Z">'
+        '<w:r><w:t xml:space="preserve">The tenant pays rent </w:t></w:r>'
+        '<w:commentRangeStart w:id="5"/><w:r><w:t>monthly</w:t></w:r></w:ins>'
+        '<w:commentRangeEnd w:id="5"/>'
+        '<w:r><w:commentReference w:id="5"/></w:r>'
+        '<w:hyperlink w:anchor="x"><w:r><w:t xml:space="preserve"> in </w:t></w:r>'
+        '<w:commentRangeStart w:id="6"/><w:r><w:t>advance</w:t></w:r>'
+        '<w:commentRangeEnd w:id="6"/></w:hyperlink>'
+        '<w:r><w:commentReference w:id="6"/></w:r></w:p>'
+    )
+    offsets = [(m.id, m.kind, m.offset) for m in markers_of(package.body.container)]
+    assert offsets == [
+        (5, "start", 27),
+        (5, "end", 34),
+        (5, "reference", 34),
+        (6, "start", 38),
+        (6, "end", 45),
+        (6, "reference", 45),
+    ]
 
 
 # ---------------------------------------------------------------------------

@@ -32,9 +32,15 @@ The rules of section 4 that land here:
   An empty range gets a reference run only, which is all Word requires.
 * **no ``w16cex`` part is created**, only kept in step.
 * the styles part is unmarshalled **only when it lacks the comment styles**.
-* a comment is **not a revision**: its markers are hoisted out of the ``w:ins``
-  or ``w:del`` the anchor run sits in, so accepting or rejecting that revision
-  leaves the comment where it is.
+* a comment is **not a revision**, and on text in an insertion it is written in
+  **Word's own form** (CR-010 section 12.8; docx4j-core-ts CR-002 section 38
+  item 1): the ``w:commentRangeStart`` inside the ``w:ins``, before the first
+  commented run; the ``w:ins`` closed after the last one, the rest of it a
+  second ``w:ins`` with a new id; the ``w:commentRangeEnd`` and the reference
+  run between the two. The anchor stays narrow and the reference run is no
+  insertion. Accepting the insertion leaves the comment on its text; rejecting
+  it removes the comment, as current Word does. A ``w:del``, ``w:moveFrom`` or
+  ``w:moveTo`` keeps the earlier hoist: the markers go outside it.
 * comment ids are their own space, above the highest ``w:comment/@w:id`` and the
   highest id on a marker; revision ids (Phase F) are a different counter.
 """
@@ -117,9 +123,13 @@ W_COMMENT_RANGE_START = _w("commentRangeStart")
 W_COMMENT_RANGE_END = _w("commentRangeEnd")
 W_COMMENT_REFERENCE = _w("commentReference")
 
-#: The four run-level revision holders, by element name. A marker inside one is
-#: hoisted out of it (section 4: a comment is not a revision).
+#: The four run-level revision holders, by element name. A marker beside a run
+#: in one is hoisted out of it (section 4: a comment is not a revision), except
+#: the range markers of a comment on text in a ``w:ins``, which go where Word
+#: puts them (:func:`_place_around`).
 _REVISION_NAMES = frozenset(_REVISIONS)
+
+W_INS = _w("ins")
 
 
 # ---------------------------------------------------------------------------
@@ -234,8 +244,15 @@ def _marker_id(item: Any) -> int | None:
     return int(value) if isinstance(value, int) else None
 
 
-def _visit_runs(out: list[CommentMarker], items: Any, paragraph: Any, container: Any) -> int:
-    """Collect the markers of one run list; returns the text length it covered."""
+def _visit_runs(
+    out: list[CommentMarker], items: Any, paragraph: Any, container: Any, base: int = 0
+) -> int:
+    """Collect the markers of one run list; returns the text length it covered.
+
+    `base` is the paragraph offset the list starts at, so that a marker inside a
+    ``w:ins`` or a hyperlink gets its offset in the **paragraph**, not in the
+    holder (a start inside a ``w:ins`` is Word's form, CR-010 section 12.8).
+    """
     position = 0
     if not items:
         return position
@@ -260,7 +277,7 @@ def _visit_runs(out: list[CommentMarker], items: Any, paragraph: Any, container:
                                 run_owner=items,
                                 paragraph=paragraph,
                                 paragraph_container=container,
-                                offset=position,
+                                offset=base + position,
                             )
                         )
                     continue
@@ -279,7 +296,7 @@ def _visit_runs(out: list[CommentMarker], items: Any, paragraph: Any, container:
                         owner=items,
                         paragraph=paragraph,
                         paragraph_container=container,
-                        offset=position,
+                        offset=base + position,
                     )
                 )
             continue
@@ -288,9 +305,13 @@ def _visit_runs(out: list[CommentMarker], items: Any, paragraph: Any, container:
             # the accepted view, which is what the offsets are in: a w:ins and a
             # w:moveTo hold text and markers, a w:del and a w:moveFrom do not
             if shown == "accepted":
-                position += _visit_runs(out, run_items_of(element), paragraph, container)
+                position += _visit_runs(
+                    out, run_items_of(element), paragraph, container, base + position
+                )
         elif name in RUN_HOLDER_NAMES:
-            position += _visit_runs(out, run_items_of(element), paragraph, container)
+            position += _visit_runs(
+                out, run_items_of(element), paragraph, container, base + position
+            )
     return position
 
 
@@ -534,13 +555,17 @@ def _insert_at(owner: list, index: int, items: list, parent: Any) -> None:
 
 
 def _marker_site(paragraph: Paragraph, segment: Any, *, after: bool) -> tuple[list, int, Any]:
-    """Where a marker for a segment's run goes: beside the run, outside a revision.
+    """Where a marker for a segment's run goes when it is not put inside a ``w:ins``.
 
-    Section 4: a comment is **not** a revision, so its markers are hoisted out of
-    the ``w:ins`` or ``w:del`` the anchor run sits in. Accepting or rejecting
-    that revision then leaves the comment where it is; the cost is that a comment
-    on part of an insertion widens to the whole of it, which is what Word shows
-    once the insertion is accepted anyway.
+    Beside the run, but **outside** the ``w:ins``, ``w:del``, ``w:moveFrom`` or
+    ``w:moveTo`` the run sits in (section 4: a comment is not a revision, and a
+    reference run inside one would be an insertion of its own). Since CR-010
+    section 12.8 :func:`_place_around` asks this only for an empty range's
+    reference run, and for a range marker whose run is not directly in a
+    ``w:ins``: the range markers of a comment on inserted text go where Word
+    puts them (:func:`_insertion_of`, :func:`_close_insertion`). A deletion's
+    form is not measured and a move's halves are not to be split, so those keep
+    this hoist (docx4j-core-ts CR-002 section 38 item 1).
     """
     holder = getattr(segment.run, "parent", None)
     if element_name(holder) in _REVISION_NAMES:
@@ -555,8 +580,63 @@ def _marker_site(paragraph: Paragraph, segment: Any, *, after: bool) -> tuple[li
     return owner, segment.run_index + (1 if after else 0), parent
 
 
+def _insertion_of(segment: Any) -> Any:
+    """The ``w:ins`` a segment's run sits **directly** in, or None.
+
+    Directly: the run is an item of the ``w:ins``'s own list, which is checked
+    by identity as well as through the run's ``parent``, so that a stale pointer
+    (CR-003 section 16.9) cannot send a marker into the wrong list. A run in a
+    hyperlink or a content control inside a ``w:ins`` is not directly in it.
+    """
+    holder = getattr(segment.run, "parent", None)
+    if element_name(holder) != W_INS or run_items_of(holder) is not segment.run_owner:
+        return None
+    return holder
+
+
+def _close_insertion(paragraph: Paragraph, insertion: Any, index: int, items: list) -> bool:
+    """Close a ``w:ins`` before its item at `index` and put `items` after it.
+
+    Word's form for the end of a comment on inserted text (CR-010 section 12.8,
+    measured in docx4j's ``revisions/editor/review/measure-word15.docx``): the
+    ``w:ins``'s items from `index` on move into a second ``w:ins`` with the same
+    author and date and a **new** ``w:id``, and `items` go between the two; with
+    nothing from `index` on, `items` simply go after the ``w:ins``. docx4j-core-ts's
+    ``Paragraph.splitHolderAround``.
+
+    The new id comes from the one annotation id space, through the package's
+    tracker, or one made for the call while tracking is off (a comment on an
+    insertion someone else made takes Word's form either way). False, with
+    nothing changed, when the ``w:ins`` is not in its parent's list.
+    """
+    from docx4j_py.model.content.hyperlinks import _id_source, _revision_like
+
+    # every parent read before anything moves (CR-003 section 16.9)
+    outer_parent = getattr(insertion, "parent", None)
+    outer = run_items_of(outer_parent) if outer_parent is not None else None
+    at = _index_of(outer, insertion) if outer is not None else -1
+    content = run_items_of(insertion)
+    if outer is None or at < 0 or content is None:
+        return False
+    pieces = list(items)
+    if index < len(content):
+        tail = list(content[index:])
+        # the first half lets go of the tail before the second adopts it
+        del content[index:]
+        pieces.append(_revision_like(insertion, tail, _id_source(paragraph)))
+    _insert_at(outer, at + 1, pieces, outer_parent)
+    return True
+
+
 def _place_around(span: Range, identifier: int) -> None:
-    """Write the markers of a new comment around a span, splitting at its boundaries."""
+    """Write the markers of a new comment around a span, splitting at its boundaries.
+
+    On text in a ``w:ins``, Word's form (CR-010 section 12.8): the start inside
+    the ``w:ins`` before the first commented run, the end and the reference run
+    after the ``w:ins`` that holds the last, which is split there when more of
+    it follows. Elsewhere, and in a ``w:del`` or a move, the markers go beside
+    the runs, outside any revision (:func:`_marker_site`).
+    """
     paragraph = span.paragraph
     start = paragraph.split_at(span.start, prefer="back")
     end = paragraph.split_at(span.end, prefer="forward") if span.end > span.start else start
@@ -582,10 +662,22 @@ def _place_around(span: Range, identifier: int) -> None:
         _insert_at(owner, index, [reference], parent)
         return
 
-    owner, index, parent = _marker_site(paragraph, covered[-1], after=True)
-    _insert_at(owner, index, [el.commentRangeEnd(id=identifier), reference], parent)
-    owner, index, parent = _marker_site(paragraph, covered[0], after=False)
-    _insert_at(owner, index, [el.commentRangeStart(id=identifier)], parent)
+    first, last = covered[0], covered[-1]
+    # both looked up before the split moves anything
+    first_insertion, last_insertion = _insertion_of(first), _insertion_of(last)
+    closing = [el.commentRangeEnd(id=identifier), reference]
+    if last_insertion is None or not _close_insertion(
+        paragraph, last_insertion, last.run_index + 1, closing
+    ):
+        owner, index, parent = _marker_site(paragraph, last, after=True)
+        _insert_at(owner, index, closing, parent)
+    # the split moved only what follows the last run, so the first's index holds
+    opening = el.commentRangeStart(id=identifier)
+    if first_insertion is not None:
+        _insert_at(first.run_owner, first.run_index, [opening], first_insertion)
+    else:
+        owner, index, parent = _marker_site(paragraph, first, after=False)
+        _insert_at(owner, index, [opening], parent)
 
 
 def _place_after(body: Body, parent_id: int, identifier: int) -> None:

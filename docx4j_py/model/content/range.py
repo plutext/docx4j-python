@@ -469,8 +469,16 @@ class Range:
         ``w14:paraId``. The author is ``pkg.author`` (CR-003 section 3.4's
         audit trail).
 
-        The markers are **hoisted out of a ``w:ins`` or ``w:del``** the anchor
-        run sits in, because a comment is not a revision (CR-003 section 4).
+        A comment is not a revision (CR-003 section 4), and on text in a
+        ``w:ins`` the markers are written in **Word's own form** (CR-010 section
+        12.8; docx4j-core-ts CR-002 section 38): the ``w:commentRangeStart``
+        inside the ``w:ins``, the ``w:commentRangeEnd`` and the reference run
+        after it, the ``w:ins`` split there --- its rest a second ``w:ins`` with a
+        new id --- when the span ends inside it. The anchor stays narrow and the
+        reference run is no insertion. Accepting the insertion leaves the
+        comment on its text; rejecting it removes the comment, as current Word
+        does. With tracking on or off alike. A ``w:del`` or a move keeps the
+        markers outside it.
 
         **What it may touch beyond this part**: ``/word/comments.xml``,
         ``/word/commentsExtended.xml``, ``/word/commentsIds.xml`` and
