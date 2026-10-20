@@ -1218,8 +1218,8 @@ the same `== comments` line, the empty comment parts. The user's Word save of th
 rejected copy has no comment parts either. Word drops empty ones on save, which is fix 2's second
 rule seen from the other side.
 
-**Fix 2 implemented (2026-10-21).** The user, the same day, said yes to porting fix 2 once docx4j
-had committed it. docx4j committed it as `d18693760` on `VERSION_17_3_4` (its CR-043 section 15,
+**Fix 2 implemented (2026-10-21).** The user, the same day, asked whether fix 2 could be ported
+once docx4j committed it: "yes". docx4j committed it as `d18693760` on `VERSION_17_3_4` (its CR-043 section 15,
 U21 to U23), and this is its port, following its code.
 
 - **`Resolver.remove_revision`** (`resolver.py`). A comment whose range start was inside the
