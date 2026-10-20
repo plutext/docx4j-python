@@ -58,6 +58,18 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **A comment whose range a resolution empties goes whole, wherever its markers were, as Word 365
+  removes it** ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md)
+  section [12.8](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#128-the-word-check-2026-10-21),
+  fix 2, the port of docx4j `d18693760`, its CR-043 section 15): rejecting an insertion or
+  accepting a deletion removes a comment whose range start was inside it **or whose markers lie
+  either side of it**, once nothing with text is left in its range --- markers, reference run,
+  entry, its extended entries and its replies. 0.1.0 removed only such a comment's range markers,
+  as Word 2010 and Word 15 do; a comment written by 0.1.0's tracker on inserted text now goes with
+  its rejection, as in Word 365. With the last comment the resolution takes away, the `comments`,
+  `commentsExtended`, `commentsIds` and `commentsExtensible` parts go too, with their
+  relationships and content types, and `people.xml` once no tracked change is left. A dry run's
+  body removes no part.
 - **A comment on tracked-inserted text is written as Word writes it**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section
   [12.8](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#128-the-word-check-2026-10-21)):

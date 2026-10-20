@@ -19,9 +19,10 @@ found one disagreement: Word's Reject All removes a comment that the engine kept
 implemented 2026-10-21** (the user's decision): the content API writes Word's own form for a
 comment on inserted text, the range start inside the `w:ins`, so the engine's Reject All removes
 it as Word's does. **Word check passed 2026-10-21** (the user, of the regenerated artefact 8 and
-its two copies; section 12.8): **Phase C is done.** Fix 2, the resolver's rule for the outside
-form and the emptied comment parts, follows docx4j's CR-043 follow-up (Jason: "follow Word 365"),
-ported from its commit once it lands, with the user's go.
+its two copies; section 12.8): **Phase C is done.** **Fix 2 implemented 2026-10-21** (section
+12.8), the port of docx4j `d18693760` (Jason: "follow Word 365"): a comment whose range a
+resolution empties goes whole wherever its markers were, and with the last comment its parts, as
+Word 365 does.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1007,7 +1008,8 @@ middle since Phase A (10.6), and passes unchanged.
   and the appended paragraph as designed, Accept All at 0 lines from Word's, and one
   disagreement left, the comment on Reject All, whose fix is the user's decision. **Fix 1
   implemented the same day** (section 12.8), and **its Word check passed** the same day.
-- **Fix 2** (section 12.8): the port of docx4j's CR-043 follow-up, once it lands.
+- ~~**Fix 2**~~ **implemented 2026-10-21** (section 12.8): docx4j `d18693760`, its CR-043
+  follow-up, ported.
 - ~~**The hand-off to docx4j's session**~~ **done 2026-10-18.** Asked the same day; docx4j's
   session reran CR-043 section 14's python column with `PortsAgreement` (docx4j `1b3a68ccf`, this
   repository at `e690217`, read only) over the eleven fixtures: through
@@ -1212,3 +1214,80 @@ Accept All and Reject All of the new artefact 8 (`__tmp/python-8b/` in the user'
 the same `== comments` line, the empty comment parts. The user's Word save of the engine's
 rejected copy has no comment parts either. Word drops empty ones on save, which is fix 2's second
 rule seen from the other side.
+
+**Fix 2 implemented (2026-10-21).** The user, the same day, said yes to porting fix 2 once docx4j
+had committed it. docx4j committed it as `d18693760` on `VERSION_17_3_4` (its CR-043 section 15,
+U21 to U23), and this is its port, following its code.
+
+- **`Resolver.remove_revision`** (`resolver.py`). A comment whose range start was inside the
+  revision taken away, **or whose markers lie either side of it in the same list**, goes whole ---
+  markers, reference run, entry, its `commentsExtended`, `commentsIds` and `commentsExtensible`
+  entries and its replies --- once nothing with text is left in its range. Before, a comment of
+  the second kind lost only its range markers, as Word 2010 and Word 15 resolve it. A comment whose
+  range was empty to begin with is untouched, since the revision is not between its markers; one
+  whose range still holds text stays. A range spanning paragraphs is judged within one list, as
+  before (U23). An accepted deletion follows by symmetry (U21), unmeasured in Word, as in docx4j.
+  The docstring that cited Word 2010 and 15 for the outside form is rewritten.
+- **`Removals`** (`removals.py`). With the last comment a resolution takes away,
+  `_drop_empty_comment_parts` (docx4j `dropEmptyCommentParts`) removes the `comments`,
+  `commentsExtended`, `commentsIds` and `commentsExtensible` parts, each with its relationship from
+  the main document, its shortcut and its content-type override, through the existing
+  `_remove_if_untargeted`. `people.xml` goes the same way only if the engine lists no tracked
+  change left in the package (U22). It runs only when a comment went whole in that flush, as in
+  docx4j. **Section 10.3 item 3 holds**: a dry run's body or a detached container resolves
+  locally, `_flush_comments` returns before anything outside the story, and the new method returns
+  at once when `local` too (docx4j's guard is its conversion copy).
+- **`ResolvedView`** has no counterpart here: the views by resolution are CR-011's (section 12.3),
+  and the text and Markdown readers filter runs by their holders, which this change does not touch.
+- **`description.py`** gains docx4j's `endsBeforeReferences`: comment range ends and references
+  standing together are read ends first. Word 365's save puts each reply's reference after its own
+  range end, where the source and Word 2010 put both ends first; that order says nothing about the
+  comments.
+- **Fixtures**, copied from docx4j-core-tests at `d18693760`: `python/artefact8/` (artefact 8
+  before fix 1, with Word 365's Accept All and Reject All of it, the files of `__tmp/python-8/`)
+  and `editor/review/review-for-word-word365-rejected.docx`.
+- **Tests.** `test_word_saves.py` gains docx4j's three new comparisons as cases: Word 365's Reject
+  All of the review file, and Word 365's Accept All and Reject All of artefact 8. The two older
+  Reject All comparisons of the review file, Word 15's and Word 2010's, leave `CASES` for
+  `test_older_words_reject_all_differs_by_that_one_comment`: docx4j's `assertAllButComment`, Word's
+  save with the comment "Changed from arrears, as agreed." removed by `Removals` before it is
+  compared, by the package's verb and the body's. The same test asserts that Word's save as it
+  is still differs from ours, so that the exemption is not vacuous.
+  `test_artefact_8_rejected_takes_the_comment_parts_and_people_with_its_last_comment` is docx4j's
+  `python8RejectAll`: no part, shortcut, zip entry, override or relationship left for the four
+  parts. In `test_tracked_changes.py`: a comment with its markers either side of a rejected
+  insertion goes whole, beside one with an empty range and one on kept text, which stay; an
+  accepted deletion likewise (U21); rejecting only artefact 8's "second" takes the comment parts
+  and keeps `people.xml` while eight changes are left; and a dry run's `reject_all()` removes no
+  part, where the real one then does. U3's test kept its assertions on the parts' entries by
+  holding the parts, as docx4j's does, and now also asserts the parts gone. Every new and changed
+  test fails against the commit before, except docx4j's `python8AcceptAll` (the Accept All case of
+  artefact 8), which passes before as well, Accept All having been at 0 lines (above).
+- **The numbers.** The fast suite: 2,468 passed, 8 skipped, 40 deselected, 10 xfailed. The full
+  suite: 2,508 passed, 8 skipped, 10 xfailed. Through `description.py`, the records shown (and
+  left out):
+
+  | comparison | lines differing |
+  |---|---|
+  | artefact 8 (docx4j's copy), `accept_all` against Word 365's Accept All | **0** (0) |
+  | artefact 8 (docx4j's copy), `reject_all` against Word 365's Reject All | **0** (0); 5 before |
+  | `review-for-word.docx`, `reject_all` against Word 365's Reject All | **0** (0); 4 before |
+  | the same against Word 15's Reject All | **4** (4): the comment; 0 without it |
+  | the same against Word 2010's Reject All | **4** (4): the comment; 0 without it |
+  | the other fourteen of the fifteen comparisons, and Word 2010's Accept All | **0** (0) |
+
+  "Before" is the commit before with the new description: the 6 lines recorded above for the
+  review file were these 4 and Word 365's order of the reply markers. The four lines against the
+  older saves are the comment's two (its author and its paragraph) and the paragraph "Notice must
+  be given within 30 days.", once each side, which the older saves start with the comment's
+  reference run. Of the fifteen comparisons of sections 10 and 11, the review file's Reject All
+  against Word 15's is the one no longer at zero, by that comment exactly, as docx4j records it.
+  `scripts/compare_word_resolution.py` over the regenerated artefacts: against
+  `out/acceptance-word/` (Word 365's saves of the artefact 8 before fix 1) **0** and **0**;
+  against Word 365's saves of the artefact 8 of fix 1 (`__tmp/python-8b/`), **0** and **0**, where
+  the Reject All was 1.
+- **The artefacts.** Against those of `30ec7b0`, `scripts/compare_acceptance.py`: 13 artefacts,
+  179 entries compared, one differing beyond the dates, `8-tracked-changes-rejected.docx`: its
+  entry list lacks `word/comments.xml`, `commentsExtended.xml`, `commentsIds.xml` and `people.xml`,
+  and `[Content_Types].xml` and `word/_rels/document.xml.rels` lose their overrides and
+  relationships. Section 12.9 regenerates them again.

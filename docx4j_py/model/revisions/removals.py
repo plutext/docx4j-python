@@ -3,9 +3,11 @@
 CR-043 section 3.2; CR-010 section 4. The notes whose references went (Word
 removes a note with its reference), the comments whose anchors went (with their
 ``commentsExtended``, ``commentsIds`` and ``commentsExtensible`` entries and
-their replies), bookmarks with a start or an end in removed content (removed
-whole, C11), and the relationships and parts nothing references any more (D7:
-images, charts, OLE objects, a dropped section's headers and footers).
+their replies, and with the last comment the comment parts themselves, as Word
+365 removes them: docx4j ``d18693760``, CR-010 section 12.8), bookmarks with a
+start or an end in removed content (removed whole, C11), and the relationships
+and parts nothing references any more (D7: images, charts, OLE objects, a
+dropped section's headers and footers).
 Recorded as content goes, settled by :meth:`Removals.flush` once the resolution
 is done, against what still stands in every story.
 
@@ -78,7 +80,7 @@ class Removals:
         #: comments some of whose markup went: removed when nothing references
         #: them, else their orphan markers go
         self.comments: set[int] = set()
-        #: comments to remove whole (their range start was inside removed text, now empty)
+        #: comments to remove whole (their range held removed text, and is now empty)
         self.comments_whole: set[int] = set()
         self.bookmarks: dict[int, tuple[Any, set[int]]] = {}
         self.relationships: dict[int, tuple[Any, set[str]]] = {}
@@ -128,7 +130,7 @@ class Removals:
         trees.walk(subtree, enter, relationship)
 
     def remove_comment(self, comment_id: int | None) -> None:
-        """A comment to remove whole: its range start was inside removed content, now empty."""
+        """A comment to remove whole: its range held removed content, and is now empty."""
         if comment_id is not None:
             self.comments_whole.add(comment_id)
 
@@ -253,6 +255,48 @@ class Removals:
         done: set[int] = set()
         for comment_id in sorted(whole):
             self._remove_comment_whole(comment_id, parts, done)
+        if done:
+            self._drop_empty_comment_parts()
+
+    def _drop_empty_comment_parts(self) -> None:
+        """With the last comment a resolution takes away, the comment parts go (docx4j ``dropEmptyCommentParts``).
+
+        As Word 365 removes them (CR-010 section 12.8; docx4j-python's artefact
+        8 rejected, core-ts check 32): the comments part, its extended, ids and
+        extensible parts, their relationships and content types; and the people
+        part, where no tracked change is left to name an author (Word's removal
+        was seen with none left). Never when resolving locally: a dry run's
+        body touches no part outside its own (CR-010 section 10.3 item 3).
+        """
+        if self.local:
+            return
+        main = self.package.main_document_part
+        comments_part = main.comments_part
+        if comments_part is None or getattr(comments_part.contents, "comment", None):
+            return
+        from docx4j_py.openpackaging.parts.namespaces import Namespaces
+
+        self._drop_part(main, comments_part, Namespaces.COMMENTS)
+        self._drop_part(main, main.comments_extended_part, Namespaces.COMMENTS_EXTENDED)
+        self._drop_part(main, main.comments_ids_part, Namespaces.COMMENTS_IDS)
+        self._drop_part(main, main.comments_extensible_part, Namespaces.COMMENTS_EXTENSIBLE)
+        if main.people_part is not None:
+            from docx4j_py.model.revisions.lister import Lister
+
+            if not Lister(self.package, False).list():
+                self._drop_part(main, main.people_part, Namespaces.OFFICE_2011_PEOPLE)
+        self._index_cache.clear()
+
+    def _drop_part(self, main: Any, part: Any, relationship_type: str) -> None:
+        """A part of the main document's: its relationship and shortcut go, and the part if nothing else targets it."""
+        if part is None:
+            return
+        rels = main.relationships_part
+        rel = rels.get_rel(part.part_name) if rels is not None else None
+        if rel is not None:
+            rels.remove_relationship(rel)
+        main.set_part_shortcut(None, relationship_type)
+        self._remove_if_untargeted(part)
 
     def _comments_root(self) -> Any:
         main = getattr(self.package, "main_document_part", None)

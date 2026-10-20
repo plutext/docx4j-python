@@ -18,7 +18,17 @@ tables.
 from __future__ import annotations
 
 import pytest
-from revision_helpers import assert_like_word, fixture, revisions, unresolved
+from description import differing
+from revision_helpers import (
+    assert_like_word,
+    describe,
+    fixture,
+    revisions,
+    round_trip,
+    unresolved,
+)
+
+from docx4j_py import load
 
 #: (tracked, Word's save, accept)
 CASES = [
@@ -29,9 +39,12 @@ CASES = [
     ("editor/revisions/revisions-word15.docx", "core-ts/check18/accept-all.docx", True),
     ("editor/revisions/revisions-word15.docx", "core-ts/check18/reject-all.docx", False),
     ("editor/review/review-for-word.docx", "editor/review/review-for-word-word15-accepted.docx", True),
-    ("editor/review/review-for-word.docx", "editor/review/review-for-word-word15-rejected.docx", False),
     ("editor/review/review-for-word.docx", "editor/review/review-for-word-word2010-accepted.docx", True),
-    ("editor/review/review-for-word.docx", "editor/review/review-for-word-word2010-rejected.docx", False),
+    # Word 365 removes the comment on the inserted paragraph whose markers lie outside its w:ins
+    ("editor/review/review-for-word.docx", "editor/review/review-for-word-word365-rejected.docx", False),
+    # docx4j-python's artefact 8 before fix 1: a comment on inserted text, every marker outside the w:ins
+    ("python/artefact8/8-tracked-changes.docx", "python/artefact8/8-word-accepted.docx", True),
+    ("python/artefact8/8-tracked-changes.docx", "python/artefact8/8-word-rejected.docx", False),
     # check 28: bold over two runs, and two tables' records (w:trPrChange included)
     ("core-ts/check28/28a-changes.docx", "core-ts/check28/28a-accept-all.docx", True),
     ("core-ts/check28/28a-changes.docx", "core-ts/check28/28a-reject-all.docx", False),
@@ -88,3 +101,75 @@ def test_the_probe_resolved_leaves_nothing_listed():
         assert verb(package) == 37
         assert revisions.tracked_changes(package) == []
         assert unresolved(package) == []
+
+
+#: Word 2010's and Word 15's Reject All of the review file: they keep the comment on the inserted
+#: paragraph whose markers lie outside its ``w:ins``, its range markers gone, where Word 365 and
+#: the engine remove it (CR-010 section 12.8, fix 2).
+OLDER_REJECTED = [
+    ("editor/review/review-for-word.docx", "editor/review/review-for-word-word15-rejected.docx"),
+    ("editor/review/review-for-word.docx", "editor/review/review-for-word-word2010-rejected.docx"),
+]
+
+#: The comment those saves keep, found by its text (Word renumbers comments on save).
+OLDER_COMMENT = "Changed from arrears, as agreed."
+
+
+def _without_comment(word, text):
+    """Word's save with one comment taken away whole, as the engine's ``Removals`` takes one."""
+    from docx4j_py.model.revisions.removals import Removals
+    from docx4j_py.traversal import text_of
+
+    found = [c.id for c in word.main_document_part.comments_part.contents.comment if text in text_of(c)]
+    assert len(found) == 1, f"no comment {text!r}"
+    older = Removals(word)
+    older.remove_comment(found[0])
+    older.flush()
+    return word
+
+
+@pytest.mark.parametrize("verb", ["package", "body"])
+@pytest.mark.parametrize("case", OLDER_REJECTED, ids=[_id((*c, False)) for c in OLDER_REJECTED])
+def test_older_words_reject_all_differs_by_that_one_comment(case, verb):
+    """docx4j's ``assertAllButComment``: the older Words' save, without the comment, is ours."""
+    tracked, golden = case
+    package = fixture(tracked)
+    if verb == "package":
+        revisions.reject_all(package)
+    else:
+        package.body.reject_all()
+    assert unresolved(package) == []
+    theirs = describe(round_trip(_without_comment(fixture(golden), OLDER_COMMENT)))
+    ours = describe(round_trip(package))
+    assert ours == theirs, f"{golden}: differs from Word's save but the comment {OLDER_COMMENT!r}"
+    # and with it, by that comment's lines alone
+    assert differing(describe(fixture(golden)), ours) > 0
+
+
+_COMMENT_PARTS = ("/word/comments.xml", "/word/commentsExtended.xml", "/word/commentsIds.xml", "/word/people.xml")
+
+
+def test_artefact_8_rejected_takes_the_comment_parts_and_people_with_its_last_comment():
+    """docx4j's ``python8RejectAll``: no comment left, so no comment parts, and no revision left to need people.xml."""
+    import io
+    import zipfile
+
+    package = fixture("python/artefact8/8-tracked-changes.docx")
+    revisions.reject_all(package)
+    data = package.save()
+    saved = load(io.BytesIO(data))
+    main = saved.main_document_part
+    assert main.comments_part is None
+    assert main.comments_extended_part is None
+    assert main.comments_ids_part is None
+    assert main.people_part is None
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        names = set(archive.namelist())
+        types = archive.read("[Content_Types].xml").decode()
+        rels = archive.read("word/_rels/document.xml.rels").decode()
+    for name in _COMMENT_PARTS:
+        assert saved.get_part(name) is None, name
+        assert name[1:] not in names, name
+        assert name not in types, name
+        assert name.rpartition("/")[2] not in rels, name
+

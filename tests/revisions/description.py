@@ -17,6 +17,9 @@ What Word's save normalises does not show:
   Word's ``w:hyperlink`` read alike (C16);
 * whether a section's header reference is explicit or inherited;
 * the order of comments, and list numbers (named by first appearance);
+* the order of comment range ends and references standing together: ends
+  first, Word 365 saving a reply's reference after its own range's end
+  (docx4j ``d18693760``);
 * the empty headers, footers and notes parts Word's save adds;
 * the defaults Word writes out: a table's ``w:tblLook``, a cell's ``w:tcW``
   auto 0, a section's ``w:cols w:space="720"``, and a row's ``w:tblPrEx``
@@ -81,6 +84,7 @@ class _Seg:
 
 
 def _render(segs: list[_Seg]) -> str:
+    segs = _ends_before_references(segs)
     merged: list[_Seg] = []
     for seg in segs:
         last = merged[-1] if merged else None
@@ -102,6 +106,28 @@ def _render(segs: list[_Seg]) -> str:
             text = seg.text.replace("\t", "\\t").replace("\n", "\\n")
             out.append(f"\u00ab{text}\u00bb{seg.format}" + (f"[{seg.context}]" if seg.context else ""))
     return "".join(out)
+
+
+def _ends_before_references(segs: list[_Seg]) -> list[_Seg]:
+    """Comment range ends and references standing together, ends first.
+
+    docx4j ``endsBeforeReferences`` (``d18693760``): Word 365 saves each reply's
+    reference after its own range's end (end, reference, end, reference) where
+    the source and Word 2010 have the ends together (CR-043 section 15,
+    ``review-for-word-word365-rejected``), which says nothing about the comments.
+    """
+    out = list(segs)
+    i = 0
+    while i < len(out):
+        j = i
+        while j < len(out) and out[j].marker and out[j].text in ("c\u2046", "\u2045cref\u2046"):
+            j += 1
+        if j - i > 1:
+            ends = [x for x in out[i:j] if x.text == "c\u2046"]
+            refs = [x for x in out[i:j] if x.text != "c\u2046"]
+            out[i:j] = ends + refs
+        i = max(j, i + 1)
+    return out
 
 
 def _value(found: Any) -> Any:

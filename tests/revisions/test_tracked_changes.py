@@ -599,7 +599,7 @@ def test_u4_a_hyperlinks_relationship_goes_with_its_deleted_row():
 
 
 def test_u3_a_removed_comment_takes_its_replies_and_entries():
-    """A removed comment's entries in commentsExtended, commentsIds and commentsExtensible go, and its reply."""
+    """A removed comment's entries in commentsExtended, commentsIds and commentsExtensible go, and its reply; then the parts."""
     import sys
     from pathlib import Path
 
@@ -664,15 +664,119 @@ def test_u3_a_removed_comment_takes_its_replies_and_entries():
         part = DefaultXmlPart(name, content_type, relationship)
         part.set_xml(xml)
         main.add_target_part(part)
+    ids, extensible = main.comments_ids_part, main.comments_extensible_part
 
     revisions.reject_all(package)
     assert text_of(paragraphs(package)[0]) == "before  after"
     assert "comment" not in body_xml(package)
     assert comments.contents.comment == []
     assert extended.contents.comment_ex == []
-    assert "commentId " not in main.comments_ids_part.get_xml() and "1000000B" not in main.comments_ids_part.get_xml()
-    assert "1000000A" not in main.comments_extensible_part.get_xml()
+    assert "commentId " not in ids.get_xml() and "1000000B" not in ids.get_xml()
+    assert "1000000A" not in extensible.get_xml()
+    # the last comment gone, its parts go with it (CR-010 section 12.8, fix 2)
+    for part in (comments, extended, ids, extensible):
+        assert package.get_part(part.part_name) is None, part.part_name
+    assert main.comments_part is None and main.comments_ids_part is None
 
+
+def _commented(body: str, comments: dict[int, str]) -> object:
+    """A package whose body is `body`, with a comment entry (and its people.xml person) per id."""
+    from docx4j_py.openpackaging.parts.wml import CommentsPart
+
+    package = with_body(body)
+    part = CommentsPart()
+    part.set_xml(
+        f"<w:comments {NS}>"
+        + "".join(
+            f'<w:comment w:id="{cid}" w:author="A"><w:p w14:paraId="0000000{cid % 10}">{run(text)}</w:p></w:comment>'
+            for cid, text in comments.items()
+        )
+        + "</w:comments>"
+    )
+    package.main_document_part.add_target_part(part)
+    return package
+
+
+def _comment_ids(package) -> list[int]:
+    part = package.main_document_part.comments_part
+    return [] if part is None else [c.id for c in part.contents.comment]
+
+
+def test_a_comment_whose_markers_lie_either_side_of_a_rejected_insertion_goes_whole():
+    """Fix 2 (CR-010 section 12.8; docx4j ``d18693760``): Word 365 removes it, markers, reference and entry.
+
+    Word 2010 and Word 15 kept it, losing only its range markers, which was the
+    rule here before. A comment whose range still holds text stays, and so does
+    one whose range was empty to begin with.
+    """
+    package = _commented(
+        "<w:p>" + run("before ")
+        + '<w:commentRangeStart w:id="1"/><w:commentRangeEnd w:id="1"/><w:r><w:commentReference w:id="1"/></w:r>'
+        + '<w:commentRangeStart w:id="2"/>' + ins(10, "A", "inserted") + '<w:commentRangeEnd w:id="2"/>'
+        + '<w:r><w:commentReference w:id="2"/></w:r>'
+        + '<w:commentRangeStart w:id="3"/>' + run("kept ") + ins(11, "A", "gone") + '<w:commentRangeEnd w:id="3"/>'
+        + '<w:r><w:commentReference w:id="3"/></w:r>'
+        + run(" after") + "</w:p>",
+        {1: "empty before", 2: "on the insertion", 3: "on kept text"},
+    )
+    revisions.reject_all(package)
+    xml = body_xml(package)
+    assert 'w:id="2"' not in xml
+    assert _comment_ids(package) == [1, 3]
+    assert xml.count('w:commentRangeStart w:id="1"') == 1 and xml.count('w:commentRangeStart w:id="3"') == 1
+    assert _comment_ids(round_trip(package)) == [1, 3]
+
+
+def test_an_accepted_deletion_takes_a_comment_whose_markers_lie_either_side_of_it():
+    """U21, by symmetry with the rejected insertion: unmeasured in Word, docx4j's rule."""
+    package = _commented(
+        "<w:p>" + run("before ")
+        + '<w:commentRangeStart w:id="2"/>' + dele(10, "A", "deleted") + '<w:commentRangeEnd w:id="2"/>'
+        + '<w:r><w:commentReference w:id="2"/></w:r>' + run(" after") + "</w:p>",
+        {2: "on the deletion"},
+    )
+    revisions.accept_all(package)
+    assert "comment" not in body_xml(package)
+    assert text_of(paragraphs(package)[0]) == "before  after"
+
+
+def test_with_the_last_comment_its_parts_go_and_people_stays_while_a_revision_is_left():
+    """docx4j ``Removals.dropEmptyCommentParts``: people.xml goes only when no tracked change is left."""
+    package = fixture("python/artefact8/8-tracked-changes.docx")
+    main = package.main_document_part
+    parts = [main.comments_part, main.comments_extended_part, main.comments_ids_part]
+    people = main.people_part
+    second = next(change for change in revisions.tracked_changes(package) if change.text == "second")
+    second.reject()
+    assert len(revisions.tracked_changes(package)) == 8
+    for part in parts:
+        assert package.get_part(part.part_name) is None, part.part_name
+        assert package.content_type_manager.get_override_content_type(part.part_name) is None
+        assert main.relationships_part.get_rel(part.part_name) is None
+    assert main.comments_part is None and main.comments_extended_part is None and main.comments_ids_part is None
+    assert main.people_part is people and package.get_part(people.part_name) is people
+    saved = round_trip(package)
+    assert saved.main_document_part.comments_part is None
+    assert saved.main_document_part.people_part is not None
+    assert "comment" not in body_xml(saved)
+
+
+def test_a_dry_run_removes_no_comment_part_and_the_real_reject_does():
+    """CR-010 section 10.3 item 3: a dry run's body resolves locally, and touches no part outside its own."""
+    package = fixture("python/artefact8/8-tracked-changes.docx")
+    before = {name: package.get_part(name) for name in ("/word/comments.xml", "/word/people.xml")}
+    with package.dry_run() as trial:
+        assert trial.body.reject_all() > 0
+        assert trial.body.get_tracked_changes() == []
+    main = package.main_document_part
+    for name, part in before.items():
+        assert package.get_part(name) is part, name
+    assert main.comments_part is before["/word/comments.xml"] and len(main.comments_part.contents.comment) == 1
+    assert len(revisions.tracked_changes(package)) == 9
+
+    revisions.reject_all(package)
+    for name in before:
+        assert package.get_part(name) is None, name
 
 def test_math_structures():
     """An inserted equation structure: accepted, its control keeps the recorded run properties; rejected, it goes whole."""

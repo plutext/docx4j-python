@@ -374,13 +374,17 @@ class _Op:
         self.unwrap(item, owner)
 
     def remove_revision(self, item: Any, owner: list | None) -> None:
-        """A revision taken away with its content, and the comments on it, by where their markers were.
+        """A revision taken away with its content (an insertion rejected, a deletion accepted), and its comments.
 
-        core-ts ``removeRevision``, check 32: a comment whose range start was
-        inside goes with the text it was on, markers, reference and entry, once
-        nothing with text is left in its range; one whose markers lie outside
-        loses only its range markers when its range is left empty (Word 2010
-        and 15, the editor's ``review-for-word`` saves).
+        docx4j ``Resolver.removeRevision`` (``d18693760``, its CR-043 section
+        15): a comment whose range start was inside, or whose markers lie
+        either side of it in its list, goes whole with the text it was on ---
+        markers, reference and entry --- once nothing with text is left in its
+        range. That is Word 365's rule: core-ts check 32, and Word 365's Reject
+        All of the editor's ``review-for-word`` and of this package's
+        acceptance artefact 8, 21 October 2026 (CR-010 section 12.8, fix 2).
+        Word 2010 and Word 15 kept the comment whose markers lie outside,
+        losing only its range markers; this package no longer does.
         """
         items = self.current_owner(owner, item)
         index = trees.index_of(items, item)
@@ -419,17 +423,8 @@ class _Op:
                 ),
                 -1,
             )
-            if start < 0 or not _range_is_empty(items, start, comment_id):
-                continue
-            if comment_id in inside:
+            if start >= 0 and _range_is_empty(items, start, comment_id):
                 self.removals.remove_comment(comment_id)
-            else:
-                for s in range(len(items) - 1, -1, -1):
-                    entry = items[s]
-                    if trees.name(entry) in ("commentRangeStart", "commentRangeEnd") and trees.marker_id(
-                        entry
-                    ) == comment_id:
-                        del items[s]
 
     # -- paragraph marks ---------------------------------------------------------
 
