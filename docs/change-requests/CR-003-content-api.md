@@ -2093,6 +2093,11 @@ So the phase uses two:
   reference run must not itself be wrapped in a `w:ins`, or accepting the revision would take the
   comment with it. The cost, recorded so it is not read as a bug: a comment on *part* of an
   insertion widens to the whole of it, which is what Word shows once the insertion is accepted.
+  *2026-10-21: superseded for a `w:ins` by Word's own form
+  ([CR-010](CR-010-tracked-changes-as-word-resolves-them.md) section 12.8, the user's fix 1): the
+  range start inside the `w:ins`, the end and the reference run after it, the `w:ins` split
+  there, so the anchor no longer widens. The reference run is still never inside a `w:ins`; a
+  `w:del` and a move keep the hoist.*
 - **`pkg.author` is the shared setting**, already installed and documented as such
   (`Author.name` / `initials` / `email`; `initials_of` derives the initials). Phase F should read
   `author_of(package)` from `model/content/comments.py` rather than add a second setting, and
@@ -2416,6 +2421,13 @@ parent nothing has moved.
 
 The suite was **1,125 tests** at that point (1,124 passing plus one `xfail`); the four new ones
 are `tests/content/test_tracking.py`'s. Section 16.10, the same day, took it further.
+
+*2026-10-21: the aim of this section, a comment that survives the rejection of what it explains,
+is withdrawn ([CR-010](CR-010-tracked-changes-as-word-resolves-them.md) section 12.8). Word 16's
+Reject All of artefact 8 removed such a comment, and the tracker now writes Word's own form, the
+range start inside the `w:ins`, so the engine removes it too. This section's tests are changed
+to that, and renamed where their names said "survives" or "hoisted"; the lesson about parents
+stands.*
 
 ### 16.10 What the Word check of artefact 8 found (2026-09-17)
 

@@ -737,10 +737,11 @@ pkg.body.to_markdown(view="markup")           # the same comments as CriticMarku
 `get_comments()` is on `Body`, `Paragraph`, `Range` and `ContentControl`; `insert_comment(text)`
 on `Paragraph` (the whole paragraph) and `Range` (a span, with the runs split at its boundaries).
 Reading comments unmarshals three parts, writing touches five, and a document whose comments are
-never read keeps all five byte for byte. A comment is **not** a revision: its markers are hoisted
-out of a `w:ins` or `w:del` the anchored run sits in, so accepting that revision in Word leaves
-the comment where it was, and its `w:id` comes from its own counter rather than from the
-revisions'.
+never read keeps all five byte for byte. A comment is **not** a revision. On text in a `w:ins`
+its markers are written in Word's own form: the range start inside the `w:ins`, the range end and
+the reference run after it, the `w:ins` split there when the comment ends inside it. Accepting the
+insertion leaves the comment on its text, and rejecting it removes the comment, as current Word
+does. A comment's `w:id` comes from its own counter rather than from the revisions'.
 
 ### Lists
 

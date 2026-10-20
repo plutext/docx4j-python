@@ -15,8 +15,11 @@ engine's listing, the text and Markdown views' agreement moved to CR-011 by the 
 (their disagreement today pinned), the tracker's appended paragraph in Word's check 29 form,
 artefact 8 regenerated with an accepted and a rejected copy, and the documentation; the fifteen
 comparisons still at zero. **The user's Word check of artefact 8 (2026-10-21, section 12.8)**
-found one disagreement: Word's Reject All removes a comment that the engine keeps. Its fix waits
-on the user's decision.
+found one disagreement: Word's Reject All removes a comment that the engine kept. **Fix 1
+implemented 2026-10-21** (the user's decision): the content API writes Word's own form for a
+comment on inserted text, the range start inside the `w:ins`, so the engine's Reject All removes
+it as Word's does. A Word check of the regenerated artefact 8 is awaited. Fix 2, the resolver's
+rule for the outside form, is not taken.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1000,7 +1003,9 @@ middle since Phase A (10.6), and passes unchanged.
 
 - ~~**The user's Word check of artefact 8**~~ **made 2026-10-21** (section 12.8): the heading
   and the appended paragraph as designed, Accept All at 0 lines from Word's, and one
-  disagreement left, the comment on Reject All, whose fix is the user's decision.
+  disagreement left, the comment on Reject All, whose fix is the user's decision. **Fix 1
+  implemented the same day** (section 12.8); a Word check of the regenerated artefact 8 is
+  awaited.
 - ~~**The hand-off to docx4j's session**~~ **done 2026-10-18.** Asked the same day; docx4j's
   session reran CR-043 section 14's python column with `PortsAgreement` (docx4j `1b3a68ccf`, this
   repository at `e690217`, read only) over the eleven fixtures: through
@@ -1078,3 +1083,86 @@ Two changes would close it, and both are the user's to make:
 
 Recommended: the first now, as the rest of Phase C, and the second handed to docx4j's session and
 core-ts with this check's files, to be taken here when docx4j decides it.
+
+**Fix 1 implemented (2026-10-21).** The user, the same day: "do fix 1 now". The content API now
+writes Word's own form for a comment on text in an insertion, as docx4j-core-ts's `placeAround`
+has since its 0.3.1 (its CR-002 section 38 item 1, and the paragraph its check 32 corrected).
+Fix 2 is not taken: `docx4j_py/model/revisions/` is unchanged.
+
+- **What changed**, all in `docx4j_py/model/content/comments.py`. `_place_around` puts the
+  `w:commentRangeStart` inside the `w:ins`, before the first commented run, when that run sits
+  directly in one. `_insertion_of` decides "directly": the run's `parent` is a `w:ins`, and the
+  run is in that `w:ins`'s own list, checked by identity. The `w:commentRangeEnd` and the
+  reference run go after the `w:ins` that holds the last commented run. `_close_insertion` is the
+  port of core-ts's `Paragraph.splitHolderAround`: it moves the `w:ins`'s items after that run
+  into a second `w:ins` with the same attributes and a new id, and puts the end and the reference
+  run between the halves. When the run is the `w:ins`'s last item, they simply follow it. The new
+  id comes from the one annotation id space, through `hyperlinks.py`'s `_id_source` and
+  `_revision_like`, as `Range.hyperlink` gets its ids: the package's tracker, or one made for the
+  call while tracking is off. So a comment on another author's insertion, made with tracking off,
+  takes Word's form too. Every parent is read before anything moves (CR-003 section 16.9).
+- **What keeps the hoist.** `_marker_site` still puts markers outside the revision for the empty
+  range's lone reference run, for a `w:del` and for a move: a deletion's form is not measured, and
+  a move's halves are not to be split. A run inside a hyperlink or a control within a `w:ins` is
+  not directly in it, and keeps its markers beside it in its holder, as before. Replies
+  (`_place_after`) are unchanged; they nest inside their parent's markers, so a reply's start
+  goes inside the `w:ins` too.
+- **A defect it exposed.** `_visit_runs` counted a marker's offset from the start of the
+  `w:ins` or hyperlink it sat in, not from the paragraph's. With the start inside an insertion
+  that does not open the paragraph, `Comment.get_range()` read from the paragraph's start:
+  `sample-docx.docx`'s "An insertion" read "Here is some change tracking. An insertion". A
+  Word-written file with its start there read the same way. The recursion now carries the
+  holder's base offset.
+- **Docstrings**: the module's, `_marker_site`'s and `Range.insert_comment`'s, and `README.md`'s
+  paragraph on comments.
+- **Tests changed.** In `tests/content/test_tracking.py`:
+  `test_a_comment_made_while_tracking_is_on_is_a_comment_not_an_insertion` keeps its name (the
+  start inside, the rest of "INSERTED " a second `w:ins`, the reference outside);
+  `test_a_comment_inside_an_insertion_is_hoisted_out_of_it` is now
+  `..._starts_inside_it_and_ends_after_it`, with 16.9's parent checks kept;
+  `test_a_comment_on_an_insertion_survives_accepting_and_rejecting_it` is now
+  `..._stays_on_accept_and_goes_on_reject`; and
+  `test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_survives_both` is now
+  `..._goes_with_its_rejection`. In `tests/content/test_comments.py`,
+  `test_the_markers_are_hoisted_out_of_a_tracked_insertion` is now
+  `test_a_comment_on_a_tracked_insertion_starts_inside_it`. After Reject All each asserts no
+  comment, no marker and no reference run, before and after a reload; after Accept All, the
+  comment on its word.
+- **Tests added.** `test_a_comment_on_part_of_an_insertion_splits_it_as_word_does`, tracking on
+  and off: the paragraph compared element by element with Word 15's in `measure-word15.docx`
+  (copied into `tests/fixtures/revisions/editor/review/`), with ids, dates, rsids, the `w:pPr` and
+  run properties other than the style left out; the second half's id new (no other `w:ins`,
+  `w:del` or bookmark has it) and above the first, its author and date the first's, the
+  anchor "monthly", every parent wired.
+  `test_a_comment_ending_with_its_insertion_does_not_split_it`.
+  `test_a_comment_on_someone_elses_insertion_with_tracking_off_takes_words_form`, on Jason
+  Harrop's insertion in `sample-docx.docx`, whose second half is id 3, one above the ids in use.
+  `test_the_listing_after_a_split_is_one_insertion_and_reject_takes_the_comment`, with a reply.
+  `test_a_marker_inside_a_run_holder_has_its_offset_in_the_paragraph`, over a fragment with a
+  start inside a `w:ins` and another inside a hyperlink.
+- **The listing after a split.** `get_tracked_changes()` lists **one** change, "The tenant pays
+  rent monthly in advance.", of two pieces, "The tenant pays rent monthly" and " in advance.". The
+  plain reference run between the halves holds no text and keeps nothing apart, so check 23's
+  grouping joins them. core-ts agrees. Its CR-002 section 38 had said two changes, split at the
+  reference run, as Word's pane listed them; its check 32 (A1, Office JS's listing of Word's own
+  form) made that one, and its `tracking.test.mjs` asserts one.
+- **The numbers.** The fast suite (`-m "not slow"`): 2,448 passed, 8 skipped, 40 deselected,
+  10 xfailed. The full suite: 2,488 passed, 8 skipped, 10 xfailed. Every new and changed test
+  fails against the commit before.
+- **The artefacts.** Against those of the commit before (`015c167`), `scripts/compare_acceptance.py`
+  compared 13 artefacts and 179 entries, and found **two differing beyond the wall-clock dates**.
+  `8-tracked-changes.docx` differs in exactly `word/document.xml`: the `w:commentRangeStart` moved
+  inside the `w:ins` around "second". The comment covers all of "second", so nothing is split.
+  `8-tracked-changes-rejected.docx` differs in `word/document.xml` (the reference run gone),
+  `word/comments.xml`, `word/commentsExtended.xml` and `word/commentsIds.xml` (the entries gone,
+  the parts left empty). `8-tracked-changes-accepted.docx` is identical, and so is artefact 7,
+  which comments on no tracked text.
+- **Against Word's saves of the previous artefact 8**, `scripts/compare_word_resolution.py`:
+  **0 lines** differ on Accept All, and **1** on Reject All, where there were 5. The one line is
+  `== comments`: the engine's rejected copy keeps the comments part, empty, with
+  `commentsExtended.xml` and `commentsIds.xml` empty and `people.xml` still naming Claude. Word
+  deleted all four parts. That is the resolver's handling of the parts, not the markers, and it is
+  docx4j's: its `Removals` removes a comment's entries and leaves the parts. It is left to the
+  user, beside fix 2, as a question for docx4j first.
+
+A Word check of the regenerated artefact 8 and its two copies is awaited.

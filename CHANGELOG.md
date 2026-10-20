@@ -58,6 +58,18 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **A comment on tracked-inserted text is written as Word writes it**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section
+  [12.8](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#128-the-word-check-2026-10-21)):
+  `insert_comment` on text in a `w:ins` puts the range start inside the `w:ins`, and the range end
+  and the reference run after it. When the comment ends inside the insertion, the `w:ins` is closed
+  there and the rest becomes a second `w:ins` with the same author and date and a new id. This is
+  the form Word 2010 and Word 15 wrote (docx4j's `measure-word15.docx`), and docx4j-core-ts's since
+  0.3.1. 0.1.0 put both range markers outside the `w:ins`, which widened a comment on part of an
+  insertion to the whole of it. The reference run is still never inside a `w:ins`. Accepting the
+  insertion leaves the comment on its text. Rejecting it now removes the comment, its entries and
+  its replies, as Word 16's Reject All does; 0.1.0's form kept it. Tracking on or off makes no
+  difference. A `w:del` or a move keeps the markers outside it.
 - **What one tracked change is, and the counts** ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md)
   section 10): `get_tracked_changes()` groups as Office JS and Word's Review pane do --- touching
   insertions, deletions or formatting changes by one author are **one** change, a paragraph's
@@ -100,6 +112,11 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **A comment's range is read right when its markers are inside a `w:ins` or a hyperlink**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section 12.8).
+  A marker's offset was counted from the start of the holder it sat in, not the paragraph's. So a
+  range starting in an insertion or a link that does not open the paragraph read from the
+  paragraph's start. Word writes the range start there for a comment on inserted text.
 - **The tracked-change listing no longer reports a document clean when it is not**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md); CR-003
   section 22.3): after `accept_all()` 0.1.0 listed no change while revisions Word still shows
