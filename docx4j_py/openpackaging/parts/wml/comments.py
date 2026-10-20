@@ -53,6 +53,7 @@ __all__ = [
     "CommentParts",
     "comment_parts_of",
     "create_comment_parts",
+    "dates_utc",
     "durable_id_for",
     "durable_ids_in_use",
     "remove_comment_id",
@@ -94,6 +95,7 @@ class CommentParts:
         "comments",
         "comments_ex",
         "comments_part",
+        "dates_utc_cache",
         "extensible_part",
         "ids_part",
         "main",
@@ -120,6 +122,8 @@ class CommentParts:
         #: here, so that a caller can report them and a dry run can un-add them
         #: (CR-003 section 14.4).
         self.added: list[tuple[Any, Any, Any, bool]] = []
+        #: :func:`dates_utc`'s answer, once asked; None until then, and after a write.
+        self.dates_utc_cache: dict[str, datetime.datetime] | None = None
 
     @property
     def part_names(self) -> list[str]:
@@ -324,6 +328,62 @@ def remove_comment_id(part: Any, para_id: str) -> str | None:
 # ---------------------------------------------------------------------------
 # w16cex:commentsExtensible, as lxml. Never created, only kept in step.
 # ---------------------------------------------------------------------------
+
+
+def _root_for_read(part: Any) -> Any:
+    """An lxml part's root for reading: its tree once parsed, else its bytes parsed aside.
+
+    Parsed aside, the part stays unparsed and is written back byte for byte: a
+    read pays for none of the two lxml parts (CR-003 section 3.9).
+    """
+    if isinstance(part, DefaultXmlPart) and not part.is_parsed:
+        try:
+            return etree.fromstring(part.xml, etree.XMLParser(resolve_entities=False, huge_tree=True))
+        except etree.XMLSyntaxError:
+            return None
+    return getattr(part, "tree", None)
+
+
+def _utc(value: str | None) -> datetime.datetime | None:
+    """A ``w16cex:dateUtc``, which is UTC: a missing offset read as UTC."""
+    if not value:
+        return None
+    try:
+        found = datetime.datetime.fromisoformat(value.strip())
+    except ValueError:
+        return None
+    if found.tzinfo is None:
+        found = found.replace(tzinfo=datetime.UTC)
+    return found.astimezone(datetime.UTC)
+
+
+def dates_utc(parts: CommentParts) -> dict[str, datetime.datetime]:
+    """Each comment's ``w16cex:dateUtc``, by the paragraph id ``w16cid:commentId`` pairs its durable id with.
+
+    docx4j-core-ts ``readDatesUtc``: the durable id to the paragraph id through
+    ``w16cid:commentsIds``, to the date through ``w16cex:commentsExtensible``.
+    Empty when the document lacks either part. Paragraph ids upper-cased; the
+    answer is kept on `parts` until a write sets it aside.
+    """
+    if parts.dates_utc_cache is not None:
+        return parts.dates_utc_cache
+    out: dict[str, datetime.datetime] = {}
+    ids_root = _root_for_read(parts.ids_part) if parts.ids_part is not None else None
+    extensible_root = _root_for_read(parts.extensible_part) if parts.extensible_part is not None else None
+    if ids_root is not None and extensible_root is not None:
+        para_id_of: dict[str, str] = {}
+        for entry in ids_root.findall(_w16cid("commentId")):
+            durable_id = entry.get(_w16cid("durableId"))
+            para_id = entry.get(_w16cid("paraId"))
+            if durable_id and para_id:
+                para_id_of[durable_id.upper()] = para_id.upper()
+        for entry in extensible_root.findall(_w16cex("commentExtensible")):
+            para_id = para_id_of.get((entry.get(_w16cex("durableId")) or "").upper())
+            when = _utc(entry.get(_w16cex("dateUtc")))
+            if para_id and when is not None:
+                out[para_id] = when
+    parts.dates_utc_cache = out
+    return out
 
 
 def set_extensible(part: Any, durable_id: str, when: datetime.datetime) -> None:

@@ -2180,6 +2180,16 @@ pkg.body.accept_all()
 | the trial | `.trial` | `TrialPackage.change_tracking_mode` (trial-local), `tracked_change_date`, `get_tracked_changes()`, `document_settings_part` (the real part until written to) and `writable_settings_part()` |
 | the fixture | `tests/fixtures/tracked-pprchange.docx`, `tests/content/conftest.py` | docx4j's `unmarshallFromTemplateDirtyExample.docx`; `moves_package()` for the forms no document carries |
 
+**Note, 2026-10-21 (CR-010 section 12.9).** The dates changed to Word's convention. `xml_date`
+now writes `w:date` on the process's local wall clock with a `Z`, as Word writes it, and the new
+`xml_date_utc` writes `w16du:dateUtc` in UTC. `ChangeTracker.markup()` gives both, "now" to the
+minute. The tracker a `Body` uses is bound to its part (`ChangeTracker.for_part`) and declares
+`w16du` in that part's `mc:Ignorable`. `date_of` reads a `w:date` as local time, and
+`TrackedChange.date` prefers `w16du:dateUtc`. A naive `tracked_change_date` is still UTC. A
+comment's `w:date` takes the same local form, to the minute, and `Comment.creation_date` prefers
+the document's `w16cex:dateUtc`. Before, `w:date` carried the true UTC to the second, with no
+`w16du:dateUtc`, and Word showed it shifted by the reader's UTC offset.
+
 `Body.insert_element` and `Paragraph.splice` are where the whole phase hangs from. Everything
 else --- `Range.insert_text`, `Range.delete`, the `text` setter, `insert_xml`, `insert_ooxml`,
 `insert_markdown`, `insert_table`, `ContentControl.insert_text`, `TableCell.value` --- already

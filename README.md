@@ -680,8 +680,11 @@ properties as they stood in `w:rPrChange` and `w:pPrChange`. Word's rules come w
 already inside a `w:ins` by the same author is **extended** rather than nested, deleting text
 that author inserted **takes it back**, a replacement is the `w:del` first and the `w:ins` after
 it, and the runs are split at the span's boundaries so a partly deleted run is not wholly
-deleted. `pkg.tracked_change_date` fixes the `w:date`, which is what makes a tracked edit
-byte-reproducible.
+deleted. Each revision carries its date as Word 365 writes it: `w:date` on the local wall clock
+with a `Z` that does not mean UTC, and the true UTC in `w16du:dateUtc`, to the minute, with `w16du`
+declared in the part's `mc:Ignorable`; a revision's `date` reads them back as one instant.
+`pkg.tracked_change_date` fixes that instant (a naive datetime is UTC), which is what makes a
+tracked edit byte-reproducible in a given time zone.
 
 The comment half is the same identity and a different id space:
 
@@ -719,12 +722,12 @@ comment.to_dict()
 # {'id': 0,
 #  'author_name': 'Claude', 'initials': 'C', 'author_email': 'claude@example.com',
 #  'content': "Changed 'first' because the source says 'red'.",
-#  'creation_date': '2026-09-16T23:45:54+00:00',
+#  'creation_date': '2026-09-16T23:45:00+00:00',
 #  'para_id': '7C98CE4D', 'address': 'body/0', 'resolved': True,
 #  'replies': [{'id': 1, 'author_name': 'Claude', 'initials': 'C',
 #               'author_email': 'claude@example.com',
 #               'content': 'Checked against the source; agreed.',
-#               'creation_date': '2026-09-16T23:45:54+00:00',
+#               'creation_date': '2026-09-16T23:45:00+00:00',
 #               'para_id': '4CD9291E', 'address': 'body/0'}]}
 
 comment.get_range()[0].text                   # exactly what the markers surround

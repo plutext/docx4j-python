@@ -22,7 +22,9 @@ it as Word's does. **Word check passed 2026-10-21** (the user, of the regenerate
 its two copies; section 12.8): **Phase C is done.** **Fix 2 implemented 2026-10-21** (section
 12.8), the port of docx4j `d18693760` (Jason: "follow Word 365"): a comment whose range a
 resolution empties goes whole wherever its markers were, and with the last comment its parts, as
-Word 365 does.
+Word 365 does. **Word's date convention implemented 2026-10-21** (section 12.9, the user's
+decision): the tracker writes `w:date` on the local wall clock and `w16du:dateUtc` in UTC, as Word
+365 does, and every date is read as docx4j reads it; section 10.3 item 1 is superseded.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -405,14 +407,14 @@ U19) as docx4j follows them. In order of how much they changed what this package
 
 ### 10.3 Departures, all deliberate
 
-1. **`w:date` is read as it is written**, a `Z` as UTC, where docx4j reads it as Word's local
-   wall-clock time (check 36). `w16du:dateUtc` is preferred, as docx4j does. This package's own
-   tracker writes the true UTC in `w:date` and no `w16du:dateUtc` (CR-003 section 16.1), so
-   docx4j's reading would put every revision this package makes off by the reader's offset, and
-   the tracker is out of this CR's scope. A Word 365 file carries `w16du:dateUtc` and reads the
-   same either way; a Word 2010 or 15 file reads its local time as UTC, as Phase F did. Making the
-   tracker write Word's convention and `w16du:dateUtc` (core-ts's tracker does) would let the
-   reading follow docx4j's; a later CR's.
+1. ***Superseded by section 12.9 (2026-10-21).*** **`w:date` is read as it is written**, a `Z` as
+   UTC, where docx4j reads it as Word's local wall-clock time (check 36). `w16du:dateUtc` is
+   preferred, as docx4j does. This package's own tracker writes the true UTC in `w:date` and no
+   `w16du:dateUtc` (CR-003 section 16.1), so docx4j's reading would put every revision this
+   package makes off by the reader's offset, and the tracker is out of this CR's scope. A Word 365
+   file carries `w16du:dateUtc` and reads the same either way; a Word 2010 or 15 file reads its
+   local time as UTC, as Phase F did. Making the tracker write Word's convention and
+   `w16du:dateUtc` (core-ts's tracker does) would let the reading follow docx4j's; a later CR's.
 2. **The table, grid, row, cell and section records are listed by docx4j phase 1's rule** --- a
    table with any record is one `table_properties` change, a `w:sectPrChange` a
    `section_properties` one, a `w:cellIns` / `w:cellDel` a `cell_insertion` / `cell_deletion` ---
@@ -1022,8 +1024,9 @@ middle since Phase A (10.6), and passes unchanged.
   story" in its README), and section 14 carries a dated note of the rerun and of the departures
   of 10.3 item 1 and 11.3; committed in docx4j as `ad0aa771e` (`VERSION_17_3_4`, unpushed).
 - **CR-011**: the text and Markdown views by resolution (12.3).
-- **The `w:date` convention** (10.3 item 1), if the user wants it: Word's local wall-clock
-  `w:date` and `w16du:dateUtc`, the one difference left in 12.2's markup.
+- ~~**The `w:date` convention**~~ **implemented 2026-10-21** (section 12.9): Word's local
+  wall-clock `w:date` and `w16du:dateUtc`, the one difference left in 12.2's markup, at the user's
+  decision.
 
 ### 12.8 The Word check (2026-10-21)
 
@@ -1291,3 +1294,120 @@ U21 to U23), and this is its port, following its code.
   entry list lacks `word/comments.xml`, `commentsExtended.xml`, `commentsIds.xml` and `people.xml`,
   and `[Content_Types].xml` and `word/_rels/document.xml.rels` lose their overrides and
   relationships. Section 12.9 regenerates them again.
+
+### 12.9 Word's date convention (2026-10-21)
+
+**The decision.** Section 10.3 item 1 left open how this package dates a revision. The user, on
+2026-10-21: "what do core-ts and docx4j say? ideally, do as Word 365 does." All three say the
+same. docx4j reads `w16du:dateUtc` where present, else `w:date` as local wall-clock time in the
+JVM's zone (`TrackedChange.dateOf`, its check 36). docx4j-core-ts writes and reads both that way
+since Jason's decision of 2026-09-28 (its CR-002 section 29). Word 365 writes them that way. So it
+is decided: **do as Word 365 does**.
+
+**The evidence.** Every Word-written fixture with both dates carries `w:date` as the local
+wall-clock time with a `Z` that does not mean UTC, and `w16du:dateUtc` as the true UTC, both to
+the minute. The probe, `cr043-tracked.docx`, has `w:date="2026-10-16T10:17:00Z"` beside
+`w16du:dateUtc="2026-10-15T23:17:00Z"` (Jason's UTC+11). `tracked-changes-equations.docx` has
+`12:43:00Z` beside `02:43:00Z` (UTC+10). A comment keeps its UTC in `w16cex:dateUtc` instead:
+`comments-modern.docx` has `w:date` 18:21 and `w16cex:dateUtc` 23:21 (UTC-5). Word stamps comments
+to the minute too: its saves of artefact 8 wrote this package's `04:46:25Z` as `04:46:00Z`. This
+package wrote the true UTC in `w:date`, to the second, with no `w16du:dateUtc` (CR-003 section
+16.1). Word read that as local time, so the user saw a comment made at 15:46 local time shown as
+4:46 AM.
+
+**What changed**, ported from docx4j-core-ts (`tracking.mts`, `Comment.mts`,
+`parts/wml/comments.mts`) and docx4j (`TrackedChange.dateOf`):
+
+- **Writing a revision** (`tracking.py`). `xml_date` writes `w:date` as the instant on this
+  process's local wall clock with a `Z` (core-ts `wordCalendarOf`). The new `xml_date_utc` writes
+  `w16du:dateUtc` as the true UTC (the old `xml_date`). `ChangeTracker.markup()` gives both, so
+  every `w:ins`, `w:del`, paragraph mark, row, `w:rPrChange` and `w:pPrChange` the tracker writes
+  carries them. They are all made through `markup()`, and every class it fills has `date_utc`.
+  "Now" is `now_to_the_minute()`, as Word stamps (core-ts `nowToTheMinute`, its section 28.2). A
+  set `pkg.tracked_change_date` is used as it is, to the second, as before. **A naive
+  `tracked_change_date` is still read as UTC**, which is what the code did (`xml_date` gave it
+  `tzinfo=UTC`); the property's docstring now says so. No meaning changed.
+- **Declaring `w16du`** (`declare_ignorable`, core-ts `declareIgnorable`). A `Body` asks the
+  package's tracker for one bound to its part (`ChangeTracker.for_part`, core-ts `forPart`;
+  `Paragraph.change_tracker` is its body's). Before writing `w16du:dateUtc`, that tracker makes
+  the part's root list `w16du` in `mc:Ignorable`, appending it to what is there. The typed root
+  keeps the attribute in its `ignorable` field, or in `other_attributes` for the `w:comments` this
+  package creates (`w14 w15`). On write, `XmlPart._marshal` declares every prefix `mc:Ignorable`
+  names (CR-002 section 5.6), so `xmlns:w16du` follows. This covers the body, headers, footers,
+  notes and comments, each through its own `Body`. A dry run's body declares on its copy. The
+  package's own tracker, bound to no part, writes `w:date` alone, as core-ts's does. Every tracker
+  of a package draws its ids from the package tracker's one counter.
+- **Comments** (`comments.py`). A new comment's `w:date` is the same local wall-clock form, to the
+  minute. Its `w16cex:dateUtc` is that instant in UTC, written only where the document already has
+  `commentsExtensible.xml`; none is created (CR-003 section 4). No `w16du:dateUtc` goes on a
+  `w:comment`: Word writes none there, and neither does core-ts.
+- **Reading** (`revisions/change.py`). `date_of` is docx4j's `dateOf`: `w16du:dateUtc` first,
+  where a missing offset means UTC (`utc_date`), else `w:date` read as local wall-clock time in
+  this process's zone, its `Z` ignored, with an explicit non-zero offset read as it says
+  (`word_date`). Every date is returned in UTC. The engine's `TrackedChange.date`, the content
+  API's (`to_dict()`'s `"date"`), `TrackedChangeFilter`'s date range (whose naive bounds stay
+  UTC) and `tracking.date_of` all read through it. `Comment.creation_date` is core-ts's
+  `creationDate`: the comment's `w16cex:dateUtc`, found through `w16cid:commentsIds` from the
+  paragraph ids, last paragraph first, else `w:date` read as local time. The two lxml parts are
+  read from their bytes, parsed aside, so a read leaves them unparsed and byte for byte
+  (`dates_utc` in `openpackaging/parts/wml/comments.py`, cached on the `CommentParts` until a
+  write).
+- **One choice differs from core-ts.** core-ts stamps a new comment with the full second
+  (`new Date()`). Here a comment is stamped to the minute, like a revision, because Word stamps
+  its comments that way (the evidence above) and the user asked for Word's convention.
+
+**Tests**, each in a fixed time zone through a new `zone` fixture (`TZ` and `time.tzset()`,
+restored after) in `tests/content/conftest.py` and `tests/revisions/conftest.py`:
+
+- `content/test_tracking.py`:
+  `test_the_date_is_the_fixed_one_or_now_in_utc_to_the_second` is replaced by
+  `test_the_date_is_written_as_word_writes_it_local_wall_clock_and_utc`. It runs in Sydney, New
+  York, Kolkata and UTC and checks both attributes, the instant read back, and the same after a
+  save read in Honolulu. Added: `test_now_is_to_the_minute_and_reads_back_as_the_same_instant`,
+  `test_a_naive_tracked_change_date_is_utc_as_it_always_was`,
+  `test_every_part_the_tracker_writes_into_declares_w16du_ignorable` (body, header, footnote and
+  comment of `numbering-stories.docx`, which lists nothing, and of `sample-docx.docx`, which lists
+  `w14 wp14`, saved and loaded),
+  `test_the_packages_own_tracker_writes_w_date_alone_and_a_created_body_gains_mc_ignorable`, and
+  `test_a_dry_run_declares_w16du_on_its_copy_only`. Changed:
+  `test_a_comment_on_part_of_an_insertion_splits_it_as_word_does` (both halves' `w:date` the
+  local form of the fixed date and both `w16du:dateUtc` its UTC);
+  `test_the_tracked_changes_of_a_word_written_document` (Word 2010's `2012-06-27T21:15:00Z`, read
+  in Sydney, is 11:15 UTC); and the invariant
+  `test_rejecting_every_tracked_verb_gives_the_document_back` (three documents), which now
+  asserts that `w16du` is the one thing added to `mc:Ignorable` and compares with it taken out.
+- `content/test_comments.py`, added: a Word 365 comment's `creation_date` is its
+  `w16cex:dateUtc` in Sydney and New York, with the two side parts left unparsed; a Word 2010
+  comment's is its `w:date` on the local clock, in two zones; a new comment's `w:date` is the
+  local time to the minute, with no `dateUtc` on it, and reads back; and where the document has
+  `commentsExtensible.xml`, its new entry's `w16cex:dateUtc` is the UTC instant, read back in a
+  third zone.
+- `revisions/test_tracked_changes.py`: `test_w_date_is_read_as_written` (the departure) is
+  replaced by `test_w_date_is_read_as_local_wall_clock_time` (Sydney, New York, Kolkata, and an
+  explicit `+05:30`). Added: `test_word_files_read_as_word_means_them` (the probe's
+  `w16du:dateUtc` in two zones; check 18's Word 15 file, with no `w16du:dateUtc`, on the local
+  clock) and `test_a_filter_reads_dates_as_word_means_them`.
+
+Every new and changed test fails against the commit before (`28db7e7`). The fast suite: 2,487
+passed, 8 skipped, 40 deselected, 10 xfailed, in this machine's zone (Australia/Sydney) and again
+with `TZ=UTC` and `TZ=America/New_York`. The full suite: 2,527 passed, 8 skipped, 10 xfailed.
+
+**The comparisons.** The description leaves dates out, and the numbers of section 12.8, rerun,
+are unchanged: the agreement comparisons at 0 but the review file's Reject All against Word 15's
+and Word 2010's, at 4 each (0 without the comment). `scripts/compare_word_resolution.py` over the
+regenerated artefacts: **0** and **0** against `out/acceptance-word/`, and **0** and **0** against
+Word's saves of the artefact 8 of fix 1.
+
+**The artefacts.** `scripts/compare_acceptance.py` scrubs the values of `w16du:dateUtc` and
+`w16cex:dateUtc` now, as it scrubs `w:date`, so the new attributes show by their presence. Against
+those of `30ec7b0`: 13 artefacts, 179 entries compared, four differing. `8-tracked-changes.docx`
+differs in exactly `word/document.xml`: 24 `w16du:dateUtc` attributes, one on every dated element
+(12 `w:ins`, 10 `w:del`, a `w:rPrChange` and a `w:pPrChange`), and `w16du` added to
+`mc:Ignorable` (`w14 wp14 w16du`). The
+accepted copy differs by that `mc:Ignorable` alone. The rejected copy differs by that and fix 2's
+parts (section 12.8). `10-lists.docx` differs by one `w16du:dateUtc` on its `w:pPrChange` and the
+same `mc:Ignorable`. Artefact 7's comment and the other eight are identical once the dates are
+scrubbed. The scrubbed `w:date` values changed too: they are the local wall-clock time now.
+Artefacts 8 (with its copies) and 10 need opening in Word; `tests/README.md` records it, and
+artefact 8's row says the Reviewing Pane's times are now the local time the artefact was made. No
+Word check has been made of this.

@@ -113,7 +113,11 @@ class TrackedChange:
 
     @property
     def date(self) -> datetime.datetime | None:
-        """When: ``w16du:dateUtc`` where the markup has it, else ``w:date``; None when neither."""
+        """When, in UTC: ``w16du:dateUtc`` where the markup has it, else ``w:date`` read as local time.
+
+        ``w:date`` is Word's local wall-clock time whatever its ``Z`` says, read
+        in this process's zone (CR-010 section 12.9). None when neither.
+        """
         return self.change.date  # type: ignore[no-any-return]
 
     @property

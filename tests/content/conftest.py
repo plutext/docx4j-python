@@ -31,6 +31,25 @@ FIXTURES = ROOT / "tests" / "fixtures"
 
 
 @pytest.fixture
+def zone(monkeypatch):
+    """Set the process's time zone for one test: ``zone("Australia/Sydney")``; restored after.
+
+    CR-010 section 12.9: ``w:date`` is written and read on the process's local
+    wall clock, so a test of it fixes the zone (``TZ`` and ``time.tzset()``)
+    rather than depend on the machine's.
+    """
+    import time
+
+    def set_zone(name: str) -> None:
+        monkeypatch.setenv("TZ", name)
+        time.tzset()
+
+    yield set_zone
+    monkeypatch.undo()
+    time.tzset()
+
+
+@pytest.fixture
 def new_package() -> WordprocessingMLPackage:
     """A fresh document, as ``create_package()`` makes it."""
     package = create_package()

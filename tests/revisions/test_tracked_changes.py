@@ -97,10 +97,63 @@ def test_date_utc_is_preferred():
     assert revisions.tracked_changes(package)[0].date == datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
 
 
-def test_w_date_is_read_as_written():
-    """A departure from docx4j (CR-010 section 10.3): ``w:date`` is read as UTC, as this package writes it."""
+@pytest.mark.parametrize(
+    ("place", "utc"),
+    [
+        ("Australia/Sydney", datetime.datetime(2025, 12, 31, 23, tzinfo=datetime.UTC)),  # AEDT, UTC+11
+        ("America/New_York", datetime.datetime(2026, 1, 1, 15, tzinfo=datetime.UTC)),  # EST, UTC-5
+        ("Asia/Kolkata", datetime.datetime(2026, 1, 1, 4, 30, tzinfo=datetime.UTC)),  # IST, UTC+5:30
+    ],
+)
+def test_w_date_is_read_as_local_wall_clock_time(zone, place, utc):
+    """docx4j ``TrackedChange.dateOf`` (CR-010 section 12.9): ``w:date``'s ``Z`` does not mean UTC.
+
+    Without ``w16du:dateUtc``, ``w:date`` is Word's local wall-clock time, read
+    in this process's zone; an explicit non-zero offset is read as it says. It
+    was read as UTC until 12.9 (section 10.3 item 1).
+    """
+    zone(place)
     package = with_body('<w:p><w:ins w:id="1" w:author="A" w:date="2026-01-01T10:00:00Z">' + run("x") + "</w:ins></w:p>")
-    assert revisions.tracked_changes(package)[0].date == datetime.datetime(2026, 1, 1, 10, tzinfo=datetime.UTC)
+    assert revisions.tracked_changes(package)[0].date == utc
+    offset = with_body('<w:p><w:ins w:id="1" w:author="A" w:date="2026-01-01T10:00:00+05:30">' + run("x") + "</w:ins></w:p>")
+    assert revisions.tracked_changes(offset)[0].date == datetime.datetime(2026, 1, 1, 4, 30, tzinfo=datetime.UTC)
+
+
+@pytest.mark.parametrize("place", ["Australia/Sydney", "America/New_York"])
+def test_word_files_read_as_word_means_them(zone, place):
+    """Word 365's ``w16du:dateUtc`` wins in any zone; Word 15's ``w:date`` alone is the local wall clock.
+
+    The probe (Word 16, Jason's UTC+11): ``w:date="2026-10-16T10:17:00Z"``
+    beside ``w16du:dateUtc="2026-10-15T23:17:00Z"``. Check 18's file, edited in
+    Word 15, has no ``w16du:dateUtc``.
+    """
+    zone(place)
+    probe = revisions.tracked_changes(fixture("cr043/cr043-tracked.docx"))[0]
+    assert probe.date == datetime.datetime(2026, 10, 15, 23, 17, tzinfo=datetime.UTC)
+    word15 = fixture("editor/revisions/revisions-word15.docx")
+    first = revisions.tracked_changes(word15)[0]
+    value = first.target.value()
+    assert value.date_utc is None
+    wall_clock = value.date.to_datetime().replace(tzinfo=None)
+    assert first.date == wall_clock.astimezone(datetime.UTC)
+    assert first.date != wall_clock.replace(tzinfo=datetime.UTC)
+
+
+def test_a_filter_reads_dates_as_word_means_them(zone):
+    """``TrackedChangeFilter``'s date range is over the dates as read: a Word 15 ``w:date`` on the local clock."""
+    zone("Australia/Sydney")
+    body = (
+        '<w:p><w:ins w:id="1" w:author="A" w:date="2026-01-01T10:00:00Z">' + run("old ") + "</w:ins>"
+        + run("| ")
+        + '<w:ins w:id="2" w:author="A" w:date="2026-01-02T10:00:00Z">' + run("new") + "</w:ins></w:p>"
+    )
+    package = with_body(body)
+    # 10:00 AEDT on the 1st is 23:00 UTC on 31 December
+    window = TrackedChangeFilter().between(
+        datetime.datetime(2025, 12, 31, 22, tzinfo=datetime.UTC), datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+    )
+    revisions.reject_all(package, window)
+    assert text_of(paragraphs(package)[0]) == "| new"
 
 
 def test_no_date_is_none():

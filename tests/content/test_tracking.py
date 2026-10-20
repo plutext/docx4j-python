@@ -155,18 +155,148 @@ def test_the_author_is_the_packages_and_only_the_name_reaches_the_markup():
     assert package.body.get_tracked_changes()[0].author == "Ada Lovelace"
 
 
-def test_the_date_is_the_fixed_one_or_now_in_utc_to_the_second():
+def _dates(xml: str) -> list[tuple[str, str | None]]:
+    """``(w:date, w16du:dateUtc)`` of every ``w:ins`` and ``w:del`` in some XML, in order."""
+    return [
+        (m.group(1), m.group(2))
+        for m in re.finditer(r'<w:(?:ins|del) [^>]*?w:date="([^"]*)"(?: w16du:dateUtc="([^"]*)")?', xml)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("place", "local"),
+    [
+        ("Australia/Sydney", "2026-09-17T22:00:00Z"),  # AEST, UTC+10
+        ("America/New_York", "2026-09-17T08:00:00Z"),  # EDT, UTC-4
+        ("Asia/Kolkata", "2026-09-17T17:30:00Z"),  # IST, UTC+5:30
+        ("UTC", "2026-09-17T12:00:00Z"),
+    ],
+)
+def test_the_date_is_written_as_word_writes_it_local_wall_clock_and_utc(zone, place, local):
+    """CR-010 section 12.9: ``w:date`` the local wall-clock time with a ``Z``, ``w16du:dateUtc`` the UTC.
+
+    The fixed date is used exactly, and reads back as the same instant, saved
+    and loaded, in the zone that wrote it and in another.
+    """
+    zone(place)
     package, paragraph = tracked()
     paragraph.insert_text("New. ", location="Start")
-    assert 'w:date="2026-09-17T12:00:00Z"' in paragraph.get_xml()
+    assert _dates(paragraph.get_xml()) == [(local, "2026-09-17T12:00:00Z")]
     assert package.body.get_tracked_changes()[0].date == WHEN
 
+    again = reloaded(package)
+    assert again.body.get_tracked_changes()[0].date == WHEN
+    zone("Pacific/Honolulu")
+    assert again.body.get_tracked_changes()[0].date == WHEN, "w16du:dateUtc wins in any zone"
+
+
+def test_now_is_to_the_minute_and_reads_back_as_the_same_instant(zone):
+    """"Now" drops its seconds, as Word's stamp does; both attributes are the one instant."""
+    zone("Australia/Sydney")
+    package, paragraph = tracked()
     package.tracked_change_date = None
+    before = datetime.datetime.now(datetime.UTC)
     paragraph.insert_text(" More.", location="End")
     when = package.body.get_tracked_changes()[-1].date
-    now = datetime.datetime.now(datetime.UTC)
-    assert when.tzinfo is not None and when.microsecond == 0
-    assert abs((now - when).total_seconds()) < 60
+    assert when.tzinfo is not None and when.second == 0 and when.microsecond == 0
+    assert before.replace(second=0, microsecond=0) <= when <= datetime.datetime.now(datetime.UTC)
+    (written, utc), = _dates(paragraph.get_xml())
+    assert utc == when.strftime("%Y-%m-%dT%H:%M:00Z")
+    assert written == when.astimezone().strftime("%Y-%m-%dT%H:%M:00Z")
+
+    # w:date alone is read on the local wall clock: the writer's zone gives the instant back
+    from docx4j_py.model.content.tracking import date_of
+
+    assert date_of(written) == when
+
+
+def test_a_naive_tracked_change_date_is_utc_as_it_always_was(zone):
+    """CR-003 section 3.8's ``tracked_change_date``: a naive datetime is read as UTC, not as local time."""
+    zone("America/New_York")
+    package, paragraph = tracked()
+    package.tracked_change_date = datetime.datetime(2026, 9, 17, 12, 0)  # noqa: DTZ001 - naive is the point
+    paragraph.insert_text("New. ", location="Start")
+    assert _dates(paragraph.get_xml()) == [("2026-09-17T08:00:00Z", "2026-09-17T12:00:00Z")]
+    assert package.body.get_tracked_changes()[0].date == WHEN
+
+
+@pytest.mark.parametrize(("name", "edited"), [("numbering-stories.docx", 4), ("sample-docx.docx", 3)])
+def test_every_part_the_tracker_writes_into_declares_w16du_ignorable(zone, name, edited):
+    """CR-010 section 12.9, docx4j-core-ts ``declareIgnorable``: ``mc:Ignorable`` gains ``w16du``.
+
+    The body, a header, a footnote and a comment's own paragraphs, edited under
+    tracking: each part's root lists ``w16du`` after what it listed before (none
+    in ``numbering-stories.docx``, ``w14 wp14`` on ``sample-docx.docx``'s
+    document), with its ``xmlns:w16du``, and each revision carries both dates.
+    ``sample-docx.docx`` has no comment, so the comment is made first, in the
+    comments part this package creates (``w14 w15``).
+    """
+    from lxml import etree
+
+    zone("Australia/Sydney")
+    mc = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Ignorable"
+    package = sample(name) if name == "sample-docx.docx" else fixture(name)
+    package.author = Author("Claude", initials="C")
+    package.tracked_change_date = WHEN
+    if package.main_document_part.comments_part is None:
+        package.body.paragraphs[0].insert_comment("A comment, edited under tracking below.")
+    main = package.main_document_part
+    parts = [main, main.header_parts()[0], main.footnotes_part, main.comments_part]
+    listed_before = [(etree.fromstring(part.xml).get(mc) or "").split() for part in parts]
+    package.change_tracking_mode = "TrackAll"
+    for part in parts:
+        paragraph = next((p for p in part.body.paragraphs if p.text.strip()), None)
+        if paragraph is None:  # sample-docx.docx's footnotes are its separators
+            continue
+        paragraph.insert_text("Tracked. ", location="Start")
+
+    saved = reloaded(package).main_document_part
+    checked = 0
+    for part, before in zip(
+        [saved, saved.header_parts()[0], saved.footnotes_part, saved.comments_part], listed_before, strict=True
+    ):
+        written = _dates(part.get_xml())
+        if not written:
+            continue
+        root = etree.fromstring(part.xml)
+        assert (root.get(mc) or "").split() == [*before, "w16du"], part.part_name
+        assert root.nsmap.get("w16du") == "http://schemas.microsoft.com/office/word/2023/wordml/word16du"
+        assert ("2026-09-17T22:00:00Z", "2026-09-17T12:00:00Z") in written, part.part_name
+        checked += 1
+    assert checked == edited
+
+
+def test_the_packages_own_tracker_writes_w_date_alone_and_a_created_body_gains_mc_ignorable(zone):
+    """A tracker bound to no part has no root to declare ``w16du`` on (docx4j-core-ts's rule)."""
+    from lxml import etree
+
+    from docx4j_py.model.content.tracking import tracker_of
+
+    zone("Australia/Sydney")
+    package, paragraph = tracked()
+    own = tracker_of(package).markup()
+    assert "date_utc" not in own and str(own["date"]) == "2026-09-17T22:00:00Z"
+    paragraph.insert_text(" After.", location="End")
+    root = etree.fromstring(package.main_document_part.xml)
+    assert root.get("{http://schemas.openxmlformats.org/markup-compatibility/2006}Ignorable") == "w16du"
+    assert tracker_of(package).for_part(package.main_document_part) is package.body.change_tracker
+    assert package.body.change_tracker.next_id() == own["id"] + 2, "one id space for every tracker"
+
+
+def test_a_dry_run_declares_w16du_on_its_copy_only():
+    """CR-003 section 3.4: the trial's part is a copy, so the real root keeps its ``mc:Ignorable``."""
+    package = sample("sample-docx.docx")
+    package.author = Author("Claude")
+    package.tracked_change_date = WHEN
+    _ = package.body.paragraphs
+    before = package.main_document_part.xml
+    with package.dry_run() as trial:
+        trial.change_tracking_mode = "TrackAll"
+        trial.body.paragraphs[0].insert_text("Trial. ", location="Start")
+        assert trial.body.part.contents.ignorable == "w14 wp14 w16du"
+        assert "w16du:dateUtc" in trial.body.paragraphs[0].get_xml()
+    assert package.main_document_part.contents.ignorable == "w14 wp14"
+    assert package.main_document_part.xml == before
 
 
 def test_revision_ids_start_above_the_highest_annotation_id_in_use():
@@ -921,7 +1051,9 @@ def test_a_comment_on_part_of_an_insertion_splits_it_as_word_does(mode):
 
     first, second = ours.findall(f"{{{_W}}}ins")
     date = f"{{{_W}}}date"
-    assert first.get(date) == second.get(date) == "2026-09-17T12:00:00Z"
+    date_utc = "{http://schemas.microsoft.com/office/word/2023/wordml/word16du}dateUtc"
+    assert first.get(date) == second.get(date) == WHEN.astimezone().strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert first.get(date_utc) == second.get(date_utc) == "2026-09-17T12:00:00Z"
     identifier = f"{{{_W}}}id"
     document = etree.fromstring(package.main_document_part.get_xml().encode())
     revision_ids = [
@@ -1034,7 +1166,8 @@ def test_the_listing_after_a_split_is_one_insertion_and_reject_takes_the_comment
 # ---------------------------------------------------------------------------
 
 
-def test_the_tracked_changes_of_a_word_written_document():
+def test_the_tracked_changes_of_a_word_written_document(zone):
+    zone("Australia/Sydney")
     package = fixture("tracked-pprchange.docx")
     changes = package.body.get_tracked_changes()
 
@@ -1045,7 +1178,9 @@ def test_the_tracked_changes_of_a_word_written_document():
     assert changes[1].kind == "insertion"
     assert [p.kind for p in changes[1].pieces] == ["run_insertion", "paragraph_mark_insertion"]
     assert changes[1].text.startswith("This document intentionally contains revisions")
-    assert changes[0].date == datetime.datetime(2012, 6, 27, 21, 15, tzinfo=datetime.UTC)
+    # Word 2010's w:date, with no w16du:dateUtc: its wall-clock time, read in this
+    # process's zone (CR-010 section 12.9), here AEST, UTC+10
+    assert changes[0].date == datetime.datetime(2012, 6, 27, 11, 15, tzinfo=datetime.UTC)
     assert isinstance(changes[0], TrackedChange)
     assert changes[0].to_dict()["address"] == "body/0"
 
@@ -1411,6 +1546,14 @@ def test_rejecting_every_tracked_verb_gives_the_document_back(name):
     assert package.body.reject_all()
     after = package.body.get_xml().encode("utf-8")
 
+    # the one thing the verbs leave: w16du declared ignorable on the root, as the
+    # tracker declares it before its first w16du:dateUtc (CR-010 section 12.9)
+    listed = re.search(rb'mc:Ignorable="([^"]*)"', before)
+    assert re.search(rb'mc:Ignorable="([^"]*)"', after).group(1).split() == [
+        *(listed.group(1).split() if listed else []),
+        b"w16du",
+    ]
+    after = re.sub(rb'(mc:Ignorable="[^"]*?) ?w16du"', rb'\1"', after).replace(b' mc:Ignorable=""', b"")
     report = canon.compare(before, after)
     assert report.identical, f"{report.differences}: {[d.detail for d in report.diffs[:4]]}"
     assert package.body.get_tracked_changes() == []

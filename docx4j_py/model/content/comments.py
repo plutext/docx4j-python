@@ -805,12 +805,26 @@ class Comment:
 
     @property
     def creation_date(self) -> datetime.datetime | None:
-        """``w:date`` as a ``datetime``, or None: a comment may carry none."""
-        value = getattr(self.element, "date", None)
-        if value is None:
-            return None
-        to_datetime = getattr(value, "to_datetime", None)
-        return to_datetime() if to_datetime is not None else None
+        """When the comment was made, in UTC, as Word means it; None when it carries no date.
+
+        Its ``w16cex:dateUtc`` when the document has one for it, which is UTC;
+        else ``w:date``, which Word writes on the author's local wall clock
+        whatever its ``Z`` says, read as local time in this process's zone
+        (CR-010 section 12.9; docx4j-core-ts ``Comment.creationDate``). The
+        extensible entry is found through the paragraph ids, the last paragraph's
+        first, which is the one Word keys it by.
+        """
+        from docx4j_py.model.revisions.change import word_date
+        from docx4j_py.openpackaging.parts.wml.comments import dates_utc
+
+        dates = dates_utc(self.parts) if self.parts is not None else {}
+        if dates:
+            for item in reversed(getattr(self.element, "content", None) or ()):
+                para_id = item.para_id if isinstance(item, P) else None
+                found = dates.get(para_id.upper()) if para_id else None
+                if found is not None:
+                    return found
+        return word_date(getattr(self.element, "date", None))
 
     @property
     def para_id(self) -> str | None:
@@ -1222,13 +1236,14 @@ def _add_comment(
     parent: Comment | None,
 ) -> Comment:
     """The ``w:comment`` and every side entry of a new comment; the markers are written."""
-    from docx4j_xsdata.models.datatype import XmlDateTime
-
+    from docx4j_py.model.content.tracking import now_to_the_minute, xml_date
     from docx4j_py.w15 import el as w15el
     from docx4j_py.wml import el
 
     author = author_of(body.package)
-    now = datetime.datetime.now(datetime.UTC).replace(microsecond=0)
+    # one instant for w:date (the local wall clock, as Word writes it) and
+    # w16cex:dateUtc (UTC), to the minute as Word stamps it (CR-010 section 12.9)
+    now = now_to_the_minute()
     paragraphs = _comment_paragraphs(text)
     taken = _para_ids_taken(parts, body)
     para_id = _hex_id(body.package, taken)
@@ -1238,7 +1253,7 @@ def _add_comment(
         id=identifier,
         author=author.name,
         initials=initials_of(author),
-        date=XmlDateTime.from_datetime(now),
+        date=xml_date(now),
         content=ChildList(paragraphs),
     )
     _append(parts.comments, "comment", comment)
@@ -1255,6 +1270,7 @@ def _add_comment(
         )
         set_comment_id(parts.ids_part, para_id, durable_id)
         set_extensible(parts.extensible_part, durable_id, now)
+        parts.dates_utc_cache = None
 
     _add_person(parts, author)
     return Comment(comment, parts, body)

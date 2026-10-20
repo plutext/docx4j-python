@@ -32,6 +32,10 @@ The rules of section 4 that land here:
   G's separate space (:func:`~docx4j_py.model.content.comments.next_comment_id`);
 * the author is ``pkg.author`` (:func:`.comments.author_of`), the same identity
   a comment carries, and only its ``name`` reaches ``w:author``;
+* the date is Word's convention (CR-010 section 12.9): ``w:date`` the local
+  wall-clock time with a ``Z`` that does not mean UTC, ``w16du:dateUtc`` the
+  true UTC, "now" to the minute, and ``w16du`` declared in the part's
+  ``mc:Ignorable``; ``pkg.tracked_change_date``, when set, is the instant;
 * ``TrackMineOnly`` is stored as ``TrackAll``: ``w:trackRevisions`` is a flag
   and a file cannot tell the two apart;
 * editing deleted text raises :class:`~.errors.TrackedChangeError`, naming the
@@ -83,6 +87,7 @@ __all__ = [
     "copy_r_pr",
     "create_settings_part",
     "date_of",
+    "declare_ignorable",
     "delete_row_content",
     "final_mark_properties",
     "hand_back_final_mark",
@@ -92,6 +97,7 @@ __all__ = [
     "mark_inserted",
     "merge_runs",
     "mode_of",
+    "now_to_the_minute",
     "para_r_pr_of",
     "prune_paragraph_properties",
     "record_final_mark",
@@ -115,6 +121,7 @@ __all__ = [
     "wrap_new_runs",
     "wrap_run",
     "xml_date",
+    "xml_date_utc",
 ]
 
 
@@ -201,37 +208,92 @@ def revision_of(run: Any) -> Revision | None:
 
 
 # ---------------------------------------------------------------------------
-# dates, as Word writes w:date
+# dates, as Word writes them (CR-010 section 12.9)
 # ---------------------------------------------------------------------------
+
+#: ``mc:Ignorable``, as a key of a root's ``other_attributes``.
+_MC_IGNORABLE = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Ignorable"
+
+
+def now_to_the_minute() -> datetime.datetime:
+    """Now, in UTC, with the seconds and microseconds dropped: what Word stamps a revision with.
+
+    docx4j-core-ts ``nowToTheMinute`` (its CR-002 section 28.2). A caller who
+    sets ``pkg.tracked_change_date`` gets that date instead, as it is.
+    """
+    return datetime.datetime.now(datetime.UTC).replace(second=0, microsecond=0)
+
+
+def _instant(value: datetime.datetime) -> datetime.datetime:
+    """An aware datetime; a naive one is read as UTC, as ``pkg.tracked_change_date`` always was."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=datetime.UTC)
 
 
 def xml_date(value: datetime.datetime) -> Any:
-    """A ``w:date`` value: an ``xsd:dateTime`` in UTC, to the second, as Word writes it."""
+    """A ``w:date`` as Word writes it: the instant on this process's local wall clock, with a ``Z``.
+
+    The ``Z`` does not mean UTC: Word writes the author's wall-clock time there
+    and the true UTC beside it in ``w16du:dateUtc`` (:func:`xml_date_utc`), and
+    reads ``w:date`` back as local time (CR-010 section 12.9; docx4j-core-ts
+    ``wordCalendarOf``). "Local" is this process's time zone. To the second; a
+    naive `value` is read as UTC.
+    """
     from docx4j_xsdata.models.datatype import XmlDateTime
 
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=datetime.UTC)
-    return XmlDateTime.from_datetime(value.astimezone(datetime.UTC).replace(microsecond=0))
+    instant = _instant(value)
+    try:
+        local = instant.astimezone()
+    except (OverflowError, OSError, ValueError):  # pragma: no cover - out of the platform's range
+        local = instant
+    return XmlDateTime.from_datetime(local.replace(tzinfo=datetime.UTC, microsecond=0))
+
+
+def xml_date_utc(value: datetime.datetime) -> Any:
+    """A ``w16du:dateUtc``: the instant in UTC, to the second. A naive `value` is read as UTC."""
+    from docx4j_xsdata.models.datatype import XmlDateTime
+
+    return XmlDateTime.from_datetime(_instant(value).astimezone(datetime.UTC).replace(microsecond=0))
 
 
 def date_of(value: Any) -> datetime.datetime | None:
-    """The :class:`datetime.datetime` of a ``w:date``, or None when there is none."""
-    if value is None:
-        return None
-    to_datetime = getattr(value, "to_datetime", None)
-    if to_datetime is not None:
-        try:
-            return to_datetime()
-        except Exception:  # noqa: BLE001 - a date we cannot read is no date
-            return None
-    if isinstance(value, datetime.datetime):
-        return value
-    if isinstance(value, str):
-        try:
-            return datetime.datetime.fromisoformat(value)
-        except ValueError:
-            return None
-    return None
+    """The instant of a ``w:date``, in UTC, read as Word means it: local wall-clock time.
+
+    :func:`docx4j_py.model.revisions.change.word_date`; None when there is none.
+    """
+    from docx4j_py.model.revisions.change import word_date
+
+    return word_date(value)
+
+
+def declare_ignorable(root: Any, prefix: str) -> bool:
+    """Make a part's root list `prefix` in ``mc:Ignorable``, appending it when absent.
+
+    So that content in that prefix's namespace may be written in the part: a
+    consumer that does not know the namespace must reject it unless it is
+    declared ignorable. On write, :attr:`~docx4j_py.openpackaging.parts.xml_part.XmlPart.xml`
+    declares every prefix ``mc:Ignorable`` names (CR-002 section 5.6).
+    docx4j-core-ts ``declareIgnorable``, and docx4j's own pattern, the writer
+    adding its prefix (``Paginate.declareW14Ignorable``). The value is where the
+    root keeps it: its ``ignorable`` field, or ``other_attributes`` for the
+    ``w:comments`` this package creates. False when `root` cannot carry one.
+    """
+    if root is None:
+        return False
+    fields = getattr(type(root), "__dataclass_fields__", None)
+    if not fields or "ignorable" not in fields:
+        return False
+    other = getattr(root, "other_attributes", None)
+    in_other = root.ignorable is None and isinstance(other, dict) and _MC_IGNORABLE in other
+    current = (other[_MC_IGNORABLE] if in_other else root.ignorable) or ""
+    prefixes = current.split()
+    if prefix in prefixes:
+        return True
+    value = " ".join([*prefixes, prefix])
+    if in_other:
+        other[_MC_IGNORABLE] = value
+    else:
+        root.ignorable = value
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -250,21 +312,50 @@ class ChangeTracker:
     A departure from docx4j, which has no such class --- docx4j leaves revision
     markup to the caller. The name follows Office JS's vocabulary
     (``Word.ChangeTrackingMode``).
+
+    A ``Body`` asks for one **bound to its part** (:meth:`for_part`), as
+    docx4j-core-ts's does: that one writes ``w16du:dateUtc`` beside ``w:date``
+    and makes the part's root list ``w16du`` in ``mc:Ignorable`` first. The
+    package's own, bound to no part, writes ``w:date`` alone (CR-010 section
+    12.9). Every tracker of a package draws its ids from one counter.
     """
 
-    __slots__ = ("_counter", "mode", "package")
+    __slots__ = ("_counter", "_parts", "_root", "mode", "package", "part")
 
-    def __init__(self, package: Any, mode: str = "TrackAll") -> None:
-        """Build the tracker over a package and the mode it is in."""
+    def __init__(self, package: Any, mode: str = "TrackAll", part: Any = None, root: Any = None) -> None:
+        """Build the tracker over a package and the mode it is in; `part` and `root` are :meth:`for_part`'s."""
         #: The package whose author, date and ids this writes.
         self.package = package
         #: ``"TrackAll"`` or ``"TrackMineOnly"``; never ``"Off"``.
         self.mode = mode
+        #: The part this tracker writes into, or None for the package's own.
+        self.part = part
+        self._root: ChangeTracker | None = root
         self._counter: int | None = None
+        self._parts: dict[int, tuple[Any, ChangeTracker]] = {}
 
     def __repr__(self) -> str:
         """``<ChangeTracker TrackAll 'Claude'>``."""
         return f"<ChangeTracker {self.mode} {self.author!r}>"
+
+    def for_part(self, part: Any) -> ChangeTracker:
+        """This tracker for revisions written into one part (a ``Body`` asks for its own).
+
+        docx4j-core-ts ``ChangeTracker.forPart``. The id counter is the
+        package's tracker's, so every tracker over a document draws ids from one
+        space. With no part, the tracker itself.
+        """
+        root = self._root if self._root is not None else self
+        if part is None or part is self.part:
+            return self
+        if part is root.part:
+            return root
+        found = root._parts.get(id(part))
+        if found is not None and found[0] is part:
+            return found[1]
+        tracker = ChangeTracker(self.package, self.mode, part, root)
+        root._parts[id(part)] = (part, tracker)
+        return tracker
 
     # -- who and when ------------------------------------------------------
 
@@ -277,11 +368,16 @@ class ChangeTracker:
 
     @property
     def date(self) -> datetime.datetime:
-        """``pkg.tracked_change_date``, or now in UTC (CR-003 section 3.8)."""
+        """The instant a new revision carries: ``pkg.tracked_change_date`` as it is, else now to the minute.
+
+        CR-003 section 3.8; a naive ``tracked_change_date`` is read as UTC, as
+        it always was. "Now" drops the seconds, as Word's stamp does
+        (:func:`now_to_the_minute`, CR-010 section 12.9).
+        """
         fixed = getattr(self.package, "tracked_change_date", None)
         if isinstance(fixed, datetime.datetime):
-            return fixed
-        return datetime.datetime.now(datetime.UTC)
+            return _instant(fixed)
+        return now_to_the_minute()
 
     # -- the ids -----------------------------------------------------------
 
@@ -309,8 +405,11 @@ class ChangeTracker:
         The one annotation id space of ECMA-376 17.13.5.4 --- revisions,
         bookmarks, comment range marks and permissions share it --- scanned
         once per package. ``w:comment/@w:id`` is **excluded**: it is a different
-        space, and Phase G's :func:`.comments.next_comment_id` owns it.
+        space, and Phase G's :func:`.comments.next_comment_id` owns it. A
+        tracker bound to a part asks the package's.
         """
+        if self._root is not None:
+            return self._root.next_id()
         if self._counter is None:
             from docx4j_py.traversal import iter_nodes
             from docx4j_py.wml import CommentsComment
@@ -328,8 +427,21 @@ class ChangeTracker:
         return self._counter
 
     def markup(self) -> dict[str, Any]:
-        """The ``w:id``, ``w:author`` and ``w:date`` a new revision carries."""
-        return {"id": self.next_id(), "author": self.author, "date": xml_date(self.date)}
+        """The ``w:id``, ``w:author``, ``w:date`` and ``w16du:dateUtc`` a new revision carries.
+
+        ``w:date`` on the process's local wall clock with a ``Z`` that does not
+        mean UTC (:func:`xml_date`), and ``w16du:dateUtc`` the true UTC
+        (:func:`xml_date_utc`), as Word 365 writes them both (CR-010 section
+        12.9; docx4j-core-ts ``markup``). ``w16du:dateUtc`` only from a tracker
+        bound to a part, whose root is first made to list ``w16du`` in
+        ``mc:Ignorable`` (:func:`declare_ignorable`); the package's own tracker
+        writes ``w:date`` alone.
+        """
+        when = self.date
+        out: dict[str, Any] = {"id": self.next_id(), "author": self.author, "date": xml_date(when)}
+        if self.part is not None and declare_ignorable(getattr(self.part, "contents", None), "w16du"):
+            out["date_utc"] = xml_date_utc(when)
+        return out
 
     def track_change(self) -> CTTrackChange:
         """A ``CT_TrackChange``: the id, this package's author and the date."""

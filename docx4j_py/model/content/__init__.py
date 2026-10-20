@@ -431,16 +431,19 @@ def _set_package_compatibility_mode(self: object, value: object) -> None:
 
 
 def _package_tracked_change_date(self: object) -> object:
-    """The date a new revision carries, or None for the wall clock (section 3.8).
+    """The instant a new revision carries, or None for now to the minute (section 3.8).
 
     Fixing it is what makes a tracked edit byte-reproducible, as ``id_seed``
     does for the ids: ``pkg.tracked_change_date = datetime(2026, 9, 17, tzinfo=UTC)``.
+    A naive datetime is UTC. The instant is written as Word writes it (CR-010
+    section 12.9): ``w:date`` on this process's local wall clock with a ``Z``,
+    and ``w16du:dateUtc`` in UTC, so the ``w:date`` bytes follow the time zone.
     """
     return self._tracked_change_date  # type: ignore[attr-defined]
 
 
 def _set_package_tracked_change_date(self: object, value: object) -> None:
-    """Fix the ``w:date`` of every new revision, or None to use the wall clock."""
+    """Fix the instant every new revision carries, or None to use the clock."""
     import datetime as _datetime
 
     if value is not None and not isinstance(value, _datetime.datetime):

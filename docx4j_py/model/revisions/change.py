@@ -23,6 +23,9 @@ from docx4j_py.model.revisions.trees import Revision
 __all__ = [
     "Kind",
     "TrackedChange",
+    "date_of",
+    "utc_date",
+    "word_date",
 ]
 
 
@@ -406,10 +409,11 @@ class TrackedChange:
 
     @property
     def date(self) -> datetime.datetime | None:
-        """When the change was made: ``w16du:dateUtc`` where present, else ``w:date``.
+        """When the change was made, in UTC: ``w16du:dateUtc`` where present, else ``w:date``.
 
-        A group's is its first piece's; None when there is none. See
-        :func:`date_of` for how ``w:date`` is read.
+        ``w:date`` is read as Word means it, local wall-clock time
+        (:func:`date_of`). A group's is its first piece's; None when there is
+        none.
         """
         return date_of(self.target.value())
 
@@ -525,42 +529,79 @@ class TrackedChange:
 # ---------------------------------------------------------------------------
 
 
-def _as_datetime(value: Any) -> datetime.datetime | None:
-    if value is None:
-        return None
-    to_datetime = getattr(value, "to_datetime", None)
-    if to_datetime is not None:
+def _calendar(value: Any) -> Any:
+    """An ``xsd:dateTime`` as an ``XmlDateTime``, or None: the model's value, a string or a ``datetime``."""
+    from docx4j_xsdata.models.datatype import XmlDateTime
+
+    if value is None or isinstance(value, XmlDateTime):
+        return value
+    if isinstance(value, datetime.datetime):
+        return XmlDateTime.from_datetime(value)
+    if isinstance(value, str):
         try:
-            found = to_datetime()
-        except Exception:  # noqa: BLE001 - a date we cannot read is no date
-            return None
-    elif isinstance(value, datetime.datetime):
-        found = value
-    elif isinstance(value, str):
-        try:
-            found = datetime.datetime.fromisoformat(value)
+            return XmlDateTime.from_string(value.strip())
         except ValueError:
             return None
-    else:
+    return None
+
+
+def _to_datetime(calendar: Any) -> datetime.datetime | None:
+    try:
+        return calendar.to_datetime()  # type: ignore[no-any-return]
+    except Exception:  # noqa: BLE001 - a date we cannot read is no date
+        return None
+
+
+def utc_date(value: Any) -> datetime.datetime | None:
+    """An ``xsd:dateTime`` meant as UTC --- ``w16du:dateUtc``, ``w16cex:dateUtc`` --- in UTC.
+
+    A missing offset is read as UTC, as docx4j reads one.
+    """
+    calendar = _calendar(value)
+    found = _to_datetime(calendar) if calendar is not None else None
+    if found is None:
         return None
     if found.tzinfo is None:
         found = found.replace(tzinfo=datetime.UTC)
-    return found
+    return found.astimezone(datetime.UTC)
+
+
+def word_date(value: Any) -> datetime.datetime | None:
+    """A ``w:date`` as Word means it, in UTC: its local wall-clock time, the ``Z`` notwithstanding.
+
+    Word writes ``w:date`` on the author's local wall clock with a ``Z`` that
+    does not mean UTC, and the true UTC beside it in ``w16du:dateUtc`` (Word
+    365) or ``w16cex:dateUtc`` (a comment). Without those, the wall-clock time is
+    read in **this process's** time zone, as docx4j reads it in the JVM's
+    (``TrackedChange.dateOf``, check 36) and Office JS in the add-in's. An
+    explicit non-zero offset, which Word does not write, is read as it says
+    (CR-010 section 12.9).
+    """
+    calendar = _calendar(value)
+    found = _to_datetime(calendar) if calendar is not None else None
+    if found is None:
+        return None
+    if calendar.offset not in (None, 0):
+        return found.astimezone(datetime.UTC)
+    wall_clock = found.replace(tzinfo=None)
+    try:
+        # a naive datetime is the system's local time to astimezone()
+        return wall_clock.astimezone(datetime.UTC)
+    except (OverflowError, OSError, ValueError):  # pragma: no cover - out of the platform's range
+        return wall_clock.replace(tzinfo=datetime.UTC)
 
 
 def date_of(value: Any) -> datetime.datetime | None:
-    """A revision's date: ``w16du:dateUtc`` where present (Word 365 writes both), else ``w:date``.
+    """A revision's date, in UTC: ``w16du:dateUtc`` where present (Word 365 writes both), else ``w:date``.
 
-    ``w16du:dateUtc`` is the true UTC. ``w:date`` is read **as it is written**
-    --- a ``Z`` as UTC --- which is a departure from docx4j CR-043 (it reads
-    ``w:date`` as Word's local wall-clock time, check 36): this package's own
-    tracker writes the true UTC in ``w:date`` and no ``w16du:dateUtc``
-    (CR-003 section 16.1), so reading it as local time would misread every
-    revision this package makes. CR-010 section 10 records it.
+    docx4j ``TrackedChange.dateOf`` (CR-010 section 12.9): ``w16du:dateUtc`` is
+    the true UTC; ``w:date`` is Word's local wall-clock time, read in this
+    process's time zone (:func:`word_date`). This package's tracker writes
+    both, as Word does, so what it writes reads back as the same instant.
     """
     if value is None:
         return None
-    utc = _as_datetime(getattr(value, "date_utc", None))
+    utc = utc_date(getattr(value, "date_utc", None))
     if utc is not None:
         return utc
-    return _as_datetime(getattr(value, "date", None))
+    return word_date(getattr(value, "date", None))

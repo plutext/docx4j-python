@@ -237,11 +237,14 @@ class Body(Sequence):
         """The package's tracker while ``change_tracking_mode`` is on, else None.
 
         What every mutation asks for: when it gets one it writes Word's revision
-        markup instead of editing in place (CR-003 section 3.8).
+        markup instead of editing in place (CR-003 section 3.8). It is bound to
+        this body's part, so that it writes ``w16du:dateUtc`` and declares
+        ``w16du`` ignorable there (CR-010 section 12.9).
         """
         from docx4j_py.model.content.tracking import tracker_of
 
-        return tracker_of(self.package)
+        tracker = tracker_of(self.package)
+        return tracker.for_part(self.part) if tracker is not None else None
 
     # -- Sequence ----------------------------------------------------------
 

@@ -15,7 +15,9 @@ equal; a binary entry must be byte for byte equal; an XML entry is compared in
 dates are scrubbed --- ``dcterms:created`` and ``dcterms:modified`` in
 ``docProps/core.xml``, and every ``w:date`` attribute (comments, revisions,
 ``w:pPrChange`` and friends), which the script does not fix and Word writes as
-the clock. Exits 1 on any other difference, and prints every one.
+the clock, with the ``w16du:dateUtc`` and ``w16cex:dateUtc`` beside them (CR-010
+section 12.9): their values, not whether they are there. Exits 1 on any other
+difference, and prints every one.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ from canon import normalize  # noqa: E402
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 DCTERMS = "http://purl.org/dc/terms/"
 
-DATE_ATTRIBUTE = re.compile(rb'\sw:date="[^"]*"')
+DATE_ATTRIBUTE = re.compile(rb'\s(w:date|w16du:dateUtc|w16cex:dateUtc)="[^"]*"')
 DCTERMS_DATE = re.compile(
     rb"<dcterms:(created|modified)([^>]*)>[^<]*</dcterms:\1>",
 )
@@ -42,7 +44,7 @@ def scrub(name: str, data: bytes) -> bytes:
     """The bytes with the wall-clock dates removed, as text, before canonicalising."""
     if name == "docProps/core.xml":
         data = DCTERMS_DATE.sub(rb"<dcterms:\1\2>DATE</dcterms:\1>", data)
-    return DATE_ATTRIBUTE.sub(b' w:date="DATE"', data)
+    return DATE_ATTRIBUTE.sub(rb' \1="DATE"', data)
 
 
 def compare_one(a: Path, b: Path) -> list[str]:

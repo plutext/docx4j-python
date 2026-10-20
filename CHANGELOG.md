@@ -58,6 +58,19 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **Dates are written and read as Word 365 writes them**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section 12.9):
+  every revision the tracker writes carries `w:date` on the process's **local wall clock** with a
+  `Z` that does not mean UTC, and the true UTC in `w16du:dateUtc`, with `w16du` added to the
+  part's `mc:Ignorable`. "Now" is to the minute, as Word stamps it. 0.1.0 wrote the UTC in
+  `w:date`, to the second, so Word showed this package's revisions and comments shifted by the
+  reader's UTC offset. A new comment's `w:date` takes the same local form, to the minute, and its
+  `w16cex:dateUtc` (where the document has that part) the UTC. Reading follows docx4j:
+  `TrackedChange.date` is `w16du:dateUtc` where present, else `w:date` read as local time in the
+  process's zone; `Comment.creation_date` is the document's `w16cex:dateUtc` where it has one,
+  else `w:date` read as local time. Both are returned in UTC. A date this package writes reads
+  back as the same instant. A naive `pkg.tracked_change_date` is still UTC; the `w:date` bytes of
+  a fixed date now depend on the time zone.
 - **A comment whose range a resolution empties goes whole, wherever its markers were, as Word 365
   removes it** ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md)
   section [12.8](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#128-the-word-check-2026-10-21),
@@ -98,10 +111,10 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   and the original paragraph on a reject; so rejecting a paragraph this package appended at the
   end of a body leaves the appended paragraph's element, with the properties it records (below:
   a heading's, since Phase C). A date is `w16du:dateUtc` where the markup has it, else `w:date`
-  as written. `OutlineStats.tracked_changes` counts the same grouped listing, over the stories
-  the outline shows (the body's, and the package outline's headers and footers too), and is 0
-  once `accept_all` has run; `describe()`'s `tracking_on` is unchanged, since accepting and
-  rejecting never change `w:trackRevisions`.
+  read as Word's local wall-clock time (below). `OutlineStats.tracked_changes` counts the same
+  grouped listing, over the stories the outline shows (the body's, and the package outline's
+  headers and footers too), and is 0 once `accept_all` has run; `describe()`'s `tracking_on` is
+  unchanged, since accepting and rejecting never change `w:trackRevisions`.
 - **The colour merge rules are docx4j 17.3.3's** ([CR-009](docs/change-requests/CR-009-theme-colours.md),
   Phase A, section [10](docs/change-requests/CR-009-theme-colours.md#10-phase-a-implementation-notes-2026-10-12)):
   in the property catalogue a `w:color` or `w:u` stating only a theme colour is no longer empty,

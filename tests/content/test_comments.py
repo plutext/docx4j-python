@@ -550,3 +550,85 @@ def test_get_comments_on_a_content_control():
     controls = package.body.content_controls
     assert controls
     assert controls[0].get_comments() == []
+
+
+# ---------------------------------------------------------------------------
+# dates, as Word means them (CR-010 section 12.9)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("place", ["Australia/Sydney", "America/New_York"])
+def test_a_word_365_comments_date_is_its_w16cex_date_utc_in_any_zone(zone, place):
+    """``comments-modern.docx``: ``w:date`` 18:21 on the author's clock (UTC-5), ``w16cex:dateUtc`` 23:21.
+
+    docx4j-core-ts ``Comment.creationDate``: the extensible part's date, found
+    through ``w16cid:commentsIds``, read from the two parts' bytes so that a
+    read leaves them unparsed and byte for byte.
+    """
+    import datetime
+
+    zone(place)
+    package = fixture("comments-modern.docx")
+    comment = next(c for c in package.body.get_comments() if c.author_name == "Buck Cronk")
+    assert comment.creation_date == datetime.datetime(2026, 5, 18, 23, 21, tzinfo=datetime.UTC)
+    assert comment.to_dict()["creation_date"] == "2026-05-18T23:21:00+00:00"
+    main = package.main_document_part
+    assert not main.comments_ids_part.is_parsed
+    assert not main.comments_extensible_part.is_parsed
+
+
+def test_a_word_2010_comments_date_is_its_w_date_on_the_local_wall_clock(zone):
+    """``comments.docx`` has no ``w16cex`` part: ``w:date="2011-02-01T11:52:00Z"`` is local time."""
+    import datetime
+
+    zone("Australia/Sydney")  # AEDT, UTC+11, in February
+    comment = fixture("comments.docx").body.get_comments()[0]
+    assert comment.creation_date == datetime.datetime(2011, 2, 1, 0, 52, tzinfo=datetime.UTC)
+    zone("America/New_York")  # EST, UTC-5
+    assert comment.creation_date == datetime.datetime(2011, 2, 1, 16, 52, tzinfo=datetime.UTC)
+
+
+def test_a_new_comments_date_is_the_local_wall_clock_to_the_minute_and_reads_back(zone):
+    """``w:date`` on the local wall clock with a ``Z``, as Word writes it; no ``w16du:dateUtc`` on a comment.
+
+    Word stamps a comment to the minute, as it stamps a revision (its saves of
+    artefact 8 wrote ``04:46:00Z`` for this package's ``04:46:25Z``).
+    """
+    import datetime
+    import re
+
+    zone("Australia/Sydney")
+    before = datetime.datetime.now(datetime.UTC)
+    package, comment = commented()
+    made = comment.creation_date
+    assert made.second == 0 and made.microsecond == 0
+    assert before.replace(second=0, microsecond=0) <= made <= datetime.datetime.now(datetime.UTC)
+    written = re.search(r'<w:comment [^>]*>', package.main_document_part.comments_part.get_xml()).group(0)
+    assert f'w:date="{made.astimezone().strftime("%Y-%m-%dT%H:%M:00Z")}"' in written
+    assert "dateUtc" not in written
+    zone("Australia/Sydney")
+    assert reloaded(package).body.get_comments()[0].creation_date == made
+
+
+def test_a_new_comment_in_a_document_with_w16cex_has_its_utc_date_there(zone):
+    """The extensible entry is the UTC instant and is what ``creation_date`` reads, in any zone."""
+    import re
+
+    zone("America/New_York")
+    package = threaded_package()
+    package.author = Author("Ada Lovelace")
+    comment = package.body.paragraphs[1].insert_comment("One more.")
+    made = comment.creation_date
+    assert made.second == 0
+    durable = re.search(
+        rf'w16cid:paraId="{comment.para_id}" w16cid:durableId="([0-9A-F]+)"',
+        package.main_document_part.comments_ids_part.get_xml(),
+    ).group(1)
+    entry = re.search(
+        rf'<w16cex:commentExtensible w16cex:durableId="{durable}" w16cex:dateUtc="([^"]+)"',
+        package.main_document_part.comments_extensible_part.get_xml(),
+    ).group(1)
+    assert entry == made.strftime("%Y-%m-%dT%H:%M:00Z")
+    zone("Asia/Kolkata")
+    again = next(c for c in reloaded(package).body.get_comments() if c.content == "One more.")
+    assert again.creation_date == made

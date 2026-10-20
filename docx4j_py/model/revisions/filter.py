@@ -61,7 +61,9 @@ class TrackedChangeFilter:
                 ``"run_insertion"``, ``"paragraph_mark_deletion"``, ...).
             date_from: changes made at or after this.
             date_to: changes made before this. A change with no date matches
-                no date range; a naive datetime is read as UTC.
+                no date range; a naive datetime is read as UTC. A change's date
+                is read as Word means it (:attr:`TrackedChange.date`:
+                ``w16du:dateUtc``, else ``w:date`` on the local wall clock).
             parts: changes in these parts (a part, or a part name such as
                 ``"/word/footnotes.xml"``).
             within: changes inside this content control's content (the

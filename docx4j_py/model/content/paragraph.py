@@ -636,10 +636,8 @@ class Paragraph:
 
     @property
     def change_tracker(self) -> Any:
-        """The package's tracker while ``change_tracking_mode`` is on, else None."""
-        from docx4j_py.model.content.tracking import tracker_of
-
-        return tracker_of(self.parent_body.package)
+        """The package's tracker while ``change_tracking_mode`` is on, else None; its body's, bound to its part."""
+        return self.parent_body.change_tracker
 
     # -- the stable handles ------------------------------------------------
 
