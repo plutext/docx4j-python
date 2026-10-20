@@ -1441,4 +1441,10 @@ package's engine, through `description.py`, against each of Word's saves:
 U23 is a disagreement with Word that this package shares with docx4j. Fix 2 follows docx4j's rule,
 which judges a comment's range within one content list, so a range across paragraphs is never
 found empty. docx4j's session has proposed a fix to `Resolver.removeRevision` to Jason; when it
-lands, this package ports it as it ported `d18693760`.
+lands, this package ports it as it ported `d18693760`. **It landed the same day as docx4j
+`a8bc6cda9`** (`VERSION_17_3_4`, unpushed; its CR-043 sections 3.2, 11 and 15). A comment with one
+marker in the revision's list and the other in another paragraph becomes a candidate. It is judged
+at the flush, after every paragraph join, and goes whole when its start and end then stand in one
+list with no text between them. A range that still crosses a paragraph mark is kept (U24,
+unmeasured). Its tests are U21 to U23 against Word's saves, in docx4j's
+`revisions/cr043/comments/`. The port waits on the user's go.
