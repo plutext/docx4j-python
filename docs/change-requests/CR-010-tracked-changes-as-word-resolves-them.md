@@ -24,7 +24,8 @@ its two copies; section 12.8): **Phase C is done.** **Fix 2 implemented 2026-10-
 resolution empties goes whole wherever its markers were, and with the last comment its parts, as
 Word 365 does. **Word's date convention implemented 2026-10-21** (section 12.9, the user's
 decision): the tracker writes `w:date` on the local wall clock and `w16du:dateUtc` in UTC, as Word
-365 does, and every date is read as docx4j reads it; section 10.3 item 1 is superseded.
+365 does, and every date is read as docx4j reads it; section 10.3 item 1 is superseded. **Both
+passed the user's Word check the same day: CR-010 is complete.**
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1409,5 +1410,11 @@ parts (section 12.8). `10-lists.docx` differs by one `w16du:dateUtc` on its `w:p
 same `mc:Ignorable`. Artefact 7's comment and the other eight are identical once the dates are
 scrubbed. The scrubbed `w:date` values changed too: they are the local wall-clock time now.
 Artefacts 8 (with its copies) and 10 need opening in Word; `tests/README.md` records it, and
-artefact 8's row says the Reviewing Pane's times are now the local time the artefact was made. No
-Word check has been made of this.
+artefact 8's row says the Reviewing Pane's times are now the local time the artefact was made.
+
+**The Word check (2026-10-21): passed.** The user opened artefacts 8 and 10 and artefact 8's two
+copies in Word 16 ("word check passes with flying colours"). There was no repair prompt. The
+Reviewing Pane and the comment show the local time the artefacts were made. Accept All keeps the
+comment on "second", and Reject All removes it without hanging. The rejected copy, with no comment
+parts, opens clean, and artefact 10's lists read as before. Fix 2 (section 12.8) and this section
+are done, and with them **CR-010 is complete.**

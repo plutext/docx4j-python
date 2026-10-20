@@ -334,7 +334,12 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > against Word's saves of the earlier artefact 8 (`out/acceptance-word/`) and of the artefact 8 of
 > fix 1 (`__tmp/python-8b/`): **0 lines** and **0** for both. **Artefacts 8 (with its two copies)
 > and 10 need opening in Word**: no repair prompt, the Reviewing Pane's times the local time the
-> artefacts were made, and the rejected copy without comment parts. Not yet checked.
+> artefacts were made, and the rejected copy without comment parts.
+
+> **2026-10-21, Word check of fix 2 and the date convention passed** (the user: "word check passes
+> with flying colours", Word 16). Artefacts 8 and 10 and artefact 8's two copies open with no repair
+> prompt. The Reviewing Pane and the comment show the local time they were made. The rejected copy,
+> with no comment parts, opens clean. CR-010 is complete.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
