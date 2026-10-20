@@ -1426,7 +1426,19 @@ read only, through `revisions.accept_all` / `reject_all`. docx4j was at `VERSION
 `python/artefact8/8-tracked-changes.docx` and `editor/review/review-for-word-word365-rejected.docx`.
 Accept and reject of each give 0 lines. The descriptions run from 33 to 102 lines; the review
 file's reject carries 12 comment lines. docx4j records it in its CR-043 section 14, uncommitted
-until Jason's word. Still unmeasured, and with a Word round of docx4j's waiting on the user:
-U21, Accept All of a deletion whose comment markers lie outside it; U22, whether `people.xml`
-stays when the last comment goes while a tracked change remains; and U23, Reject All of a
-two-paragraph insertion commented whole. docx4j's session sends Word's results when they land.
+until Jason's word.
+
+**Word 365 on U21 to U23 (2026-10-21).** Jason's Word round of docx4j's three unmeasured cases
+(`~/vbShares/Office 2016/cr052-word-check/c43-*`, Word's saves `*-word365-*.docx`). This
+package's engine, through `description.py`, against each of Word's saves:
+
+| case | Word 365 | this package |
+|---|---|---|
+| U21: Accept All of a deletion whose comment markers lie outside it | the comment goes whole; a control comment on plain text stays | **0 lines** |
+| U22: one insertion rejected, removing the only comment while a tracked deletion stays | `comments`, `commentsExtended` and `commentsIds` go; `people.xml` stays | **0 lines** |
+| U23: Reject All of two inserted paragraphs commented whole (start in the first, end in the second) | the comment goes whole; the control stays | **4 lines**: the comment kept, its markers left either side |
+
+U23 is a disagreement with Word that this package shares with docx4j. Fix 2 follows docx4j's rule,
+which judges a comment's range within one content list, so a range across paragraphs is never
+found empty. docx4j's session has proposed a fix to `Resolver.removeRevision` to Jason; when it
+lands, this package ports it as it ported `d18693760`.
