@@ -82,7 +82,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   its rejection, as in Word 365. With the last comment the resolution takes away, the `comments`,
   `commentsExtended`, `commentsIds` and `commentsExtensible` parts go too, with their
   relationships and content types, and `people.xml` once no tracked change is left. A dry run's
-  body removes no part.
+  body removes no part. **A comment whose range spans paragraphs goes too** (section
+  [12.9](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#129-words-date-convention-2026-10-21),
+  the port of docx4j `a8bc6cda9`), as Word 365's Reject All of two inserted paragraphs commented
+  whole removes it: such a comment is judged once the resolution has joined the paragraphs whose
+  marks it took away, and goes whole when its start and end then stand in one paragraph with
+  nothing with text between. One whose range still crosses a paragraph mark stays.
 - **A comment on tracked-inserted text is written as Word writes it**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section
   [12.8](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#128-the-word-check-2026-10-21)):

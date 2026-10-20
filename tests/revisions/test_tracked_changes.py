@@ -831,6 +831,175 @@ def test_a_dry_run_removes_no_comment_part_and_the_real_reject_does():
     for name in before:
         assert package.get_part(name) is None, name
 
+
+# -- a comment's range across paragraphs (CR-043 U23 and U24; docx4j a8bc6cda9) --
+
+
+def _spanning(
+    cid: int,
+    *,
+    marks: tuple[bool, bool] = (True, True),
+    plain: str = "",
+    start_inside: bool = False,
+    deleted: bool = False,
+    authors: tuple[str, str] = ("A", "A"),
+) -> str:
+    """U23's shape: two paragraphs whose text is inserted (or deleted), commented whole, and a paragraph after.
+
+    The range starts in the first paragraph (before its ``w:ins``, or inside
+    it) and ends in the second, after its ``w:ins`` and after `plain` text, if
+    any; `marks` says which of the two paragraph marks carry the revision too.
+    """
+    change, kind = (dele, "del") if deleted else (ins, "ins")
+    start = f'<w:commentRangeStart w:id="{cid}"/>'
+
+    def mark(on: bool, rid: int, author: str) -> str:
+        return f'<w:pPr><w:rPr><w:{kind} w:id="{rid}" w:author="{author}"/></w:rPr></w:pPr>' if on else ""
+
+    first = change(100 + cid, authors[0], f"first {cid}")
+    if start_inside:
+        first = first.replace("<w:r>", start + "<w:r>", 1)
+    return (
+        f"<w:p>{mark(marks[0], 300 + cid, authors[0])}{'' if start_inside else start}{first}</w:p>"
+        f"<w:p>{mark(marks[1], 400 + cid, authors[1])}{change(200 + cid, authors[1], f'second {cid}')}"
+        + (run(plain) if plain else "")
+        + f'<w:commentRangeEnd w:id="{cid}"/><w:r><w:commentReference w:id="{cid}"/></w:r></w:p>'
+        f"<w:p>{run(f'after {cid}')}</w:p>"
+    )
+
+
+_CONTROL = (
+    '<w:p><w:commentRangeStart w:id="2"/>' + run("control") + '<w:commentRangeEnd w:id="2"/>'
+    '<w:r><w:commentReference w:id="2"/></w:r></w:p>'
+)
+
+
+def _markers(package, cid: int) -> list[int]:
+    """How many range starts, range ends and references of comment `cid` the body holds."""
+    xml = body_xml(package)
+    return [xml.count(f'<w:{name} w:id="{cid}"/>') for name in ("commentRangeStart", "commentRangeEnd", "commentReference")]
+
+
+@pytest.mark.parametrize("start_inside", [False, True], ids=["start-before", "start-inside"])
+@pytest.mark.parametrize("deleted", [False, True], ids=["insertions-rejected", "deletions-accepted"])
+def test_a_comment_across_paragraphs_goes_whole_once_the_joins_leave_its_range_empty(deleted, start_inside):
+    """U23 (Word 365's Reject All of two inserted paragraphs commented whole; docx4j ``a8bc6cda9``).
+
+    The comment's start and end are in different paragraphs, so it is judged at
+    the flush, after the marks taken away have joined them into one paragraph
+    with nothing with text between: it goes whole, markers, reference and
+    entry, and the control comment stays. Accepting two deleted paragraphs is
+    docx4j's rule by symmetry (unmeasured); a start inside the first
+    revision, the content API's own form, is deferred the same way.
+    """
+    package = _commented(
+        "<w:p>" + run("before") + "</w:p>" + _spanning(1, deleted=deleted, start_inside=start_inside) + _CONTROL,
+        {1: "on both paragraphs", 2: "the control"},
+    )
+    (revisions.accept_all if deleted else revisions.reject_all)(package)
+    assert [text_of(p) for p in paragraphs(package)] == ["before", "after 1", "control"]
+    assert _markers(package, 1) == [0, 0, 0]
+    assert _markers(package, 2) == [1, 1, 1]
+    assert _comment_ids(package) == [2]
+    assert _comment_ids(round_trip(package)) == [2]
+
+
+def test_a_comment_across_paragraphs_stays_while_a_mark_or_text_is_left_in_its_range():
+    """U24 (docx4j's reading, unmeasured): a range still crossing a paragraph mark is kept, as one holding text.
+
+    Every paragraph's inserted text is rejected. Comment 1's marks are inserted
+    too, so it goes (U23). Comment 3's marks are not, comment 4's first mark is
+    not (the one between its start and end), and comment 5's range keeps text
+    of its own: all three stay, each with its markers and reference.
+    """
+    package = _commented(
+        "<w:p>" + run("before") + "</w:p>"
+        + _spanning(1)
+        + _spanning(3, marks=(False, False))
+        + _spanning(4, marks=(False, True))
+        + _spanning(5, plain="kept")
+        + _CONTROL,
+        {1: "goes", 2: "the control", 3: "no mark taken", 4: "a mark left between", 5: "text left"},
+    )
+    revisions.reject_all(package)
+    assert _comment_ids(package) == [2, 3, 4, 5]
+    assert _markers(package, 1) == [0, 0, 0]
+    for cid in (3, 4, 5):
+        assert _markers(package, cid) == [1, 1, 1], cid
+    assert "keptafter 5" in [text_of(p) for p in paragraphs(package)]
+    assert _comment_ids(round_trip(package)) == [2, 3, 4, 5]
+
+
+def test_a_comment_across_paragraphs_in_a_text_box_is_judged_in_its_wildcard_tree():
+    """A text box is a wildcard tree again at the flush (CR-010 section 3.5): its text is read by element name.
+
+    Comment 1's range is left empty and goes; comment 3's still holds the
+    text "kept" and stays.
+    """
+    v = 'xmlns:v="urn:schemas-microsoft-com:vml"'
+    box = (
+        '<w:p><w:r><w:pict><v:shape id="box" style="width:200pt;height:100pt"><v:textbox><w:txbxContent>'
+        + "<w:p>" + run("in the box") + "</w:p>" + _spanning(1) + _spanning(3, plain="kept")
+        + "</w:txbxContent></v:textbox></v:shape></w:pict></w:r></w:p>"
+    )
+    package = _commented(box + _CONTROL, {1: "goes", 2: "the control", 3: "text left"})
+    main = package.main_document_part
+    main.set_xml(main.get_xml().replace("<w:document ", f"<w:document {v} ", 1))
+    revisions.reject_all(package)
+    assert unresolved(package) == []
+    assert _comment_ids(package) == [2, 3]
+    assert _markers(package, 1) == [0, 0, 0]
+    assert _markers(package, 3) == [1, 1, 1]
+
+
+def test_a_dry_run_judges_no_comment_across_paragraphs_and_the_real_reject_does():
+    """CR-010 section 10.3 item 3: a dry run's body resolves locally; no comment entry or part is touched."""
+    package = fixture("cr043/comments/c43-u23-reject-all-two-paragraph-insertion-commented.docx")
+    main = package.main_document_part
+    parts = [main.comments_part, main.comments_extended_part, main.comments_ids_part, main.people_part]
+    xml = {part.part_name: part.get_xml() for part in parts}
+    assert main.contents is not None  # read, so that both sides below are this package's marshalling
+    body = body_xml(package)
+    with package.dry_run() as trial:
+        assert trial.body.reject_all() == 1
+        assert trial.body.get_tracked_changes() == []
+    assert body_xml(package) == body
+    for part in parts:
+        assert package.get_part(part.part_name) is part, part.part_name
+        assert part.get_xml() == xml[part.part_name], part.part_name
+    assert _comment_ids(package) == [0, 5]
+
+    revisions.reject_all(package)
+    assert _comment_ids(package) == [5]
+    assert main.comments_part is parts[0] and main.people_part is parts[3]
+
+
+@pytest.mark.parametrize("route", ["engine", "content"])
+def test_one_change_at_a_time_judges_the_comment_across_paragraphs_at_each_flush(route):
+    """The single-change path: ``TrackedChange.reject()`` flushes, and the deferred judgement runs there too.
+
+    Each paragraph by another author, so two changes. The second rejected first
+    joins its paragraph with the next; the first's text is still in the range,
+    so the comment stays. The first rejected then empties it, and it goes.
+    """
+    package = _commented(_spanning(1, authors=("A", "B")) + _CONTROL, {1: "on both paragraphs", 2: "the control"})
+
+    def listed():
+        return revisions.tracked_changes(package) if route == "engine" else package.body.get_tracked_changes()
+
+    assert [change.text for change in listed()] == ["first 1\r", "second 1\r"]
+    listed()[1].reject()
+    assert _comment_ids(package) == [1, 2]
+    assert _markers(package, 1) == [1, 1, 1]
+    remaining = listed()
+    assert [change.text for change in remaining] == ["first 1\r"]
+    remaining[0].reject()
+    assert listed() == []
+    assert _comment_ids(package) == [2]
+    assert _markers(package, 1) == [0, 0, 0]
+    assert [text_of(p) for p in paragraphs(package)] == ["after 1", "control"]
+
+
 def test_math_structures():
     """An inserted equation structure: accepted, its control keeps the recorded run properties; rejected, it goes whole."""
     package = fixture("tracked-changes-equations.docx")

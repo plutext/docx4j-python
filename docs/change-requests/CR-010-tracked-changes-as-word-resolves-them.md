@@ -25,7 +25,8 @@ resolution empties goes whole wherever its markers were, and with the last comme
 Word 365 does. **Word's date convention implemented 2026-10-21** (section 12.9, the user's
 decision): the tracker writes `w:date` on the local wall clock and `w16du:dateUtc` in UTC, as Word
 365 does, and every date is read as docx4j reads it; section 10.3 item 1 is superseded. **Both
-passed the user's Word check the same day: CR-010 is complete.**
+passed the user's Word check the same day: CR-010 is complete.** The port of docx4j's U23 fix
+(`a8bc6cda9`) followed on 2026-10-21 (section 12.9).
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1447,4 +1448,91 @@ marker in the revision's list and the other in another paragraph becomes a candi
 at the flush, after every paragraph join, and goes whole when its start and end then stand in one
 list with no text between them. A range that still crosses a paragraph mark is kept (U24,
 unmeasured). Its tests are U21 to U23 against Word's saves, in docx4j's
-`revisions/cr043/comments/`. The port waits on the user's go.
+`revisions/cr043/comments/`. The port followed the same day, on the user's go (below).
+
+**The U23 fix ported (2026-10-21).** The user, the same day: "yes port it". This is the port of
+docx4j `a8bc6cda9`, built on this package's port of `d18693760` (`28db7e7`, section 12.8).
+
+- **`resolver.py`, `_Op.remove_revision`** (docx4j `Resolver.removeRevision`). Two more kinds of
+  comment become candidates: one whose start stands before the revision in the revision's list
+  with no end later in that list, and one whose end stands after it with no start earlier. Once
+  the revision is gone, a candidate whose start and end are not both in that list, the end after
+  the start, is recorded with `Removals.remove_comment_if_emptied`; before, it was given up. That
+  includes one whose start was inside the revision and whose end lies elsewhere. A candidate with
+  both markers in the list is judged at once, as before. docx4j's static `markerAt` and
+  `rangeIsEmpty` are module functions here, `marker_at` and `range_is_empty`, which
+  `removals.py` uses too.
+- **`removals.py`** (docx4j `Removals`). `remove_comment_if_emptied` records the comment in
+  `comments_if_emptied`, and `_flush_comments` judges these first. By then every paragraph join of
+  the resolution is made. For each comment it finds the list holding the range start in the story
+  parts (`_list_holding`, docx4j `listHolding`: a list's own items first, then what each of them
+  holds). A part nobody has read is read only if its bytes hold that start. The comment goes whole,
+  as any other, when nothing with text stands between its start and its end in that list. A range
+  that still crosses a paragraph mark is therefore kept (U24, unmeasured), and so is one that still
+  holds text.
+- **One addition docx4j does not need: the wildcard trees** (section 3.5). At the flush a text
+  box is a wildcard tree again, since each island is written back before anything is settled, so
+  `_has_text` now reads a wildcard node by element name. A `w:r` has text when it holds a text
+  item (`w:t`, a tab, a break, ...). A `w:p`, `w:ins`, `w:moveTo`, `w:hyperlink`, `w:sdt`,
+  `w:sdtContent`, `w:smartTag`, `w:customXml`, `w:fldSimple`, `w:dir` or `w:bdo` has text when it
+  holds such a run; a `w:del` or `w:moveFrom` has none. Typed content is read as before. The one
+  difference from the typed rule: a wildcard block-level `w:sdt` or `w:customXml` is looked into,
+  where the typed rule (docx4j's) does not look into a block-level one. That can only keep a
+  comment.
+- **Section 10.3 item 3 holds.** A dry run's body and a detached container resolve locally, and
+  `_flush_comments` returns before any judgement. A deferred comment is not judged there, and no
+  comment entry or part outside the story is touched.
+- **Where the flush is.** Each resolution flushes once, after its joins: `revisions.accept_all`
+  and `reject_all` (`resolve_all`), and with them the content API's `Body.accept_all()` and
+  `reject_all()`; and the engine's `TrackedChange.accept()` and `reject()`, which the content
+  API's `TrackedChange.accept()` and `reject()` call. So a single change is judged at its own
+  flush.
+- **Not ported: `ResolvedView`.** docx4j's no-copy view makes the same decision without the joins:
+  a comment across paragraphs is gone when every paragraph from the start's to the end's loses its
+  mark, with only range markers between them and no text in the range. This package has no
+  counterpart of `ResolvedView`. The accepted and rejected views are CR-011's (section 12.3), and
+  take this rule when they are built.
+
+**Tests.** docx4j's six files in `revisions/cr043/comments/` are copied into
+`tests/fixtures/revisions/cr043/comments/`. In `revisions/test_word_saves.py`, docx4j's
+`u21AcceptAll` and `u23RejectAll` are two more `CASES`, so each also runs through the body's verbs.
+`u22RejectOne` rejects only the change whose text is `C43_U22_INSERTED`, through the engine's
+change and through the content API's. It checks that the comment parts go and `people.xml` stays,
+with the deletion still listed. `u23RejectAll`'s own check is that the control comment is the one
+left. In `revisions/test_tracked_changes.py`, U23's shape is built in a fragment: two paragraphs
+whose text and marks are inserted, commented whole, and a control comment after them. The comment
+goes whole on Reject All, and the same with deletions goes on Accept All (docx4j's rule by
+symmetry, unmeasured), with the range start before the first revision or inside it. U24: in one
+document the comment whose marks are taken goes, while three stay: one whose marks are kept, one
+whose mark between start and end is kept, and one whose range keeps text. In a text box the
+emptied comment goes and the one holding text stays. A dry run of U23's Reject All leaves the body
+and the comment parts as they were, and the real one then removes the comment. One change at a
+time, through the engine's and the content API's `reject()`, with the two paragraphs by two
+authors: rejecting the second leaves the comment, since the first's text is still in its range,
+and rejecting the first then removes it. Every new test in `test_tracked_changes.py` fails against
+the commit before (`585670d`), and so do the U23 cases. The U21 cases and U22's test pass there:
+the engine already did as Word 365 does on both (the table of Word 365's results above).
+
+**The numbers.** Through `description.py`, the records shown:
+
+| comparison | lines differing |
+|---|---|
+| U21, U22 and U23 against Word 365's saves | **0**, **0** and **0** (U23 was 4) |
+| the fifteen agreement comparisons | 0 |
+| the review file's Reject All against Word 365's | 0 |
+| the review file's Reject All against Word 15's and Word 2010's | 4 each: that comment |
+| docx4j's copy of artefact 8 against Word 365's Accept All and Reject All | 0 and 0 |
+
+The review file's 4 lines against the older saves are 0 without the comment, as before.
+`scripts/compare_word_resolution.py` over the regenerated artefact 8: against `out/acceptance-word/`
+**0** and **0**, and against Word 365's saves of the artefact 8 of fix 1 (`__tmp/python-8b/`) **0**
+and **0**.
+
+The fast suite: 2,517 passed, 8 skipped, 40 deselected, 10 xfailed. The full suite: 2,557
+passed, 8 skipped, 10 xfailed. The revisions and content tests: 1,581 passed, 2 skipped, 10
+xfailed, in this machine's zone and again with `TZ=America/New_York`.
+
+**The artefacts.** `scripts/acceptance.py` regenerated `out/acceptance/`, and
+`scripts/compare_acceptance.py` against the copy taken before the change printed: 13 artefacts,
+175 entries compared, 0 differ beyond the wall-clock dates. No artefact has a comment whose range
+spans paragraphs. No Word check was made of this port.

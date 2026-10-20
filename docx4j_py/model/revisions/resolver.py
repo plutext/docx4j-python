@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from docx4j_py.child import is_any_element
 from docx4j_py.model.revisions import props, tables, trees
 from docx4j_py.model.revisions.change import (
     CellT,
@@ -376,15 +377,24 @@ class _Op:
     def remove_revision(self, item: Any, owner: list | None) -> None:
         """A revision taken away with its content (an insertion rejected, a deletion accepted), and its comments.
 
-        docx4j ``Resolver.removeRevision`` (``d18693760``, its CR-043 section
-        15): a comment whose range start was inside, or whose markers lie
-        either side of it in its list, goes whole with the text it was on ---
-        markers, reference and entry --- once nothing with text is left in its
-        range. That is Word 365's rule: core-ts check 32, and Word 365's Reject
-        All of the editor's ``review-for-word`` and of this package's
-        acceptance artefact 8, 21 October 2026 (CR-010 section 12.8, fix 2).
-        Word 2010 and Word 15 kept the comment whose markers lie outside,
-        losing only its range markers; this package no longer does.
+        docx4j ``Resolver.removeRevision`` (``d18693760`` and ``a8bc6cda9``, its
+        CR-043 section 15): a comment whose range start was inside, or whose
+        markers lie either side of it in its list, goes whole with the text it
+        was on --- markers, reference and entry --- once nothing with text is
+        left in its range. That is Word 365's rule: core-ts check 32, and Word
+        365's Reject All of the editor's ``review-for-word`` and of this
+        package's acceptance artefact 8, 21 October 2026 (CR-010 section 12.8,
+        fix 2). Word 2010 and Word 15 kept the comment whose markers lie
+        outside, losing only its range markers; this package no longer does.
+
+        A comment with one marker in this list on the revision's side and the
+        other in another paragraph --- a start before the revision with no end
+        later in the list, an end after it with no start earlier --- and one
+        whose start was inside with its end elsewhere, is judged when the
+        resolution is flushed (:meth:`Removals.remove_comment_if_emptied`),
+        once the paragraph marks taken away have joined what is left: Word
+        365's Reject All of two inserted paragraphs commented whole removes the
+        comment (CR-043 U23; CR-010 section 12.9).
         """
         items = self.current_owner(owner, item)
         index = trees.index_of(items, item)
@@ -400,9 +410,16 @@ class _Op:
             if trees.name(items[s]) != "commentRangeStart":
                 continue
             comment_id = trees.marker_id(items[s])
-            for e in range(index + 1, len(items)):
-                if trees.name(items[e]) == "commentRangeEnd" and trees.marker_id(items[e]) == comment_id:
-                    outside.append(comment_id)
+            if marker_at(items, s + 1, len(items), "commentRangeEnd", comment_id) < 0:
+                outside.append(comment_id)  # its end in another paragraph
+            elif marker_at(items, index + 1, len(items), "commentRangeEnd", comment_id) >= 0:
+                outside.append(comment_id)
+        for e in range(index + 1, len(items)):
+            if trees.name(items[e]) != "commentRangeEnd":
+                continue
+            comment_id = trees.marker_id(items[e])
+            if marker_at(items, 0, e, "commentRangeStart", comment_id) < 0:
+                outside.append(comment_id)  # its start in another paragraph
         if inner is not None:
             for entry in kept:
                 position = trees.index_of(inner, entry)
@@ -415,15 +432,10 @@ class _Op:
         for comment_id in dict.fromkeys([*inside, *outside]):
             if comment_id is None:
                 continue
-            start = next(
-                (
-                    s
-                    for s, entry in enumerate(items)
-                    if trees.name(entry) == "commentRangeStart" and trees.marker_id(entry) == comment_id
-                ),
-                -1,
-            )
-            if start >= 0 and _range_is_empty(items, start, comment_id):
+            start = marker_at(items, 0, len(items), "commentRangeStart", comment_id)
+            if start < 0 or marker_at(items, start + 1, len(items), "commentRangeEnd", comment_id) < 0:
+                self.removals.remove_comment_if_emptied(comment_id)  # start and end in different paragraphs (U23)
+            elif range_is_empty(items, start, comment_id):
                 self.removals.remove_comment(comment_id)
 
     # -- paragraph marks ---------------------------------------------------------
@@ -498,7 +510,14 @@ def _remove_quietly(items: list, item: Any) -> None:
 
 
 def _has_text(item: Any) -> bool:
-    """True when run-level content shows text in the accepted view."""
+    """True when run-level content shows text in the accepted view.
+
+    A wildcard node too, by element name, for a comment's range in a text box,
+    which is a wildcard tree again once its island is written back
+    (:func:`range_is_empty` at the flush).
+    """
+    if is_any_element(item):
+        return _wildcard_has_text(item)
     if isinstance(item, trees.cls("R")):
         return trees.has_text(item)
     revision = trees.revision_of(item)
@@ -510,10 +529,44 @@ def _has_text(item: Any) -> bool:
     return any(_has_text(entry) for entry in items)
 
 
-def _range_is_empty(items: list, start: int, comment_id: int) -> bool:
-    """True when nothing with text stands between a comment's range start and its end in the same list."""
+#: The WordprocessingML run holders a wildcard paragraph's text can stand in.
+_WILDCARD_HOLDERS = frozenset(
+    {"p", "ins", "moveTo", "hyperlink", "sdt", "sdtContent", "smartTag", "customXml", "fldSimple", "dir", "bdo"}
+)
+
+
+def _wildcard_has_text(item: Any) -> bool:
+    """:func:`_has_text` of a wildcard node: a ``w:r`` with text, or a run holder holding one."""
+    qname = item.qname
+    if not isinstance(qname, str) or not qname.startswith(f"{{{trees.W_NS}}}"):
+        return False
+    local = qname.rpartition("}")[2]
+    children = [child for child in item.children or () if not isinstance(child, str)]
+    if local == "r":
+        return any(trees.item_text(child) is not None for child in children)
+    if local not in _WILDCARD_HOLDERS:
+        return False
+    return any(_wildcard_has_text(child) for child in children if is_any_element(child))
+
+
+def marker_at(items: list, start: int, stop: int, local: str, comment_id: int | None) -> int:
+    """Where in ``items[start:stop]`` a comment's range start or end (`local`) stands, or -1 (docx4j ``markerAt``)."""
+    for index in range(start, stop):
+        entry = items[index]
+        if not isinstance(entry, str) and trees.name(entry) == local and trees.marker_id(entry) == comment_id:
+            return index
+    return -1
+
+
+def range_is_empty(items: list, start: int, comment_id: int | None) -> bool:
+    """True when nothing with text stands between a comment's range start, at `start`, and its end in the same list.
+
+    False when text does, or the end is elsewhere (docx4j ``rangeIsEmpty``).
+    """
     for index in range(start + 1, len(items)):
         entry = items[index]
+        if isinstance(entry, str):
+            continue
         if trees.name(entry) == "commentRangeEnd" and trees.marker_id(entry) == comment_id:
             return True
         if _has_text(entry):

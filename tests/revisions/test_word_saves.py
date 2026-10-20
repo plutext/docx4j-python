@@ -13,6 +13,12 @@ phase 2 made it: the probe's C23 (a row indent: ``w:tblPrExChange``,
 ``w:trPrChange``, ``w:tcPrChange`` and a merged grid) and C07 (a paragraph's
 section) both ways, check 18's table and the body's section, check 28's two
 tables.
+
+CR-043's U21 to U23 (docx4j ``a8bc6cda9``, Word 365's saves of 21 October
+2026; CR-010 section 12.9) are ``u21AcceptAll``, ``u22RejectOne`` and
+``u23RejectAll``: a comment on a deletion whose markers lie outside it, the
+only comment removed by one rejected insertion, and a comment on two inserted
+paragraphs, its start in the first and its end in the second.
 """
 
 from __future__ import annotations
@@ -56,6 +62,18 @@ CASES = [
     # check 25: a list change rejected, the level Word writes back
     ("core-ts/check25/25a-bullets.docx", "core-ts/check25/25b-bullets-reject.docx", False),
     ("core-ts/check25/25e-bullet-demote.docx", "core-ts/check25/25f-bullet-demote-reject.docx", False),
+    # CR-043 U21: Accept All of a deletion whose comment's markers lie outside the w:del; a control comment stays
+    (
+        "cr043/comments/c43-u21-accept-all-deletion-comment-outside.docx",
+        "cr043/comments/c43-u21-word365-accepted.docx",
+        True,
+    ),
+    # CR-043 U23: Reject All of two inserted paragraphs commented whole, the range across them; a control stays
+    (
+        "cr043/comments/c43-u23-reject-all-two-paragraph-insertion-commented.docx",
+        "cr043/comments/c43-u23-word365-rejected.docx",
+        False,
+    ),
 ]
 
 
@@ -173,3 +191,38 @@ def test_artefact_8_rejected_takes_the_comment_parts_and_people_with_its_last_co
         assert name not in types, name
         assert name.rpartition("/")[2] not in rels, name
 
+
+COMMENTS = "cr043/comments/"
+
+
+@pytest.mark.parametrize("route", ["engine", "content"])
+def test_u22_one_insertion_rejected_takes_the_only_comment_and_its_parts_but_not_people(route):
+    """docx4j ``u22RejectOne`` (CR-043 U22, Word 365): ``people.xml`` stays while a tracked deletion is left.
+
+    Only the change whose text is ``C43_U22_INSERTED`` is rejected, through the
+    engine's change and through the content API's.
+    """
+    tracked = COMMENTS + "c43-u22-reject-one-last-comment-revisions-left.docx"
+    package = fixture(tracked)
+    listed = revisions.tracked_changes(package) if route == "engine" else package.body.get_tracked_changes()
+    insertion = [change for change in listed if change.text == "C43_U22_INSERTED"]
+    assert len(insertion) == 1 and insertion[0].type == "Added"
+    insertion[0].reject()
+    word = fixture(COMMENTS + "c43-u22-word365-rejected-one.docx")
+    assert_like_word(package, word, records=True, label=f"{tracked}, the insertion rejected")
+    saved = round_trip(package)
+    main = saved.main_document_part
+    assert main.comments_part is None
+    assert main.comments_extended_part is None and main.comments_ids_part is None
+    assert main.people_part is not None, "people.xml stays while a tracked change is left"
+    assert [change.text for change in revisions.tracked_changes(saved)] == ["C43_U22_STILL_TRACKED_DELETION"]
+
+
+def test_u23_reject_all_removes_the_comment_across_two_paragraphs_and_keeps_the_control():
+    """docx4j ``u23RejectAll``: its start in the first inserted paragraph, its end in the second; one comment left."""
+    from docx4j_py.traversal import text_of
+
+    package = fixture(COMMENTS + "c43-u23-reject-all-two-paragraph-insertion-commented.docx")
+    revisions.reject_all(package)
+    comments = round_trip(package).main_document_part.comments_part.contents.comment
+    assert [text_of(comment) for comment in comments] == ["C43_U23_CONTROL"]

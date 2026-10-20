@@ -4,7 +4,9 @@ CR-043 section 3.2; CR-010 section 4. The notes whose references went (Word
 removes a note with its reference), the comments whose anchors went (with their
 ``commentsExtended``, ``commentsIds`` and ``commentsExtensible`` entries and
 their replies, and with the last comment the comment parts themselves, as Word
-365 removes them: docx4j ``d18693760``, CR-010 section 12.8), bookmarks with a
+365 removes them: docx4j ``d18693760``, CR-010 section 12.8; a comment whose
+range spans paragraphs judged once the resolution's joins are made: docx4j
+``a8bc6cda9``, CR-010 section 12.9), bookmarks with a
 start or an end in removed content (removed whole, C11), and the relationships
 and parts nothing references any more (D7: images, charts, OLE objects, a
 dropped section's headers and footers).
@@ -56,6 +58,7 @@ class Removals:
         "_index_cache",
         "bookmarks",
         "comments",
+        "comments_if_emptied",
         "comments_whole",
         "endnotes",
         "footnotes",
@@ -82,6 +85,10 @@ class Removals:
         self.comments: set[int] = set()
         #: comments to remove whole (their range held removed text, and is now empty)
         self.comments_whole: set[int] = set()
+        #: comments whose range held removed text, its start and end in different
+        #: paragraphs: removed whole at the flush if by then they stand in one
+        #: list with nothing with text between (U23)
+        self.comments_if_emptied: set[int] = set()
         self.bookmarks: dict[int, tuple[Any, set[int]]] = {}
         self.relationships: dict[int, tuple[Any, set[str]]] = {}
         #: the typed islands resolved, written back before anything is settled
@@ -134,6 +141,19 @@ class Removals:
         if comment_id is not None:
             self.comments_whole.add(comment_id)
 
+    def remove_comment_if_emptied(self, comment_id: int | None) -> None:
+        """A comment whose range held removed content, its start and end in different paragraphs.
+
+        docx4j ``Removals.removeCommentIfEmptied`` (``a8bc6cda9``): removed
+        whole at the flush if the paragraph marks taken away have by then
+        joined its start and end into one list with nothing with text between,
+        as Word 365 removes a comment on two inserted paragraphs rejected
+        (CR-043 U23). A range still across a paragraph mark is kept (U24,
+        unmeasured).
+        """
+        if comment_id is not None:
+            self.comments_if_emptied.add(comment_id)
+
     # -- settling ------------------------------------------------------------
 
     def _pending(self) -> bool:
@@ -142,6 +162,7 @@ class Removals:
             or self.endnotes
             or self.comments
             or self.comments_whole
+            or self.comments_if_emptied
             or self.bookmarks
             or self.relationships
         )
@@ -215,15 +236,31 @@ class Removals:
     # -- comments ------------------------------------------------------------
 
     def _flush_comments(self) -> None:
-        if not self.comments and not self.comments_whole:
+        if not self.comments and not self.comments_whole and not self.comments_if_emptied:
             return
         candidates = set(self.comments)
         whole = set(self.comments_whole)
+        if_emptied = set(self.comments_if_emptied)
         self.comments.clear()
         self.comments_whole.clear()
+        self.comments_if_emptied.clear()
         if self.local:
             return
         parts = self.story_parts()
+        if if_emptied:
+            from docx4j_py.model.revisions.resolver import marker_at, range_is_empty
+
+            for comment_id in sorted(if_emptied):
+                if comment_id in whole:
+                    continue
+                for part in parts:
+                    items = self._list_holding_start(part, comment_id)
+                    if items is None:
+                        continue
+                    start = marker_at(items, 0, len(items), "commentRangeStart", comment_id)
+                    if range_is_empty(items, start, comment_id):
+                        whole.add(comment_id)
+                    break
         references: set[int] = set()
         starts: set[int] = set()
         ends: set[int] = set()
@@ -257,6 +294,12 @@ class Removals:
             self._remove_comment_whole(comment_id, parts, done)
         if done:
             self._drop_empty_comment_parts()
+
+    def _list_holding_start(self, part: Any, comment_id: int) -> list | None:
+        """The list in a part holding a comment's range start; a part not read is read only if it holds one."""
+        if _unread(part) and comment_id not in self._index(part).get("commentRangeStart", set()):
+            return None
+        return _list_holding(_root_of(part), lambda item: _is_comment_start(item, comment_id))
 
     def _drop_empty_comment_parts(self) -> None:
         """With the last comment a resolution takes away, the comment parts go (docx4j ``dropEmptyCommentParts``).
@@ -555,6 +598,10 @@ def _is_comment_marker(item: Any, comment_id: int) -> bool:
     return trees.name(item) in ("commentRangeStart", "commentRangeEnd") and trees.marker_id(item) == comment_id
 
 
+def _is_comment_start(item: Any, comment_id: int) -> bool:
+    return trees.name(item) == "commentRangeStart" and trees.marker_id(item) == comment_id
+
+
 def _is_comment_reference(item: Any, comment_id: int) -> bool:
     return trees.name(item) == "commentReference" and trees.marker_id(item) == comment_id
 
@@ -606,6 +653,36 @@ def _list_fields(klass: type) -> tuple[str, ...]:
         names = ()
     _list_fields_cache[klass] = names
     return names
+
+
+def _list_holding(value: Any, match: Callable[[Any], bool], depth: int = 0) -> list | None:
+    """The list under `value` --- block, run, run-content, math, wildcard --- holding an item `match` matches, or None.
+
+    docx4j ``Removals.listHolding``: a list's own items first, then what each
+    of them holds, in order.
+    """
+    import dataclasses
+
+    if value is None or isinstance(value, str) or depth > 400:
+        return None
+    if isinstance(value, list):
+        for item in value:
+            if not isinstance(item, str) and match(item):
+                return value
+        for item in value:
+            found = _list_holding(item, match, depth + 1)
+            if found is not None:
+                return found
+        return None
+    if is_any_element(value):
+        return _list_holding(value.children, match, depth + 1) if value.children else None
+    if not dataclasses.is_dataclass(value):
+        return None
+    for name in _list_fields(value.__class__):
+        found = _list_holding(getattr(value, name, None), match, depth + 1)
+        if found is not None:
+            return found
+    return None
 
 
 def _remove_from(root: Any, match: Callable[[Any], bool]) -> int:
