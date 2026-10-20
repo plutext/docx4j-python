@@ -309,6 +309,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > the engine keeps and Word deletes (CR-010 §12.8).
 > **Artefact 8 and its two copies need opening again**; its row says what to look for.
 
+> **2026-10-21, Word check of fix 1 passed** (the user: "all good", Word 16). Artefact 8 and its two
+> copies open with no repair prompt; the comment is on "second" alone, stays on Accept All and goes
+> on Reject All, which does not hang. Against Word's own Accept All and Reject All of this artefact
+> 8, `scripts/compare_word_resolution.py` finds **0 lines** and **1**, the empty comment parts the
+> engine keeps and Word deletes (CR-010 §12.8, fix 2, from docx4j's CR-043 follow-up). CR-010
+> Phase C is done.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

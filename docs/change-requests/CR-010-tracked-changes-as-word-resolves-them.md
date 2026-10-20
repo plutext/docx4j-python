@@ -18,8 +18,10 @@ comparisons still at zero. **The user's Word check of artefact 8 (2026-10-21, se
 found one disagreement: Word's Reject All removes a comment that the engine kept. **Fix 1
 implemented 2026-10-21** (the user's decision): the content API writes Word's own form for a
 comment on inserted text, the range start inside the `w:ins`, so the engine's Reject All removes
-it as Word's does. A Word check of the regenerated artefact 8 is awaited. Fix 2, the resolver's
-rule for the outside form, is not taken.
+it as Word's does. **Word check passed 2026-10-21** (the user, of the regenerated artefact 8 and
+its two copies; section 12.8): **Phase C is done.** Fix 2, the resolver's rule for the outside
+form and the emptied comment parts, follows docx4j's CR-043 follow-up (Jason: "follow Word 365"),
+ported from its commit once it lands, with the user's go.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1004,8 +1006,8 @@ middle since Phase A (10.6), and passes unchanged.
 - ~~**The user's Word check of artefact 8**~~ **made 2026-10-21** (section 12.8): the heading
   and the appended paragraph as designed, Accept All at 0 lines from Word's, and one
   disagreement left, the comment on Reject All, whose fix is the user's decision. **Fix 1
-  implemented the same day** (section 12.8); a Word check of the regenerated artefact 8 is
-  awaited.
+  implemented the same day** (section 12.8), and **its Word check passed** the same day.
+- **Fix 2** (section 12.8): the port of docx4j's CR-043 follow-up, once it lands.
 - ~~**The hand-off to docx4j's session**~~ **done 2026-10-18.** Asked the same day; docx4j's
   session reran CR-043 section 14's python column with `PortsAgreement` (docx4j `1b3a68ccf`, this
   repository at `e690217`, read only) over the eleven fixtures: through
@@ -1200,3 +1202,13 @@ Accept All of a deletion with its comment's markers outside follows by symmetry.
 unmeasured, and docx4j's session proposes a probe for it. Fix 2 here ports those changes from
 docx4j's commit once it lands, with the user's go. Until then the review file's comparison and
 artefact 8's Reject All keep the differences recorded above.
+
+**The Word check of fix 1 (2026-10-21): passed.** The user opened the regenerated artefact 8 and
+its two copies in Word 16 ("all good"). There was no repair prompt on any of them, including the
+rejected copy with its empty comment parts. The comment is anchored on "second" alone, it stays on
+Accept All and goes on Reject All, and Reject All does not hang. The user also saved Word's own
+Accept All and Reject All of the new artefact 8 (`__tmp/python-8b/` in the user's share).
+`compare_word_resolution.py` against them gives **0 lines** on Accept All and **1** on Reject All:
+the same `== comments` line, the empty comment parts. The user's Word save of the engine's
+rejected copy has no comment parts either. Word drops empty ones on save, which is fix 2's second
+rule seen from the other side.
