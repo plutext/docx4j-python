@@ -1418,3 +1418,15 @@ Reviewing Pane and the comment show the local time the artefacts were made. Acce
 comment on "second", and Reject All removes it without hanging. The rejected copy, with no comment
 parts, opens clean, and artefact 10's lists read as before. Fix 2 (section 12.8) and this section
 are done, and with them **CR-010 is complete.**
+
+**docx4j's agreement rerun (2026-10-21): 0 lines in all 26 comparisons.** At this package's request,
+docx4j's session reran CR-043's `PortsAgreement` python column. This package was at `5a1b463`,
+read only, through `revisions.accept_all` / `reject_all`. docx4j was at `VERSION_17_3_4`
+`d2d0a3861`, which includes `d18693760`. The fixtures were thirteen: the eleven of 2026-10-18,
+`python/artefact8/8-tracked-changes.docx` and `editor/review/review-for-word-word365-rejected.docx`.
+Accept and reject of each give 0 lines. The descriptions run from 33 to 102 lines; the review
+file's reject carries 12 comment lines. docx4j records it in its CR-043 section 14, uncommitted
+until Jason's word. Still unmeasured, and with a Word round of docx4j's waiting on the user:
+U21, Accept All of a deletion whose comment markers lie outside it; U22, whether `people.xml`
+stays when the last comment goes while a tracked change remains; and U23, Reject All of a
+two-paragraph insertion commented whole. docx4j's session sends Word's results when they land.
