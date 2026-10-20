@@ -10,11 +10,13 @@ records, which are Phase B's. **Phase B implemented 2026-10-16** (section 11): t
 row, cell and section records resolved, the legacy forms swept, `TrackedChangeFilter` and
 `report(pkg)`; against Word's saves of the eleven fixtures (fifteen comparisons) **no line
 differs with the records shown**, by this package's `DocumentDescription` port and by docx4j's
-own. **Phase C implemented 2026-10-18** (section 12), awaiting the user's Word check of artefact
-8: the content API's counts held to the engine's listing, the text and Markdown views' agreement
-moved to CR-011 by the user's decision (their disagreement today pinned), the tracker's
-appended paragraph in Word's check 29 form, artefact 8 regenerated with an accepted and a
-rejected copy, and the documentation; the fifteen comparisons still at zero.
+own. **Phase C implemented 2026-10-18** (section 12): the content API's counts held to the
+engine's listing, the text and Markdown views' agreement moved to CR-011 by the user's decision
+(their disagreement today pinned), the tracker's appended paragraph in Word's check 29 form,
+artefact 8 regenerated with an accepted and a rejected copy, and the documentation; the fifteen
+comparisons still at zero. **The user's Word check of artefact 8 (2026-10-21, section 12.8)**
+found one disagreement: Word's Reject All removes a comment that the engine keeps. Its fix waits
+on the user's decision.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -996,11 +998,9 @@ middle since Phase A (10.6), and passes unchanged.
 
 ### 12.7 What is left
 
-- **The user's Word check of artefact 8** and its two copies (`tests/README.md`, artefact 8's
-  row): Reject All in Word gives the heading back as Heading 1, Accept All leaves the appended
-  paragraph Normal, and each copy opens without a repair prompt and lists no revisions. If
-  Word's own Accept All and Reject All are saved as `out/acceptance-word/8-word-accepted.docx`
-  and `8-word-rejected.docx`, `scripts/compare_word_resolution.py` puts them against the copies.
+- ~~**The user's Word check of artefact 8**~~ **made 2026-10-21** (section 12.8): the heading
+  and the appended paragraph as designed, Accept All at 0 lines from Word's, and one
+  disagreement left, the comment on Reject All, whose fix is the user's decision.
 - ~~**The hand-off to docx4j's session**~~ **done 2026-10-18.** Asked the same day; docx4j's
   session reran CR-043 section 14's python column with `PortsAgreement` (docx4j `1b3a68ccf`, this
   repository at `e690217`, read only) over the eleven fixtures: through
@@ -1015,3 +1015,66 @@ middle since Phase A (10.6), and passes unchanged.
 - **CR-011**: the text and Markdown views by resolution (12.3).
 - **The `w:date` convention** (10.3 item 1), if the user wants it: Word's local wall-clock
   `w:date` and `w16du:dateUtc`, the one difference left in 12.2's markup.
+
+### 12.8 The Word check (2026-10-21)
+
+The user opened artefact 8 and its two copies in Word 16 (`AppVersion` 16.0000 in its saves) and
+saved Word's own Accept All and Reject All of it; the four files are in the user's share,
+`__tmp/python-8/`. No repair prompt, on any of them. `scripts/compare_word_resolution.py` over
+Word's two saves:
+
+| comparison | lines differing |
+|---|---|
+| `8-tracked-changes-accepted.docx` against Word's Accept All | **0** |
+| `8-tracked-changes-rejected.docx` against Word's Reject All | **5**: the comment |
+
+The heading comes back as Heading 1 on Reject All in both, the deleted paragraph comes back, the
+bold goes, and Accept All leaves the appended paragraph Normal: check 29's `w:pPrChange` does what
+section 12.2 built it for.
+
+**Three of the user's observations are what Word shows, not what it reads.** The user saw no
+formatting change on the appended last paragraph, the deleted paragraph's mark not deleted, and no
+formatting balloon on the bold paragraph. Word's save of the document, unresolved, keeps all three
+records exactly as written (the mark's `w:del`, the `w:rPrChange` with its empty `w:rPr`, the
+`w:pPrChange` holding `Heading1`), and Word resolved each one: its Accept All leaves no empty
+paragraph where the deleted one was, so the mark went with its text, and its Reject All removes the
+bold and gives the heading back. In the user's screenshot the deleted paragraph's ¶ is in the
+revision colour where an untouched paragraph's is black. A formatting balloon depends on Show Markup
+→ Balloons, and a `w:pPrChange` on a paragraph whose text is inserted is the form Word itself writes
+at Enter after a heading (core-ts check 29a). The checklist row promised more than Word displays,
+and is corrected (`tests/README.md`, artefact 8).
+
+**The disagreement: Word's Reject All removes Claude's comment; the engine keeps it.** The comment
+is on "second", the inserted half of `replace_text("first", "second")`. The tracker writes its range
+markers and its reference run **outside** the `w:ins` (CR-003 section 16.9, the hoist of section
+15.6). Word's Reject All removed everything belonging to it: the markers, the reference run and the
+entry. With it went the comments, `commentsExtended`, `commentsIds` and `people` parts, since it was
+the only comment. The engine keeps the comment and its reference run and drops only the range
+markers. The rule it follows is docx4j's and core-ts's `removeRevision`: a comment whose markers lie
+outside the revision keeps its entry and its reference, measured on Word 2010's and Word 15's Reject
+All of the editor's `review-for-word.docx`, the same form. core-ts CR-002 (the item corrected by its
+check 32) recorded that current Word on the outside form was not measured. **This check measures it:
+current Word removes the comment.** The older Words kept it. With the start marker **inside** the
+`w:ins`, which is Word's own form and core-ts's tracker's since its 0.3.1, current Word, docx4j and
+both engines already remove it.
+
+Two changes would close it, and both are the user's to make:
+
+1. **The tracker writes Word's form**: the range start inside the `w:ins`, the end and the
+   reference run after it, as core-ts's tracker has done since check 32. A comment on
+   tracked-inserted text then goes with a Reject All under every rule measured: current Word's,
+   docx4j's and this engine's. Accept All leaves it on its word, as now. This reverses section
+   16.9's aim, a comment that survives the rejection of what it explains, which current Word does
+   not allow in either form. Its cost is the tracker's marker site, the three tests 16.9 added (a
+   comment now goes on `reject_all()` rather than surviving with an empty range), and a new Word
+   check of artefact 8.
+2. **The resolver follows current Word on the outside form**: such a comment is removed whole once
+   the resolution leaves no text in its range, wherever its markers were, so files written by
+   docx4j-python 0.1.0 and core-ts 0.3.0 resolve as current Word resolves them. This changes
+   docx4j's rule, and the agreement run holds the ports to docx4j. It belongs in docx4j first,
+   then core-ts and here. The review file's Word 2010 and Word 15 comparisons
+   (`test_word_saves.py`) would then differ by that comment, and would be kept as older Word's
+   behaviour.
+
+Recommended: the first now, as the rest of Phase C, and the second handed to docx4j's session and
+core-ts with this check's files, to be taken here when docx4j decides it.
