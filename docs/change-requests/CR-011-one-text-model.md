@@ -504,7 +504,10 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
     fragment serialised after `document.xml` declares only what it uses, and `styles.xml` only its
     own `mc:Ignorable` prefixes), so the gap is only a Choice prefix that nothing but `Requires`
     names. The check is `TextsPhase2Test`'s REQ-204 snapshot, which now compares namespace
-    declarations.
+    declarations. docx4j's CR-052 (phase 1 in progress, 2026-10-21) makes a save declare the
+    `mc` prefixes the source bound, per Choice, where Word places them (its D4 (c)). Its phase 2
+    hands off to this package, and it touches the same Choice record as Q3 and this question,
+    so Q11's fix should take CR-052's placement once it lands.
 12. **Q12: the HTML reader** (REQ-513 at WD 0.28). `html5lib`, a pure-Python parser of the
     [HTML] algorithm that builds an lxml tree, as an optional extra (`docx4j[html]`). Without it
     the reader is absent and a chunk raises `altchunk.not_expanded`, the suite's default run, and
