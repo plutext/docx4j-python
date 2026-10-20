@@ -381,7 +381,9 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
    *Recommended: as proposed.* core-ts CR-012's D1, decided, keys its options by the same names
    (`note_references`, `field_codes`).
 2. **Q2: the understood set**: docx4j's list for the TEXT purpose and for `mce="resolve"`;
-   `UNDERSTOOD` kept for `mce_preprocess` (3.3). *Recommended.*
+   `UNDERSTOOD` kept for `mce_preprocess` (3.3). *Recommended.* Revised for `mce_preprocess` by
+   CR-012's Q8 (2026-10-21): on docx4j's CR-051 probes, `UNDERSTOOD` takes `w16cid` where Word
+   365 takes `w16sdtfl`, so CR-012 recommends docx4j's list there too.
 3. **Q3: how `Requires` gets its URIs**: the fork's parser records them and the writer
    re-declares (3.4), against a prefix table. *Recommended: the fork; it needs a fork release
    before this package releases.*
