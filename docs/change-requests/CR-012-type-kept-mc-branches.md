@@ -1629,7 +1629,7 @@ reverted to `cells_of`, the two cell-level grid tests fail and the row-level one
   `test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows`.
 - A fix would read Word's branch for a whole table, and every branch only for the changed rows.
   That is docx4j's to decide first: worth telling docx4j-25. No producer writes the shape.
-- **Closed on 2026-10-22 by the port of docx4j `84b202c5a`** (`ad5e885`, section 10.12), at the
+- **Closed on 2026-10-22 by the port of docx4j `84b202c5a`** (`b545884`, section 10.12), at the
   user's go ("go on the port"). docx4j found the item by reading this section, and decided it
   otherwise than the fix above:
   - its `changeText` reads `Lister.rowsOf`, Word's branch, for both halves, so `change_text` reads
@@ -1677,9 +1677,14 @@ commit (its CR-013 phase 3).
 
 **Commits.**
 
-- `ad5e885`: `tables.change_text` on `rows_of`, and `collapse_grid`'s spans counted before any is
+- `b545884`: `tables.change_text` on `rows_of`, and `collapse_grid`'s spans counted before any is
   written, with the tests;
-- `017079b`: this section, 10.11's item, the CHANGELOG and `tests/README.md`.
+- `44c7265`: this section, 10.11's item, the CHANGELOG and `tests/README.md`; `c8bb973`, the
+  commits; `4f04e94`, the Word check.
+
+The port was made in a git worktree while Phase B's agent worked in the main checkout, and its
+commits were cherry-picked onto `main` after Phase B (there `ad5e885`, `017079b`, `5db2af6` and
+`90df2c5`). The cherry-pick put this section before section 11; its text is unchanged.
 
 **What landed** (`docx4j_py/model/revisions/tables.py`):
 
@@ -1934,7 +1939,8 @@ and `compare-readers`). The readers: the content API's `Body.paragraphs` (addres
 `plain_text` and `markdown`, and `to_markdown`; `revisions.tracked_changes`; the python-docx
 facade's `paragraphs`, `tables` and `inline_shapes`.
 
-**For the coordinator's decision: the `text_of` readers read a paragraph-level branch's runs.**
+**The `text_of` readers read a paragraph-level branch's runs** (decided 2026-10-22 by the
+coordinator: kept).
 
 - `text_of` is behind `Block.text`, `Table.text`, `TableCell.text` (and so `Table.values`), a
   run-level control's text and `TrackedChange.text`.
@@ -1947,10 +1953,20 @@ facade's `paragraphs`, `tables` and `inline_shapes`.
 - `Paragraph.text` and `get_text`, Office JS's text by CR-011 Q4, read neither branch, before and
   after. So a cell's text and its paragraph's text can now differ at paragraph level, as they
   already could at run level.
-- No corpus document has the shape. Kept, and pinned:
-  `test_pinned_for_the_coordinators_decision_text_of_readers_read_a_paragraph_level_branchs_runs`.
+- No corpus document has the shape. Kept, and tested:
+  `test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level`.
   Whether the `text_of` readers that call themselves Office JS's text should descend into
   `mc:AlternateContent` at all is CR-011 Q4's question.
+- **The decision: kept.**
+  - The `text_of` readers already read Word's branch at run level. This phase removes the one level
+    at which they did not, so they now follow their own contract at every level. That is also what
+    Word shows.
+  - The split from `Paragraph.text`, `get_text` and the content API's inline pictures, which pass a
+    branch by, is older than this phase: it existed at run level. Q4 kept those readers as they
+    were, and this phase does not widen the split in kind.
+  - What Office JS's own `paragraph.text` gives for a branch is measurable in Word (Script Lab over
+    a probe). If it reads Word's branch, those readers should follow, which is a CR-011 Q4 revision
+    for the user.
 
 **The answers that changed over the corpus.**
 
@@ -2187,7 +2203,8 @@ Nothing else moved.
 
 ### 11.9 Found, and not done
 
-- **The `text_of` question** (11.4), for the coordinator.
+- **The `text_of` question** (11.4): decided by the coordinator, kept. What Office JS's
+  `paragraph.text` gives for a branch is the user's to measure, if wanted.
 - **CLAUDE.md's MCE paragraph** says `mce_preprocess` is the only way to a typed `Drawing` in a
   choice; that is no longer so. The coordinator's, as section 4.2 item 6 says.
 - **A fork release.** Stages 9 to 11 are local, as before; this phase adds no fork code, so it

@@ -536,7 +536,7 @@ _CELLS = (
 )
 
 
-def test_pinned_for_the_coordinators_decision_text_of_readers_read_a_paragraph_level_branchs_runs():
+def test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level():
     """The text_of readers now read Word's branch at paragraph level, as at run level; Paragraph.text reads neither.
 
     Before Phase B, ``text_of`` (``Block.text``, ``Table.text``, ``TableCell.text``,
@@ -545,9 +545,10 @@ def test_pinned_for_the_coordinators_decision_text_of_readers_read_a_paragraph_l
     walks named ``any_element``: this cell read ``a``. Now it reads ``a-PARA_CHOICE``,
     as ``text_of``'s own contract says (the resolved branch contributes) and as
     Word shows. ``Paragraph.text`` and ``get_text``, Office JS's text by CR-011
-    Q4, read neither branch, before and after. Whether the ``text_of`` readers
-    that claim Office JS's text should descend at all is CR-011 Q4's question,
-    left to the coordinator (CR-012 section 11.4).
+    Q4, read neither branch, before and after. Kept, as the coordinator decided
+    (CR-012 section 11.4): the run-level reading is older than Phase B, and
+    whether the readers that claim Office JS's text should descend at all is
+    CR-011 Q4's question.
     """
     from docx4j_py import create_package
     from docx4j_py.child import link_parents
