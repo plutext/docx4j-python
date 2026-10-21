@@ -6,7 +6,7 @@ section 3. Three commands:
 
     .venv-fork/bin/python scripts/mce_branches.py corpus
     .venv-fork/bin/python scripts/mce_branches.py survey [--json out.json] [ROOT ...]
-    .venv-fork/bin/python scripts/mce_branches.py readers --out FILE [ROOT ...]
+    .venv-fork/bin/python scripts/mce_branches.py readers --out FILE [--holding mc|vml|either] [ROOT ...]
     .venv-fork/bin/python scripts/mce_branches.py compare-readers BEFORE AFTER
 
 ``corpus`` builds ``out/cr012-b-corpus/`` from commits, never from a working
@@ -31,9 +31,10 @@ exits non-zero if the typed save differs from the source where the untyped one
 does not, if the two saves differ canonically, or if a skipped report differs.
 
 ``readers`` runs every reader of text or structure over every distinct corpus
-document holding ``mc:AlternateContent`` in a WordprocessingML part and writes
-the answers as JSON; ``compare-readers`` lists every answer that changed
-between two such runs. Run it before a change and after it.
+document holding ``mc:AlternateContent`` in a WordprocessingML part (``--holding
+vml``: VML, CR-012 Phase C's audit; ``either``: both) and writes the answers as
+JSON; ``compare-readers`` lists every answer that changed between two such
+runs. Run it before a change and after it.
 """
 
 from __future__ import annotations
@@ -119,12 +120,27 @@ def documents(roots: list[Path]) -> list[tuple[str, Path]]:
 
 def holds_alternate_content(path: Path) -> bool:
     """True when a WordprocessingML part of the package names ``mc:AlternateContent``."""
+    return _holds(path, (b"AlternateContent",))
+
+
+#: What a WordprocessingML part holds when it holds VML: a namespace of VML's (CR-012 Phase C).
+VML_MARKERS = (b"urn:schemas-microsoft-com:vml", b"urn:schemas-microsoft-com:office:")
+
+
+def holds_vml(path: Path) -> bool:
+    """True when a WordprocessingML part of the package declares a VML namespace (``v:``, ``o:``, ``w10:``)."""
+    return _holds(path, VML_MARKERS)
+
+
+def _holds(path: Path, markers: tuple[bytes, ...]) -> bool:
     try:
         with zipfile.ZipFile(path) as zf:
             for name in zf.namelist():
                 wml_part = name.startswith("word/") and name.endswith(".xml") and "/_rels/" not in name
-                if wml_part and b"AlternateContent" in zf.read(name):
-                    return True
+                if wml_part:
+                    data = zf.read(name)
+                    if any(marker in data for marker in markers):
+                        return True
     except (zipfile.BadZipFile, OSError):
         return False
     return False
@@ -475,11 +491,47 @@ def reader_answers(path: Path) -> dict[str, Any]:
         lambda: [[[cell.text for cell in row.cells] for row in table.rows] for table in document.tables],
     )
     read("docx.inline_shapes", lambda: [[str(s.type), s.width, s.height] for s in document.inline_shapes])
+    # CR-012 Phase C: the readers a typed VML text box can move --- the fonts and
+    # styles in use, and the tracked changes resolved in every branch --- read
+    # last, each over a package of its own, since resolving edits it.
+    read("main.fonts_in_use", lambda: sorted(load(path).main_document_part.fonts_in_use()))
+    read("main.styles_in_use", lambda: sorted(load(path).main_document_part.styles_in_use()))
+    for verb in ("accept_all", "reject_all"):
+        read(f"revisions.{verb}", lambda verb=verb: _resolved(path, verb))
     return out
 
 
-def readers(roots: list[Path], out_path: Path) -> int:
-    docs = [(key, path) for key, path in documents(roots) if holds_alternate_content(path)]
+def _resolved(path: Path, verb: str) -> dict[str, Any]:
+    """Every story's tracked changes resolved: what is left, the text, and each part's canonical form."""
+    from docx4j_py.model import revisions
+    from docx4j_py.model.text import extract, plain_text
+    from docx4j_py.openpackaging.api import load
+
+    package = load(path)
+    getattr(revisions, verb)(package)
+    forms = {}
+    for name, part in wml_parts(package):
+        if part._contents is not None:  # read, and so resolved
+            forms[name] = hashlib.sha1(canon.normalize(part.xml)).hexdigest()
+    return {
+        "left": len(revisions.tracked_changes(package)),
+        "text": plain_text(extract(package)),
+        "parts": forms,
+    }
+
+
+#: Which documents ``readers`` reads: those holding ``mc:AlternateContent`` (Phase B's audit), those
+#: holding VML (Phase C's), or either.
+HOLDING = {
+    "mc": holds_alternate_content,
+    "vml": holds_vml,
+    "either": lambda path: holds_alternate_content(path) or holds_vml(path),
+}
+
+
+def readers(roots: list[Path], out_path: Path, holding: str = "mc") -> int:
+    test = HOLDING[holding]
+    docs = [(key, path) for key, path in documents(roots) if test(path)]
     answers: dict[str, Any] = {}
     started = time.perf_counter()
     for index, (key, path) in enumerate(docs, 1):
@@ -491,7 +543,8 @@ def readers(roots: list[Path], out_path: Path) -> int:
             print(f".. {index} of {len(docs)}, {time.perf_counter() - started:.0f} s", flush=True)
     out_path.write_text(json.dumps(answers, indent=1, sort_keys=True), encoding="utf-8")
     errors = sum(1 for a in answers.values() for v in a.values() if isinstance(v, str) and v.startswith("ERROR"))
-    print(f"{len(docs)} documents holding mc:AlternateContent; {errors} reader errors; written to {out_path}")
+    what = {"mc": "mc:AlternateContent", "vml": "VML", "either": "mc:AlternateContent or VML"}[holding]
+    print(f"{len(docs)} documents holding {what}; {errors} reader errors; written to {out_path}")
     return 0
 
 
@@ -535,6 +588,12 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("readers", help="every reader's answers, as JSON")
     r.add_argument("roots", nargs="*", type=Path)
     r.add_argument("--out", type=Path, required=True)
+    r.add_argument(
+        "--holding",
+        choices=sorted(HOLDING),
+        default="mc",
+        help="the documents read: those holding mc:AlternateContent (the default), VML, or either",
+    )
     c = sub.add_parser("compare-readers", help="the answers that changed between two reader runs")
     c.add_argument("before", type=Path)
     c.add_argument("after", type=Path)
@@ -549,7 +608,7 @@ def main(argv: list[str] | None = None) -> int:
     roots = args.roots or [CORPUS]
     if args.command == "survey":
         return survey(roots, args.json)
-    return readers(roots, args.out)
+    return readers(roots, args.out, args.holding)
 
 
 if __name__ == "__main__":
