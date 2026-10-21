@@ -996,8 +996,8 @@ its readers' probe is built here as docx4j builds it.
   - `8b5ea5b`: a row- or cell-level branch's `w:tr` and `w:tc` typed;
   - `5d5f8a5`: the revisions engine, with its tests;
   - `f32927a`: the text model and the content API, with docx4j's phase-2 tests;
-  - the commit that carries this section: the CHANGELOG, `tests/README.md`, `docs/UPSTREAM.md`
-    report 23.
+  - `6358a37`: a test of the tracked clear over a block-level element;
+  - `a92c583`: this section, the CHANGELOG, `tests/README.md`, `docs/UPSTREAM.md` report 23.
 - The fork (`~/git/docx4j-xsdata`, branch `docx4j`, local only): `297ba8b7`, stage 11 item 27
   (tests only).
 
