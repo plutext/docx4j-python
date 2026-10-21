@@ -21,7 +21,9 @@ follows A, and C waits for its own go (Q4).
     schema admissions the schema copy takes;
   - docx4j's published understood list (`understood-namespaces.txt`, CR-046), which CR-011's
     Q2 also ports;
-  - a change to the xsdata fork's runtime (section 4.1 item 2).
+  - a change to the xsdata fork's runtime (section 4.1 item 2);
+  - CR-002 section 16 (in progress 2026-10-21), which changes the same `XmlPart._unmarshal` and
+    records the load options a private parse used, the record the mode joins.
 - **Phase B:** a further change to the fork's runtime (section 4.2).
 - **Phase C:** docx4j CR-048 (`acd0defc9` on `VERSION_17_3_4`, pushed 2026-10-18, to ship in
   17.3.4), whose VML schema this phase copies.
