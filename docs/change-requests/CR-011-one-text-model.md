@@ -967,3 +967,229 @@ CR-010's Word-save comparisons are unchanged (68 tests).
 - A Word check of the probe and `waterfall.docx` saved after their main parts are unmarshalled
   (12.2), the user's.
 - The fork's stage 10 needs a fork release before this package releases on it (risk 4).
+
+## 13. Phase C implementation notes (2026-10-21)
+
+Phase C is done: the port of docx4j CR-046 phase 2 at `198d015a3`, each value of section 6 acted
+on, `NOT_YET` empty. The report moves from 1,146 pass, 205 fail and 233 pending to **1,284, 7 and
+293 of 1,584, goldens 9 of 12**: 138 checks from `FAIL` to `PASS`, 60 from `FAIL` to `PENDING`
+(Q7's deferred content, named), none the other way (13.7). Every plain-text golden is exact; the
+7 failures are Markdown's, Phase D's. The agreement test stays at no difference (636 of 636).
+
+### 13.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| metadata | `model/text/metadata.py` | docx4j's `Metadata`: `core`, `app` and `custom` maps in `TextResult.metadata` (REQ-515) |
+| images | `model/text/images.py` | `TextImage`, `ImageDescription`, `ImageDescriber`, `alt_text_describer` (docx4j's `AltTextDescriber`) |
+| SmartArt, DrawingML text | `model/text/drawings.py` | docx4j's `Drawings`: an `a:p`'s text; SmartArt's points in reading order |
+| bound values | `model/text/bound_values.py` | docx4j's `BoundValues`, over `model/customxml/` and the property stores |
+| one level down | `model/text/embedded.py` | docx4j's `AltChunks` and `Embedded` (its WordprocessingML half): `chunk_blocks`, `package_blocks`, `decode` |
+| fields: update | `model/text/field_values.py` | docx4j's `FieldValues` |
+| the walk | `model/text/extractor.py` | what a run anchors as docx4j's `Anchored` items (`_Box`, `_WordArt`, `_Chart`, `_SmartArt`, `_EmbeddedObject`); `read_nested`; `w:altChunk`; the glossary; bookmarks and the first reading; computed fields and FORMTEXT; page markers; equations by `OmmlToLatex` |
+| plain text | `model/text/plain.py` | docx4j's `PlainText` whole: the listed and grid tables, charts, `[image: ...]`, `[page n]`, the metadata block, `layout: indent` |
+| the block model | `model/text/result.py`, `options.py` | `TextRun.image`, `description`, `page_number`; `TextBlock.decorative`, `simple_form`, `chart`, `chart_title`, `chart_header`, `chart_rows`; `image.not_described`; `TextOptions(image_describer=)`; `NOT_YET` empty |
+| charts | `model/chart/` (`model.py`, `chartex.py`, `table.py`, `description.py`, `formats.py`) | the reading half of docx4j's `org.docx4j.model.chart`: `ChartModel`, `ChartExModel`, `ChartTable`, `ChartDescription` (docx4j CR-047), and a measured subset of POI's `DataFormatter` |
+| math | `model/math/` | docx4j's `OmmlToLatex` and `LatexSymbols` |
+| fields | `model/fields/` | docx4j's `FldSimpleModel`, `FormattingSwitchHelper`, `DateFormatInferencer`, `NumberExtractor`, `DocPropertyResolver`, `DocVariableResolver` |
+| Java's formats | `model/java_text.py` | the `DecimalFormat` and `SimpleDateFormat` the chart formats and the field switches share |
+| the harness | `tests/text/conformance.py`, `adapter.py` | `Engine.deferred` and `adapter.DEFERRED` (13.5); the metadata flattened into the findings as docx4j's adapter flattens them |
+| tests | `tests/text/test_texts_phase2.py` (48), `test_charts.py` (92), `test_fields.py` (287), `mini_docx.py` | docx4j's `TextsPhase2Test`, `ChartDescriptionTest`, `ChartTableTest` and its `FormattingSwitchHelper` tests, where not deferred; docx4j's `MiniDocx` |
+| fixtures | `tests/fixtures/charts/` (36 fixtures, 33 JSON goldens), `text-extraction/formtext/`, `text-extraction/extraction-probe.word-resave.docx` | copied from docx4j at `198d015a3`, byte for byte |
+
+Every new module is under `docx4j_py/model/`, which `KEEP` holds whole, and each is imported on
+first use: `import docx4j_py` imports none of them.
+
+### 13.2 The content as built
+
+docx4j's rules, unchanged, each with its statement:
+
+- **Metadata** (REQ-515): the core properties in the schema's order, the application properties
+  that describe the document (the statistics left out), each custom property's typed value in the
+  part's order (a vector, a blob or a class id left out), an empty string left out; in the
+  metadata whatever the options, and in the text only under `metadata: true`, a line a kind
+  before the body. Nothing is unmarshalled.
+- **Pictures** (REQ-514): each an `IMAGE` run with its `TextImage` (`wp:docPr`'s or a nested
+  `pic:cNvPr`'s `descr`, `name` and `title`, `adec:decorative`, VML's `alt`, the image part, an SVG
+  picture's `asvg:svgBlip` part where `a:blip` names none) and the describer's description; the
+  title never read. Plain text writes `[image: ...]` or `[image, generated: ...]` under `alt_text:
+  true`; a decorative picture has no description, and a paragraph of decorative pictures alone is
+  a `decorative` block (REQ-706). A describer that raises gives `image.not_described`, the image
+  part's name its selector.
+- **Objects** (REQ-512): each `w:object` an `OBJECT` run with its ProgID; an ActiveX control one
+  with none. Under `embedded: true`, one reading level only, an `EmbeddedPackagePart`, or for a
+  ProgID `Package` a binary part, follows its anchor at `body/n/object:k`.
+- **Legacy WordArt** (REQ-511): a `v:shape`'s `v:textpath/@string` a one-paragraph text box
+  (`body/69/textbox:0/0`), under `text_boxes`; case 63's watermark in its header so.
+- **Charts** (REQ-511, CR-047): a `CHART` block after the anchoring paragraph (or its table),
+  `body/103/chart:0`, in the anchoring story; its description's kind, axes and secondary series
+  under `chart` in its JSON, its title, header and rows; plain text writes the note before the
+  title, then the rows a tab apart. A chartex chart is read where its `mc:Choice` (`cx1`,
+  understood) is selected. A chart part that cannot be read raises `content.not_read`.
+- **SmartArt** (REQ-511): the data part's points from `doc` along `parOf` by `srcOrd`, the text
+  of `node` and `asst` points, a line a paragraph, `SMARTART` blocks at `body/105/smartart:0/i`;
+  `content.not_read` where the data part cannot be read.
+- **Bound values** (REQ-509): a plain-text control's `w:dataBinding` evaluated with its own prefix
+  mappings against the custom XML part its store item id names, or the core or application
+  properties by their well-known ids; the first node's string value. Where it resolves and the
+  control does not show its placeholder over an empty value, the control is its value (a
+  block-level one a paragraph), and `sdt.binding_differs` is raised where the surface differs, in
+  either `bindings` value; `bindings: surface` reads the surface.
+- **`w:altChunk`** (REQ-513): by the declared content type, then the extension, then the bytes.
+  Plain text as its lines, decoded by its BOM, else as UTF-8 where it is valid, else
+  windows-1252; a WordprocessingML or Flat OPC chunk read one level down at
+  `body/n/altchunk:0/...`, its own chunks not expanded (case 47's HTML one raises at
+  `body/130/altchunk:0/body/1`); HTML, XHTML and MHT not expanded, there being no HTML reader
+  (Q12, Q13); RTF never. Each not expanded raises `altchunk.not_expanded` with its content type;
+  `altchunks: false` expands none.
+- **One level down** (REQ-512, REQ-513; docx4j's `nested`): the reading's options less embedded
+  packages, chunks and metadata; the addresses under the anchor's; the warnings joining the
+  reading's; the main story's blocks in the story they are read into (`EMBEDDED` for a package,
+  the chunk's own story for a chunk).
+- **The glossary** (REQ-501, REQ-516): each `w:docPart`'s body at `glossary:i/j`, last, after the
+  endnotes, under `include: glossary`.
+- **Equations** (REQ-604): LaTeX by `OmmlToLatex` in the view, `$...$`, `$$...$$` for an
+  `m:oMathPara`; in `markup` an equation with tracked changes its Reject All form deleted and its
+  Accept All form inserted; one outside the subset its runs' text, as before.
+- **Tables** (REQ-605): the simple form where the table is simple (no merge or split, no nested
+  table, one non-empty paragraph a cell, every row's cell edges alike); else the listed format, by
+  the rules Jason ruled on 18 October 2026; `tables: tsv`; `tables: grid` as pandoc's grid table.
+- **Page markers** (REQ-708): each `w:lastRenderedPageBreak` of the main story a `PAGE_MARKER`
+  run, its page numbered from 2, written `[page n]` under `page_markers: true`; the option's
+  description says the markers are current only when the package was last paginated after its
+  last edit. **`layout: indent`** (REQ-709): four spaces a 720-twip stop of a paragraph's
+  first-line indent, outside tables.
+
+### 13.3 Fields (REQ-506)
+
+docx4j's `FieldValues` computes in the walk, without a copy: `DOCPROPERTY` (a custom property
+first, a core or application one by its built-in name), `DOCVARIABLE`, `AUTHOR`, `TITLE`,
+`SUBJECT`, `KEYWORDS`, `COMMENTS`, `LASTSAVEDBY`, `REVNUM`, `CREATEDATE` and `SAVEDATE` (an
+argument given is the value), `SEQ` in reading order (`\r`, `\c`, `\h`), `REF` (not with `\n`,
+`\r`, `\w`, `\p` or `\f`) and `QUOTE`; never a field with `w:fldLock`; a field whose value cannot
+be found keeps its cached result. A `REF` may come before its bookmark, so the package's route
+reads the document once with cached results for the bookmarks' text first; a part's or content's
+route has none, and records each bookmark as it ends. A computed result replaces the cached one,
+which is not read at all: neither its text, nor a note or comment reference, a picture, a page
+marker, a field code or a nested field in it. A FORMTEXT is as Word's update leaves it (docx4j's
+Office check, 18 October 2026): its default text, or five en spaces where it has none; kept as
+typed where the document is protected for forms (`w:documentProtection w:edit="forms"`, enforced
+as written), or where the input is not regular text or has a format.
+
+The switches are docx4j's `FormattingSwitchHelper`, a measured subset (risk 5): `\@` on a value
+in one of docx4j's inferred formats (its international set: day first, ISO 8601, `dd MMM yyyy`,
+with times), Word's pattern converted to Java's as docx4j converts it (its `h` is Java's `K`, the
+hour 0 to 11, and the spaces after a closing quote go inside it); `\#` as a Java `DecimalFormat`
+rounding half even, the number drawn out of a `DOCPROPERTY`'s or `MERGEFIELD`'s text, `!Syntax
+Error` for no number, and docx4j's refusals (`x` before the point, a character between digits,
+Word's fraction-only results) leaving the value; `\*` with `Caps`, `FirstCap`, `Upper`, `Lower`,
+`ARABIC`, `Roman` and `roman`. docx4j's 138 switch cases with its default properties all hold.
+
+### 13.4 Charts and their numbers (CR-047, risk 5)
+
+`model/chart/` reads a chart as Office shows it: a series with no name is `Series` and its index
+plus one; a chart title with no text "Chart Title", or the single shown series' name; an axis
+title with no text "Axis Title"; a pie its first series; Excel's filtered series not shown; a
+deleted axis left out unless it has a title. `ChartDescription` gives Excel's English kinds,
+the axis roles (scatter and bubble by position), the secondary series and the note, and its
+`to_json` is docx4j's byte for byte on all 33 of docx4j's goldens. `ChartTable` writes
+categories down and series across, multi-level categories a column a level, scatter's x and y.
+`ChartExModel` reads a chartex part by element name, since this engine holds it as a tree
+(CR-001 section 14.12).
+
+The numbers are formatted as POI's `DataFormatter` in the US locale formats them, for a measured
+subset (`formats.py`): `General` (POI's `ExcelGeneralNumberFormat`: ten significant digits
+rounded half up), date and time codes by POI's conversion to a `SimpleDateFormat` pattern, and
+other codes by POI's cleaning and Java's `DecimalFormat` rounding half up. A code outside it
+(elapsed time `[h]`, fractions, engineering notation) is written as the cache holds it, as
+docx4j writes it where its formatter throws. `java_text.DecimalFormat` was checked against Java
+21's own on 23 patterns, among them `#.##` keeping its leading zero, `.00` not, and `-0` for a
+negative that rounds to zero.
+
+### 13.5 Q7's deferred content, and the harness
+
+Embedded SpreadsheetML and PresentationML packages and OLE 1.0 packages are not read (Q7):
+`olefile` is not added and this package has no SpreadsheetML or PresentationML model (CR-001 D).
+Under `embedded: true` each raises `content.not_read` with its part's name (13.6, item 1).
+
+REQ-512 covers the embedded document this phase reads, so the adapter cannot leave the statement
+unadvertised. The harness gains `Engine.deferred(fixture, case, item, scenario)`: a check whose
+statements are advertised pends with the reason the engine gives, and docx4j's engine gives none.
+The adapter names 20 checks in `DEFERRED`, 60 with their views: case 39's workbook cell, case
+41's OLE 1.0 text, case 53's slides (its nine tokens, its hidden slide under `embedded: true;
+hidden: true`, and its order), case 57's four sheets (the hidden two under `embedded: true;
+hidden: true`) and case 66's three cells. A token whose absence is checked (a hidden slide
+without `hidden: true`, the speaker notes) still passes, so none goes from `PASS` to `PENDING`.
+
+### 13.6 Departures, with why
+
+1. **The deferred packages raise `content.not_read`** where docx4j reads them. Q7 defers them, and
+   REQ-801's warnings are where a result says it is not the whole document; an empty reading
+   would be silent. No check reads the warning.
+2. **The harness's `deferred` hook** is this port's second departure from `ExtractionConformance`
+   (13.5): docx4j has no deferred content.
+3. **A story part's route is docx4j's `Texts.of(Part)`**, which Phase B did not follow: the main
+   document part's reading is its story and text boxes, addressed `body`, with no notes and no
+   first reading (it was the whole package's); a header's or footer's is addressed
+   `header:rId4` in its own story (it was `content`, in the main story). `refOnThePartRoute`
+   needs it; nothing in the package called the old one.
+4. **A chart or SmartArt data part's root is checked** before it is read. This engine's lenient
+   parser makes an empty object of any root, where docx4j's unmarshal refuses one; without the
+   check `<notAChart/>` would be an empty chart, not `content.not_read`.
+5. **A kept branch's drawing is read by element name.** A drawing in a kept `mc:Choice` is a
+   wildcard tree here (CR-002's lossless MCE): its `wp:inline`, `c:chart`, `cx:chart`,
+   `dgm:relIds`, `pic:pic`, `v:shape`, `w:object` and `w:control` are found by name, as docx4j
+   finds them by class in its bound tree.
+6. **POI's exponent `+` only on scientific notation.** POI adds it wherever its result holds an
+   `E`, so a suffix such as `EUR` reads `E+UR`; this writes `5.00 EUR`.
+7. **Field dates and numbers are in US English** whatever the document's language: docx4j's
+   `FieldValues` passes no language, so its dates take the platform locale, which its tests set
+   to English.
+8. **A control's surface** (for `sdt.binding_differs`) is read in the selected branch of an
+   `mc:AlternateContent`, where docx4j's reflective walk reads both.
+9. **Bound values special-case the two property stores**, which the content API's `XmlMapping`
+   does not (CR-003 section 4): docx4j's text model does, because Word shows them.
+10. **`TextOptions(image_describer=)`** is docx4j's `TextOptions.imageDescriber`, a callable; it
+    is not one of section 10's names, so `to_dict` leaves it out.
+11. **Workbook and presentation tests of `TextsPhase2Test`** (`hiddenSheets`, `workbookCells`,
+    the workbook, presentation and OLE 1.0 halves of `embeddedPackages`) are not ported (Q7);
+    `test_charts.py` holds `workbookCells`' date, `3/15/23`, for the formats.
+
+### 13.7 The numbers
+
+- **The report**: 1,284 pass, 7 fail, 293 pending of 1,584; goldens 9 of 12 (the probe's three
+  plain-text goldens join the six). 138 checks `FAIL -> PASS`, by cause: `w:altChunk` and its
+  warnings 45 (cases 36, 43 to 47, 63); charts 18 (34); metadata 18 (38, 52); bound values 12 (23,
+  67); SmartArt 9 (35); pictures' alt text 9 (33, 66); the embedded document 9 (40, 63); the
+  glossary 9 (54, its order among them); legacy WordArt and the watermark 6 (25, 63); goldens 3.
+  60 `FAIL -> PENDING`, Q7's (13.5). None `PASS -> FAIL`. The 7 failures are Markdown's (case 21
+  and the three Markdown goldens), Phase D's. The 293 pending are docx4j's 19, the inspector's
+  214 and Q7's 60. No check under `fields: update` moved: the suite's rows there hold cached
+  results, and `TextsPhase2Test`'s cases hold the computed ones.
+- **The suites**: the fast suite 3,088 passed, 8 skipped, 10 xfailed and 628 deselected (87 s);
+  the whole suite 3,716 passed, 8 skipped and 10 xfailed (137 s); `tests/text` adds 428 to each.
+  The agreement test 636 of 636, CR-002's 46 parity goldens, CR-010's Word-save comparisons,
+  `test_readme.py` and `test_performance.py` pass.
+- **Unchanged**: `scripts/bench_marshal.py`, `Symbols.docx` parse 189 to 194 ms and marshal 249 to
+  260 ms, the 14 main parts 230 to 251 and 298 to 312 ms (Phase B: 192 to 193, 248 to 249, 233 to
+  235, 297 to 298); `import docx4j_py` 628 to 640 ms (`-X importtime`; Phase B 644 to 648), none
+  of the new modules imported; `scripts/roundtrip.py` 50 of 50 parts canonically identical. The
+  engine is not touched.
+- **The cost** (CR-003 section 16.4's 200-page document, the median of five, the body
+  unmarshalled): `plain_text(extract(pkg))` 36 ms in `accepted`, 34 in `original`, 30 in `markup`
+  (Phase B, measured beside it: 32, 36 and 30); `get_text()` 10 ms. The probe 18 ms (15), its
+  two document chunks, Flat OPC chunk, chart and SmartArt now read; with every option on, 39 ms.
+  The harness's run 2.7 s.
+
+### 13.8 What Phase D needs
+
+- `markdown(result)` and the Markdown readers on the blocks (REQ-703): the 7 failing checks, a
+  chart's table and note, a picture as `![alt](…)`, a link from a HYPERLINK field, the original
+  view; `outline()` on the model; CR-010's ten pins; CR-006's tools with section 10's options.
+- Q7's content, after CR-001 D gives this package SpreadsheetML and PresentationML models, and a
+  decision on an OLE 1.0 reader: then `DEFERRED` empties and `TextsPhase2Test`'s workbook,
+  presentation and OLE halves are ported.
+- The HTML reader as its own phase after D (Q12, Q13).
+- Section 12.10's open items stand: the `dry_run` comment defect (12.3), the Word check of the
+  probe and `waterfall.docx` saved after their main parts are unmarshalled, and a fork release
+  before this package releases on stage 10.

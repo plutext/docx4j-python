@@ -56,8 +56,9 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   sugar, the facade's `add_hyperlink` and the fix for text appended after a link joining it remain
   proposals.
 - **One text model: `docx4j_py.model.text`**
-  ([CR-011](docs/change-requests/CR-011-one-text-model.md), Phase B, section
-  [12](docs/change-requests/CR-011-one-text-model.md#12-phase-b-implementation-notes-2026-10-21)):
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md), Phases B and C, sections
+  [12](docs/change-requests/CR-011-one-text-model.md#12-phase-b-implementation-notes-2026-10-21)
+  and [13](docs/change-requests/CR-011-one-text-model.md#13-phase-c-implementation-notes-2026-10-21)):
   the port of docx4j's `org.docx4j.model.text` (its CR-046 phase 1), after docx4j-core-ts's
   CR-012. `extract(pkg, view=, **options)` gives the block model (`TextResult`: `TextBlock`s with
   their runs, fields, numbering, addresses and flags; comments; warnings), and
@@ -69,11 +70,32 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   `[n]`, headers and footers by section under `include`, comments in `markup`, field codes under
   `field_codes`, hidden text left out through the styles, placeholders, list labels under
   `list_labels`, the table of contents only under `toc: true`; the options are the specification's
-  26 names verbatim. A reading never changes the package. Against docx4j's text-extraction suite,
-  1,146 checks pass, 205 fail and 233 pend of 1,584 (941, 410 and 233 before). Not yet: fields
-  updated, bound values, charts, SmartArt, WordArt, embedded packages, `w:altChunk`, images and
-  alt text, metadata, math as LaTeX, the listed and grid table forms, page markers, `layout:
-  indent`, the glossary.
+  26 names verbatim. A reading never changes the package. Phase C (its CR-046 phase 2) reads the
+  rest of the document: the document properties in the result's metadata and, under `metadata:
+  true`, before the body; each picture an `IMAGE` run described by the options' describer (the
+  author's alt text, `[image: ...]` under `alt_text: true`; `image_describer=` a host's hook) and
+  each object an `OBJECT` run; legacy WordArt; a chart as a `CHART` block with docx4j CR-047's
+  note, its title and its table; SmartArt's lines in reading order; a bound plain-text control's
+  bound value (`sdt.binding_differs`); a plain-text, WordprocessingML or Flat OPC `w:altChunk`
+  expanded where it is (HTML, XHTML, MHT and RTF raising `altchunk.not_expanded`: there is no HTML
+  reader); an embedded WordprocessingML package under `embedded: true`; the glossary under
+  `include: glossary`; equations as LaTeX; REQ-605's listed and grid tables; `[page n]` under
+  `page_markers`; `layout: indent`; and under `fields: update` the fields that need neither
+  layout nor fetching computed (`DOCPROPERTY`, `DOCVARIABLE`, the core-property fields, `SEQ`,
+  `REF`, `QUOTE`, with the `\@`, `\#` and `\*` switches) and FORMTEXT as Word's update leaves
+  it. Embedded workbooks and presentations and OLE 1.0 packages are deferred and raise
+  `content.not_read`. Against docx4j's text-extraction suite, 1,284 checks pass, 7 fail and 293
+  pend of 1,584 (941, 410 and 233 at Phase A; 1,146, 205 and 233 at B), the 7 Markdown's (Phase
+  D), the 293 docx4j's 19, the inspector's 214 and the 60 of the deferred content; 9 of the 12
+  goldens are exact, every plain-text one.
+- **Charts, equations and field switches as docx4j reads them**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md#13-phase-c-implementation-notes-2026-10-21)
+  section 13): `docx4j_py.model.chart` (`ChartModel`, `ChartExModel`, `ChartTable`,
+  `ChartDescription`: a chart's title, its data as Excel formats it, its kind in Excel's names,
+  its axes and secondary series; held to docx4j's 33 JSON goldens), `docx4j_py.model.math`
+  (`OmmlToLatex`, docx4j's OMML to LaTeX for its subset) and `docx4j_py.model.fields`
+  (`FldSimpleModel`, `apply_formatting_switch`, the `DOCPROPERTY` and `DOCVARIABLE` resolvers;
+  docx4j's 138 switch cases), each imported on first use.
 
 ### Changed
 
@@ -176,7 +198,9 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   paragraph, and their `text_budget`s, the runs as stored with each revision as CriticMarkup and
   each comment at its reference; a range refuses it with `SpanError` (`range.no_markup_view`), as
   it refuses `original`. `current` is read as `accepted`. The other views, and every other Office
-  JS reader, keep Office JS's text.
+  JS reader, keep Office JS's text. Since Phase C (section 13) the markup view of a body has the
+  text model's other content too: equations as LaTeX, charts, SmartArt, WordArt, bound values,
+  expanded `w:altChunk`s and the table forms.
 - **A numbering level belongs to one paragraph style**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
   [12.7](docs/change-requests/CR-011-one-text-model.md#127-req-510-and-the-parity-goldens-risk-3),
