@@ -7,7 +7,11 @@ appropriate"), after docx4j's CR-051. Section 1.1 corrects section 1's answer: a
 block, row or cell level is not kept, and a content control directly in a branch loses its runs.
 Section 3.1 measures both on Jason's probes. A new Phase A (section 4.1) ports CR-051's phase 1.
 The 61 roots, which were Phase A, are now Phase B, and VML is Phase C. The questions of section 7
-carry recommendations. **Implementation waits on the user's go.**
+carry recommendations. **Revised again 2026-10-21** for docx4j CR-051's D5 as Jason revised
+it the same day (docx4j-25's note; docx4j's record of it not yet committed): docx4j's load-time
+mode defaults to `preserve` from 17.4.0, and 17.3.x keeps `word`. Q7's recommendation moves to
+(b), `preserve` by default, and section 4.1's readers' audit grows to match. **Implementation
+waits on the user's go.**
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -265,7 +269,8 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
      `docs/UPSTREAM.md`.
    - Phase B's root table extends the same mechanism.
 3. **The load-time mode** (CR-051 section 3.2 and its D5):
-   `LoadOptions(mc_block_level="word" | "preserve")`, default `"word"`. A package-level setting,
+   `LoadOptions(mc_block_level="word" | "preserve")`, default `"preserve"` (Q7, revised from
+   `"word"` with docx4j's D5). A package-level setting,
    `pkg.mc_block_level`, is read when each part is first unmarshalled, for packages made
    otherwise.
    - **`word`:** each element whose parent is a block, row or cell container is replaced by the
@@ -299,8 +304,14 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
    - the Markdown exporter, `outline()`, `describe()` and the python-docx facade.
 
    Each reader either reads the branch `mce="resolve"` selects through the kept element, or
-   passes the element by without error; none raises or miscounts. Row and cell level in
-   `preserve` mode are passed by, as docx4j's phase 2 leaves them until then; recorded.
+   passes the element by without error; none raises or miscounts. With `preserve` the default
+   (Q7), a reader of text or structure must read Word's branch at block level, not pass it by.
+   That covers the text model (closing CR-011 section 14.7 item 8), Markdown, `outline()`,
+   `describe()` and the content API's collections. Otherwise the default load would hide
+   content Word shows. An edit addressed inside a kept branch is refused (`address.read_only`,
+   as a text box's is, CR-011 Q9) until a later CR maps edits between branches; a caller that
+   edits there loads in `word` mode. Row and cell level are passed by, as docx4j's phase 2
+   leaves them until then; recorded.
 6. **The revisions engine at paragraph level.**
    - docx4j's revisions model reads a paragraph-level element's selected branch as text, and
      lists the other branches' changes as twins (CR-051 section 10.5 item 3,
@@ -417,9 +428,12 @@ answer is in one place. It starts only after Phase B, on its own go (Q4).
 
 ## 6. Risks
 
-- **`word` mode changes a saved document** wherever block-, row- or cell-level alternate content
-  is read: the branches Word does not read go. Word's own save does the same, and the record
-  keeps them for inspection. A caller that must reproduce its input loads in `preserve` (Q7).
+- **`word` mode, on request, changes a saved document** wherever block-, row- or cell-level
+  alternate content is read: the branches Word does not read go. Word's own save does the same,
+  and the record keeps them for inspection. The default, `preserve`, reproduces the input (Q7).
+- **In the default `preserve` mode, a reader that passes a block-level element by hides content
+  Word shows.** The audit (section 4.1 item 5) makes each reader of text or structure read Word's
+  branch, and an edit inside a kept branch is refused rather than written to one branch only.
 - **The schema refresh brings docx4j's other changes since `58cce65a8`.** They are listed, and
   each is checked, as CR-001 section 14.10 did.
 - **The readers in `preserve` mode** meet an element they never met. The audit (section 4.1
@@ -462,11 +476,18 @@ answer is in one place. It starts only after Phase B, on its own go (Q4).
      user's own proposal there;
    - (b) `preserve` by default.
 
-   *Recommended: (a).* The content API, the python-docx facade and every reader then see what
-   Word shows, with no reader changed, and a save writes what Word's save writes. Tools that must
-   reproduce their input, such as CR-006's MCP edit tool, load in `preserve`. (b) keeps the
-   round-trip rule whole, but leaves every reader blind to Word's branch at block level until
-   each one learns the element.
+   *Recommended (revised 2026-10-21): (b),* as docx4j's D5 now decides for 17.4.0.
+   - "A library should not drop what it did not touch" is D5's reason, and it cites this
+     package, which keeps every branch and selects on read (CLAUDE.md's lossless MCE). The
+     round-trip rule then holds with no exception by default.
+   - D5 keeps `word` in docx4j 17.3.x only so that a point release does not change what
+     existing walkers see. Nothing here has such walkers: today the element is lost on save
+     (section 1.1), so either default is a change.
+   - The cost is section 4.1 item 5. Each reader of text or structure must read Word's branch at
+     block level, and an edit inside a kept branch is refused until a later CR. Under (a) the
+     readers see what Word shows without a change, and an edit lands in Word's branch.
+   - The recommendation until this revision was (a), docx4j's D5 as first decided (the user's
+     own proposal there).
 8. **Q8: the understood set:** docx4j's published list, both for `word` mode and for
    `mce_preprocess`, shared with CR-011's Q2. *Recommended.* CR-011's Q2 had kept `UNDERSTOOD`
    for `mce_preprocess`. Section 3.1 shows it then misses Word 365's branch, so this revises
@@ -476,6 +497,6 @@ answer is in one place. It starts only after Phase B, on its own go (Q4).
 
 | Phase | What | Effort |
 |---|---|---|
-| A | docx4j CR-051 phase 1: the schema refresh and regeneration; the fork's container-dependent `w:sdt`; the load-time mode with its record, REQ-305 and `mc:Ignorable`; `mce_preprocess` on docx4j's list; the readers' audit; the revisions twins; the 25 probes and Word's saves; a Word check | 3 days |
+| A | docx4j CR-051 phase 1: the schema refresh and regeneration; the fork's container-dependent `w:sdt`; the load-time mode (`preserve` by default, Q7) with its record, REQ-305 and `mc:Ignorable`; `mce_preprocess` on docx4j's list; the readers' audit, each reader of text or structure reading Word's branch at block level; the revisions twins; the 25 probes and Word's saves; a Word check | 3.5 days |
 | B | the fork's root-element table and its tests; `derive_names.py`, `root_elements.json`, `ROOT_ELEMENTS`; the registration; traversal's typed branch children; tests, survey script, the record; then a fork release before a docx4j-python release | 1.5 days |
 | C | docx4j's VML schemas at `acd0defc9`, names, regeneration; the VML survey and gate; the islands retired; Word check | 3 days |
