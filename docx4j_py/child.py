@@ -406,8 +406,14 @@ def _any_element_children(value: Any) -> list | None:
     return None
 
 
-# field name -> the element qualified name it holds, or, for a compound
-# ``content`` field, a mapping of item class to qualified name
+#: A wildcard field's place in a child plan, where an element field has its
+#: qualified name: a wildcard's typed child is named by what it is
+#: (:func:`wildcard_child_name`), not by the field (CR-012 Phase B).
+WILDCARD_FIELD = "\x00wildcard"
+
+# field name -> the element qualified name it holds (WILDCARD_FIELD for a
+# wildcard), or, for a compound ``content`` field, a mapping of item class to
+# qualified name
 _child_plan_cache: dict[type, tuple[tuple[str, str | None, dict[type, str] | None], ...]] = {}
 # just the field names of the plan above, for the one-level link_children
 _child_names_cache: dict[type, tuple[str, ...]] = {}
@@ -458,6 +464,8 @@ def _child_plan(
                 for tp in ambiguous:
                     choices.pop(tp, None)
                 plan.append((var.name, None, choices))
+            elif var.is_wildcard:
+                plan.append((var.name, WILDCARD_FIELD, None))
             else:
                 plan.append((var.name, var.qname, None))
     else:
@@ -471,8 +479,42 @@ def _child_plan(
     return result
 
 
+_wildcard_child_names: dict[type, str | None] = {}
+
+
+def wildcard_child_name(item: Any) -> str | None:
+    """The element name a typed child of a wildcard is written under: the serialiser's.
+
+    No field names such an object --- a branch's ``R``, ``Drawing`` or
+    ``RT``, the parser's hook typed it (CR-012) --- so the serialiser names it
+    by its ``element_names`` table (:func:`docx4j_py.runtime._branch_element_names`:
+    the ``w:sdt`` kinds, ``Tr``, ``Tc``, docx4j's root elements and the other
+    classes a branch's container binds them to), else by the class's own
+    global element declaration (``R`` is ``w:r``, ``P`` is ``w:p``). This
+    answers the same, so that a walk names a branch's child as it names the
+    same element elsewhere. None where neither says.
+    """
+    cls = item.__class__
+    try:
+        return _wildcard_child_names[cls]
+    except KeyError:
+        pass
+    from docx4j_py.runtime import _branch_element_names
+
+    name = _branch_element_names().get(cls)
+    if name is None:
+        meta = vars(cls).get("Meta")
+        namespace = getattr(meta, "namespace", None)
+        local = getattr(meta, "name", None)
+        name = f"{{{namespace}}}{local}" if namespace and local else None
+    _wildcard_child_names[cls] = name
+    return name
+
+
 def _qname_of(item: Any, choices: dict[type, str] | None, fallback: str | None) -> str | None:
     """The element name an item is written under, as far as the metadata knows."""
+    if fallback is WILDCARD_FIELD:
+        return wildcard_child_name(item)
     if choices is None:
         return fallback
     name = choices.get(item.__class__)
@@ -814,9 +856,13 @@ def iter_children(
 
     Driven entirely by the class metadata, so it works on any generated package
     with no per-class code. ``AnyElement`` wildcards are descended into: their
-    own children are yielded under their ``qname``. The name is None where the
-    metadata cannot say (a wildcard holding a typed object, an ambiguous
-    compound alternative).
+    own children are yielded under their ``qname``. A typed object a wildcard
+    holds --- a kept branch's ``R`` or, since CR-012 Phase B, its ``Drawing``
+    or ``RT`` --- is yielded under the name it is written under
+    (:func:`wildcard_child_name`), as the same element is elsewhere; before
+    Phase B it was yielded under the field's name, ``any_element``. The name
+    is None where the metadata cannot say (an ambiguous compound
+    alternative).
 
     Args:
         context: an ``XmlContext`` to read the metadata from.
@@ -909,7 +955,7 @@ def _wildcard_children(value: Any, mce: str = "all") -> Iterator[tuple[str | Non
         return
     for inner in children:
         if isinstance(inner, Child):
-            yield getattr(inner, "qname", None), inner
+            yield wildcard_child_name(inner), inner
         else:
             yield from _wildcard_children(inner, mce)
 

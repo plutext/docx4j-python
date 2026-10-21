@@ -24,7 +24,7 @@ import dataclasses
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import ChildList, link_parents
+from docx4j_py.child import ChildList, is_alternate_content, link_parents
 from docx4j_py.model.content.addresses import (
     address_of,
     assign_para_id,
@@ -386,10 +386,27 @@ class Body(Sequence):
         is ``cell.body.tables`` and a table inside a content control is
         ``control.tables``. CR-003 section 4: **views, never elements**, from
         the first phase that has them.
+
+        A block-level ``mc:AlternateContent`` kept whole stands in this list as
+        Word reads it, so a table in Word's branch is one of this body's own,
+        where the element stands, as :attr:`paragraphs` reads that branch's
+        paragraphs (CR-012 Phase A). Its view is read-only. Since CR-012
+        Phase B a branch's ``w:tbl`` is a typed ``Tbl``; before it was a
+        wildcard tree, and this list passed it by.
         """
-        return [
-            Table(item, self.content, self) for item in self.content if isinstance(item, Tbl)
-        ]
+        out: list[Table] = []
+
+        def visit(items: list) -> None:
+            for item in items:
+                if isinstance(item, Tbl):
+                    out.append(Table(item, items, self))
+                elif is_alternate_content(item):
+                    branch = block_children_of(item)
+                    if branch is not None:
+                        visit(branch)
+
+        visit(self.content)
+        return out
 
     @property
     def content_controls(self) -> list[ContentControl]:

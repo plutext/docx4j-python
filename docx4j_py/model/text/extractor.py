@@ -69,6 +69,7 @@ from docx4j_py.child import (
     mce_choices,
     mce_fallback,
     requires_of,
+    wildcard_child_name,
 )
 from docx4j_py.model.revisions import trees as rtrees
 from docx4j_py.model.text.images import TextImage
@@ -1587,9 +1588,12 @@ class Extractor:
         """What a run's drawing, picture or object holds, in document order, branches selected for text.
 
         docx4j ``Extractor.anchored``: text boxes and WordArt to follow the
-        paragraph; pictures and objects as runs where they are. A kept branch is
-        a wildcard tree here (CR-002's lossless MCE), so each kind is found by
-        its element name there, as by its class in a typed tree.
+        paragraph; pictures and objects as runs where they are. Since CR-012
+        Phase B a kept branch's ``w:drawing`` and ``w:pict`` are typed, and a
+        DrawingML text box with them (``wps:txbx`` declares its
+        ``w:txbxContent``), so they are found by class as anywhere. Below a
+        ``Pict`` the VML is still a wildcard tree (CR-012 Phase C), and there
+        each kind is found by its element name.
         """
         txbx_class = rtrees.cls("CTTxbxContent")
         inline_class, anchor_class, pic_class, object_class, control_class = _drawing_classes()
@@ -1790,7 +1794,11 @@ class Extractor:
         return part if part is not None else self.trees.related(para.story.part, svg)
 
     def _island(self, node: Any, holder: list | None, para: _Paragraph) -> Any:
-        """A wildcard ``w:txbxContent`` as a typed island, shared with the plan's listing (CR-010 section 3.5)."""
+        """A wildcard ``w:txbxContent`` as a typed island, shared with the plan's listing (CR-010 section 3.5).
+
+        Since CR-012 Phase B the one wildcard text box left is VML's,
+        ``v:textbox``'s, below a ``Pict`` in a Fallback or anywhere else.
+        """
         islands = self.context.islands
         island = islands.get(id(node))
         if island is None:
@@ -1807,11 +1815,25 @@ class Extractor:
     # -- typing a wildcard ---------------------------------------------------------
 
     def _typed_block(self, node: Any) -> Any:
-        """A wildcard paragraph or table, in a branch at block level, parsed typed (no revision is planned in it)."""
+        """A wildcard paragraph, table or control in a block-level branch, parsed typed (no revision is planned in it).
+
+        Since CR-012 Phase B no parse this package makes reaches here: in a
+        branch, ``w:p`` is global, ``w:tbl`` one of docx4j's roots and ``w:sdt``
+        bound by its container, so all three are typed
+        (:func:`docx4j_py.runtime.branch_child_class`). It stays for a tree
+        built in code, or parsed with a configuration that has no branch hook.
+        """
         return self._typed_node(node, ("p", "tbl", "sdt"))
 
     def _typed_run_level(self, node: Any) -> Any:
-        """A wildcard run, revision or control at paragraph level, parsed typed."""
+        """A wildcard run, revision or control at paragraph level, parsed typed.
+
+        Since CR-012 Phase B a branch's ``w:r``, ``w:ins`` and ``w:del`` (global)
+        and ``w:hyperlink``, ``w:fldSimple``, ``w:smartTag`` and ``w:sdt`` (roots,
+        or bound by the container) are typed by the parse. This is still
+        reached by a branch's ``w:moveFrom`` and ``w:moveTo``, which are
+        neither, and by a tree built in code or parsed without the branch hook.
+        """
         return self._typed_node(node, ("r", "ins", "del", "moveFrom", "moveTo", "hyperlink", "sdt", "fldSimple", "smartTag"))
 
     def _typed_node(self, node: Any, locals_: tuple[str, ...]) -> Any:
@@ -2244,17 +2266,25 @@ def _graphic_data(anchor: Any) -> list | None:
 
 
 def _graphic_kind(item: Any) -> str | None:
-    """What an item of ``a:graphicData`` is: ``chart``, ``chartex``, ``smartart``, ``picture``; None for a shape."""
+    """What an item of ``a:graphicData`` is: ``chart``, ``chartex``, ``smartart``, ``picture``; None for a shape.
+
+    By the element's name, a wildcard's or a typed one's: ``a:graphicData``'s
+    content is a lax wildcard, so a typed item is named as the serialiser
+    names it (:func:`docx4j_py.child.wildcard_child_name`). Before CR-012
+    Phase B a ``cx:chart`` was met only as a wildcard, inside a kept
+    ``mc:Choice``'s wildcard ``w:drawing``; now that drawing is typed, and so
+    is the chart in it.
+    """
+    qname = item.qname if is_any_element(item) else wildcard_child_name(item)
+    if qname == _C_CHART:
+        return "chart"
+    if qname == _CX_CHART:
+        return "chartex"
+    if qname == _DGM_REL_IDS:
+        return "smartart"
+    if qname == _PIC:
+        return "picture"
     if is_any_element(item):
-        qname = item.qname
-        if qname == _C_CHART:
-            return "chart"
-        if qname == _CX_CHART:
-            return "chartex"
-        if qname == _DGM_REL_IDS:
-            return "smartart"
-        if qname == _PIC:
-            return "picture"
         return None
     name = type(item).__name__
     module = type(item).__module__

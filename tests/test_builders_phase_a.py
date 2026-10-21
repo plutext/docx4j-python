@@ -825,32 +825,51 @@ def wps_document():
 
 
 def test_walk_all_reaches_the_wildcards_inside_an_alternate_content(wps_document):
-    typed: list[str | None] = []
+    """Both branches: the Choice's shape typed, the Fallback's VML a wildcard tree.
+
+    Since CR-012 Phase B a kept branch's ``w:drawing`` and ``w:pict`` are
+    typed, so the wps shape inside the ``mc:Choice`` is a ``Wsp`` handed to
+    the typed visitor under its name. Below the Fallback's ``Pict`` the VML,
+    which this model has no classes for (CR-012 Phase C), is still a wildcard
+    tree, and ``walk_all`` hands it over.
+    """
+    from docx4j_py.word.wps import Wsp
+
+    typed: list[tuple] = []
     wildcards: list[tuple] = []
     walk_all(
         wps_document,
-        lambda node, parent, name: typed.append(name),
+        lambda node, parent, name: typed.append((name, node)),
         lambda node, parent, name: wildcards.append((name, node, parent)),
     )
+    shapes = [name for name, node in typed if isinstance(node, Wsp)]
+    assert shapes == ["{http://schemas.microsoft.com/office/word/2010/wordprocessingShape}wsp"]
     names = {name for name, _node, _parent in wildcards}
-    # the wps shape inside the mc:Choice, which walk never hands over
-    assert any(name.endswith("}wsp") for name in names)
-    assert any("wordprocessingShape" in name for name in names)
+    assert "{urn:schemas-microsoft-com:vml}rect" in names
+    assert not any("wordprocessingShape" in name for name in names)
     assert all(is_any_element(node) for _n, node, _p in wildcards)
-    assert len(wildcards) > len(typed)
 
 
 def test_walk_all_sees_the_attributes_on_a_wildcard(wps_document):
-    """The reason ``walk`` is not enough: ``r:embed`` and friends live here."""
+    """The reason ``walk`` is not enough: ``r:embed`` and friends live here.
+
+    The wildcard is the Fallback's VML rectangle; the Choice's ``wp:anchor``,
+    which this test read as a wildcard before CR-012 Phase B, is a typed
+    ``Anchor`` now, its attributes fields.
+    """
+    from docx4j_py.dml.wordprocessing_drawing import Anchor
+
     seen: dict[str, dict] = {}
+    anchors: list = []
     walk_all(
         wps_document,
-        lambda node, parent, name: None,
+        lambda node, parent, name: anchors.append(node) if isinstance(node, Anchor) else None,
         lambda node, parent, name: seen.setdefault(name, dict(node.attributes or {})),
     )
-    anchor = next(v for k, v in seen.items() if k.endswith("}anchor"))
-    assert anchor["distL"] == "114300"
-    assert any(key.endswith("}anchorId") for key in anchor)
+    rect = seen["{urn:schemas-microsoft-com:vml}rect"]
+    assert rect["{urn:schemas-microsoft-com:office:office}spid"] == "_x0000_s1026"
+    assert rect["{http://schemas.microsoft.com/office/word/2010/wordml}anchorId"] == "2953E3D1"
+    assert [a.dist_l for a in anchors] == [114300]
 
 
 def test_walk_all_reports_the_parent_of_a_wildcard(wps_document):

@@ -75,6 +75,23 @@ def inline_of(drawing: Any) -> Any | None:
     return _inline_of(drawing)
 
 
+def _straight_in_a_branch(drawing: Any) -> bool:
+    """True for a ``w:drawing`` whose parent is an ``mc:Choice`` or ``mc:Fallback``.
+
+    python-docx's inline shapes are ``//w:p/w:r/w:drawing/wp:inline``: a
+    drawing straight in a run's ``mc:AlternateContent`` branch is not a run's
+    child, so python-docx does not list it. Before CR-012 Phase B such a
+    drawing was a wildcard tree that no walk of typed nodes visited; now it
+    is a typed ``Drawing``, and this keeps it out, as python-docx does.
+    """
+    parent = getattr(drawing, "parent", None)
+    cls = type(parent)
+    return cls.__module__ == "docx4j_py.mce" and cls.__name__ in (
+        "AlternateContentChoice",
+        "AlternateContentFallback",
+    )
+
+
 def _pic_of(inline: Any) -> Any | None:
     """The ``pic:pic`` inside a ``wp:inline``'s graphic data, or None."""
     graphic = getattr(inline, "graphic", None)
@@ -213,7 +230,7 @@ class InlineShapes:
         w = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
         out: list[Any] = []
         for node in iter_nodes(self._story.body.container):
-            if element_name(node) == w:
+            if element_name(node) == w and not _straight_in_a_branch(node):
                 inline = inline_of(node)
                 if inline is not None:
                     out.append(inline)

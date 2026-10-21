@@ -1,12 +1,21 @@
 """Text boxes in a lossless tree, as typed islands. CR-010 section 3.5.
 
 docx4j keeps both branches of ``mc:AlternateContent`` as typed JAXB. This
-package keeps them, and the DrawingML and VML shapes a text box lives in, as
+package kept them, and the DrawingML and VML shapes a text box lives in, as
 **wildcard** ``AnyElement`` trees (CR-002's lossless MCE): the ``w:txbxContent``
-of a text box is reached through ``wps:txbx`` or ``v:textbox``, elements this
-build has no classes for, so everything below them is a wildcard too. A typed
-engine cannot see the revisions in there --- which is why CR-003 Phase F's
-listing missed them.
+of a text box is reached through ``wps:txbx`` or ``v:textbox``, and in a
+wildcard tree everything below is a wildcard too. A typed engine cannot see
+the revisions in there --- which is why CR-003 Phase F's listing missed them.
+
+**Where an island is still needed (CR-012 Phase B).** Since Phase B a kept
+branch's ``w:drawing`` and ``w:pict`` are typed (docx4j's root elements), and
+a DrawingML text box with them: ``wps:txbx`` declares its ``w:txbxContent``, so
+a ``wps`` text box in a branch is a typed ``TxbxContent`` and never an island.
+The one wildcard text box left is **VML's**: ``v:textbox``'s ``w:txbxContent``,
+below a ``Pict`` --- a Fallback's legacy copy of a text box, or a ``w:pict``
+anywhere --- because VML has no classes in this model until CR-012 Phase C.
+Over CR-012 Phase B's survey corpus every wildcard ``w:txbxContent`` is one,
+514 of them under ``v:rect`` or ``v:shape``. Islands retire with Phase C.
 
 An **island** is one such ``w:txbxContent``, made typed for as long as it is
 being resolved:
