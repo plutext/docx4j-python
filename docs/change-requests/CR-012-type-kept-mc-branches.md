@@ -1440,7 +1440,7 @@ package found the gap while porting `60bd4b9ad`.
 
 - `4cd1798`: `tables.all_rows_of`, `all_cells_of` and `cell_layouts_of`, the record paths and
   `collapse_grid` over them, with the tests;
-- the commit after it: this section, 10.10's item, the CHANGELOG and `tests/README.md`.
+- `d70b6ab`: this section, 10.10's item, the CHANGELOG and `tests/README.md`.
 
 **What landed** (`docx4j_py/model/revisions/tables.py`, beside `rows_of`, `cells_of`, `cells_in`
 and `branch_of`):
