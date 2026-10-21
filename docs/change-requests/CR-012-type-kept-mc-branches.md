@@ -871,7 +871,9 @@ both modes, as docx4j does. They now describe alike.
    `preserve` until its phase 2. Here they are kept, so the round-trip rule holds with no exception
    by default. The content API, the text model and the revisions engine pass them by without error,
    as docx4j's phase 1 leaves its readers. `traversal`'s `mce="resolve"` is level-blind and reads
-   them, as it did before this phase.
+   them, as it did before this phase. **Overtaken by Phase A2 (section 10):** docx4j's phase 2
+   (`9db1a3cbd`) keeps them whole in `preserve` too, so this is no longer a departure, and the
+   readers here now read Word's branch at row and cell level, an edit there refused.
 3. **The splice is on the source's lxml tree, before the parse**, as section 4.1 item 3 asks.
    docx4j splices its unmarshalled objects after the unmarshal. Here the selected content is parsed
    in place, typed by the ordinary path, so the record's element is a parse of its own and not the
@@ -944,7 +946,7 @@ tests.
   This phase keeps to `2853b7280`, its probes and tests included, and takes nothing from that
   commit. Here, until then, the content API's, the text model's and the revisions engine's row and
   cell walks pass the element by without error, and `mce.branches_differ` is not raised at row or
-  cell level.
+  cell level. **Ported as Phase A2 (section 10).**
 - **The inspector.** CR-050's inspector, the record's second reader in docx4j, has no port here, so
   only the text model reads the record.
 - **A record inside a wildcard text box.** An element inside a text box that is itself in a
@@ -976,3 +978,270 @@ part unmarshalled so that this engine writes it, and saved.
 Expected: each opens without a repair prompt and shows the `w16sdtfl` or `w14` branch, as the
 source does in Word 365. **Passed on 2026-10-21** (the user: "__tmp/python-cr012a/ are all good"):
 all three open with no repair prompt and show what the README says.
+
+## 10. Phase A2 implementation notes (2026-10-21)
+
+Phase A2 is the port of docx4j CR-051 phase 2, read at docx4j `9db1a3cbd` (its section 12, the
+commit's diff and its tests), at the user's go ("make the CLAUDE.md edits, then do phase A2").
+Phase A kept a row- or cell-level `mc:AlternateContent` whole in `preserve` mode, and its readers
+passed it by (9.6). Now a branch's `w:tr` and `w:tc` are typed. The text model, the revisions
+engine and the content API read Word's branch at row and cell level, as they read it at block
+level, and an edit there is refused. The probes are Phase A's 19, unchanged at `9db1a3cbd` (each of
+the 33 files checked against its blob there). docx4j's phase-2 tests are ported against them, and
+its readers' probe is built here as docx4j builds it.
+
+**Commits.**
+
+- docx4j-python:
+  - `8b5ea5b`: a row- or cell-level branch's `w:tr` and `w:tc` typed;
+  - `5d5f8a5`: the revisions engine, with its tests;
+  - `f32927a`: the text model and the content API, with docx4j's phase-2 tests;
+  - the commit that carries this section: the CHANGELOG, `tests/README.md`, `docs/UPSTREAM.md`
+    report 23.
+- The fork (`~/git/docx4j-xsdata`, branch `docx4j`, local only): `297ba8b7`, stage 11 item 27
+  (tests only).
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| typed rows and cells | `docx4j_py/runtime.py` | `BRANCH_CHILD_NAMES` adds `w:tr` and `w:tc`, so `branch_child_class` binds a branch's row as the table binds it (`Tr`) and a branch's cell as the row binds it (`Tc`), in a row- or cell-level control's content and custom XML too; `element_names` writes them `w:tr` and `w:tc` (`Tc`'s own name is its type's, `CT_Tc`) |
+| the record's parse | `openpackaging/mc_block_level.py` | `_record_hook` binds a `w:sdt`, `w:tr` or `w:tc` straight in a recorded element's branch as a container of the record's level binds it (`Body1`, `Tbl`, `Tr`), so a `word`-mode record of a cell-level element holds `Tc`s |
+| the text model | `model/text/extractor.py` | `_rows` and `_cells`: the element compared with its other branches (`mce.branches_differ` at its address) and Word's branch walked in its place; a `word`-mode record read for the container (10.3) |
+| the revisions engine | `model/revisions/lister.py`, `tables.py`, `resolver.py`, `texts.py` | `_row_items`, `_row_tokens`, `_cell_items`, `_cell_tokens`; `_alternate_level` takes its level's walk; `tables.rows_of` and `cells_of` read Word's branch; `tables.has_rows`; `Resolver.row` over it; `row_text` through `cells_of` and `rows_of` |
+| the content API | `model/content/text_model.py`, `table.py`, `reports.py`, `body.py`, `controls.py` | `block_list_of` answers a row- or cell-level element with Word's branch; `rows_of` and `cells_of` through it; read-only row and cell views; `refuse_read_only` (factored out of `recording`); `kept_content_under` and the tracked deletions' refusal; `outline()`'s cells through any wrapper; `ContentControl.form` through a kept element |
+| tests | `tests/openpackaging/test_mce_levels.py` (256 to 319), `tests/revisions/test_alternate_content.py` (9 to 19); the fork's `tests/fork/test_wildcard_class_local_names.py` (5) | 10.4 |
+| documents | `CHANGELOG.md`, `tests/README.md`, `docs/UPSTREAM.md` (report 23), the fork's `docs/fork/CHANGES.md` (item 27) | |
+
+### 10.2 The fork's item
+
+The brief asked for stage 11 to be extended as item 27. **The fork needed no code.** Item 25's hook
+is generic: the names it is asked for are this package's (`runtime.BRANCH_CHILD_NAMES`), and the
+answer is `runtime.branch_child_class`, which reads the container's binding from the metadata.
+Adding `w:tr` and `w:tc` there was enough. The probes saved canonically identical and nothing was
+newly skipped, so no fork change was made.
+
+`w:tc` is a new shape for the hook all the same. `CT_Tc` has no global element at all, so the lookup
+by name leaves a cell-level branch's cell an `AnyElement` tree. That is lossless, but a reader of
+typed cells cannot see it. `w:sdt`, by contrast, found a global element of the wrong class. So item
+27 is five tests that pin what this package now relies on:
+
+- without the hook such a name stays a wildcard tree and nothing is skipped;
+- with it the name is typed as its container binds it;
+- a child the hook typed is an enclosing class of what it holds, so a branch nested in it is bound
+  by it;
+- a global name is asked about before the lookup by name;
+- item 26's table writes the typed children back under their element names, and they read back
+  equal.
+
+The five tests pass on the stage-11 code; they fail only if that behaviour regresses.
+`CHANGES.md` has the entry, and `docs/UPSTREAM.md` report 23 records the shape as report 21's
+second use. The fork's suite went from 1,651 passed and 1 skipped to 1,656 passed and 1 skipped.
+
+### 10.3 The walkers, and what each does now
+
+docx4j's section 12.1 surveyed every `instanceof Tr` and `Tc`. Here the survey was a grep across
+`docx4j_py/model/`, `docx4j_py/docx/`, `traversal.py` and `child.py`. It looked for the row and cell
+classes (`Tr`, `Tc`, `trees.cls("Tr")`), their names (`W_TR`, `W_TC`, `"tr"`, `"tc"`),
+`rows_of` and `cells_of`, and the text model's `TextRow` and `TextCell`. Each walker found is
+below, with what it does now in `preserve` mode. "Word's branch" is `mce_branch`'s: the first Choice
+over docx4j's understood list, else the Fallback.
+
+| walker | what it does now | before (Phase A) |
+|---|---|---|
+| **text model** `Extractor._rows`, `_cells` | Word's branch walked in the element's place; `mce.branches_differ` at the element's address (`body/1/1`); a row inside it is `body/1/1/0`; in `word` mode the record for the container raises the same warning at the same address | passed by, no warning |
+| Markdown (`model/text/markdown.py`, `model/markdown/export.py`, `Table.to_markdown`), plain text (`model/text/plain.py`), the outline's preview | read the text model's `TextRow`s and `TextCell`s, so they follow it | missing the branch's rows and cells |
+| **revisions** `Lister._table_tokens` → `_row_items`, `_row_tokens`, `_cell_items`, `_cell_tokens` | a row- or cell-level element goes to `_alternate_level` with its level's walk: Word's branch's changes listed where it stands, the others' as twins by kind and position; `accept_all`'s listing walks every branch | passed by: nothing listed |
+| `tables.rows_of`, `cells_of` (and their callers `record_of`, `change_text`, `accept`, `reject`, `collapse_grid`, `remove_cell`, `in_change`, `has_records`) | through `trees.block_items`, which answers the element with Word's branch, as docx4j's `Lister.rowsOf` and `cellsOf`; a row or cell there is held by the branch's list | passed by |
+| `tables.has_rows` (new), `Resolver.row` | a table goes only when no branch has a row left | `rows_of` empty |
+| `texts.row_text`, `_cell_text` | through `cells_of` and `rows_of`: controls, custom XML and a kept element | direct `w:tc` children; a nested table's direct `w:tr`s |
+| `revisions._sweep_content` | through `trees.children`, so Word's branch only, as docx4j's sweep | the same, at block level |
+| **content API** `text_model.block_list_of`, `block_children_of` | a row- or cell-level element answers with Word's branch's list, and that branch with its own, so a path through the element names the branch's index | block level only |
+| `text_model.rows_of`, `cells_of` (`_wrapped`) | descend into the element as into a row- or cell-level control; a row or cell there is held by the branch's list | passed by |
+| `Table.rows`, `row_count`, `values`, `cell()`, `column_widths_twips`, `to_dict`; `TableRow.cells`, `cell_count`, `values`, `row_index`; `TableCell.cell_index`, `address`, `body` | read Word's branch; a row or cell view there has a read-only body (`TableRow.parent_body`, `TableCell._parent_body` through `Body.body_for`) | passed by |
+| edits: `TableRow.insert_rows`, `delete`, `values`, `is_header`; `TableCell.value`, `width`, `insert_paragraph`, `insert_text` and its body's verbs; `Table.values`, `header_row_count`, `delete_rows` | `address.read_only` for a row or cell in a kept branch, refused before anything changes (`_refuse_in_branch`; the two setters that open no report ask `refuse_read_only`) | not reachable |
+| tracked deletions: `Table.delete`, `Table.delete_rows`, `TableRow.delete`, `Body.clear` (through `tracking.track_deleted_row`, `delete_row_content`, `_delete_blocks`, `Body._row_elements`) | refused with `address.read_only` when they would mark content in a kept block-, row- or cell-level element (`kept_content_under`), since `cells_of` and the cells' blocks reach only Word's branch; untracked, the element goes whole | the row walk passed a row- or cell-level element by; `Body.clear` over a block-level element raised `address.read_only` part-way, at the branch's first paragraph, the paragraphs before it already marked (a Phase A gap, closed here) |
+| `Table.add_rows`, `tracking.track_inserted_table` | unchanged: new rows go into the table's own content; a new table holds no element | the same |
+| `table.cell_of` (`Paragraph.parent_table_cell`, `Table.parent_table_cell`) | the parent climb passes over the `mc` wrappers and finds the cell view in a branch | None: `rows_of` did not hold the row |
+| `reports._table_shape`; `outline()`'s table walk (`_cells_with_paths`, new) | rows and columns of Word's branch; a cell's blocks are the table's children at their paths through any wrapper, the element or a row- or cell-level control, which is a path step and no entry of its own | rows and cells by index, so a row-level control's (and now an element's) rows came out as `tc` entries |
+| `addresses.path_of`, `resolve_path`, `_addresses_under`; `Body.iter_paragraphs`, `paragraphs`, `element_at`; `comments.markers_of`; `controls._collect`; `lists_of`, `inline_pictures` (through the paragraphs) | through `block_children_of`, so through Word's branch, the views read-only | passed by |
+| `ContentControl.form` | a leading kept element is read through to Word's branch | an `SdtBlock` whose content began with a block-level element read `"run"` (`mc-sdt-block-newest-first`; a Phase A gap) |
+| `ContentControl._ancestor_table`, `table._ancestor` | parent climbs by element name, over the `mc` wrappers | the same |
+| `api_script._table_grid` | direct children by name: an element among rows or cells is not expressible, so the whole table goes to `insert_ooxml` as XML | the same |
+| `describe()` (`_styles_in_use`, `_revision_authors`) | `iter_nodes(mce="all")` now reaches a cell-level branch's typed cells, so a style or a revision's author there is counted (a built case: author `Zed` found, where it was not) | a wildcard `w:tc`'s content was not walked |
+| the python-docx facade (`docx/table.py` `_rows_of`, `_cells_of`) | direct `w:tr` and `w:tc` children, as python-docx's `tr_lst` and `tc_lst`: passes the element by | the same |
+| the property resolver | no parent climb in this port: it is handed a `w:pPr` and does not know the table | the same |
+| `traversal` (`walk`, `iter_nodes`, `find`, `text_of`), `child.iter_children`, `link_parents` | level-blind as before; a cell-level branch's cells are typed, so `find(P)` reaches their paragraphs, and their parents are linked | a wildcard tree: its text read by name, `find(P)` not reaching inside |
+| CR-010's islands | a text box straight in a run of a cell-level branch's cell (a bare `w:drawing`) is typed now and needs no island; one in a run-level `mc:AlternateContent` there is a wildcard tree and an island, as anywhere (Phase B) | the whole cell a wildcard tree: an island either way |
+
+### 10.4 docx4j's tests at `9db1a3cbd`
+
+Ported against the probes, as section 4.4 item 6 lists them.
+
+| docx4j | here |
+|---|---|
+| `McBlockLevelLoadTest.preserveModeKeepsBlockLevelElements`, every container | `test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_branch` (17): kept whole, nothing recorded, every branch, its content and the prefixes written, whole after a round trip, the text the same in both modes and Word's branch's |
+| `McBlockLevelProbesTest.preserveModeKeepsEveryBranch` without its exception | already held for all 19 by Phase A's `test_preserve_saves_each_probe_canonically_identical` |
+| `McBlockLevelProbesTest.preserveModeReadsAsWordsSave` | `test_preserve_mode_reads_as_word_365s_save` (14): before and after a `preserve` save |
+| `McBranchSdtTest` (`staxPath`'s `check`, `xmlUtilsUnmarshalString`) | `test_a_sdt_in_either_branch_is_its_containers_kind_at_every_level` (both modes) and `test_a_fragment_types_a_sdt_in_either_branch_at_every_level`: `SdtBlock` ×4, `SdtRun` ×2, `CTSdtRow` ×2, `CTSdtCell` ×2 in `preserve`; the binder and preprocessor paths are JAXB's and have no counterpart |
+| `McBlockLevelReadersTest.textModelWarnsFromTheRecord`, its probe | `_readers_probe()` built as docx4j builds it; `test_the_text_model_warns_from_the_record_at_row_and_cell_level_too`: `body/3/1` and `body/3/2/1` among nine or more, the same in both modes |
+| `TrackedChangesAlternateContentTest`'s row and cell cases and two row-removal cases | `tests/revisions/test_alternate_content.py`: six for the cases, two for the removal |
+
+Beyond docx4j's tests, the new ones cover:
+
+- the typing (`test_a_row_or_cell_level_branch_holds_typed_rows_and_cells`, six containers);
+- the record's parse;
+- the content API's rows, cells and refusals, including the tracked deletions;
+- `word` mode's edits;
+- `outline()`, Markdown and `traversal`;
+- the control's `form`;
+- a row's and a nested table's revision text.
+
+### 10.5 The numbers
+
+- **The suite:**
+  - the whole suite: 4,855 passed, 8 skipped (Phase A's 9.8: 4,782 and 8);
+  - the 73 new tests: `test_mce_levels.py` 63, `test_alternate_content.py` 10;
+  - nothing else moved but 10.7's.
+- **Unchanged:**
+  - `scripts/roundtrip.py`: 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign
+    respellings;
+  - CR-011's ratchet: 1,291 pass, 0 fail, 293 pending of 1,584, goldens 12 of 12, and
+    `conformance.tsv` unchanged (`git status` clean);
+  - the agreement test: 638 passed;
+  - CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`): 68
+    passed;
+  - the parity goldens: 277 passed, `PINS` empty;
+  - CR-002 section 16's tests (`test_private_readers.py`, `test_adoption.py`): 727 passed;
+  - `scripts/threads.py`: no configuration lost or altered a document.
+- **`generate.sh --check`** was not run: no input of the generated code changed (no schema, name
+  table or `el` table), so nothing was regenerated.
+- **The fork:** 1,656 passed, 1 skipped (1,651 before).
+- **`scripts/bench_marshal.py`** (`--runs 7`, three runs each, this machine):
+
+  | | before | after |
+  |---|---:|---:|
+  | `Symbols.docx` parse | 196 to 210 ms | 194 to 199 ms |
+  | `Symbols.docx` marshal | 251 to 263 ms | 249 to 253 ms |
+  | the 14 main parts, parse | 242 to 254 ms | 236 to 241 ms |
+  | the 14 main parts, marshal | 301 to 313 ms | 298 to 303 ms |
+
+  Within the band: the hook's name test is one set lookup, made only for a child of a wildcard.
+- **`import docx4j_py`:** 613 to 646 ms, against 629 to 654 before (seven runs each, `-X
+  importtime`), 242 modules both times.
+- **The acceptance artefacts:** `out/acceptance/` was regenerated and compared with a copy made
+  before the first change (`out/acceptance-before-cr012a2/`).
+  - `scripts/compare_acceptance.py`: 13 artefacts, 175 entries, 0 differing beyond the wall-clock
+    dates;
+  - entry by entry, with the dates scrubbed: 175 of 175 identical, 167 of them byte for byte.
+
+### 10.6 Departures, with why
+
+1. **No fork code** (10.2). The brief expected the hook's extension in the fork. The hook's names
+   are this package's, so the extension is `runtime.py`'s, and the fork's item is tests and a
+   record.
+2. **A tracked deletion that would mark content in a kept branch is refused.** This covers a
+   table, its rows, a row and a body's `clear()`.
+   - docx4j has no content API, so there is nothing to follow.
+   - The marks would land in Word's branch alone, which is the edit section 4.1 item 5 refuses.
+   - An untracked deletion takes the element whole and is made.
+   - `Body.clear()` under tracking refuses a block-level element too, before it changes anything.
+     In Phase A it raised part-way, at the branch's first paragraph, leaving the paragraphs before
+     it marked deleted.
+3. **`outline()`'s table walk treats any wrapper among rows or cells as a path step with no entry
+   of its own.** That covers the element and a row- or cell-level content control.
+   - Phase A's walk went by index, so a row-level control's rows came out as `tc` entries. The
+     element would have done the same.
+   - Now a cell's blocks are the table's children at their full paths, as `rows_of` and `cells_of`
+     read them.
+   - No test pinned the old shape.
+4. **`ContentControl.form`** reads a leading kept element through. That fixes Phase A's `"run"`
+   for a block-level control (10.3).
+5. **The python-docx facade passes row- and cell-level elements by**, as python-docx reads a
+   table's own `w:tr` and a row's own `w:tc`. This is 9.9's departure 8, at these levels.
+6. **A twin `w:cellIns` or `w:cellDel` in a branch Word does not read is not resolved** (10.8),
+   as in docx4j: `remove_cell` finds cells through `cells_of`, which reads one branch.
+7. **OpenDoPE's two cases are not ported**, as section 4.4 item 5 says:
+   - docx4j's `RemovalHandler.xslt` row count, `OpenDoPEHandler.emptyKeepingTableShape` and
+     `McRowCellLevelOpenDoPETest`;
+   - this package's template fill has no OpenDoPE conditions or repeats and removes no control
+     (CR-003 section 17, `model/customxml/template.py`);
+   - so neither a row nor a control is ever removed or emptied there, and there is nothing to
+     port.
+
+### 10.7 Pre-existing tests whose expectation changed, and why
+
+All five are Phase A's pins, in `tests/openpackaging/test_mce_levels.py`. Each pinned the pass-by
+that this phase replaces.
+
+- `test_the_body_passes_row_and_cell_level_by` (4) is now
+  `test_the_body_reads_words_branch_at_row_and_cell_level`.
+  - **Then:** no branch paragraph in `Body.paragraphs`, and only the plain rows and cells.
+  - **Now:** the `w16sdtfl` paragraph is there, and the rows and cells are Word's branch's.
+- `test_the_text_model_passes_row_and_cell_level_by` (4) is now
+  `test_the_text_model_reads_words_branch_at_row_and_cell_level`.
+  - **Then:** `I prefer\tbelow` with no branch row, `I prefer` with no branch cell, and `word`
+    mode giving something else.
+  - **Now:** `row\tw16sdtfl` and `I prefer\tw16sdtfl`, the same in both modes and the same as Word
+    365's save.
+- `test_the_revisions_engine_passes_row_and_cell_level_by` (1) is now
+  `test_the_revisions_engine_walks_the_row_and_cell_probes`.
+  - The probes hold no tracked change, so the expectation is unchanged: nothing listed, nothing
+    accepted.
+  - The name said "passes by", which is no longer so. It now takes all five row and cell probes in
+    both modes.
+- `test_the_text_models_warnings_are_the_same_in_both_modes_on_the_probes` now covers all 19 probes.
+  It left out the four row and cell probes, whose warning Phase A did not raise.
+- `test_the_text_models_warnings_are_the_same_in_both_modes_in_every_block_container` (11) is now
+  `..._in_every_container` (17). The row and cell containers raise their one warning in both modes
+  now.
+
+Nothing else in the suite moved. The fork's upstream tests are untouched.
+
+### 10.8 Found, and not done
+
+- **A twin cell marker in an unread branch.** Take a `w:cellDel` (or `w:cellIns`) in each branch of a
+  cell-level element. Accepting or rejecting the listed change removes Word's branch's cell, but
+  the twin in the Fallback keeps its cell and its marker.
+  - `tables.remove_cell` finds cells through `cells_of`, which reads Word's branch, so it does not
+    find the twin.
+  - docx4j's `Tables.removeCell` over `Lister.cellsOf` does the same.
+  - Finding the twin is easy. Widening its neighbour is not: the neighbour may stand outside the
+    element and be shared by every branch, and the primary's removal has already widened it.
+  - Left, with docx4j, and worth telling docx4j-25. Word never writes a row- or cell-level element
+    (CR-051 phase 0).
+- **Phase B's typing.** A `w:p`, `w:tbl` or `w:r` in a branch is as before:
+  - `w:p` and `w:r` are global, so typed already;
+  - a `w:tbl` in a block-level branch is still a wildcard, so `Body.tables` passes a table there by
+    (9.11); the text model reads it through a typed copy (`Extractor._typed_block`).
+- **The inspector.** CR-050's inspector, docx4j's other reader of the record at row and cell level
+  (`inspectorFindsTheRecordedBranchesWherePreserveModeHasThem`), has no port here (9.11).
+- **docx4j's 17.4.0 switch (its 12.4)** is not this package's: `preserve` has been the default here
+  since Phase A (Q7).
+- **CLAUDE.md** is not edited, by the brief. Its CR-012 status line could say that Phase A2 is
+  implemented, its Word check awaited. The Status line of this CR and the change-requests README
+  row are left to the coordinator, by the brief.
+- **A fork release.** Stages 9 to 11 are local, item 27 among them, as 9.11 says.
+
+### 10.9 The Word check (staged, awaited)
+
+Six files are in `out/cr012-a2-word-check/`, with a `README.txt` saying what each should show.
+They are also copied to `~/vbShares/Office 2016/__tmp/python-cr012a2/`. Each probe was loaded, its
+main part unmarshalled so that this engine writes it (the branch rows and cells from typed `Tr` and
+`Tc`), and saved.
+
+- In `preserve` mode, five saves, each canonically identical to its source:
+  - `cr012a2-1-row-newest-first-preserve-mode.docx`;
+  - `cr012a2-2-sdt-row-newest-first-preserve-mode.docx`;
+  - `cr012a2-3-cell-newest-first-preserve-mode.docx`;
+  - `cr012a2-4-sdt-cell-newest-first-preserve-mode.docx`;
+  - `cr012a2-5-tc-block-newest-first-preserve-mode.docx`.
+
+  These are the five row and cell probes docx4j checked (its `mc-fun/<name>-docx4j-preserve.docx`
+  on the share). The fifth is `mc-tc-block-newest-first`, a block-level element in a cell.
+- In `word` mode: `cr012a2-6-row-newest-first-word-mode.docx`. Its row-level element is replaced by
+  the `w16sdtfl` row, and the root's `mc:Ignorable` is `w16sdtfl`.
+
+Expected: each opens without a repair prompt and shows Word 365's branch, `w16sdtfl`, where the
+element stands, as Word 365's own save of the probe does. Each already reads so in the text model.
+**Not yet checked.**

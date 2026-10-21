@@ -129,8 +129,8 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   Markdown (with `mce.branches_differ`, raised in `word` mode from the record), `outline()`,
   `Body.paragraphs`, `element_at` and `traversal`; a view over content in a kept branch is
   read-only, and every mutating verb refuses it with `address.read_only`. The python-docx facade
-  and `describe()` pass the element by, and so do the content API, the text model and the
-  revisions engine at row and cell level, as docx4j's CR-051 phase 1 does. Held to docx4j's
+  and `describe()` pass the element by; at row and cell level so did the content API, the text
+  model and the revisions engine, as docx4j's CR-051 phase 1 does, until Phase A2 (under Changed). Held to docx4j's
   19 `mc-fun` probes and Word 365's saves of 14 of them, copied into `tests/fixtures/mc-fun/`.
 
 ### Changed
@@ -313,12 +313,33 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   once, where the element stands, each with the other branches' change of its kind at its position
   as a twin that resolves with it; `accept_all` and `reject_all` resolve every branch. Until now
   such an element was read as holding nothing. The revisions engine's trees answer the element
-  with Word's branch; a row- or cell-level one is passed by.
+  with Word's branch; a row- or cell-level one too since Phase A2 (below).
 - **A view over content in a kept `mc:AlternateContent` branch is read-only**
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 4.1 item 5): an edit there,
   at any level, would change one branch alone, so the content API raises `AddressError`
   (`address.read_only`), as for a text box's address (CR-011 Q9). Load with
   `LoadOptions(mc_block_level="word")` to edit Word's branch of a block-level element in place.
+- **A row- or cell-level `mc:AlternateContent` is read as Word reads it, in `preserve` mode too**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) Phase A2, section
+  [10](docs/change-requests/CR-012-type-kept-mc-branches.md#10-phase-a2-implementation-notes-2026-10-21),
+  the port of docx4j's CR-051 phase 2): Phase A kept such an element whole and its readers passed it
+  by, so a row's or a cell's content in its branches was missing. Now:
+  - the rows and cells in its branches are typed (`Tr`, `Tc`, where a branch's `w:tc` was a
+    wildcard tree) and written back as `w:tr` and `w:tc`. Code that looked for an `AnyElement`
+    `w:tc` in an `mc:Choice` among a row's cells now finds a `Tc`;
+  - the text model and Markdown read Word's branch in the element's place, with
+    `mce.branches_differ` at its address, the same in both modes. So do `Table.rows`,
+    `TableRow.cells`, `Body.paragraphs`, `outline()` and the addresses (`body/1/1/0`, a row in the
+    element's branch);
+  - the views over that branch are read-only: every edit raises `address.read_only`, and so does a
+    table's verb that would edit one of them, refused before anything changes;
+  - a tracked deletion of a table, a row or a body that would mark content in a kept element is
+    refused; untracked, the element goes whole;
+  - the revisions engine lists Word's branch's row and cell changes once, the other branches' as
+    twins that resolve with them, and removes a table left with no rows only when no branch has
+    one;
+  - `outline()` gives a cell's blocks under the table at their full paths through any wrapper, so
+    a row-level content control's rows no longer come out as `tc` entries.
 
 ### Fixed
 
@@ -418,6 +439,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 9.10): the view each insert
   returns was found by scanning the body's content for the new paragraph; `Body.view_for` now takes
   the list the caller knows, as `insert_*`, `body[i]` and iterating the body do.
+- **`ContentControl.form` of a block-level control whose content begins with a kept
+  `mc:AlternateContent`** ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section
+  10.3) read `"run"`; it reads Word's branch and gives `"block"`.
+- **A tracked `Body.clear()` over a kept block-level `mc:AlternateContent`**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 10.6) raised
+  `address.read_only` part-way, the paragraphs before the element already marked deleted; it is
+  refused before anything changes.
 - **A content control straight in an `mc:Choice` or `mc:Fallback` keeps its content**
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 1.1 item 2): every
   `w:sdt` there was typed as a block-level control, so a run-level one's runs were skipped and lost
