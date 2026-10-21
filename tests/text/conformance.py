@@ -22,7 +22,7 @@ A check **pends** when the engine does not advertise every statement it needs
 a golden ``html reader absent``. The report is a TSV in docx4j's form
 (:data:`HEADER`), one row per check.
 
-**The one departure** (CR-011 section 11): docx4j's run stops at the first
+**The first departure** (CR-011 section 11): docx4j's run stops at the first
 check that fails, since every check docx4j makes passes, so its report has
 ``PASS`` and ``PENDING`` rows only. This port records a failing check as a
 ``FAIL`` row with its reason and goes on, and an engine's exception fails the
@@ -34,6 +34,11 @@ checks that read its output, so that today's readers can be measured.
 
 Every FAIL reason is this port's own (docx4j writes none): its assertion
 message without the context the row's columns already give.
+
+**The second departure** (CR-011 Q7, section 13): an engine may name a check
+deferred (:meth:`Engine.deferred`), content a decision leaves unread although
+its statement is advertised, and the check pends with that reason. docx4j's
+engine names none, so its run is unchanged.
 """
 
 from __future__ import annotations
@@ -205,6 +210,15 @@ class Engine(ABC):
     @abstractmethod
     def extract(self, fixture: Path, view: str, scenario: str, format: str) -> Output:
         """One fixture read in one view, under one scenario, as ``txt`` or ``md``."""
+
+    def deferred(self, fixture: str, case: str, item: str, scenario: str) -> str | None:
+        """Why a check the engine's statements cover is left pending, or None to make it.
+
+        This port's (CR-011 Q7): content a decision defers, whose statement
+        (REQ-512) also covers content the engine reads, so that advertising
+        less would pend checks that pass. docx4j's adapter defers nothing.
+        """
+        return None
 
     def inspect(self, fixture: Path) -> Inspection:
         """A fixture's inspection (WD section 9)."""
@@ -568,14 +582,18 @@ class Run:
         implemented = set(self.engine.implemented())
         missing = [s for s in statements if s not in implemented]
         if not missing:
-            return True
+            reason = self.engine.deferred(row["fixture"], row["case"], item, scenario)
+            if reason is None:
+                return True
+            self.pend(row, item, view, scenario, reason)
+            return False
         n = phase(statements)
         owner = "the inspector (CR-050)" if n == 9 else f"phase {n}"
         self._add(row, item, view, scenario, "PENDING", f"{owner}; {', '.join(missing)}")
         return False
 
     def pend(self, row: Row, item: str, view: str, scenario: str, reason: str) -> None:
-        """A check left pending for a reason of its own (a rule not yet in the WD)."""
+        """A check left pending for a reason of its own (a rule not yet in the WD, content deferred)."""
         self._add(row, item, view, scenario, "PENDING", reason)
 
     def passed(self, row: Row, item: str, view: str, scenario: str) -> None:

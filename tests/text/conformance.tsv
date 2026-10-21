@@ -540,11 +540,11 @@ extraction-probe.docx	38	CXP38_DATA	accepted	default	PASS
 extraction-probe.docx	38	CXP38_DATA	original	default	PASS	
 extraction-probe.docx	38	CXP38_DATA	markup	default	PASS	
 extraction-probe.docx	39	EMB39_XLSX_CELL	accepted	default	PASS	
-extraction-probe.docx	39	EMB39_XLSX_CELL	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	39	EMB39_XLSX_CELL	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe.docx	39	EMB39_XLSX_CELL	original	default	PASS	
-extraction-probe.docx	39	EMB39_XLSX_CELL	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	39	EMB39_XLSX_CELL	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe.docx	39	EMB39_XLSX_CELL	markup	default	PASS	
-extraction-probe.docx	39	EMB39_XLSX_CELL	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	39	EMB39_XLSX_CELL	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe.docx	40	EMB40_DOCX_TEXT	accepted	default	PASS	
 extraction-probe.docx	40	EMB40_DOCX_TEXT	accepted	embedded: true	FAIL	expected 1, got 0
 extraction-probe.docx	40	EMB40_DOCX_TEXT	original	default	PASS	
@@ -555,11 +555,11 @@ extraction-probe.docx	40	EMB40_NESTED_TEXT	accepted	default	PASS
 extraction-probe.docx	40	EMB40_NESTED_TEXT	original	default	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	markup	default	PASS	
 extraction-probe.docx	41	OLE41_NATIVE_TEXT	accepted	default	PASS	
-extraction-probe.docx	41	OLE41_NATIVE_TEXT	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	41	OLE41_NATIVE_TEXT	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an OLE 1.0 package
 extraction-probe.docx	41	OLE41_NATIVE_TEXT	original	default	PASS	
-extraction-probe.docx	41	OLE41_NATIVE_TEXT	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	41	OLE41_NATIVE_TEXT	original	embedded: true	PENDING	deferred (CR-011 Q7): an OLE 1.0 package
 extraction-probe.docx	41	OLE41_NATIVE_TEXT	markup	default	PASS	
-extraction-probe.docx	41	OLE41_NATIVE_TEXT	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	41	OLE41_NATIVE_TEXT	markup	embedded: true	PENDING	deferred (CR-011 Q7): an OLE 1.0 package
 extraction-probe.docx	42	ACX42_CAPTION	accepted	default	PASS	
 extraction-probe.docx	42	ACX42_CAPTION	original	default	PASS	
 extraction-probe.docx	42	ACX42_CAPTION	markup	default	PASS	
@@ -675,65 +675,65 @@ extraction-probe-external.docm	52	APP52_COMPANY	original	metadata: true	FAIL	exp
 extraction-probe-external.docm	52	APP52_COMPANY	markup	default	PASS	
 extraction-probe-external.docm	52	APP52_COMPANY	markup	metadata: true	FAIL	expected 1, got 0
 extraction-probe.docx	53	EMB53_SLIDE_ONE	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_SLIDE_ONE	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_SLIDE_ONE	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SLIDE_ONE	original	default	PASS	
-extraction-probe.docx	53	EMB53_SLIDE_ONE	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_SLIDE_ONE	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SLIDE_ONE	markup	default	PASS	
-extraction-probe.docx	53	EMB53_SLIDE_ONE	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_SLIDE_ONE	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_GROUP_FIRST	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_GROUP_FIRST	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_GROUP_FIRST	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_GROUP_FIRST	original	default	PASS	
-extraction-probe.docx	53	EMB53_GROUP_FIRST	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_GROUP_FIRST	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_GROUP_FIRST	markup	default	PASS	
-extraction-probe.docx	53	EMB53_GROUP_FIRST	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_GROUP_FIRST	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_GROUP_NESTED	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_GROUP_NESTED	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_GROUP_NESTED	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_GROUP_NESTED	original	default	PASS	
-extraction-probe.docx	53	EMB53_GROUP_NESTED	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_GROUP_NESTED	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_GROUP_NESTED	markup	default	PASS	
-extraction-probe.docx	53	EMB53_GROUP_NESTED	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_GROUP_NESTED	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_AFTER_GROUP	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_AFTER_GROUP	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_AFTER_GROUP	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_AFTER_GROUP	original	default	PASS	
-extraction-probe.docx	53	EMB53_AFTER_GROUP	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_AFTER_GROUP	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_AFTER_GROUP	markup	default	PASS	
-extraction-probe.docx	53	EMB53_AFTER_GROUP	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_AFTER_GROUP	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_A	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_A	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_A	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_A	original	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_A	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_A	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_A	markup	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_A	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_A	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_B	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_B	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_B	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_B	original	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_B	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_B	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_B	markup	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_B	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_B	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_C	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_C	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_C	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_C	original	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_C	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_C	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_C	markup	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_C	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_C	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_D	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_D	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_D	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_D	original	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_D	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_D	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_TABLE_D	markup	default	PASS	
-extraction-probe.docx	53	EMB53_TABLE_D	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_TABLE_D	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SLIDE_TWO	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_SLIDE_TWO	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_SLIDE_TWO	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SLIDE_TWO	original	default	PASS	
-extraction-probe.docx	53	EMB53_SLIDE_TWO	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_SLIDE_TWO	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SLIDE_TWO	markup	default	PASS	
-extraction-probe.docx	53	EMB53_SLIDE_TWO	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_SLIDE_TWO	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	accepted	default	PASS	
-extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	accepted	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	accepted	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	original	default	PASS	
-extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	original	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	original	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	markup	default	PASS	
-extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	markup	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe.docx	53	EMB53_HIDDEN_SLIDE	markup	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SPEAKER_NOTES	accepted	default	PASS	
 extraction-probe.docx	53	EMB53_SPEAKER_NOTES	original	default	PASS	
 extraction-probe.docx	53	EMB53_SPEAKER_NOTES	markup	default	PASS	
@@ -795,29 +795,29 @@ extraction-probe-structure.docx	56	LST56_OTHER_LIST	accepted	default	PASS
 extraction-probe-structure.docx	56	LST56_OTHER_LIST	original	default	PASS	
 extraction-probe-structure.docx	56	LST56_OTHER_LIST	markup	default	PASS	
 extraction-probe-structure.docx	57	SHT57_SHOWN	accepted	default	PASS	
-extraction-probe-structure.docx	57	SHT57_SHOWN	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_SHOWN	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_SHOWN	original	default	PASS	
-extraction-probe-structure.docx	57	SHT57_SHOWN	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_SHOWN	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_SHOWN	markup	default	PASS	
-extraction-probe-structure.docx	57	SHT57_SHOWN	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_SHOWN	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_HIDDEN	accepted	default	PASS	
-extraction-probe-structure.docx	57	SHT57_HIDDEN	accepted	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_HIDDEN	accepted	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_HIDDEN	original	default	PASS	
-extraction-probe-structure.docx	57	SHT57_HIDDEN	original	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_HIDDEN	original	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_HIDDEN	markup	default	PASS	
-extraction-probe-structure.docx	57	SHT57_HIDDEN	markup	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_HIDDEN	markup	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	accepted	default	PASS	
-extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	accepted	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	accepted	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	original	default	PASS	
-extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	original	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	original	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	markup	default	PASS	
-extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	markup	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_VERY_HIDDEN	markup	embedded: true; hidden: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_LAST	accepted	default	PASS	
-extraction-probe-structure.docx	57	SHT57_LAST	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_LAST	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_LAST	original	default	PASS	
-extraction-probe-structure.docx	57	SHT57_LAST	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_LAST	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-structure.docx	57	SHT57_LAST	markup	default	PASS	
-extraction-probe-structure.docx	57	SHT57_LAST	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe-structure.docx	57	SHT57_LAST	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	58	VAN58_SHOWN	accepted	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_SHOWN	original	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_SHOWN	markup	default	PASS	
@@ -1150,23 +1150,23 @@ extraction-probe-inspect.docx	66	PIC66_DECOR_DESCR	accepted	default	PASS
 extraction-probe-inspect.docx	66	PIC66_DECOR_DESCR	original	default	PASS	
 extraction-probe-inspect.docx	66	PIC66_DECOR_DESCR	markup	default	PASS	
 extraction-probe-inspect.docx	66	ROW66_SHOWN	accepted	default	PASS	
-extraction-probe-inspect.docx	66	ROW66_SHOWN	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	ROW66_SHOWN	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	ROW66_SHOWN	original	default	PASS	
-extraction-probe-inspect.docx	66	ROW66_SHOWN	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	ROW66_SHOWN	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	ROW66_SHOWN	markup	default	PASS	
-extraction-probe-inspect.docx	66	ROW66_SHOWN	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	ROW66_SHOWN	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	accepted	default	PASS	
-extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	original	default	PASS	
-extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	markup	default	PASS	
-extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	COL66_HIDDEN_CELL	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	ROW66_HIDDEN	accepted	default	PASS	
-extraction-probe-inspect.docx	66	ROW66_HIDDEN	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	ROW66_HIDDEN	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	ROW66_HIDDEN	original	default	PASS	
-extraction-probe-inspect.docx	66	ROW66_HIDDEN	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	ROW66_HIDDEN	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	66	ROW66_HIDDEN	markup	default	PASS	
-extraction-probe-inspect.docx	66	ROW66_HIDDEN	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	ROW66_HIDDEN	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe-inspect.docx	67	MCE67_HERE	accepted	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_HERE	original	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_HERE	markup	default	PASS	
@@ -1536,9 +1536,9 @@ extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	
 extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	FAIL	expected 1, got None
 extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	altchunks: false	FAIL	expected 1, got None
 extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	53	order	accepted	embedded: true	FAIL	order marker EMB53_SLIDE_ONE: expected 1, got 0
-extraction-probe.docx	53	order	original	embedded: true	FAIL	order marker EMB53_SLIDE_ONE: expected 1, got 0
-extraction-probe.docx	53	order	markup	embedded: true	FAIL	order marker EMB53_SLIDE_ONE: expected 1, got 0
+extraction-probe.docx	53	order	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
+extraction-probe.docx	53	order	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
+extraction-probe.docx	53	order	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	54	order	accepted	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
 extraction-probe.docx	54	order	original	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
 extraction-probe.docx	54	order	markup	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0

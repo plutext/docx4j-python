@@ -21,8 +21,9 @@ inspector's statements, and ``html reader absent``: the target, not what the
 package meets. So every check docx4j makes is made here, a gap is a ``FAIL``
 row rather than a pending one, and a phase's progress shows as checks going
 from ``FAIL`` to ``PASS`` in the committed report (CR-011 sections 3.6 and
-11). Pending are docx4j's 19, which need an HTML reader, and the inspector's
-214.
+11). Pending are docx4j's 19, which need an HTML reader, the inspector's 214,
+and the 60 checks of the content CR-011 Q7 defers (embedded SpreadsheetML and
+PresentationML packages and OLE 1.0 objects), each named in :data:`DEFERRED`.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ from conformance import HTML_READER_ABSENT, Engine, Output
 from docx4j_py import load
 from docx4j_py.model.text import TextOptions, extract, plain_text
 
-__all__ = ["DOCX4J_IMPLEMENTED", "INSPECTOR", "TextsAdapter"]
+__all__ = ["DEFERRED", "DOCX4J_IMPLEMENTED", "INSPECTOR", "TextsAdapter"]
 
 #: docx4j's ``TextsAdapter.IMPLEMENTED`` at ``198d015a3``: the statements its
 #: CR-046 phases 1 to 3 implement, the chart description case 34 needs
@@ -64,6 +65,39 @@ DOCX4J_IMPLEMENTED = frozenset(
 #: The inspector's statements (WD section 9) and REQ-1204, its check: out of
 #: scope here (CR-011 section 3.7), so never advertised.
 INSPECTOR = frozenset({*(f"REQ-{n}" for n in range(901, 908)), "REQ-1204"})
+
+_WORKBOOK = "deferred (CR-011 Q7): an embedded SpreadsheetML package"
+_PRESENTATION = "deferred (CR-011 Q7): an embedded PresentationML package"
+_OLE10 = "deferred (CR-011 Q7): an OLE 1.0 package"
+_EMBEDDED = "embedded: true"
+_EMBEDDED_HIDDEN = "embedded: true; hidden: true"
+
+#: The checks of the content CR-011 Q7 defers, by (fixture, case, item,
+#: scenario): each a token the embedded package holds, under the scenario that
+#: reads it (a hidden sheet or slide under ``hidden: true`` only, since
+#: without it the token's absence is checked and holds), and case 53's order.
+#: REQ-512 covers an embedded WordprocessingML package too, which is read, so
+#: the statement stays advertised and these are named instead (60 checks).
+DEFERRED: dict[tuple[str, str, str, str], str] = {
+    ("extraction-probe.docx", "39", "EMB39_XLSX_CELL", _EMBEDDED): _WORKBOOK,
+    ("extraction-probe.docx", "41", "OLE41_NATIVE_TEXT", _EMBEDDED): _OLE10,
+    **{
+        ("extraction-probe.docx", "53", token, _EMBEDDED): _PRESENTATION
+        for token in (
+            "EMB53_SLIDE_ONE", "EMB53_GROUP_FIRST", "EMB53_GROUP_NESTED", "EMB53_AFTER_GROUP", "EMB53_TABLE_A",
+            "EMB53_TABLE_B", "EMB53_TABLE_C", "EMB53_TABLE_D", "EMB53_SLIDE_TWO", "order",
+        )
+    },
+    ("extraction-probe.docx", "53", "EMB53_HIDDEN_SLIDE", _EMBEDDED_HIDDEN): _PRESENTATION,
+    ("extraction-probe-structure.docx", "57", "SHT57_SHOWN", _EMBEDDED): _WORKBOOK,
+    ("extraction-probe-structure.docx", "57", "SHT57_LAST", _EMBEDDED): _WORKBOOK,
+    ("extraction-probe-structure.docx", "57", "SHT57_HIDDEN", _EMBEDDED_HIDDEN): _WORKBOOK,
+    ("extraction-probe-structure.docx", "57", "SHT57_VERY_HIDDEN", _EMBEDDED_HIDDEN): _WORKBOOK,
+    **{
+        ("extraction-probe-inspect.docx", "66", token, _EMBEDDED): _WORKBOOK
+        for token in ("ROW66_SHOWN", "COL66_HIDDEN_CELL", "ROW66_HIDDEN")
+    },
+}  # fmt: skip
 
 
 def options(view: str, scenario: str) -> TextOptions:
@@ -93,6 +127,10 @@ class TextsAdapter(Engine):
     def implemented(self) -> Collection[str]:
         """docx4j's statements less the inspector's, and the class path's ``html reader absent``."""
         return (DOCX4J_IMPLEMENTED - INSPECTOR) | {HTML_READER_ABSENT}
+
+    def deferred(self, fixture: str, case: str, item: str, scenario: str) -> str | None:
+        """The checks of CR-011 Q7's deferred content (:data:`DEFERRED`), pending by name."""
+        return DEFERRED.get((fixture, case, item, scenario))
 
     def extract(self, fixture: Path, view: str, scenario: str, format: str) -> Output:
         """One fixture in one view under one scenario, as plain text or Markdown."""

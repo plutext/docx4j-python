@@ -12,7 +12,9 @@ its harness and ``adapter.py`` the engine over the text model
   (``.venv-fork/bin/python tests/text/conformance.py``), so that every phase's
   progress is in the diff and nothing regresses silently. Phase A's report was
   CR-011 section 1's baseline: 941 pass, 410 fail and 233 pending of 1,584,
-  3 of the 12 goldens; Phase B's is 1,146, 205 and 233, 6 of 12 (section 12).
+  3 of the 12 goldens; Phase B's is 1,146, 205 and 233, 6 of 12 (section 12);
+  Phase C's is section 13's. Q7's deferred content pends by name
+  (``adapter.DEFERRED``).
 - **The port's gate.** With docx4j's statement set advertised and nothing
   behind it, the harness makes docx4j's 1,584 checks: 1,565 and 19 pending
   with ``html reader absent``, 1,526 and 58 with ``present``.
@@ -29,7 +31,7 @@ from pathlib import Path
 
 import conformance
 import pytest
-from adapter import DOCX4J_IMPLEMENTED, INSPECTOR, TextsAdapter
+from adapter import DEFERRED, DOCX4J_IMPLEMENTED, INSPECTOR, TextsAdapter
 from conformance import (
     HTML_READER_ABSENT,
     HTML_READER_PRESENT,
@@ -94,12 +96,15 @@ def test_the_run_is_the_committed_report(adapter_run):
     assert REPORT.read_bytes().decode("utf-8") == adapter_run.report()
 
 
-def test_only_docx4js_pending_checks_and_the_inspectors_pend(adapter_run):
-    """The adapter advertises docx4j's statements less the inspector's, so nothing else pends."""
+def test_only_docx4js_pending_checks_the_inspectors_and_q7s_pend(adapter_run):
+    """The adapter advertises docx4j's statements less the inspector's, and names Q7's checks."""
     pending = [c for c in adapter_run.checks if c.status == "PENDING"]
     reader = [c for c in pending if c.reason.endswith(HTML_READER_PRESENT)]
-    inspector = [c for c in pending if c not in reader]
+    deferred = [c for c in pending if c.reason.startswith("deferred (CR-011 Q7): ")]
+    inspector = [c for c in pending if c not in reader and c not in deferred]
     assert len(reader) == 19
+    assert {(c.fixture, c.case, c.item, c.scenario) for c in deferred} == set(DEFERRED)
+    assert len(deferred) == 3 * len(DEFERRED) == 60
     assert len(inspector) == 214
     assert all(c.reason.startswith("the inspector (CR-050); ") for c in inspector)
     assert collections.Counter(c.item for c in inspector if not c.item.startswith("inspect:")) == {
@@ -153,6 +158,25 @@ def test_the_port_makes_docx4js_checks(reader, checked, pending):
     result = conformance.run(Claims(reader))
     assert len(result.checks) == 1584
     assert (result.count_of("PASS") + result.count_of("FAIL"), result.count_of("PENDING")) == (checked, pending)
+
+
+class Deferring(Claims):
+    """docx4j's claims, deferring one token by name."""
+
+    def deferred(self, fixture: str, case: str, item: str, scenario: str) -> str | None:
+        """Case 1's first token in its default scenario."""
+        if (case, item, scenario) == ("1", "CHOICE_ALPHA_123", "default"):
+            return "deferred: a test's"
+        return None
+
+
+def test_a_deferred_check_pends_with_its_reason_and_nothing_else_moves():
+    plain = conformance.run(Claims(HTML_READER_ABSENT)).checks
+    deferring = conformance.run(Deferring(HTML_READER_ABSENT)).checks
+    moved = [(a, b) for a, b in zip(plain, deferring, strict=True) if a != b]
+    assert len(moved) == 3
+    assert all(b.status == "PENDING" and b.reason == "deferred: a test's" for _a, b in moved)
+    assert {b.view for _a, b in moved} == {"accepted", "original", "markup"}
 
 
 def test_without_a_reader_docx4js_19_pend_for_one():
