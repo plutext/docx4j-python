@@ -28,7 +28,10 @@ The records are read through every branch of a row- or cell-level
 docx4j ``Tables.rows`` and ``cells`` since ``901a922a3``, CR-012 section 10.11):
 they are the table's one change whichever branch holds them, and resolving it
 reaches every branch. A merged grid is collapsed along each branch's reading of
-a row (:func:`cell_layouts_of`).
+a row (:func:`cell_layouts_of`), every layout's spans counted from the old ones
+before any is written (docx4j since ``84b202c5a``, CR-012 section 10.12). The
+change's text is what Word shows, the rows of the branch it reads
+(:func:`rows_of`; docx4j ``changeText`` since ``84b202c5a``).
 """
 
 from __future__ import annotations
@@ -424,14 +427,20 @@ def record_of(tbl: Any) -> Any:
 def change_text(tbl: Any) -> str:
     """A table's change's text: every row's where its own properties or grid changed, else the changed rows' (checks 27, 28).
 
-    The rows through every branch of a row-level element, as docx4j's
-    ``changeText`` reads them since ``901a922a3`` (CR-012 section 10.11).
+    The text is what Word shows: the rows of the branch Word reads of a
+    row-level element (:func:`rows_of`, docx4j ``Lister.rowsOf``), not every
+    branch's, for either half. docx4j's ``changeText`` read every branch's rows
+    from ``901a922a3``, unintended, and reads Word's again since ``84b202c5a``
+    (CR-012 section 10.12). The record paths stay on :func:`all_rows_of`, so a
+    record only a branch Word does not read holds is listed, and resolved,
+    with no text of its own; a row's cells are still read through every branch
+    (:func:`in_change`, :func:`_row_differs`).
     """
     from docx4j_py.model.revisions.texts import row_text
 
     whole = _table_differs(tbl)
     return "".join(
-        row_text(tr, View.ACCEPTED) for tr, _owner in all_rows_of(tbl) if whole or (in_change(tr) and _row_differs(tr))
+        row_text(tr, View.ACCEPTED) for tr, _owner in rows_of(tbl) if whole or (in_change(tr) and _row_differs(tr))
     )
 
 
@@ -630,10 +639,20 @@ def collapse_grid(tbl: Any) -> None:
     Every branch's rows of a row-level element are counted
     (:func:`all_rows_of`), and a row's cells along each branch reading of it
     (:func:`cell_layouts_of`): every branch spans the same columns, so the
-    edges are gathered along each, and the new spans set along each, the last
-    first. The row's ``w:gridBefore`` is the row's own, read once; its
+    edges are gathered along each, and the new spans counted along each, the
+    last first. The row's ``w:gridBefore`` is the row's own, read once; its
     ``w:gridAfter`` is counted from the branch Word reads, the first layout
     (docx4j ``Tables.collapseGrid`` since ``901a922a3``, CR-012 section 10.11).
+
+    The new spans are counted along every layout from the spans as they were,
+    then written, and the row's ``w:gridBefore`` and ``w:gridAfter`` after
+    them (docx4j since ``84b202c5a``, CR-012 section 10.12). A cell outside the
+    element is in every layout, so a span written while counting was read by
+    the next layout, Word's, in the new grid's units where the count was still
+    in the old grid's, and every cell after it placed from the wrong edge
+    (core-ts's finding, its CR-013 phase 3). A cell in more than one layout is
+    counted in each, and the count along Word's, the last counted, is the one
+    written (docx4j's ``IdentityHashMap``, its last ``put``).
     """
     from docx4j_py.wml import el
 
@@ -672,26 +691,33 @@ def collapse_grid(tbl: Any) -> None:
     for tr in rows:
         layouts = _layouts(tr)
         before = _grid_before(tr)
-        _set_row_member(tr, "gridBefore", "wBefore", index(before))
         end = before
         # a layout per branch reading of the row: every branch spans the same
-        # columns, so the new spans are counted along each, and the row's
-        # members from the branch Word reads (the first, so the last done)
+        # columns, so the new spans are counted along each, from the spans as
+        # they were (a cell outside the element is in every layout: core-ts
+        # CR-013 phase 3), then written; the row's members from the branch Word
+        # reads (the first, so the last counted). Keyed by identity, as
+        # docx4j's IdentityHashMap: a slotted dataclass is unhashable, and its
+        # == compares fields.
+        counts: dict[int, tuple[Any, int]] = {}
         for layout in reversed(layouts):
             at = before
             for tc in layout:
                 following = at + _span(tc)
-                count = index(min(following, last)) - index(min(at, last))
-                tc_pr = tc.tc_pr
-                if tc_pr is not None:
-                    if count > 1:
-                        grid_span = tc_pr.grid_span if tc_pr.grid_span is not None else el.gridSpan()
-                        grid_span.val = count
-                        _set(tc_pr, "grid_span", grid_span)
-                    else:
-                        tc_pr.grid_span = None
+                counts[id(tc)] = (tc, index(min(following, last)) - index(min(at, last)))
                 at = following
             end = at
+        for tc, count in counts.values():
+            tc_pr = tc.tc_pr
+            if tc_pr is None:
+                continue
+            if count > 1:
+                grid_span = tc_pr.grid_span if tc_pr.grid_span is not None else el.gridSpan()
+                grid_span.val = count
+                _set(tc_pr, "grid_span", grid_span)
+            else:
+                tc_pr.grid_span = None
+        _set_row_member(tr, "gridBefore", "wBefore", index(before))
         _set_row_member(tr, "gridAfter", "wAfter", len(kept) - 1 - index(min(end, last)))
 
 

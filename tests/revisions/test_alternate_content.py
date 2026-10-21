@@ -20,7 +20,10 @@ widened (docx4j ``60bd4b9ad``, its CR-051 section 12.5; CR-012 section 10.10).
 A table's property record, a ``w:tcPrChange`` or ``w:trPrChange`` in a branch
 Word does not read, is part of the table's one change: listed, and resolved in
 every branch, and a merged grid collapsed along each branch's reading of a row
-(docx4j ``901a922a3``, its CR-051 section 12.5; CR-012 section 10.11).
+(docx4j ``901a922a3``, its CR-051 section 12.5; CR-012 section 10.11). Every
+layout's spans are counted from the old ones before any is written, and the
+change's text is the rows of the branch Word reads (docx4j ``84b202c5a``;
+CR-012 section 10.12).
 """
 
 from __future__ import annotations
@@ -666,12 +669,15 @@ def test_rejecting_a_table_property_record_reaches_a_row_in_another_branch() -> 
     """Beyond docx4j's test: the Fallback's ``w:trPrChange`` rejected, by its change and by ``reject_all``.
 
     The record held no properties, so the row's ``w:trPr`` goes whole, its
-    ``w:cantSplit`` with it; the Choice's row is left as it was.
+    ``w:cantSplit`` with it; the Choice's row is left as it was. The change has
+    no text: its text is the rows of the branch Word reads, and the Choice's
+    row is not in the change (docx4j ``changeText`` on ``Lister.rowsOf`` since
+    ``84b202c5a``; ``901a922a3`` gave the Fallback's row, ``F\\r\\n``).
     """
     for reject in (lambda pkg: revisions.tracked_changes(pkg)[0].reject(), revisions.reject_all):
         pkg = with_body(ROW_RECORD_IN_THE_FALLBACK)
         (change,) = revisions.tracked_changes(pkg)
-        assert change.text == "F\r\n", "the text of the row the record is on"
+        assert change.text == "", "the rows Word reads: none is in the change"
         reject(pkg)
         xml = body_xml(pkg)
         assert "trPrChange" not in xml and "cantSplit" not in xml and "<w:trPr" not in xml, xml
@@ -827,17 +833,125 @@ def test_rejecting_a_merged_grid_counts_every_branchs_row() -> None:
     assert [_span(tc) for tc in fallback_row.content] == [2, 1]
 
 
-def test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows() -> None:
-    """PINNED, docx4j's reading since ``901a922a3``, not wanted behaviour: see CR-012 section 10.11.
+# -- every layout's spans counted from the old ones (docx4j 84b202c5a) -------------
 
-    docx4j's ``changeText`` reads the table's rows through its ``rows``, which
-    now reads every branch of a row-level element. So where the table's own
-    properties or grid changed, the change's text has every branch's row: the
-    Choice's and the Fallback's, where Word reads one. The commit's message
-    names the record paths, not the text. A fix would read Word's branch for a
-    whole table and every branch only for the changed rows: docx4j's to decide
-    first. If this test fails, the reading has moved: update CR-012 section
-    10.11 with docx4j.
+#: docx4j's two tests' ``w:tblPr``: centred, recorded with no properties, so that the table's change is listed, and whole.
+CHANGED_TBL_PR = (
+    '<w:tblPr><w:jc w:val="center"/><w:tblPrChange w:id="1" w:author="A"><w:tblPr/></w:tblPrChange></w:tblPr>'
+)
+
+
+def spanned_in_500s(text: str, span: int) -> str:
+    """docx4j's ``spanned`` (``84b202c5a``): a cell over `span` grid columns of 500 twips, its ``w:tcW`` theirs."""
+    return cell(text, f'<w:tcW w:w="{500 * span}" w:type="dxa"/><w:gridSpan w:val="{span}"/>')
+
+
+def regridded_in_500s(rows: str) -> str:
+    """docx4j's grid change (``84b202c5a``): three columns of 1000 now, six of 500 recorded."""
+    current = '<w:gridCol w:w="1000"/>' * 3
+    recorded = '<w:gridCol w:w="500"/>' * 6
+    return (
+        f"<w:tbl>{CHANGED_TBL_PR}"
+        f'<w:tblGrid>{current}<w:tblGridChange w:id="2"><w:tblGrid>{recorded}</w:tblGrid></w:tblGridChange></w:tblGrid>'
+        f"{rows}</w:tbl>"
+    )
+
+
+def element(choice: str, fallback: str) -> str:
+    return f'<mc:AlternateContent><mc:Choice Requires="w14">{choice}</mc:Choice><mc:Fallback>{fallback}</mc:Fallback></mc:AlternateContent>'
+
+
+#: docx4j's shape (core-ts CR-013 phase 3's): row 1 X over two old columns, then
+#: a cell-level element, C | F over four; row 2 a, b and c over two each.
+GRID_CHANGE_X_BEFORE = regridded_in_500s(
+    f'<w:tr>{spanned_in_500s("X", 2)}{element(spanned_in_500s("C", 4), spanned_in_500s("F", 4))}</w:tr>'
+    f'<w:tr>{spanned_in_500s("a", 2)}{spanned_in_500s("b", 2)}{spanned_in_500s("c", 2)}</w:tr>'
+)
+
+
+def test_rejecting_a_grid_change_counts_every_branchs_spans_from_the_old_ones() -> None:
+    """docx4j ``rejectingAGridChangeCountsEveryBranchsSpansFromTheOldOnes`` (core-ts's finding, its CR-013 phase 3).
+
+    A cell outside the element is in every branch's layout, so the new spans
+    are counted from the old ones along every layout before any is written.
+    Restored grid 6 x 500, current 3 x 1000; rejected, the grid is 3 x 1000, X,
+    a, b and c span 1 (no ``w:gridSpan``), C and F span 2. Before
+    ``84b202c5a`` the Fallback's layout, counted first, wrote X's span 1, and
+    Word's then placed C from column 1 where it starts at old column 2: C got
+    span 1, the row two columns through the Choice in a grid of three.
+    """
+    pkg = with_body(GRID_CHANGE_X_BEFORE)
+    assert revisions.reject_all(pkg) == 1
+    xml = body_xml(pkg)
+    assert xml.count("<w:gridCol ") == 3, xml
+    assert xml.count('<w:gridCol w:w="1000"/>') == 3, xml
+    assert xml.count("<w:gridSpan ") == 2, "C and F span 2, the others none"
+    assert xml.count('<w:gridSpan w:val="2"/>') == 2, xml
+    assert "gridAfter" not in xml and "gridBefore" not in xml, xml
+    # beyond docx4j's assertions: which cells span 2, and every reading of the row spans the grid
+    choice, fallback = branches_of_the_element(pkg)
+    assert spans_in(choice) == [2] and spans_in(fallback) == [2]
+    assert columns_through_each_branch(pkg) == [3, 3]
+
+
+def test_rejecting_a_grid_change_counts_a_cell_after_the_element_from_its_old_span() -> None:
+    """Beyond docx4j's test: the cell outside the element after it, where docx4j's shape has it before.
+
+    Row 1 is the element first, C | F over two old columns, then X over four;
+    row 2 a, b and c over two each. Rejected, the grid is 3 x 1000, X spans 2,
+    the others 1. Before ``84b202c5a`` the Fallback's layout wrote X's span 2
+    (new columns), and Word's then counted X from that, two old columns where
+    it spans four: X got span 1, the row two columns through either branch in
+    a grid of three. Here the cell is miscounted itself, where in docx4j's
+    shape it is the cell after it, placed from the wrong edge.
+    """
+    pkg = with_body(
+        regridded_in_500s(
+            f'<w:tr>{element(spanned_in_500s("C", 2), spanned_in_500s("F", 2))}{spanned_in_500s("X", 4)}</w:tr>'
+            f'<w:tr>{spanned_in_500s("a", 2)}{spanned_in_500s("b", 2)}{spanned_in_500s("c", 2)}</w:tr>'
+        )
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    change.reject()
+    xml = body_xml(pkg)
+    assert grid_of(pkg) == [1000, 1000, 1000]
+    assert xml.count("<w:gridSpan ") == 1 and xml.count('<w:gridSpan w:val="2"/>') == 1, xml
+    choice, fallback = branches_of_the_element(pkg)
+    assert spans_in(choice) == [1] and spans_in(fallback) == [1]
+    assert _span(first_row(pkg).content[1]) == 2, "X, after the element"
+    assert columns_through_each_branch(pkg) == [3, 3]
+    assert "gridAfter" not in xml and "gridBefore" not in xml, xml
+    assert revisions.tracked_changes(pkg) == []
+
+
+# -- the text of a table's change: the branch Word reads (docx4j 84b202c5a) ------
+
+
+def test_a_table_changes_text_reads_the_branch_word_reads() -> None:
+    """docx4j ``aTableChangesTextReadsTheBranchWordReads`` (this package's finding, CR-012 section 10.11).
+
+    A whole table's change's text is what Word shows: the rows of the branch it
+    reads of a row-level element, not every branch's. ``901a922a3`` had read
+    every branch's.
+    """
+    pkg = with_body(
+        f"<w:tbl>{CHANGED_TBL_PR}"
+        '<w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid>'
+        f"{element(plain_row('C'), plain_row('F'))}</w:tbl>"
+    )
+    changes = revisions.tracked_changes(pkg)
+    assert len(changes) == 1, changes
+    text = changes[0].text
+    assert "C" in text, text
+    assert "F" not in text, text
+
+
+def test_a_whole_tables_change_text_reads_the_branch_word_reads() -> None:
+    """The pin of ``901a922a3``'s reading (CR-012 section 10.11), turned into the expectation (section 10.12).
+
+    The table's grid changed, so the change's text is every row's that Word
+    shows: the Choice's, ``A\\tB\\r\\n``. ``901a922a3`` gave the Fallback's too,
+    ``A\\tB\\r\\nX\\tY\\r\\n``.
     """
     pkg = with_body(
         regridded(
@@ -847,7 +961,7 @@ def test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows() 
         )
     )
     (change,) = revisions.tracked_changes(pkg)
-    assert change.text == "A\tB\r\nX\tY\r\n", "the known gap: the Fallback's row is in the text"
+    assert change.text == "A\tB\r\n", "the Choice's row alone"
 
 
 def test_word_mode_lists_and_resolves_a_table_property_record_as_before() -> None:
