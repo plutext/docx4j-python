@@ -523,7 +523,9 @@ Word 365's 14 saves are in `tests/fixtures/mc-fun/`.
   - `9e6593d`: the mode, the fork hooks, `mce_preprocess`, the readers, the revisions engine, the
     probes and the tests;
   - `b25eb2c` and `22eaa4c`: the text model reads a `word`-mode load's record;
-  - this section and the CHANGELOG.
+  - `d4eed0b`: this section and the CHANGELOG;
+  - `0b33234`: the text model passes row and cell level by; `Body.view_for` takes a known
+    container (9.10).
 - The fork (`~/git/docx4j-xsdata`, branch `docx4j`, local only):
   - `78103a57`: stage 11, item 24;
   - `54ec5220`: items 25 and 26.
@@ -537,10 +539,10 @@ Word 365's 14 saves are in `tests/fixtures/mc-fun/`.
 | the hooks | `docx4j_py/runtime.py` | `branch_child_class` (a branch's `w:sdt` bound as its container binds it), `BRANCH_CHILD_NAMES`, the serialiser's `element_names` for the four `w:sdt` classes |
 | the mode | `docx4j_py/openpackaging/mc_block_level.py` (new, under `openpackaging/` in `KEEP`), `load.py`, `packages/opc_package.py`, `parts/xml_part.py` | `LoadOptions(mc_block_level=)`, `pkg.mc_block_level`, `_ParseSettings.mc_block_level`, `splice_word`, `ResolvedAlternateContent`, `part.resolved_alternate_content` (9.4) |
 | `mce_preprocess` | `openpackaging/mce.py`, `child.py` | selects over docx4j's published list (9.5) |
-| the content API | `model/content/text_model.py`, `body.py`, `paragraph.py`, `table.py`, `controls.py`, `reports.py` | block lists answer a block-level element with Word's branch; a read-only body for views in a kept branch; `recording` refuses it (9.6) |
-| the text model | `model/text/extractor.py` | `mce.branches_differ` from a `word`-mode load's record (9.6) |
+| the content API | `model/content/text_model.py`, `body.py`, `paragraph.py`, `table.py`, `controls.py`, `reports.py` | block lists answer a block-level element with Word's branch; a read-only body for views in a kept branch; `recording` refuses it (9.6); `Body.view_for(element, container)`, so a loop of inserts no longer scans the body (9.10) |
+| the text model | `model/text/extractor.py` | `mce.branches_differ` from a `word`-mode load's record; row and cell walks pass the element by (9.6) |
 | the revisions engine | `model/revisions/trees.py`, `lister.py`, `tables.py`, `change.py`, `__init__.py` | the trees answer the element with Word's branch; the lister's twins; `TrackedChange.twin`; row and cell finders pass the element by (9.6) |
-| tests | `tests/openpackaging/test_mce_levels.py` (256), `tests/revisions/test_alternate_content.py` (9), `tests/openpackaging/test_adoption.py` (+5) | section 5's Phase A tests (9.8) |
+| tests | `tests/openpackaging/test_mce_levels.py` (256), `tests/revisions/test_alternate_content.py` (9), `tests/openpackaging/test_adoption.py` (+5); `tests/agent/test_change_report.py`'s timing test (9.10) | section 5's Phase A tests (9.8) |
 | fixtures | `tests/fixtures/mc-fun/` (33 files) | docx4j's probes and Word 365's saves, byte for byte |
 | documents | `CHANGELOG.md`, `tests/README.md`, `docs/UPSTREAM.md` (reports 20 to 22), `tests/openpackaging/test_round_trip.py`'s docstring, the fork's `docs/fork/CHANGES.md` stage 11 | |
 
@@ -713,7 +715,7 @@ No test of the suite pinned either answer, so no test moved.
 | an edit inside a kept branch | refused: each view over content in any kept branch (block, paragraph or run level) gets a read-only body (`Body.body_for`, `_BranchBody`), and `recording`, which every mutating verb opens, raises `AddressError` `address.read_only`; reading through the view works; in `word` mode the edit is made | the same, for the content the API does not hand out | `test_an_edit_inside_a_kept_branch_is_refused`, `test_an_edit_there_in_word_mode_is_made` |
 | `outline()` | the element is an entry (`kind` `AlternateContent`, no text) whose children are Word's branch's blocks with the model's text; `stats` the model's | passed by | `test_the_outline_reads_words_branch` |
 | `describe()` | passes by: it counts no block; nothing is skipped now | the same | `test_describe_passes_the_element_by` |
-| the text model (`extract`, `plain_text`) | Word's branch, through `Extractor.blocks`' existing `mc` case: CR-011 section 14.7 item 8's gap was the schema, not the reader. `mce.branches_differ` at the element's address, and in `word` mode from the record at the same address (`b25eb2c`) | **row level: Word's branch read**: a row in a branch is a typed `w:tr`, and the row walk descends through `trees.block_items`, as docx4j's does since its stage B; **cell level: passed by**, the `w:tc` untyped until Phase B; no warning at either | `test_the_text_model_and_markdown_read_words_branch`, `test_the_text_models_warnings_are_the_same_in_both_modes_*` (26), `test_the_text_model_reads_a_row_level_branch_and_passes_a_cell_level_one_by` |
+| the text model (`extract`, `plain_text`) | Word's branch, through `Extractor.blocks`' existing `mc` case: CR-011 section 14.7 item 8's gap was the schema, not the reader. `mce.branches_differ` at the element's address, and in `word` mode from the record at the same address (`b25eb2c`) | passed by: the row and cell walks skip the element (`0b33234`); no warning. Through the trees change of `9e6593d` the row walk had read a row-level branch (its `w:tr` is typed), and it was made to pass it by so that every reader of structure agrees, as the brief asks | `test_the_text_model_and_markdown_read_words_branch`, `test_the_text_models_warnings_are_the_same_in_both_modes_*` (26), `test_the_text_model_passes_row_and_cell_level_by` |
 | Markdown (`to_markdown`, `markdown`) | follows the text model: closes CR-011 section 14.7 item 8 | as the text model | the same, and `test_text_markdown.py`'s moved pin (9.10) |
 | the revisions engine | the trees answer the element with Word's branch (`branch_items`; docx4j `Trees.blockItems` and `runItems`), and the lister lists its changes once with the others' as twins (`_alternate_level`), at paragraph level too | passed by (`tables._rows` and `_cells`), as docx4j's phase 2 leaves its `Lister`'s rows and cells | `tests/revisions/test_alternate_content.py`, `test_the_revisions_engine_passes_row_and_cell_level_by` |
 | the python-docx facade | passes by: `Document.paragraphs` is `w:body`'s own `w:p`, as python-docx's; editing them works | passes by | `test_the_python_docx_facade_passes_the_element_by` |
@@ -751,18 +753,11 @@ both modes, as docx4j does. They now describe alike.
 ### 9.8 The numbers
 
 - **The suite:**
-  - the whole suite: 4,781 passed, 8 skipped (CR-002 section 16.5: 4,512 and 8);
-  - the fast suite: 3,501 tests, 8 skipped, 1,280 deselected (3,232, 8 and 1,280 before), the
-    last run's 3,500 passing and the timing test below failing;
+  - the whole suite: 4,782 passed, 8 skipped (CR-002 section 16.5: 4,512 and 8);
+  - the fast suite: 3,502 passed, 8 skipped, 1,280 deselected (3,232, 8 and 1,280 before);
   - the 270 new tests are `test_mce_levels.py` (256), `test_alternate_content.py` (9) and
     `test_adoption.py` (5);
-  - no other test moved but 9.10's;
-  - `tests/agent/test_change_report.py::test_the_report_costs_a_few_microseconds_and_does_not_grow`,
-    a timing test (the last 500 of 2,000 inserts within four times the first 500), failed in two
-    of the five fast-suite runs of this phase, the first time before any content API change. It
-    passed in every whole-suite run, 6 of 6 alone and 3 of 3 in `tests/agent`, and it touches no
-    path this phase made slower with the document's size (a view's branch test walks the new
-    paragraph's parents); see 9.11.
+  - no other test moved but 9.10's.
 - **Unchanged:**
   - `scripts/roundtrip.py`: 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign
     respellings;
@@ -808,10 +803,9 @@ both modes, as docx4j does. They now describe alike.
    17.3.x keeps `word` so that a point release does not change what existing walkers see.
 2. **`preserve` keeps row- and cell-level elements whole.** docx4j's phase 1 still resolves them in
    `preserve` until its phase 2. Here they are kept, so the round-trip rule holds with no exception
-   by default.
-   - The content API and the revisions engine pass them by, as docx4j's phase 2 leaves them.
-   - The text model reads a row-level element's branch (9.6), and passes a cell-level one by
-     until Phase B types `w:tc` in a branch.
+   by default. The content API, the text model and the revisions engine pass them by without error,
+   as docx4j's phase 1 leaves its readers. `traversal`'s `mce="resolve"` is level-blind and reads
+   them, as it did before this phase.
 3. **The splice is on the source's lxml tree, before the parse**, as section 4.1 item 3 asks.
    docx4j splices its unmarshalled objects after the unmarshal. Here the selected content is parsed
    in place, typed by the ordinary path, so the record's element is a parse of its own and not the
@@ -851,6 +845,23 @@ both modes, as docx4j does. They now describe alike.
 - **In the fork:** seven upstream assertions that expected `id()` in a restriction path or a
   substituted choice now expect the compositor's integer (9.3).
 
+- `tests/agent/test_change_report.py::test_the_report_costs_a_few_microseconds_and_does_not_grow`
+  (CR-003 section 3.4), a timing test whose expectation is unchanged: the last 500 of 2,000 inserts
+  within four times the first 500. Its method changed. With this phase's test module collected,
+  the whole fast suite failed it every time (21 µs at the start, 190 to 250 µs at the end), and it
+  passed alone and in `tests/agent`. A profile in the failing configuration found two causes:
+  - `Body.view_for`, which `insert_paragraph` returns through, found the new paragraph's list by
+    scanning the body's content for it: 2,013,006 identity tests over 2,001 inserts, quadratic,
+    and older than this phase. `view_for` now takes the list where the caller knows it
+    (`_insert_element`, `__getitem__`, `iter_blocks`), so the scan is gone and the loop costs
+    0.22 s where it cost 0.52 s;
+  - the rest was a garbage collection over the 350,000 objects the collected suite keeps alive,
+    landing in the last measured block: with the collector paused around the test it passed, and
+    with a plugin of the same shape that paused nothing it failed.
+
+  The test now collects, then pauses the collector while it times, so it measures the call. It
+  passes in the whole fast suite, alone and in `tests/agent` (`0b33234`).
+
 Nothing else moved: the whole suite's difference from CR-002 section 16.5 is this phase's new
 tests.
 
@@ -861,8 +872,13 @@ tests.
   - `Body.tables` passes a table in a block-level branch by;
   - the text model passes a cell-level branch by;
   - `find(P)` does not reach a cell-level branch's paragraphs.
-- **Row and cell level in `preserve`** (docx4j's phase 2): the content API's and the revisions
-  engine's row and cell walks pass the element by. `mce.branches_differ` is not raised at row level.
+- **Row and cell level in `preserve`, docx4j's CR-051 phase 2.** It has landed in docx4j as
+  `9db1a3cbd` (unpushed; the coordinator's word, 2026-10-21): in `preserve` mode docx4j's readers
+  now read Word's branch at row and cell level too. Porting it is a follow-up for this package.
+  This phase keeps to `2853b7280`, its probes and tests included, and takes nothing from that
+  commit. Here, until then, the content API's, the text model's and the revisions engine's row and
+  cell walks pass the element by without error, and `mce.branches_differ` is not raised at row or
+  cell level.
 - **The inspector.** CR-050's inspector, the record's second reader in docx4j, has no port here, so
   only the text model reads the record.
 - **A record inside a wildcard text box.** An element inside a text box that is itself in a
@@ -875,11 +891,6 @@ tests.
 - **A fork release.** Stages 9 to 11 are local, so this package is not released against them
   (`RELEASING.md`). That is the user's, as CR-011's Q3 already needed.
 - **CR-011 section 14.7 item 8 and 14.10's matching bullet** now say they are closed here.
-- **A timing test that fails under load.** `test_the_report_costs_a_few_microseconds_and_does_not_grow`
-  failed twice in fast-suite runs (9.8). Nothing here was found to make an insert slower as the
-  document grows, and it passed whenever it was run on its own. A fast suite at the commit before
-  this phase could not be compared like for like (a worktree lacks the untracked fixtures). It is
-  recorded, not changed.
 - **The Word check** is the user's (9.12).
 
 ### 9.12 The Word check (staged, not done)

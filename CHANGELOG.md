@@ -128,8 +128,9 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   text and structure read Word's branch at block level in `preserve` mode: the text model and
   Markdown (with `mce.branches_differ`, raised in `word` mode from the record), `outline()`,
   `Body.paragraphs`, `element_at` and `traversal`; a view over content in a kept branch is
-  read-only, and every mutating verb refuses it with `address.read_only`. The python-docx facade,
-  `describe()` and, at row and cell level, the content API pass the element by. Held to docx4j's
+  read-only, and every mutating verb refuses it with `address.read_only`. The python-docx facade
+  and `describe()` pass the element by, and so do the content API, the text model and the
+  revisions engine at row and cell level, as docx4j's CR-051 phase 1 does. Held to docx4j's
   19 `mc-fun` probes and Word 365's saves of 14 of them, copied into `tests/fixtures/mc-fun/`.
 
 ### Changed
@@ -413,6 +414,10 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 1.1 item 1): the parser
   skipped it (`part.skipped`, and `strict=True` raised), and a part read and saved lost it whole,
   every branch. It is kept whole by default, or resolved as Word reads it in `word` mode.
+- **A loop of `insert_paragraph` is no longer quadratic in the body's length**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 9.10): the view each insert
+  returns was found by scanning the body's content for the new paragraph; `Body.view_for` now takes
+  the list the caller knows, as `insert_*`, `body[i]` and iterating the body do.
 - **A content control straight in an `mc:Choice` or `mc:Fallback` keeps its content**
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 1.1 item 2): every
   `w:sdt` there was typed as a block-level control, so a run-level one's runs were skipped and lost
