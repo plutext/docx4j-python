@@ -212,8 +212,10 @@ gain is for the readers that will: CR-011's text boxes, and the content API over
 
 ### 3.1 Every level, on docx4j's probes (2026-10-21)
 
-The probes are Jason's 25 `mc-fun` documents (`~/vbShares/Office 2016/mc-fun/`, also in
-`docx4j-core-tests/src/test/resources/mc-fun/` since CR-051 phase 1). Most carry ten Choices,
+The probes are Jason's 25 `mc-fun` documents (`~/vbShares/Office 2016/mc-fun/`). docx4j's
+`docx4j-core-tests/src/test/resources/mc-fun/` holds 16 of them, with 14 of Word 365's saves,
+since CR-051 phase 1; the other nine are the pandemonium and plain variants and ED-009's three
+run-level documents. Most carry ten Choices,
 newest first, and a Fallback. Each was loaded, its main part read, and saved; the part was
 compared with the source in `scripts/canon.py`'s form. The text is `get_text()`, by default and
 under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jason's saves
@@ -306,8 +308,8 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
    - This engine's `_has_text` reads such an element as holding no text (found in CR-010's U23
      port).
    - Ported here, held to docx4j's test.
-7. **The probes:** docx4j's copies of the 25, with Word 365's saves, copied into
-   `tests/fixtures/mc-fun/`.
+7. **The probes:** docx4j's 16 with Word 365's 14 saves (the oracle of its
+   `McBlockLevelProbesTest` and `McBlockLevelLoadTest`), copied into `tests/fixtures/mc-fun/`.
 
 ### 4.2 Phase B: the 61 WordprocessingML roots
 
