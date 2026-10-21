@@ -47,8 +47,9 @@ commits every `w:drawing` in a Choice is a `Drawing` and every `w:pict` in a Fal
 new canonical difference and no skipped report changed; the readers' audit kept the python-docx
 facade's `inline_shapes` as python-docx reads them; the `text_of` readers now read a
 paragraph-level branch as a run-level one (11.4, kept); parse +21% and save +35% on the
-403-branch document; acceptance and the ratchet unchanged; **the Word check of four saves is the
-user's** (`out/cr012-b-word-check/`).
+403-branch document; acceptance and the ratchet unchanged; docx4j's agreement run 0 of 22. **The
+Word check of four saves passed on 2026-10-22** (the user: "cr012b okay", file 2 "fine in All
+Markup"; 11.10): **Phase B done**. Phase C waits for its own go (Q4).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -2238,7 +2239,7 @@ Nothing else moved.
   (11.5): Strict OOXML, schema order in `settings.xml` and `w:object`, and a colour's case. Outside
   this phase.
 
-### 11.10 The Word check (not yet checked)
+### 11.10 The Word check (passed 2026-10-22)
 
 Four files are in `out/cr012-b-word-check/`, with a `README.txt` saying, for each, the source,
 what was done and what Word should show. They are also copied to
@@ -2258,4 +2259,15 @@ no `xsi:type` written.
   elements. Its 403 typed `wps:bodyPr` are written `anchorCtr="0"` where the source has `false`.
 
 Expected: each opens with no repair prompt and looks as its source does, C22's tracked changes
-shown. **Not yet checked.**
+shown.
+
+**Passed on 2026-10-22.** The user: "cr012b okay except cr012b-2 textbox tracked change content
+not as expected", then, after a second look, "cr012b-2 fine in All Markup".
+- **The first look** was in Simple Markup, where Word shows C22's text box as "a word to delete:.
+  Inserted text goes at the end. C22 inserted.": the deletion hidden, the insertion plain.
+- **The save was checked** against the source. C22's element differs only in where the `a` prefix is
+  declared and in the spelling of one newline in a VML attribute (`&#10;` for `&#xA;`). The tracked
+  deletion and insertion are in both branches, as in the source.
+- **The README now names the view** (All Markup), and the unmodified source is staged beside the save
+  as `cr012b-2-SOURCE-cr043-tracked.docx` for comparison.
+- **In All Markup** C22's tracked changes show as in the source.

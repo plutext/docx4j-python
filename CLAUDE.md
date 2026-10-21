@@ -44,7 +44,7 @@ departure; read them before changing the area they cover. Status, 2026-10-21:
   release.
 - **CR-012** (`mc:AlternateContent` kept at every level, its branches typed): decided 2026-10-21;
   Phases A and A2 (docx4j CR-051 phases 1 and 2) implemented and Word-checked; B (docx4j's 61
-  root elements typed in a branch) implemented 2026-10-22, its Word check awaited; C on its own go.
+  root elements typed in a branch) implemented and Word-checked 2026-10-22; C on its own go.
   Its fork change (stage 11) joins CR-011's in needing a fork release.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D

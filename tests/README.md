@@ -426,6 +426,20 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > prompt and no tracked change, and shows that. The eleven artefacts are canonically unchanged by the
 > port.
 
+> **2026-10-22, Word check of CR-012 Phase B passed** (the user: "cr012b okay", file 2 "fine in All
+> Markup"). Phase B types a kept branch's WordprocessingML children (docx4j's 61 roots). Four saves,
+> each loaded with its main part unmarshalled so that the typed branches are written back, are
+> staged in `out/cr012-b-word-check/` with a README (CR-012 section 11.10):
+> - `samples/DrawingML_GraphicData_wps.docx`, a wps shape and its VML Fallback;
+> - docx4j-core-ts's `cr043-tracked.docx`, whose C22 text box in a Choice holds tracked changes;
+> - `mc-fun/mc-txbx-run.docx`;
+> - `tc-p3-transforms.docx`, 403 shapes in run-level elements.
+>
+> All four open with no repair prompt and look as their sources do.
+> - **File 2's first look was in Simple Markup,** where C22's deletion is hidden and its insertion
+>   plain. In All Markup its tracked changes show as in the source, which is staged beside it.
+> - **The eleven artefacts are canonically unchanged by Phase B.**
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
