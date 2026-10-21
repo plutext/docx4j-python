@@ -31,8 +31,8 @@ row and cell level; docx4j's phase 2 tests; the five row and cell probes read `w
 canonically identical in `preserve` mode; acceptance unchanged. **The Word check of six saves passed
 on 2026-10-22** (the user: "python-cr012a2 each pass"; 10.9): **Phase A2 done**. The port of docx4j
 `60bd4b9ad`, a twin `w:cellDel` or `w:cellIns` in a branch Word does not read resolved in its own
-branch, landed the same day at the user's go ("go on the port"; 10.10); its Word check of three saves
-is the user's (`out/cr012-a2-twin-word-check/`).
+branch, landed the same day at the user's go ("go on the port"; 10.10), and its Word check of three
+saves passed (the user: "python-cr012a2-twin passes").
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -1375,7 +1375,7 @@ is `test_known_gap_pinned_a_lone_twin_beside_a_read_branch_of_two_cells_leaves_i
 - A fix would widen the row's neighbour for a lone twin only when the read branch's cell had a
   neighbour in its own branch. That is docx4j's to decide first.
 
-**The Word check (Not yet checked).** Three files are in `out/cr012-a2-twin-word-check/`, with a
+**The Word check (passed 2026-10-22).** Three files are in `out/cr012-a2-twin-word-check/`, with a
 `README.txt` saying, for each, the source, what was done and what Word should show. They are also
 copied to `~/vbShares/Office 2016/__tmp/python-cr012a2-twin/`.
 
@@ -1398,7 +1398,8 @@ The three files:
 
 Expected: each opens with no repair prompt and no tracked change. The table shows the Choice's
 cells, one cell across both columns: `Ckeep` in files 1 and 3, `keep` in file 2. None of `C`, `F`
-or `Fkeep` shows.
+or `Fkeep` shows. **Passed on 2026-10-22** (the user: "python-cr012a2-twin passes"): all three open
+with no repair prompt and show what the README says, file 2's empty Choice and Fallback among them.
 
 **Found, and not done.**
 
@@ -1414,3 +1415,13 @@ or `Fkeep` shows.
   - docx4j at `60bd4b9ad` reads them the same way (`Tables.cells` and `rows` over
     `Lister.cellsOf` and `rowsOf`), by reading its code at that commit, not by a run;
   - worth telling docx4j-25. No producer writes the shape.
+  - **Told docx4j-25 on 2026-10-22, and confirmed there.** docx4j fixed it the same day, not yet
+    committed:
+    - `Tables.rows` and `cells` read every branch (`Lister.allRowsOf`, `allCellsOf`) for
+      `recordOf`, `inChange`, `hasRecords`, accept and reject;
+    - `collapseGrid` counts along `Lister.cellLayoutsOf(tr)`, one cell list per branch reading of
+      the row;
+    - `removeCell` still reads Word's branch for the neighbour;
+    - docx4j also dropped the dead clause (departure 1 above).
+
+    The port waits for the commit and the user's go.

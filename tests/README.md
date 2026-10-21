@@ -393,6 +393,18 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > All six open with no repair prompt and show `w16sdtfl` where the element stands, as Word 365's
 > own save of each probe does. The eleven artefacts are canonically unchanged by Phase A2.
 
+> **2026-10-22, Word check of CR-012's cell-twin port passed** (the user: "python-cr012a2-twin
+> passes"). The port of docx4j `60bd4b9ad` resolves a cell's twin in the branch Word does not read.
+> Three saves of `tests/revisions/test_alternate_content.py`'s shapes, on a two-column grid with
+> borders, are staged in `out/cr012-a2-twin-word-check/` with a README (CR-012 section 10.10):
+> - a deleted cell beside a plain one in each branch, accepted;
+> - a deleted cell alone in each branch, accepted, leaving an empty `mc:Choice` and `mc:Fallback`
+>   in the row;
+> - an inserted cell beside a plain one in each branch, rejected.
+>
+> All three open with no repair prompt and no tracked change. Each shows one cell spanning both
+> columns. The eleven artefacts are canonically unchanged by the port.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
