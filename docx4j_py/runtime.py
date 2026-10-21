@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import threading
 import time
-from importlib import resources
+from collections.abc import Iterable
+from importlib import import_module, resources
 from typing import Any
 
 from docx4j_xsdata.formats.dataclass.context import XmlContext
@@ -38,15 +39,18 @@ from docx4j_xsdata.formats.dataclass.serializers.tree import TreeSerializer
 __all__ = [
     "BRANCH_CHILD_NAMES",
     "branch_child_class",
+    "container_binding",
     "context",
     "needs_preserve",
     "parser",
     "parser_config",
+    "root_element_class",
     "serializer",
     "serializer_config",
     "text_element",
     "tree_serializer",
     "warm_up",
+    "wildcard_names",
 ]
 
 _context: XmlContext | None = None
@@ -95,7 +99,11 @@ def parser_config(
     container the ``mc:AlternateContent`` stands in binds one
     (:func:`branch_child_class`), as docx4j's ``McBranchSdt`` binds it; and
     since CR-012 Phase A2 a ``w:tr`` or ``w:tc`` there too, as docx4j binds
-    them by name.
+    them by name. Since CR-012 Phase B the hook is asked about docx4j's 61
+    WordprocessingML root elements as well (:func:`wildcard_names`): in a
+    branch each is bound as its container binds it, and in any other lax
+    wildcard, or a branch whose container does not take it, as its root
+    class, which is what JAXB's ``@XmlRootElement`` gives docx4j.
 
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
@@ -113,8 +121,8 @@ def parser_config(
         kwargs.setdefault("namespaces_for", frozenset({MC_CHOICE}))
     if "wildcard_class" not in kwargs:
         kwargs["wildcard_class"] = branch_child_class
-    if kwargs["wildcard_class"] is not None:
-        kwargs.setdefault("wildcard_class_for", BRANCH_CHILD_NAMES)
+    if kwargs["wildcard_class"] is not None and "wildcard_class_for" not in kwargs:
+        kwargs["wildcard_class_for"] = wildcard_names()
 
     return ParserConfig(
         fail_on_unknown_properties=not lenient,
@@ -143,6 +151,11 @@ def serializer_config(*, pretty: bool = False, **kwargs: Any) -> SerializerConfi
     names: the ``w:sdt`` kinds :func:`branch_child_class` binds in a branch
     are written ``w:sdt``, not under their types' names (``CT_SdtRun``), and
     a branch's ``Tr`` and ``Tc`` ``w:tr`` and ``w:tc`` (CR-012 Phase A2).
+    Since CR-012 Phase B, every class the hook can give for one of the root
+    elements is written under that element's name (:func:`_branch_element_names`):
+    a ``Drawing`` as ``w:drawing``, an ``RT`` as ``w:t``, with no ``xsi:type``.
+    A field's own name always wins, so nothing written through a field
+    changes.
     """
     kwargs.setdefault("bool_format", "numeric")
     kwargs.setdefault("xml_declaration", False)
@@ -182,7 +195,7 @@ def tree_serializer(*, pretty: bool = False, **kwargs: Any) -> TreeSerializer:
 
 _W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
-#: The names :func:`branch_child_class` is asked about.
+#: The container-bound names :func:`branch_child_class` is asked about.
 #:
 #: * ``w:sdt``, a content control (CR-012 Phase A). Its four classes share one
 #:   element name, and only the block-level one (``SdtBlock``) is global, so a
@@ -193,6 +206,10 @@ _W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 #:   cell-level branch's cell a wildcard tree that no walk of cells reads;
 #:   ``w:tr`` is global as ``Tr``, which a row-level branch's container binds
 #:   it to as well, and it is asked so that both are bound by the one rule.
+#:
+#: Since CR-012 Phase B the hook is also asked about the root elements
+#: (``docx4j_py.el_index.ROOT_ELEMENTS``); :func:`wildcard_names` is the whole
+#: set.
 BRANCH_CHILD_NAMES = frozenset({f"{{{_W_NS}}}sdt", f"{{{_W_NS}}}tr", f"{{{_W_NS}}}tc"})
 
 #: The classes of ``mc:AlternateContent`` and its branches: what stands
@@ -200,24 +217,95 @@ BRANCH_CHILD_NAMES = frozenset({f"{{{_W_NS}}}sdt", f"{{{_W_NS}}}tr", f"{{{_W_NS}
 _MC_WRAPPERS = frozenset({"AlternateContent", "AlternateContentChoice", "AlternateContentFallback"})
 
 _branch_names: dict[type, str] | None = None
+_wildcard_names: frozenset[str] | None = None
+_root_classes: dict[str, type] | None = None
+
+
+def wildcard_names() -> frozenset[str]:
+    """Every name the parser asks :func:`branch_child_class` about: the fork's ``wildcard_class_for``.
+
+    :data:`BRANCH_CHILD_NAMES` and, since CR-012 Phase B, the 61 root elements
+    of ``docx4j_py.el_index.ROOT_ELEMENTS``: docx4j's WordprocessingML
+    ``@XmlRootElement`` names that this model does not declare globally,
+    derived from docx4j's own classes (``codegen/names/root_elements.json``).
+    A name not in the set is bound by the lookup by name alone: a branch's
+    ``w:ins``, ``w:instrText`` or ``w:delText`` stays a wildcard tree, as docx4j
+    keeps it a DOM element. Read from the generated index, which holds strings
+    only, so asking imports no model class.
+    """
+    global _wildcard_names
+    if _wildcard_names is None:
+        from docx4j_py.el_index import ROOT_ELEMENTS
+
+        _wildcard_names = BRANCH_CHILD_NAMES | frozenset(ROOT_ELEMENTS)
+    return _wildcard_names
+
+
+def _resolve(path: str) -> type:
+    module, _, name = path.rpartition(".")
+    return getattr(import_module(module), name)
+
+
+def root_element_class(qname: str) -> type | None:
+    """The root class of one of docx4j's root elements, or None: step (b) of :func:`branch_child_class`.
+
+    JAXB binds a lax wildcard's child by its ``@XmlRootElement`` class, so in
+    docx4j a ``w:drawing`` anywhere a lax wildcard receives one is a
+    ``Drawing``. ``docx4j_py.el_index.ROOT_ELEMENTS`` names each root's class
+    as a string, the class the ``el`` table builds for the name; it is
+    resolved the first time it is asked for, never at import, since the
+    engine imports no model class at module level.
+    """
+    global _root_classes
+    table = _root_classes
+    if table is None:
+        from docx4j_py.el_index import ROOT_ELEMENTS
+
+        table = _root_classes = {qname: _resolve(path) for qname, path in ROOT_ELEMENTS.items()}
+    return table.get(qname)
 
 
 def branch_child_class(qname: str, ancestors: tuple[type, ...]) -> type | None:
-    """The class to bind a branch's child to: the one its container binds that name to.
+    """The class to bind a lax wildcard's child to, by its context and then by its name.
 
     The fork parser's ``wildcard_class`` hook (``ParserConfig``, stage 11),
-    docx4j's ``McBranchSdt.kindFor`` (its CR-051 section 11.3). `ancestors` is
-    the classes enclosing the element, innermost first, the class whose
-    wildcard receives it (an ``mc:Choice`` or ``mc:Fallback``) first. Past the
-    markup-compatibility wrappers, the first other class is the container the
-    ``mc:AlternateContent`` stands in, and the class its own content binds
-    `qname` to is the answer: ``SdtBlock`` in a body, a cell or a block-level
-    control, ``SdtRun`` in a paragraph, ``CTSdtRow`` among a table's rows,
-    ``CTSdtCell`` among a row's cells; ``Tr`` among a table's rows and ``Tc``
-    among a row's cells, in a row- or cell-level control's content and custom
-    XML too (CR-012 Phase A2). None where that container takes no such
-    element, or the wildcard is not a branch's; the lookup by name then
-    applies.
+    asked about :func:`wildcard_names`. `ancestors` is the classes enclosing
+    the element, innermost first, the class whose wildcard receives it first.
+    Three steps (CR-012 section 4.2 item 1):
+
+    * **(a) in a branch, the container's binding** (:func:`container_binding`):
+      docx4j's ``McBranchSdt.kindFor`` (its CR-051 section 11.3), the rule
+      Phases A and A2 established for ``w:sdt``, ``w:tr`` and ``w:tc`` and
+      Phase B extends to the root elements --- a branch's child is read as the
+      container's own child is, so a ``w:hyperlink`` in a simple field's
+      branch is the simple field's ``CtSimpleFieldHyperlink``, as it is
+      outside a branch;
+    * **(b) elsewhere, the root class** (:func:`root_element_class`): in any
+      other lax wildcard, and in a branch whose container does not take the
+      name, as JAXB binds an ``@XmlRootElement`` name;
+    * **(c) otherwise None**, and the lookup by name applies: a ``w:sdt`` or
+      ``w:tr`` outside a branch is the global ``SdtBlock`` or ``Tr``.
+    """
+    found = container_binding(qname, ancestors)
+    if found is not None:
+        return found
+    return root_element_class(qname)
+
+
+def container_binding(qname: str, ancestors: tuple[type, ...]) -> type | None:
+    """Step (a) of :func:`branch_child_class`: the class a branch's container binds `qname` to.
+
+    Past the markup-compatibility wrappers, the first other class in
+    `ancestors` is the container the ``mc:AlternateContent`` stands in, and
+    the class its own content binds `qname` to is the answer: ``SdtBlock`` in
+    a body, a cell or a block-level control, ``SdtRun`` in a paragraph,
+    ``CTSdtRow`` among a table's rows, ``CTSdtCell`` among a row's cells;
+    ``Tr`` among a table's rows and ``Tc`` among a row's cells, in a row- or
+    cell-level control's content and custom XML too (CR-012 Phase A2); and
+    since Phase B ``Drawing`` or ``RT`` in a run, ``Tbl`` in a body,
+    ``CtRTab`` in a math run. None where that container takes no such
+    element, or the wildcard is not a branch's. The rule is the schema's own
+    binding, read from the metadata, not a table.
     """
     if not ancestors or not _is_mc_wrapper(ancestors[0]):
         return None
@@ -235,20 +323,56 @@ def _is_mc_wrapper(clazz: type) -> bool:
     return clazz.__module__ == "docx4j_py.mce" and clazz.__name__ in _MC_WRAPPERS
 
 
+def element_names_table(pairs: Iterable[tuple[type, str]]) -> dict[type, str]:
+    """The serialiser's ``element_names`` from ``(class, qualified name)`` pairs: a function, or an error.
+
+    Each class is written under one name wherever no field names it, so a
+    class claimed by two names is refused rather than one of them chosen.
+
+    Raises:
+        ValueError: a class paired with two names.
+    """
+    names: dict[type, str] = {}
+    for cls, qname in pairs:
+        current = names.setdefault(cls, qname)
+        if current != qname:
+            raise ValueError(
+                f"{cls.__module__}.{cls.__qualname__} is claimed by {current} and {qname}: "
+                "the serialiser's element names must be a function, class to name"
+            )
+    return names
+
+
 def _branch_element_names() -> dict[type, str]:
     """The serialiser's ``element_names``: each class the branch hook may bind, under its element's name.
 
-    The four ``w:sdt`` classes as ``w:sdt``, and ``Tr`` and ``Tc`` as ``w:tr``
-    and ``w:tc`` (``Tc``'s own name is its type's, ``CT_Tc``).
+    * the four ``w:sdt`` classes as ``w:sdt``, and ``Tr`` and ``Tc`` as
+      ``w:tr`` and ``w:tc`` (``Tc``'s own name is its type's, ``CT_Tc``);
+    * since CR-012 Phase B, each root class under its name
+      (``docx4j_py.el_index.ROOT_ELEMENTS``), and each other class step (a)
+      can give for a root under that name (``ROOT_ELEMENT_BINDINGS``, the
+      generator's list of what every container that can hold an
+      ``mc:AlternateContent`` binds it to).
+
+    Built by :func:`element_names_table`, so a class claimed by two names
+    raises here, the first time a serialiser is configured.
     """
     global _branch_names
     if _branch_names is None:
+        from docx4j_py.el_index import ROOT_ELEMENT_BINDINGS, ROOT_ELEMENTS
         from docx4j_py.wml import CTSdtCell, CTSdtRow, SdtBlock, SdtRun, Tc, Tr
 
-        names = {cls: f"{{{_W_NS}}}sdt" for cls in (SdtBlock, SdtRun, CTSdtRow, CTSdtCell)}
-        names[Tr] = f"{{{_W_NS}}}tr"
-        names[Tc] = f"{{{_W_NS}}}tc"
-        _branch_names = names
+        pairs: list[tuple[type, str]] = [
+            (cls, f"{{{_W_NS}}}sdt") for cls in (SdtBlock, SdtRun, CTSdtRow, CTSdtCell)
+        ]
+        pairs += [(Tr, f"{{{_W_NS}}}tr"), (Tc, f"{{{_W_NS}}}tc")]
+        pairs += [(_resolve(path), qname) for qname, path in ROOT_ELEMENTS.items()]
+        pairs += [
+            (_resolve(path), qname)
+            for qname, paths in ROOT_ELEMENT_BINDINGS.items()
+            for path in paths
+        ]
+        _branch_names = element_names_table(pairs)
     return _branch_names
 
 

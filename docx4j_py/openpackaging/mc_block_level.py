@@ -465,19 +465,24 @@ def _record_hook(level: str) -> Any:
     A ``w:sdt``, ``w:tr`` or ``w:tc`` straight in one of the element's branches
     is bound as a container of the record's level binds it: a body for block
     level, a table for row level, a row for cell level (so a cell-level
-    branch's ``w:tc`` is a ``Tc``, CR-012 Phase A2).
+    branch's ``w:tc`` is a ``Tc``, CR-012 Phase A2). So is a root element
+    (CR-012 Phase B), a ``w:tbl`` at block level a ``Tbl``. Each step is
+    :func:`docx4j_py.runtime.branch_child_class`'s, the level's container
+    standing in for the one the parse has not got: (a) the container's
+    binding, then (b) the root class.
     """
-    from docx4j_py import wml
-    from docx4j_py.runtime import branch_child_class
+    from docx4j_py import runtime, wml
 
     container = {ROW: wml.Tbl, CELL: wml.Tr}.get(level, wml.Body1)
 
     def hook(qname: str, ancestors: tuple[type, ...]) -> type | None:
-        found = branch_child_class(qname, ancestors)
+        found = runtime.container_binding(qname, ancestors)
         if found is not None:
             return found
         if ancestors and all(cls.__module__ == "docx4j_py.mce" for cls in ancestors):
-            return branch_child_class(qname, (*ancestors, container))
-        return None
+            found = runtime.container_binding(qname, (*ancestors, container))
+            if found is not None:
+                return found
+        return runtime.root_element_class(qname)
 
     return hook
