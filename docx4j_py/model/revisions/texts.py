@@ -26,6 +26,7 @@ from docx4j_py.model.revisions.change import (
     TableT,
     TrackedChange,
 )
+from docx4j_py.model.revisions.tables import cells_of, rows_of
 from docx4j_py.model.revisions.trees import Revision, View
 
 __all__ = ["row_text", "text_of"]
@@ -78,20 +79,19 @@ def row_text(tr: Any, view: View) -> str:
     """
     out: list[str] = []
     first = True
-    tc_class = trees.cls("Tc")
-    for item in tr.content:
-        if not isinstance(item, tc_class):
-            continue
+    # through cell-level controls, custom XML and a kept mc:AlternateContent
+    # (docx4j Texts.rowText over Lister.cellsOf, its CR-051 phase 2)
+    for cell, _owner in cells_of(tr):
         if not first:
             out.append("\t")
         first = False
-        _cell_text(item.content, view, out, [False])
+        _cell_text(cell.content, view, out, [False])
     out.append("\r\n")
     return "".join(out)
 
 
 def _cell_text(items: list, view: View, out: list[str], after_paragraph: list[bool]) -> None:
-    p_class, tbl_class, tr_class = trees.cls("P"), trees.cls("Tbl"), trees.cls("Tr")
+    p_class, tbl_class = trees.cls("P"), trees.cls("Tbl")
     for item in items:
         if isinstance(item, p_class):
             if after_paragraph[0]:
@@ -99,9 +99,8 @@ def _cell_text(items: list, view: View, out: list[str], after_paragraph: list[bo
             out.append(trees.paragraph_text(item, view))
             after_paragraph[0] = True
         elif isinstance(item, tbl_class):
-            for row in item.content:
-                if isinstance(row, tr_class):
-                    out.append(row_text(row, view))
+            for row, _owner in rows_of(item):
+                out.append(row_text(row, view))
             after_paragraph[0] = False
         else:
             nested = trees.block_items(item)

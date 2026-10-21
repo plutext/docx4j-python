@@ -29,7 +29,12 @@ from __future__ import annotations
 import enum
 from typing import Any
 
-from docx4j_py.child import is_alternate_content
+from docx4j_py.child import (
+    is_alternate_content,
+    mce_branch_content,
+    mce_choices,
+    mce_fallback,
+)
 from docx4j_py.model.revisions import props, trees
 from docx4j_py.model.revisions.trees import View
 
@@ -39,6 +44,7 @@ __all__ = [
     "change_text",
     "collapse_grid",
     "has_records",
+    "has_rows",
     "in_change",
     "prune_row",
     "record_of",
@@ -62,7 +68,12 @@ _CELL_SKIP = frozenset({"cellIns", "cellDel", "cellMerge", "tcPrChange"})
 
 
 def rows_of(tbl: Any) -> list[tuple[Any, list]]:
-    """A table's rows and the live list holding each, through row-level controls and custom XML."""
+    """A table's rows and the live list holding each, through row-level controls and custom XML.
+
+    And through a row-level ``mc:AlternateContent`` kept whole, by the branch
+    Word reads (:func:`~.trees.block_items`; docx4j ``Lister.rowsOf`` since its
+    CR-051 phase 2, CR-012 Phase A2): a row in it is held by that branch's list.
+    """
     out: list[tuple[Any, list]] = []
     _rows(tbl.content, out)
     return out
@@ -73,18 +84,47 @@ def _rows(items: list, out: list[tuple[Any, list]]) -> None:
     for item in items:
         if isinstance(item, tr_class):
             out.append((item, items))
-        elif is_alternate_content(item):
-            # a row-level mc:AlternateContent is passed by, as docx4j's CR-051
-            # leaves it until its phase 2 (CR-012 section 9)
-            continue
         elif not isinstance(item, tc_class):
             nested = trees.block_items(item)
             if nested is not None:
                 _rows(nested, out)
 
 
+def has_rows(tbl: Any) -> bool:
+    """Whether any branch of a table's content holds a row: the test for a table left with no rows.
+
+    docx4j ``Lister.hasRows`` (its CR-051 phase 2). :func:`rows_of` cannot be
+    the test, since it reads one branch of a row-level ``mc:AlternateContent``,
+    and a row in another branch still makes the table one.
+    """
+    return _has_rows(tbl.content)
+
+
+def _has_rows(items: list) -> bool:
+    tr_class, tc_class = trees.cls("Tr"), trees.cls("Tc")
+    for item in items:
+        if isinstance(item, tr_class):
+            return True
+        if is_alternate_content(item):
+            branches = [*mce_choices(item)]
+            fallback = mce_fallback(item)
+            if fallback is not None:
+                branches.append(fallback)
+            if any(_has_rows(mce_branch_content(branch)) for branch in branches):
+                return True
+        elif not isinstance(item, tc_class):
+            nested = trees.block_items(item)
+            if nested is not None and _has_rows(nested):
+                return True
+    return False
+
+
 def cells_of(tr: Any) -> list[tuple[Any, list]]:
-    """A row's cells and the live list holding each, through cell-level controls and custom XML."""
+    """A row's cells and the live list holding each, through cell-level controls and custom XML.
+
+    And through a cell-level ``mc:AlternateContent`` kept whole, by the branch
+    Word reads, as :func:`rows_of` (docx4j ``Lister.cellsOf``).
+    """
     out: list[tuple[Any, list]] = []
     _cells(tr.content, out)
     return out
@@ -95,9 +135,6 @@ def _cells(items: list, out: list[tuple[Any, list]]) -> None:
     for item in items:
         if isinstance(item, tc_class):
             out.append((item, items))
-        elif is_alternate_content(item):
-            # a cell-level mc:AlternateContent is passed by, as a row-level one is
-            continue
         else:
             nested = trees.block_items(item)
             if nested is not None:

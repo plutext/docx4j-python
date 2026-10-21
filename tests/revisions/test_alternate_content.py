@@ -1,14 +1,17 @@
-"""Tracked changes inside a block- and a paragraph-level ``mc:AlternateContent``. CR-012 Phase A, section 4.1 item 6.
+"""Tracked changes inside a block-, paragraph-, row- and cell-level ``mc:AlternateContent``. CR-012 Phases A and A2.
 
 The port of docx4j's ``TrackedChangesAlternateContentTest`` (``2853b7280``, its
-CR-051 section 10.3 item 3 and 10.5 item 3): the changes of the branch Word
-reads are listed once, each with the other branch's change of its kind at its
-position as a twin, which resolves with it; ``accept_all``'s listing walks every
-branch and counts the read branch's. The trees are built outside a part
-(``set_contents``), so the elements stay whole whatever the load mode.
+CR-051 section 10.3 item 3 and 10.5 item 3; and ``9db1a3cbd``, its phase 2,
+section 4.4 item 3 here): the changes of the branch Word reads are listed once,
+each with the other branch's change of its kind at its position as a twin,
+which resolves with it; ``accept_all``'s listing walks every branch and counts
+the read branch's. A table left with no rows goes only when no branch has a row
+left. The trees are built outside a part (``set_contents``), so the elements
+stay whole whatever the load mode.
 
-Before this phase the engine read such an element as holding nothing: no change
-in it was listed, accepted or rejected.
+Before Phase A the engine read a block- or paragraph-level element as holding
+nothing, and before Phase A2 a row- or cell-level one: no change in it was
+listed, accepted or rejected.
 """
 
 from __future__ import annotations
@@ -47,6 +50,36 @@ PARA = (
     f'<mc:AlternateContent><mc:Choice Requires="w14"><w:r><w:t>C </w:t></w:r>{ins(1, "INSERTED")}{deleted(2, "DELETED")}</mc:Choice>'
     f"<mc:Fallback><w:r><w:t>F </w:t></w:r>{ins(3, 'INSERTED')}{deleted(4, 'DELETED')}</mc:Fallback></mc:AlternateContent></w:p>"
 )
+
+
+TBL_PROPS = '<w:tblPr/><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid>'
+
+#: A row-level element among a table's rows (docx4j CR-051 phase 2), the same changes in each branch's row.
+ROW = (
+    f"<w:tbl>{TBL_PROPS}"
+    f'<mc:AlternateContent><mc:Choice Requires="w14"><w:tr><w:tc><w:p><w:r><w:t>C </w:t></w:r>{ins(1, "INSERTED")}{deleted(2, "DELETED")}</w:p></w:tc></w:tr></mc:Choice>'
+    f"<mc:Fallback><w:tr><w:tc><w:p><w:r><w:t>F </w:t></w:r>{ins(3, 'INSERTED')}{deleted(4, 'DELETED')}</w:p></w:tc></w:tr></mc:Fallback></mc:AlternateContent>"
+    "</w:tbl>"
+)
+
+#: A cell-level element among a row's cells, the same changes in each branch's cell.
+CELL = (
+    f"<w:tbl>{TBL_PROPS}<w:tr>"
+    f'<mc:AlternateContent><mc:Choice Requires="w14"><w:tc><w:p><w:r><w:t>C </w:t></w:r>{ins(1, "INSERTED")}{deleted(2, "DELETED")}</w:p></w:tc></mc:Choice>'
+    f"<mc:Fallback><w:tc><w:p><w:r><w:t>F </w:t></w:r>{ins(3, 'INSERTED')}{deleted(4, 'DELETED')}</w:p></w:tc></mc:Fallback></mc:AlternateContent>"
+    "</w:tr></w:tbl>"
+)
+
+
+def deleted_row(change_id: int, text: str) -> str:
+    return (
+        f'<w:tr><w:trPr><w:del w:id="{change_id}" w:author="A"/></w:trPr>'
+        f"<w:tc><w:p><w:r><w:delText>{text}</w:delText></w:r></w:p></w:tc></w:tr>"
+    )
+
+
+def plain_row(text: str) -> str:
+    return f"<w:tr><w:tc><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:tc></w:tr>"
 
 
 def with_body(body: str):
@@ -170,3 +203,91 @@ def test_a_text_box_in_the_other_branch_is_the_twin_of_the_read_branchs() -> Non
     change.accept()
     xml = body_xml(pkg)
     assert "w:ins " not in xml and xml.count("BOXED") == 2
+
+
+# ---------------------------------------------------------------------------
+# row and cell level (CR-012 Phase A2, docx4j CR-051 phase 2 at 9db1a3cbd)
+# ---------------------------------------------------------------------------
+
+
+def test_row_level_changes_are_listed_once_with_twins() -> None:
+    listed_once_with_twins(ROW)
+
+
+def test_cell_level_changes_are_listed_once_with_twins() -> None:
+    listed_once_with_twins(CELL)
+
+
+def test_accepting_a_row_level_change_resolves_its_twin() -> None:
+    accepting_resolves_the_twin(ROW)
+
+
+def test_accepting_a_cell_level_change_resolves_its_twin() -> None:
+    accepting_resolves_the_twin(CELL)
+
+
+def test_accept_all_resolves_every_branch_at_row_level() -> None:
+    accept_all_resolves_every_branch(ROW)
+
+
+def test_accept_all_resolves_every_branch_at_cell_level() -> None:
+    accept_all_resolves_every_branch(CELL)
+
+
+def test_accepting_a_deleted_row_in_every_branch_removes_the_table() -> None:
+    """Listed once with its twin; accepted, both rows go, and the table with them, no branch having a row left."""
+    pkg = with_body(
+        f"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:tbl>{TBL_PROPS}"
+        f'<mc:AlternateContent><mc:Choice Requires="w14">{deleted_row(1, "C")}</mc:Choice>'
+        f"<mc:Fallback>{deleted_row(2, 'F')}</mc:Fallback></mc:AlternateContent></w:tbl>"
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    assert len(change.twins) == 1
+    change.accept()
+    xml = body_xml(pkg)
+    assert "<w:tbl" not in xml and "<w:tr" not in xml
+    assert "before" in xml
+
+
+def test_accepting_a_deleted_row_keeps_a_table_whose_other_branch_has_a_row() -> None:
+    """A deleted row in the branch Word reads, a plain row in the Fallback: accepted, the table stays."""
+    pkg = with_body(
+        f"<w:tbl>{TBL_PROPS}"
+        f'<mc:AlternateContent><mc:Choice Requires="w14">{deleted_row(1, "C")}</mc:Choice>'
+        f"<mc:Fallback>{plain_row('F')}</mc:Fallback></mc:AlternateContent></w:tbl>"
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    assert change.twins == []
+    change.accept()
+    xml = body_xml(pkg)
+    assert "<w:tbl" in xml and "<mc:Fallback>" in xml and "<w:tr" in xml
+    assert '<mc:Choice Requires="w14"><w:tr' not in xml
+    assert ">F<" in xml
+
+
+def test_a_rows_text_reads_through_a_cell_level_element() -> None:
+    """docx4j Texts.rowText over Lister.cellsOf (its CR-051 phase 2): a deleted row's text has Word's branch's cell."""
+    pkg = with_body(
+        f'<w:tbl>{TBL_PROPS}<w:tr><w:trPr><w:del w:id="1" w:author="A"/></w:trPr>'
+        "<w:tc><w:p><w:r><w:delText>A</w:delText></w:r></w:p></w:tc>"
+        '<mc:AlternateContent><mc:Choice Requires="w14"><w:tc><w:p><w:r><w:delText>C</w:delText></w:r></w:p></w:tc></mc:Choice>'
+        "<mc:Fallback><w:tc><w:p><w:r><w:delText>F</w:delText></w:r></w:p></w:tc></mc:Fallback></mc:AlternateContent>"
+        "</w:tr></w:tbl>"
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    assert change.text == "A\tC\r\n"
+
+
+def test_a_nested_tables_text_reads_through_a_row_level_element() -> None:
+    """Texts.cellText's nested table through Lister.rowsOf: Word's branch's row, not passed by."""
+    nested = (
+        f"<w:tbl>{TBL_PROPS}"
+        f'<mc:AlternateContent><mc:Choice Requires="w14">{plain_row("NC")}</mc:Choice>'
+        f"<mc:Fallback>{plain_row('NF')}</mc:Fallback></mc:AlternateContent></w:tbl>"
+    )
+    pkg = with_body(
+        f'<w:tbl>{TBL_PROPS}<w:tr><w:trPr><w:ins w:id="1" w:author="A"/></w:trPr>'
+        f"<w:tc>{nested}<w:p/></w:tc></w:tr></w:tbl>"
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    assert change.text == "NC\r\n\r\n"

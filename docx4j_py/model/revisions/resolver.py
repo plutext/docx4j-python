@@ -182,7 +182,9 @@ class _Op:
         """An accepted insertion keeps the row, its content's own revisions going with the marker.
 
         An accepted deletion takes the row and everything in it away; a table
-        left with no rows goes (check 30, C13, C25).
+        left with no rows goes (check 30, C13, C25), but only when no branch of
+        a row-level ``mc:AlternateContent`` has a row left (docx4j
+        ``Resolver.row`` over ``Lister.hasRows``, its CR-051 phase 2).
         """
         if t.ins == accept:
             tr_pr = t.tr.tr_pr
@@ -197,7 +199,7 @@ class _Op:
                 resolve(inner, accept, self.removals)
         else:
             self.remove(t.owner, t.tr)
-            if not tables.rows_of(t.tbl):
+            if not tables.has_rows(t.tbl):  # no branch left with a row
                 self.remove(t.tbl_owner, t.tbl)
 
     # -- fields and controls ---------------------------------------------------

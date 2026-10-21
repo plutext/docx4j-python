@@ -298,7 +298,7 @@ class Lister:
                 continue
             if is_alternate_content(item):
                 # block level: the branch Word reads, its changes kept apart (CR-012 Phase A)
-                self._alternate_level(item, None, into, ctx, block=True)
+                self._alternate_level(item, self._visit_blocks, into, ctx)
                 index += 1
                 continue
             # a block control or custom XML element that is itself an insertion
@@ -338,37 +338,77 @@ class Lister:
             into.append(BREAK)
             into.append(self._change(TableT(tbl, record), None, ctx))
             into.append(BREAK)
+        self._row_items(tbl.content, tbl, tbl_owner, into, ctx)
+
+    def _row_items(self, items: list, tbl: Any, tbl_owner: list, into: list, ctx: _Ctx) -> None:
+        """A table's rows in order, through row-level controls and custom XML.
+
+        docx4j ``Lister.rowItems`` (its CR-051 phase 2): a row-level
+        ``mc:AlternateContent`` kept whole lists the branch Word reads, with the
+        other branches' changes as twins (:meth:`_alternate_level`).
+        """
+        tr_class, tc_class = trees.cls("Tr"), trees.cls("Tc")
+        for item in items:
+            if isinstance(item, tr_class):
+                self._row_tokens(item, items, tbl, tbl_owner, into, ctx)
+            elif is_alternate_content(item):
+                self._alternate_level(
+                    item, lambda branch, tokens, c: self._row_items(branch, tbl, tbl_owner, tokens, c), into, ctx
+                )
+            elif not isinstance(item, tc_class):
+                nested = trees.block_items(item)
+                if nested is not None:
+                    self._row_items(nested, tbl, tbl_owner, into, ctx)
+
+    def _row_tokens(self, tr: Any, owner: list, tbl: Any, tbl_owner: list, into: list, ctx: _Ctx) -> None:
         # a table is no break of its own: an inserted or deleted row groups with
         # the rows and the inserted text touching it, as Office JS lists them (check 31)
-        for tr, owner in tables.rows_of(tbl):
-            tokens: list[Any] = []
-            for tc, _cell_owner in tables.cells_of(tr):
-                tc_pr = tc.tc_pr
-                marker = getattr(tc_pr, "cell_ins_or_cell_del_or_cell_merge", None) if tc_pr is not None else None
-                local = trees.name(marker) if marker is not None else ""
-                if local in ("cellIns", "cellDel"):
-                    tokens.append(self._change(CellT(local == "cellIns", tc, tr, marker), None, ctx))
-                    tokens.append(BREAK)
-                self._visit_blocks(tc.content, tokens, ctx)
-                tokens.append(BREAK)
-            inner = _group_touching(tokens)
-            # a row that is itself a revision reports as one change, as Office JS
-            # does: the markup its cells carry belongs to that change
-            row_changes: list[TrackedChange] = []
-            tr_pr = tr.tr_pr
-            if tr_pr is not None and tr_pr.ins is not None:
-                row_changes.append(self._change(RowT(True, tr, owner, tr_pr.ins, inner, tbl, tbl_owner), None, ctx))
-            if tr_pr is not None and tr_pr.del_value is not None:
-                row_changes.append(
-                    self._change(RowT(False, tr, owner, tr_pr.del_value, inner, tbl, tbl_owner), None, ctx)
-                )
-            if row_changes:
-                into.extend(row_changes)
-            else:
+        tokens: list[Any] = []
+        self._cell_items(tr.content, tr, tokens, ctx)
+        inner = _group_touching(tokens)
+        # a row that is itself a revision reports as one change, as Office JS
+        # does: the markup its cells carry belongs to that change
+        row_changes: list[TrackedChange] = []
+        tr_pr = tr.tr_pr
+        if tr_pr is not None and tr_pr.ins is not None:
+            row_changes.append(self._change(RowT(True, tr, owner, tr_pr.ins, inner, tbl, tbl_owner), None, ctx))
+        if tr_pr is not None and tr_pr.del_value is not None:
+            row_changes.append(self._change(RowT(False, tr, owner, tr_pr.del_value, inner, tbl, tbl_owner), None, ctx))
+        if row_changes:
+            into.extend(row_changes)
+        else:
+            into.append(BREAK)
+            for change in inner:
+                into.append(change)
                 into.append(BREAK)
-                for change in inner:
-                    into.append(change)
-                    into.append(BREAK)
+
+    def _cell_items(self, items: list, tr: Any, tokens: list, ctx: _Ctx) -> None:
+        """A row's cells in order, through cell-level controls and custom XML.
+
+        docx4j ``Lister.cellItems`` (its CR-051 phase 2): a cell-level
+        ``mc:AlternateContent`` kept whole lists the branch Word reads, with the
+        other branches' changes as twins (:meth:`_alternate_level`).
+        """
+        tc_class = trees.cls("Tc")
+        for item in items:
+            if isinstance(item, tc_class):
+                self._cell_tokens(item, tr, tokens, ctx)
+            elif is_alternate_content(item):
+                self._alternate_level(item, lambda branch, out, c: self._cell_items(branch, tr, out, c), tokens, ctx)
+            else:
+                nested = trees.block_items(item)
+                if nested is not None:
+                    self._cell_items(nested, tr, tokens, ctx)
+
+    def _cell_tokens(self, tc: Any, tr: Any, tokens: list, ctx: _Ctx) -> None:
+        tc_pr = tc.tc_pr
+        marker = getattr(tc_pr, "cell_ins_or_cell_del_or_cell_merge", None) if tc_pr is not None else None
+        local = trees.name(marker) if marker is not None else ""
+        if local in ("cellIns", "cellDel"):
+            tokens.append(self._change(CellT(local == "cellIns", tc, tr, marker), None, ctx))
+            tokens.append(BREAK)
+        self._visit_blocks(tc.content, tokens, ctx)
+        tokens.append(BREAK)
 
     # -- paragraphs and run level ---------------------------------------------
 
@@ -461,7 +501,7 @@ class Lister:
                 continue
             if is_alternate_content(item):
                 # paragraph level: the branch Word reads, its changes kept apart (CR-012 Phase A)
-                self._alternate_level(item, para, out, ctx, block=False)
+                self._alternate_level(item, lambda branch, tokens, c: self._run_level(para, branch, tokens, c), out, ctx)
                 index += 1
                 continue
             # a run holder that is not itself an insertion keeps the insertions
@@ -616,21 +656,28 @@ class Lister:
         finally:
             stack.pop()
 
-    # -- mc:AlternateContent at block and paragraph level (CR-012 Phase A) -----
+    # -- mc:AlternateContent at block, paragraph, row and cell level (CR-012 Phases A and A2) --
 
-    def _alternate_level(self, ac: Any, para: Para | None, into: list, ctx: _Ctx, *, block: bool) -> None:
-        """A block- or paragraph-level ``mc:AlternateContent``: the branch Word reads, and its twins.
+    def _alternate_level(self, ac: Any, walk: Any, into: list, ctx: _Ctx) -> None:
+        """A kept ``mc:AlternateContent``: the branch Word reads, and its twins.
 
-        docx4j ``Lister`` since its CR-051 phase 1 (``TrackedChangesAlternateContentTest``):
-        the changes of the branch a reader of text takes (:func:`docx4j_py.child.mce_branch`)
-        are listed where the element stands, kept apart from what is around it,
-        as a block control's are. Each other branch's changes are that branch's
-        twins, the n-th of a kind with the n-th of that kind (:func:`_pair_twins`,
-        as a text box's ``mc:Fallback``), so resolving one resolves the other;
-        a text box in another branch is the twin of the read branch's at the
-        same position. ``accept_all``'s listing (``attach_twins`` False) lists
-        every branch's changes, the others' marked :attr:`TrackedChange.twin`
-        so that they are not counted.
+        docx4j ``Lister`` since its CR-051 phase 1 (``alternateBlocks``), and
+        since its phase 2 among a table's rows and a row's cells
+        (``alternateRows``, ``alternateCells``; ``TrackedChangesAlternateContentTest``):
+        the changes of the branch a reader of text takes
+        (:func:`docx4j_py.child.mce_branch`) are listed where the element
+        stands, kept apart from what is around it, as a block control's are.
+        Each other branch's changes are that branch's twins, the n-th of a kind
+        with the n-th of that kind (:func:`_pair_twins`, as a text box's
+        ``mc:Fallback``), so resolving one resolves the other; a row or cell
+        that is itself a revision in another branch is the twin of the read
+        branch's, and a text box in another branch the twin of the read
+        branch's at the same position. ``accept_all``'s listing
+        (``attach_twins`` False) lists every branch's changes, the others'
+        marked :attr:`TrackedChange.twin` so that they are not counted.
+
+        `walk` tokenises a branch's live list as the element's level does:
+        ``walk(items, tokens, ctx)``, blocks, a paragraph's runs, rows or cells.
         """
         branches = _branch_objects(ac)
         selected = mce_branch(ac)
@@ -639,11 +686,7 @@ class Lister:
 
         def changes_of(branch: Any, context: _Ctx) -> list[TrackedChange]:
             tokens: list[Any] = []
-            items = list_of_branch(branch)
-            if block:
-                self._visit_blocks(items, tokens, context)
-            else:
-                self._run_level(para, items, tokens, context)
+            walk(list_of_branch(branch), tokens, context)
             return _group_touching(tokens)
 
         first_box = len(ctx.boxes)
