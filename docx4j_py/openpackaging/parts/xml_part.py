@@ -60,14 +60,15 @@ _NS_MAP: dict[str, str] = {p: u for p, u in PREFIXES.items() if p != "xml"}
 
 @dataclass(frozen=True, slots=True)
 class _ParseSettings:
-    """What a parse of a part reads from its package's load options. CR-002 section 16.2.
+    """What a parse of a part reads from its package. CR-002 section 16.2.
 
-    :meth:`XmlPart._unmarshal` reads the options through this and nothing else,
-    and a private tree keeps the settings it was parsed under, so that
-    :attr:`XmlPart.contents` adopts it only where a live parse now would read
-    the same. A later package-level setting read at parse time --- CR-012's
-    ``mc_block_level`` --- is a field here and a line in :meth:`of`, and
-    adoption follows it with no other change.
+    :meth:`XmlPart._unmarshal` reads the package's load options through this
+    and nothing else, and a private tree keeps the settings it was parsed
+    under, so that :attr:`XmlPart.contents` adopts it only where a live parse
+    now would read the same. A later package-level setting read at parse time
+    --- CR-012's ``mc_block_level``, on the load options or on the package ---
+    is a field here and a line in :meth:`of`, and adoption follows it with no
+    other change.
     """
 
     #: ``LoadOptions.strict``: a parse that skipped content raises.
@@ -76,8 +77,9 @@ class _ParseSettings:
     mce_preprocess: bool = False
 
     @classmethod
-    def of(cls, options: Any) -> _ParseSettings:
-        """The settings of a package's ``LoadOptions``; the defaults for a part with no package."""
+    def of(cls, package: Any) -> _ParseSettings:
+        """What a parse of a part of `package` reads now; the defaults for a part with no package."""
+        options = getattr(package, "load_options", None) if package is not None else None
         if options is None:
             return _DEFAULT_SETTINGS
         return cls(strict=bool(options.strict), mce_preprocess=bool(options.mce_preprocess))
@@ -336,12 +338,8 @@ class XmlPart(Part, Generic[T]):
         self._private_settings = None
 
     def _parse_settings(self) -> _ParseSettings:
-        """What a parse now reads from the package's load options."""
-        return _ParseSettings.of(self._load_options())
-
-    def _load_options(self) -> Any:
-        package = self.package
-        return getattr(package, "load_options", None) if package is not None else None
+        """What a parse now reads from the package."""
+        return _ParseSettings.of(self.package)
 
     # -- serialising -------------------------------------------------------
 
