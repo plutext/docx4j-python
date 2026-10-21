@@ -412,7 +412,14 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   - no text box is made a typed island any more over the corpus; one below a wildcard node (in an
     element no class binds) still is;
   - `docx4j_py.namespaces.UNDERSTOOD` names `v`, `o`, `w10`, `xvml` and `pvml`;
-  - `import docx4j_py` takes about 100 ms longer (640 to 745 ms here), for the five modules.
+  - `import docx4j_py` takes about 100 ms longer (640 to 745 ms here), for the five modules;
+  - **`Pict`, `CTObject` and `CTBackground` (`w:pict`, `w:object`, `w:background`) hold their
+    VML and `o:` children in one list, `any_and_any`** (docx4j's `getAnyAndAny()`), in document
+    order, where they had two, `schemas_microsoft_com_vml_element` and
+    `schemas_microsoft_com_office_office_element` (CR-012 section
+    [12.16](docs/change-requests/CR-012-type-kept-mc-branches.md#1216-the-wobject-order-fix-implementation-notes-2026-10-22),
+    `schemas/PATCHES.md` patch 6; under "Fixed", what the two lists did to a save). inkml's
+    `TraceGroupType` likewise holds its five kinds of child in one list, `content` (patch 7).
 
 ### Fixed
 
@@ -525,6 +532,19 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   on save, and `wml(...)` refused it. It is now bound as its container binds it (`SdtBlock`,
   `SdtRun`, `CTSdtRow`, `CTSdtCell`) and written back as `w:sdt`, through the fork's stage 11
   (`docx4j-xsdata` after `26.2.1`; this package is never released against an unreleased fork).
+- **An embedded object opens again after a save**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section
+  [12.16](docs/change-requests/CR-012-type-kept-mc-branches.md#1216-the-wobject-order-fix-implementation-notes-2026-10-22)).
+  Since 0.1.0, saving a document whose main part had been unmarshalled (any edit of the body)
+  wrote each `w:object`'s `o:OLEObject` before its `v:shape`, and Word showed the object's icon but
+  would not open the embedded object on a double-click. `CT_PictureBase`, the content model of
+  `w:pict`, `w:object` and `w:background`, was a repeating sequence of a VML wildcard and an `o:`
+  wildcard, bound as two lists that were written interleaved, one item of each in turn; a marked
+  schema patch makes it one wildcard over both namespaces, which accepts the same documents and
+  keeps the children in document order, as docx4j's JAXB binding does (`schemas/PATCHES.md`
+  patch 6). A `w:pict` mixing VML and `o:` children was reordered the same way and is kept as
+  read too. Over 2,746 parts of 422 documents, the 17 main parts whose `w:object`s were reordered
+  are canonically identical to their sources now.
 
 ## [0.1.0] --- 2026-09-20
 

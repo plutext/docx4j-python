@@ -99,7 +99,11 @@ plus, new in Phase B:
 ```
 
 and a `<Substitutions>` table of one `type="package"` entry per namespace, which is what turns
-`org.openxmlformats.schemas.wordprocessingml.2006.main` into `docx4j_py.wml`.
+`org.openxmlformats.schemas.wordprocessingml.2006.main` into `docx4j_py.wml`, and one
+`type="field"` entry (CR-012 section 12.16): `CT_PictureBase`'s one wildcard over the VML and `o:`
+namespaces (`schemas/PATCHES.md` patch 6) is named `any_and_any`, docx4j's `getAnyAndAny()`. A
+field substitution is `re.sub` over every field name and enum constant, before and after the
+naming convention, so its search is anchored (`^...$`) to the one generated name it replaces.
 
 `applyIfDerived` is deliberately left off on the extension: a class that already extends a
 generated class (the element-specific `RunIns` over `CT_TrackChange`) inherits `Child` from its

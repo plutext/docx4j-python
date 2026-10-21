@@ -2894,7 +2894,10 @@ double clicking does not open the embedded document (compare SOURCE, where it wo
   and an `o:` wildcard, and inkml's `traceGroup.type`, which no corpus document holds. JAXB binds
   such a sequence as one content list, in document order (docx4j's `Pict.getAnyAndAny()`).
 
-### 12.15 The `w:object` order fix (proposed 2026-10-22; waiting on the user's go)
+### 12.15 The `w:object` order fix (proposed 2026-10-22; implemented 2026-10-22, section 12.16)
+
+**Implemented 2026-10-22, at the user's go; section 12.16 has the notes.** The text below is the
+proposal as it was approved.
 
 12.14's file 3 fails because a save writes `w:object`'s children in an order Word does not
 activate, and that order comes from the binding, not from VML: `CT_PictureBase` (wml.xsd, the base
@@ -2934,3 +2937,264 @@ release so far.
 6. **A fix release** for the 0.1.0 line is the user's decision. The patch needs no fork change, so it
    could be made at the `v0.1.0` tag over `docx4j-xsdata 26.2.1`; `main` itself cannot release
    before the fork's stages 9 to 12 do.
+
+### 12.16 The `w:object` order fix: implementation notes (2026-10-22)
+
+Section 12.15's fix, at the user's go ("implement Proposed fix (CR-012 §12.15, 80e7a12)"), as
+proposed. Two marked schema patches end the one class of bug 12.14 found: `CT_PictureBase` becomes
+one lax wildcard over the VML and `o:` namespaces, and inkml's `traceGroup.type` a repeating choice,
+each accepting the documents it accepted before. The generated `CTPictureBase` holds one list,
+`any_and_any` (docx4j's name), read and written in document order, so a `w:object` is saved
+`v:shapetype`, `v:shape`, `o:OLEObject` as Word wrote it. No fork change was needed. Over the
+survey's 2,746 parts, the 17 main parts whose `w:object`s were reordered are canonically identical
+to their sources now, and nothing else moved. Phase C's file 3, saved again, has no difference from
+its source at all; files 1, 2 and 4 save to the same bytes as before.
+
+**Commits** (docx4j-python; none in the fork):
+- `7665242`: patches 6 and 7, `schemas/PATCHES.md`, the field `Substitution` in
+  `.xsdata.phase-b.xml`;
+- `889aed2`: the regeneration;
+- `665bd88`: the text model's `_object` and `tests/openpackaging/test_vml.py`;
+- `803dcb7`: the order test over file 3's own `w:object`;
+- and the commit of this section, with the CHANGELOG, `tests/README.md`, `codegen/README.md` and
+  `docs/UPSTREAM.md` report 26.
+
+**What landed.**
+
+| piece | where | what |
+|---|---|---|
+| patch 6 | `schemas/wml/wml.xsd` (`CT_PictureBase`), `schemas/PATCHES.md` | the repeating sequence of two wildcards becomes a plain sequence of one, `namespace="urn:schemas-microsoft-com:vml urn:schemas-microsoft-com:office:office"`, `minOccurs="0" maxOccurs="unbounded"` |
+| patch 7 | `schemas/odrawxml/inkml.xsd` (`traceGroup.type`), `schemas/PATCHES.md` | the repeating sequence of five optional elements becomes `<xsd:choice minOccurs="0" maxOccurs="unbounded">` of the five |
+| the name | `.xsdata.phase-b.xml` | `<Substitution type="field" search="^schemas_microsoft_com_vml_schemas_microsoft_com_office_office_element$" replace="any_and_any"/>` |
+| the regeneration | `docx4j_py/wml/__init__.py`, `docx4j_py/inkml/__init__.py` | `CTPictureBase.any_and_any`; `TraceGroupType.content`; nothing else |
+| the reader | `docx4j_py/model/text/extractor.py` | `_object` reads `any_and_any` |
+| tests | `tests/openpackaging/test_vml.py` (22 to 27) | below |
+| documents | `CHANGELOG.md`, `tests/README.md`, `codegen/README.md`, `docs/UPSTREAM.md` report 26 | |
+
+**The patches.** Each is marked by a comment beginning `docx4j-python:` and recorded in
+`PATCHES.md`, whose count of markers goes from 26 matches to 28.
+- **The same documents.** Both of `CT_PictureBase`'s particles are optional, so the sequence is
+  `(v? o?)*`, which is `(v | o)*`; all five of `traceGroup.type`'s are, so `(a? b? c? d? e?)*` is
+  `(a | b | c | d | e)*`. Checked with lxml rather than argued alone: a small schema holding each
+  content model, old and new, validating every child sequence of length 0 to 4 over the particles
+  and one element neither accepts. `CT_PictureBase`: 121 sequences, both agree on all 121 (31
+  accepted). `traceGroup.type`: 1,555, both agree on all (781 accepted).
+- **JAXB's reading.** docx4j binds `CT_PictureBase` as one content list in document order:
+  `Pict.getAnyAndAny()`, `CTObject.getAnyAndAny()` and `CTBackground.getAnyAndAny()`
+  (`org/docx4j/TraversalUtil.java` at `2853b7280`, lines 500 and 562; its samples'
+  `BackgroundImage.java`, line 97, adds to `background.getAnyAndAny()`). So docx4j's own build is
+  unaffected.
+- **lxml's report** over the root, `wml/wml.xsd` and `odrawxml/inkml.xsd` is the same before and
+  after (the chartex QName; for `inkml.xsd` alone, its unimported `xml:id`).
+
+**The audit** (a script of this session's, not committed, over all 110 schema files: every `xsd:sequence` of two
+or more particles that can repeat, `xsd:group` references expanded):
+- **Two whose own `maxOccurs` is above one:** `CT_PictureBase` and `traceGroup.type`. 12.14's claim
+  holds.
+- **Six repeated only through a group reference**, `<xsd:group ref="EG_RPrBase" minOccurs="0"
+  maxOccurs="unbounded">`: `EG_RPrBase`'s sequence and its two `w14` groups' (`EG_RPrTextEffects`,
+  `EG_RPrOpenType`), each reached from `CT_ParaRPrOriginal` and from `CT_RPrChange`'s `w:rPr`.
+  These are not interleaved. The generator's repeatability test reads the outermost sequence on an
+  attribute's path, which does not repeat, so no field carries a `sequence` key; each element is a
+  list, written in turn in the schema's order, as any run properties are. No corpus part shows a
+  difference there.
+- **The generated model** carried seven fields with a `sequence` key before the patches, all in
+  `CTPictureBase` (two) and `TraceGroupType` (five). After them, none.
+
+**The field name: docx4j's, `any_and_any`.** The fork's generator takes a `type="field"`
+substitution. What the search is applied to decided its form:
+- `Filters.field_name` applies every field substitution with `re.sub`, a search and not a
+  fullmatch. It applies it twice: to the raw name, then to the snake-cased one. It does so for every
+  field of every class, and `constant_name` for every enum constant.
+- The raw name of the one wildcard is `@schemas-microsoft-com:vml_schemas-microsoft-com:office:office_element`;
+  snake-cased, `schemas_microsoft_com_vml_schemas_microsoft_com_office_office_element`.
+- So the search is anchored, `^...$`, to the snake-cased name. It matches nothing before the
+  convention, and after it only that name. `CTShapeDefaults`' own `o:` wildcard,
+  `schemas_microsoft_com_office_office_element` (`w:shapeDefaults`), keeps its name.
+- The regeneration renamed exactly one field.
+- inkml's compound field keeps the generator's name, `content` (five names exceed
+  `maxNameParts`). docx4j's sources at `2853b7280` name no `traceGroup` accessor, and no corpus
+  document holds ink.
+
+**The regeneration.**
+- `CTPictureBase`'s two lists become one: `any_and_any: list[object]`, a `Wildcard` over both
+  namespaces, with no `sequence` key. `Pict`, `CTObject` and `CTBackground` inherit it and are
+  otherwise unchanged.
+- `TraceGroupType`'s five lists become one compound list, `content`, of `TraceType`,
+  `TraceGroupType`, `TraceViewType`, `AnnotationType` and `AnnotationXMLType`.
+- **Nothing else changed:** 294 modules, 1,969 classes, 2,189 element names over 65 namespaces and
+  330 `ClassNames` warnings, as before; no `el` table, `el` entry or manifest line. The one other
+  warning, `inkml.MappingType`'s missing metadata, is `docs/UPSTREAM.md` report 7's, as before.
+- `generate.sh --check`: byte identical.
+- A parsed `w:object` holds `[Shapetype, Shape, Oleobject]`, typed as in Phase C, and is written in
+  that order.
+
+**The readers.**
+- **Only two places outside generated code named the old fields**, by a grep of the repository
+  (`scripts/` and `codegen/` included) and of `../docx4j-mcp-py` and `../docx4j-core-ts`:
+  - the text model's `_object` now reads `any_and_any`;
+  - `tests/openpackaging/test_vml.py` (below).
+- **Every other reader walks by the class metadata** (`iter_children`, `find`, `walk`) and needed
+  no change: the text model's `_anchored`, the revisions engine's lister and trees,
+  `insert_ooxml`'s `_rel_fields` and the census scripts.
+  - They now meet a `w:pict`'s or `w:object`'s children in document order, where they met every
+    `v:` first, then every `o:`.
+  - No answer moved for it (the audit below).
+- The `CTShapeDefaults` assertion in `test_settings_shape_defaults_and_layout_are_typed` is not
+  `CT_PictureBase`'s, and stays.
+
+**Tests** (`tests/openpackaging/test_vml.py`, 22 to 27):
+- The Phase C tests that named the two lists read `any_and_any`. `test_vml_under_an_object_is_typed`
+  asserts the three children in order now: a `CTShapetype`, a `CTShape`, a `CTOLEObject`.
+- `ROUND_TRIP` gains the inspection probe's main part, eight parts in all.
+- `test_an_objects_order_is_the_one_difference_and_older`, which pinned that part's
+  `{"child-order": 4, "element-renamed": 4}`, is replaced by two tests:
+  - **`test_an_objects_children_are_saved_in_document_order`**, over three sources:
+    - the inspection probe (two objects) and the extraction probe (four with an `o:OLEObject`,
+      and a fifth holding a `w:control`), both fixtures here;
+    - file 3's own `w:object` (docx4j's `OLE/inserted doc.docx`, its shapetype's formulas left
+      out), in a package made here and saved once. That document is only in the git-ignored
+      survey corpus.
+    - Each is loaded, its main part unmarshalled and the package saved. Every `w:object` comes
+      back with its children in its source's order, `v:shapetype`, `v:shape`, `o:OLEObject` for
+      each OLE object. The part is canonically identical, with no `xsi:type`, and the save, loaded
+      again, types each OLE object's three in that order.
+  - **`test_a_picts_children_are_saved_in_document_order`**: a `w:pict` holding every `v:` first
+    (`v:shapetype`, `v:shape`, `v:rect`, `o:signatureline`, `o:lock`), or every `o:` first. Each
+    is saved, loaded, unmarshalled and saved again, and keeps its order, typed, with nothing
+    skipped.
+    - The `o:` children are placed straight in the `w:pict` for the order's sake; Word writes
+      `o:lock` inside a shape.
+- **The pins bite.** At `80e7a12`, in a scratch worktree, the same saves come back interleaved:
+  the inspection probe's two objects and `inserted doc.docx`'s `v:shapetype`, `o:OLEObject`,
+  `v:shape`; the every-`v:`-first `w:pict` `v:shapetype`, `o:signatureline`, `v:shape`, `o:lock`,
+  `v:rect`.
+
+**The gates**, Phase C's, rerun (before: Phase C's numbers, section 12.10, the code at `80e7a12`
+being Phase C's):
+
+| gate | before | after |
+|---|---|---|
+| fast suite (`-m "not slow"`) | 3,880 passed, 8 skipped, 1,280 deselected (rerun here at `80e7a12`: the same) | at `665bd88`: 3,884 passed, 8 skipped, 1,280 deselected; at `803dcb7` (one test more): 3,884 passed and 1 failed, the sibling's (below) |
+| whole suite | 5,160 passed, 8 skipped | at `665bd88`: 5,164 passed, 8 skipped (3 minutes 18 seconds); at `803dcb7`: 5,164 passed and 1 failed, the sibling's (below), 8 skipped (3 minutes 5 seconds) |
+| `tests/openpackaging/test_vml.py` | 22 passed | 27 passed |
+| `generate.sh --check` | byte identical | byte identical |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings, exit 0 | the same |
+| the survey: parts canonically identical to their source | 2,699 of 2,746 | 2,716 |
+| the survey: parts with a skipped report | 24 (Strict) | the same 24; nothing newly skipped |
+| the readers' audit (384 documents, 21 readers) | Phase C's after run | 19 readers the same on every document; Accept All and Reject All move in 17 documents, in the resolved main part's canonical form alone (below) |
+| `out/acceptance/` against `out/acceptance-before-cr012-c-order/` | Phase C's: 0 differ beyond the dates | 13 artefacts, 175 entries, 0 differ beyond the dates; 167 byte for byte, 8 in the dates only (as Phase C's) |
+| `tests/revisions` | 550 passed | 550 passed |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`) | 68 passed | 68 passed |
+| CR-011's ratchet (`tests/text/test_conformance.py`) | 24 passed; 1,291 pass, 0 fail, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` unchanged |
+| `tests/openpackaging/test_threads_and_import.py` | passes | 6 passed |
+| `scripts/threads.py` | no configuration lost or altered a document | the same: 355 jobs in each of three modes, 0 output and 0 report differences, 0 failures |
+
+- `tests/test_performance.py` (slow) passes in the whole suite.
+- **The one failure is not this change's.**
+  - `tests/content/test_office_js_subset.py::test_the_script_would_write_what_is_committed`
+    regenerates `tests/office_js_subset.json` from the sibling checkout's
+    `../docx4j-core-ts/test/office-js-subset.ts`.
+  - Between the two runs that file gained an uncommitted edit in docx4j-core-ts's working tree,
+    another session's work.
+  - Against that checkout's committed file (`96f735b`), `scripts/office_js_subset.py --check
+    --source` reports the JSON up to date.
+  - It passed in both runs at `665bd88`.
+
+**The survey** (`scripts/vml_census.py run --out out/cr012-c-order-survey/after`, over Phase C's
+corpus, `out/cr012-b-corpus/`, unchanged; `compare` against `out/cr012-c-survey/after`, exit 0):
+- **17 parts differ in bytes from Phase C's saves.** All are main parts, and each differs only in
+  `w:object` child order: 26 `w:object`s, each now `v:shape` before `o:OLEObject`. All 17 are
+  canonically identical to their sources now:
+  - docx4j's five OLE fixtures, `OLE/create new bitmap.docx`, `create new pdf.docx`,
+    `dragged pdf.docx`, `dragged txt.docx` and `inserted doc.docx` (one object each);
+  - docx4j's extraction probes: `extraction-probe.docx` (four objects),
+    `extraction-probe-inspect.docx` (two), `extraction-probe-structure.docx`,
+    `extraction-probe-external.docm`;
+  - and the probes' Word saves in `evidence/`: `checked-52/extraction-probe.docx` (three),
+    `extraction-probe-v1-rejected.docx` (three), `extraction-probe-external-word-save.docm`,
+    `extraction-probe-r2-word-save.docx`, `extraction-probe-r3-word-save.docx`,
+    `extraction-probe-structure-word365.docx`, `extraction-probe-v1-word-repaired.docx`;
+  - and this repository's copy of `extraction-probe-inspect.docx` (two). The two
+    `extraction-probe-inspect` parts keep their one benign `boolean-spelling`.
+- **No part gains a difference, and nothing is newly skipped.** The census is the same, element for
+  element.
+- **What is left: 30 parts not canonically identical**, of the 47:
+  - 24 Strict OOXML parts, as before (CR-002 section 12.3 item 7).
+  - 6 where the schema's order is imposed on a source that is not in it:
+    - three `settings.xml` (`HelloWordOnline.docx`, Word Online's, 9; artefact 8's Word-accepted
+      and Word-rejected saves, 3 each, whose `w14:discardImageEditingData` and
+      `w14:defaultImageDpi` come before `w15:docId`);
+    - `multilingual/arabic/arabic_numbering.docx`'s main part (6: a paragraph mark's `w:rPr`
+      with `w:sz` and `w:szCs` before `w:rFonts`);
+    - docx4j-core-ts's `tables-conditions.docx` and `tables-conditions-mode12.docx` `styles.xml`
+      (2 each: a style's `w:pPr` with `w:jc` before `w:ind`).
+  - None of the six is `CT_PictureBase`'s. Section 11.5's eighteen main parts were these 17 and
+    `arabic_numbering.docx`.
+
+**The readers' audit** (`scripts/mce_branches.py readers --holding either`, 384 documents, against
+Phase C's after run, `out/cr012-c-survey/readers-either-after.json`):
+- **For the coordinator's decision: none.** No reader's answer about the text or the structure
+  changed: 19 of the 21 readers give the same answers on all 384 documents.
+- **Two readers moved, in one field, in the same 17 documents:** Accept All and Reject All.
+  - The field is the canonical form of `/word/document.xml` after resolving, the audit's hash of
+    each resolved part. What is left (`left`) and the text after resolving are unchanged.
+  - To see what moved, both verbs were run on the 17 documents at `80e7a12` (a scratch worktree)
+    and now, and the main parts saved. The 34 hashes reproduce the audit's, before and after.
+  - The two saves differ in 104 `child-order` and 104 `element-renamed` differences, every one at a
+    `w:object`: the resolved part is written in the source's order now, as the plain save is.
+- The same four Strict documents fail to load.
+
+**Departures, with why.**
+1. **inkml's field keeps the generator's name** (`content`), where `CT_PictureBase`'s takes
+   docx4j's. There is no docx4j accessor to follow at `2853b7280`, and no reader.
+2. **The `w:object` test reads two fixtures and a fragment, not `OLE/inserted doc.docx` itself.**
+   That file is not among this repository's fixtures, only in the git-ignored survey corpus. Its
+   `w:object` is the fragment, and the probes' objects are Word's own, of the same shape. The file
+   itself goes through the survey and the Word check.
+3. **The `w:pict` test places `o:` elements straight in the `w:pict`.** The schema allows it, and
+   it makes both orders testable; Word puts `o:lock` inside a shape.
+4. **inkml's choice gives each element the default occurrence**, where the sequence gave each
+   `minOccurs="0"`. Inside a choice of `minOccurs="0"`, a branch that may be empty adds nothing;
+   the language check covers it.
+
+**Found, and not done.**
+- **The six run-property sequences repeated through a group reference** (the audit) impose the
+  schema's order on write, as a non-repeating sequence does. That is the behaviour of every
+  property container here, and no corpus part shows a difference from it.
+- **`docs/UPSTREAM.md` report 26**: xsdata writes a repeating sequence of several particles
+  interleaved, losing document order. Reproduced with upstream `xsdata 26.2` (`.venv`): a schema
+  whose `t` holds `<xs:sequence maxOccurs="unbounded">` of optional `a` and `b` reads
+  `<a>1</a><a>2</a><b>3</b>` as `T(a=['1', '2'], b=['3'])` and writes `<a>1</a><b>3</b><a>2</a>`.
+  It is worked around here by the two schema patches, not in the fork.
+- **A fix release for the 0.1.0 line** stays the user's decision (12.15 item 6). The patch needs no
+  fork change: the same two patches and the substitution would apply at the `v0.1.0` tag over
+  `docx4j-xsdata 26.2.1`. At the tag the same two fields are generated, with their `sequence`
+  keys, and nothing outside generated code names them, so no reader would move.
+- **The record of the Word check** in `tests/README.md` waits for its result.
+
+**The Word check (not yet checked).**
+- **Staged** in `out/cr012-c-order-word-check/` and copied to
+  `~/vbShares/Office 2016/__tmp/python-cr012c-order/`, with a `README.txt`:
+  - `cr012c-order-3-ole-object.docx`: `OLE/inserted doc.docx` saved again, as Phase C's file 3 was,
+    with every WordprocessingML part (document, settings, styles, webSettings, fontTable)
+    unmarshalled;
+  - beside it, its unmodified source, `cr012c-order-3-SOURCE-inserted-doc.docx`.
+  - Expected: it opens with no repair prompt and shows the icon where the source has it;
+    double-clicking the icon opens the embedded document, as in the source.
+- **Checked before staging:**
+  - it reads back with `LoadOptions(strict=True)`, with nothing skipped and no `xsi:type` in a
+    WordprocessingML part;
+  - every WordprocessingML part is canonically identical to its source, with no difference at all,
+    not even a benign one;
+  - entry by entry against the source: the embedding, the image, the theme, `[Content_Types].xml`
+    and `docProps` are the same bytes; `document.xml`, the other parts and both relationships parts
+    are the same in C14N.
+  - Every entry is the same bytes as `cr012c-3a-save-with-shape-first.docx`, the save with the
+    `o:OLEObject` moved back by hand, which the user confirmed opens (12.14).
+- **Files 1, 2 and 4 need no re-check.** They were saved again the same way by the fixed engine
+  (`cr043-tracked.docx`, `loadAndSave.docx`, `vml/textbox.docx`) and compared with Phase C's saves
+  in `out/cr012-c-word-check/`: every entry of each is the same bytes (37, 35 and 13 entries), so
+  they are not staged.
+  - The method is Phase C's own: run at `80e7a12`, it reproduces all four of Phase C's saves byte for
+    byte.
