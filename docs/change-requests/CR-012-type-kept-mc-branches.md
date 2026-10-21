@@ -23,7 +23,7 @@ twins; and docx4j's 19 probes with Word 365's 14 saves. In `preserve` mode all 1
 canonically identical; in `word` mode all 14 read as Word's save. The acceptance artefacts are
 unchanged and CR-011's ratchet does not move. **The Word check of three probe saves passed the
 same day** (the user: "__tmp/python-cr012a/ are all good"; 9.12): **Phase A done**. Row and cell level are passed by; docx4j's phase 2
-(`9db1a3cbd`), which reads them, is a follow-up port.
+(`9db1a3cbd`), which reads them, is ported as Phase A2 (section 4.4), started the same day at the user's go ("make the CLAUDE.md edits, then do phase A2").
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -401,6 +401,62 @@ binding was losing attributes before it. So the phase has its own survey and gat
 skipped, canonical identity over the corpus, and a Word check. It is proposed here so the whole
 answer is in one place. It starts only after Phase B, on its own go (Q4).
 
+### 4.4 Phase A2: row and cell level, as docx4j CR-051 phase 2
+
+The user's go, 2026-10-21 ("make the CLAUDE.md edits, then do phase A2"). docx4j's phase 2
+(`9db1a3cbd`, pushed; its CR-051 section 12) teaches the walks that read rows and cells by type
+the element, and lifts phase 1's carve-out. Phase A here kept row- and cell-level elements whole
+from the start, but its readers pass them by (section 9.6). So in the default mode a row's or
+cell's text in a kept branch is missing from the text model, and its tracked changes are not
+listed. This phase closes both.
+
+1. **Typed rows and cells in a branch (the fork, stage 11 extended).** Today a branch's `w:tr` or
+   `w:tc` is a wildcard tree (9.6). Item 25's hook (`runtime.branch_child_class`) answers for
+   `w:sdt` by what the container binds. It is extended to `w:tr` and `w:tc` by the same rule, read
+   from the metadata: a row-level branch's `w:tr` is the class `CT_Tbl` binds, and a cell-level
+   branch's `w:tc` the class `CT_Row` binds. Item 26's name table names them on write. docx4j
+   binds them so by name. Nothing else in a branch changes: `w:p`, `w:tbl` and `w:r` stay as they
+   are until Phase B. The probes stay canonically identical in both modes.
+2. **The text model** (docx4j `Extractor.rows` and `cells`). An element among a table's rows or a
+   row's cells is compared with its other branches (`mce.branches_differ` at the element's
+   address), and Word's branch (the TEXT purpose) is walked in its place, as `blocks` does at
+   block level. A row inside it is addressed `body/<tbl>/<i>/0`. In `word` mode the walks read the
+   load's record for their container, so the warning is the same at the same address in both
+   modes.
+3. **The revisions engine** (docx4j `Lister.tableTokens`, `alternateRows`, `alternateCells`,
+   `pairTwins`; `Resolver.row`; `Texts.rowText` and `cellText`).
+   - Word's branch's row and cell changes are listed where the element stands, and every other
+     branch's become twins by kind and position, as `_alternate_level` does at block level.
+   - Accepting or rejecting one resolves its twin.
+   - A table left with no rows is removed only when no branch has a row left.
+   - The row and cell texts read rows and cells through content controls, custom XML and a kept
+     element.
+4. **The content API.** `Table.rows` and `TableRow.cells` read Word's branch, read-only, as
+   `Body.paragraphs` does at block level, and an edit there raises `address.read_only`. `outline()`
+   and `describe()` follow. Anything else that walks rows or cells by type is audited, as docx4j's
+   section 12.1 surveyed every `instanceof Tr` and `Tc`. That covers `model/content/`, the property
+   resolver's parent climb, the python-docx facade and Markdown's tables.
+5. **Not ported: OpenDoPE's two cases** (docx4j's `RemovalHandler.xslt` row count,
+   `OpenDoPEHandler.emptyKeepingTableShape`, `McRowCellLevelOpenDoPETest`). This package's
+   template fill has no OpenDoPE conditions or repeats and removes no control (CR-003 section 17;
+   `model/customxml/template.py`). Recorded.
+6. **The tests**, docx4j's at `9db1a3cbd`, against the 19 probes:
+   - `McBlockLevelLoadTest.preserveModeKeepsBlockLevelElements`, every container;
+   - `McBlockLevelProbesTest.preserveModeKeepsEveryBranch` without its row and cell exception, and
+     `preserveModeReadsAsWordsSave`: each probe with a Word 365 save reads as Word's save, in
+     `preserve` mode and after a `preserve` save;
+   - `McBranchSdtTest`'s row and cell controls typed in both branches;
+   - `McBlockLevelReadersTest`'s row- and cell-level element (`body/3/1`, `body/3/2/1`), the
+     warnings equal across the modes;
+   - `TrackedChangesAlternateContentTest`'s row and cell cases and its two row-removal cases.
+7. **The gate.**
+   - The whole suite, `roundtrip.py` 50 of 50, and `generate.sh --check`.
+   - CR-011's ratchet and agreement test unchanged, and CR-010's Word-save comparisons unchanged.
+   - `out/acceptance/` canonically identical.
+   - A Word check of the five row and cell probes saved in `preserve` mode and of one in `word`
+     mode, since branch rows and cells are now written from typed objects. docx4j's own check of
+     its `preserve` saves passed (its section 12.3).
+
 ## 5. Tests and the gate
 
 - **Phase A tests,** in `tests/openpackaging/test_mce_levels.py`, over the 25 probes in both modes:
@@ -512,6 +568,7 @@ answer is in one place. It starts only after Phase B, on its own go (Q4).
 | Phase | What | Effort |
 |---|---|---|
 | A | docx4j CR-051 phase 1: the schema refresh and regeneration; the fork's container-dependent `w:sdt`; the load-time mode (`preserve` by default, Q7) with its record, REQ-305 and `mc:Ignorable`; `mce_preprocess` on docx4j's list; the readers' audit, each reader of text or structure reading Word's branch at block level; the revisions twins; the 25 probes and Word's saves; a Word check | 3.5 days |
+| A2 | docx4j CR-051 phase 2: the fork's hook extended to a branch's `w:tr` and `w:tc`; the text model's row and cell walks; the revisions engine's row and cell twins and the table-removal rule; the content API's rows and cells read-only; docx4j's phase 2 tests; a Word check | 1.5 days |
 | B | the fork's root-element table and its tests; `derive_names.py`, `root_elements.json`, `ROOT_ELEMENTS`; the registration; traversal's typed branch children; tests, survey script, the record; then a fork release before a docx4j-python release | 1.5 days |
 | C | docx4j's VML schemas at `acd0defc9`, names, regeneration; the VML survey and gate; the islands retired; Word check | 3 days |
 
