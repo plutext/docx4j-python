@@ -78,9 +78,10 @@ def read(package: Any, metadata: dict[str, Any]) -> None:
     """The properties into `metadata`, under :data:`CORE`, :data:`APP` and :data:`CUSTOM`, where the parts exist."""
     if package is None:
         return
-    core = _contents(getattr(package, "doc_props_core_part", None))
+    core_part = getattr(package, "doc_props_core_part", None)
+    core = _contents(core_part)
     if core is not None:
-        metadata[CORE] = _core(core)
+        metadata[CORE] = _core(core, _core_dates(core_part))
     app = _contents(getattr(package, "doc_props_extended_part", None))
     if app is not None:
         metadata[APP] = _app(app)
@@ -133,11 +134,51 @@ def _literal(value: Any) -> Any:
     return value if isinstance(value, (str, int, float, bool)) else None
 
 
-def _core(c: Any) -> dict[str, Any]:
+#: The core properties that are dates: docx4j reads ``created`` and ``modified`` as their
+#: ``SimpleLiteral``'s text and ``lastPrinted`` by ``XMLGregorianCalendar.toXMLFormat``,
+#: both the date as the part writes it.
+_CORE_DATES = {
+    "created": "{http://purl.org/dc/terms/}created",
+    "modified": "{http://purl.org/dc/terms/}modified",
+    "lastPrinted": "{http://schemas.openxmlformats.org/package/2006/metadata/core-properties}lastPrinted",
+}
+
+
+def _core_dates(part: Any) -> dict[str, str]:
+    """The core part's dates as written: the parsed ``XmlDateTime`` keeps no lexical form (``.4950271`` is 100 ns)."""
+    try:
+        from lxml import etree
+
+        root = etree.fromstring(part.xml)
+    except Exception:  # noqa: BLE001 - the typed values then
+        return {}
+    out: dict[str, str] = {}
+    for name, qname in _CORE_DATES.items():
+        found = root.find(qname)
+        if found is not None and found.text and found.text.strip():
+            out[name] = found.text.strip()
+    return out
+
+
+def _core(c: Any, dates: dict[str, str] | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for field, name in _CORE:
-        _put(out, name, _literal(getattr(c, field, None)))
+        value = getattr(c, field, None)
+        if name in _CORE_DATES:
+            text = (dates or {}).get(name)
+            _put(out, name, text if text is not None else (None if value is None else _date_of(value)))
+            continue
+        _put(out, name, _literal(value))
     return out
+
+
+def _date_of(value: Any) -> str | None:
+    """A typed date's text, where the part's own could not be read: a W3CDTF's, or an ``XmlDateTime``'s."""
+    found = _literal(value)
+    if isinstance(found, str):
+        return found
+    inner = getattr(getattr(value, "value", None), "value", None) or getattr(value, "value", None) or value
+    return None if inner is None else str(inner)
 
 
 def _app(p: Any) -> dict[str, Any]:

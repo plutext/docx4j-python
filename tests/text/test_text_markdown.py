@@ -664,3 +664,51 @@ def test_the_markdown_goldens_are_exact():
         golden = (PHASE0 / f"{name}.md").read_bytes().decode("utf-8")
         pkg = load(source)
         assert image_destinations(markdown(extract(pkg), pkg)) == image_destinations(golden), name
+
+
+# ---------------------------------------------------------------------------
+# found by the byte check against docx4j (CR-011 section 14)
+# ---------------------------------------------------------------------------
+
+
+def test_the_core_properties_dates_are_as_the_part_writes_them():
+    """docx4j reads ``created`` and ``modified`` as their literal's text and ``lastPrinted`` by ``toXMLFormat``."""
+    made = docx(p("Body")).package_part(
+        "docProps/core.xml",
+        "application/vnd.openxmlformats-package.core-properties+xml",
+        "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
+        "rIdCore",
+        f"{_DECLARATION}<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\""
+        ' xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+        '<dcterms:created xsi:type="dcterms:W3CDTF">2018-11-28T22:07:38.4950271Z</dcterms:created>'
+        "<cp:lastPrinted>2012-01-13T01:57:00Z</cp:lastPrinted></cp:coreProperties>",
+    )
+    pkg = made.load()
+    core = extract(pkg).metadata["core"]
+    assert core == {"created": "2018-11-28T22:07:38.4950271Z", "lastPrinted": "2012-01-13T01:57:00Z"}
+    assert export(pkg, metadata=True).startswith(
+        '---\ncore:\n  created: "2018-11-28T22:07:38.4950271Z"\n  lastPrinted: "2012-01-13T01:57:00Z"\n---\n\n'
+    )
+
+
+def test_a_table_given_as_content_is_one_table_block():
+    """docx4j's ``Texts.of(pkg, tbl)``: its blockItems gives a table none, so the table is the one block read."""
+    pkg = create_package()
+    [table] = pkg.body.insert_xml(f"<w:tbl><w:tblPr/><w:tblGrid/><w:tr>{_tc(None, 'A')}{_tc(None, 'B')}</w:tr></w:tbl>")
+    blocks = extract(table.element, package=pkg).blocks
+    assert [(b.kind, b.address) for b in blocks] == [("TABLE", "content/0")]
+    assert markdown(extract(table.element)) == "|A|B|\n|---|---|\n"
+
+
+def test_a_list_levels_text_and_start_are_the_definitions():
+    """The block JSON's ``levelText`` and ``start``, which the level's ``lvl_text`` misread had left None and 1."""
+    numbering = (
+        '<w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:start w:val="4"/><w:numFmt w:val="lowerRoman"/>'
+        '<w:lvlText w:val="(%1)"/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num>'
+    )
+    pkg = docx(_item(1, 0, "Fourth"), numbering=numbering).load()
+    [block] = extract(pkg).blocks
+    assert block.numbering.to_dict() == {
+        "numId": "1", "level": 0, "format": "lowerRoman", "levelText": "(%1)", "start": 4, "value": 4, "abstractNumId": "1",
+    }
+    assert export(pkg) == "4. Fourth\n"

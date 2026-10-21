@@ -803,7 +803,8 @@ class Extractor:
         items = rtrees.block_items(content)
         if items is None and getattr(content, "body", None) is not None:
             items = content.body.content  # a w:document
-        if items is not None and not isinstance(content, rtrees.cls("P")):
+        # a paragraph or a table is read as one block (docx4j's blockItems gives a table none)
+        if items is not None and not isinstance(content, (rtrees.cls("P"), rtrees.cls("Tbl"))):
             self.blocks(items, prefix, story, out)
         else:
             self.blocks([content], prefix, story, out)
