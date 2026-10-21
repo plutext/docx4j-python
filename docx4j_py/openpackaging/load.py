@@ -76,11 +76,26 @@ class LoadOptions:
             both branches, so resolving is a *view* (``mce="resolve"`` on the
             traversal functions) and not a rewrite.
         registry: the part classes to use; docx4j's table by default.
+        mc_block_level: what a parse does with ``mc:AlternateContent`` at block,
+            row and cell level (CR-012 Phase A, docx4j ``McBlockLevel``):
+            ``"preserve"`` (the default, CR-012 Q7) keeps each whole, every
+            branch, as at run and paragraph level; ``"word"`` replaces each,
+            before the part is parsed, by the branch Word reads, and records
+            what it took out (``part.resolved_alternate_content``). Read when
+            each part is first parsed; ``pkg.mc_block_level`` overrides it for
+            one package. See :mod:`docx4j_py.openpackaging.mc_block_level`.
     """
 
     strict: bool = False
     mce_preprocess: bool = False
     registry: PartRegistry | None = field(default=None)
+    mc_block_level: str = "preserve"
+
+    def __post_init__(self) -> None:
+        """Refuse a mode that is neither ``"preserve"`` nor ``"word"``."""
+        from docx4j_py.openpackaging.mc_block_level import check_mode
+
+        check_mode(self.mc_block_level)
 
     @property
     def part_registry(self) -> PartRegistry:

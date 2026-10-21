@@ -24,6 +24,7 @@ from docx4j_py.child import (
     is_alternate_content,
     is_any_element,
     iter_children,
+    mce_branch,
 )
 from docx4j_py.model.revisions import tables, trees
 from docx4j_py.model.revisions.change import (
@@ -295,6 +296,11 @@ class Lister:
                 self._paragraph_tokens(Para(item, items), into, ctx)
                 index += 1
                 continue
+            if is_alternate_content(item):
+                # block level: the branch Word reads, its changes kept apart (CR-012 Phase A)
+                self._alternate_level(item, None, into, ctx, block=True)
+                index += 1
+                continue
             # a block control or custom XML element that is itself an insertion
             # (check 30): one piece, grouping with the insertions around and in it
             inserted = self._holder_insertion_at(items, index, None, ctx)
@@ -453,6 +459,11 @@ class Lister:
                 self._math(para, item, items, [], out, ctx)
                 index += 1
                 continue
+            if is_alternate_content(item):
+                # paragraph level: the branch Word reads, its changes kept apart (CR-012 Phase A)
+                self._alternate_level(item, para, out, ctx, block=False)
+                index += 1
+                continue
             # a run holder that is not itself an insertion keeps the insertions
             # inside it apart from those outside (check 30)
             nested = trees.run_items(item)
@@ -605,6 +616,63 @@ class Lister:
         finally:
             stack.pop()
 
+    # -- mc:AlternateContent at block and paragraph level (CR-012 Phase A) -----
+
+    def _alternate_level(self, ac: Any, para: Para | None, into: list, ctx: _Ctx, *, block: bool) -> None:
+        """A block- or paragraph-level ``mc:AlternateContent``: the branch Word reads, and its twins.
+
+        docx4j ``Lister`` since its CR-051 phase 1 (``TrackedChangesAlternateContentTest``):
+        the changes of the branch a reader of text takes (:func:`docx4j_py.child.mce_branch`)
+        are listed where the element stands, kept apart from what is around it,
+        as a block control's are. Each other branch's changes are that branch's
+        twins, the n-th of a kind with the n-th of that kind (:func:`_pair_twins`,
+        as a text box's ``mc:Fallback``), so resolving one resolves the other;
+        a text box in another branch is the twin of the read branch's at the
+        same position. ``accept_all``'s listing (``attach_twins`` False) lists
+        every branch's changes, the others' marked :attr:`TrackedChange.twin`
+        so that they are not counted.
+        """
+        branches = _branch_objects(ac)
+        selected = mce_branch(ac)
+        if selected is None:
+            return
+
+        def changes_of(branch: Any, context: _Ctx) -> list[TrackedChange]:
+            tokens: list[Any] = []
+            items = list_of_branch(branch)
+            if block:
+                self._visit_blocks(items, tokens, context)
+            else:
+                self._run_level(para, items, tokens, context)
+            return _group_touching(tokens)
+
+        first_box = len(ctx.boxes)
+        primary = changes_of(selected, ctx)
+        primary_boxes = ctx.boxes[first_box:]
+        into.append(BREAK)
+        for change in primary:
+            into.append(change)
+            into.append(BREAK)
+        for branch in branches:
+            if branch is selected:
+                continue
+            other = _Ctx(ctx.story)
+            twins = changes_of(branch, other)
+            if self.attach_twins:
+                _pair_twins(primary, twins)
+                for position, box in enumerate(other.boxes):
+                    if position < len(primary_boxes):
+                        primary_boxes[position].twins.append(box.story)
+                        primary_boxes[position].twins.extend(box.twins)
+                continue
+            for change in twins:
+                change.twin = True
+                into.append(change)
+                into.append(BREAK)
+            for box in other.boxes:
+                box.story.twin = True
+                ctx.boxes.append(box)
+
     # -- text boxes ------------------------------------------------------------
 
     def _find_text_boxes(self, run: Any, ctx: _Ctx) -> None:
@@ -663,6 +731,25 @@ class Lister:
 # ---------------------------------------------------------------------------
 # text boxes: where they are
 # ---------------------------------------------------------------------------
+
+
+def _branch_objects(ac: Any) -> list[Any]:
+    """The branches of an ``mc:AlternateContent``, typed or wildcard: its choices, then its fallback."""
+    if is_any_element(ac):
+        choices = [c for c in ac.children or () if is_any_element(c) and c.qname == MC_CHOICE]
+        fallbacks = [c for c in ac.children or () if is_any_element(c) and c.qname == MC_FALLBACK]
+        return [*choices, *fallbacks[:1]]
+    out = list(ac.choice or ())
+    if ac.fallback is not None:
+        out.append(ac.fallback)
+    return out
+
+
+def list_of_branch(branch: Any) -> list:
+    """A branch's live list: a typed one's ``any_element``, a wildcard one's ``children``."""
+    if is_any_element(branch):
+        return branch.children
+    return branch.any_element
 
 
 def _branches(ac: Any) -> list[list]:

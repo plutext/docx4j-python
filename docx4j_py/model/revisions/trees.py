@@ -22,7 +22,13 @@ import functools
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from docx4j_py.child import ChildList, is_any_element, iter_children
+from docx4j_py.child import (
+    ChildList,
+    is_alternate_content,
+    is_any_element,
+    iter_children,
+    mce_branch,
+)
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name
 
@@ -34,6 +40,7 @@ __all__ = [
     "View",
     "attribute",
     "block_items",
+    "branch_items",
     "children",
     "fit",
     "has_text",
@@ -52,6 +59,8 @@ __all__ = [
 ]
 
 W_NS = WML_NS
+#: The classes of an ``mc:AlternateContent``'s branches.
+_MC_BRANCHES = frozenset({"AlternateContentChoice", "AlternateContentFallback"})
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 _XML_NS = "http://www.w3.org/XML/1998/namespace"
@@ -261,15 +270,35 @@ def revision_of(item: Any) -> Revision | None:
 # ---------------------------------------------------------------------------
 
 
+def branch_items(ac: Any) -> list | None:
+    """The live list of the branch of an ``mc:AlternateContent`` a reader of text takes, or None.
+
+    :func:`docx4j_py.child.mce_branch`'s branch (WD REQ-302 to REQ-305): its
+    ``any_element`` list, or a wildcard branch's ``children``. docx4j
+    ``Trees.blockItems`` and ``runItems`` answer an element so since its
+    CR-051 phase 1 (CR-012 Phase A, section 4.1 item 6).
+    """
+    branch = mce_branch(ac)
+    if branch is None:
+        return None
+    if is_any_element(branch):
+        return branch.children
+    return branch.any_element
+
+
 def run_items(value: Any) -> list | None:
     """The live run-level list a run holder keeps, or None.
 
     A paragraph, a hyperlink (in any of its scopes), an inline content control
     (its ``w:sdtContent``'s list), a smart tag, run-level custom XML, a simple
-    field, ``w:dir`` / ``w:bdo``, and the four run-level revisions.
+    field, ``w:dir`` / ``w:bdo``, and the four run-level revisions. A
+    paragraph-level ``mc:AlternateContent`` answers with the branch Word reads
+    (:func:`branch_items`).
     """
     if value is None:
         return None
+    if is_alternate_content(value):
+        return branch_items(value)
     kind = _kind(value.__class__)
     if kind == "run":
         return value.content
@@ -284,10 +313,15 @@ def block_items(value: Any) -> list | None:
 
     A body, a header, a footer, a note, a comment, a cell, a text box, a block,
     row or cell content control (its ``w:sdtContent``'s list) or custom XML
-    element, a table (its rows) and a row (its cells).
+    element, a table (its rows) and a row (its cells). A block-level
+    ``mc:AlternateContent`` answers with the branch Word reads
+    (:func:`branch_items`); the row and cell finders pass a row- or cell-level
+    one by (:mod:`.tables`).
     """
     if value is None:
         return None
+    if is_alternate_content(value):
+        return branch_items(value)
     kind = _kind(value.__class__)
     if kind == "block":
         return value.content
@@ -309,9 +343,16 @@ def is_holder(value: Any) -> bool:
 
 
 def list_of(parent: Any) -> list | None:
-    """The live list a parent object keeps its children in, or None."""
+    """The live list a parent object keeps its children in, or None.
+
+    An ``mc:Choice`` or ``mc:Fallback`` keeps them in ``any_element`` (docx4j
+    ``McSplice.contentOf``), so a change straight in a kept branch resolves in
+    that branch's list.
+    """
     if parent is None:
         return None
+    if parent.__class__.__module__ == "docx4j_py.mce" and parent.__class__.__name__ in _MC_BRANCHES:
+        return parent.any_element
     found = children(parent)
     if found is not None:
         return found

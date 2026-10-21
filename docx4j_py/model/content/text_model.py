@@ -39,7 +39,12 @@ import sys
 import unicodedata
 from typing import Any
 
-from docx4j_py.child import iter_children
+from docx4j_py.child import (
+    is_alternate_content,
+    is_any_element,
+    iter_children,
+    mce_branch,
+)
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
@@ -483,13 +488,93 @@ def _field_types(field: Any) -> list[type]:
     return [arg for arg in args if isinstance(arg, type)]
 
 
+#: The classes of an ``mc:AlternateContent``'s branches.
+_MC_BRANCHES = frozenset({"AlternateContentChoice", "AlternateContentFallback"})
+#: ...and of the element and its branches: what stands between a branch's child and its container.
+_MC_CLASSES = frozenset({"AlternateContent", *_MC_BRANCHES})
+#: The generated classes of the block containers (CR-012 Phase A: docx4j ``McSplice.isBlockContainer``),
+#: whose ``mc:AlternateContent`` a reader of structure reads through; a row- or cell-level one
+#: (in a ``w:tbl``, a ``w:tr`` or their controls and custom XML) is passed by, as docx4j's CR-051
+#: leaves it until its phase 2 and as the text model does.
+_BLOCK_CONTAINERS = frozenset(
+    {
+        "Body1",
+        "Hdr",
+        "Ftr",
+        "Tc",
+        "CTFtnEdn",
+        "CommentsComment",
+        "CTTxbxContent",
+        "SdtContentBlock",
+        "CTCustomXmlBlock",
+    }
+)
+
+
+def _block_level(ac: Any) -> bool:
+    """Whether an ``mc:AlternateContent`` stands in a block container, through any ``mc`` wrappers."""
+    node = getattr(ac, "parent", None)
+    for _ in range(256):
+        if node is None:
+            return False
+        cls = node.__class__
+        if cls.__module__ != "docx4j_py.mce" or cls.__name__ not in _MC_CLASSES:
+            return cls.__module__ == "docx4j_py.wml" and any(
+                base.__name__ in _BLOCK_CONTAINERS for base in cls.__mro__ if base.__module__ == "docx4j_py.wml"
+            )
+        node = getattr(node, "parent", None)
+    return False
+
+
+def in_kept_branch(element: Any) -> bool:
+    """Whether an element lies in a branch of an ``mc:AlternateContent`` the tree keeps whole.
+
+    CR-012 Phase A. At block level in ``preserve`` mode (the default), and at
+    run and paragraph level always, the element is kept with every branch; a
+    reader of structure reads the branch Word reads, and an edit there would
+    change that branch alone, so the content API refuses it
+    (``address.read_only``). Through the parent pointers.
+    """
+    node = getattr(element, "parent", None)
+    for _ in range(256):
+        if node is None:
+            return False
+        cls = node.__class__
+        if cls.__module__ == "docx4j_py.mce" and cls.__name__ in _MC_BRANCHES:
+            return True
+        node = getattr(node, "parent", None)
+    return False
+
+
 def block_list_of(value: Any) -> tuple[Any, str] | None:
     """The object and field name that hold a container's block-level list.
 
     The pair rather than the list itself, because a caller that inserts needs
     the owner for the parent pointers, and a caller that validates needs the
     class to ask the metadata about (:func:`docx4j_py.model.content.body`).
+
+    An ``mc:AlternateContent`` kept whole at block level answers with the
+    branch Word reads (:func:`docx4j_py.child.mce_branch`, CR-012 Phase A), so
+    that a reader of structure --- :attr:`Body.paragraphs` and the rest ---
+    reads what Word shows; a view of what is there is read-only
+    (:func:`in_kept_branch`).
     """
+    if is_alternate_content(value):
+        if not _block_level(value):
+            return None
+        branch = mce_branch(value)
+        if branch is None or is_any_element(branch):
+            return None
+        return branch, "any_element"
+    cls = value.__class__
+    if cls.__module__ == "docx4j_py.mce" and cls.__name__ in _MC_BRANCHES:
+        # the branch itself, so that a path through the element names the branch's index
+        # (body/2/0) and the element's own step is transparent; any branch, Word's or not,
+        # so that an address is never another branch's element
+        ac = getattr(value, "parent", None)
+        if ac is None or not _block_level(ac) or mce_branch(ac) is not value:
+            return None
+        return value, "any_element"
     inner = getattr(value, "sdt_content", None)
     if inner is not None:
         value = inner

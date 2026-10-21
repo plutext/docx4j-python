@@ -11,6 +11,19 @@ every sample --- settings, webSettings, docProps, theme, the lot --- serialise
 it again with nothing changed, and the canonical XML is identical to the source
 with zero skipped content.
 
+**The rule's one exception (CR-012 Phase A, section 4.1 item 3).** Loaded with
+``LoadOptions(mc_block_level="word")`` (or ``pkg.mc_block_level = "word"``), a
+part holding an ``mc:AlternateContent`` at block, row or cell level is **not**
+canonically identical when saved unchanged: each such element is replaced on
+load by the branch Word reads, and the root's ``mc:Ignorable`` gains the
+selected Choice's prefixes. That is what Word's own save writes (docx4j CR-051
+phase 0), text boxes apart (its section 3.5), and the element taken out is kept
+on the part (``part.resolved_alternate_content``). The default,
+``"preserve"``, keeps every element whole and the rule holds with no exception;
+no sample here has such an element, so the tests below are the same in both
+modes. ``tests/openpackaging/test_mce_levels.py`` holds both modes over docx4j's
+probes.
+
     .venv-fork/bin/python -m pytest tests/openpackaging/test_round_trip.py -q
 """
 

@@ -1096,7 +1096,23 @@ class recording:
     __slots__ = ("package", "recorder")
 
     def __init__(self, body: Body, operation: str) -> None:
-        """Open a report for `operation` on `body`, unless one is already open."""
+        """Open a report for `operation` on `body`, unless one is already open.
+
+        Raises:
+            AddressError: `body` is read-only (``address.read_only``): the view
+                is over content in a kept ``mc:AlternateContent`` branch, where
+                an edit would change one branch alone (CR-012 Phase A).
+        """
+        reason = getattr(body, "read_only", None)
+        if reason is not None:
+            from docx4j_py.model.content.errors import AddressError
+
+            raise AddressError(
+                f"{operation} refused: the content is {reason}",
+                code="address.read_only",
+                hint="read it with outline(), to_markdown() or the views' readers; to edit the branch Word "
+                'shows, load with LoadOptions(mc_block_level="word"), which takes it in place of the element',
+            )
         package = getattr(body, "package", None)
         if package is None or getattr(package, "_current_change", None) is not None:
             self.package = None

@@ -36,6 +36,8 @@ from docx4j_xsdata.formats.dataclass.serializers.config import SerializerConfig
 from docx4j_xsdata.formats.dataclass.serializers.tree import TreeSerializer
 
 __all__ = [
+    "BRANCH_CHILD_NAMES",
+    "branch_child_class",
     "context",
     "needs_preserve",
     "parser",
@@ -88,6 +90,11 @@ def parser_config(
     ``mc:MustUnderstand``,, so that a branch is selected by
     URI (WD REQ-303) and a save can declare a prefix only ``Requires`` names.
 
+    ``wildcard_class`` is the fork's third (stage 11, CR-012 Phase A): a
+    ``w:sdt`` straight in an ``mc:Choice`` or ``mc:Fallback`` is bound as the
+    container the ``mc:AlternateContent`` stands in binds one
+    (:func:`branch_child_class`), as docx4j's ``McBranchSdt`` binds it.
+
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
     """
@@ -102,6 +109,10 @@ def parser_config(
 
         kwargs["on_namespaces"] = record_bindings
         kwargs.setdefault("namespaces_for", frozenset({MC_CHOICE}))
+    if "wildcard_class" not in kwargs:
+        kwargs["wildcard_class"] = branch_child_class
+    if kwargs["wildcard_class"] is not None:
+        kwargs.setdefault("wildcard_class_for", BRANCH_CHILD_NAMES)
 
     return ParserConfig(
         fail_on_unknown_properties=not lenient,
@@ -125,9 +136,15 @@ def serializer_config(*, pretty: bool = False, **kwargs: Any) -> SerializerConfi
     ``bool_format="numeric"`` is CR-001 open question 5, decided: Word writes
     ``w:val="1"``, so writing ``true`` would make every saved document diff
     against its own source (3,034 attributes over ``samples/``).
+
+    ``element_names`` (the fork's stage 11) names an object that no field
+    names: the ``w:sdt`` kinds :func:`branch_child_class` binds in a branch
+    are written ``w:sdt``, not under their types' names (``CT_SdtRun``).
     """
     kwargs.setdefault("bool_format", "numeric")
     kwargs.setdefault("xml_declaration", False)
+    if "element_names" not in kwargs:
+        kwargs["element_names"] = _branch_element_names()
     if pretty:
         kwargs.setdefault("indent", "  ")
     return SerializerConfig(**kwargs)
@@ -154,6 +171,66 @@ def tree_serializer(*, pretty: bool = False, **kwargs: Any) -> TreeSerializer:
     twice and parsing once (the fork's CR-001 Phase A).
     """
     return TreeSerializer(context=context(), config=serializer_config(pretty=pretty, **kwargs))
+
+
+# ---------------------------------------------------------------------------
+# a markup-compatibility branch's children (CR-012 Phase A)
+# ---------------------------------------------------------------------------
+
+_W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+#: The names :func:`branch_child_class` is asked about: a content control. Its
+#: four classes share one element name, and only the block-level one
+#: (``SdtBlock``) is global, so a lookup by name alone gives the block class
+#: at every level.
+BRANCH_CHILD_NAMES = frozenset({f"{{{_W_NS}}}sdt"})
+
+#: The classes of ``mc:AlternateContent`` and its branches: what stands
+#: between a branch's child and the container the element stands in.
+_MC_WRAPPERS = frozenset({"AlternateContent", "AlternateContentChoice", "AlternateContentFallback"})
+
+_branch_names: dict[type, str] | None = None
+
+
+def branch_child_class(qname: str, ancestors: tuple[type, ...]) -> type | None:
+    """The class to bind a branch's child to: the one its container binds that name to.
+
+    The fork parser's ``wildcard_class`` hook (``ParserConfig``, stage 11),
+    docx4j's ``McBranchSdt.kindFor`` (its CR-051 section 11.3). `ancestors` is
+    the classes enclosing the element, innermost first, the class whose
+    wildcard receives it (an ``mc:Choice`` or ``mc:Fallback``) first. Past the
+    markup-compatibility wrappers, the first other class is the container the
+    ``mc:AlternateContent`` stands in, and the class its own content binds
+    `qname` to is the answer: ``SdtBlock`` in a body, a cell or a block-level
+    control, ``SdtRun`` in a paragraph, ``CTSdtRow`` among a table's rows,
+    ``CTSdtCell`` among a row's cells. None where that container takes no such
+    element, or the wildcard is not a branch's; the lookup by name then
+    applies.
+    """
+    if not ancestors or not _is_mc_wrapper(ancestors[0]):
+        return None
+    for clazz in ancestors:
+        if _is_mc_wrapper(clazz):
+            continue
+        for var in context().build(clazz).get_children(qname):
+            if var.clazz is not None:
+                return var.clazz
+        return None
+    return None
+
+
+def _is_mc_wrapper(clazz: type) -> bool:
+    return clazz.__module__ == "docx4j_py.mce" and clazz.__name__ in _MC_WRAPPERS
+
+
+def _branch_element_names() -> dict[type, str]:
+    """The serialiser's ``element_names``: each ``w:sdt`` class the branch hook may bind, as ``w:sdt``."""
+    global _branch_names
+    if _branch_names is None:
+        from docx4j_py.wml import CTSdtCell, CTSdtRow, SdtBlock, SdtRun
+
+        _branch_names = {cls: f"{{{_W_NS}}}sdt" for cls in (SdtBlock, SdtRun, CTSdtRow, CTSdtCell)}
+    return _branch_names
 
 
 # ---------------------------------------------------------------------------

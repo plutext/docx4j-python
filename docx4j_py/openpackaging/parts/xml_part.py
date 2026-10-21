@@ -65,16 +65,17 @@ class _ParseSettings:
     :meth:`XmlPart._unmarshal` reads the package's load options through this
     and nothing else, and a private tree keeps the settings it was parsed
     under, so that :attr:`XmlPart.contents` adopts it only where a live parse
-    now would read the same. A later package-level setting read at parse time
-    --- CR-012's ``mc_block_level``, on the load options or on the package ---
-    is a field here and a line in :meth:`of`, and adoption follows it with no
-    other change.
+    now would read the same. CR-012's ``mc_block_level``, on the load options
+    or on the package, is the third field (CR-012 Phase A): a tree parsed in
+    one mode is never adopted in the other.
     """
 
     #: ``LoadOptions.strict``: a parse that skipped content raises.
     strict: bool = False
     #: ``LoadOptions.mce_preprocess``: ``mc:AlternateContent`` resolved first.
     mce_preprocess: bool = False
+    #: ``pkg.mc_block_level`` (CR-012 Phase A): ``"preserve"`` or ``"word"``.
+    mc_block_level: str = "preserve"
 
     @classmethod
     def of(cls, package: Any) -> _ParseSettings:
@@ -82,7 +83,12 @@ class _ParseSettings:
         options = getattr(package, "load_options", None) if package is not None else None
         if options is None:
             return _DEFAULT_SETTINGS
-        return cls(strict=bool(options.strict), mce_preprocess=bool(options.mce_preprocess))
+        mode = getattr(package, "mc_block_level", None) or getattr(options, "mc_block_level", "preserve")
+        return cls(
+            strict=bool(options.strict),
+            mce_preprocess=bool(options.mce_preprocess),
+            mc_block_level=mode,
+        )
 
 
 _DEFAULT_SETTINGS = _ParseSettings()
@@ -98,6 +104,7 @@ class XmlPart(Part, Generic[T]):
         "_private_contents",
         "_private_settings",
         "_source_ns_map",
+        "resolved_alternate_content",
         "root_name",
         "skipped",
     )
@@ -121,6 +128,12 @@ class XmlPart(Part, Generic[T]):
         self._source_ns_map: dict[str, str] = {}
         #: What the fork's parser skipped, per entry. Empty is the good answer.
         self.skipped: list[Any] = []
+        #: Each ``mc:AlternateContent`` the last parse took out in ``"word"`` mode
+        #: (CR-012 Phase A), outermost first: a
+        #: :class:`~docx4j_py.openpackaging.mc_block_level.ResolvedAlternateContent`,
+        #: the element whole and where it stood. Empty in ``"preserve"`` mode.
+        #: docx4j ``JaxbXmlPart.getResolvedAlternateContent()``.
+        self.resolved_alternate_content: list[Any] = []
 
     # -- the class to unmarshal as -----------------------------------------
 
@@ -188,8 +201,9 @@ class XmlPart(Part, Generic[T]):
         and any set bytes are cleared, exactly as an unmarshal leaves them. Its
         parent pointers are wired, and :attr:`skipped` and the source's
         namespace declarations are what that parse of the same bytes found. A
-        private tree parsed under other options (``strict``, ``mce_preprocess``)
-        is dropped and the bytes are parsed afresh.
+        private tree parsed under other options (``strict``, ``mce_preprocess``,
+        the package's ``mc_block_level``) is dropped and the bytes are parsed
+        afresh.
 
         Adoption depends on one rule: **a private reader never writes into the
         tree it reads**, since what it wrote would now be saved.
@@ -260,6 +274,7 @@ class XmlPart(Part, Generic[T]):
         self._private_contents = None
         self._private_settings = None
         self.skipped = []
+        self.resolved_alternate_content = []
 
     def set_xml(self, xml: str) -> None:
         """Replace the content with an XML string."""
@@ -289,6 +304,14 @@ class XmlPart(Part, Generic[T]):
         self._source_ns_map = _root_ns_map(data)
 
         settings = self._parse_settings()
+        resolved: list[Any] = []
+        if settings.mc_block_level == "word":
+            # CR-012 Phase A: block-, row- and cell-level mc:AlternateContent
+            # replaced by the branch Word reads; a part without the element
+            # pays one substring test
+            from docx4j_py.openpackaging.mc_block_level import splice_word
+
+            data, resolved = splice_word(data)
         if settings.mce_preprocess:
             from docx4j_py.openpackaging.mce import mce_preprocess_bytes
 
@@ -302,6 +325,7 @@ class XmlPart(Part, Generic[T]):
 
         report = xml_parser.skipped
         self.skipped = list(getattr(report, "items", ()) or ())
+        self.resolved_alternate_content = resolved
         if self.skipped:
             for item in self.skipped:
                 logger.warning("%s: skipped %s", self.part_name, item)
@@ -329,8 +353,9 @@ class XmlPart(Part, Generic[T]):
     def _adopt(self) -> None:
         """The private tree made the live one: what :meth:`_unmarshal` would leave, without the parse.
 
-        :attr:`skipped` and ``_source_ns_map`` are already that parse's: the
-        private parse set them from the same bytes under the same settings.
+        :attr:`skipped`, :attr:`resolved_alternate_content` and
+        ``_source_ns_map`` are already that parse's: the private parse set them
+        from the same bytes under the same settings.
         """
         self._contents = self._private_contents
         self._bytes = None

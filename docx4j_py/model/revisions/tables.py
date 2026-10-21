@@ -29,6 +29,7 @@ from __future__ import annotations
 import enum
 from typing import Any
 
+from docx4j_py.child import is_alternate_content
 from docx4j_py.model.revisions import props, trees
 from docx4j_py.model.revisions.trees import View
 
@@ -72,6 +73,10 @@ def _rows(items: list, out: list[tuple[Any, list]]) -> None:
     for item in items:
         if isinstance(item, tr_class):
             out.append((item, items))
+        elif is_alternate_content(item):
+            # a row-level mc:AlternateContent is passed by, as docx4j's CR-051
+            # leaves it until its phase 2 (CR-012 section 9)
+            continue
         elif not isinstance(item, tc_class):
             nested = trees.block_items(item)
             if nested is not None:
@@ -90,6 +95,9 @@ def _cells(items: list, out: list[tuple[Any, list]]) -> None:
     for item in items:
         if isinstance(item, tc_class):
             out.append((item, items))
+        elif is_alternate_content(item):
+            # a cell-level mc:AlternateContent is passed by, as a row-level one is
+            continue
         else:
             nested = trees.block_items(item)
             if nested is not None:

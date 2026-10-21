@@ -15,7 +15,7 @@ parse now would use. Test 1, that no private reader writes into its tree, is
   writes: CR-011 section 14.4's read-then-edit-by-address workflow, a resolver
   read followed by a style edit, and every sample read by every private reader
   and then unmarshalled;
-* **test 4**, changed load options block adoption;
+* **test 4**, changed load options block adoption (CR-012 Phase A's ``mc_block_level`` among them);
 * **test 5**, the thread rule unchanged: one package per thread, the same bytes
   as a sequential run.
 
@@ -456,6 +456,46 @@ def test_a_part_read_with_no_package_is_not_adopted_under_a_package_that_differs
 
     part.package = Strict()  # type: ignore[assignment]
     assert part.contents is not private
+
+
+#: CR-012 Phase A: a probe whose main part holds a block-level ``mc:AlternateContent``, so the two
+#: ``mc_block_level`` modes give two trees.
+BLOCK_LEVEL = FIXTURES / "mc-fun" / "mc-block-newest-first.docx"
+
+
+@pytest.mark.parametrize(("before", "after"), [("preserve", "word"), ("word", "preserve")])
+def test_a_private_tree_parsed_in_one_mc_block_level_is_not_adopted_in_the_other(before: str, after: str) -> None:
+    """CR-012 Phase A's case: the mode is a parse setting (``_ParseSettings.mc_block_level``)."""
+    pkg = load(BLOCK_LEVEL, options=LoadOptions(mc_block_level=before))
+    part = pkg.main_document_part
+    private = part.read_contents()
+    pkg.mc_block_level = after
+    live = part.contents
+    assert live is not private
+    fresh = load(BLOCK_LEVEL, options=LoadOptions(mc_block_level=after)).main_document_part
+    assert part._marshal(live) == fresh._marshal(fresh.contents)
+    assert part._marshal(live) != part._marshal(private), "the two modes give two trees here"
+    assert bool(part.resolved_alternate_content) == (after == "word")
+
+
+@pytest.mark.parametrize("mode", ["preserve", "word"])
+def test_a_private_tree_parsed_in_the_same_mc_block_level_is_adopted(mode: str) -> None:
+    pkg = load(BLOCK_LEVEL, options=LoadOptions(mc_block_level=mode))
+    part = pkg.main_document_part
+    private = part.read_contents()
+    records = part.resolved_alternate_content
+    pkg.mc_block_level = mode
+    assert part.contents is private
+    assert part.resolved_alternate_content is records
+
+
+def test_the_load_options_mode_changed_in_place_blocks_adoption() -> None:
+    pkg = load(BLOCK_LEVEL)
+    part = pkg.main_document_part
+    private = part.read_contents()
+    pkg.load_options.mc_block_level = "word"
+    assert part.contents is not private
+    assert len(part.resolved_alternate_content) == 1
 
 
 # ---------------------------------------------------------------------------

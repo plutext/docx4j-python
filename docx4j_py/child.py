@@ -517,9 +517,10 @@ def understood_prefixes() -> frozenset[str]:
     """The prefixes this build of the model can parse.
 
     ``docx4j_py.namespaces.UNDERSTOOD``'s keys, generated from the set of
-    generated packages; see CR-002 section 5.6. What ``mce_preprocess`` keeps
-    a Choice by (CR-011 section 3.3): what the model can type. The traversal's
-    ``mce="resolve"`` reads by :func:`understood_namespaces` instead.
+    generated packages; see CR-002 section 5.6: what the model can type. Since
+    CR-012 Q8 neither ``mce_preprocess`` nor the traversal's ``mce="resolve"``
+    selects by it: both read :func:`understood_namespaces`, docx4j's published
+    list, as Word 365 does on CR-012 section 3.1's probes.
     """
     global _understood
     if _understood is None:

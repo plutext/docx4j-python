@@ -23,9 +23,14 @@ section 12:
   the ``docx4j.jaxb.mc.preferChoice`` property, which is empty by default --- so
   docx4j out of the box always takes the fallback. This resolves each prefix
   against the element's own namespace declarations and asks whether the
-  *namespace* is one the generated model understands
-  (:data:`docx4j_py.namespaces.UNDERSTOOD`), which is what ECMA-376 Part 3 says
-  and what Word does.
+  *namespace* is in docx4j's published understood list
+  (:func:`docx4j_py.child.understood_namespaces`, the list a reader of text and
+  CR-012's ``word`` mode select by), which is what ECMA-376 Part 3 says and what
+  Word does. Until CR-012 Phase A (Q8) it asked whether the generated model
+  understood it (:data:`docx4j_py.namespaces.UNDERSTOOD`), which lacks
+  ``w16sdtfl``, ``w16sdtdh``, ``w16du`` and ``w16cex`` and so took ``w16cid``
+  where Word 365 takes ``w16sdtfl``; ``UNDERSTOOD`` stays the prefix table's own
+  list.
 * docx4j's ``mc:AlternateContent`` *inside a ``w:r``* is left alone, because its
   exporters resolve it later. This model parses it either way, so there is no
   reason to keep it: the preprocessor resolves every one.
@@ -60,9 +65,9 @@ _PARSER = etree.XMLParser(remove_blank_text=False, resolve_entities=False, huge_
 
 
 def _understood() -> frozenset[str]:
-    from docx4j_py.namespaces import UNDERSTOOD
+    from docx4j_py.child import understood_namespaces
 
-    return frozenset(UNDERSTOOD.values())
+    return understood_namespaces()
 
 
 def mce_preprocess_bytes(data: bytes, understood: Iterable[str] | None = None) -> bytes:
@@ -91,8 +96,8 @@ def resolve_alternate_content(
 
     Args:
         root: the element to work under; it is not itself replaced.
-        understood: the namespace URIs to count as understood; the generated
-            model's namespaces by default.
+        understood: the namespace URIs to count as understood; docx4j's
+            published understood list by default (CR-012 Q8).
 
     Returns:
         The number of ``mc:AlternateContent`` elements resolved.

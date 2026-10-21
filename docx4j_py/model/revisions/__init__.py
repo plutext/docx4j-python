@@ -160,7 +160,9 @@ def resolve_all(
         if round_ == 0:
             # how many the public listing has: there a text box's mc:Fallback
             # twins are attached to the mc:Choice's changes, not listed
-            count = sum(1 for change in changes if not change.story.twin and _matching(change, match))
+            count = sum(
+                1 for change in changes if not change.story.twin and not change.twin and _matching(change, match)
+            )
         matched = 0
         for change in reversed(changes):
             pieces = _matching(change, match)

@@ -111,8 +111,9 @@ class Paragraph:
         self.element = element
         #: The live list holding the element: a body's, a cell's, a control's.
         self.container = container
-        #: The nearest :class:`~docx4j_py.model.content.Body`.
-        self.parent_body = parent_body
+        #: The nearest :class:`~docx4j_py.model.content.Body`; a read-only
+        #: one in a kept ``mc:AlternateContent`` branch (CR-012 Phase A).
+        self.parent_body = parent_body.body_for(element) if parent_body is not None else parent_body
 
     # -- identity ----------------------------------------------------------
 

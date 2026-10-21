@@ -60,6 +60,7 @@ from docx4j_py.model.content.text_model import (
     block_children_of,
     block_list_of,
     canonical_view,
+    in_kept_branch,
     markup_text,
     require_view,
 )
@@ -113,6 +114,11 @@ class Block:
     """The live list holding it."""
     body: Any = None
     """The :class:`Body` it is in, for :attr:`address`; None for a bare block."""
+
+    def __post_init__(self) -> None:
+        """A block in a kept ``mc:AlternateContent`` branch is read-only (CR-012 Phase A)."""
+        if self.body is not None:
+            object.__setattr__(self, "body", self.body.body_for(self.element))
 
     @property
     def name(self) -> str:
@@ -168,6 +174,12 @@ class Body(Sequence):
     """A subset of Office JS ``Word.Body`` over a container of block content."""
 
     __slots__ = ("container", "package", "part", "prefix")
+
+    #: Why an edit through this body is refused, or None: the body of a view
+    #: over content in a kept ``mc:AlternateContent`` branch says so (CR-012
+    #: Phase A, :meth:`body_for`). Every mutating verb opens its report through
+    #: :class:`~docx4j_py.model.content.reports.recording`, which refuses here.
+    read_only: str | None = None
 
     def __init__(
         self,
@@ -241,7 +253,21 @@ class Body(Sequence):
         from this one, so that the addresses a nested body reports in Phase D
         continue this body's (``"body/4/0/1"`` for a cell).
         """
-        return Body(self.part, container, prefix or self.prefix, self.package)
+        return type(self)(self.part, container, prefix or self.prefix, self.package)
+
+    def body_for(self, element: Any) -> Body:
+        """The body a view of `element` takes: this one, or a read-only twin of it inside a kept branch.
+
+        CR-012 Phase A. An element in a branch of an ``mc:AlternateContent``
+        the tree keeps whole (:func:`~.text_model.in_kept_branch`) is read as
+        any other, and its view refuses an edit (``address.read_only``), which
+        would change one branch alone. A caller who must edit there loads with
+        ``LoadOptions(mc_block_level="word")``, where a block-level element is
+        replaced by Word's branch on load.
+        """
+        if self.read_only is not None or not in_kept_branch(element):
+            return self
+        return _BranchBody(self.part, self.container, self.prefix, self.package)
 
     @property
     def change_tracker(self) -> Any:
@@ -1341,3 +1367,19 @@ def register_body() -> None:
     from docx4j_py.model.content import register
 
     register()
+
+
+class _BranchBody(Body):
+    """A :class:`Body` whose views are over content in a kept ``mc:AlternateContent`` branch: read-only.
+
+    CR-012 Phase A: the same part, container and prefix as the body it stands
+    for, so that a view reads, resolves its styles and reports its address as
+    any other; only an edit is refused.
+    """
+
+    __slots__ = ()
+
+    read_only = (
+        "in a branch of an mc:AlternateContent the document keeps whole: an edit there "
+        "would change that branch alone (CR-012)"
+    )

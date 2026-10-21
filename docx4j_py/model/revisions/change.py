@@ -322,7 +322,7 @@ class CellT(Target):
 class TrackedChange:
     """One tracked change: the engine's, which the content API's view wraps."""
 
-    __slots__ = ("generation", "para", "story", "target", "twins")
+    __slots__ = ("generation", "para", "story", "target", "twin", "twins")
 
     def __init__(self, target: Target, para: Para | None, story: Any) -> None:
         """Build the change over its target, the paragraph it is in and its story."""
@@ -334,8 +334,15 @@ class TrackedChange:
         #: The story the change is in.
         self.story = story
         #: The changes in a text box's ``mc:Fallback`` twin this one resolves
-        #: too (CR-043 section 3.1).
+        #: too (CR-043 section 3.1), and in the branches of a block- or
+        #: paragraph-level ``mc:AlternateContent`` Word does not read (CR-012
+        #: Phase A).
         self.twins: list[TrackedChange] = []
+        #: True for a change in a branch of a block- or paragraph-level
+        #: ``mc:AlternateContent`` Word does not read, listed on its own
+        #: (``accept_all``'s listing, which resolves every branch): a twin, not
+        #: counted.
+        self.twin = False
         #: The package's generation when this was listed; None for a piece
         #: resolved through its group.
         self.generation: Any = None
