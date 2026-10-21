@@ -39,7 +39,11 @@ text from it::
   one-paragraph text box (REQ-511); each
   picture an ``IMAGE`` run, described by the options' describer (the alt text
   by default; ``[image: ...]`` under ``alt_text: true``, REQ-514), and each
-  object an ``OBJECT`` run with its ProgID (REQ-512); equations as LaTeX
+  object an ``OBJECT`` run with its ProgID, an embedded WordprocessingML
+  package read one level down under ``embedded: true`` (REQ-512); a
+  plain-text, WordprocessingML or Flat OPC ``altChunk`` expanded where it is
+  (REQ-513); the glossary last under ``include: glossary`` (REQ-516);
+  equations as LaTeX
   (REQ-604, docx4j's ``OmmlToLatex``, :mod:`docx4j_py.model.math`); REQ-605's
   table forms; ``[page n]`` under ``page_markers``; ``layout: indent``; a
   bound plain-text control's bound value, through the custom XML parts or the
@@ -56,8 +60,11 @@ where its text lies in its paragraph's ``get_text()`` (``office_offset``), so
 the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
-fields computed under ``fields: update``, embedded packages,
-``w:altChunk``, the glossary.
+fields computed under ``fields: update``. Deferred (CR-011 Q7): embedded
+SpreadsheetML and PresentationML packages and OLE 1.0 packages, which under
+``embedded: true`` raise ``content.not_read``; and the HTML reader (Q12, Q13),
+without which an HTML, XHTML or MHT ``altChunk`` raises
+``altchunk.not_expanded``.
 
 Imported on first use: ``import docx4j_py`` does not import it.
 """

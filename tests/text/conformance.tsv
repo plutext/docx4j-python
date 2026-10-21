@@ -546,11 +546,11 @@ extraction-probe.docx	39	EMB39_XLSX_CELL	original	embedded: true	PENDING	deferre
 extraction-probe.docx	39	EMB39_XLSX_CELL	markup	default	PASS	
 extraction-probe.docx	39	EMB39_XLSX_CELL	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded SpreadsheetML package
 extraction-probe.docx	40	EMB40_DOCX_TEXT	accepted	default	PASS	
-extraction-probe.docx	40	EMB40_DOCX_TEXT	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	40	EMB40_DOCX_TEXT	accepted	embedded: true	PASS	
 extraction-probe.docx	40	EMB40_DOCX_TEXT	original	default	PASS	
-extraction-probe.docx	40	EMB40_DOCX_TEXT	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	40	EMB40_DOCX_TEXT	original	embedded: true	PASS	
 extraction-probe.docx	40	EMB40_DOCX_TEXT	markup	default	PASS	
-extraction-probe.docx	40	EMB40_DOCX_TEXT	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe.docx	40	EMB40_DOCX_TEXT	markup	embedded: true	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	accepted	default	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	original	default	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	markup	default	PASS	
@@ -563,17 +563,17 @@ extraction-probe.docx	41	OLE41_NATIVE_TEXT	markup	embedded: true	PENDING	deferre
 extraction-probe.docx	42	ACX42_CAPTION	accepted	default	PASS	
 extraction-probe.docx	42	ACX42_CAPTION	original	default	PASS	
 extraction-probe.docx	42	ACX42_CAPTION	markup	default	PASS	
-extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	accepted	default	PASS	
 extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	accepted	altchunks: false	PASS	
-extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	original	default	PASS	
 extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	original	altchunks: false	PASS	
-extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	markup	default	PASS	
 extraction-probe.docx	43	ALT43_TEXT_LINE_ONE	markup	altchunks: false	PASS	
-extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	accepted	default	PASS	
 extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	accepted	altchunks: false	PASS	
-extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	original	default	PASS	
 extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	original	altchunks: false	PASS	
-extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	markup	default	PASS	
 extraction-probe.docx	43	ALT43_TEXT_LINE_TWO	markup	altchunks: false	PASS	
 extraction-probe.docx	44	ALT44_MHT_CHUNK	accepted	html reader absent	PASS	
 extraction-probe.docx	44	ALT44_MHT_CHUNK	accepted	html reader present	PENDING	phase 2; html reader present
@@ -584,17 +584,17 @@ extraction-probe.docx	44	ALT44_MHT_CHUNK	markup	html reader present	PENDING	phas
 extraction-probe.docx	45	ALT45_RTF_CHUNK	accepted	default	PASS	
 extraction-probe.docx	45	ALT45_RTF_CHUNK	original	default	PASS	
 extraction-probe.docx	45	ALT45_RTF_CHUNK	markup	default	PASS	
-extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	accepted	default	PASS	
 extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	accepted	altchunks: false	PASS	
-extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	original	default	PASS	
 extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	original	altchunks: false	PASS	
-extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	markup	default	PASS	
 extraction-probe.docx	46	ALT46_FLATOPC_CHUNK	markup	altchunks: false	PASS	
-extraction-probe.docx	47	ALT47_DOCX_CHUNK	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	47	ALT47_DOCX_CHUNK	accepted	default	PASS	
 extraction-probe.docx	47	ALT47_DOCX_CHUNK	accepted	altchunks: false	PASS	
-extraction-probe.docx	47	ALT47_DOCX_CHUNK	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	47	ALT47_DOCX_CHUNK	original	default	PASS	
 extraction-probe.docx	47	ALT47_DOCX_CHUNK	original	altchunks: false	PASS	
-extraction-probe.docx	47	ALT47_DOCX_CHUNK	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	47	ALT47_DOCX_CHUNK	markup	default	PASS	
 extraction-probe.docx	47	ALT47_DOCX_CHUNK	markup	altchunks: false	PASS	
 extraction-probe.docx	47	ALT47_NESTED_CHUNK	accepted	default	PASS	
 extraction-probe.docx	47	ALT47_NESTED_CHUNK	original	default	PASS	
@@ -738,17 +738,17 @@ extraction-probe.docx	53	EMB53_SPEAKER_NOTES	accepted	default	PASS
 extraction-probe.docx	53	EMB53_SPEAKER_NOTES	original	default	PASS	
 extraction-probe.docx	53	EMB53_SPEAKER_NOTES	markup	default	PASS	
 extraction-probe.docx	54	GLS54_ENTRY_ONE	accepted	default	PASS	
-extraction-probe.docx	54	GLS54_ENTRY_ONE	accepted	include: glossary	FAIL	expected 1, got 0
+extraction-probe.docx	54	GLS54_ENTRY_ONE	accepted	include: glossary	PASS	
 extraction-probe.docx	54	GLS54_ENTRY_ONE	original	default	PASS	
-extraction-probe.docx	54	GLS54_ENTRY_ONE	original	include: glossary	FAIL	expected 1, got 0
+extraction-probe.docx	54	GLS54_ENTRY_ONE	original	include: glossary	PASS	
 extraction-probe.docx	54	GLS54_ENTRY_ONE	markup	default	PASS	
-extraction-probe.docx	54	GLS54_ENTRY_ONE	markup	include: glossary	FAIL	expected 1, got 0
+extraction-probe.docx	54	GLS54_ENTRY_ONE	markup	include: glossary	PASS	
 extraction-probe.docx	54	GLS54_ENTRY_TWO	accepted	default	PASS	
-extraction-probe.docx	54	GLS54_ENTRY_TWO	accepted	include: glossary	FAIL	expected 1, got 0
+extraction-probe.docx	54	GLS54_ENTRY_TWO	accepted	include: glossary	PASS	
 extraction-probe.docx	54	GLS54_ENTRY_TWO	original	default	PASS	
-extraction-probe.docx	54	GLS54_ENTRY_TWO	original	include: glossary	FAIL	expected 1, got 0
+extraction-probe.docx	54	GLS54_ENTRY_TWO	original	include: glossary	PASS	
 extraction-probe.docx	54	GLS54_ENTRY_TWO	markup	default	PASS	
-extraction-probe.docx	54	GLS54_ENTRY_TWO	markup	include: glossary	FAIL	expected 1, got 0
+extraction-probe.docx	54	GLS54_ENTRY_TWO	markup	include: glossary	PASS	
 extraction-probe-structure.docx	55	TOC55_TITLE	accepted	default	PASS	
 extraction-probe-structure.docx	55	TOC55_TITLE	original	default	PASS	
 extraction-probe-structure.docx	55	TOC55_TITLE	markup	default	PASS	
@@ -1057,17 +1057,17 @@ extraction-probe-inspect.docx	63	EMB63_HERE	accepted	default	PASS
 extraction-probe-inspect.docx	63	EMB63_HERE	original	default	PASS	
 extraction-probe-inspect.docx	63	EMB63_HERE	markup	default	PASS	
 extraction-probe-inspect.docx	63	EMB63_VISIBLE	accepted	default	PASS	
-extraction-probe-inspect.docx	63	EMB63_VISIBLE	accepted	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	EMB63_VISIBLE	accepted	embedded: true	PASS	
 extraction-probe-inspect.docx	63	EMB63_VISIBLE	original	default	PASS	
-extraction-probe-inspect.docx	63	EMB63_VISIBLE	original	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	EMB63_VISIBLE	original	embedded: true	PASS	
 extraction-probe-inspect.docx	63	EMB63_VISIBLE	markup	default	PASS	
-extraction-probe-inspect.docx	63	EMB63_VISIBLE	markup	embedded: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	EMB63_VISIBLE	markup	embedded: true	PASS	
 extraction-probe-inspect.docx	63	EMB63_HIDDEN	accepted	default	PASS	
-extraction-probe-inspect.docx	63	EMB63_HIDDEN	accepted	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	EMB63_HIDDEN	accepted	embedded: true; hidden: true	PASS	
 extraction-probe-inspect.docx	63	EMB63_HIDDEN	original	default	PASS	
-extraction-probe-inspect.docx	63	EMB63_HIDDEN	original	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	EMB63_HIDDEN	original	embedded: true; hidden: true	PASS	
 extraction-probe-inspect.docx	63	EMB63_HIDDEN	markup	default	PASS	
-extraction-probe-inspect.docx	63	EMB63_HIDDEN	markup	embedded: true; hidden: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	EMB63_HIDDEN	markup	embedded: true; hidden: true	PASS	
 extraction-probe-inspect.docx	63	VAR63_VALUE	accepted	default	PASS	
 extraction-probe-inspect.docx	63	VAR63_VALUE	original	default	PASS	
 extraction-probe-inspect.docx	63	VAR63_VALUE	markup	default	PASS	
@@ -1500,48 +1500,48 @@ extraction-probe-external.docm	52	metadata:ProbeCustom:	markup	default	PASS
 extraction-probe-external.docm	52	metadata:Company:	accepted	default	PASS	
 extraction-probe-external.docm	52	metadata:Company:	original	default	PASS	
 extraction-probe-external.docm	52	metadata:Company:	markup	default	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	html reader absent	FAIL	expected 2, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	html reader absent	FAIL	expected 2, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	html reader absent	FAIL	expected 2, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	accepted	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	original	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	markup	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	accepted	default	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	original	default	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	markup	default	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	html reader absent	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	html reader absent	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	html reader absent	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	altchunks: false	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	altchunks: false	PASS	
+extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	accepted	altchunks: false	PASS	
+extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	original	altchunks: false	PASS	
+extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	markup	altchunks: false	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	accepted	html reader absent	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	original	html reader absent	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	markup	html reader absent	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	accepted	altchunks: false	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	original	altchunks: false	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	markup	altchunks: false	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	accepted	default	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	original	default	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	markup	default	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	accepted	altchunks: false	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	original	altchunks: false	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	markup	altchunks: false	PASS	
+extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	accepted	altchunks: false	PASS	
+extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	original	altchunks: false	PASS	
+extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	markup	altchunks: false	PASS	
 extraction-probe.docx	47	warning:altchunk.not_expanded:text/html	accepted	html reader present	PENDING	phase 2; html reader present
 extraction-probe.docx	47	warning:altchunk.not_expanded:text/html	original	html reader present	PENDING	phase 2; html reader present
 extraction-probe.docx	47	warning:altchunk.not_expanded:text/html	markup	html reader present	PENDING	phase 2; html reader present
-extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	html reader absent	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	html reader absent	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	html reader absent	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	accepted	altchunks: false	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	original	altchunks: false	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	markup	altchunks: false	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	html reader absent	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	html reader absent	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	html reader absent	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	altchunks: false	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	altchunks: false	PASS	
 extraction-probe.docx	53	order	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	order	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	order	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
-extraction-probe.docx	54	order	accepted	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
-extraction-probe.docx	54	order	original	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
-extraction-probe.docx	54	order	markup	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
+extraction-probe.docx	54	order	accepted	include: glossary	PASS	
+extraction-probe.docx	54	order	original	include: glossary	PASS	
+extraction-probe.docx	54	order	markup	include: glossary	PASS	
 extraction-probe.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
 extraction-probe-external.docm	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
 extraction-probe-structure.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
@@ -1571,9 +1571,9 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
-extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 4 lines of the golden missing, 0 extra
-extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 4 lines of the golden missing, 0 extra
-extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 4 lines of the golden missing, 0 extra
+extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	PASS	
+extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	PASS	
+extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	PASS	
 extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	

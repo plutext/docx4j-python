@@ -43,8 +43,13 @@ and table docx4j's ``ChartDescription`` and ``ChartTable`` (REQ-511, CR-047);
 SmartArt as its data part's lines in reading order (REQ-511); content that
 cannot be read raises ``content.not_read`` (REQ-801).
 
-Not yet (CR-011 Phase C): fields computed under ``fields: update``, embedded
-packages, ``w:altChunk``.
+A plain-text, WordprocessingML or Flat OPC ``altChunk`` is expanded where it
+is (REQ-513), and under ``embedded: true`` an embedded WordprocessingML package
+is read after its anchor (REQ-512), each one level down
+(:meth:`Extractor.read_nested`); the glossary comes last under ``include:
+glossary`` (REQ-516).
+
+Not yet (CR-011 Phase C): fields computed under ``fields: update``.
 """
 
 from __future__ import annotations
@@ -476,6 +481,42 @@ class _SmartArt(_Anchored):
             sink.append(paragraph_block("SMARTART", f"{self.prefix}/{i}", line))
 
 
+class _EmbeddedObject(_Anchored):
+    """An embedded package or OLE 1.0 package, read under ``embedded: true`` (REQ-512)."""
+
+    __slots__ = ("part",)
+
+    def __init__(self, part: Any, prefix: str) -> None:
+        super().__init__(prefix)
+        self.part = part
+
+    def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
+        from docx4j_py.model.text.embedded import package_blocks
+
+        try:
+            blocks = package_blocks(x, self.part, self.prefix)
+        except Exception:  # noqa: BLE001 - an object that cannot be read (or is deferred) is content.not_read
+            x.not_read(self.anchor(), self.part)
+            return
+        sink.extend(blocks)
+
+
+def _is_binary(part: Any) -> bool:
+    from docx4j_py.openpackaging.parts.binary_part import BinaryPart
+
+    return isinstance(part, BinaryPart)
+
+
+def _restory(blocks: list[TextBlock], story: str) -> None:
+    """A nested reading's main-story blocks, in the story they are read into, a table's cells' too."""
+    for b in blocks:
+        if b.story == "MAIN":
+            b.story = story  # type: ignore[assignment]
+        for row in b.rows:
+            for cell in row.cells:
+                _restory(cell.blocks, story)
+
+
 def _is_chart_part(part: Any) -> bool:
     """A chart part or a chartex one (docx4j ``ChartRef``: anything else places no chart)."""
     return part is not None and type(part).__name__ in ("ChartPart", "ChartExSpacePart")
@@ -545,10 +586,10 @@ class Extractor:
         body = self.trees.body
         if body is None:
             return TextResult(out, comments, self.warnings, metadata, self.options)
-        story = _Story("MAIN", "body", self.trees.main, self.context.numbering_states.main)
+        story = _Story("MAIN", self.root + "body", self.trees.main, self.context.numbering_states.main)
         story.sections = []
         main_blocks: list[TextBlock] = []
-        self.blocks(body.content, "body", story, main_blocks)
+        self.blocks(body.content, self.root + "body", story, main_blocks)
         story.sections.append(body.sect_pr)
         headers = "headers" in self.options.includes
         footers = "footers" in self.options.includes
@@ -559,9 +600,75 @@ class Extractor:
         if self.options.notes:
             self._notes("footnote", out)
             self._notes("endnote", out)
+        # the glossary, last (REQ-501, REQ-516)
+        if "glossary" in self.options.includes:
+            self._glossary(out)
         if self.comments_included():
             self._comments(comments)
         return TextResult(out, comments, self.warnings, metadata, self.options)
+
+    # -- the glossary (REQ-516) ------------------------------------------------------
+
+    def _glossary(self, out: list[TextBlock]) -> None:
+        """Each ``w:docPart``'s body, ``glossary:i/j``, after the notes."""
+        main = self.trees.main
+        part = getattr(main, "glossary_document_part", None) if main is not None else None
+        if part is None:
+            return
+        try:
+            tree = part.read_contents()
+        except Exception:  # noqa: BLE001 - a glossary that will not read holds no text here
+            return
+        doc_parts = getattr(tree, "doc_parts", None)
+        state = self.context.numbering_states.for_part(part)
+        for i, doc_part in enumerate(getattr(doc_parts, "doc_part", None) or ()):
+            body = doc_part.doc_part_body
+            if body is None:
+                continue
+            prefix = f"{self.root}glossary:{i}"
+            self.blocks(body.content, prefix, _Story("GLOSSARY", prefix, part, state), out)
+
+    # -- one level down (REQ-512, REQ-513) --------------------------------------------
+
+    def read_nested(self, package: Any, prefix: str, story: str | None) -> list[TextBlock]:
+        """A package read one level down, an embedded document's or a chunk's. docx4j ``Extractor.nested``.
+
+        The same options, but none of its own embedded packages or chunks
+        expanded (its chunks raising ``altchunk.not_expanded``), and no
+        metadata. Its addresses start ``prefix/``, its warnings join this
+        reading's, and its main story's blocks take `story`.
+        """
+        options = self.options.copy()
+        options.embedded = False
+        options.altchunks = False
+        options.metadata = False
+        reading = Extractor(PackageTrees(package), options)
+        reading.root = f"{prefix}/"
+        reading.nested = True
+        result = reading.extract()
+        for warning in result.warnings:
+            self.warn(warning)
+        blocks = list(result.blocks)
+        if story is not None:
+            _restory(blocks, story)
+        return blocks
+
+    def _alt_chunk(self, chunk: Any, address: str, story: _Story, sink: list[TextBlock]) -> None:
+        """An ``altChunk`` expanded at its position, as Word expands it on open (REQ-513)."""
+        rel_id = (chunk.attributes or {}).get(_R_ID) if is_any_element(chunk) else getattr(chunk, "id", None)
+        part = self.trees.related(story.part, rel_id)
+        if type(part).__name__ != "AlternativeFormatInputPart":
+            return
+        from docx4j_py.model.text.embedded import chunk_blocks, content_type
+
+        blocks = chunk_blocks(self, part, story.kind, f"{address}/altchunk:0") if self.options.altchunks else None
+        if blocks is None:
+            self.warn(TextWarning(TextWarning.ALTCHUNK_NOT_EXPANDED, address, content_type=content_type(part)))
+            return
+        section = len(story.sections) if story.sections is not None else 0
+        for b in blocks:
+            b.section = section
+        sink.extend(blocks)
 
     def extract_content(self, content: Any, part: Any) -> TextResult:
         """Content in the package (a paragraph, a table, a body) as the main story, addressed ``content``."""
@@ -633,6 +740,8 @@ class Extractor:
             elif rtrees.is_holder(item) and self.unwraps(item):
                 # an inserted control rejected: its content in its place
                 self.blocks(rtrees.children(item), address, story, sink, state)
+            elif _local(item) == "altChunk":
+                self._alt_chunk(item, address, story, sink)
             elif _local(item) == "sdt":
                 bound = self._bound(item, address)
                 if bound is not None:
@@ -1431,7 +1540,15 @@ class Extractor:
                 continue
             if item.qname == _O_OLE_OBJECT:
                 attributes = item.attributes or {}
-                self._object_run(para, attributes.get("ProgID"), state)
+                prog_id = attributes.get("ProgID")
+                self._object_run(para, prog_id, state)
+                if not self.options.embedded or self.nested:
+                    return
+                part = self.trees.related(para.story.part, attributes.get(_R_ID))
+                ole1 = prog_id is not None and prog_id.lower().startswith("package")
+                if type(part).__name__ == "EmbeddedPackagePart" or (ole1 and _is_binary(part)):
+                    para.story.pending.append(_EmbeddedObject(part, f"{para.address}/object:{para.objects}"))
+                    para.objects += 1
                 return
             if item.qname == _W_CONTROL:
                 self._object_run(para, None, state)
@@ -1618,7 +1735,7 @@ class Extractor:
         if found is None:
             return
         part = found[0]
-        prefix = f"{'header' if kind == 'HEADER' else 'footer'}:{rel_id}"
+        prefix = f"{self.root}{'header' if kind == 'HEADER' else 'footer'}:{rel_id}"
         story = _Story(kind, prefix, part, self.context.numbering_states.for_part(part))
         self.blocks(rtrees.block_items(found[1]), prefix, story, out)
 
@@ -1639,7 +1756,7 @@ class Extractor:
             kind = _v(getattr(note, "type_value", None))
             if kind is not None and kind != "normal":
                 continue
-            prefix = f"{note_type}:{note_id}"
+            prefix = f"{self.root}{note_type}:{note_id}"
             story = _Story("FOOTNOTE" if note_type == "footnote" else "ENDNOTE", prefix, part, state)
             story.note_type = note_type
             story.note_number = number
@@ -1687,7 +1804,7 @@ class Extractor:
             if comment_id not in anchored:
                 continue
             comment = TextComment(comment_id, author=c.author, initials=c.initials, date=_date_text(c.date))
-            prefix = f"comment:{comment_id}"
+            prefix = f"{self.root}comment:{comment_id}"
             self.blocks(c.content, prefix, _Story("COMMENT", prefix, part, state), comment.blocks)
             para_id = _last_para_id(c.content)
             if para_id is not None:

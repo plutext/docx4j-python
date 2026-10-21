@@ -610,3 +610,119 @@ def test_a_chartex_chart_in_its_choice():
     charts = [b for b in r.blocks if b.kind == "CHART"]
     assert len(charts) == 1 and charts[0].chart.note == "[chart: waterfall]"
     assert charts[0].chart_header == ["", "Series1"] and charts[0].chart_rows[3] == ["Category 4", "-40"]
+
+
+# ---------------------------------------------------------------------------
+# the glossary (REQ-501, REQ-516)
+# ---------------------------------------------------------------------------
+
+
+def test_the_glossary_last(probe):
+    """REQ-501, REQ-516: the glossary only under include: glossary, last, after the endnotes."""
+    assert "GLS54" not in text(probe)
+    r = extract(probe, include="glossary")
+    glossary = [b for b in r.blocks if b.story == "GLOSSARY"]
+    assert len(glossary) == 2
+    assert glossary[0].address == "glossary:0/0"
+    assert glossary[1].text == "GLS54_ENTRY_TWO"
+    assert r.blocks[-2:] == glossary
+    assert plain_text(r).endswith("[1] EN27_NOTE_TEXT\nGLS54_ENTRY_ONE\nGLS54_ENTRY_TWO\n")
+
+
+# ---------------------------------------------------------------------------
+# altChunk (REQ-513)
+# ---------------------------------------------------------------------------
+
+A_F_CHUNK = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk"
+HTML = (
+    "<html><head><title>T</title><style>p{}</style></head><body><p>One &amp; two</p>"
+    "<div>Three<br>Four</div><table><tr><td>a</td><td>b</td></tr></table><script>no()</script></body></html>"
+)
+
+
+def test_alt_chunks():
+    """REQ-513: text chunks as lines; HTML not expanded without an HTML reader (CR-011 Q13); RTF never; one level."""
+    pkg = (
+        MiniDocx.body(f'{p("Before.")}<w:altChunk r:id="rIdT"/><w:altChunk r:id="rIdR"/><w:altChunk r:id="rIdH"/>{p("After.")}')
+        .part("t.txt", "text/plain", A_F_CHUNK, "rIdT", b"line one\r\nline two\r\n")
+        .part("r.rtf", "application/rtf", A_F_CHUNK, "rIdR", b"{\\rtf1 RTF text}")
+        .part("h.htm", "text/html", A_F_CHUNK, "rIdH", HTML.encode())
+        .load()
+    )
+    before = pkg.save()
+    r = extract(pkg)
+    assert plain_text(r) == "Before.\nline one\nline two\nAfter.\n"
+    assert [str(w) for w in r.warnings] == [
+        "altchunk.not_expanded at body/2 (application/rtf)",
+        "altchunk.not_expanded at body/3 (text/html)",
+    ]
+    assert r.blocks[2].address == "body/1/altchunk:0/1"
+    off = extract(pkg, altchunks=False)
+    assert plain_text(off) == "Before.\nAfter.\n"
+    assert len(off.warnings) == 3 and off.warnings[0].content_type == "text/plain"
+    assert pkg.save() == before  # REQ-204
+
+
+def test_a_document_chunks_html_chunk_is_not_expanded(probe):
+    """The probe's document chunk holds an HTML chunk, which is not expanded (one level)."""
+    nested = [w for w in extract(probe).warnings if w.address is not None and "/altchunk:0/" in w.address]
+    assert len(nested) == 1 and nested[0].content_type == "text/html"
+
+
+def test_a_chunks_text_is_decoded_by_its_bom_else_utf8_else_windows_1252():
+    from docx4j_py.model.text.embedded import decode
+
+    assert decode("é".encode()) == "é"
+    assert decode(b"\xef\xbb\xbf" + "é".encode()) == "é"
+    assert decode(b"\xff\xfe" + "é".encode("utf-16-le")) == "é"
+    assert decode(b"\xe9") == "é"
+
+
+# ---------------------------------------------------------------------------
+# embedded packages (REQ-512)
+# ---------------------------------------------------------------------------
+
+
+def test_an_embedded_document_is_read_one_level_deep(probe):
+    """REQ-512: under embedded: true, a WordprocessingML package read at its reference, one level deep."""
+    r = extract(probe, embedded=True)
+    texts = {b.address.split("/", 2)[2]: b.text for b in r.blocks if b.story == "EMBEDDED"}
+    assert texts["object:0/body/0"] == "EMB40_DOCX_TEXT"
+    value = plain_text(r)
+    assert "EMB40_NESTED_TEXT" not in value and "ACX42_CAPTION" not in value
+    assert "EMB40_DOCX_TEXT" not in text(probe)
+
+
+def test_the_deferred_packages_raise_content_not_read(probe):
+    """CR-011 Q7: a workbook, a presentation and an OLE 1.0 package contribute nothing, and say so."""
+    r = extract(probe, embedded=True)
+    not_read = {w.selector for w in r.warnings if w.kind == TextWarning.CONTENT_NOT_READ}
+    assert not_read == {"/word/embeddings/probe39.xlsx", "/word/embeddings/probe41.bin", "/word/embeddings/probe53.pptx"}
+    assert not [w for w in extract(probe).warnings if w.kind == TextWarning.CONTENT_NOT_READ]
+
+
+def test_an_embedded_package_that_is_not_one_raises_content_not_read():
+    obj = (
+        MiniDocx.body(
+            '<w:p><w:r><w:t>Before</w:t></w:r><w:r><w:object><o:OLEObject Type="Embed" ProgID="Excel.Sheet.12" '
+            'r:id="rIdE"/></w:object></w:r></w:p>'
+        )
+        .part(
+            "embeddings/broken.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package",
+            "rIdE",
+            b"not a zip",
+        )
+        .load()
+    )
+    r = extract(obj, embedded=True)
+    assert TextWarning(TextWarning.CONTENT_NOT_READ, "body/0", part_name="/word/embeddings/broken.xlsx") in r.warnings
+    assert plain_text(r) == "Before\n"
+    assert not extract(obj).warnings  # not read at all without embedded: true
+
+
+def test_an_embedded_documents_hidden_text_under_hidden():
+    inspect = load(PHASE0 / "extraction-probe-inspect.docx")
+    assert "EMB63_VISIBLE" in text(inspect, embedded=True) and "EMB63_HIDDEN" not in text(inspect, embedded=True)
+    assert "EMB63_HIDDEN" in text(inspect, embedded=True, hidden=True)

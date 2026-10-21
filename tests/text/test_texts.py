@@ -12,7 +12,6 @@ Phase B can hold them.
 
 from __future__ import annotations
 
-import collections
 import json
 
 import pytest
@@ -221,36 +220,16 @@ def test_the_views(probe):
 
 
 # ---------------------------------------------------------------------------
-# the probe's goldens, as Phase B holds them
+# the plain-text goldens, exact since Phase C (CR-011 section 13)
 # ---------------------------------------------------------------------------
 
-#: The goldens' lines Phase B does not write: Phase C's content (CR-011 section 6).
-PHASE_C_MISSING = collections.Counter(
-    [
-        "ALT43_TEXT_LINE_ONE",  # w:altChunk (REQ-513)
-        "ALT43_TEXT_LINE_TWO",
-        "ALT46_FLATOPC_CHUNK",
-        "ALT47_DOCX_CHUNK",
-    ]
-)
-#: What Phase B writes in their place.
-PHASE_B_EXTRA: collections.Counter[str] = collections.Counter()
 
-
+@pytest.mark.parametrize("fixture", ["extraction-probe", "extraction-probe-structure", "extraction-probe-external"])
 @pytest.mark.parametrize("view", ["accepted", "original", "markup"])
-def test_the_probes_goldens_differ_only_by_phase_cs_lines(probe, view):
-    golden = (PHASE0 / f"extraction-probe.{view}.txt").read_text(encoding="utf-8").split("\n")
-    got = plain_text(extract(probe, view=view)).split("\n")
-    want, have = collections.Counter(golden), collections.Counter(got)
-    assert want - have == PHASE_C_MISSING
-    assert have - want == PHASE_B_EXTRA
-
-
-@pytest.mark.parametrize("fixture", ["extraction-probe-structure", "extraction-probe-external"])
-@pytest.mark.parametrize("view", ["accepted", "original", "markup"])
-def test_the_other_goldens_are_exact(fixture, view):
+def test_the_plain_text_goldens_are_exact(fixture, view):
     path = next(PHASE0.glob(f"{fixture}.doc*"))
     golden = (PHASE0 / f"{fixture}.{view}.txt").read_text(encoding="utf-8")
+    # the suite compares a golden after REQ-1201's normalisation; this, byte for byte but for the final line feeds
     assert plain_text(extract(load(path), view=view)).rstrip("\n") == golden.rstrip("\n")
 
 

@@ -99,8 +99,6 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
 #: would fail checks of the suite that the default's text meets.
 NOT_YET: dict[tuple[str, Any], str] = {
     ("fields", "update"): "REQ-506",
-    ("embedded", True): "REQ-512",
-    ("altchunks", True): "REQ-513",
 }
 
 
@@ -167,9 +165,8 @@ class TextOptions:
     docx4j refuses them: ``math: unicodemath`` (no OMML to UnicodeMath
     converter) and ``symbols: unicode`` (no glyph tables).
 
-    **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update`` and
-    ``embedded: true`` are accepted and read as their defaults; under the
-    default ``altchunks`` an ``altChunk`` is not expanded.
+    **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update`` is
+    accepted and read as its default.
     """
 
     __slots__ = (
