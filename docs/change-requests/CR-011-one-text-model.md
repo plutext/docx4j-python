@@ -11,10 +11,10 @@ hand-off (its note). **Phase A and Q10 implemented the same day** (section 11): 
 `198d015a3`, its harness and the baseline as a ratchet, 941 pass, 410 fail, 233 pending of
 1,584. **Phase B implemented the same day** (section 12), with Q3 and with Q11 on docx4j CR-052's
 placement, which landed as `5df2e253e`: `docx4j_py.model.text`; 1,146 pass, 205 fail, 233 pending,
-goldens 6 of 12; the agreement test at zero. Q11 awaits its Word check, and Q3's change to the
-xsdata fork (stage 10) needs a fork release before a docx4j-python release. **Phase C implemented
-the same day** (section 13), the port of docx4j CR-046 phase 2: fields updated with docx4j's
-switches, bound values, charts and SmartArt (`docx4j_py.model.chart`), WordArt, embedded
+goldens 6 of 12; the agreement test at zero. Q11's Word check passed the same day, and Q3's
+change to the xsdata fork (stage 10) needs a fork release before a docx4j-python release. **Phase C
+implemented the same day** (section 13), the port of docx4j CR-046 phase 2: fields updated with
+docx4j's switches, bound values, charts and SmartArt (`docx4j_py.model.chart`), WordArt, embedded
 WordprocessingML, the glossary, plain-text `w:altChunk`s (the HTML reader absent, Q13), pictures'
 alt text, metadata, equations as LaTeX, listed and grid tables, page markers and `layout: indent`;
 1,284 pass, 7 fail (Markdown's, Phase D's), 293 pending, goldens 9 of 12; Q7's 60 pending by name.
@@ -804,7 +804,8 @@ the model's view. The Office JS readers keep Office JS's text (Q4).
   output**, for a document whose Choices name such a prefix only. `out/acceptance/` regenerated is
   canonically identical to the artefacts before (`scripts/compare_acceptance.py`, 13 artefacts),
   and none of them has such a Choice. The Word check of the two fixtures saved is the user's,
-  staged in `out/cr011-q11-word-check/` with a README.
+  staged in `out/cr011-q11-word-check/` with a README. **It passed on 2026-10-21** (the user:
+  "q11: both open fine"): the probe and `waterfall.docx` re-saved open with no repair prompt.
 - **The cost.** The rendered tree is scanned for `mc:Choice`; the object tree is read for the
   records only once a binding the table does not make has been recorded in the process (`zz9`,
   `shape2010`), since until then the table gives every answer the records would. A declaration
@@ -971,7 +972,7 @@ CR-010's Word-save comparisons are unchanged (68 tests).
   CR-010's ten pins; CR-006's tools.
 - The `dry_run` comment defect of 12.3.
 - A Word check of the probe and `waterfall.docx` saved after their main parts are unmarshalled
-  (12.2), the user's.
+  (12.2), the user's: **passed 2026-10-21**.
 - The fork's stage 10 needs a fork release before this package releases on it (risk 4).
 
 ## 13. Phase C implementation notes (2026-10-21)
@@ -1196,6 +1197,6 @@ without `hidden: true`, the speaker notes) still passes, so none goes from `PASS
   decision on an OLE 1.0 reader: then `DEFERRED` empties and `TextsPhase2Test`'s workbook,
   presentation and OLE halves are ported.
 - The HTML reader as its own phase after D (Q12, Q13).
-- Section 12.10's open items stand: the `dry_run` comment defect (12.3), the Word check of the
-  probe and `waterfall.docx` saved after their main parts are unmarshalled, and a fork release
-  before this package releases on stage 10.
+- Section 12.10's open items stand: the `dry_run` comment defect (12.3) and a fork release
+  before this package releases on stage 10. The Word check of the probe and `waterfall.docx`
+  saved after their main parts are unmarshalled passed on 2026-10-21.

@@ -358,6 +358,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > prompt. The Reviewing Pane and the comment show the local time they were made. The rejected copy,
 > with no comment parts, opens clean. CR-010 is complete.
 
+> **2026-10-21, Word check of CR-011 Q11 passed** (the user: "q11: both open fine"). CR-011 Phase
+> B's save declares every prefix an `mc:Choice`'s `Requires` names, on docx4j CR-052's placement
+> (CR-011 section 12.2). Before it, Word repaired such a save. The two files checked are in
+> `out/cr011-q11-word-check/`: the probe re-saved, declaring `zz9` and `shape2010` on their
+> Choices, and `waterfall.docx` re-saved, declaring `cx1` on the root. Both open with no repair
+> prompt. The eleven artefacts hold no such Choice and are canonically unchanged by the fix.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
