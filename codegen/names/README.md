@@ -9,7 +9,8 @@ ran XJC over `docx4j/xsd/`, we run xsdata over `schemas/` (a copy of the same fi
 are derived mechanically from docx4j's JAXB-annotated generated Java (`@XmlType`,
 `@XmlRootElement`, `ObjectFactory`'s `@XmlElementDecl`). Every `<prefix>.json` is machine
 written; the one hand-maintained file is `wml_overrides.json`, [below](#the-two-hand-written-entries-wml_overridesjson).
-Regenerate with:
+`root_elements.json` is machine written too, and is not a name table:
+[The root elements](#the-root-elements-root_elementsjson) below. Regenerate with:
 
 ```
 python codegen/derive_names.py \
@@ -441,6 +442,51 @@ groups: `…/spreadsheetml/2006/main` (52), `…/office/powerpoint/2010/main` (3
 there is no docx4j class name to record: `String` (106), `BigInteger` (18), `byte[]` (6),
 `Integer` (5), `Long` (3), `Short` (2), `XMLGregorianCalendar` (2), and one each of `BigDecimal`,
 `Boolean`, `Byte`, `Double`, `Float`.
+
+## The root elements: `root_elements.json`
+
+CR-012 Phase B. JAXB binds a lax wildcard's child by its `@XmlRootElement` classes and its
+unscoped `ObjectFactory` `@XmlElementDecl`s, so in docx4j a `w:drawing` inside an `mc:Choice` is a
+`Drawing`. This model types a wildcard's child by its global element declarations only, and 61
+WordprocessingML names that are roots in docx4j are not global here. This file lists them, and
+`codegen/generate_el.py` writes it into the generated `docx4j_py/el_index.py` as `ROOT_ELEMENTS`
+(qualified name to class path), which `docx4j_py/runtime.py`'s branch hook and the serialiser's
+element names read.
+
+`derive_names.py` writes it on every run, by this rule:
+
+* docx4j's global names are every `@XmlRootElement`, **nested classes included** (`R.Tab`,
+  `P.Hyperlink`, `PPrBase.Spacing`; the name tables' regexes are anchored at column 0 and see only
+  top-level classes, so this pass has its own, which tracks the enclosing classes by indentation),
+  and every `@XmlElementDecl` with no `scope`;
+* those in the WordprocessingML namespace that the schema copy does not declare globally (a
+  top-level `xsd:element` of `wml/wml.xsd`, 37 of them) are the missing ones: 62;
+* a name several docx4j classes claim as their root is left out: `w:sdtContent`, whose four
+  classes a name alone cannot choose among (CR-012 Q3), as `w:sdt`'s four would be if `w:sdt`
+  were not global here;
+* each of the 61 left takes the class the `el` table (`codegen/el_tables/wml.json`) names for it:
+  `Drawing`, `Pict`, `RT` for `w:t`, `RTab` for `w:tab`, `PHyperlink` for `w:hyperlink` (the
+  table's `overrides.defaults`), `CtPprBaseSpacing` for `w:spacing`, and so on. The `docx4j` key
+  of each entry is docx4j's class, qualified by its enclosing classes.
+
+**The cross-check.** The schema copy carries docx4j's own `annox:annotate`
+`@XmlRootElement(name="...")` customisations, from which XJC made those root classes. The names
+annotated in `wml/wml.xsd` that are not global must be exactly the names the rule finds, or the
+run stops with both lists. They are, 62 and 62. `w:sdtPr` is among them: its annotation is written
+`@XmlRootElement(name = "sdtPr")`, spaced, which CR-012 section 2's first count did not match.
+
+**Provenance.** The XJC output is a build in docx4j's checkout, not a commit, so the file records
+when it was built (`xjc_built`, the newest source file of `org.docx4j.wml`). The cross-check
+against the schema copy, which `schemas/PATCHES.md` names the docx4j commit of, is what ties the
+table to a commit.
+
+**Not a `ClassNames` table.** The generator's `<ClassNames>` option reads every `*.json` in this
+directory and merges each file's `types` and `elements`. This file has neither key (its entries
+are under `roots`), so the generator takes nothing from it and its output does not change.
+
+The other vocabularies' missing names, in a namespace this model has, are listed under
+`other_vocabularies` and not taken: today the custom properties' `property`, which never appears
+in a branch. Phase B is WordprocessingML's.
 
 ## The two hand written entries: `wml_overrides.json`
 

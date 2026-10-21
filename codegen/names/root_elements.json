@@ -1,0 +1,265 @@
+{
+  "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+  "generated_by": "codegen/derive_names.py",
+  "note": "docx4j's WordprocessingML root elements (its @XmlRootElement classes and unscoped ObjectFactory @XmlElementDecls) whose name this model does not declare globally, each with the class the el table names for it (CR-012 Phase B). codegen/generate_el.py writes it into docx4j_py/el_index.py as ROOT_ELEMENTS. Not a ClassNames table: no types or elements key. Output; never hand-edited.",
+  "xjc_built": "2026-10-20T14:11:44+11:00",
+  "cross_check": {
+    "schema": "schemas/wml/wml.xsd",
+    "annotated_and_not_global": 62,
+    "agree": true
+  },
+  "left_out": {
+    "sdtContent": "4 docx4j classes claim it as their root (CTSdtContentCell, CTSdtContentRow, CTSdtContentRun, SdtContentBlock): a name alone cannot choose (CR-012 Q3)"
+  },
+  "other_vocabularies": {
+    "{http://schemas.openxmlformats.org/officeDocument/2006/custom-properties}property": [
+      "Properties.Property"
+    ]
+  },
+  "roots": {
+    "abstractNum": {
+      "docx4j": "Numbering.AbstractNum",
+      "class": "NumberingAbstractNum"
+    },
+    "alias": {
+      "docx4j": "SdtPr.Alias",
+      "class": "CtSdtPrAlias"
+    },
+    "altChunk": {
+      "docx4j": "CTAltChunk",
+      "class": "CTAltChunk"
+    },
+    "annotationRef": {
+      "docx4j": "R.AnnotationRef",
+      "class": "RAnnotationRef"
+    },
+    "bibliography": {
+      "docx4j": "SdtPr.Bibliography",
+      "class": "CtSdtPrBibliography"
+    },
+    "bookmarkEnd": {
+      "docx4j": "CTMarkupRange",
+      "class": "CTMarkupRange"
+    },
+    "bookmarkStart": {
+      "docx4j": "CTBookmark",
+      "class": "CTBookmark"
+    },
+    "citation": {
+      "docx4j": "SdtPr.Citation",
+      "class": "CtSdtPrCitation"
+    },
+    "commentReference": {
+      "docx4j": "R.CommentReference",
+      "class": "RCommentReference"
+    },
+    "continuationSeparator": {
+      "docx4j": "R.ContinuationSeparator",
+      "class": "RContinuationSeparator"
+    },
+    "cr": {
+      "docx4j": "R.Cr",
+      "class": "RCr"
+    },
+    "dataBinding": {
+      "docx4j": "CTDataBinding",
+      "class": "CTDataBinding"
+    },
+    "dayLong": {
+      "docx4j": "R.DayLong",
+      "class": "RDayLong"
+    },
+    "dayShort": {
+      "docx4j": "R.DayShort",
+      "class": "RDayShort"
+    },
+    "drawing": {
+      "docx4j": "Drawing",
+      "class": "Drawing"
+    },
+    "endnoteRef": {
+      "docx4j": "R.EndnoteRef",
+      "class": "REndnoteRef"
+    },
+    "equation": {
+      "docx4j": "SdtPr.Equation",
+      "class": "CtSdtPrEquation"
+    },
+    "fldChar": {
+      "docx4j": "FldChar",
+      "class": "FldChar"
+    },
+    "fldSimple": {
+      "docx4j": "CTSimpleField",
+      "class": "CTSimpleField"
+    },
+    "footnoteRef": {
+      "docx4j": "R.FootnoteRef",
+      "class": "RFootnoteRef"
+    },
+    "group": {
+      "docx4j": "SdtPr.Group",
+      "class": "CtSdtPrGroup"
+    },
+    "hyperlink": {
+      "docx4j": "P.Hyperlink",
+      "class": "PHyperlink"
+    },
+    "ind": {
+      "docx4j": "PPrBase.Ind",
+      "class": "CtPprBaseInd"
+    },
+    "jc": {
+      "docx4j": "Jc",
+      "class": "Jc"
+    },
+    "lastRenderedPageBreak": {
+      "docx4j": "R.LastRenderedPageBreak",
+      "class": "RLastRenderedPageBreak"
+    },
+    "lock": {
+      "docx4j": "CTLock",
+      "class": "CTLock"
+    },
+    "lvl": {
+      "docx4j": "Lvl",
+      "class": "Lvl"
+    },
+    "lvlOverride": {
+      "docx4j": "Numbering.Num.LvlOverride",
+      "class": "NumberingNumLvlOverride"
+    },
+    "monthLong": {
+      "docx4j": "R.MonthLong",
+      "class": "RMonthLong"
+    },
+    "monthShort": {
+      "docx4j": "R.MonthShort",
+      "class": "RMonthShort"
+    },
+    "noBreakHyphen": {
+      "docx4j": "R.NoBreakHyphen",
+      "class": "RNoBreakHyphen"
+    },
+    "num": {
+      "docx4j": "Numbering.Num",
+      "class": "NumberingNum"
+    },
+    "numPicBullet": {
+      "docx4j": "Numbering.NumPicBullet",
+      "class": "NumberingNumPicBullet"
+    },
+    "numPr": {
+      "docx4j": "PPrBase.NumPr",
+      "class": "CtPprBaseNumPr"
+    },
+    "outlineLvl": {
+      "docx4j": "PPrBase.OutlineLvl",
+      "class": "CtPprBaseOutlineLvl"
+    },
+    "pBdr": {
+      "docx4j": "PPrBase.PBdr",
+      "class": "CtPprBasePBdr"
+    },
+    "pPr": {
+      "docx4j": "PPr",
+      "class": "PPr"
+    },
+    "permEnd": {
+      "docx4j": "CTPerm",
+      "class": "CTPerm"
+    },
+    "permStart": {
+      "docx4j": "RangePermissionStart",
+      "class": "RangePermissionStart"
+    },
+    "pgNum": {
+      "docx4j": "R.PgNum",
+      "class": "RPgNum"
+    },
+    "pict": {
+      "docx4j": "Pict",
+      "class": "Pict"
+    },
+    "picture": {
+      "docx4j": "SdtPr.Picture",
+      "class": "CtSdtPrPicture"
+    },
+    "ptab": {
+      "docx4j": "R.Ptab",
+      "class": "RPtab"
+    },
+    "rPr": {
+      "docx4j": "RPr",
+      "class": "RPr"
+    },
+    "richText": {
+      "docx4j": "SdtPr.RichText",
+      "class": "CtSdtPrRichText"
+    },
+    "sdtPr": {
+      "docx4j": "SdtPr",
+      "class": "SdtPr"
+    },
+    "sectPr": {
+      "docx4j": "SectPr",
+      "class": "SectPr"
+    },
+    "separator": {
+      "docx4j": "R.Separator",
+      "class": "RSeparator"
+    },
+    "smartTag": {
+      "docx4j": "CTSmartTagRun",
+      "class": "CTSmartTagRun"
+    },
+    "softHyphen": {
+      "docx4j": "R.SoftHyphen",
+      "class": "RSoftHyphen"
+    },
+    "spacing": {
+      "docx4j": "PPrBase.Spacing",
+      "class": "CtPprBaseSpacing"
+    },
+    "sym": {
+      "docx4j": "R.Sym",
+      "class": "RSym"
+    },
+    "t": {
+      "docx4j": "Text",
+      "class": "RT"
+    },
+    "tab": {
+      "docx4j": "R.Tab",
+      "class": "RTab"
+    },
+    "tabs": {
+      "docx4j": "Tabs",
+      "class": "Tabs"
+    },
+    "tbl": {
+      "docx4j": "Tbl",
+      "class": "Tbl"
+    },
+    "tblGrid": {
+      "docx4j": "TblGrid",
+      "class": "TblGrid"
+    },
+    "tblPr": {
+      "docx4j": "TblPr",
+      "class": "TblPr"
+    },
+    "tc": {
+      "docx4j": "Tc",
+      "class": "Tc"
+    },
+    "yearLong": {
+      "docx4j": "R.YearLong",
+      "class": "RYearLong"
+    },
+    "yearShort": {
+      "docx4j": "R.YearShort",
+      "class": "RYearShort"
+    }
+  }
+}

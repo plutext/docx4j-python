@@ -22,6 +22,16 @@ four top level keys in this order: ``namespace``, ``java_package``, ``types``,
 ``elements``.  ``--report`` additionally dumps the anomaly data (as JSON) that
 ``codegen/names/README.md`` is written from.
 
+It also writes ``codegen/names/root_elements.json`` (CR-012 Phase B): docx4j's
+WordprocessingML root elements --- every ``@XmlRootElement`` class, nested
+ones included, and every unscoped ``@XmlElementDecl`` --- whose name this
+model does not declare globally, each with the class the ``el`` table
+(``codegen/el_tables/wml.json``) names for it. It is cross-checked against
+the schema copy's own ``annox`` ``@XmlRootElement`` annotations, and the run
+stops if the two disagree. It is not a ``ClassNames`` table: it has no
+``types`` or ``elements`` key, so the generator's ``<ClassNames>`` option,
+which reads every file here, takes nothing from it.
+
 Stdlib only.  Re-runnable: running it twice produces byte-identical output.
 """
 
@@ -183,8 +193,22 @@ def simple_name(java_type: str) -> str:
     return ".".join(segs)
 
 
+_scans: dict = {}
+
+
 def scan_package(pkg: str, info: dict):
-    """Scan one java package; return the raw (pre-resolution) observations."""
+    """Scan one java package; return the raw (pre-resolution) observations.
+
+    Memoised, so that the root elements' pass (CR-012 Phase B) reads each
+    package once with the name tables' pass.
+    """
+    key = (pkg, info["dir"])
+    if key not in _scans:
+        _scans[key] = _scan_package(pkg, info)
+    return _scans[key]
+
+
+def _scan_package(pkg: str, info: dict):
     ns = info["namespace"]
     classes = {f[:-len(".java")] for f in info["files"]} - {"package-info", "ObjectFactory"}
 
@@ -530,6 +554,202 @@ def build(java_root: str, schemas_root: str):
     return results, anomalies
 
 
+# ---------------------------------------------------------------------------
+# root elements (CR-012 Phase B)
+# ---------------------------------------------------------------------------
+
+WML_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+XSD_NS = "http://www.w3.org/2001/XMLSchema"
+ANNOX_NS = "urn:jaxb.jvnet.org:annox"
+
+DEFAULT_EL_TABLES = os.path.join(HERE, "el_tables")
+ROOT_ELEMENTS_FILE = "root_elements.json"
+
+# Any indentation, unlike RE_TOP_XMLROOT: docx4j's roots include nested classes
+# (``R.Tab``, ``P.Hyperlink``, ``PPrBase.Spacing``), and a nested class's
+# annotation is indented with it.
+RE_ANY_XMLROOT = re.compile(r'^([ \t]*)@XmlRootElement\s*\(([^)]*)\)')
+RE_CLASS_DECL = re.compile(
+    r'^([ \t]*)(?:(?:public|protected|private|static|abstract|final)\s+)*class\s+(\w+)')
+# The schema copy's annox form, spaced or not: ``@...XmlRootElement(name="jc")``
+# and ``@...XmlRootElement(name = "sdtPr")``.
+RE_ANNOX_ROOT = re.compile(r'XmlRootElement\s*\(\s*name\s*=\s*"([^"]+)"\s*\)')
+
+
+def _indent(text: str) -> int:
+    return len(text.expandtabs(4))
+
+
+def scan_roots(info: dict) -> list:
+    """Every ``@XmlRootElement`` of one java package, nested classes included.
+
+    -> ``[(namespace, element name, class)]``, the class qualified by its
+    enclosing classes (``R.Tab``). XJC writes one class per file and indents
+    a nested class with its body, so the enclosing classes of a declaration
+    are the ones declared before it at a smaller indentation.
+    """
+    out = []
+    for fname in info["files"]:
+        if fname in SKIP_FILES:
+            continue
+        stack: list = []          # (indent, class name)
+        pending = None            # (indent, element name, namespace)
+        for line in read(os.path.join(info["dir"], fname)).splitlines():
+            m = RE_ANY_XMLROOT.match(line)
+            if m is not None:
+                body = m.group(2)
+                mn = RE_NAME_ATTR.search(body)
+                mns = RE_NS_ATTR.search(body)
+                if mn and mn.group(1):
+                    pending = (_indent(m.group(1)), mn.group(1),
+                               mns.group(1) if mns else info["namespace"])
+                continue
+            m = RE_CLASS_DECL.match(line)
+            if m is None:
+                continue
+            indent = _indent(m.group(1))
+            while stack and stack[-1][0] >= indent:
+                stack.pop()
+            stack.append((indent, m.group(2)))
+            if pending is not None and pending[0] == indent:
+                out.append((pending[2], pending[1], ".".join(n for _i, n in stack)))
+            pending = None
+    return out
+
+
+def schema_globals(schemas_root: str) -> dict:
+    """namespace -> the names of the global element declarations in the schema copy."""
+    import xml.etree.ElementTree as ET
+
+    out = defaultdict(set)
+    for root, _dirs, files in os.walk(schemas_root):
+        for name in sorted(files):
+            if not name.endswith(".xsd"):
+                continue
+            try:
+                schema = ET.parse(os.path.join(root, name)).getroot()
+            except ET.ParseError:
+                continue
+            ns = schema.get("targetNamespace") or ""
+            for child in schema:
+                if child.tag == "{%s}element" % XSD_NS and child.get("name"):
+                    out[ns].add(child.get("name"))
+    return out
+
+
+def annotated_roots(schemas_root: str) -> set:
+    """The names the schema copy's ``wml/wml.xsd`` annotates ``@XmlRootElement`` (annox)."""
+    import xml.etree.ElementTree as ET
+
+    names = set()
+    schema = ET.parse(os.path.join(schemas_root, "wml", "wml.xsd")).getroot()
+    for node in schema.iter("{%s}annotate" % ANNOX_NS):
+        for name in RE_ANNOX_ROOT.findall(node.text or ""):
+            names.add(name)
+    return names
+
+
+def xjc_built(packages: dict, pkg: str) -> str:
+    """When the XJC output was built: the newest source file of `pkg`, local time."""
+    import datetime
+
+    info = packages[pkg]
+    newest = max(os.path.getmtime(os.path.join(info["dir"], f)) for f in info["files"])
+    return datetime.datetime.fromtimestamp(newest).astimezone().isoformat(timespec="seconds")
+
+
+def build_root_elements(java_root: str, schemas_root: str, el_tables: str) -> dict:
+    """docx4j's WordprocessingML root elements that this model does not declare globally.
+
+    The rule (CR-012 section 4.2 item 2, Q2 and Q3):
+
+    * docx4j's global names are its ``@XmlRootElement`` classes, nested ones
+      included, and its unscoped ``ObjectFactory`` ``@XmlElementDecl``s, as
+      JAXB's context binds a lax wildcard's child by them;
+    * those in the WordprocessingML namespace that the schema copy does not
+      declare globally are this model's missing ones;
+    * a name several docx4j classes claim as their root is left out
+      (``w:sdtContent``, Q3), since a name alone cannot choose among them;
+    * each name left takes the class the ``el`` table names for it.
+
+    The other vocabularies' missing names (in a namespace this model has) are
+    listed, not taken: Phase B is WordprocessingML's. The cross-check is the
+    schema copy's ``annox`` annotations in ``wml/wml.xsd``: every name the
+    rule finds must be annotated there, and every name annotated there and
+    not global must be found, or the run stops.
+    """
+    packages, _skipped = find_packages(java_root)
+    roots = defaultdict(set)      # (namespace, name) -> {qualified class}
+    for pkg, info in sorted(packages.items()):
+        for ns, name, cls in scan_roots(info):
+            roots[(ns, name)].add(cls)
+        scan = scan_package(pkg, info)
+        for rec in scan["of_decls"]:
+            if rec["scope"] == "GLOBAL":
+                ns = rec["namespace"] or info["namespace"]
+                if (ns, rec["element"]) not in roots:
+                    roots[(ns, rec["element"])].add(rec["class"])
+
+    declared = schema_globals(schemas_root)
+    tables = {}
+    for fname in sorted(os.listdir(el_tables)):
+        if fname.endswith(".json"):
+            with open(os.path.join(el_tables, fname), encoding="utf-8") as fh:
+                doc = json.load(fh)
+            tables[doc["namespace"]] = doc
+
+    missing = {name: classes for (ns, name), classes in roots.items()
+               if ns == WML_NS and name not in declared[WML_NS]}
+    left_out = {name: sorted(classes) for name, classes in missing.items() if len(classes) > 1}
+    others = {"{%s}%s" % (ns, name): sorted(classes)
+              for (ns, name), classes in sorted(roots.items())
+              if ns != WML_NS and ns in tables and name not in declared.get(ns, set())}
+
+    annotated = annotated_roots(schemas_root) - declared[WML_NS]
+    found = set(missing)
+    if annotated != found:
+        raise SystemExit(
+            "codegen/derive_names.py: docx4j's XJC output and the schema copy's annox "
+            "@XmlRootElement annotations disagree on WordprocessingML's root elements:\n"
+            "  in the XJC output only: %s\n  annotated only: %s"
+            % (sorted(found - annotated), sorted(annotated - found)))
+
+    elements = tables[WML_NS]["elements"]
+    out = {}
+    for name in sorted(set(missing) - set(left_out)):
+        if name not in elements:
+            raise SystemExit("codegen/derive_names.py: the el table names no class for w:%s" % name)
+        (docx4j_class,) = missing[name]
+        out[name] = {"docx4j": docx4j_class, "class": elements[name]}
+
+    wml_pkg = next(p for p, i in packages.items() if i["namespace"] == WML_NS)
+    return {
+        "namespace": WML_NS,
+        "generated_by": "codegen/derive_names.py",
+        "note": (
+            "docx4j's WordprocessingML root elements (its @XmlRootElement classes and "
+            "unscoped ObjectFactory @XmlElementDecls) whose name this model does not "
+            "declare globally, each with the class the el table names for it (CR-012 "
+            "Phase B). codegen/generate_el.py writes it into docx4j_py/el_index.py as "
+            "ROOT_ELEMENTS. Not a ClassNames table: no types or elements key. Output; "
+            "never hand-edited."
+        ),
+        "xjc_built": xjc_built(packages, wml_pkg),
+        "cross_check": {
+            "schema": "schemas/wml/wml.xsd",
+            "annotated_and_not_global": len(annotated),
+            "agree": True,
+        },
+        "left_out": {
+            name: "%d docx4j classes claim it as their root (%s): a name alone cannot choose (CR-012 Q3)"
+            % (len(classes), ", ".join(classes))
+            for name, classes in sorted(left_out.items())
+        },
+        "other_vocabularies": others,
+        "roots": out,
+    }
+
+
 def write_json(path: str, doc: dict) -> None:
     with open(path, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(doc, fh, indent=2, ensure_ascii=False, sort_keys=False)
@@ -545,9 +765,12 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=DEFAULT_OUT, help="output directory")
     ap.add_argument("--report", default=None,
                     help="also write the anomaly report as JSON to this path")
+    ap.add_argument("--el-tables", default=DEFAULT_EL_TABLES,
+                    help="the el tables, for the root elements' classes")
     args = ap.parse_args(argv)
 
     results, anomalies = build(args.java_root, args.schemas_root)
+    roots = build_root_elements(args.java_root, args.schemas_root, args.el_tables)
 
     os.makedirs(args.out, exist_ok=True)
     for pfx in sorted(results):
@@ -562,11 +785,16 @@ def main(argv=None) -> int:
     if args.report:
         write_json(args.report, anomalies)
 
+    write_json(os.path.join(args.out, ROOT_ELEMENTS_FILE), roots)
+
     print("wrote %d name tables to %s" % (len(results), args.out))
     for pfx in sorted(results):
         print("  %-34s types=%-5d elements=%-5d %s"
               % (pfx, len(results[pfx]["types"]), len(results[pfx]["elements"]),
                  results[pfx]["namespace"]))
+    print("  %-34s roots=%-5d left out=%s, cross-checked against %d annotations; XJC built %s"
+          % (ROOT_ELEMENTS_FILE, len(roots["roots"]), sorted(roots["left_out"]),
+             roots["cross_check"]["annotated_and_not_global"], roots["xjc_built"]))
     return 0
 
 
