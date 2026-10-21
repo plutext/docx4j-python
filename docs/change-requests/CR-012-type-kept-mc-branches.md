@@ -49,7 +49,8 @@ code.
     records the load options a private parse used, the record the mode joins.
 - **Phase A2:** docx4j CR-051 phase 2 (`9db1a3cbd` on `VERSION_17_3_4`, pushed), whose readers
   it ports.
-- **Phase B:** a further change to the fork's runtime (section 4.2).
+- **Phase B:** Phase A, whose fork stage 11 hooks (items 25 and 26) take the root table; no
+  further fork code (section 4.2, revised 2026-10-22).
 - **Phase C:** docx4j CR-048 (`acd0defc9` on `VERSION_17_3_4`, pushed 2026-10-18, to ship in
   17.3.4), whose VML schema this phase copies.
 
