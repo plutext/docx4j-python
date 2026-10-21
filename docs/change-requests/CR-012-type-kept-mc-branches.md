@@ -1629,6 +1629,16 @@ reverted to `cells_of`, the two cell-level grid tests fail and the row-level one
   `test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows`.
 - A fix would read Word's branch for a whole table, and every branch only for the changed rows.
   That is docx4j's to decide first: worth telling docx4j-25. No producer writes the shape.
+- **Closed on 2026-10-22 by the port of docx4j `84b202c5a`** (`ad5e885`, section 10.12), at the
+  user's go ("go on the port"). docx4j found the item by reading this section, and decided it
+  otherwise than the fix above:
+  - its `changeText` reads `Lister.rowsOf`, Word's branch, for both halves, so `change_text` reads
+    `rows_of` again;
+  - so the whole table's text is the Choice's row, `A\tB\r\n`, and the pin is now the expectation,
+    `test_a_whole_tables_change_text_reads_the_branch_word_reads`;
+  - and the change of a record only the Fallback's row holds has no text, `""`, where this
+    section's test had `F\r\n`;
+  - the record paths stay on `all_rows_of`.
 
 **The Word check (passed 2026-10-22).** Three files are in `out/cr012-a2-records-word-check/`, with
 a `README.txt` saying, for each, the source, what was done and what Word should show. They are also
@@ -1656,6 +1666,147 @@ Expected: each opens with no repair prompt and no tracked change, and shows the 
 red in file 1, plain in files 2 and 3. `F` is not shown. **Passed on 2026-10-22** (the user: "the
 Word check of __tmp/python-cr012a2-records/ passes"): all three open with no repair prompt and show
 what the README says.
+
+### 10.12 The change text and grid port (2026-10-22)
+
+This is the port of docx4j `84b202c5a` (on `VERSION_17_3_4`, read by commit), at the user's go
+("go on the port"). It closes 10.11's "Found, and not done" item, and a defect in 10.11's
+`collapse_grid` that this package shared with docx4j. docx4j made both fixes after the ports read
+`901a922a3`: the change text from this package's 10.11, the grid from core-ts's port of the same
+commit (its CR-013 phase 3).
+
+**Commits.**
+
+- `ad5e885`: `tables.change_text` on `rows_of`, and `collapse_grid`'s spans counted before any is
+  written, with the tests;
+- the commit after it: this section, 10.11's item, the CHANGELOG and `tests/README.md`.
+
+**What landed** (`docx4j_py/model/revisions/tables.py`):
+
+- `change_text` reads `rows_of` again (docx4j `Lister.rowsOf`, the branch Word reads), for both
+  halves of its rule:
+  - where the table's own properties or grid changed, the text is every row Word shows: a
+    row-level element's Choice's rows, not its Fallback's;
+  - otherwise it is the changed rows' among those. A row in the change that only a branch Word
+    does not read holds is still listed and resolved, through the record paths, but adds no text,
+    so its change's text is empty. docx4j points the whole loop at `Lister.rowsOf`; 10.11's
+    suggested split (every branch for the changed rows) was not taken.
+  - Whether a row is in the change still reads its cells through every branch (`in_change`,
+    `_row_differs`, over `all_cells_of`), and a row's text still reads Word's branch of its cells
+    (`row_text`).
+  - The record paths stay on `all_rows_of` and `all_cells_of`: `in_change`, `has_records`,
+    `_row_differs`, `record_of`, `accept` and `reject`.
+- `collapse_grid` counts every layout's new spans before it writes any:
+  - The counts are taken along each layout, the last first, from the spans as they were, into a
+    map keyed by the cell's identity. A cell outside the element is in every layout, so it is
+    counted in each, and the count along Word's layout, the last, is the one that stands.
+  - Then each cell with a `w:tcPr` gets its count: a `w:gridSpan` when it is above 1, none
+    otherwise.
+  - Then the row's `w:gridBefore` and `w:gridAfter`. docx4j now sets both after the spans, where
+    `w:gridBefore` was set before the loop. The order changes nothing: `before` is read once,
+    before the layouts, and the counts do not read the row's members.
+- **The defect** (core-ts's finding). The loop wrote each layout's spans as it counted them. A cell
+  outside the element is in every layout. So Word's layout, counted last, read that cell with the
+  span the Fallback's layout had already rewritten, in new-grid units, while the count was still
+  in old-grid units. Every cell after it was then placed from the wrong edge.
+  - It was probed here before the port, with the test file's `regridded(6, ...)` and `spanned`
+    (columns of 1000), and with docx4j's own shape (columns of 500).
+  - Either way the grid came back as 3 columns, which is right, and F got span 2. But C, the cell
+    in Word's branch, got span 1 where 2 is right. Read through the Choice, the row spanned two
+    columns of three.
+
+**Tests** (`tests/revisions/test_alternate_content.py`, 36 to 39, and one changed). docx4j's
+documents are built as its tests build them:
+
+- its `w:tblPr`, centred and recorded with no properties (`CHANGED_TBL_PR`);
+- its grids: three columns of 1000 now, six of 500 recorded (`regridded_in_500s`);
+- its `spanned`: a `w:tcW` of 500 a column, with a `w:gridSpan` (`spanned_in_500s`);
+- its `plainRow` (`plain_row`, already here).
+
+The tests:
+
+- docx4j's two, with its assertions:
+  - `test_rejecting_a_grid_change_counts_every_branchs_spans_from_the_old_ones`: rejected, three
+    `w:gridCol`, all `w:w="1000"`; two `w:gridSpan`, both `w:val="2"`; no `gridAfter` or
+    `gridBefore`. Beyond docx4j's assertions: C and F are the cells spanning 2 (`cells_in`), and
+    the row spans three columns through either branch.
+  - `test_a_table_changes_text_reads_the_branch_word_reads`: one change, its text holding `C` and
+    not `F`.
+- The pin, turned into the expectation and renamed:
+  `test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows` is now
+  `test_a_whole_tables_change_text_reads_the_branch_word_reads`. Its text is `A\tB\r\n`, where it
+  was `A\tB\r\nX\tY\r\n`.
+- Beyond docx4j's: `test_rejecting_a_grid_change_counts_a_cell_after_the_element_from_its_old_span`.
+  - It puts the cell outside the element after it, where docx4j's shape has it before. Row 1 is
+    the element, C | F over two old columns, then X over four. Row 2 is a, b and c over two each.
+  - Rejected: three columns of 1000; X spans 2 and the others 1; the row spans three columns
+    through either branch.
+  - Before the fix X got span 1. The Fallback's layout wrote X's span 2, in new columns, and Word's
+    then counted X from that: two old columns, where X spans four. Here the shared cell is
+    miscounted itself; in docx4j's shape it is the cell after it that is placed from the wrong
+    edge.
+  - The shape gives X a span above 1 in the new grid on purpose. With C | F over four and X over
+    two after them, probed, X's count comes out 1 either way and the old code passes by luck.
+- Changed: 10.11's `test_rejecting_a_table_property_record_reaches_a_row_in_another_branch`. The
+  Fallback row's change now has no text, `""`, where it had `F\r\n`. docx4j's per-row half reads
+  `Lister.rowsOf` too, and the Choice's row is not in the change. Its other assertions are
+  unchanged.
+
+Without the fix, all five fail: the four new and the changed one. With only `change_text`
+reverted, the three text tests fail; with only `collapse_grid` reverted, the two grid tests.
+
+**The numbers.**
+
+- the fast suite (`-m "not slow"`): 3,596 passed, 8 skipped (3,593 and 8 before);
+- `tests/revisions` and `tests/openpackaging/test_mce_levels.py`: 869 passed (866 before);
+- CR-011's ratchet (`tests/text/conformance.py`): 1,291 pass, 0 fail, 293 pending of 1,584,
+  goldens 12 of 12, `conformance.tsv` unchanged;
+- the acceptance artefacts: `out/acceptance/` was regenerated and compared with a copy made before
+  the change (`out/acceptance-before/`). `scripts/compare_acceptance.py` found 13 artefacts and
+  175 entries, 0 differing beyond the wall-clock dates;
+- `generate.sh --check` was not run: no input of the generated code changed.
+
+The port was made in a git worktree two levels below the checkout. There the tests that read the
+sibling checkouts (`../docx4j`, `../docx4j-core-ts`) skip, so the two suite numbers above were
+taken in a clone of the worktree placed beside links to those checkouts. That clone gives 3,593
+passed and 8 skipped at the parent commit, as the checkout does.
+
+**Departures, with why.** Both are in form only. The behaviour is docx4j's.
+
+1. **The counts are keyed by `id()`.** docx4j's map is an `IdentityHashMap<Tc, Integer>`.
+   - A generated dataclass is slotted with `eq=True`, so it is unhashable, and its `==` compares
+     fields: two empty cells compare equal.
+   - So the map here is `dict[int, tuple[Tc, int]]`, keyed by `id(tc)`, with the cell in the
+     value. That keeps every cell alive for the loop, so no id is reused.
+   - The cells are written in the dict's order, first counted first, where docx4j's identity map
+     has no order. Each write touches one cell, so the order changes nothing.
+2. **The test helpers' names.** docx4j's grid test's `spanned` is `spanned_in_500s` here, since the
+   file's `spanned` (10.11's, a `w:gridSpan` alone) is taken. Its grids are `regridded_in_500s`,
+   beside 10.11's `regridded` (columns of 1000). `element(choice, fallback)` builds the
+   `mc:AlternateContent` for the new tests.
+
+**The Word check (not yet checked).** One file is in `out/cr012-a2-grid-word-check/`, with a
+`README.txt` saying the source, what was done and what Word should show. Both are also copied to
+`~/vbShares/Office 2016/__tmp/python-cr012a2-grid/`.
+
+- The source is docx4j's grid test's shape, built with `create_package()` and `set_contents()`,
+  with a paragraph before the table and one after it.
+- The test's `w:tblPr` is centred and recorded with no properties. Here the current and the
+  recorded `w:tblPr` both have single borders on every edge, so that the table shows after the
+  reject. The reject restores the recorded `w:tblPr` wholesale, so the table is not centred.
+- `reject_all` rejected the table's one change, and the package was saved from the typed objects.
+- The `w:document` declares `xmlns:w14`, which the Choice's `Requires` names.
+- It was read back with `LoadOptions(strict=True)`:
+  - nothing skipped, and no tracked change;
+  - no `w:tblPrChange`, `w:tblGridChange`, `w:gridBefore` or `w:gridAfter`;
+  - three `w:gridCol` of 1000; C and F span 2, and X, a, b and c span 1;
+  - the text model reads the w14 Choice: the table is `X: a; C: b; C: c`, with no `F`.
+
+The file is `cr012a2-grid-rejected.docx`.
+
+Expected: it opens with no repair prompt and no tracked change. It shows a bordered table of three
+equal columns: row 1 is X across one column and C across two, and row 2 is a, b and c. `F` is not
+shown. **Not yet checked.**
 
 ## 11. Phase B implementation notes (2026-10-22)
 

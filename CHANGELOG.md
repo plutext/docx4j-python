@@ -349,6 +349,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
     branch held one, and was kept after accepting or rejecting (section
     [10.11](docs/change-requests/CR-012-type-kept-mc-branches.md#1011-the-table-records-port-2026-10-22),
     the port of docx4j `901a922a3`);
+  - a table's change's text is the rows of the branch Word reads, where it held every branch's;
+    and a grid restored by a reject, over a row with a cell-level element, counts every branch's
+    spans from the old ones before writing any, so a cell in Word's branch no longer loses its
+    span beside a cell outside the element (section
+    [10.12](docs/change-requests/CR-012-type-kept-mc-branches.md#1012-the-change-text-and-grid-port-2026-10-22),
+    the port of docx4j `84b202c5a`);
   - `outline()` gives a cell's blocks under the table at their full paths through any wrapper, so
     a row-level content control's rows no longer come out as `tc` entries.
 - **A kept `mc:AlternateContent` branch's WordprocessingML children are typed**
