@@ -7,7 +7,9 @@ recommendations the user accepted on 2026-10-17 (portfolio `2d8fd36`). It takes 
 C's view agreement (CR-010 sections 6 and 12.3). **Decided 2026-10-21** (the user: "go for
 CR-011"): every question of section 9 on its recommendation. Q4 is the revised answer (the Office
 JS readers keep Office JS's text, as core-ts CR-012's D2), and Q11's fix waits for docx4j CR-052's
-hand-off (its note). Phase A and Q10 started the same day.
+hand-off (its note). **Phase A and Q10 implemented the same day** (section 11): the suite at
+`198d015a3`, its harness and the baseline as a ratchet, 941 pass, 410 fail, 233 pending of
+1,584.
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
