@@ -1679,7 +1679,7 @@ commit (its CR-013 phase 3).
 
 - `ad5e885`: `tables.change_text` on `rows_of`, and `collapse_grid`'s spans counted before any is
   written, with the tests;
-- the commit after it: this section, 10.11's item, the CHANGELOG and `tests/README.md`.
+- `017079b`: this section, 10.11's item, the CHANGELOG and `tests/README.md`.
 
 **What landed** (`docx4j_py/model/revisions/tables.py`):
 
