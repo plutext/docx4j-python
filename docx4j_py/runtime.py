@@ -71,6 +71,13 @@ def context() -> XmlContext:
     return _context
 
 
+#: The value types whose values keep the spelling they were read with (the fork's
+#: ``ParserConfig(lexical_types=)``, stage 12; CR-012 Phase C): VML's ``xsd:float``
+#: and ``xsd:base64Binary`` attributes, which Word spells otherwise than the
+#: converter would, and any other ``float`` or ``bytes`` value the same way.
+LEXICAL_TYPES: frozenset[type] = frozenset({float, bytes})
+
+
 def parser_config(
     *, lenient: bool = True, skipped_report: bool = True, **kwargs: Any
 ) -> ParserConfig:
@@ -105,9 +112,17 @@ def parser_config(
     wildcard, or a branch whose container does not take it, as its root
     class, which is what JAXB's ``@XmlRootElement`` gives docx4j.
 
+    ``lexical_types`` is the fork's stage 12 (CR-012 Phase C): a ``float`` or
+    ``bytes`` value the converter would write in another spelling than its
+    source's keeps the source's (``XmlLexicalFloat``, ``XmlLexicalBytes``), so
+    that VML's ``o:spt="202"`` is not saved ``202.0`` and Word's ``o:gfxdata``,
+    wrapped at 76 characters, is not saved on one line. A value set in code is
+    written in the converter's spelling, as before.
+
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
     """
+    kwargs.setdefault("lexical_types", LEXICAL_TYPES)
     if "on_bind" not in kwargs:
         from functools import partial
 
