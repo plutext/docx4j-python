@@ -2646,12 +2646,12 @@ _PROPERTY_NAMES = frozenset(
 
 def _resolved_lists(part: Any, records: list) -> dict[int, dict[int, Any]]:
     """``id`` of the content list each record's element stood in -> its index there -> the element."""
+    from docx4j_py.model.text.trees import _read
     from docx4j_py.namespaces import NAMESPACE_TO_PREFIX
 
     out: dict[int, dict[int, Any]] = {}
-    try:
-        root = part.read_contents()
-    except Exception:  # noqa: BLE001 - a part that cannot be read has no records to read
+    root = _read(part)  # the tree the reading walks, read as every story's is
+    if root is None:
         return out
     for record in records:
         node = _at_address(root, record.address, NAMESPACE_TO_PREFIX)
