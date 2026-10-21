@@ -49,7 +49,10 @@ facade's `inline_shapes` as python-docx reads them; the `text_of` readers now re
 paragraph-level branch as a run-level one (11.4, kept); parse +21% and save +35% on the
 403-branch document; acceptance and the ratchet unchanged; docx4j's agreement run 0 of 22. **The
 Word check of four saves passed on 2026-10-22** (the user: "cr012b okay", file 2 "fine in All
-Markup"; 11.10): **Phase B done**. Phase C waits for its own go (Q4).
+Markup"; 11.10): **Phase B done**. **Phase C started 2026-10-22** at the user's go ("do phase c"),
+section 4.3 revised first: the VML schemas at the schema copy's commit, `vml__ROOT.xsd` left out,
+the survey over every part, VML's booleans kept as spelled, the islands retired only where no longer
+reached.
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -64,7 +67,8 @@ Markup"; 11.10): **Phase B done**. Phase C waits for its own go (Q4).
 - **Phase B:** Phase A, whose fork stage 11 hooks (items 25 and 26) take the root table; no
   further fork code (section 4.2, revised 2026-10-22).
 - **Phase C:** docx4j CR-048 (`acd0defc9` on `VERSION_17_3_4`, pushed 2026-10-18, to ship in
-  17.3.4), whose VML schema this phase copies.
+  17.3.4), whose VML schema this phase copies, at `2853b7280`, the schema copy's commit, where
+  `xsd/vml/` is unchanged since `acd0defc9` (section 4.3, revised 2026-10-22).
 
 docx4j-python cannot release on either fork change before a fork release, as CR-011's Q3 also
 needs (`RELEASING.md`: never against an unreleased fork).
@@ -469,6 +473,64 @@ This changes legacy VML everywhere, not only in branches. CR-048 found that docx
 binding was losing attributes before it. So the phase has its own survey and gate: zero newly
 skipped, canonical identity over the corpus, and a Word check. It is proposed here so the whole
 answer is in one place. It starts only after Phase B, on its own go (Q4).
+
+**Revised 2026-10-22, before implementation** (the user: "do phase c"), for what Phases A to B
+built and what the copy now is.
+
+1. **The commit.**
+   - The VML schemas are copied at `2853b7280`, the commit the rest of the schema copy is at
+     (`schemas/PATCHES.md`). docx4j's `xsd/vml/` has not changed since `acd0defc9`, which is an
+     ancestor, so the files are CR-048's.
+   - Each file is checked against its blob at both commits.
+   - `vml-main.xsd` imports `../wml/wml.xsd`, `../wml/w14_word_2010_wordml.xsd` and
+     `../shared/shared-relationshipReference.xsd`, all three already in the copy, and the four other
+     VML schemas.
+2. **`vml__ROOT.xsd` is left out.** It declares a vmlDrawing part's root, `<xml>` in no namespace
+   (docx4j CR-026). That part belongs to SpreadsheetML and PresentationML (CR-001 D, CR-002 C), and
+   WordprocessingML never holds one.
+3. **Names and modules.**
+   - `derive_names.py` writes a name table for each VML namespace that docx4j's packages declare:
+     `org.docx4j.vml`, `.officedrawing`, `.wordprocessingDrawing`, `.spreadsheetDrawing` and
+     `.presentationDrawing`. It reads the XJC build, cross-checked against the schemas as Phase B's
+     table was.
+   - Each namespace gets a `Substitution` to a `docx4j_py` module, following the existing
+     convention, and `el` tables.
+   - The prefix table already has `v`, `o`, `w10`, `xvml` and `pvml`.
+4. **Wider than the branches.** `CT_PictureBase`'s two lax wildcards (VML and `o:`) are under every
+   `w:pict` and `w:object`, in a branch or not. `CT_ShapeDefaults`' `o:` wildcard is in
+   `settings.xml` (`w:shapeDefaults`) and `w:hdrShapeDefaults`, so nearly every Word document's
+   settings part changes from wildcard to typed. Headers' VML watermarks change too. The survey
+   covers every WordprocessingML part for that reason.
+5. **The gate, as section 4.3 says, made precise.**
+   - Over the corpus Phase B's survey built from commits (`scripts/mce_branches.py corpus`): zero
+     newly skipped, no new canonical difference, and every byte difference listed by kind.
+   - **VML's booleans are a named risk.** VML spells them `t`/`f`/`true`/`false`
+     (`ST_TrueFalse`, a string), and this model writes an `xsd:boolean` numerically. Any VML or `o:`
+     attribute whose spelling changes is listed. Unless Word is shown to accept the new spelling,
+     it is kept as the source spells it: the type stays a string, or a marked schema patch.
+6. **The islands retire where they are no longer reached.**
+   - `model/revisions/islands.py` reads a VML text box through a typed copy, as do the text model
+     (`_typed_block`, `_typed_run_level`) and any other wildcard-to-typed path Phases A and B
+     listed.
+   - Each is removed only if nothing reaches it after the change, and its readers then read the
+     typed tree in place.
+   - The readers' audit is Phase B's (`scripts/mce_branches.py readers`, before and after). Every
+     changed answer is listed with why, and any whose contract is unclear goes to the coordinator.
+7. **Fork fixes, if needed.** The fork's generator or runtime may meet VML shapes no earlier schema
+   had: mixed content, attribute groups, VML's `ST_` types. A defect found is fixed in the fork as a
+   stage 12 item, with tests under `tests/fork/` and a `docs/UPSTREAM.md` row, as the earlier stages
+   were. It joins stages 9 to 11 in needing a fork release.
+8. **Cost.** Five namespaces of classes join the model. Import time, `warm_up()` and
+   `bench_marshal.py` are measured before and after on `samples/`, `Symbols.docx` and a VML-heavy
+   document. The CR-007 performance test's thresholds (`tests/test_performance.py`, slow) are
+   checked, and a breach is reported, not loosened.
+9. **The Word check.** Its README names the Review view (All Markup) for any file with tracked
+   changes, and stages each unmodified source beside its save. The files:
+   - a legacy VML text box with tracked changes: `cr043-tracked.docx`'s C22, whose Fallback is VML;
+   - a VML watermark in a header;
+   - a `w:object` (an OLE object's `v:shape`);
+   - a VML-only document with no `mc:AlternateContent`;
+   - `settings.xml`'s typed `o:shapedefaults`, through any of the above.
 
 ### 4.4 Phase A2: row and cell level, as docx4j CR-051 phase 2
 
