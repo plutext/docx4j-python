@@ -228,7 +228,6 @@ def test_the_views(probe):
 PHASE_C_MISSING = collections.Counter(
     [
         "The control: BND23_XML_VALUE",  # bound values (REQ-509)
-        "$$MTH32\\_A+\\frac{MTH32\\_B}{2}$$",  # math as LaTeX (REQ-604)
         "[chart: clustered column; value axis: CHT34_AXIS_TITLE]",  # charts (REQ-511)
         "CHT34_TITLE",
         "\tCHT34_SERIES_ONE\tCHT34_SERIES_TWO",
@@ -244,7 +243,7 @@ PHASE_C_MISSING = collections.Counter(
     ]
 )
 #: What Phase B writes in their place.
-PHASE_B_EXTRA = collections.Counter(["The control: BND23_SURFACE_STALE", "$$MTH32_A+MTH32_B2$$"])
+PHASE_B_EXTRA = collections.Counter(["The control: BND23_SURFACE_STALE"])
 
 
 @pytest.mark.parametrize("view", ["accepted", "original", "markup"])

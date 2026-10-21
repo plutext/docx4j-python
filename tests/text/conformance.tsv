@@ -1571,9 +1571,9 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
-extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 14 lines of the golden missing, 2 extra
-extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 14 lines of the golden missing, 2 extra
-extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 14 lines of the golden missing, 2 extra
+extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 13 lines of the golden missing, 1 extra
+extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 13 lines of the golden missing, 1 extra
+extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 13 lines of the golden missing, 1 extra
 extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	

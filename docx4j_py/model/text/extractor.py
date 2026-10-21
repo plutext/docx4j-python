@@ -33,10 +33,10 @@ each ``w:lastRenderedPageBreak`` of the main story a ``PAGE_MARKER`` run, its
 page numbered from 2 (REQ-708); and the document properties in the metadata
 (REQ-515).
 
+Equations are LaTeX (REQ-604), by docx4j's ``OmmlToLatex``, in the view.
+
 Not yet (CR-011 Phase C): fields computed under ``fields: update``, bound
-values, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``,
-REQ-604's form for one that is not converted), charts and SmartArt, embedded
-packages, ``w:altChunk``.
+values, charts and SmartArt, embedded packages, ``w:altChunk``.
 """
 
 from __future__ import annotations
@@ -1147,7 +1147,15 @@ class Extractor:
     # -- math (REQ-604) --------------------------------------------------------
 
     def _math(self, value: Any, para: _Paragraph, state: _RunState) -> None:
-        """An equation: its ``m:t`` text inside ``$...$`` (``$$...$$`` for an ``m:oMathPara``) until Phase C's LaTeX."""
+        """An equation as LaTeX, ``$...$`` (``$$...$$`` for an ``m:oMathPara``), in the view (REQ-604).
+
+        docx4j ``Extractor.math``: by :class:`~docx4j_py.model.math.OmmlToLatex`.
+        In ``markup``, an equation with tracked changes is its Reject All form
+        deleted and its Accept All form inserted, each as CR-010's plan for that
+        view leaves it (a structure inserted whole goes with its runs). An
+        equation outside the converter's subset is its runs' text, delimited the
+        same way.
+        """
         display = type(value).__name__ in ("CTOMathPara", "OMathPara")
         saved = (para.math, para.display_math)
         para.math, para.display_math = True, display
@@ -1157,8 +1165,8 @@ class Extractor:
                 if deletion is not None or insertion is not None:
                     original = self.context.plan(False)
                     accepted = self.context.plan(True)
-                    before = _math_text(value, lambda o: original is None or not original.removes(o))
-                    after = _math_text(value, lambda o: accepted is None or not accepted.removes(o))
+                    before = _latex(value, lambda o: original is None or not original.removes(o))
+                    after = _latex(value, lambda o: accepted is None or not accepted.removes(o))
                     if before != after:
                         if before:
                             self._text(para, _delimit(before, display), False, state.with_revision(deletion or TextRevision("DELETION"), False))
@@ -1168,11 +1176,20 @@ class Extractor:
                     if after:
                         self._text(para, _delimit(after, display), False, state)
                     return
-            text = _math_text(value, lambda o: not self.removes(o))
+            text = _latex(value, self._keep_math_in_view)
             if text:
                 self._text(para, _delimit(text, display), False, state)
         finally:
             para.math, para.display_math = saved
+
+    def _keep_math_in_view(self, item: Any) -> bool:
+        """The view's rule for an equation's list members: what the plan removes goes; with no plan, a revision by its type."""
+        if self.removes(item):
+            return False
+        if not self.planless or self.view == "markup":
+            return True
+        inserted = _math_revision_type(item)
+        return inserted is None or inserted == (self.view == "accepted")
 
     # -- what a run anchors: text boxes (REQ-518), WordArt (REQ-511), pictures (REQ-514), objects (REQ-512)
 
@@ -2025,6 +2042,16 @@ def _last_para_id(content: list | None) -> str | None:
 
 def _delimit(text: str, display: bool) -> str:
     return f"$${text}$$" if display else f"${text}$"
+
+
+def _latex(value: Any, keep: Any) -> str:
+    """An equation's LaTeX in a view; its runs' text where it is outside the converter's subset."""
+    from docx4j_py.model.math import OmmlMathError, OmmlToLatex
+
+    try:
+        return OmmlToLatex(keep).convert(value)
+    except (OmmlMathError, Exception):  # noqa: BLE001 - docx4j's OmmlMathException | RuntimeException
+        return _math_text(value, keep)
 
 
 def _math_revision_type(item: Any) -> bool | None:

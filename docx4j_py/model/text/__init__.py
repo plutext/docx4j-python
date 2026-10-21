@@ -36,7 +36,9 @@ text from it::
   (REQ-515); legacy WordArt as a one-paragraph text box (REQ-511); each
   picture an ``IMAGE`` run, described by the options' describer (the alt text
   by default; ``[image: ...]`` under ``alt_text: true``, REQ-514), and each
-  object an ``OBJECT`` run with its ProgID (REQ-512).
+  object an ``OBJECT`` run with its ProgID (REQ-512); equations as LaTeX
+  (REQ-604, docx4j's ``OmmlToLatex``, :mod:`docx4j_py.model.math`); REQ-605's
+  table forms; ``[page n]`` under ``page_markers``; ``layout: indent``.
 
 **The package is never changed** (REQ-204): every part is read with
 ``read_contents``, so a save afterwards is byte for byte where it was.
@@ -50,8 +52,7 @@ the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
 fields computed under ``fields: update``, bound values, charts, SmartArt,
-embedded packages, ``w:altChunk``, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``), the
-glossary.
+embedded packages, ``w:altChunk``, the glossary.
 
 Imported on first use: ``import docx4j_py`` does not import it.
 """

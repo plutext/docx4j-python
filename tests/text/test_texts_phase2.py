@@ -384,3 +384,74 @@ def test_layout_indent():
     )
     assert text(pkg) == "one stop\nthree\na\tb\nnone\ncell\n"
     assert text(pkg, layout="indent") == "    one stop\n            three\n    a\tb\nnone\ncell\n"
+
+
+# ---------------------------------------------------------------------------
+# math (REQ-604)
+# ---------------------------------------------------------------------------
+
+EQUATIONS = PHASE0.parent.parent / "revisions" / "tracked-changes-equations.docx"
+
+
+def test_math_as_latex(probe):
+    """REQ-604: $$...$$ for an m:oMathPara, $...$ inline; in markup an equation's tracked changes as its two forms."""
+    assert between(text(probe), "$$MTH32", "Case 33") == "$$MTH32\\_A+\\frac{MTH32\\_B}{2}$$\n"
+    inline = MiniDocx.body(
+        '<w:p><w:r><w:t xml:space="preserve">So </w:t></w:r><m:oMath><m:r><m:t>x</m:t></m:r>'
+        "<m:sSup><m:e><m:r><m:t>y</m:t></m:r></m:e><m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup></m:oMath></w:p>"
+    ).load()
+    assert text(inline) == "So $xy^{2}$\n"
+
+
+@pytest.mark.parametrize("view", ["accepted", "original"])
+def test_the_walk_and_the_resolved_copy_agree_on_equations(view):
+    from docx4j_py.model import revisions
+    from docx4j_py.model.text import extract_resolved
+
+    copy = load(EQUATIONS)
+    (revisions.accept_all if view == "accepted" else revisions.reject_all)(copy)
+    assert plain_text(extract_resolved(copy, view=view)) == text(load(EQUATIONS), view=view)
+
+
+def test_a_structure_inserted_whole_is_in_the_accepted_form_only():
+    tracked = load(EQUATIONS)
+    line = "with units of metres per second:\n"
+    after = between(text(tracked), line, "\nHeight")[len(line) :]
+    before = between(text(tracked, view="original"), line, "\nHeight")[len(line) :]
+    assert after.startswith("$$\\mathrm{m}\\mathrm{") and after.endswith("}{\\mathrm{s}}^{\\mathrm{-1}}\\mathrm{.}$$")
+    assert "^{\\mathrm" not in before
+    assert between(text(tracked, view="markup"), line, "\nHeight") == f"{line}{{--{before}--}}{{++{after}++}}"
+
+
+def test_an_equation_outside_the_subset_is_its_text():
+    """An m:func is not in docx4j's subset: the runs' text, delimited."""
+    pkg = MiniDocx.body(
+        "<w:p><m:oMath><m:func><m:fName><m:r><m:t>sin</m:t></m:r></m:fName><m:e><m:r><m:t>x</m:t></m:r></m:e>"
+        "</m:func></m:oMath></w:p>"
+    ).load()
+    assert text(pkg) == "$sinx$\n"
+
+
+@pytest.mark.parametrize(
+    ("omml", "latex"),
+    [
+        ("<m:r><m:rPr><m:sty m:val=\"p\"/></m:rPr><m:t>sin</m:t></m:r><m:r><m:t>x</m:t></m:r>", "\\sin x"),
+        ("<m:r><m:t>a≤b</m:t></m:r>", "a\\le b"),
+        ("<m:rad><m:radPr><m:degHide m:val=\"1\"/></m:radPr><m:deg/><m:e><m:r><m:t>2</m:t></m:r></m:e></m:rad>", "\\sqrt{2}"),
+        ("<m:nary><m:naryPr><m:chr m:val=\"∑\"/></m:naryPr><m:sub><m:r><m:t>i</m:t></m:r></m:sub><m:sup/>"
+         "<m:e><m:r><m:t>i</m:t></m:r></m:e></m:nary>", "\\sum_{i}^{}i"),
+        ("<m:d><m:dPr><m:begChr m:val=\"[\"/><m:endChr m:val=\"]\"/></m:dPr><m:e><m:r><m:t>x</m:t></m:r></m:e></m:d>",
+         "\\left[x\\right]"),
+        ("<m:acc><m:accPr><m:chr m:val=\"̃\"/></m:accPr><m:e><m:r><m:t>a</m:t></m:r></m:e></m:acc>", "\\tilde{a}"),
+        ("<m:r><m:rPr><m:nor/></m:rPr><m:t>if x_1</m:t></m:r>", "\\text{if x\\_1}"),
+    ],
+)  # fmt: skip
+def test_omml_to_latex(omml, latex):
+    from docx4j_py.model.math import OmmlToLatex
+    from docx4j_py.wml import wml
+
+    p = wml(f'<w:p {NS}><m:oMath>{omml}</m:oMath></w:p>')
+    from docx4j_py.model.revisions import trees as rtrees
+
+    equation = next(item for item in p.content if rtrees.is_math(item))
+    assert OmmlToLatex().convert(equation) == latex
