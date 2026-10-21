@@ -1135,6 +1135,15 @@ class Body(Sequence):
         :meth:`Paragraph.delete` deletes one, so the document still shows what
         was there until the changes are accepted (CR-003 section 4).
         """
+        if self.change_tracker is not None:
+            # tracked, every row and paragraph is marked deleted: not those of one
+            # branch of a kept mc:AlternateContent alone (CR-012 Phase A2)
+            from docx4j_py.model.content.reports import refuse_read_only
+            from docx4j_py.model.content.text_model import kept_content_under
+
+            found = kept_content_under(self.container)
+            if found is not None:
+                refuse_read_only(self.body_for(found), "clear")
         with recording(self, "clear") as change:
             change.text(before=self.text, after="")
             change.touched(self.prefix)

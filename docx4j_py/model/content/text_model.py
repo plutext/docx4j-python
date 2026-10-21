@@ -63,6 +63,7 @@ __all__ = [
     "grapheme_clusters",
     "is_grapheme_boundary",
     "item_text",
+    "kept_content_under",
     "markup_text",
     "reading_of",
     "require_view",
@@ -492,11 +493,12 @@ def _field_types(field: Any) -> list[type]:
 _MC_BRANCHES = frozenset({"AlternateContentChoice", "AlternateContentFallback"})
 #: ...and of the element and its branches: what stands between a branch's child and its container.
 _MC_CLASSES = frozenset({"AlternateContent", *_MC_BRANCHES})
-#: The generated classes of the block containers (CR-012 Phase A: docx4j ``McSplice.isBlockContainer``),
-#: whose ``mc:AlternateContent`` a reader of structure reads through; a row- or cell-level one
-#: (in a ``w:tbl``, a ``w:tr`` or their controls and custom XML) is passed by, as docx4j's CR-051
-#: leaves it until its phase 2 and as the text model does.
-_BLOCK_CONTAINERS = frozenset(
+#: The generated classes of the block, row and cell containers (docx4j ``McSplice.isBlockContainer``,
+#: ``isRowContainer`` and ``isCellContainer``), whose ``mc:AlternateContent`` a reader of structure
+#: reads through: at block level since CR-012 Phase A, among a table's rows (a ``w:tbl``, a row-level
+#: control's content, row-level custom XML) and a row's cells since Phase A2, as docx4j's CR-051
+#: phase 2 and the text model read them.
+_CONTAINERS = frozenset(
     {
         "Body1",
         "Hdr",
@@ -507,12 +509,21 @@ _BLOCK_CONTAINERS = frozenset(
         "CTTxbxContent",
         "SdtContentBlock",
         "CTCustomXmlBlock",
+        "Tbl",
+        "CTSdtContentRow",
+        "CTCustomXmlRow",
+        "Tr",
+        "CTSdtContentCell",
+        "CTCustomXmlCell",
     }
 )
 
 
 def _block_level(ac: Any) -> bool:
-    """Whether an ``mc:AlternateContent`` stands in a block container, through any ``mc`` wrappers."""
+    """Whether an ``mc:AlternateContent`` stands in a block, row or cell container, through any ``mc`` wrappers.
+
+    The name is Phase A's, when only a block container's element was read through.
+    """
     node = getattr(ac, "parent", None)
     for _ in range(256):
         if node is None:
@@ -520,7 +531,7 @@ def _block_level(ac: Any) -> bool:
         cls = node.__class__
         if cls.__module__ != "docx4j_py.mce" or cls.__name__ not in _MC_CLASSES:
             return cls.__module__ == "docx4j_py.wml" and any(
-                base.__name__ in _BLOCK_CONTAINERS for base in cls.__mro__ if base.__module__ == "docx4j_py.wml"
+                base.__name__ in _CONTAINERS for base in cls.__mro__ if base.__module__ == "docx4j_py.wml"
             )
         node = getattr(node, "parent", None)
     return False
@@ -546,6 +557,31 @@ def in_kept_branch(element: Any) -> bool:
     return False
 
 
+def kept_content_under(element: Any) -> Any | None:
+    """The first element of Word's branch of a kept block-, row- or cell-level ``mc:AlternateContent`` under `element`.
+
+    CR-012 Phase A2. What a tracked deletion of a row, a table or a body would
+    mark deleted is walked through :func:`block_children_of`, which reads such
+    an element by the branch Word reads, so the marks would land in that
+    branch alone; the verb asks here first and refuses (``address.read_only``)
+    on what this returns. None when there is no such element, or Word's branch
+    of each is empty.
+    """
+    stack = [element]
+    while stack:
+        node = stack.pop()
+        if node is not element and is_alternate_content(node) and block_list_of(node) is not None:
+            items = block_children_of(node) or []
+            if items:
+                return items[0]
+        if element_name(node) == W_P:
+            continue  # what a paragraph holds is run level: no such element there
+        children = block_children_of(node)
+        if children is not None:
+            stack.extend(reversed(children))
+    return None
+
+
 def block_list_of(value: Any) -> tuple[Any, str] | None:
     """The object and field name that hold a container's block-level list.
 
@@ -557,7 +593,10 @@ def block_list_of(value: Any) -> tuple[Any, str] | None:
     branch Word reads (:func:`docx4j_py.child.mce_branch`, CR-012 Phase A), so
     that a reader of structure --- :attr:`Body.paragraphs` and the rest ---
     reads what Word shows; a view of what is there is read-only
-    (:func:`in_kept_branch`).
+    (:func:`in_kept_branch`). So does one among a table's rows or a row's
+    cells (CR-012 Phase A2), so that :func:`rows_of` and :func:`cells_of`
+    read the rows and cells Word shows, and a path through the element names
+    the branch's index (``body/1/1/0``, the text model's address).
     """
     if is_alternate_content(value):
         if not _block_level(value):
@@ -612,7 +651,9 @@ def _wrapped(items: Any, wanted: str, out: list[tuple[Any, list]]) -> None:
         name = element_name(item)
         if name == wanted:
             out.append((item, items))
-        elif name in _ROW_WRAPPERS:
+        elif name in _ROW_WRAPPERS or is_alternate_content(item):
+            # a row- or cell-level mc:AlternateContent kept whole: the branch Word
+            # reads, whose list holds what is found in it (CR-012 Phase A2)
             children = block_children_of(item)
             if children is not None:
                 _wrapped(children, wanted, out)
@@ -623,13 +664,15 @@ def rows_of(table: Any) -> list[tuple[Any, list]]:
 
     CR-003 section 4: "rows and cells descend into row- and cell-level content
     controls (an OpenDoPE repeat wraps its ``w:tr`` in a ``w:sdt``), so ``rows``
-    is what Word shows".
+    is what Word shows". A row-level ``mc:AlternateContent`` kept whole is read
+    by the branch Word reads, and a row there is held by the branch's list, so
+    its view is read-only (CR-012 Phase A2).
     """
     return _collected(table, W_TR)
 
 
 def cells_of(row: Any) -> list[tuple[Any, list]]:
-    """A row's ``w:tc``\\ s and the list holding each, controls descended into."""
+    """A row's ``w:tc``\\ s and the list holding each, controls and a kept cell-level element descended into."""
     return _collected(row, W_TC)
 
 

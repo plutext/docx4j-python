@@ -20,6 +20,14 @@ Two rules of CR-003 section 4 land here:
 A cell's :attr:`TableCell.body` is ``Body.sub(tc, prefix)``, so the addresses of
 CR-003 section 3.4 carry straight on into it: ``body/4/0/1/0`` is the first
 block of the second cell of the first row of the fifth block.
+
+**A row- or cell-level ``mc:AlternateContent`` kept whole** (CR-012 Phase A2,
+docx4j CR-051 phase 2) is read by the branch Word reads: :attr:`Table.rows` and
+:attr:`TableRow.cells` hand out its rows and cells, addressed through the
+branch (``body/1/1/0``), as :attr:`Body.paragraphs` reads a block-level one.
+Their views are read-only: an edit there would change one branch alone, so it
+raises ``address.read_only``, and so does a table's verb that would edit one of
+them (:func:`_refuse_in_branch`).
 """
 
 from __future__ import annotations
@@ -30,7 +38,7 @@ from docx4j_py.child import link_parents
 from docx4j_py.model.content.addresses import ordinal_of
 from docx4j_py.model.content.enums import BodyLocation, ParagraphLocation, TextLocation
 from docx4j_py.model.content.errors import ContentError, InvalidTargetError
-from docx4j_py.model.content.reports import recording
+from docx4j_py.model.content.reports import recording, refuse_read_only
 from docx4j_py.model.content.styles import (
     built_in_of,
     define_built_in,
@@ -44,6 +52,7 @@ from docx4j_py.model.content.text_model import (
     W_TR,
     block_children_of,
     cells_of,
+    kept_content_under,
     rows_of,
 )
 from docx4j_py.namespaces import WML_NS
@@ -163,6 +172,33 @@ def _mark_rows_inserted(tracker: Any, rows: list[Tr]) -> None:
                     track_inserted_paragraph(tracker, block)
 
 
+def _refuse_in_branch(views: list[Any], operation: str) -> None:
+    """``address.read_only`` before any edit, when one of these row or cell views is in a kept branch.
+
+    CR-012 Phase A2: a table's verb that would edit a row or a cell Word reads
+    from a kept ``mc:AlternateContent`` refuses up front, so that it never
+    edits the rows before it and then stops.
+    """
+    for view in views:
+        body = view.parent_body if isinstance(view, TableRow) else view.body
+        refuse_read_only(body, operation)
+
+
+def _refuse_tracked_into_branch(body: Body, elements: list[Any], operation: str) -> None:
+    """``address.read_only`` before a tracked deletion that would mark content in a kept branch.
+
+    CR-012 Phase A2: a tracked deletion marks every run and paragraph mark of a
+    row, through :func:`cells_of` and the cells' blocks, which read a kept
+    row-, cell- or block-level ``mc:AlternateContent`` by the branch Word reads,
+    so the marks would land in that branch alone. An untracked deletion takes
+    the element whole, every branch with it, and needs no check.
+    """
+    for element in elements:
+        found = kept_content_under(element)
+        if found is not None:
+            refuse_read_only(body.body_for(found), operation)
+
+
 # ---------------------------------------------------------------------------
 # Table
 # ---------------------------------------------------------------------------
@@ -263,9 +299,17 @@ class Table:
 
     @values.setter
     def values(self, values: list[list[str]]) -> None:
+        rows = self.rows
+        _refuse_in_branch(
+            [
+                view
+                for index, row in enumerate(values[: len(rows)])
+                for view in (rows[index], *rows[index].cells[: len(row)])
+            ],
+            "set_values",
+        )
         with recording(self.parent_body, "set_values") as change:
             change.text(before=self.text)
-            rows = self.rows
             for index, row in enumerate(values):
                 if index < len(rows):
                     rows[index].values = row
@@ -454,6 +498,7 @@ class Table:
 
     @header_row_count.setter
     def header_row_count(self, count: int) -> None:
+        _refuse_in_branch(self.rows, "format")
         with recording(self.parent_body, "format") as change:
             change.text(before=f"header_row_count={self.header_row_count}")
             for index, row in enumerate(self.rows):
@@ -521,6 +566,13 @@ class Table:
         them, and the one place a tracked call's answer differs from an
         untracked one (CR-003 section 4).
         """
+        _refuse_in_branch(self.rows[row_index : row_index + row_count], "delete_rows")
+        if self.change_tracker is not None:
+            _refuse_tracked_into_branch(
+                self.parent_body,
+                [element for element, _container in rows_of(self.element)[row_index : row_index + row_count]],
+                "delete_rows",
+            )
         with recording(self.parent_body, "delete_rows") as change:
             tracker = self.change_tracker
             rows = rows_of(self.element)[row_index : row_index + row_count]
@@ -542,6 +594,10 @@ class Table:
         """
         from docx4j_py.model.content.reports import moved_by_delete
 
+        if self.change_tracker is not None:
+            # tracked, every row is marked deleted: not one in a kept branch alone
+            _refuse_in_branch(self.rows, "delete")
+            _refuse_tracked_into_branch(self.parent_body, [self.element], "delete")
         with recording(self.parent_body, "delete") as change:
             index = self.index
             if index < 0:
@@ -658,8 +714,8 @@ class TableRow:
 
     @property
     def parent_body(self) -> Body:
-        """The body the table is in."""
-        return self.parent_table.parent_body
+        """The body the table is in; a read-only twin of it for a row in a kept branch (CR-012 Phase A2)."""
+        return self.parent_table.parent_body.body_for(self.element)
 
     @property
     def row_index(self) -> int:
@@ -691,8 +747,9 @@ class TableRow:
 
     @values.setter
     def values(self, values: list[str]) -> None:
+        cells = self.cells
+        _refuse_in_branch(cells[: len(values)], "set_values")
         with recording(self.parent_body, "set_values") as change:
-            cells = self.cells
             for index, value in enumerate(values):
                 if index < len(cells):
                     cells[index].value = value
@@ -706,6 +763,7 @@ class TableRow:
 
     @is_header.setter
     def is_header(self, header: bool) -> None:
+        refuse_read_only(self.parent_body, "format")
         item = self._tbl_header()
         if not header:
             tr_pr = self.element.tr_pr
@@ -763,6 +821,8 @@ class TableRow:
         **While the package tracks changes** the row stays and takes a
         ``w:trPr/w:del`` (CR-003 section 4).
         """
+        if self.parent_table.change_tracker is not None:
+            _refuse_tracked_into_branch(self.parent_body, [self.element], "delete")
         with recording(self.parent_body, "delete") as change:
             index = _index_of(self.container, self.element)
             if index < 0:
@@ -858,16 +918,22 @@ class TableCell:
     @property
     def address(self) -> str:
         """The ordinal address of the cell (``"body/4/0/1"``). Extension."""
-        return ordinal_of(self.parent_table.parent_body, self.element) or ""
+        return ordinal_of(self._parent_body, self.element) or ""
+
+    @property
+    def _parent_body(self) -> Body:
+        """The body the table is in; a read-only twin of it for a cell in a kept branch (CR-012 Phase A2)."""
+        return self.parent_row.parent_body.body_for(self.element)
 
     @property
     def body(self) -> Body:
         """The cell's content as a :class:`Body` (Office JS ``TableCell.body``).
 
         The same part and package as the table's body, addressed from the cell,
-        so a paragraph in it reports ``body/4/0/1/0``.
+        so a paragraph in it reports ``body/4/0/1/0``; read-only for a cell in
+        a kept ``mc:AlternateContent`` branch (CR-012 Phase A2).
         """
-        parent = self.parent_table.parent_body
+        parent = self._parent_body
         return parent.sub(self.element, self.address or parent.prefix)
 
     @property
@@ -897,7 +963,7 @@ class TableCell:
 
     @value.setter
     def value(self, text: str) -> None:
-        with recording(self.parent_table.parent_body, "set_value") as change:
+        with recording(self._parent_body, "set_value") as change:
             change.text(before=self.text)
             body = self.body
             body.content.clear()
@@ -928,6 +994,7 @@ class TableCell:
 
     @width.setter
     def width(self, points: float) -> None:
+        refuse_read_only(self._parent_body, "format")
         tc_pr = self.element.tc_pr
         if tc_pr is None:
             tc_pr = el.tcPr()

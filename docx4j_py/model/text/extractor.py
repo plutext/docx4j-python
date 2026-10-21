@@ -1082,7 +1082,12 @@ class Extractor:
         if not items:
             return
         tr_class = rtrees.cls("Tr")
+        resolved = self._resolved_in(story, items)
         for i, item in enumerate(items):
+            if resolved and i in resolved:
+                # a word-mode load took a row-level element out here: compared from the record,
+                # at the address the element has in preserve mode (CR-012 Phase A2)
+                self._compare_branches(resolved[i], f"{prefix}/{i}")
             if isinstance(item, str) or self.removes(item):
                 continue
             address = f"{prefix}/{i}"
@@ -1102,9 +1107,10 @@ class Extractor:
                 self._cells(item.content, address, story, row, row_state)
                 table.rows.append(row)
             elif is_alternate_content(item):
-                # a row-level mc:AlternateContent is passed by, as docx4j's CR-051 phase 1 leaves
-                # it and as the content API and the revisions engine do (CR-012 section 9.6)
-                continue
+                # a row-level element kept whole (CR-012 Phase A2, docx4j CR-051 phase 2): the
+                # branch Word reads, compared with the others; its rows are addressed under it
+                self._compare_branches(item, address)
+                self._rows(mce_branch_content(mce_branch(item)), address, story, table, state)
             else:
                 inner = rtrees.block_items(item)
                 if inner is not None and not isinstance(item, rtrees.cls("Tc")):
@@ -1114,7 +1120,11 @@ class Extractor:
         if not items:
             return
         tc_class = rtrees.cls("Tc")
+        resolved = self._resolved_in(story, items)
         for i, item in enumerate(items):
+            if resolved and i in resolved:
+                # a cell-level one taken out by a word-mode load, as in _rows
+                self._compare_branches(resolved[i], f"{prefix}/{i}")
             if isinstance(item, str) or self.removes(item):
                 continue
             address = f"{prefix}/{i}"
@@ -1140,8 +1150,9 @@ class Extractor:
                 self.blocks(item.content, address, story, cell.blocks, cell_state)
                 row.cells.append(cell)
             elif is_alternate_content(item):
-                # a cell-level one too
-                continue
+                # a cell-level element kept whole: the branch Word reads, as in _rows
+                self._compare_branches(item, address)
+                self._cells(mce_branch_content(mce_branch(item)), address, story, row, state)
             else:
                 inner = rtrees.block_items(item)
                 if inner is not None:

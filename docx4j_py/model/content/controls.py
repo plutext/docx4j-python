@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import ChildList, link_parents
+from docx4j_py.child import ChildList, is_alternate_content, link_parents
 from docx4j_py.model.content.addresses import ordinal_of
 from docx4j_py.model.content.enums import RangeLocation, TextLocation
 from docx4j_py.model.content.errors import ContentError, InvalidTargetError
@@ -240,7 +240,16 @@ class ContentControl:
             return "cell"
         if isinstance(self.element, SdtRun):
             return "run"
-        for item in self.content:
+        items = self.content
+        for _ in range(_MAX_DEPTH):
+            if not items:
+                break
+            item = items[0]
+            if is_alternate_content(item):
+                # a kept block-level mc:AlternateContent: what Word's branch holds says
+                # (CR-012 Phase A2; it read "run" before)
+                items = block_children_of(item) or []
+                continue
             name = element_name(item)
             if name == W_TR:
                 return "row"

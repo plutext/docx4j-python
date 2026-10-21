@@ -26,6 +26,13 @@ What is held (CR-012 section 5, Phase A):
   a package setting;
 * the readers' audit (section 4.1 item 5), one test per reader, in ``preserve``
   mode; the revisions twins are ``tests/revisions/test_alternate_content.py``.
+
+Phase A2 (CR-012 section 4.4, docx4j CR-051 phase 2 at ``9db1a3cbd``), the last
+section: a row- or cell-level branch's rows and cells typed; the readers at row
+and cell level in ``preserve`` mode, Word's branch read and an edit refused; and
+docx4j's tests of that commit (``McBlockLevelLoadTest``,
+``McBlockLevelProbesTest.preserveModeReadsAsWordsSave``, ``McBranchSdtTest``,
+``McBlockLevelReadersTest``'s probe, built here as docx4j builds it).
 """
 
 from __future__ import annotations
@@ -993,24 +1000,21 @@ def test_the_body_reads_words_branch_at_block_level():
 
 
 @pytest.mark.parametrize(
-    "stem",
+    ("stem", "rows"),
     [
-        "mc-row-newest-first",
-        "mc-sdt-row-newest-first",
-        "mc-cell-newest-first",
-        "mc-sdt-cell-newest-first",
+        ("mc-row-newest-first", [["I prefer", "below"], ["row", "w16sdtfl"]]),
+        ("mc-sdt-row-newest-first", [["I prefer", "below"], ["row", "w16sdtfl"]]),
+        ("mc-cell-newest-first", [["I prefer", "w16sdtfl"]]),
+        ("mc-sdt-cell-newest-first", [["I prefer", "w16sdtfl"]]),
     ],
 )
-def test_the_body_passes_row_and_cell_level_by(stem: str) -> None:
-    """As docx4j's CR-051 leaves it until its phase 2 (CR-012 section 9): no view, no error."""
+def test_the_body_reads_words_branch_at_row_and_cell_level(stem: str, rows: list) -> None:
+    """CR-012 Phase A2 (docx4j CR-051 phase 2); Phase A passed the element by (section 10.6)."""
     pkg = probe(stem)
     texts = [p_.text for p_ in pkg.body.paragraphs]
-    assert "w16sdtfl" not in texts and "row" not in texts
+    assert "w16sdtfl" in texts
     (table,) = pkg.body.tables
-    assert [[cell.body.text for cell in row.cells] for row in table.rows] in (
-        [["I prefer", "below"]],
-        [["I prefer"]],
-    )
+    assert [[cell.body.text for cell in row.cells] for row in table.rows] == rows
     pkg.outline()
     pkg.to_markdown()
     pkg.describe()
@@ -1019,18 +1023,16 @@ def test_the_body_passes_row_and_cell_level_by(stem: str) -> None:
 @pytest.mark.parametrize(
     ("stem", "shown"),
     [
-        ("mc-row-newest-first", "Row level test\nI prefer\tbelow\n\n"),
-        ("mc-sdt-row-newest-first", "Row sdt test\nI prefer\tbelow\n\n"),
-        ("mc-cell-newest-first", "Cell level test\nI prefer\n\n"),
-        ("mc-sdt-cell-newest-first", "Cell sdt test\nI prefer\n\n"),
+        ("mc-row-newest-first", "Row level test\nI prefer\tbelow\nrow\tw16sdtfl\n\n"),
+        ("mc-sdt-row-newest-first", "Row sdt test\nI prefer\tbelow\nrow\tw16sdtfl\n\n"),
+        ("mc-cell-newest-first", "Cell level test\nI prefer\tw16sdtfl\n\n"),
+        ("mc-sdt-cell-newest-first", "Cell sdt test\nI prefer\tw16sdtfl\n\n"),
     ],
 )
-def test_the_text_model_passes_row_and_cell_level_by(stem: str, shown: str) -> None:
-    """As docx4j's CR-051 phase 1 leaves it; its phase 2 (9db1a3cbd) reads them, a follow-up here."""
+def test_the_text_model_reads_words_branch_at_row_and_cell_level(stem: str, shown: str) -> None:
+    """docx4j Extractor.rows and cells since its CR-051 phase 2 (9db1a3cbd): Word's branch, as word mode reads it."""
     assert text(probe(stem)) == shown
-    assert text(probe(stem, "word")) != shown, (
-        "word mode reads Word's branch, spliced in on load"
-    )
+    assert text(probe(stem, "word")) == shown
 
 
 def test_an_edit_inside_a_kept_branch_is_refused():
@@ -1106,17 +1108,21 @@ def test_the_python_docx_facade_passes_the_element_by():
     assert document.paragraphs[0].text == "Block level test ok"
 
 
-def test_the_revisions_engine_passes_row_and_cell_level_by():
+def test_the_revisions_engine_walks_the_row_and_cell_probes():
+    """The probes hold no tracked change: walked through each element without error (the cases are test_alternate_content.py's)."""
     from docx4j_py.model import revisions
 
     for stem in (
         "mc-row-newest-first",
         "mc-cell-newest-first",
         "mc-sdt-row-newest-first",
+        "mc-sdt-cell-newest-first",
+        "mc-tc-block-newest-first",
     ):
-        pkg = probe(stem)
-        assert revisions.tracked_changes(pkg) == []
-        assert revisions.accept_all(pkg) == 0
+        for mode in MODES:
+            pkg = probe(stem, mode)
+            assert revisions.tracked_changes(pkg) == []
+            assert revisions.accept_all(pkg) == 0
 
 
 def test_a_part_that_never_held_the_element_is_byte_for_byte_in_either_mode():
@@ -1169,24 +1175,24 @@ def _branch_warnings(pkg: Any) -> list[tuple[str | None, str | None]]:
     )
 
 
-@pytest.mark.parametrize(
-    "stem", [s for s in PROBES if "row" not in s and "cell" not in s]
-)
+@pytest.mark.parametrize("stem", PROBES)
 def test_the_text_models_warnings_are_the_same_in_both_modes_on_the_probes(
     stem: str,
 ) -> None:
-    """docx4j McBlockLevelReadersTest: in word mode the warning is raised from the record, where preserve mode raises it."""
+    """docx4j McBlockLevelReadersTest: in word mode the warning is raised from the record, where preserve mode raises it.
+
+    At row and cell level too since Phase A2 (docx4j CR-051 phase 2), which Phase A left out.
+    """
     assert _branch_warnings(probe(stem, "word")) == _branch_warnings(
         probe(stem, "preserve")
     )
 
 
-@pytest.mark.parametrize(
-    "name", [name for name, case in CASES.items() if case[0] == "block"]
-)
-def test_the_text_models_warnings_are_the_same_in_both_modes_in_every_block_container(
+@pytest.mark.parametrize("name", CASES)
+def test_the_text_models_warnings_are_the_same_in_both_modes_in_every_container(
     name: str,
 ) -> None:
+    """Every container, a row and a cell container too since Phase A2 (Phase A: the block containers)."""
     _kind, made, _part_of, _content_of = CASES[name]
     preserve = _branch_warnings(made().load("preserve"))
     assert _branch_warnings(made().load("word")) == preserve
@@ -1215,3 +1221,368 @@ def test_a_custom_xml_element_straight_in_a_branch():
     assert normalize(main_xml(preserve.save())) == normalize(
         made.parts["word/document.xml"].encode()
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase A2: row and cell level read in preserve mode (docx4j CR-051 phase 2, 9db1a3cbd)
+# ---------------------------------------------------------------------------
+
+_ROW_AND_CELL = [name for name, case in CASES.items() if case[0] in ("row", "cell")]
+
+
+@pytest.mark.parametrize("name", _ROW_AND_CELL)
+def test_a_row_or_cell_level_branch_holds_typed_rows_and_cells(name: str) -> None:
+    """Section 4.4 item 1: a branch's w:tr and w:tc bound as the container binds them, written back under their names."""
+    kind, made, part_of, content_of = CASES[name]
+    source = made()
+    pkg = source.load("preserve", strict=True)
+    element = content_of(pkg)[1]
+    for branch in [*element.choice, element.fallback]:
+        (child,) = branch.any_element
+        assert type(child) is _PROMOTED[kind], (branch, type(child))
+        assert child.parent is branch
+    saved = _saved_part(pkg, part_of(pkg)).decode()
+    assert "CT_Tc" not in saved and "CT_Row" not in saved and "xsi:type" not in saved
+    assert saved.count("<w:tc>" if kind == "cell" else "<w:tr>") >= 5
+
+
+def test_the_records_own_parse_types_a_cell_level_branchs_cell():
+    """In word mode the record's element is parsed alone: its w:tc typed by the record's level."""
+    _kind, made, part_of, content_of = CASES["w:tr"]
+    pkg = made().load("word")
+    assert type(content_of(pkg)[1]) is Tc
+    (record,) = part_of(pkg).resolved_alternate_content
+    assert record.level == "cell"
+    for branch in [*record.element.choice, record.element.fallback]:
+        (child,) = branch.any_element
+        assert type(child) is Tc
+
+
+@pytest.mark.parametrize("name", CASES)
+def test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_branch(
+    name: str,
+) -> None:
+    """docx4j McBlockLevelLoadTest.preserveModeKeepsBlockLevelElements at 9db1a3cbd: every container to one expectation.
+
+    Kept whole, nothing recorded, every branch and its content written, the Choices' prefixes
+    declared on the root, whole after a round trip, and the text model reading Word's branch,
+    the same text in both modes.
+    """
+    _kind, made, part_of, content_of = CASES[name]
+    tag = _TAGS[name]
+    pkg = made().load("preserve")
+    part = part_of(pkg)
+    element = content_of(pkg)[1]
+    assert isinstance(element, AlternateContent)
+    assert len(element.choice) == 2 and element.fallback is not None
+    assert part.resolved_alternate_content == []
+    saved = _saved_part(pkg, part).decode()
+    assert 'Requires="wpi"' in saved and 'Requires="w14"' in saved and "<mc:Fallback>" in saved
+    for suffix in ("_WPI", "_W14", "_FB"):
+        assert tag + suffix in saved
+    root = re.search(r"<w:[A-Za-z]+ [^>]*>", saved).group(0)
+    assert "xmlns:wpi=" in root and "xmlns:w14=" in root, root
+    again = load(pkg.save(), options=LoadOptions(mc_block_level="preserve"))
+    assert isinstance(content_of(again)[1], AlternateContent)
+    options = _all_stories()
+    shown = plain_text(extract(pkg, options))
+    assert shown == plain_text(extract(made().load("word"), options))
+    assert f"{tag}_W14" in shown or name == "w:docPartBody", shown
+    assert f"{tag}_FB" not in shown and f"{tag}_WPI" not in shown
+
+
+def _all_stories() -> Any:
+    from docx4j_py.model.text import TextOptions
+
+    return TextOptions().include("headers", "footers", "comments", "glossary")
+
+
+@pytest.mark.parametrize("stem", WITH_WORD_SAVE)
+def test_preserve_mode_reads_as_word_365s_save(stem: str) -> None:
+    """docx4j McBlockLevelProbesTest.preserveModeReadsAsWordsSave: in preserve mode, and after a preserve save."""
+    pkg = probe(stem, "preserve")
+    words = text(load(PROBES_DIR / f"{stem}-word365.docx"))
+    assert text(pkg) == words
+    assert text(load(io.BytesIO(pkg.save()))) == words
+
+
+# docx4j McBranchSdtTest at 9db1a3cbd: a w:sdt straight in a branch at every level, in both branches
+
+
+def _sdt(props: str, content: str) -> str:
+    return f'<w:sdt><w:sdtPr><w:id w:val="1"/>{props}</w:sdtPr><w:sdtContent>{content}</w:sdtContent></w:sdt>'
+
+
+def _ac2(choice: str, fallback: str) -> str:
+    return f'<mc:AlternateContent><mc:Choice Requires="w14">{choice}</mc:Choice><mc:Fallback>{fallback}</mc:Fallback></mc:AlternateContent>'
+
+
+_BIND = '<w:dataBinding w:xpath="/root/name" w:storeItemID="{x}"/><w:text/>'
+
+#: Block controls in the body's element, with a tag and with a data binding; a run control in a
+#: paragraph-level element; a row control in a table's element; a cell control in a row's element.
+BRANCH_SDT_BODY = (
+    "<w:p><w:r><w:t>before</w:t></w:r></w:p>"
+    + _ac2(_sdt('<w:tag w:val="t"/>', p("BLOCK_TAG_C")), _sdt('<w:tag w:val="t"/>', p("BLOCK_TAG_F")))
+    + _ac2(_sdt(_BIND, p("BLOCK_BIND_C")), _sdt(_BIND, p("BLOCK_BIND_F")))
+    + "<w:p><w:r><w:t>para </w:t></w:r>"
+    + _ac2(_sdt("", "<w:r><w:t>RUN_C</w:t></w:r>"), _sdt("", "<w:r><w:t>RUN_F</w:t></w:r>"))
+    + "</w:p>"
+    + tbl(_ac2(_sdt("", tr("ROW_C")), _sdt("", tr("ROW_F"))))
+    + tbl("<w:tr>" + _ac2(_sdt("", tc("CELL_C")), _sdt("", tc("CELL_F"))) + "</w:tr>")
+    + p("after")
+)
+_CHOICE = ("BLOCK_TAG_C", "BLOCK_BIND_C", "RUN_C", "ROW_C", "CELL_C")
+_FALLBACK = ("BLOCK_TAG_F", "BLOCK_BIND_F", "RUN_F", "ROW_F", "CELL_F")
+
+
+def _control_classes(root: Any) -> str:
+    return " ".join(
+        type(node).__name__
+        for node in find(root, (SdtBlock, SdtRun, CTSdtRow, CTSdtCell), mce="all")
+    )
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_a_sdt_in_either_branch_is_its_containers_kind_at_every_level(mode: str) -> None:
+    """docx4j McBranchSdtTest.staxPath's check: each branch's control typed by its container, w:sdt written."""
+    pkg = Probe(BRANCH_SDT_BODY).load(mode, strict=True)
+    part = pkg.main_document_part
+    xml = to_xml(part.contents)
+    assert all(tag in xml for tag in _CHOICE)
+    if mode == "preserve":
+        assert all(tag in xml for tag in _FALLBACK)
+        assert _control_classes(part.contents) == (
+            "SdtBlock SdtBlock SdtBlock SdtBlock SdtRun SdtRun CTSdtRow CTSdtRow CTSdtCell CTSdtCell"
+        )
+    else:
+        assert not any(tag in xml for tag in ("BLOCK_TAG_F", "ROW_F", "CELL_F"))
+        assert "RUN_F" in xml, "the paragraph-level element is kept whole"
+        assert _control_classes(part.contents) == "SdtBlock SdtBlock SdtRun SdtRun CTSdtRow CTSdtCell"
+    shown = text(pkg)
+    assert all(tag in shown for tag in _CHOICE), shown
+    assert not any(tag in shown for tag in _FALLBACK), shown
+    saved = main_xml(pkg.save()).decode()
+    assert "<w:sdt>" in saved and "CT_Sdt" not in saved
+    again = load(pkg.save(), options=LoadOptions(mc_block_level=mode))
+    assert all(tag in to_xml(again.main_document_part.contents) for tag in _CHOICE)
+
+
+def test_a_fragment_types_a_sdt_in_either_branch_at_every_level():
+    """docx4j McBranchSdtTest.xmlUtilsUnmarshalString: content parsed outside a part, every control typed, the elements whole."""
+    document = wml(f"<w:document {NS}><w:body>{BRANCH_SDT_BODY}</w:body></w:document>")
+    xml = to_xml(document)
+    assert all(tag in xml for tag in (*_CHOICE, *_FALLBACK))
+    assert _control_classes(document) == (
+        "SdtBlock SdtBlock SdtBlock SdtBlock SdtRun SdtRun CTSdtRow CTSdtRow CTSdtCell CTSdtCell"
+    )
+
+
+# docx4j McBlockLevelReadersTest at 9db1a3cbd: its probe, built here the same way
+
+
+def _readers_ac(tag: str) -> str:
+    return _ac2(p(f"{tag}_W14"), p(f"{tag}_FB"))
+
+
+def _readers_ac_of(tag: str, open_: str, close: str) -> str:
+    return _ac2(open_ + p(f"{tag}_W14") + close, open_ + p(f"{tag}_FB") + close)
+
+
+_READERS_TBL = tbl("<w:tr><w:tc>" + p("cell") + _readers_ac("CELL") + "</w:tc></w:tr>")
+_READERS_ROWS_AND_CELLS = tbl(
+    "<w:tr><w:tc>" + p("r1") + "</w:tc></w:tr>"
+    + _readers_ac_of("ROW", "<w:tr><w:tc>", "</w:tc></w:tr>")
+    + "<w:tr><w:tc>" + p("c1") + "</w:tc>" + _readers_ac_of("TRC", "<w:tc>", "</w:tc>") + "</w:tr>"
+)
+
+
+def _readers_probe() -> Probe:
+    """Elements in the body, a cell, among a table's rows and a row's cells, a block control, a text box, a header, a footnote and a comment."""
+    body = (
+        p("before")
+        + _readers_ac("BODY")
+        + _READERS_TBL
+        + _READERS_ROWS_AND_CELLS
+        + f'<w:sdt><w:sdtPr><w:id w:val="1"/></w:sdtPr><w:sdtContent>{p("sdt")}{_readers_ac("SDT")}</w:sdtContent></w:sdt>'
+        + text_box(p("box") + _readers_ac("TXBX"))
+        + '<w:p><w:r><w:t>note</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r></w:p>'
+        + '<w:p><w:commentRangeStart w:id="1"/><w:r><w:t>commented</w:t></w:r><w:commentRangeEnd w:id="1"/>'
+        '<w:r><w:commentReference w:id="1"/></w:r></w:p>'
+        + '<w:sectPr><w:headerReference w:type="default" r:id="rId7"/><w:pgSz w:w="11907" w:h="16839"/>'
+        '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720"/></w:sectPr>'
+    )
+    return (
+        Probe(body)
+        .part("header1.xml", "header", "header", "rId7", "w:hdr", p("head") + _readers_ac("HDR"))
+        .part(
+            "footnotes.xml",
+            "footnotes",
+            "footnotes",
+            "rId9",
+            "w:footnotes",
+            f'<w:footnote w:id="1">{p("n1")}{_readers_ac("FN")}</w:footnote>',
+        )
+        .part(
+            "comments.xml",
+            "comments",
+            "comments",
+            "rId8",
+            "w:comments",
+            f'<w:comment w:id="1" w:author="a">{_readers_ac("CM")}</w:comment>',
+        )
+    )
+
+
+def _readers_warnings(pkg: Any) -> set[str]:
+    from docx4j_py.model.text import TextOptions
+
+    result = extract(pkg, TextOptions().include("headers", "comments"))
+    return {f"{w.address} {w.branch}" for w in result.warnings if w.kind == "mce.branches_differ"}
+
+
+def test_the_text_model_warns_from_the_record_at_row_and_cell_level_too():
+    """docx4j McBlockLevelReadersTest.textModelWarnsFromTheRecord: the same warnings in both modes, body/3/1 and body/3/2/1 among them."""
+    word = _readers_warnings(_readers_probe().load("word"))
+    preserve = _readers_warnings(_readers_probe().load("preserve"))
+    assert 'body/1 mc:Choice Requires="w14"' in word
+    assert len(word) >= 9, word
+    assert 'body/3/1 mc:Choice Requires="w14"' in word, word
+    assert 'body/3/2/1 mc:Choice Requires="w14"' in word, word
+    assert preserve == word
+
+
+# the content API at row and cell level (section 4.4 item 4)
+
+
+def test_table_rows_and_cells_read_words_branch_and_are_read_only():
+    pkg = probe("mc-row-newest-first")
+    (table,) = pkg.body.tables
+    first, kept = table.rows
+    assert (first.address, kept.address) == ("body/1/0", "body/1/1/0")
+    assert first.parent_body.read_only is None
+    assert kept.parent_body.read_only is not None
+    assert kept.values == ["row", "w16sdtfl"]
+    assert [cell.address for cell in kept.cells] == ["body/1/1/0/0", "body/1/1/0/1"]
+    assert table.row_count == 2 and table.values == [["I prefer", "below"], ["row", "w16sdtfl"]]
+    cell = kept.cells[1]
+    for edit in (
+        lambda: kept.insert_rows(1),
+        lambda: kept.delete(),
+        lambda: setattr(kept, "values", ["x"]),
+        lambda: setattr(kept, "is_header", True),
+        lambda: setattr(cell, "value", "x"),
+        lambda: setattr(cell, "width", 10),
+        lambda: cell.insert_paragraph("x"),
+        lambda: cell.insert_text("x"),
+        lambda: cell.paragraphs[0].insert_text("x"),
+        lambda: table.delete_rows(1),
+        lambda: setattr(table, "values", [["a", "b"], ["c", "d"]]),
+        lambda: setattr(table, "header_row_count", 2),
+    ):
+        with pytest.raises(AddressError) as caught:
+            edit()
+        assert caught.value.code == "address.read_only"
+    assert normalize(main_xml(pkg.save())) == normalize(
+        main_xml((PROBES_DIR / "mc-row-newest-first.docx").read_bytes())
+    ), "nothing was changed by the refused edits"
+    first.cells[0].value = "ok"
+    table.delete_rows(0)
+    assert table.values == [["row", "w16sdtfl"]]
+
+
+def test_a_cell_level_branchs_cell_is_read_only():
+    pkg = probe("mc-cell-newest-first")
+    (row,) = pkg.body.tables[0].rows
+    plain, kept = row.cells
+    assert (plain.address, kept.address) == ("body/1/0/0", "body/1/0/1/0")
+    assert kept.text == "w16sdtfl" and kept.body.read_only is not None
+    assert row.parent_body.read_only is None
+    for edit in (lambda: setattr(kept, "value", "x"), lambda: setattr(row, "values", ["a", "b"])):
+        with pytest.raises(AddressError) as caught:
+            edit()
+        assert caught.value.code == "address.read_only"
+    assert plain.text == "I prefer", "refused up front: the cell before is not changed"
+    row.values = ["ok"]
+    assert plain.text == "ok"
+    paragraph = pkg.body.element_at("body/1/0/1/0/0")
+    assert paragraph.text == "w16sdtfl"
+    assert paragraph.parent_table_cell == kept
+
+
+def test_an_edit_at_row_and_cell_level_in_word_mode_is_made():
+    pkg = probe("mc-row-newest-first", "word")
+    kept = pkg.body.tables[0].rows[1]
+    assert kept.address == "body/1/1" and kept.parent_body.read_only is None
+    kept.cells[1].value = "edited"
+    assert pkg.body.tables[0].values[1] == ["row", "edited"]
+
+
+@pytest.mark.parametrize(
+    ("stem", "first_row_holds_one"),
+    [
+        ("mc-row-newest-first", False),
+        ("mc-cell-newest-first", True),
+        ("mc-tc-block-newest-first", True),
+    ],
+)
+def test_a_tracked_deletion_into_a_kept_branch_is_refused(stem: str, first_row_holds_one: bool) -> None:
+    """A tracked deletion marks every run of a row, which would land in Word's branch alone; untracked, the element goes whole."""
+    source = main_xml((PROBES_DIR / f"{stem}.docx").read_bytes())
+    pkg = probe(stem)
+    pkg.change_tracking_mode = "TrackAll"
+    table = pkg.body.tables[0]
+    refused = [table.delete, pkg.body.clear]
+    if first_row_holds_one:
+        refused.append(table.rows[0].delete)
+    for edit in refused:
+        with pytest.raises(AddressError) as caught:
+            edit()
+        assert caught.value.code == "address.read_only"
+    assert normalize(main_xml(pkg.save())) == normalize(source), "refused before any change"
+    if not first_row_holds_one:
+        table.rows[0].delete()
+        assert table.rows[0].element.tr_pr.del_value is not None, "a row holding none is deleted, tracked"
+    untracked = probe(stem)
+    untracked.body.tables[0].delete()
+    assert untracked.body.tables == []
+
+
+def test_the_outline_reads_words_branch_at_row_and_cell_level():
+    outline = probe("mc-row-newest-first").outline()
+    (table,) = [e for e in outline.entries if e.kind == "table"]
+    assert [(c.address, c.kind, c.text) for c in table.children] == [
+        ("body/1/0/0/0", "paragraph", "I prefer"),
+        ("body/1/0/1/0", "paragraph", "below"),
+        ("body/1/1/0/0/0", "paragraph", "row"),
+        ("body/1/1/0/1/0", "paragraph", "w16sdtfl"),
+    ]
+    assert (table.rows, table.cols) == (2, 2)
+    cells = probe("mc-sdt-cell-newest-first").outline()
+    (table,) = [e for e in cells.entries if e.kind == "table"]
+    assert [(c.address, c.text) for c in table.children] == [
+        ("body/1/0/0/0", "I prefer"),
+        ("body/1/0/1/0/0/0", "w16sdtfl"),
+    ]
+
+
+def test_markdown_reads_words_branch_at_row_and_cell_level():
+    assert probe("mc-row-newest-first").to_markdown() == (
+        "Row level test\n\n|I prefer|below|\n|---|---|\n|row|w16sdtfl|\n"
+    )
+    assert probe("mc-cell-newest-first").to_markdown() == (
+        "Cell level test\n\n|I prefer|w16sdtfl|\n|---|---|\n"
+    )
+
+
+def test_traversal_reaches_a_cell_level_branchs_paragraphs():
+    """A cell-level branch's w:tc was a wildcard tree in Phase A, so find(P) did not reach inside (section 9.6)."""
+    body = probe("mc-cell-newest-first").main_document_part.contents.body
+    assert "w16sdtfl" in [text_of(p_) for p_ in find(body, P)]
+    assert len(find(body, Tc, mce="all")) == 12, "the plain cell and each of the eleven branches'"
+
+
+def test_a_block_controls_form_reads_through_a_kept_element():
+    """ContentControl.form read 'run' for a block control whose content starts with a kept element (Phase A)."""
+    (control,) = probe("mc-sdt-block-newest-first").body.content_controls
+    assert control.form == "block"

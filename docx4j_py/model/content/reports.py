@@ -65,6 +65,7 @@ __all__ = [
     "outline_of",
     "recording",
     "recording_on",
+    "refuse_read_only",
 ]
 
 #: How many entries an ``outline()`` reports before it says ``truncated``.
@@ -79,6 +80,8 @@ ELLIPSIS = "…"
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _W_TBL = f"{{{_W}}}tbl"
+_W_TR = f"{{{_W}}}tr"
+_W_TC = f"{{{_W}}}tc"
 _W_SDT = f"{{{_W}}}sdt"
 _HEADING = re.compile(r"^heading\s*([1-9])$", re.IGNORECASE)
 
@@ -388,6 +391,43 @@ def _table_shape(element: Any) -> tuple[int, int]:
     return len(rows), len(cells_of(rows[0][0]))
 
 
+def _cells_with_paths(tbl: Any, path: list[int]) -> list[tuple[list[int], Any]]:
+    """Every cell of a table with its ordinal path, through what wraps a row or a cell.
+
+    A row- or cell-level content control or custom XML element, and since
+    CR-012 Phase A2 a row- or cell-level ``mc:AlternateContent`` kept whole (by
+    the branch Word reads), is one index step of the path and no entry of its
+    own: each cell's blocks are entries under the table, as ``rows_of`` and
+    ``cells_of`` read the rows and cells (``body/1/1/0/1/0`` for a paragraph of
+    the second cell of the row in a row-level element's branch).
+    """
+    out: list[tuple[list[int], Any]] = []
+
+    def rows(items: list, at: list[int]) -> None:
+        for index, item in enumerate(items):
+            here = [*at, index]
+            name = element_name(item)
+            if name == _W_TR:
+                cells(block_children_of(item) or [], here)
+            elif name != _W_TC:
+                inner = block_children_of(item)
+                if inner is not None:
+                    rows(inner, here)
+
+    def cells(items: list, at: list[int]) -> None:
+        for index, item in enumerate(items):
+            here = [*at, index]
+            if element_name(item) == _W_TC:
+                out.append((here, item))
+            else:
+                inner = block_children_of(item)
+                if inner is not None:
+                    cells(inner, here)
+
+    rows(block_children_of(tbl) or [], path)
+    return out
+
+
 class _Budget:
     """How many entries are left, and whether anything was left out."""
 
@@ -591,28 +631,27 @@ def _entries(
         children: list[OutlineEntry] = []
         descend = depth is None or nesting + 1 < depth
         if kind == "table":
-            for row_index, row in enumerate(block_children_of(element) or []):
-                for cell_index, cell in enumerate(block_children_of(row) or []):
-                    inner = block_children_of(cell)
-                    if inner is None:
-                        continue
-                    if not descend:
-                        budget.truncated = True
-                        continue
-                    children.extend(
-                        _entries(
-                            body,
-                            inner,
-                            [*here, row_index, cell_index],
-                            nesting + 1,
-                            depth=depth,
-                            max_chars=max_chars,
-                            headings_only=headings_only,
-                            model=model,
-                            budget=budget,
-                            in_table=True,
-                        )
+            for cell_path, cell in _cells_with_paths(element, here):
+                inner = block_children_of(cell)
+                if inner is None:
+                    continue
+                if not descend:
+                    budget.truncated = True
+                    continue
+                children.extend(
+                    _entries(
+                        body,
+                        inner,
+                        cell_path,
+                        nesting + 1,
+                        depth=depth,
+                        max_chars=max_chars,
+                        headings_only=headings_only,
+                        model=model,
+                        budget=budget,
+                        in_table=True,
                     )
+                )
         elif kind != "paragraph":
             inner = block_children_of(element)
             if inner is not None:
@@ -1083,6 +1122,30 @@ class _NullRecorder:
 NULL_RECORDER = _NullRecorder()
 
 
+def refuse_read_only(body: Body, operation: str) -> None:
+    """Raise ``address.read_only`` when `body` is read-only; what :class:`recording` checks first.
+
+    A view over content in a kept ``mc:AlternateContent`` branch has a
+    read-only body, where an edit would change one branch alone (CR-012
+    Phases A and A2). A setter that edits without opening a report (a row's
+    ``is_header``, a cell's ``width``) asks here, and so does a table's verb
+    before it edits any of its rows.
+
+    Raises:
+        AddressError: `body` is read-only.
+    """
+    reason = getattr(body, "read_only", None)
+    if reason is not None:
+        from docx4j_py.model.content.errors import AddressError
+
+        raise AddressError(
+            f"{operation} refused: the content is {reason}",
+            code="address.read_only",
+            hint="read it with outline(), to_markdown() or the views' readers; to edit the branch Word "
+            'shows, load with LoadOptions(mc_block_level="word"), which takes it in place of the element',
+        )
+
+
 class recording:
     """``with recording(body, "insert_paragraph") as change:`` --- the one idiom.
 
@@ -1103,16 +1166,7 @@ class recording:
                 is over content in a kept ``mc:AlternateContent`` branch, where
                 an edit would change one branch alone (CR-012 Phase A).
         """
-        reason = getattr(body, "read_only", None)
-        if reason is not None:
-            from docx4j_py.model.content.errors import AddressError
-
-            raise AddressError(
-                f"{operation} refused: the content is {reason}",
-                code="address.read_only",
-                hint="read it with outline(), to_markdown() or the views' readers; to edit the branch Word "
-                'shows, load with LoadOptions(mc_block_level="word"), which takes it in place of the element',
-            )
+        refuse_read_only(body, operation)
         package = getattr(body, "package", None)
         if package is None or getattr(package, "_current_change", None) is not None:
             self.package = None
