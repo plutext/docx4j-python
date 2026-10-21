@@ -16,7 +16,10 @@ What it writes
     ``CLASS_TO_QNAME``, ``ELEMENTS`` and ``__all__``.
 ``docx4j_py/el_index.py``
     namespace URI -> ``el`` module name, so a fragment parser can resolve a root
-    element without importing every namespace.
+    element without importing every namespace; and since CR-012 Phase B
+    ``ROOT_ELEMENTS``, docx4j's WordprocessingML root elements this model does
+    not declare globally (``codegen/names/root_elements.json``), with
+    ``ROOT_ELEMENT_BINDINGS``, the other classes a container binds them to.
 ``codegen/el_tables/<name>.json``
     the committed, human-reviewed table: which class each name resolved to, the
     scopes it was seen in, and every collision with the scope-qualified name
@@ -558,11 +561,16 @@ def emit_module(
     path.write_text("".join(out), encoding="utf-8")
 
 
-def emit_index(path: Path, namespaces: dict[str, str]) -> None:
-    """Write ``docx4j_py/el_index.py``: the namespace URI index.
+def emit_index(
+    path: Path,
+    namespaces: dict[str, str],
+    roots: dict[str, str],
+    bindings: dict[str, list[str]],
+) -> None:
+    """Write ``docx4j_py/el_index.py``: the namespace URI index, and the root elements.
 
-    Two tables, both keyed off the set of namespaces that actually have
-    generated bindings:
+    Two tables keyed off the set of namespaces that actually have generated
+    bindings:
 
     ``EL_MODULES``
         namespace URI -> ``el`` module, so a fragment parser can resolve one
@@ -573,6 +581,15 @@ def emit_index(path: Path, namespaces: dict[str, str]) -> None:
         is tested against. Generated rather than hand kept, so that adding a
         schema to ``codegen/generate.sh`` widens the MCE resolver by itself.
         The prefix is docx4j's, from ``docx4j_py.namespaces``.
+
+    And two that CR-012 Phase B adds, from :func:`root_elements`, each value a
+    class's path as a string so that reading the table imports no model class:
+
+    ``ROOT_ELEMENTS``
+        qualified name -> the root class.
+    ``ROOT_ELEMENT_BINDINGS``
+        qualified name -> the other classes a container that can hold an
+        ``mc:AlternateContent`` binds the name to, where there are any.
     """
     from docx4j_py.namespaces import NAMESPACE_TO_PREFIX
 
@@ -584,7 +601,13 @@ def emit_index(path: Path, namespaces: dict[str, str]) -> None:
         "namespace. ``UNDERSTOOD`` is the inverse restricted to a prefix: the\n"
         "namespaces this build understands, which is what ``mc:Choice``'s\n"
         "``Requires`` is tested against (CR-002 section 5.6). It is re-exported\n"
-        "as ``docx4j_py.namespaces.UNDERSTOOD``.\n"
+        "as ``docx4j_py.namespaces.UNDERSTOOD``.\n\n"
+        "``ROOT_ELEMENTS`` and ``ROOT_ELEMENT_BINDINGS`` are CR-012 Phase B's: docx4j's\n"
+        "WordprocessingML root elements that this model does not declare globally\n"
+        "(``codegen/names/root_elements.json``), each name's root class, and the\n"
+        "other classes a container that can hold an ``mc:AlternateContent`` binds\n"
+        "it to. Class paths are strings: ``docx4j_py.runtime`` resolves them when it\n"
+        "first needs them, so that importing this module imports no model class.\n"
         '"""\n\nfrom __future__ import annotations\n\n',
         "EL_MODULES: dict[str, str] = {\n",
     ]
@@ -610,8 +633,125 @@ def emit_index(path: Path, namespaces: dict[str, str]) -> None:
     lines.append("UNDERSTOOD: dict[str, str] = {\n")
     for prefix, uri in sorted(understood.items()):
         lines.append(f"    {json.dumps(prefix)}: {json.dumps(uri)},\n")
-    lines.append('}\n\n__all__ = ["EL_MODULES", "UNDERSTOOD"]\n')
+    lines.append("}\n\n")
+
+    lines.append(
+        "#: CR-012 Phase B: qualified name -> the root class, docx4j's\n"
+        "#: ``@XmlRootElement``, which a lax wildcard's child of that name binds to.\n"
+        "ROOT_ELEMENTS: dict[str, str] = {\n"
+    )
+    for qname, class_path in sorted(roots.items()):
+        lines.append(f"    {json.dumps(qname)}: {json.dumps(class_path)},\n")
+    lines.append("}\n\n")
+    lines.append(
+        "#: CR-012 Phase B: qualified name -> the other classes a container that can\n"
+        "#: hold an ``mc:AlternateContent`` binds it to (a branch's child is bound as\n"
+        "#: the container binds it), so that the serialiser names each.\n"
+        "ROOT_ELEMENT_BINDINGS: dict[str, tuple[str, ...]] = {\n"
+    )
+    for qname, class_paths in sorted(bindings.items()):
+        lines.append(f"    {json.dumps(qname)}: (\n")
+        lines.extend(f"        {json.dumps(p)},\n" for p in class_paths)
+        lines.append("    ),\n")
+    lines.append("}\n\n")
+    lines.append(
+        '__all__ = ["EL_MODULES", "ROOT_ELEMENTS", "ROOT_ELEMENT_BINDINGS", "UNDERSTOOD"]\n'
+    )
     path.write_text("".join(lines), encoding="utf-8")
+
+
+#: CR-012 Phase B's input: docx4j's root elements, from ``codegen/derive_names.py``.
+ROOT_ELEMENTS_TABLE = ROOT / "codegen" / "names" / "root_elements.json"
+
+#: The markup-compatibility wrappers, which the branch hook looks past.
+_MC_WRAPPERS = frozenset({"AlternateContent", "AlternateContentChoice", "AlternateContentFallback"})
+
+
+def _class_path(cls: type, classes: dict[type, str]) -> str:
+    return f"{cls.__module__}.{classes[cls]}"
+
+
+def root_elements(
+    resolved_by_uri: dict[str, dict[str, Any]],
+    globals_: dict[str, set[type]],
+    classes: dict[type, str],
+    metas: dict[type, Any],
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """CR-012 Phase B: ``ROOT_ELEMENTS`` and ``ROOT_ELEMENT_BINDINGS``, checked against the model.
+
+    ``codegen/names/root_elements.json`` (``derive_names.py``'s) names each
+    root's class. It is held to the model here, and the run stops if it no
+    longer fits: the name must not be a global element of the model, and its
+    class must be the one the ``el`` table builds for it.
+
+    The bindings are what ``docx4j_py.runtime.branch_child_class``'s step (a)
+    can answer besides the root class: a branch's child is bound as the
+    container the ``mc:AlternateContent`` stands in binds it, and the
+    containers are the classes that can hold one, by a field or by a lax
+    wildcard (a global ``mc:AlternateContent`` is typed in any lax wildcard),
+    the markup-compatibility wrappers aside. The runtime cannot list them
+    without building every class's metadata, so they are listed here, each
+    class in the one table the serialiser names it from. A class claimed by
+    two names would make that table no function, and stops the run.
+    """
+    doc = json.loads(ROOT_ELEMENTS_TABLE.read_text(encoding="utf-8"))
+    uri = doc["namespace"]
+    resolved = resolved_by_uri.get(uri, {})
+    stale = "; re-run codegen/derive_names.py (codegen/names/README.md)"
+    roots: dict[str, type] = {}
+    for local, entry in sorted(doc["roots"].items()):
+        qname = f"{{{uri}}}{local}"
+        if qname in globals_:
+            raise SystemExit(f"codegen/generate_el.py: {qname} is a global element of the model now{stale}")
+        info = resolved.get(local)
+        if info is None or classes[info["default"]] != entry["class"]:
+            got = classes[info["default"]] if info is not None else None
+            raise SystemExit(
+                f"codegen/generate_el.py: root_elements.json gives {qname} {entry['class']}, "
+                f"the el table {got}{stale}"
+            )
+        roots[qname] = info["default"]
+
+    def holds(meta: Any) -> bool:
+        for var in meta.get_element_vars():
+            if var.is_wildcard and var.process_contents != "skip":
+                return True
+            types = list(var.types)
+            for alt in (var.elements or {}).values():
+                types.extend(alt.types)
+            if any(t.__module__ == "docx4j_py.mce" and t.__name__ == "AlternateContent" for t in types):
+                return True
+        return False
+
+    containers = [
+        cls
+        for cls, meta in sorted(metas.items(), key=lambda kv: _class_path(kv[0], classes))
+        if not (cls.__module__ == "docx4j_py.mce" and cls.__name__ in _MC_WRAPPERS) and holds(meta)
+    ]
+
+    bindings: dict[str, list[str]] = {}
+    claimed: dict[type, str] = {}
+    for qname, root in roots.items():
+        found = {root}
+        for cls in containers:
+            for var in metas[cls].get_children(qname):
+                if var.clazz is not None:
+                    found.add(var.clazz)
+                    break
+        for cls in found:
+            if claimed.setdefault(cls, qname) != qname:
+                raise SystemExit(
+                    f"codegen/generate_el.py: {classes[cls]} is bound to both {claimed[cls]} and "
+                    f"{qname}, so the serialiser could not name it"
+                )
+        others = sorted(_class_path(c, classes) for c in found - {root})
+        if others:
+            bindings[qname] = others
+    print(
+        f"root elements: {len(roots)}, from {len(containers)} containers "
+        f"{sum(len(v) for v in bindings.values())} other bindings over {len(bindings)} names"
+    )
+    return {q: _class_path(c, classes) for q, c in roots.items()}, bindings
 
 
 def table_name_for(module: str) -> str:
@@ -900,6 +1040,7 @@ def main(argv: list[str] | None = None) -> int:
 
     TABLES.mkdir(exist_ok=True)
     emitted: dict[str, str] = {}
+    resolved_by_uri: dict[str, dict[str, Any]] = {}
     totals = {"names": 0, "scoped": 0, "renames": 0, "collisions": 0}
     for uri, module in sorted(namespaces.items(), key=lambda kv: kv[1]):
         entries = by_uri.get(uri, {})
@@ -912,6 +1053,7 @@ def main(argv: list[str] | None = None) -> int:
             overrides.setdefault("defaults", {})
             overrides.setdefault("aliases", {})
         resolved = resolve_namespace(uri, entries, globals_, classes, overrides, reach)
+        resolved_by_uri[uri] = resolved
         path = PACKAGE.parent / Path(*module.split("."), "el.py")
         emit_module(path, uri, module, name, resolved, classes, metas)
         write_table(
@@ -936,7 +1078,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         totals["collisions"] += sum(1 for i in resolved.values() if i["aliases"])
 
-    emit_index(PACKAGE / "el_index.py", emitted)
+    roots, bindings = root_elements(resolved_by_uri, globals_, classes, metas)
+    emit_index(PACKAGE / "el_index.py", emitted, roots, bindings)
     engine = append_engine_footer(PACKAGE / "__init__.py")
     print(f"engine re-exports on docx4j_py: {engine}")
     print(

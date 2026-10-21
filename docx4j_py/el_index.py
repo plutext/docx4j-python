@@ -8,6 +8,13 @@ namespace. ``UNDERSTOOD`` is the inverse restricted to a prefix: the
 namespaces this build understands, which is what ``mc:Choice``'s
 ``Requires`` is tested against (CR-002 section 5.6). It is re-exported
 as ``docx4j_py.namespaces.UNDERSTOOD``.
+
+``ROOT_ELEMENTS`` and ``ROOT_ELEMENT_BINDINGS`` are CR-012 Phase B's: docx4j's
+WordprocessingML root elements that this model does not declare globally
+(``codegen/names/root_elements.json``), each name's root class, and the
+other classes a container that can hold an ``mc:AlternateContent`` binds
+it to. Class paths are strings: ``docx4j_py.runtime`` resolves them when it
+first needs them, so that importing this module imports no model class.
 """
 
 from __future__ import annotations
@@ -144,4 +151,167 @@ UNDERSTOOD: dict[str, str] = {
     "xml": "http://www.w3.org/XML/1998/namespace",
 }
 
-__all__ = ["EL_MODULES", "UNDERSTOOD"]
+#: CR-012 Phase B: qualified name -> the root class, docx4j's
+#: ``@XmlRootElement``, which a lax wildcard's child of that name binds to.
+ROOT_ELEMENTS: dict[str, str] = {
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNum": "docx4j_py.wml.NumberingAbstractNum",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}alias": "docx4j_py.wml.CtSdtPrAlias",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}altChunk": "docx4j_py.wml.CTAltChunk",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}annotationRef": "docx4j_py.wml.RAnnotationRef",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}bibliography": "docx4j_py.wml.CtSdtPrBibliography",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}bookmarkEnd": "docx4j_py.wml.CTMarkupRange",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}bookmarkStart": "docx4j_py.wml.CTBookmark",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}citation": "docx4j_py.wml.CtSdtPrCitation",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}commentReference": "docx4j_py.wml.RCommentReference",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}continuationSeparator": "docx4j_py.wml.RContinuationSeparator",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cr": "docx4j_py.wml.RCr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}dataBinding": "docx4j_py.wml.CTDataBinding",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}dayLong": "docx4j_py.wml.RDayLong",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}dayShort": "docx4j_py.wml.RDayShort",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing": "docx4j_py.wml.Drawing",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}endnoteRef": "docx4j_py.wml.REndnoteRef",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}equation": "docx4j_py.wml.CtSdtPrEquation",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fldChar": "docx4j_py.wml.FldChar",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fldSimple": "docx4j_py.wml.CTSimpleField",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnoteRef": "docx4j_py.wml.RFootnoteRef",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}group": "docx4j_py.wml.CtSdtPrGroup",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}hyperlink": "docx4j_py.wml.PHyperlink",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ind": "docx4j_py.wml.CtPprBaseInd",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}jc": "docx4j_py.wml.Jc",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lastRenderedPageBreak": "docx4j_py.wml.RLastRenderedPageBreak",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lock": "docx4j_py.wml.CTLock",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lvl": "docx4j_py.wml.Lvl",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lvlOverride": "docx4j_py.wml.NumberingNumLvlOverride",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}monthLong": "docx4j_py.wml.RMonthLong",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}monthShort": "docx4j_py.wml.RMonthShort",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}noBreakHyphen": "docx4j_py.wml.RNoBreakHyphen",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}num": "docx4j_py.wml.NumberingNum",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numPicBullet": "docx4j_py.wml.NumberingNumPicBullet",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numPr": "docx4j_py.wml.CtPprBaseNumPr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}outlineLvl": "docx4j_py.wml.CtPprBaseOutlineLvl",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pBdr": "docx4j_py.wml.CtPprBasePBdr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pPr": "docx4j_py.wml.PPr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}permEnd": "docx4j_py.wml.CTPerm",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}permStart": "docx4j_py.wml.RangePermissionStart",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pgNum": "docx4j_py.wml.RPgNum",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict": "docx4j_py.wml.Pict",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}picture": "docx4j_py.wml.CtSdtPrPicture",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ptab": "docx4j_py.wml.RPtab",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr": "docx4j_py.wml.RPr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}richText": "docx4j_py.wml.CtSdtPrRichText",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sdtPr": "docx4j_py.wml.SdtPr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sectPr": "docx4j_py.wml.SectPr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}separator": "docx4j_py.wml.RSeparator",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}smartTag": "docx4j_py.wml.CTSmartTagRun",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}softHyphen": "docx4j_py.wml.RSoftHyphen",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}spacing": "docx4j_py.wml.CtPprBaseSpacing",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sym": "docx4j_py.wml.RSym",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t": "docx4j_py.wml.RT",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tab": "docx4j_py.wml.RTab",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tabs": "docx4j_py.wml.Tabs",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tbl": "docx4j_py.wml.Tbl",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblGrid": "docx4j_py.wml.TblGrid",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblPr": "docx4j_py.wml.TblPr",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tc": "docx4j_py.wml.Tc",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}yearLong": "docx4j_py.wml.RYearLong",
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}yearShort": "docx4j_py.wml.RYearShort",
+}
+
+#: CR-012 Phase B: qualified name -> the other classes a container that can
+#: hold an ``mc:AlternateContent`` binds it to (a branch's child is bound as
+#: the container binds it), so that the serialiser names each.
+ROOT_ELEMENT_BINDINGS: dict[str, tuple[str, ...]] = {
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}annotationRef": (
+        "docx4j_py.wml.CtMathRunTrackChangeAnnotationRef",
+        "docx4j_py.wml.CtRAnnotationRef",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}commentReference": (
+        "docx4j_py.wml.CtMathRunTrackChangeCommentReference",
+        "docx4j_py.wml.CtRCommentReference",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}continuationSeparator": (
+        "docx4j_py.wml.CtMathRunTrackChangeContinuationSeparator",
+        "docx4j_py.wml.CtRContinuationSeparator",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cr": (
+        "docx4j_py.wml.CtMathRunTrackChangeCr",
+        "docx4j_py.wml.CtRCr",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}dayLong": (
+        "docx4j_py.wml.CtMathRunTrackChangeDayLong",
+        "docx4j_py.wml.CtRDayLong",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}dayShort": (
+        "docx4j_py.wml.CtMathRunTrackChangeDayShort",
+        "docx4j_py.wml.CtRDayShort",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}endnoteRef": (
+        "docx4j_py.wml.CtMathRunTrackChangeEndnoteRef",
+        "docx4j_py.wml.CtREndnoteRef",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnoteRef": (
+        "docx4j_py.wml.CtMathRunTrackChangeFootnoteRef",
+        "docx4j_py.wml.CtRFootnoteRef",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}hyperlink": (
+        "docx4j_py.wml.CtBdoHyperlink",
+        "docx4j_py.wml.CtCustomXmlRunHyperlink",
+        "docx4j_py.wml.CtDirHyperlink",
+        "docx4j_py.wml.CtSdtContentRunHyperlink",
+        "docx4j_py.wml.CtSimpleFieldHyperlink",
+        "docx4j_py.wml.CtSmartTagRunHyperlink",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lastRenderedPageBreak": (
+        "docx4j_py.wml.CtMathRunTrackChangeLastRenderedPageBreak",
+        "docx4j_py.wml.CtRLastRenderedPageBreak",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}monthLong": (
+        "docx4j_py.wml.CtMathRunTrackChangeMonthLong",
+        "docx4j_py.wml.CtRMonthLong",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}monthShort": (
+        "docx4j_py.wml.CtMathRunTrackChangeMonthShort",
+        "docx4j_py.wml.CtRMonthShort",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}noBreakHyphen": (
+        "docx4j_py.wml.CtMathRunTrackChangeNoBreakHyphen",
+        "docx4j_py.wml.CtRNoBreakHyphen",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pgNum": (
+        "docx4j_py.wml.CtMathRunTrackChangePgNum",
+        "docx4j_py.wml.CtRPgNum",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ptab": (
+        "docx4j_py.wml.CtMathRunTrackChangePtab",
+        "docx4j_py.wml.CtRPtab",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}separator": (
+        "docx4j_py.wml.CtMathRunTrackChangeSeparator",
+        "docx4j_py.wml.CtRSeparator",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}softHyphen": (
+        "docx4j_py.wml.CtMathRunTrackChangeSoftHyphen",
+        "docx4j_py.wml.CtRSoftHyphen",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sym": (
+        "docx4j_py.wml.CtMathRunTrackChangeSym",
+        "docx4j_py.wml.CtRSym",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t": (
+        "docx4j_py.wml.T",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tab": (
+        "docx4j_py.wml.CtMathRunTrackChangeTab",
+        "docx4j_py.wml.CtRTab",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}yearLong": (
+        "docx4j_py.wml.CtMathRunTrackChangeYearLong",
+        "docx4j_py.wml.CtRYearLong",
+    ),
+    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}yearShort": (
+        "docx4j_py.wml.CtMathRunTrackChangeYearShort",
+        "docx4j_py.wml.CtRYearShort",
+    ),
+}
+
+__all__ = ["EL_MODULES", "ROOT_ELEMENTS", "ROOT_ELEMENT_BINDINGS", "UNDERSTOOD"]
