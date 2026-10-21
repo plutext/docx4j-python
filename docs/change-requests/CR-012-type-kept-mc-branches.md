@@ -50,9 +50,18 @@ paragraph-level branch as a run-level one (11.4, kept); parse +21% and save +35%
 403-branch document; acceptance and the ratchet unchanged; docx4j's agreement run 0 of 22. **The
 Word check of four saves passed on 2026-10-22** (the user: "cr012b okay", file 2 "fine in All
 Markup"; 11.10): **Phase B done**. **Phase C started 2026-10-22** at the user's go ("do phase c"),
-section 4.3 revised first: the VML schemas at the schema copy's commit, `vml__ROOT.xsd` left out,
-the survey over every part, VML's booleans kept as spelled, the islands retired only where no longer
-reached.
+section 4.3 revised first, and was **implemented the same day** (section 12): docx4j's five VML
+schemas at the schema copy's commit, with no patch, so VML is typed wherever it stands (under every
+`w:pict` and `w:object`, header watermarks, numbering picture bullets, `settings.xml`'s shape
+defaults); over the 422 documents nothing is newly skipped and no save gains a canonical difference;
+VML's `t`/`f` values are a string enumeration, written as read, and `o:spt` and `o:gfxdata` keep
+their spelling through the fork's stage 12 (`ParserConfig(lexical_types=)`), which joins stages 9 to
+11 in needing a fork release; the readers' audit over 384 documents moved one answer,
+`styles_in_use()` on `vml/textbox.docx`, clearly right by docx4j's traversal (12.8); no corpus
+document reaches an island any more, and the islands stay for a text box below a wildcard node
+(12.9); the import costs about 100 ms more (cold 1.12 s), and the 403-branch document parses about
+15% and saves about 10% slower; acceptance, the ratchet and CR-010's Word-save comparisons are
+unchanged. **Its Word check of four saves is not yet checked** (12.14).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -68,7 +77,9 @@ reached.
   further fork code (section 4.2, revised 2026-10-22).
 - **Phase C:** docx4j CR-048 (`acd0defc9` on `VERSION_17_3_4`, pushed 2026-10-18, to ship in
   17.3.4), whose VML schema this phase copies, at `2853b7280`, the schema copy's commit, where
-  `xsd/vml/` is unchanged since `acd0defc9` (section 4.3, revised 2026-10-22).
+  `xsd/vml/` is unchanged since `acd0defc9` (section 4.3, revised 2026-10-22); and the xsdata
+  fork's stage 12, item 28 (`ParserConfig(lexical_types=)`, `d084a267`, local), which joins
+  stages 9 to 11 in needing a fork release (section 12.6).
 
 docx4j-python cannot release on either fork change before a fork release, as CR-011's Q3 also
 needs (`RELEASING.md`: never against an unreleased fork).
@@ -2812,8 +2823,10 @@ mend them (12.8).
   - the generated packages' list (add `vml/`);
   - the CR-012 status line;
   - "WordprocessingML only until CR-001 D and CR-002 C" (true, VML aside).
-- **`docs/UPSTREAM.md`** has rows 20 to 24 twice, in the table and again after the notes below it.
-  This predates the phase; report 25 is appended after the second copy.
+- **`docs/UPSTREAM.md`**: rows 19 to 24 stood after the notes below the table, where they did not
+  render as table rows, and report 25 was appended after them. This predates the phase. (The
+  coordinator's check found each row once, not twice as first reported, and moved rows 19 to 25
+  into the table.)
 
 ### 12.14 The Word check (Not yet checked)
 

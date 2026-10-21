@@ -44,8 +44,9 @@ departure; read them before changing the area they cover. Status, 2026-10-21:
   release.
 - **CR-012** (`mc:AlternateContent` kept at every level, its branches typed): decided 2026-10-21;
   Phases A and A2 (docx4j CR-051 phases 1 and 2) implemented and Word-checked; B (docx4j's 61
-  root elements typed in a branch) implemented and Word-checked 2026-10-22; C (VML) in progress.
-  Its fork change (stage 11) joins CR-011's in needing a fork release.
+  root elements typed in a branch) implemented and Word-checked 2026-10-22; C (VML in the model,
+  typed wherever it stands) implemented 2026-10-22, its Word check pending. Its fork changes
+  (stages 11 and 12) join CR-011's in needing a fork release.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -74,6 +75,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
 .venv-fork/bin/python scripts/mce_branches.py survey   # CR-012 Phase B: what a kept mc branch holds (corpus, readers)
+.venv-fork/bin/python scripts/vml_census.py run --out out/x   # CR-012 Phase C: VML in every part, census and saves (then compare two runs)
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
 .venv-fork/bin/python scripts/bench_marshal.py         # parse and marshal, part by part (--json)
 .venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
@@ -161,7 +163,7 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 - `openpackaging/`: the whole engine
 
 **Never hand-edit a generated file**: the namespace packages' `__init__.py` and `el.py`
-(`wml/`, `dml/`, `math/`, `oart/`, `docprops/`, `relationships/` and the rest),
+(`wml/`, `dml/`, `math/`, `oart/`, `docprops/`, `relationships/`, `vml/` and the rest),
 `docx4j_py/__init__.py` (it carries the import-order manifest and the CR-002 re-export footer) and
 `docx4j_py/el_index.py`. `clean.py` deletes everything not in `KEEP` before each run. A new
 hand-written file under `docx4j_py/` must be added to `KEEP`, or the next regeneration deletes it.
@@ -256,15 +258,20 @@ section 12.3.
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
   fixed by a marked schema patch rather than by loosening the check.
 - Booleans serialise numeric (`1`/`0`), as Word writes them; the docProps parts use
-  `bool_format = "words"`. On write, `XmlPart.xml` re-declares every prefix that `mc:Ignorable`
-  names.
+  `bool_format = "words"`. VML's `t`/`f` are a string enumeration, written as read. A parsed
+  float or bytes value keeps its source spelling (the fork's `lexical_types`, stage 12;
+  `runtime.LEXICAL_TYPES`): `o:spt="202"`, Word's wrapped `o:gfxdata` and a lower-case `w:color`
+  are saved as read, a value set in code in the converter's spelling. On write, `XmlPart.xml`
+  re-declares every prefix that `mc:Ignorable` names.
 - MCE is lossless by default: every branch of `mc:AlternateContent` is kept, and traversal takes
   `mce="resolve"` (the default), `"all"` or `"none"`. Since CR-012 Phase B a branch's children are
   typed where docx4j types them: docx4j's 61 WordprocessingML root elements (`w:drawing`,
   `w:pict`, `w:t`, `w:tbl` and the rest), bound in a branch as the container holding the element
   binds them, elsewhere in a lax wildcard as their root class, through the fork's stage 11 hooks
-  (`runtime.branch_child_class` and the serialiser's `element_names`); any other name, and the VML
-  under a `w:pict` until Phase C, stays a wildcard (`AnyElement`) tree.
+  (`runtime.branch_child_class` and the serialiser's `element_names`); any other name stays a
+  wildcard (`AnyElement`) tree. Since Phase C VML (`v:`, `o:`, `w10:`, in `docx4j_py.vml.*`) is in
+  the model, typed wherever it stands: under `w:pict` and `w:object`, in a branch or not, and in
+  `settings.xml`'s shape defaults. A vmlDrawing part (`VMLPart`) stays an lxml tree.
   `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. Since
   CR-012 Phase A (Q8),
   it and `mc_block_level="word"` select over docx4j's published understood list
