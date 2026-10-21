@@ -1,0 +1,23 @@
+{
+  "namespace": "urn:schemas-microsoft-com:office:word",
+  "java_package": "org.docx4j.vml.wordprocessingDrawing",
+  "types": {
+    "CT_AnchorLock": "CTAnchorLock",
+    "CT_Border": "CTBorder",
+    "CT_Wrap": "CTWrap",
+    "ST_BorderShadow": "STBorderShadow",
+    "ST_BorderType": "STBorderType",
+    "ST_HorizontalAnchor": "STHorizontalAnchor",
+    "ST_VerticalAnchor": "STVerticalAnchor",
+    "ST_WrapSide": "STWrapSide",
+    "ST_WrapType": "STWrapType"
+  },
+  "elements": {
+    "anchorlock": "CTAnchorLock",
+    "borderbottom": "CTBorder",
+    "borderleft": "CTBorder",
+    "borderright": "CTBorder",
+    "bordertop": "CTBorder",
+    "wrap": "CTWrap"
+  }
+}

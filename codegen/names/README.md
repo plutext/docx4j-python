@@ -24,7 +24,7 @@ exactly four top-level keys, in this order: `namespace`, `java_package`, `types`
 
 Which namespaces get a file: the **intersection** of (a) the `targetNamespace` values found in
 `schemas/` — i.e. WML's import closure as staged in this repo — and (b) the namespaces docx4j's
-Java packages declare in their `package-info.java`. 54 namespaces qualify (CR-002 section 9 added seven: the package relationships and the docProps family). Both directions of the
+Java packages declare in their `package-info.java`. 54 namespaces qualified (CR-002 section 9 added seven: the package relationships and the docProps family), and 59 since CR-012 Phase C copied docx4j's five VML schemas into `schemas/vml/` ([below](#the-vml-tables-cr-012-phase-c)). Both directions of the
 difference are listed under [Namespaces with no table](#namespaces-with-no-table). The 2026-09-20
 schema refresh (docx4j `58cce65a8`, CR-001 section 14.10) added two: `w15symex.json` (`CT_SymEx`,
 `w16se:symEx`) and `w16cid.json` (`CT_CommentsIds`, `CT_CommentId`), 58 files; the other 56 came
@@ -34,10 +34,12 @@ and no table.
 
 ## Files
 
-56 files besides `wml_overrides.json`, 1430 type entries and 519 element entries in total. These
-figures were recounted on 2026-10-14, when docx4j CR-040 (`28bdf831c`) added `CT_BinSize` and
-`CT_BinCount` to the chartex table (CR-001 section 14.12). The table below has not been
-recounted, apart from that row.
+61 files besides `wml_overrides.json` and `root_elements.json`, 1522 type entries and 568
+element entries in total, since CR-012 Phase C (2026-10-22) added the five VML tables (92 types
+and 49 elements; their rows are at the end of the table). Before it, 56 files, 1430 type entries
+and 519 element entries, recounted on 2026-10-14, when docx4j CR-040 (`28bdf831c`) added
+`CT_BinSize` and `CT_BinCount` to the chartex table (CR-001 section 14.12). The table below has
+not been recounted, apart from those rows.
 
 | file | namespace | java package | types | elements |
 | --- | --- | --- | ---: | ---: |
@@ -95,6 +97,11 @@ recounted, apart from that row.
 | `word_2010_wordprocessing_group.json` | `http://schemas.microsoft.com/office/word/2010/wordprocessingGroup` | `org.docx4j.com.microsoft.schemas.office.word.x2010.wordprocessingGroup` | 2 | 1 |
 | `word_2010_wordprocessing_shape.json` | `http://schemas.microsoft.com/office/word/2010/wordprocessingShape` | `org.docx4j.com.microsoft.schemas.office.word.x2010.wordprocessingShape` | 3 | 1 |
 | `word_2012_wordprocessing_drawing.json` | `http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing` | `org.docx4j.com.microsoft.schemas.office.word.x2012.wordprocessingDrawing` | 1 | 1 |
+| `vml.json` | `urn:schemas-microsoft-com:vml` | `org.docx4j.vml` | 36 | 21 |
+| `vml_officedrawing.json` | `urn:schemas-microsoft-com:office:office` | `org.docx4j.vml.officedrawing` | 42 | 18 |
+| `vml_wordprocessing_drawing.json` | `urn:schemas-microsoft-com:office:word` | `org.docx4j.vml.wordprocessingDrawing` | 9 | 6 |
+| `vml_spreadsheet_drawing.json` | `urn:schemas-microsoft-com:office:excel` | `org.docx4j.vml.spreadsheetDrawing` | 3 | 2 |
+| `vml_presentation_drawing.json` | `urn:schemas-microsoft-com:office:powerpoint` | `org.docx4j.vml.presentationDrawing` | 2 | 2 |
 
 `org.docx4j.wml` has 333 `.java` files = 331 classes + `ObjectFactory` + `package-info`, and
 331 = 301 named `@XmlType`s + 30 anonymous (`@XmlType(name = "")`) ones. The tables account for
@@ -401,11 +408,9 @@ No package declared an empty `@XmlSchema` namespace, and no namespace is claimed
   `…/word/2023/wordml/word16du` (`w16du:dateUtc`), `…/word/2024/wordml/sdtformatlock`
   (`w16sdtfl:formattingAllowed`) — attribute-only, docx4j CR-023; no classes on either side.
 
-### docx4j packages whose namespace is outside the closure (not emitted, 18 under `org.docx4j`)
+### docx4j packages whose namespace is outside the closure (not emitted, 13 under `org.docx4j`)
 
-All VML — `urn:schemas-microsoft-com:vml` (`org.docx4j.vml`), `…:office:word`
-(`org.docx4j.vml.wordprocessingDrawing`), `…:office:office` (`org.docx4j.vml.officedrawing`),
-`…:office:excel`, `…:office:powerpoint`, `urn:docx4j:vml:root` — plus
+`urn:docx4j:vml:root` (docx4j's VML root package, from `vml__ROOT.xsd`, which is not copied),
 `…/officeDocument/2006/bibliography`,
 `…/officeDocument/2006/customXml`, `…/office/2006/xmlPackage`, `…/office/2006/coverPageProps`,
 `…/office/2006/encryption` (+ the two `keyEncryptor` namespaces),
@@ -414,27 +419,30 @@ All VML — `urn:schemas-microsoft-com:vml` (`org.docx4j.vml`), `…:office:word
 (`org.docx4j.w16cex`) and `…/office/word/2026/wordml/cei` (`org.docx4j.cei`) — the three
 `xsd/wml/` schemas docx4j binds through its `ROOT.xsd` that `wml.xsd` does not import.
 `…/office/word/2015/wordml/symex` (`org.docx4j.w15symex`) and `…/office/word/2016/wordml/cid`
-(`org.docx4j.w16cid`) were in this list until docx4j's CR-023 made `wml.xsd` import them, and
+(`org.docx4j.w16cid`) were in this list until docx4j's CR-023 made `wml.xsd` import them,
 the package relationships and docProps namespaces (`org.docx4j.relationships`,
-`org.docx4j.docProps.*`, Dublin Core) until CR-002 section 9 added their schemas.
+`org.docx4j.docProps.*`, Dublin Core) until CR-002 section 9 added their schemas, and the five
+VML namespaces (`org.docx4j.vml`, `.vml.officedrawing`, `.vml.wordprocessingDrawing`,
+`.vml.spreadsheetDrawing`, `.vml.presentationDrawing`) until CR-012 Phase C copied theirs.
 The `org.xlsx4j.*` and `org.pptx4j.*` trees are likewise outside the closure except
 `org.xlsx4j.schemas.microsoft.com.office.excel.x2010.spreadsheetDrawing`, which is in it and *is*
 emitted.
 
-**`vml` in particular is worth a second look**: `w:pict` content is VML, but the namespace is
-not reachable from the `.xsd` files currently in `schemas/`. If it is added to `schemas/`,
-re-running the script picks it up automatically — no change to the script is needed, as the
-2026-09-20 refresh showed for `w16cid`.
+**`vml`**, which this paragraph used to single out (`w:pict` content is VML, and the namespace
+was not reachable from `schemas/`), has its tables since CR-012 Phase C: re-running the script
+over the copied schemas picked the five namespaces up with no change to the derivation, as the
+2026-09-20 refresh had for `w16cid`. What the phase added to the script is the cross-check below.
 
 ### ObjectFactory declarations dropped because their namespace has no table
 
-263 `@XmlElementDecl`s (255 at Phase B) point at namespaces outside the emitted set and were discarded. The largest
-groups: `…/spreadsheetml/2006/main` (52), `…/office/powerpoint/2010/main` (30),
-`urn:schemas-microsoft-com:vml` (21), `…/officeDocument/2006/bibliography` (19),
-`urn:schemas-microsoft-com:office:office` (18), `http://purl.org/dc/elements/1.1/` (16),
-`…/office/powerpoint/2013/main/command` (8), `…/officeDocument/2006/docPropsVTypes` (7),
-`…/office/powerpoint/2012/main` (6), `urn:schemas-microsoft-com:office:word` (6),
-`…/presentationml/2006/main` (4), and 21 namespaces with 1–2 each.
+215 `@XmlElementDecl`s point at namespaces outside the emitted set and were discarded (263 when
+this paragraph was last counted and 255 at Phase B; 264 at CR-012 Phase B's XJC build, of which
+the 49 in the five VML namespaces --- `urn:schemas-microsoft-com:vml` 21, `…:office:office` 18,
+`…:office:word` 6, `…:office:excel` and `…:office:powerpoint` 2 each --- are routed to their
+tables since CR-012 Phase C). The largest groups left: `…/spreadsheetml/2006/main` (52),
+`…/office/powerpoint/2010/main` (30), `…/officeDocument/2006/bibliography` (19),
+`…/office/powerpoint/2013/main/command` (8), `…/office/powerpoint/2012/main` (6),
+`…/presentationml/2006/main` (4), and namespaces with 1–2 each.
 
 ### Declarations whose payload is a plain Java type, not a docx4j class
 
@@ -487,6 +495,48 @@ are under `roots`), so the generator takes nothing from it and its output does n
 The other vocabularies' missing names, in a namespace this model has, are listed under
 `other_vocabularies` and not taken: today the custom properties' `property`, which never appears
 in a branch. Phase B is WordprocessingML's.
+
+## The VML tables (CR-012 Phase C)
+
+The five VML namespaces' tables are derived like every other, from the same XJC build, which is
+not a commit: `org.docx4j.vml`'s newest source file was written at 2026-10-20 14:11:44 +11:00,
+the build Phase B's `root_elements.json` records (`xjc_built`), and it carries docx4j CR-048's
+`anchorId` and `gfxdata` on the shape types (`CTRect.java`), so the build postdates `acd0defc9`.
+What ties the tables to a commit is **the cross-check** against the schema copy's `vml/` files,
+which are docx4j's at `2853b7280` (`schemas/PATCHES.md`). `derive_names.py`'s `cross_check_vml`
+stops the run unless, for each namespace:
+
+* `types` names exactly the schema's complex types, and nothing that is not a type of the schema;
+* `elements` names every global element of the schema, and nothing else but a local element of
+  simple type.
+
+On the build above it holds for all five. What it lists:
+
+| table | enumerations docx4j makes no class for | local simple elements named |
+| --- | --- | --- |
+| `vml.json` | `ST_TrueFalseBlank` | none |
+| `vml_officedrawing.json` | `ST_Angle`, `ST_ScreenSize`, `ST_TrueFalseBlank` | none |
+| `vml_wordprocessing_drawing.json` | none | none |
+| `vml_spreadsheet_drawing.json` | `ST_TrueFalseBlank` | `CF` (docx4j's ObjectFactory declares it scoped to `CTClientData`; simple-typed, so no class on either side) |
+| `vml_presentation_drawing.json` | none | none |
+
+JAXB makes no enum class for an enumeration a value of which is no Java identifier (`""`,
+`"30"`, `"544,376"`), so those three types have no docx4j name, and the generator gives them its
+own (`StTrueFalseBlank`, `StAngle`, `StScreenSize`), as it does elsewhere where docx4j has none
+(`StOnOff`). No override was needed.
+
+**The generator's warnings.** The regeneration gives 330 `ClassNames` warnings, 48 more than the
+282 before, all VML's: each global VML element whose type is named (`v:rect` of `CT_Rect`,
+`o:lock` of `CT_Lock`, `w10:wrap` of `CT_Wrap`, the four `o:` stroke children of
+`CT_StrokeChild` and the four `w10:` borders of `CT_Border`) "is left alone" because its type
+already owns the docx4j name, which is the case CR-001 section 13.3 explains: the element's class
+keeps the generator's name (`Rect`, a subclass of `CTRect`).
+
+**The modules.** Each namespace has its `Substitution` in `.xsdata.phase-b.xml`: `vml.main`,
+`vml.officedrawing`, `vml.wordprocessing_drawing`, `vml.spreadsheet_drawing` and
+`vml.presentation_drawing`, the main namespace taking `main` as DrawingML's does. Their `el`
+tables (`codegen/el_tables/vml_*.json`) need no override: no collision, one keyword rename
+(`o:complex`, `el.complex_`).
 
 ## The two hand written entries: `wml_overrides.json`
 

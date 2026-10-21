@@ -1,0 +1,13 @@
+{
+  "namespace": "urn:schemas-microsoft-com:office:excel",
+  "java_package": "org.docx4j.vml.spreadsheetDrawing",
+  "types": {
+    "CT_ClientData": "CTClientData",
+    "ST_CF": "STCF",
+    "ST_ObjectType": "STObjectType"
+  },
+  "elements": {
+    "CF": "STCF",
+    "ClientData": "CTClientData"
+  }
+}

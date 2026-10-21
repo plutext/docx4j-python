@@ -22,6 +22,10 @@ four top level keys in this order: ``namespace``, ``java_package``, ``types``,
 ``elements``.  ``--report`` additionally dumps the anomaly data (as JSON) that
 ``codegen/names/README.md`` is written from.
 
+The VML namespaces' tables (CR-012 Phase C) are cross-checked against the
+schema copy's ``vml/`` files, and the run stops if a table and its schema
+disagree (:func:`cross_check_vml`).
+
 It also writes ``codegen/names/root_elements.json`` (CR-012 Phase B): docx4j's
 WordprocessingML root elements --- every ``@XmlRootElement`` class, nested
 ones included, and every unscoped ``@XmlElementDecl`` --- whose name this
@@ -750,6 +754,91 @@ def build_root_elements(java_root: str, schemas_root: str, el_tables: str) -> di
     }
 
 
+# ---------------------------------------------------------------------------
+# the VML tables' cross-check (CR-012 Phase C)
+# ---------------------------------------------------------------------------
+
+VML_DIR = "vml"
+
+
+def _local_simple_elements(schema) -> set:
+    """The names of a schema's local element declarations whose type is a simple type (no class anywhere)."""
+    simple = {c.get("name") for c in schema if c.tag == "{%s}simpleType" % XSD_NS}
+    top = set(map(id, schema))
+    out = set()
+    for node in schema.iter("{%s}element" % XSD_NS):
+        if id(node) in top or not node.get("name"):
+            continue
+        tp = (node.get("type") or "").rpartition(":")[2]
+        if tp in simple or (node.get("type") or "").startswith("xsd:"):
+            out.add(node.get("name"))
+    return out
+
+
+def cross_check_vml(results: dict, schemas_root: str) -> dict:
+    """Each VML namespace's table against the schema copy's ``vml/`` files; stops the run on a disagreement.
+
+    docx4j's XJC output is a build, not a commit (CR-012 section 4.2 item 2's
+    provenance rule); the schema copy is at a commit. For each VML namespace:
+
+    * ``types`` names exactly the schema's complex types, and only types of
+      the schema; an enumerated simple type with no entry is one JAXB makes no
+      class for (an enumeration value that is no Java identifier: ``""``,
+      ``"30"``, ``"544,376"``), and is listed;
+    * ``elements`` names every global element of the schema, and nothing else
+      but a local element of simple type (which no class binds on either side:
+      ``x:CF``, docx4j's ObjectFactory declaring it scoped to
+      ``CTClientData``).
+
+    Returns, per namespace, what was checked and what was listed.
+    """
+    import xml.etree.ElementTree as ET
+
+    directory = os.path.join(schemas_root, VML_DIR)
+    if not os.path.isdir(directory):
+        return {}
+    report = {}
+    by_ns = {doc["namespace"]: (pfx, doc) for pfx, doc in results.items()}
+    for name in sorted(os.listdir(directory)):
+        if not name.endswith(".xsd"):
+            continue
+        schema = ET.parse(os.path.join(directory, name)).getroot()
+        ns = schema.get("targetNamespace")
+        if not ns or ns not in by_ns:
+            continue
+        pfx, doc = by_ns[ns]
+        complex_types = {c.get("name") for c in schema if c.tag == "{%s}complexType" % XSD_NS}
+        simple_types = {c.get("name") for c in schema if c.tag == "{%s}simpleType" % XSD_NS}
+        enumerated = {
+            c.get("name") for c in schema
+            if c.tag == "{%s}simpleType" % XSD_NS and c.find(".//{%s}enumeration" % XSD_NS) is not None
+        }
+        global_elements = {c.get("name") for c in schema if c.tag == "{%s}element" % XSD_NS}
+        types, elements = set(doc["types"]), set(doc["elements"])
+        problems = []
+        if complex_types - types:
+            problems.append("complex types with no entry: %s" % sorted(complex_types - types))
+        if types - complex_types - simple_types:
+            problems.append("entries for no type of the schema: %s" % sorted(types - complex_types - simple_types))
+        if global_elements - elements:
+            problems.append("global elements with no entry: %s" % sorted(global_elements - elements))
+        extra = elements - global_elements - _local_simple_elements(schema)
+        if extra:
+            problems.append("entries for no global element: %s" % sorted(extra))
+        if problems:
+            raise SystemExit(
+                "codegen/derive_names.py: docx4j's XJC output and the schema copy's %s disagree on %s:\n  %s"
+                % ("schemas/%s/%s" % (VML_DIR, name), ns, "\n  ".join(problems)))
+        report[pfx] = {
+            "schema": "schemas/%s/%s" % (VML_DIR, name),
+            "types": len(types),
+            "elements": len(elements),
+            "enumerations_with_no_docx4j_class": sorted(enumerated - types),
+            "local_simple_elements_named": sorted(elements - global_elements),
+        }
+    return report
+
+
 def write_json(path: str, doc: dict) -> None:
     with open(path, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(doc, fh, indent=2, ensure_ascii=False, sort_keys=False)
@@ -771,6 +860,7 @@ def main(argv=None) -> int:
 
     results, anomalies = build(args.java_root, args.schemas_root)
     roots = build_root_elements(args.java_root, args.schemas_root, args.el_tables)
+    vml = cross_check_vml(results, args.schemas_root)
 
     os.makedirs(args.out, exist_ok=True)
     for pfx in sorted(results):
@@ -795,6 +885,15 @@ def main(argv=None) -> int:
     print("  %-34s roots=%-5d left out=%s, cross-checked against %d annotations; XJC built %s"
           % (ROOT_ELEMENTS_FILE, len(roots["roots"]), sorted(roots["left_out"]),
              roots["cross_check"]["annotated_and_not_global"], roots["xjc_built"]))
+    if vml:
+        packages, _skipped = find_packages(args.java_root)
+        vml_pkg = next(p for p, i in packages.items() if i["namespace"] == "urn:schemas-microsoft-com:vml")
+        print("  VML tables cross-checked against schemas/%s/ (XJC built %s):" % (VML_DIR, xjc_built(packages, vml_pkg)))
+        for pfx, row in sorted(vml.items()):
+            print("    %-32s %s: types=%d elements=%d; enumerations docx4j makes no class for: %s; local simple elements named: %s"
+                  % (pfx, row["schema"], row["types"], row["elements"],
+                     row["enumerations_with_no_docx4j_class"] or "none",
+                     row["local_simple_elements_named"] or "none"))
     return 0
 
 

@@ -95,6 +95,22 @@
     <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" replace="dml.spreadsheet_drawing"/>
     <Substitution type="package" search="http://schemas.openxmlformats.org/drawingml/2006/compatibility" replace="dml.compatibility"/>
 
+    <!--
+      CR-012 Phase C: VML, under w:pict and w:object, and o:shapedefaults in
+      settings.xml. docx4j's packages are org.docx4j.vml, .vml.officedrawing,
+      .vml.wordprocessingDrawing, .vml.spreadsheetDrawing and
+      .vml.presentationDrawing. The main namespace takes vml.main, as
+      DrawingML's takes dml.main, because in Python `vml` cannot be both a
+      module and a package; the other four take docx4j's names, snake-cased.
+      vml.spreadsheet_drawing (x:ClientData) and vml.presentation_drawing
+      (pvml:) are imported by vml-main.xsd and come with it.
+    -->
+    <Substitution type="package" search="urn:schemas-microsoft-com:vml" replace="vml.main"/>
+    <Substitution type="package" search="urn:schemas-microsoft-com:office:office" replace="vml.officedrawing"/>
+    <Substitution type="package" search="urn:schemas-microsoft-com:office:word" replace="vml.wordprocessing_drawing"/>
+    <Substitution type="package" search="urn:schemas-microsoft-com:office:excel" replace="vml.spreadsheet_drawing"/>
+    <Substitution type="package" search="urn:schemas-microsoft-com:office:powerpoint" replace="vml.presentation_drawing"/>
+
     <!-- Microsoft word extensions -->
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2006/wordml" replace="wne"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/word/2010/wordml" replace="w14"/>

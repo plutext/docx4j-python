@@ -1,0 +1,12 @@
+{
+  "namespace": "urn:schemas-microsoft-com:office:powerpoint",
+  "java_package": "org.docx4j.vml.presentationDrawing",
+  "types": {
+    "CT_Empty": "CTEmpty",
+    "CT_Rel": "CTRel"
+  },
+  "elements": {
+    "iscomment": "CTEmpty",
+    "textdata": "CTRel"
+  }
+}
