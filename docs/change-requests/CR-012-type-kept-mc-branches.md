@@ -34,8 +34,8 @@ on 2026-10-22** (the user: "python-cr012a2 each pass"; 10.9): **Phase A2 done**.
 branch, landed the same day at the user's go ("go on the port"; 10.10), and its Word check of three
 saves passed (the user: "python-cr012a2-twin passes"). The port of docx4j `901a922a3`, a table's
 property records read and resolved through every branch, landed the same day at the user's go ("port
-the fix, then start phase b"; 10.11); its Word check of three saves is the user's
-(`out/cr012-a2-records-word-check/`). **Phase B started 2026-10-22** at the same go, its design
+the fix, then start phase b"; 10.11), and its Word check of three saves passed (the user: "the Word
+check of __tmp/python-cr012a2-records/ passes"). **Phase B started 2026-10-22** at the same go, its design
 revised first (section 4.2): Phase A's fork hooks take the root-element table, so the fork needs no
 code.
 **Depends on:**
@@ -1630,7 +1630,7 @@ reverted to `cells_of`, the two cell-level grid tests fail and the row-level one
 - A fix would read Word's branch for a whole table, and every branch only for the changed rows.
   That is docx4j's to decide first: worth telling docx4j-25. No producer writes the shape.
 
-**The Word check (not yet checked).** Three files are in `out/cr012-a2-records-word-check/`, with
+**The Word check (passed 2026-10-22).** Three files are in `out/cr012-a2-records-word-check/`, with
 a `README.txt` saying, for each, the source, what was done and what Word should show. They are also
 copied to `~/vbShares/Office 2016/__tmp/python-cr012a2-records/`.
 
@@ -1653,4 +1653,6 @@ The three files:
   Fallback's row keeps `w:cantSplit`, and has no record.
 
 Expected: each opens with no repair prompt and no tracked change, and shows the Choice's cell, `C`:
-red in file 1, plain in files 2 and 3. `F` is not shown. **Not yet checked.**
+red in file 1, plain in files 2 and 3. `F` is not shown. **Passed on 2026-10-22** (the user: "the
+Word check of __tmp/python-cr012a2-records/ passes"): all three open with no repair prompt and show
+what the README says.

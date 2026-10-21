@@ -405,6 +405,18 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > All three open with no repair prompt and no tracked change. Each shows one cell spanning both
 > columns. The eleven artefacts are canonically unchanged by the port.
 
+> **2026-10-22, Word check of CR-012's table records port passed** (the user: "the Word check of
+> __tmp/python-cr012a2-records/ passes"). The port of docx4j `901a922a3` reads a table's property
+> records through every branch. Three saves of `tests/revisions/test_alternate_content.py`'s
+> shapes, with bordered tables, are staged in `out/cr012-a2-records-word-check/` with a README
+> (CR-012 section 10.11):
+> - a `w:tcPrChange` in each branch's cell, accepted;
+> - the same, rejected;
+> - a `w:trPrChange` on the Fallback's row alone, accepted.
+>
+> All three open with no repair prompt and no tracked change, and show the Choice's cell, `C`. The
+> eleven artefacts are canonically unchanged by the port.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
