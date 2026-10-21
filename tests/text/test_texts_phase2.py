@@ -726,3 +726,178 @@ def test_an_embedded_documents_hidden_text_under_hidden():
     inspect = load(PHASE0 / "extraction-probe-inspect.docx")
     assert "EMB63_VISIBLE" in text(inspect, embedded=True) and "EMB63_HIDDEN" not in text(inspect, embedded=True)
     assert "EMB63_HIDDEN" in text(inspect, embedded=True, hidden=True)
+
+
+# ---------------------------------------------------------------------------
+# fields: update (REQ-506)
+# ---------------------------------------------------------------------------
+
+
+def complex_field(instr: str, cached: str, locked: bool = False) -> str:
+    return (
+        f'<w:r><w:fldChar w:fldCharType="begin"{" w:fldLock=\"1\"" if locked else ""}/></w:r>'
+        f'<w:r><w:instrText xml:space="preserve"> {instr} </w:instrText></w:r>'
+        f'<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{cached}</w:t></w:r>'
+        '<w:r><w:fldChar w:fldCharType="end"/></w:r>'
+    )
+
+
+def fields_package():
+    body = (
+        f"<w:p>{complex_field('DOCPROPERTY Client', 'old client')}</w:p>"
+        '<w:p><w:fldSimple w:instr=" TITLE \\* Upper "><w:r><w:t>old title</w:t></w:r></w:fldSimple></w:p>'
+        f"<w:p>{complex_field('DOCVARIABLE v', 'old var')}</w:p>"
+        f"<w:p>{complex_field('SEQ Figure', '9')}{complex_field('SEQ Figure', '9')}{complex_field('SEQ Figure \\r 7', '9')}"
+        f"{complex_field('SEQ Figure \\c', '9')}</w:p>"
+        f"<w:p>{complex_field('REF later \\h', 'old ref')}</w:p>"
+        f"<w:p>{complex_field('QUOTE \"quoted words\"', 'old quote')}</w:p>"
+        f"<w:p>{complex_field('DATE \\@ \"d MMMM yyyy\"', '1 January 2000')}</w:p>"
+        f"<w:p>{complex_field('DOCPROPERTY Client', 'locked', locked=True)}</w:p>"
+        '<w:p><w:bookmarkStart w:id="0" w:name="later"/><w:r><w:t>Target text</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>'
+    )
+    return (
+        MiniDocx.body(body)
+        .part(
+            "settings.xml",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
+            "rIdSettings",
+            f'<w:settings {NS}><w:docVars><w:docVar w:name="v" w:val="Var value"/></w:docVars></w:settings>',
+        )
+        .package_part(
+            "docProps/core.xml",
+            "application/vnd.openxmlformats-package.core-properties+xml",
+            "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
+            "rIdCore",
+            '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+            'xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Probe title</dc:title></cp:coreProperties>',
+        )
+        .package_part(
+            "docProps/custom.xml",
+            "application/vnd.openxmlformats-officedocument.custom-properties+xml",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties",
+            "rIdCustom",
+            '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" '
+            'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
+            '<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="Client"><vt:lpwstr>Acme</vt:lpwstr>'
+            "</property></Properties>",
+        )
+        .load()
+    )
+
+
+def test_fields_update():
+    """REQ-506: cached results by default; under fields: update, the fields that need neither layout nor fetching recomputed."""
+    pkg = fields_package()
+    assert text(pkg) == "old client\nold title\nold var\n9999\nold ref\nold quote\n1 January 2000\nlocked\nTarget text\n"
+    before = pkg.save()
+    r = extract(pkg, fields="update")
+    assert plain_text(r) == "Acme\nPROBE TITLE\nVar value\n1277\nTarget text\nquoted words\n1 January 2000\nlocked\nTarget text\n"
+    assert r.blocks[0].fields[0].updated and r.blocks[0].fields[0].result == "Acme"
+    assert not r.blocks[6].fields[0].updated
+    assert not r.blocks[7].fields[0].updated
+    assert pkg.save() == before  # REQ-204
+
+
+def test_a_computed_fields_cached_result_is_not_read():
+    """REQ-506: a REF whose cached result holds a note reference and a nested field writes the bookmark's text alone."""
+    pkg = (
+        MiniDocx.body(
+            '<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+            '<w:r><w:instrText xml:space="preserve"> REF b \\h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+            '<w:r><w:t>Old</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r><w:fldSimple w:instr=" DOCPROPERTY Client "/>'
+            '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+            '<w:p><w:bookmarkStart w:id="0" w:name="b"/><w:r><w:t>Target</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r>'
+            '<w:bookmarkEnd w:id="0"/></w:p>'
+        )
+        .footnotes(
+            '<w:footnote w:id="1"><w:p><w:r><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> NOTE_ONE</w:t></w:r>'
+            "</w:p></w:footnote>"
+        )
+        .load()
+    )
+    assert text(pkg) == "Old[1]\nTarget[1]\n[1] NOTE_ONE\n"
+    r = extract(pkg, fields="update")
+    assert plain_text(r) == "Target\nTarget[1]\n[1] NOTE_ONE\n"
+    first = r.blocks[0]
+    assert all(run.kind != "NOTE_REFERENCE" for run in first.runs)
+    assert len(first.fields) == 1 and first.fields[0].updated
+    assert not [w for w in r.warnings if w.kind == TextWarning.FIELD_NO_RESULT]
+    codes = extract(pkg, fields="update", field_codes=True)
+    assert "".join(run.text for run in codes.blocks[0].runs if run.kind == "FIELD_CODE") == " REF b \\h "
+
+
+def test_ref_on_the_part_route():
+    """REQ-506 on a part's route, which has no first reading: a REF after its bookmark computed, one before it cached."""
+    ref = (
+        '<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> REF b \\h </w:instrText>'
+        '</w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/>'
+        "</w:r></w:p>"
+    )
+    bookmark = '<w:p><w:bookmarkStart w:id="0" w:name="b"/><w:r><w:t>Target</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>'
+    after = MiniDocx.body(bookmark + ref).load()
+    assert plain_text(extract(after.main_document_part, fields="update")) == "Target\nTarget\n"
+    before = MiniDocx.body(ref + bookmark).load()
+    assert plain_text(extract(before.main_document_part, fields="update")) == "Old\nTarget\n"
+    assert plain_text(extract(before, fields="update")) == "Target\nTarget\n"
+
+
+def test_the_main_parts_route_reads_its_story_alone(probe):
+    """docx4j ``Texts.of(Part)``: the main story and its text boxes, addressed body; no notes; no first reading."""
+    r = extract(probe.main_document_part)
+    assert r.blocks[0].address == "body/0" and all(b.story in ("MAIN", "TEXT_BOX", "SMARTART") for b in r.blocks)
+    assert "FN27_NOTE_TEXT" not in plain_text(r)
+    header = next(iter(probe.main_document_part.header_parts()))
+    h = extract(header)
+    assert h.blocks and h.blocks[0].address.startswith("header:rId") and h.blocks[0].story == "HEADER"
+
+
+FORMTEXT = PHASE0.parent / "formtext"
+
+
+def test_formtext_as_word_updates_it():
+    """REQ-506: FORMTEXT under fields: update as Word's update leaves it, Word's own save after F9 the oracle."""
+    before = load(FORMTEXT / "cr046-formtext-unprotected.docx")
+    word = load(FORMTEXT / "cr046-formtext-unprotected-after-f9.docx")
+    ours = text(before, fields="update")
+    words = text(word)
+    a, b = "A: typed over a default: FT_DEFAULT\n", "B: typed, no default:      \n"
+    assert words.startswith(a + b)
+    assert ours.startswith(a + b)  # C, a formula, is not computed
+    typed = "A: typed over a default: FT_TYPED\nB: typed, no default: FT_TYPED_NO_DEFAULT\n"
+    assert text(before).startswith(typed)
+    protected = load(FORMTEXT / "cr046-formtext-protected-update-on-open.docx")
+    assert text(protected, fields="update").startswith(typed)
+
+
+# ---------------------------------------------------------------------------
+# REQ-204: with every option on, the package is as it was
+# ---------------------------------------------------------------------------
+
+EVERYTHING = {
+    "fields": "update",
+    "embedded": True,
+    "metadata": True,
+    "alt_text": True,
+    "include": "headers, footers, comments, glossary",
+    "tables": "grid",
+    "page_markers": True,
+    "layout": "indent",
+    "hidden": True,
+    "list_labels": True,
+    "field_codes": True,
+}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [PROBE, EXTERNAL, PHASE0 / "extraction-probe-structure.docx", PHASE0 / "extraction-probe-inspect.docx"],
+    ids=lambda p: p.name,
+)
+def test_with_every_option_the_package_is_unchanged(path):
+    package = load(path)
+    before = package.save()
+    for view in ("accepted", "original", "markup"):
+        extract(package, view=view, **EVERYTHING)
+    assert not package.main_document_part.is_unmarshalled
+    assert package.save() == before

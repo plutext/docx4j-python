@@ -24,7 +24,14 @@ from __future__ import annotations
 
 from docx4j_py.model.chart.chartex import ChartExModel
 from docx4j_py.model.chart.description import ChartDescription
-from docx4j_py.model.chart.model import ChartAxis, ChartData, ChartGroup, ChartModel, ChartSeries, ChartTitle
+from docx4j_py.model.chart.model import (
+    ChartAxis,
+    ChartData,
+    ChartGroup,
+    ChartModel,
+    ChartSeries,
+    ChartTitle,
+)
 from docx4j_py.model.chart.table import ChartTable
 
 __all__ = [

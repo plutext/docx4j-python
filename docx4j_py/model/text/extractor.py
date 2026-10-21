@@ -49,7 +49,9 @@ is read after its anchor (REQ-512), each one level down
 (:meth:`Extractor.read_nested`); the glossary comes last under ``include:
 glossary`` (REQ-516).
 
-Not yet (CR-011 Phase C): fields computed under ``fields: update``.
+Under ``fields: update`` the fields that need neither layout nor fetching are
+computed in the walk (REQ-506; docx4j's ``FieldValues`` and its first reading
+for REF's bookmarks), and a FORMTEXT is as Word's update leaves it.
 """
 
 from __future__ import annotations
@@ -229,9 +231,12 @@ class _Field:
     __slots__ = (
         "code_block",
         "code_start",
+        "computed",
+        "ff_data",
         "floor_paragraph",
         "instr",
         "link",
+        "locked",
         "previous_floor",
         "result",
         "separated",
@@ -242,6 +247,12 @@ class _Field:
         self.instr = ""
         self.result = ""
         self.separated = False
+        #: ``w:fldLock`` on its beginning: never recomputed (REQ-506).
+        self.locked = False
+        #: Its result computed under ``fields: update`` (REQ-506): the cached result's text is not read.
+        self.computed: str | None = None
+        #: A form field's data, on its beginning: a FORMTEXT's default text (REQ-506).
+        self.ff_data: Any = None
         #: A HYPERLINK field's target, once its code is read.
         self.link: str | None = None
         #: A table of contents under ``toc: false`` (docx4j D12): nothing of it is read.
@@ -250,6 +261,17 @@ class _Field:
         self.code_start = 0
         self.floor_paragraph: _Paragraph | None = None
         self.previous_floor = 0
+
+
+class _Bookmark:
+    """A bookmark open in the walk: its name, and its text so far (REQ-506's REF)."""
+
+    __slots__ = ("name", "paragraph_ended", "text")
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.text: list[str] = []
+        self.paragraph_ended = False
 
 
 class _RunState:
@@ -466,9 +488,8 @@ class _SmartArt(_Anchored):
         self.part = part
 
     def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
-        from docx4j_py.model.text.drawings import smart_art
-
         from docx4j_py.model.chart.model import root_tag
+        from docx4j_py.model.text.drawings import smart_art
 
         try:
             if root_tag(self.part) != _DGM_DATA_MODEL:
@@ -571,6 +592,12 @@ class Extractor:
         #: The ``w:lastRenderedPageBreak``\ s of the main story so far (REQ-708).
         self.page_markers = 0
         self._bound_values: Any = None
+        self._field_values: Any = None
+        #: The first reading under ``fields: update`` keeps its bookmarks' text for REF.
+        self.collect_bookmarks = False
+        self.bookmark_texts: dict[str, str] = {}
+        self._open_bookmarks: dict[str, _Bookmark] = {}
+        self._forms_protected: bool | None = None
 
     # -- the package ----------------------------------------------------------
 
@@ -586,6 +613,8 @@ class Extractor:
         body = self.trees.body
         if body is None:
             return TextResult(out, comments, self.warnings, metadata, self.options)
+        if self.options.fields == "update" and not self.resolved:
+            self._first_reading()
         story = _Story("MAIN", self.root + "body", self.trees.main, self.context.numbering_states.main)
         story.sections = []
         main_blocks: list[TextBlock] = []
@@ -606,6 +635,95 @@ class Extractor:
         if self.comments_included():
             self._comments(comments)
         return TextResult(out, comments, self.warnings, metadata, self.options)
+
+    # -- fields: update (REQ-506) --------------------------------------------------------
+
+    def _first_reading(self) -> None:
+        """The bookmarks' text for REF, from a reading of the document with its cached results (a REF may come first)."""
+        options = self.options.copy()
+        options.fields = "cached"
+        options.embedded = False
+        options.altchunks = False
+        first = Extractor(self.trees, options)
+        first.nested = True
+        first.collect_bookmarks = True
+        first.extract()
+        self.field_values().bookmarks.update(first.bookmark_texts)
+
+    def field_values(self) -> Any:
+        if self._field_values is None:
+            from docx4j_py.model.text.field_values import FieldValues
+
+            self._field_values = FieldValues(self.trees.package)
+        return self._field_values
+
+    def _update(self, f: _Field) -> str | None:
+        """A field's result under ``fields: update``, or None to keep its cached one (REQ-506)."""
+        if self.options.fields != "update" or f.locked or self.trees.document is None:
+            return None
+        instr = f.instr.strip()
+        if f.ff_data is not None and instr[:8].upper() == "FORMTEXT":
+            return self._form_text(f.ff_data)
+        return self.field_values().compute(instr)
+
+    def _form_text(self, ff_data: Any) -> str | None:
+        """A FORMTEXT's result under ``fields: update``, as Word's update gives it (measured in Word, docx4j CR-046).
+
+        Its default text, or five en spaces where it has none, replacing what
+        was typed; but in a document protected for filling in forms Word keeps
+        what was typed, and so does this (None). None too for a text input that
+        isn't regular text or has a format, which Word's update hasn't been
+        seen to treat.
+        """
+        if self._is_forms_protected():
+            return None
+        text_input = next(
+            (c for c in getattr(ff_data, "content", None) or () if type(c).__name__ == "CTFFTextInput"), None
+        )
+        if text_input is None:
+            return None
+        kind = _v(getattr(text_input.type_value, "val", None)) if text_input.type_value is not None else None
+        if kind is not None and kind != "regular":
+            return None
+        fmt = getattr(text_input.format, "val", None) if text_input.format is not None else None
+        if fmt:
+            return None
+        default = getattr(text_input.default, "val", None) if text_input.default is not None else None
+        return default if default else EMPTY_FORM_FIELD
+
+    def _is_forms_protected(self) -> bool:
+        """``w:documentProtection w:edit="forms"``, enforced (the attribute as written)."""
+        if self._forms_protected is None:
+            settings = self.trees.settings
+            protect = getattr(settings, "document_protection", None) if settings is not None else None
+            self._forms_protected = (
+                protect is not None and _v(protect.edit) == "forms" and protect.enforcement in (True, "1", "true", "on")
+            )
+        return self._forms_protected
+
+    def _bookmark(self, item: Any) -> None:
+        """A bookmark's start or end, for REF under ``fields: update`` (REQ-506)."""
+        if self.options.fields != "update" and not self.collect_bookmarks:
+            return
+        name = _local(item)
+        bookmark_id = _attr(item, "id")
+        if bookmark_id is None:
+            return
+        if name == "bookmarkStart":
+            bookmark_name = _attr(item, "name")
+            if bookmark_name is not None:
+                self._open_bookmarks[str(bookmark_id)] = _Bookmark(str(bookmark_name))
+            return
+        found = self._open_bookmarks.pop(str(bookmark_id), None)
+        if found is None:
+            return
+        key = found.name.lower()
+        text = "".join(found.text)
+        if self.collect_bookmarks:
+            self.bookmark_texts[key] = text
+        # for a later REF, on every route (a part's or content's has no first reading)
+        if self.options.fields == "update" and self.trees.document is not None:
+            self.field_values().bookmarks[key] = text
 
     # -- the glossary (REQ-516) ------------------------------------------------------
 
@@ -670,17 +788,25 @@ class Extractor:
             b.section = section
         sink.extend(blocks)
 
-    def extract_content(self, content: Any, part: Any) -> TextResult:
-        """Content in the package (a paragraph, a table, a body) as the main story, addressed ``content``."""
+    def extract_content(self, content: Any, part: Any, prefix: str = "content", kind: str = "MAIN") -> TextResult:
+        """Content in the package (a paragraph, a table, a body, a story part's root) as one story.
+
+        Addressed ``content`` by default; a story part's own prefix (``body``,
+        ``header:rId4``) for a part's reading, docx4j's ``Texts.of(Part)``.
+        There is no first reading under ``fields: update``: a REF is computed
+        only when its bookmark comes before it.
+        """
         out: list[TextBlock] = []
         comments: dict[str, TextComment] = {}
         state = self.context.numbering_states.for_part(part) if part is not None else self.context.numbering_states.main
-        story = _Story("MAIN", "content", part, state)
+        story = _Story(kind, prefix, part, state)
         items = rtrees.block_items(content)
+        if items is None and getattr(content, "body", None) is not None:
+            items = content.body.content  # a w:document
         if items is not None and not isinstance(content, rtrees.cls("P")):
-            self.blocks(items, "content", story, out)
+            self.blocks(items, prefix, story, out)
         else:
-            self.blocks([content], "content", story, out)
+            self.blocks([content], prefix, story, out)
         if self.comments_included():
             self._comments(comments)
         metadata = {TextResult.FIELDS_UPDATE_ON_OPEN: self._fields_update_on_open()}
@@ -742,6 +868,8 @@ class Extractor:
                 self.blocks(rtrees.children(item), address, story, sink, state)
             elif _local(item) == "altChunk":
                 self._alt_chunk(item, address, story, sink)
+            elif _local(item) in ("bookmarkStart", "bookmarkEnd"):
+                self._bookmark(item)
             elif _local(item) == "sdt":
                 bound = self._bound(item, address)
                 if bound is not None:
@@ -796,6 +924,8 @@ class Extractor:
                 toc = True
             if para.monospace is not None:
                 monospace = para.monospace if monospace is None else (monospace and para.monospace)
+        for open_bookmark in self._open_bookmarks.values():
+            open_bookmark.paragraph_ended = True
         block.monospace = monospace is True
         self._properties(block, last)
         mark_hidden = self._is_hidden_mark(p_pr)
@@ -1034,6 +1164,8 @@ class Extractor:
                 if placeholder and not self.options.placeholders:
                     continue
                 self.runs(rtrees.run_items(item), para, state.with_placeholder() if placeholder else state)
+            elif _local(item) in ("bookmarkStart", "bookmarkEnd"):
+                self._bookmark(item)
             elif _local(item) == "fldSimple":
                 self._simple_field(item, para, state)
             elif rtrees.is_math(item):
@@ -1095,6 +1227,8 @@ class Extractor:
             kind = _v(_attr(item, "fldCharType")) if is_any_element(item) else _v(getattr(item, "fld_char_type", None))
             if kind == "begin":
                 f = _Field()
+                f.locked = _written(item, "fld_lock", "fldLock")
+                f.ff_data = _ff_data(item)
                 f.code_block = para.block
                 f.code_start = len(para.block.runs)
                 if not self.options.toc and self.options.field_codes:
@@ -1111,8 +1245,14 @@ class Extractor:
                         f.toc = True
                         para.toc = True
                         _remove_field_code(f, para)
+                        return
+                    value = None if _suppressed(story) else self._update(f)
+                    if value is not None:
+                        self._text(para, value, hidden, state)
+                        f.computed = value  # the cached result that follows is not read
             elif kind == "end" and fields:
                 f = fields.pop(0)
+                # a field inside a computed field's cached result is not read, nor recorded
                 if _suppressed(story):
                     return
                 if f.toc or (not self.options.toc and is_toc_field(f.instr)):
@@ -1120,7 +1260,15 @@ class Extractor:
                         _remove_field_code(f, para)
                     para.toc = True
                     return
-                self._end_field(f.instr, f.result if f.separated else None, para)
+                if not f.separated:
+                    value = self._update(f)
+                    if value is not None:
+                        self._text(para, value, hidden, state)
+                        f.computed = value
+                if f.computed is not None:
+                    para.block.fields.append(TextField(f.instr, f.computed, True))
+                else:
+                    self._end_field(f.instr, f.result if f.separated else None, para)
             return
         if name in ("instrText", "delInstrText"):
             if name == "delInstrText" and not state.kept and state.revision is None and self.view == "accepted":
@@ -1239,6 +1387,11 @@ class Extractor:
         if not (hidden and not self.options.hidden):
             for f in story.fields:
                 f.result += value
+            for open_bookmark in self._open_bookmarks.values():
+                if open_bookmark.paragraph_ended and open_bookmark.text:
+                    open_bookmark.text.append("\n")
+                open_bookmark.paragraph_ended = False
+                open_bookmark.text.append(value)
         self._add_text(para, value, "TEXT", hidden, state, source)
 
     def _add_text(
@@ -1303,6 +1456,18 @@ class Extractor:
             return
         if self.options.field_codes and not _in_code(story):
             self._add_text(para, instr, "FIELD_CODE", False, state)
+        if (
+            self.options.fields == "update"
+            and not _written(field_, "fld_lock", "fldLock")
+            and self.trees.document is not None
+            and not _in_code(story)
+            and not _suppressed(story)
+        ):
+            value = self.field_values().compute(instr)
+            if value is not None:
+                self._text(para, value, False, state)
+                para.block.fields.append(TextField(instr, value, True))
+                return
         before = len(para.block.runs)
         capture = _Field()
         capture.separated = True
@@ -2187,8 +2352,33 @@ def _in_code(story: _Story) -> bool:
 
 
 def _suppressed(story: _Story) -> bool:
-    """Inside a table of contents left out."""
-    return any(f.toc for f in story.fields)
+    """Inside the cached result of a field whose result was computed (REQ-506), or a table of contents left out.
+
+    Nothing there is read: text, note and comment references, pictures, page
+    markers, field codes and nested fields alike.
+    """
+    return any(f.toc or f.computed is not None for f in story.fields)
+
+
+#: What Word's update writes in a FORMTEXT with no default text: five en spaces (measured).
+EMPTY_FORM_FIELD = "\u2002" * 5
+
+
+def _written(item: Any, field_name: str, attribute: str) -> bool:
+    """An on/off attribute as written, false when absent (``w:fldLock``)."""
+    value = (item.attributes or {}).get(f"{_W}{attribute}") if is_any_element(item) else getattr(item, field_name, None)
+    return value in (True, 1, "1", "true", "on")
+
+
+def _ff_data(fld_char: Any) -> Any:
+    """A ``w:fldChar``'s ``w:ffData``, or None."""
+    if is_any_element(fld_char):
+        return None
+    found = getattr(fld_char, "fld_data_or_ff_data_or_numbering_change", None)
+    for item in found if isinstance(found, list) else (found,):
+        if type(item).__name__ == "CTFFData":
+            return item
+    return None
 
 
 def _in_toc(story: _Story) -> bool:

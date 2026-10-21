@@ -111,6 +111,14 @@ class PackageTrees:
         found = self.related(self.main, rel_id)
         return None if found is None else self.headers_footers.get(id(_real(found)))
 
+    def relationship_id(self, part: Any) -> str:
+        """The id of the main part's relationship to `part`; its name where there is none (docx4j ``Texts.rId``)."""
+        rels = getattr(self.main, "relationships_part", None) if self.main is not None else None
+        for rel in getattr(rels, "list", None) or ():
+            if _real(self.related(self.main, rel.id)) is _real(part):
+                return rel.id
+        return str(part.part_name)
+
     def related(self, part: Any, rel_id: str | None) -> Any:
         """The part a relationship of `part` names, or None."""
         if part is None or not rel_id:

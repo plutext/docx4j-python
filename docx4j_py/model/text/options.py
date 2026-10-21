@@ -93,13 +93,13 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
     "layout": (("none", "indent"), "REQ-709"),
 }
 
-#: The values accepted and not yet acted on, with their statements: CR-011
-#: Phase C's content (section 6). Each is read as its option's default until
-#: then, documented here as REQ-1001 asks rather than refused, since a refusal
-#: would fail checks of the suite that the default's text meets.
-NOT_YET: dict[tuple[str, Any], str] = {
-    ("fields", "update"): "REQ-506",
-}
+#: The values accepted and not yet acted on, with their statements. Empty since
+#: CR-011 Phase C (section 13), which acts on each of section 10's values but the
+#: two refused (:meth:`TextOptions.check_implemented`); kept, and
+#: :meth:`TextOptions.not_yet`, so that a value added to section 10 before it is
+#: implemented has a place to be named (REQ-1001: "document any it does not
+#: implement").
+NOT_YET: dict[tuple[str, Any], str] = {}
 
 
 class TextOptionError(Docx4JException):
@@ -165,8 +165,8 @@ class TextOptions:
     docx4j refuses them: ``math: unicodemath`` (no OMML to UnicodeMath
     converter) and ``symbols: unicode`` (no glyph tables).
 
-    **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update`` is
-    accepted and read as its default.
+    Beyond section 10, ``image_describer`` (REQ-514): what gives an image its
+    description, the author's alt text by default.
     """
 
     __slots__ = (

@@ -227,6 +227,9 @@ def rich_text(body: Any) -> str:
     return "\n".join(text(p) for p in getattr(body, "p", None) or ())
 
 
+_AXIS_KINDS = {"CTCatAx": "CATEGORY", "CTValAx": "VALUE", "CTDateAx": "DATE", "CTSerAx": "SERIES"}
+
+
 @dataclass(slots=True, eq=False)
 class ChartAxis:
     """An axis. docx4j ``ChartAxis``."""
@@ -244,11 +247,9 @@ class ChartAxis:
     #: ``c:crossAx``.
     cross_axis_id: int | None = None
 
-    _KINDS = {"CTCatAx": "CATEGORY", "CTValAx": "VALUE", "CTDateAx": "DATE", "CTSerAx": "SERIES"}
-
     @classmethod
     def of(cls, axis: Any) -> ChartAxis | None:
-        kind = cls._KINDS.get(type(axis).__name__)
+        kind = _AXIS_KINDS.get(type(axis).__name__)
         if kind is None:
             return None
         ax_id = _val(axis.ax_id)
@@ -422,7 +423,6 @@ class ChartModel:
         chart = getattr(chart_space, "chart", None)
         groups: list[ChartGroup] = []
         axes: list[ChartAxis] = []
-        title = None
         if chart is not None:
             plot_area = chart.plot_area
             if plot_area is not None:

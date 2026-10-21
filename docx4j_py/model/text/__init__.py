@@ -59,12 +59,14 @@ exemption for a reader of an emulated API). Each :class:`TextRun` records
 where its text lies in its paragraph's ``get_text()`` (``office_offset``), so
 the two map onto each other. ``get_text(view="markup")`` is this model's.
 
-**Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
-fields computed under ``fields: update``. Deferred (CR-011 Q7): embedded
-SpreadsheetML and PresentationML packages and OLE 1.0 packages, which under
-``embedded: true`` raise ``content.not_read``; and the HTML reader (Q12, Q13),
-without which an HTML, XHTML or MHT ``altChunk`` raises
-``altchunk.not_expanded``.
+Under ``fields: update`` (REQ-506) the fields that need neither layout nor
+fetching are computed (:mod:`docx4j_py.model.fields`), and a FORMTEXT is as
+Word's update leaves it.
+
+**Deferred** (CR-011 Q7): embedded SpreadsheetML and PresentationML packages
+and OLE 1.0 packages, which under ``embedded: true`` raise
+``content.not_read``; and the HTML reader (Q12, Q13), without which an HTML,
+XHTML or MHT ``altChunk`` raises ``altchunk.not_expanded``.
 
 Imported on first use: ``import docx4j_py`` does not import it.
 """
@@ -74,7 +76,12 @@ from __future__ import annotations
 from typing import Any
 
 from docx4j_py.model.text.extractor import normalize
-from docx4j_py.model.text.images import ImageDescriber, ImageDescription, TextImage, alt_text_describer
+from docx4j_py.model.text.images import (
+    ImageDescriber,
+    ImageDescription,
+    TextImage,
+    alt_text_describer,
+)
 from docx4j_py.model.text.options import (
     NOT_YET,
     OPTION_NAMES,
@@ -143,8 +150,10 @@ def extract(
     """The text of a package, or of content in one, in the block model. docx4j ``Texts.of``.
 
     Args:
-        target: a ``WordprocessingMLPackage`` (REQ-501's scope); a header or
-            footer part, or the main document part, of one; a content API
+        target: a ``WordprocessingMLPackage`` (REQ-501's scope); a story
+            part of one, read as docx4j's ``Texts.of(Part)`` reads it (the
+            main document part, its story and text boxes addressed ``body``
+            and no notes; a header or a footer, ``header:rId4``); a content API
             view (``Body``, ``Paragraph``, ``Table``); or a model object of a
             package's tree (a ``w:p``, a ``w:tbl``, a ``w:body``) with
             `package`. Content is read as the main story in the package's
@@ -177,17 +186,21 @@ def extract(
         body = target.parent_body
         content, part, owner = target.element, body.part, owner or body.package
     elif hasattr(target, "contents") and hasattr(target, "part_name"):
-        # a part: the main document part, a header or a footer
+        # a story part, docx4j's Texts.of(Part): the main document part (its story and its text
+        # boxes, addressed body; no notes), a header or a footer (header:rId4); no first reading
         owner = owner or _package_of(target)
         if owner is None:
             raise TypeError(f"{target.part_name} belongs to no package; read its content with extract(content)")
-        if target is getattr(owner, "main_document_part", None):
-            return Extractor(PackageTrees(owner), opts).extract()
         trees = PackageTrees(owner)
+        if target is getattr(owner, "main_document_part", None):
+            return Extractor(trees, opts).extract_content(trees.document, target, "body", "MAIN")
         found = trees.headers_footers.get(id(target))
         if found is None:
             raise TypeError(f"not a story part: {target.part_name}; use extract(package)")
-        content, part = found[1], target
+        rel_id = trees.relationship_id(target)
+        kind = "HEADER" if type(target).__name__ == "HeaderPart" else "FOOTER"
+        prefix = f"{kind.lower()}:{rel_id}"
+        return Extractor(trees, opts).extract_content(found[1], target, prefix, kind)
     # content with no package is read as it stands: no styles, and in the
     # accepted and original views run-level revisions only (no join, no move)
     trees = PackageTrees(owner)

@@ -253,7 +253,7 @@ class OmmlToLatex:
                     if wml_r_pr is None:
                         wml_r_pr = getattr(u, "schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr", None)
                     collect(u.content)
-                elif isinstance(u, c["CTText"]) or isinstance(u, c["texts"]):
+                elif isinstance(u, (c["CTText"], *c["texts"])):
                     if u.value:
                         text.append(u.value)
                 # other run content (breaks and the like) is dropped
