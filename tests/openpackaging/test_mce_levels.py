@@ -1154,3 +1154,40 @@ def test_a_corrupt_part_still_raises_in_word_mode():
     pkg = made.load("word")
     with pytest.raises((Docx4JException, etree.XMLSyntaxError)):
         assert pkg.main_document_part.contents is not None
+
+
+def _branch_warnings(pkg: Any) -> list[tuple[str | None, str | None]]:
+    from docx4j_py.model.text import TextOptions
+
+    options = TextOptions().include("headers", "footers", "comments", "glossary")
+    result = extract(pkg, options)
+    return sorted(
+        (w.address, w.branch)
+        for w in result.warnings
+        if w.kind == "mce.branches_differ"
+    )
+
+
+@pytest.mark.parametrize(
+    "stem", [s for s in PROBES if "row" not in s and "cell" not in s]
+)
+def test_the_text_models_warnings_are_the_same_in_both_modes_on_the_probes(
+    stem: str,
+) -> None:
+    """docx4j McBlockLevelReadersTest: in word mode the warning is raised from the record, where preserve mode raises it."""
+    assert _branch_warnings(probe(stem, "word")) == _branch_warnings(
+        probe(stem, "preserve")
+    )
+
+
+@pytest.mark.parametrize(
+    "name", [name for name, case in CASES.items() if case[0] == "block"]
+)
+def test_the_text_models_warnings_are_the_same_in_both_modes_in_every_block_container(
+    name: str,
+) -> None:
+    _kind, made, _part_of, _content_of = CASES[name]
+    preserve = _branch_warnings(made().load("preserve"))
+    assert _branch_warnings(made().load("word")) == preserve
+    assert len(preserve) == 1, preserve
+    assert preserve[0][1] == 'mc:Choice Requires="w14"'

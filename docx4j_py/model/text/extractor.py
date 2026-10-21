@@ -583,6 +583,9 @@ class Extractor:
         self._warned: set[tuple[Any, ...]] = set()
         self._style_rpr: dict[tuple[Any, Any], Any] = {}
         self._typed: dict[int, Any] = {}
+        #: CR-012 Phase A: by part, the elements a ``word``-mode load took out, by the
+        #: ``id`` of the content list they stood in and their index there.
+        self._resolved: dict[int, dict[int, dict[int, Any]]] = {}
         #: What every address this reading makes starts with: empty, or an
         #: embedded package's or a chunk's address and a slash.
         self.root = ""
@@ -829,10 +832,15 @@ class Extractor:
         if not items:
             return
         p_class, tbl_class = rtrees.cls("P"), rtrees.cls("Tbl")
+        resolved = self._resolved_in(story, items)
         i = 0
         n = len(items)
         while i < n:
             item = items[i]
+            if resolved and i in resolved:
+                # a word-mode load took an element out here: its branches compared from the
+                # record, at the address the element has in preserve mode (CR-012 Phase A)
+                self._compare_branches(resolved[i], f"{prefix}/{i}")
             if isinstance(item, str) or self.removes(item):
                 i += 1
                 continue
@@ -1818,6 +1826,26 @@ class Extractor:
 
     # -- markup compatibility: REQ-307 ----------------------------------------------
 
+    def _resolved_in(self, story: _Story, items: list) -> dict[int, Any] | None:
+        """The elements a ``word``-mode load took out of this list, by index; None where it took none.
+
+        docx4j ``Extractor.blocks`` over ``getResolvedAlternateContent()`` (its
+        CR-051 section 11.2): each record's address is resolved once, in the
+        part's tree, to the content list the element stood in, so that
+        ``mce.branches_differ`` is raised in ``word`` mode where ``preserve``
+        mode raises it. A record whose address no longer resolves (the tree was
+        edited since) is passed by.
+        """
+        part = getattr(story, "part", None)
+        records = getattr(part, "resolved_alternate_content", None)
+        if not records:
+            return None
+        found = self._resolved.get(id(part))
+        if found is None:
+            found = self._resolved[id(part)] = _resolved_lists(part, records)
+        return found.get(id(items))
+
+
     def _compare_branches(self, ac: Any, address: str) -> None:
         """``mce.branches_differ`` (REQ-307): the selected branch and another both hold text, and they differ.
 
@@ -2590,3 +2618,77 @@ def _math_text(value: Any, keep: Any) -> str:
     visit(value, 0)
     return "".join(out)
 
+
+
+# ---------------------------------------------------------------------------
+# a word-mode load's records (CR-012 Phase A)
+# ---------------------------------------------------------------------------
+
+#: The property elements a record's address leaves out of a content index.
+_PROPERTY_NAMES = frozenset(
+    f"{{{rtrees.W_NS}}}{local}"
+    for local in (
+        "pPr",
+        "rPr",
+        "tblPr",
+        "tblGrid",
+        "tblPrEx",
+        "trPr",
+        "tcPr",
+        "sdtPr",
+        "sdtEndPr",
+        "customXmlPr",
+        "smartTagPr",
+        "sectPr",
+    )
+)
+
+
+def _resolved_lists(part: Any, records: list) -> dict[int, dict[int, Any]]:
+    """``id`` of the content list each record's element stood in -> its index there -> the element."""
+    from docx4j_py.namespaces import NAMESPACE_TO_PREFIX
+
+    out: dict[int, dict[int, Any]] = {}
+    try:
+        root = part.read_contents()
+    except Exception:  # noqa: BLE001 - a part that cannot be read has no records to read
+        return out
+    for record in records:
+        node = _at_address(root, record.address, NAMESPACE_TO_PREFIX)
+        items = getattr(node, "content", None) if node is not None else None
+        if isinstance(items, list):
+            out.setdefault(id(items), {})[record.index] = record.element
+    return out
+
+
+def _at_address(root: Any, address: str, prefixes: dict[str, str]) -> Any:
+    """The node a record's address names, from the part's root; None where the tree no longer has it."""
+    steps = address.split("/")
+    node = root
+    for step in steps[1:]:
+        name, _, rest = step.partition("[")
+        if not rest:
+            return None
+        index = int(rest.rstrip("]"))
+        children = [
+            (qname, child)
+            for qname, child in iter_children(node, mce="all", wildcards=True)
+            if qname not in _PROPERTY_NAMES
+        ]
+        if index >= len(children):
+            return None
+        qname, node = children[index]
+        if not (isinstance(qname, str) and qname.startswith("{")):
+            # a typed child of a wildcard field is reported under the field's name
+            from docx4j_py.traversal import element_name
+
+            qname = getattr(node, "qname", None) if is_any_element(node) else element_name(node)
+        if not isinstance(qname, str) or _prefixed(qname, prefixes) != name:
+            return None
+    return node
+
+
+def _prefixed(qname: str, prefixes: dict[str, str]) -> str:
+    uri, _, local = qname[1:].partition("}") if qname.startswith("{") else ("", "", qname)
+    prefix = prefixes.get(uri) if uri else None
+    return f"{prefix}:{local}" if prefix else local
