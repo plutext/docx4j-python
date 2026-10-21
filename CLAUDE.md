@@ -241,7 +241,10 @@ section 12.3.
   Reading `contents` marks a part for re-marshalling. There is no dirty tracking (docx4j's rule).
 - An unmarshalled part saved unchanged must be **canonically identical** to the source
   (`scripts/canon.py`'s prefix-insensitive normal form). The one tolerated category is
-  `boolean-spelling` (`1` against `true`). Every other difference category must be zero.
+  `boolean-spelling` (`1` against `true`). Every other difference category must be zero. The one
+  exception is a load in `LoadOptions(mc_block_level="word")` (CR-012 section 4.1 item 3): a part
+  holding a block-, row- or cell-level `mc:AlternateContent` is saved as Word's own save writes it,
+  the branches Word does not read gone. The default, `preserve`, keeps the rule.
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
   `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. Empty is
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
@@ -252,8 +255,15 @@ section 12.3.
 - MCE is lossless by default: both branches of `mc:AlternateContent` are kept as wildcard
   (`AnyElement`) trees, and traversal takes `mce="resolve"` (the default), `"all"` or `"none"`.
   `LoadOptions(mce_preprocess=True)` replaces each one with the branch Word would take, which is
-  the only way to get typed content such as `Drawing` inside a choice. `UNDERSTOOD` is generated
-  and deliberately narrower than the prefix table.
+  the only way to get typed content such as `Drawing` inside a choice. Since CR-012 Phase A (Q8),
+  it and `mc_block_level="word"` select over docx4j's published understood list
+  (`resources/understood-namespaces.txt`), matched by namespace URI, so they take the branch Word
+  365 takes. `UNDERSTOOD` is generated, deliberately narrower than the prefix table, and stays
+  the prefix table's own list.
+- Block-, row- and cell-level `mc:AlternateContent` (CR-012 Phase A): `LoadOptions(mc_block_level=
+  "preserve")`, the default, keeps the element whole. The readers read Word's branch at block
+  level, and an edit inside a kept branch is refused (`address.read_only`). `"word"` replaces it
+  on load with Word's branch and keeps what it took out in `part.resolved_alternate_content`.
 - `tests/openpackaging/test_round_trip.py` and `tests/test_roundtrip.py` hold these over the
   16-document corpus in `samples/` (docx4j fixtures, Apache-2.0). The known chart and
   spreadsheet-drawing `mc:AlternateContent` gap (CR-002 section 12.5) is pinned so that closing it
