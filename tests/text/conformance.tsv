@@ -525,17 +525,17 @@ extraction-probe.docx	37	RBY37_RUBY	accepted	default	PASS
 extraction-probe.docx	37	RBY37_RUBY	original	default	PASS	
 extraction-probe.docx	37	RBY37_RUBY	markup	default	PASS	
 extraction-probe.docx	38	PRP38_TITLE	accepted	default	PASS	
-extraction-probe.docx	38	PRP38_TITLE	accepted	metadata: true	FAIL	expected 1, got 0
+extraction-probe.docx	38	PRP38_TITLE	accepted	metadata: true	PASS	
 extraction-probe.docx	38	PRP38_TITLE	original	default	PASS	
-extraction-probe.docx	38	PRP38_TITLE	original	metadata: true	FAIL	expected 1, got 0
+extraction-probe.docx	38	PRP38_TITLE	original	metadata: true	PASS	
 extraction-probe.docx	38	PRP38_TITLE	markup	default	PASS	
-extraction-probe.docx	38	PRP38_TITLE	markup	metadata: true	FAIL	expected 1, got 0
+extraction-probe.docx	38	PRP38_TITLE	markup	metadata: true	PASS	
 extraction-probe.docx	38	PRP38_SUBJECT	accepted	default	PASS	
-extraction-probe.docx	38	PRP38_SUBJECT	accepted	metadata: true	FAIL	expected 1, got 0
+extraction-probe.docx	38	PRP38_SUBJECT	accepted	metadata: true	PASS	
 extraction-probe.docx	38	PRP38_SUBJECT	original	default	PASS	
-extraction-probe.docx	38	PRP38_SUBJECT	original	metadata: true	FAIL	expected 1, got 0
+extraction-probe.docx	38	PRP38_SUBJECT	original	metadata: true	PASS	
 extraction-probe.docx	38	PRP38_SUBJECT	markup	default	PASS	
-extraction-probe.docx	38	PRP38_SUBJECT	markup	metadata: true	FAIL	expected 1, got 0
+extraction-probe.docx	38	PRP38_SUBJECT	markup	metadata: true	PASS	
 extraction-probe.docx	38	CXP38_DATA	accepted	default	PASS	
 extraction-probe.docx	38	CXP38_DATA	original	default	PASS	
 extraction-probe.docx	38	CXP38_DATA	markup	default	PASS	
@@ -663,17 +663,17 @@ extraction-probe-external.docm	51	VBA51_MODULE_MARK	accepted	default	PASS
 extraction-probe-external.docm	51	VBA51_MODULE_MARK	original	default	PASS	
 extraction-probe-external.docm	51	VBA51_MODULE_MARK	markup	default	PASS	
 extraction-probe-external.docm	52	CPR52_CUSTOM	accepted	default	PASS	
-extraction-probe-external.docm	52	CPR52_CUSTOM	accepted	metadata: true	FAIL	expected 1, got 0
+extraction-probe-external.docm	52	CPR52_CUSTOM	accepted	metadata: true	PASS	
 extraction-probe-external.docm	52	CPR52_CUSTOM	original	default	PASS	
-extraction-probe-external.docm	52	CPR52_CUSTOM	original	metadata: true	FAIL	expected 1, got 0
+extraction-probe-external.docm	52	CPR52_CUSTOM	original	metadata: true	PASS	
 extraction-probe-external.docm	52	CPR52_CUSTOM	markup	default	PASS	
-extraction-probe-external.docm	52	CPR52_CUSTOM	markup	metadata: true	FAIL	expected 1, got 0
+extraction-probe-external.docm	52	CPR52_CUSTOM	markup	metadata: true	PASS	
 extraction-probe-external.docm	52	APP52_COMPANY	accepted	default	PASS	
-extraction-probe-external.docm	52	APP52_COMPANY	accepted	metadata: true	FAIL	expected 1, got 0
+extraction-probe-external.docm	52	APP52_COMPANY	accepted	metadata: true	PASS	
 extraction-probe-external.docm	52	APP52_COMPANY	original	default	PASS	
-extraction-probe-external.docm	52	APP52_COMPANY	original	metadata: true	FAIL	expected 1, got 0
+extraction-probe-external.docm	52	APP52_COMPANY	original	metadata: true	PASS	
 extraction-probe-external.docm	52	APP52_COMPANY	markup	default	PASS	
-extraction-probe-external.docm	52	APP52_COMPANY	markup	metadata: true	FAIL	expected 1, got 0
+extraction-probe-external.docm	52	APP52_COMPANY	markup	metadata: true	PASS	
 extraction-probe.docx	53	EMB53_SLIDE_ONE	accepted	default	PASS	
 extraction-probe.docx	53	EMB53_SLIDE_ONE	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	EMB53_SLIDE_ONE	original	default	PASS	
@@ -1494,12 +1494,12 @@ extraction-probe-inspect.docx	64	inspect:hyperlink.web:mailto:probe@example.com?
 extraction-probe-external.docm	50	metadata:fields_update_on_open:	accepted	default	PASS	
 extraction-probe-external.docm	50	metadata:fields_update_on_open:	original	default	PASS	
 extraction-probe-external.docm	50	metadata:fields_update_on_open:	markup	default	PASS	
-extraction-probe-external.docm	52	metadata:ProbeCustom:	accepted	default	FAIL	expected CPR52_CUSTOM, got None
-extraction-probe-external.docm	52	metadata:ProbeCustom:	original	default	FAIL	expected CPR52_CUSTOM, got None
-extraction-probe-external.docm	52	metadata:ProbeCustom:	markup	default	FAIL	expected CPR52_CUSTOM, got None
-extraction-probe-external.docm	52	metadata:Company:	accepted	default	FAIL	expected APP52_COMPANY, got None
-extraction-probe-external.docm	52	metadata:Company:	original	default	FAIL	expected APP52_COMPANY, got None
-extraction-probe-external.docm	52	metadata:Company:	markup	default	FAIL	expected APP52_COMPANY, got None
+extraction-probe-external.docm	52	metadata:ProbeCustom:	accepted	default	PASS	
+extraction-probe-external.docm	52	metadata:ProbeCustom:	original	default	PASS	
+extraction-probe-external.docm	52	metadata:ProbeCustom:	markup	default	PASS	
+extraction-probe-external.docm	52	metadata:Company:	accepted	default	PASS	
+extraction-probe-external.docm	52	metadata:Company:	original	default	PASS	
+extraction-probe-external.docm	52	metadata:Company:	markup	default	PASS	
 extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	html reader absent	FAIL	expected 2, got None
 extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	html reader absent	FAIL	expected 2, got None
 extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	html reader absent	FAIL	expected 2, got None

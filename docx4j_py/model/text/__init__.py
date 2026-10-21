@@ -31,7 +31,9 @@ text from it::
   or under ``comments: true``; field codes under ``field_codes``; hidden text
   left out, through the styles; placeholders; list labels under
   ``list_labels``, with the level's owner (REQ-510); the table of contents
-  only under ``toc: true`` (REQ-520).
+  only under ``toc: true`` (REQ-520); the document properties in the
+  result's metadata, and in the text before the body under ``metadata: true``
+  (REQ-515).
 
 **The package is never changed** (REQ-204): every part is read with
 ``read_contents``, so a save afterwards is byte for byte where it was.
@@ -45,7 +47,7 @@ the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
 fields computed under ``fields: update``, bound values, charts, SmartArt,
-WordArt, embedded packages, ``w:altChunk``, images and alt text, metadata,
+WordArt, embedded packages, ``w:altChunk``, images and alt text,
 math as LaTeX (an equation is its ``m:t`` text inside ``$...$``), REQ-605's
 listed and grid tables (every table is written tab-separated), page markers,
 ``layout: indent``, the glossary.

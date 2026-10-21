@@ -342,6 +342,12 @@ class Extractor:
         self._warned: set[tuple[Any, ...]] = set()
         self._style_rpr: dict[tuple[Any, Any], Any] = {}
         self._typed: dict[int, Any] = {}
+        #: What every address this reading makes starts with: empty, or an
+        #: embedded package's or a chunk's address and a slash.
+        self.root = ""
+        #: A reading one level down (an embedded package's, an ``altChunk``'s):
+        #: none of its own are expanded, and it has no metadata (REQ-512, REQ-513).
+        self.nested = False
 
     # -- the package ----------------------------------------------------------
 
@@ -349,7 +355,11 @@ class Extractor:
         """The package's text: REQ-501's order."""
         out: list[TextBlock] = []
         comments: dict[str, TextComment] = {}
-        metadata = {TextResult.FIELDS_UPDATE_ON_OPEN: self._fields_update_on_open()}
+        metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: self._fields_update_on_open()}
+        if not self.nested:
+            from docx4j_py.model.text import metadata as properties
+
+            properties.read(self.trees.package, metadata)
         body = self.trees.body
         if body is None:
             return TextResult(out, comments, self.warnings, metadata, self.options)

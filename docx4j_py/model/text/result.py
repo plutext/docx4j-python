@@ -446,6 +446,12 @@ class TextResult:
 
     #: The metadata's key for the settings' ``w:updateFields`` (REQ-506, REQ-801).
     FIELDS_UPDATE_ON_OPEN = "fields_update_on_open"
+    #: The metadata's key for the core properties (REQ-515): each property's element name to its value.
+    CORE = "core"
+    #: The metadata's key for the application properties (REQ-515), the statistics left out.
+    APP = "app"
+    #: The metadata's key for the custom properties (REQ-515): each property's name to its typed value.
+    CUSTOM = "custom"
 
     #: The blocks in reading order (REQ-501, REQ-502, REQ-518, REQ-606). Comments are not among them.
     blocks: list[TextBlock]
@@ -453,7 +459,10 @@ class TextResult:
     comments: dict[str, TextComment]
     #: The warnings raised (REQ-801), each once.
     warnings: list[TextWarning]
-    #: ``fields_update_on_open``, whatever the options (REQ-801); the document properties are Phase C's.
+    #: Whatever the options (REQ-801, REQ-515): ``fields_update_on_open``, and
+    #: the document properties under :attr:`CORE`, :attr:`APP` and :attr:`CUSTOM`,
+    #: each a map, where the package has that part. Property values are document
+    #: text, in the text stream only under ``metadata: true``.
     metadata: dict[str, Any]
     #: The options the result was made with.
     options: TextOptions
@@ -464,6 +473,15 @@ class TextResult:
             "blocks": [b.to_dict() for b in self.blocks],
             "comments": {k: c.to_dict() for k, c in self.comments.items()},
             "warnings": [w.to_dict() for w in self.warnings],
-            "metadata": dict(self.metadata),
+            "metadata": _json(self.metadata),
             "options": self.options.to_dict(),
         }
+
+
+def _json(value: Any) -> Any:
+    """A metadata value as JSON holds it: a map's values in turn, a decimal as its text."""
+    if isinstance(value, dict):
+        return {k: _json(v) for k, v in value.items()}
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)

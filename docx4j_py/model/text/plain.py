@@ -1,8 +1,13 @@
 """Plain text from the block model (WD section 7.1). CR-011 section 3.2 item 4.
 
 docx4j's ``org.docx4j.model.text.PlainText``, as core-ts CR-012 ports it,
-less what CR-011 Phase C brings (REQ-605's listed and grid forms, the metadata
-block, alt text, page markers, ``layout: indent``).
+less what CR-011 Phase C brings (REQ-605's listed and grid forms, alt text,
+page markers, ``layout: indent``).
+
+Under ``metadata: true``, before the body, a line a kind of property that has
+any (REQ-515): ``[core properties: title: ...; subject: ...]``,
+``[application properties: Company: ...]``, ``[custom properties: name:
+value]``.
 
 Each paragraph is one line, a break one more (REQ-603), the text exactly as
 the document holds it (REQ-602: tabs, both hyphens, zero-width and tag
@@ -37,6 +42,8 @@ __all__ = ["plain_text"]
 def plain_text(result: TextResult) -> str:
     """The plain text of a result (WD sections 7.1 and 7.5)."""
     writer = _Writer(result)
+    if result.options.metadata:
+        writer.metadata(result.metadata)
     for block in result.blocks:
         writer.block(block)
         writer.out.append("\n")
@@ -51,6 +58,23 @@ class _Writer:
         self.options = result.options
         self.detail = result.options.markup_detail
         self.out: list[str] = []
+
+    # -- the metadata block (REQ-515) ----------------------------------------
+
+    def metadata(self, metadata: dict) -> None:
+        """A line a kind of property that has any, before the body."""
+        self._group("core properties", metadata.get(TextResult.CORE))
+        self._group("application properties", metadata.get(TextResult.APP))
+        self._group("custom properties", metadata.get(TextResult.CUSTOM))
+
+    def _group(self, label: str, properties: object) -> None:
+        if not isinstance(properties, dict) or not properties:
+            return
+        from docx4j_py.model.text.metadata import shown
+
+        self.out.append(f"[{label}: ")
+        self.out.append("; ".join(f"{name}: {shown(value)}" for name, value in properties.items()))
+        self.out.append("]\n")
 
     def block(self, block: TextBlock) -> None:
         if block.kind == "TABLE":

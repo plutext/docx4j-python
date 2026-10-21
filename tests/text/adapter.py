@@ -14,7 +14,9 @@ Since Phase B it reads the text model, as docx4j's adapter reads its own:
   ``accepted`` and ``markup`` (CriticMarkup) and refuses ``original``, until
   Phase D writes Markdown from the blocks;
 * the findings: each warning by ``warning<TAB>kind<TAB>selector``, counted, and
-  the metadata by ``metadata<TAB>name<TAB>`` (``fields_update_on_open``).
+  the metadata by ``metadata<TAB>name<TAB>`` (``fields_update_on_open``, and
+  each core, application and custom property by its own name, as docx4j's
+  adapter flattens them).
 
 It advertises what docx4j's adapter advertises at ``198d015a3``, less the
 inspector's statements, and ``html reader absent``: the target, not what the
@@ -144,8 +146,10 @@ class TextsAdapter(Engine):
         for warning in result.warnings:
             key = f"warning\t{warning.kind}\t{warning.selector or ''}"
             findings[key] = str(int(findings.get(key, "0")) + 1)
+        # the properties (core, app, custom) by their own names, as the findings table names them
         for name, value in result.metadata.items():
-            findings[f"metadata\t{name}\t"] = str(value).lower() if isinstance(value, bool) else str(value)
+            for key, item in value.items() if isinstance(value, dict) else ((name, value),):
+                findings[f"metadata\t{key}\t"] = str(item).lower() if isinstance(item, bool) else str(item)
         if format == "md":
             return Output(package.to_markdown(view=view), findings)
         return Output(plain_text(result), findings)

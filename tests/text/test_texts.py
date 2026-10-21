@@ -99,9 +99,12 @@ def test_what_docx4j_refuses_is_refused(probe, name, value, statement):
     assert raised.value.reason == "not_implemented" and raised.value.statement == statement
 
 
-def test_phase_cs_values_are_accepted_and_named():
-    o = TextOptions(fields="update", embedded=True, metadata=True)
-    assert {"fields: update", "embedded: true", "metadata: true"} <= set(o.not_yet())
+def test_the_values_not_yet_acted_on_are_named():
+    from docx4j_py.model.text import NOT_YET
+
+    o = TextOptions(**{name: value for name, value in NOT_YET})
+    assert set(o.not_yet()) == {f"{n}: {str(v).lower() if isinstance(v, bool) else v}" for n, v in NOT_YET}
+    assert "metadata: true" not in TextOptions(metadata=True).not_yet()  # Phase C (section 13)
 
 
 # ---------------------------------------------------------------------------
