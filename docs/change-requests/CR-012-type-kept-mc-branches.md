@@ -2220,7 +2220,11 @@ Nothing else moved.
   choice; that is no longer so. The coordinator's, as section 4.2 item 6 says.
 - **A fork release.** Stages 9 to 11 are local, as before; this phase adds no fork code, so it
   needs no more than Phases A and A2 did.
-- **docx4j's agreement run** (it calls `revisions.accept_all`): the coordinator asks docx4j-25.
+- **docx4j's agreement run** (it calls `revisions.accept_all`): rerun by docx4j-25 on 2026-10-22
+  against `6a7a03c` (this phase, with 10.12's port), docx4j's side at `84b202c5a`'s revisions
+  code: **0 lines differ in all 22 comparisons** (the eleven fixtures, accepted and rejected), and
+  0 in the 2026-10-21 set's `review-for-word-word365-rejected` too, 24 of 24 as run. Section 5's
+  gate holds.
 - **The content API's inline pictures** (`Body.inline_pictures`, `Paragraph.inline_pictures`) pass
   a picture in a run-level branch by, before and after, as `Paragraph.text` passes its text by
   (Q4). The text model reads it. Not a change, and Q4's.
