@@ -12,7 +12,10 @@ differences on all 45 of docx4j's parity goldens** --- 984 style ids, 618 paragr
 artefacts that gained a theme part is outstanding (15.5). Phase C proposed. **Section 16
 proposed and started 2026-10-21** (the user: "add it to CR-002 and have an agent implement it
 with those tests"): `contents` adopts the private tree `read_contents` already parsed, with
-tests that make "a private reader never writes" a rule the suite holds.
+tests that make "a private reader never writes" a rule the suite holds. **Implemented the same
+day** (16.5): none of the twelve private readers writes, over 71 documents; read-then-edit on the
+200-page document 131 to 136 ms before, 88 to 92 ms after; saved output unchanged (the 13
+acceptance artefacts canonically identical).
 **Depends on:** CR-001 Phases A to C (implemented 2026-09-12): the generated model under `docx4j_py`,
 `Child` and `ChildList`, `link_parents`, `deep_copy`, `el`, `wml(...)`, `to_xml`, `text_of`,
 `walk`, `find`, `warm_up()`, the prefix table in `docx4j_py.namespaces`, the fork runtime's
