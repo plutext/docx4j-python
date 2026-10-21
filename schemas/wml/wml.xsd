@@ -4578,12 +4578,18 @@ PRINCIPLES:
 		</xsd:attribute>
 	</xsd:complexType>
 	<xsd:complexType name="CT_PictureBase">
-		<xsd:sequence maxOccurs="unbounded">
+		<!-- docx4j-python: one lax wildcard over both namespaces, for the
+		     repeating sequence of a VML wildcard and an o: wildcard. Both
+		     particles are optional, so (v? o?)* is (v | o)*: the same
+		     documents. The pair gave two lists, written interleaved (a
+		     w:object's o:OLEObject before the v:shape its ShapeID names, which
+		     Word will not activate); one wildcard is one list in document
+		     order, JAXB's own reading (docx4j's getAnyAndAny()). CR-012
+		     section 12.15, schemas/PATCHES.md patch 6. -->
+		<xsd:sequence>
 			<xsd:any processContents="lax"
-				namespace="urn:schemas-microsoft-com:vml" minOccurs="0"/>
-			<xsd:any processContents="lax"
-				namespace="urn:schemas-microsoft-com:office:office"
-				minOccurs="0"/>
+				namespace="urn:schemas-microsoft-com:vml urn:schemas-microsoft-com:office:office"
+				minOccurs="0" maxOccurs="unbounded"/>
 		</xsd:sequence>
 	</xsd:complexType>
 	<xsd:complexType name="CT_Object">

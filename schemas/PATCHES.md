@@ -65,7 +65,7 @@ with no patch.** The five files of docx4j's `xsd/vml/` that `vml-main.xsd`'s imp
   `o:gfxdata` (`xsd:base64Binary`), keep their source spelling through the fork's
   `ParserConfig(lexical_types=)` (stage 12, item 28), not by a patch: the types stay docx4j's.
 * `grep -ro 'docx4j-python' schemas --include='*.xsd'` still finds 26 matches: the VML files carry
-  none.
+  none. (28 since patches 6 and 7, which are not in the VML files.)
 
 ## 1. `CT_Dir` / `CT_Bdo`: anonymous types promoted (pre-existing, Phase A)
 
@@ -160,14 +160,18 @@ and harmless, but it is the one patch that widens a type used outside a part roo
   `dml-stylesheet.xsd` was valid at `6b8048aab` and since docx4j's CR-021 phase 3 rewrote
   `odrawxml/oart14docprop.xsd` reports, patched or not, an import-order error about `a:AG_Locking`
   that only lxml's standalone parse of that one file sees — the generator starts from the root).
-* `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **26** matches: **25** marker
+* `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **28** matches: **27** marker
   comments --- 21 wildcards, one for `CT_Dir`/`CT_Bdo`, two for patch 3 (the new complexType and
-  the element's `type=`), and one in `docx4j_python__ROOT.xsd`, which is ours in its entirety and
-  not a patch --- and one mention in docx4j's own comment in
+  the element's `type=`), one each for patches 6 and 7, and one in `docx4j_python__ROOT.xsd`,
+  which is ours in its entirety and not a patch --- and one mention in docx4j's own comment in
   `odrawxml/office_drawing_2017_03_chart_.xsd` (since `c363a969f`, "Found by the docx4j-python
-  session's schema refresh"), which is not a marker. Twenty-four patch markers, then. (There were
-  27 matches between CR-003 Phase A and the 2026-09-20 refresh, when patch 5 was retired, and 27
-  again from `c363a969f`, with docx4j's mention, until patch 4 was retired on 2026-10-21.)
+  session's schema refresh"), which is not a marker. Twenty-six patch markers, then. (There were
+  27 matches between CR-003 Phase A and the 2026-09-20 refresh, when patch 5 was retired, 27
+  again from `c363a969f`, with docx4j's mention, until patch 4 was retired on 2026-10-21, and 26
+  until patches 6 and 7, 2026-10-22.)
+* Patches 6 and 7 leave lxml's report over the root, `wml/wml.xsd` and `odrawxml/inkml.xsd` as it
+  was (the chartex QName for the first two; for `inkml.xsd` alone, its unimported `xml:id`), and
+  each is checked for the language it accepts in its own section.
 * The refresh itself: each re-patched file differs from the previous copy by exactly docx4j's
   own commits (the hunks of `git diff` between the two copies, less the marker lines, equal
   `git diff 6b8048aab..58cce65a8 -- xsd/<file>`).
@@ -258,3 +262,81 @@ docx4j's current schema** rather than adding anything of ours — it is the one 
 The whole regeneration it caused is seven lines: `title: None | str` on
 `docx4j_py.dml.main.CTNonVisualDrawingProps`. No element name, and therefore no `el` entry,
 changes; `codegen/generate.sh --check` passes.
+
+## 6. `CT_PictureBase`: one wildcard over both namespaces (CR-012 section 12.15)
+
+`wml/wml.xsd` line ~4580, `CT_PictureBase`, the base of `CT_Picture` (`w:pict`), `CT_Object`
+(`w:object`) and `CT_Background` (`w:background`). docx4j's copy:
+
+```xml
+<xsd:sequence maxOccurs="unbounded">
+  <xsd:any processContents="lax" namespace="urn:schemas-microsoft-com:vml" minOccurs="0"/>
+  <xsd:any processContents="lax" namespace="urn:schemas-microsoft-com:office:office" minOccurs="0"/>
+</xsd:sequence>
+```
+
+patched to
+
+```xml
+<xsd:sequence>
+  <xsd:any processContents="lax"
+    namespace="urn:schemas-microsoft-com:vml urn:schemas-microsoft-com:office:office"
+    minOccurs="0" maxOccurs="unbounded"/>
+</xsd:sequence>
+```
+
+**Why.** The generator binds a repeating `xsd:sequence` of two particles as two lists, one per
+particle (`schemas_microsoft_com_vml_element`, `schemas_microsoft_com_office_office_element`),
+whose metadata carries `"sequence": 1`, and the serialiser writes such lists interleaved, one item
+of each in turn, whatever order they were read in. So a `w:object`'s `v:shapetype`, `v:shape`,
+`o:OLEObject` was saved `v:shapetype`, `o:OLEObject`, `v:shape`: the `o:OLEObject` before the
+`v:shape` its `ShapeID` names. Word shows that object's icon and quietly will not activate it
+(CR-012 section 12.14, file 3, confirmed with two files differing from their bases in that order
+alone). docx4j-python 0.1.0 writes the same order. One wildcard is one list, read and written in
+document order.
+
+**It accepts exactly the same documents.** Both particles are optional, so the repeating sequence
+is `(v? o?)*`, which is `(v | o)*`: any number of VML and `o:` elements in any order, as the one
+wildcard over both namespaces says. Checked with lxml: a schema holding each content model,
+validating every child sequence of length 0 to 4 over a VML element, an `o:` element and an element
+of a third namespace (121 sequences), agrees on all 121 (31 accepted).
+
+**It is JAXB's own reading of the type:** XJC binds the type to one content list in document order,
+docx4j's `Pict.getAnyAndAny()`, `CTObject.getAnyAndAny()` and `CTBackground.getAnyAndAny()`
+(`org/docx4j/TraversalUtil.java` at docx4j `2853b7280`, lines 500 and 562; its
+`docx4j-samples-docx4j` `BackgroundImage.java` line 97). So docx4j's own build is unaffected, and
+the field takes docx4j's name, `any_and_any`, by a field `Substitution` in `.xsdata.phase-b.xml`
+(the generator's own name for it is `schemas_microsoft_com_vml_schemas_microsoft_com_office_office_element`).
+
+**Regeneration:** `CTPictureBase`'s two fields become one, `any_and_any: list[object]`, a
+`Wildcard` over both namespaces with no `sequence` key; `Pict`, `CTObject` and `CTBackground`
+inherit it and are otherwise unchanged. No `el` entry and no other module changes.
+
+## 7. inkml `traceGroup.type`: a repeating choice (CR-012 section 12.15)
+
+`odrawxml/inkml.xsd` line ~727, `traceGroup.type` (`inkml:traceGroup`), the same shape as patch 6:
+docx4j's `<xsd:sequence maxOccurs="unbounded">` of `trace`, `traceGroup`, `traceView`,
+`annotation` and `annotationXML`, each `minOccurs="0"`, patched to
+`<xsd:choice minOccurs="0" maxOccurs="unbounded">` of the same five elements, each with the default
+occurrence (one per turn of the choice).
+
+**Why.** The generator made five lists with `"sequence": 1`, written interleaved. With
+`CompoundFields` on, the repeating choice is one compound list, `content`, read and written in
+document order (five element names exceed `maxNameParts`, so the field takes the default name).
+
+**The same documents:** every particle is optional, so `(a? b? c? d? e?)*` is
+`(a | b | c | d | e)*`. Checked as patch 6 was: every child sequence of length 0 to 4 over the five
+elements and a sixth, undeclared one (1,555 sequences), the two content models agree on all (781
+accepted). No corpus document holds ink, and docx4j's sources at `2853b7280` name no
+`traceGroup` accessor, so the field keeps the generator's name.
+
+**No other repeating sequence of several particles.** An audit of the 110 schema files (every
+`xsd:sequence` of two or more particles that can repeat, group references expanded) finds two whose
+own `maxOccurs` is above one, these two, and six sequences repeated only through a
+`<xsd:group ref="EG_RPrBase" minOccurs="0" maxOccurs="unbounded">`: `EG_RPrBase` and its two `w14`
+groups (`EG_RPrTextEffects`, `EG_RPrOpenType`), from `CT_ParaRPrOriginal` and `CT_RPrChange`'s
+`w:rPr`. The generator does not interleave those (its repeatability test reads the outermost
+sequence on the path, which does not repeat, so no field carries a `sequence` key): each element is
+a list written in turn, the schema's order, as any run properties are. Before these two patches the
+generated model carried seven fields with a `sequence` key, all in `CTPictureBase` (two) and
+`TraceGroupType` (five); after them, none.

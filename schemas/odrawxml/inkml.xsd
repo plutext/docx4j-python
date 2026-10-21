@@ -728,13 +728,14 @@
 		<xsd:annotation>
 			<xsd:documentation>http://www.w3.org/TR/InkML/#traceGroup</xsd:documentation>
 		</xsd:annotation>
-		<xsd:sequence maxOccurs="unbounded">
-			<xsd:element name="trace" type="inkml:trace.type" minOccurs="0"/>
-			<xsd:element name="traceGroup" type="inkml:traceGroup.type" minOccurs="0"/>
-			<xsd:element name="traceView" type="inkml:traceView.type" minOccurs="0"/>
-			<xsd:element name="annotation" type="inkml:annotation.type" minOccurs="0"/>
-			<xsd:element name="annotationXML" type="inkml:annotationXML.type" minOccurs="0"/>
-		</xsd:sequence>
+		<!-- docx4j-python: a repeating choice of the five, for the repeating sequence of them. Every particle is optional, so (a? b? c? d? e?)* is (a | b | c | d | e)*: the same documents. The sequence gave five lists, written interleaved; the choice is one compound list in document order. CR-012 section 12.15, schemas/PATCHES.md patch 7. -->
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="trace" type="inkml:trace.type"/>
+			<xsd:element name="traceGroup" type="inkml:traceGroup.type"/>
+			<xsd:element name="traceView" type="inkml:traceView.type"/>
+			<xsd:element name="annotation" type="inkml:annotation.type"/>
+			<xsd:element name="annotationXML" type="inkml:annotationXML.type"/>
+		</xsd:choice>
 		<xsd:attribute ref="xml:id"/>
 		<xsd:attribute name="contextRef" type="xsd:anyURI"/>
 		<xsd:attribute name="brushRef" type="xsd:anyURI"/>

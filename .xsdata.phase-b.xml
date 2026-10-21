@@ -166,6 +166,19 @@
     <Substitution type="package" search="http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing" replace="oart.spreadsheet_drawing_2010"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/powerpoint/2014/inkAction" replace="oart.ink_action_2014"/>
     <Substitution type="package" search="http://schemas.microsoft.com/office/thememl/2012/main" replace="oart.theme_2012"/>
+
+    <!--
+      CR-012 section 12.15 (schemas/PATCHES.md patch 6): CT_PictureBase's one
+      lax wildcard over the VML and o: namespaces, the base of CT_Picture
+      (w:pict), CT_Object (w:object) and CT_Background (w:background), takes
+      docx4j's name, Pict.getAnyAndAny(). The generator's name is built from
+      the two namespaces. A field substitution is re.sub over every field
+      name (and enum constant), applied to the raw name ("@schemas-microsoft-
+      com:vml_schemas-microsoft-com:office:office_element", which this does
+      not match) and again to the snake-cased one, so the search is anchored
+      to match that one name exactly and nothing else.
+    -->
+    <Substitution type="field" search="^schemas_microsoft_com_vml_schemas_microsoft_com_office_office_element$" replace="any_and_any"/>
   </Substitutions>
   <Extensions>
     <!--
