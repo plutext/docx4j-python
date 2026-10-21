@@ -1101,6 +1101,10 @@ class Extractor:
                             row_state = state.with_revision(_revision(tr_pr.del_value, "DELETION"), False)
                 self._cells(item.content, address, story, row, row_state)
                 table.rows.append(row)
+            elif is_alternate_content(item):
+                # a row-level mc:AlternateContent is passed by, as docx4j's CR-051 phase 1 leaves
+                # it and as the content API and the revisions engine do (CR-012 section 9.6)
+                continue
             else:
                 inner = rtrees.block_items(item)
                 if inner is not None and not isinstance(item, rtrees.cls("Tc")):
@@ -1135,6 +1139,9 @@ class Extractor:
                             cell_state = state.with_revision(_revision(marker, "DELETION"), False)
                 self.blocks(item.content, address, story, cell.blocks, cell_state)
                 row.cells.append(cell)
+            elif is_alternate_content(item):
+                # a cell-level one too
+                continue
             else:
                 inner = rtrees.block_items(item)
                 if inner is not None:

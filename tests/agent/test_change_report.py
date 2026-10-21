@@ -6,6 +6,7 @@ CR-003 section 3.4 and decided question 4.
 from __future__ import annotations
 
 import datetime
+import gc
 import json
 import time
 
@@ -185,10 +186,18 @@ def test_the_report_costs_a_few_microseconds_and_does_not_grow(report):
             body.insert_paragraph(f"paragraph {index}")
         return (time.perf_counter() - start) / count
 
-    first = block(500)
-    for _ in range(2):
-        block(500)
-    last = block(500)
+    # the collector paused while timing (CR-012 section 9.10): in the whole fast suite, a
+    # collection over the heap the earlier tests leave could land in one block and not the
+    # other, and the ratio measured the collector rather than the call
+    gc.collect()
+    gc.disable()
+    try:
+        first = block(500)
+        for _ in range(2):
+            block(500)
+        last = block(500)
+    finally:
+        gc.enable()
 
     assert len(package.changes) == 2000
     assert first < 1e-3, f"{first * 1e6:.1f} us per insert_paragraph"

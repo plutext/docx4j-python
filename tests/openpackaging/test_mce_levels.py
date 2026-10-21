@@ -1019,18 +1019,18 @@ def test_the_body_passes_row_and_cell_level_by(stem: str) -> None:
 @pytest.mark.parametrize(
     ("stem", "shown"),
     [
-        # a row in a branch is a typed w:tr, and the text model's row walk reads the branch Word reads
-        ("mc-row-newest-first", "Row level test\nI prefer\tbelow\nrow\tw16sdtfl\n\n"),
-        ("mc-sdt-row-newest-first", "Row sdt test\nI prefer\tbelow\nrow\tw16sdtfl\n\n"),
-        # a cell in a branch is a wildcard w:tc until Phase B types it: passed by
+        ("mc-row-newest-first", "Row level test\nI prefer\tbelow\n\n"),
+        ("mc-sdt-row-newest-first", "Row sdt test\nI prefer\tbelow\n\n"),
         ("mc-cell-newest-first", "Cell level test\nI prefer\n\n"),
         ("mc-sdt-cell-newest-first", "Cell sdt test\nI prefer\n\n"),
     ],
 )
-def test_the_text_model_reads_a_row_level_branch_and_passes_a_cell_level_one_by(
-    stem: str, shown: str
-) -> None:
+def test_the_text_model_passes_row_and_cell_level_by(stem: str, shown: str) -> None:
+    """As docx4j's CR-051 phase 1 leaves it; its phase 2 (9db1a3cbd) reads them, a follow-up here."""
     assert text(probe(stem)) == shown
+    assert text(probe(stem, "word")) != shown, (
+        "word mode reads Word's branch, spliced in on load"
+    )
 
 
 def test_an_edit_inside_a_kept_branch_is_refused():

@@ -293,8 +293,8 @@ class Body(Sequence):
         """The view of the block at `index`; a slice gives a list of views."""
         items = self.content
         if isinstance(index, slice):
-            return [self.view_for(item) for item in items[index]]
-        return self.view_for(items[index])
+            return [self.view_for(item, items) for item in items[index]]
+        return self.view_for(items[index], items)
 
     def __iter__(self) -> Iterator[Any]:
         """The block views, in document order."""
@@ -308,8 +308,13 @@ class Body(Sequence):
             return any(item.element is block for block in self.content)
         return any(item is block or item == block for block in self.content)
 
-    def view_for(self, element: Any) -> Any:
+    def view_for(self, element: Any, container: list | None = None) -> Any:
         """The view of a block: a :class:`Paragraph`, :class:`Table`, control or :class:`Block`.
+
+        `container` is the live list holding `element`, where the caller knows
+        it; otherwise it is found from the parent pointer, which scans the list
+        for the element (so a loop over a body passes it, or the loop is
+        quadratic).
 
         The one place CR-003 section 12.8 says Phase C had to change, and the
         addresses did not move with it: a path is ``block_children_of`` all the
@@ -317,7 +322,8 @@ class Body(Sequence):
         :class:`Block` is what is left for a ``w:customXml``, a
         ``w:bookmarkStart`` and anything else a body may hold.
         """
-        container = self._container_of(element)
+        if container is None:
+            container = self._container_of(element)
         if isinstance(element, P):
             return Paragraph(element, container, self)
         if isinstance(element, Tbl):
@@ -368,8 +374,9 @@ class Body(Sequence):
 
     def iter_blocks(self) -> Iterator[Any]:
         """This body's own block-level children, as views, in order."""
-        for item in list(self.content):
-            yield self.view_for(item)
+        items = self.content
+        for item in list(items):
+            yield self.view_for(item, items)
 
     @property
     def tables(self) -> list[Table]:
@@ -905,7 +912,7 @@ class Body(Sequence):
                     else (f"{prefix}/{index + offset}" if prefix else None)
                 )
             change.shifted(moved_by_insert(self, container, index, len(elements)))
-        return self.view_for(elements[0])
+        return self.view_for(elements[0], container)
 
     def _check(self, elements: list, owner: Any) -> None:
         """Refuse an element the owner's block list cannot hold."""
