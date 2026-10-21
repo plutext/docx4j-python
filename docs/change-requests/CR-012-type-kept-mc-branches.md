@@ -1684,7 +1684,7 @@ as they read the same element elsewhere.
   - `69f61e0`: `tests/openpackaging/test_mce_typed.py`;
   - `a7ce5dd`: `scripts/mce_branches.py`;
   - `14d0e89`: the `text_of` readers' paragraph-level reading pinned for the coordinator (11.4);
-  - the commit that adds this section: this section, the CHANGELOG, CR-002 section 5.6's note,
+  - `2bfcbd4`: this section, the CHANGELOG, CR-002 section 5.6's note,
     `tests/README.md` and `docs/UPSTREAM.md` report 24.
 - The fork (`~/git/docx4j-xsdata`, branch `docx4j`): none. Its tests already pin what this phase
   relies on (11.7 item 8).
