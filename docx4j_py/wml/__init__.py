@@ -17718,6 +17718,7 @@ class CTSdtContentCell(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -17863,6 +17864,11 @@ class CTSdtContentCell(Child):
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
             ),
         },
     )
@@ -17902,6 +17908,7 @@ class CTSdtContentRow(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -18046,6 +18053,11 @@ class CTSdtContentRow(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
             ),
         },
@@ -20319,6 +20331,7 @@ class CTCustomXmlCell(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -20464,6 +20477,11 @@ class CTCustomXmlCell(Child):
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
             ),
         },
     )
@@ -20525,6 +20543,7 @@ class CTCustomXmlRow(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -20670,6 +20689,11 @@ class CTCustomXmlRow(Child):
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
             ),
         },
     )
@@ -20724,6 +20748,7 @@ class SdtContentBlock(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -20874,6 +20899,11 @@ class SdtContentBlock(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",
@@ -20957,6 +20987,7 @@ class CTCustomXmlBlock(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -21107,6 +21138,11 @@ class CTCustomXmlBlock(Child):
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
             ),
         },
     )
@@ -21169,6 +21205,7 @@ class Tc(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -21321,6 +21358,11 @@ class Tc(Child):
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
                 {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
+                {
                     "name": "altChunk",
                     "type": ForwardRef("CTAltChunk"),
                     "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -21379,6 +21421,7 @@ class Tr(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -21497,6 +21540,11 @@ class Tr(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
             ),
         },
@@ -21601,6 +21649,7 @@ class Tbl(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
     ] = field(
         default_factory=ChildList,
         metadata={
@@ -21746,6 +21795,11 @@ class Tbl(Child):
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
                 },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+                },
             ),
         },
     )
@@ -21786,6 +21840,7 @@ class Body1(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -21936,6 +21991,11 @@ class Body1(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",
@@ -21990,6 +22050,7 @@ class CTFtnEdn(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -22140,6 +22201,11 @@ class CTFtnEdn(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",
@@ -22201,6 +22267,7 @@ class CTTxbxContent(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -22351,6 +22418,11 @@ class CTTxbxContent(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",
@@ -22398,6 +22470,7 @@ class Ftr(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -22521,6 +22594,11 @@ class Ftr(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",
@@ -22582,6 +22660,7 @@ class Hdr(Child):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -22705,6 +22784,11 @@ class Hdr(Child):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",
@@ -22765,6 +22849,7 @@ class CommentsComment(CTTrackChange):
         | MoveTo2
         | OMathPara
         | OMath
+        | AlternateContent
         | CTAltChunk
     ] = field(
         default_factory=ChildList,
@@ -22915,6 +23000,11 @@ class CommentsComment(CTTrackChange):
                     "name": "oMath",
                     "type": ForwardRef("OMath"),
                     "namespace": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+                },
+                {
+                    "name": "AlternateContent",
+                    "type": ForwardRef("AlternateContent"),
+                    "namespace": "http://schemas.openxmlformats.org/markup-compatibility/2006",
                 },
                 {
                     "name": "altChunk",

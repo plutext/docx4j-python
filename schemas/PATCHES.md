@@ -9,7 +9,7 @@ comment beginning `docx4j-python:` on the line before it, so
 `grep -rn 'docx4j-python' schemas/` finds all of them and a re-copy from docx4j can be
 re-patched mechanically.
 
-**The copy is from docx4j commit `c363a969f` (2026-09-20; three files --- `shared/shared-math-2ed.xsd`, `dml/dml-textCharacter.xsd`, `odrawxml/office_drawing_2017_03_chart_.xsd`, docx4j's CR-025 and its c16r3 fix --- copied on top of the `58cce65a8` refresh the same day, CR-001 section 14.11; none of the three carries a patch). One more file has been copied since: `odrawxml/office_drawing_2014_chartex.xsd`, from docx4j `14fcb2f4e` (2026-10-15, docx4j CR-040 phases 1 and 2, CR-001 section 14.12; first copied from `28bdf831c` the day before). It carries docx4j's own two corrections, each commented in place: a histogram's `cx:binSize` and `cx:binCount` are bound as Excel writes them, with a `val` attribute, and `CT_ExternalData`'s `autoUpdate` is bound in the chartex namespace (`form="qualified"`), as Word and PowerPoint write it. Those are docx4j's departures from [MS-ODRAWXML], not patches of this repository's.** It was first taken at `6b8048aab`
+**The copy is from docx4j commit `2853b7280` (2026-10-21, refreshed for CR-012 Phase A; its section 9 lists every docx4j change to the closure since the previous copy, and how each was checked).** The closure is the same 103 files: docx4j's CR-051 phase 1 (`1cff2cd5c`) admits `mc:AlternateContent` in `EG_ContentBlockContent`, `EG_ContentRowContent` and `EG_ContentCellContent` (`wml/wml.xsd`), `dae2dfc8b` declares `CT_Settings`' `w14:docId` before `w15:chartTrackingRefBased` (which retires patch 4), `8e8f6ea83` makes `a:graphicData`'s wildcard `lax` (`dml/dml-graphicalObject.xsd`; no generated change, the generator writing `process_contents` only for `skip`), and `409aade38` renames docx4j 17.1.1 to 17.2.0 in comments across `wml.xsd`, `dml-chart.xsd`, `dml-spreadsheetDrawing.xsd`, `dml-textParagraph.xsd`, the mce schema and `oart14docprop.xsd`. VML (`acd0defc9`, docx4j CR-048) and the other changed files (digital signatures, FOP, SpreadsheetML, the bibliography) are outside the closure and not copied. The previous copy was from docx4j commit `c363a969f` (2026-09-20; three files --- `shared/shared-math-2ed.xsd`, `dml/dml-textCharacter.xsd`, `odrawxml/office_drawing_2017_03_chart_.xsd`, docx4j's CR-025 and its c16r3 fix --- copied on top of the `58cce65a8` refresh the same day, CR-001 section 14.11; none of the three carries a patch). One more file has been copied since: `odrawxml/office_drawing_2014_chartex.xsd`, from docx4j `14fcb2f4e` (2026-10-15, docx4j CR-040 phases 1 and 2, CR-001 section 14.12; first copied from `28bdf831c` the day before). It carries docx4j's own two corrections, each commented in place: a histogram's `cx:binSize` and `cx:binCount` are bound as Excel writes them, with a `val` attribute, and `CT_ExternalData`'s `autoUpdate` is bound in the chartex namespace (`form="qualified"`), as Word and PowerPoint write it. Those are docx4j's departures from [MS-ODRAWXML], not patches of this repository's.** It was first taken at `6b8048aab`
 (2026-09-05, 90 files in the WML closure) and refreshed on 2026-09-20 (CR-001 section 14.10):
 docx4j's CR-018, CR-021 phase 2, CR-023 and CR-024 and the lax mce wildcards changed nine files
 of the closure (`wml/wml.xsd`, `wml/w14_word_2010_wordml.xsd`, `wml/w15_word_2012_wordml.xsd`,
@@ -121,14 +121,22 @@ and harmless, but it is the one patch that widens a type used outside a part roo
   `dml-stylesheet.xsd` was valid at `6b8048aab` and since docx4j's CR-021 phase 3 rewrote
   `odrawxml/oart14docprop.xsd` reports, patched or not, an import-order error about `a:AG_Locking`
   that only lxml's standalone parse of that one file sees — the generator starts from the root).
-* `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **26** marker comments in the
-  schemas: 21 wildcards, one for `CT_Dir`/`CT_Bdo`, three for patches 3 and 4 (the new
-  complexType, the element's `type=`, and the swap), and one in `docx4j_python__ROOT.xsd`, which
-  is ours in its entirety and not a patch. (It was 27 between CR-003 Phase A and the 2026-09-20
-  refresh, when patch 5 was retired.) Twenty-five patch markers, then.
+* `grep -ro 'docx4j-python' schemas --include='*.xsd' | wc -l` = **26** matches: **25** marker
+  comments --- 21 wildcards, one for `CT_Dir`/`CT_Bdo`, two for patch 3 (the new complexType and
+  the element's `type=`), and one in `docx4j_python__ROOT.xsd`, which is ours in its entirety and
+  not a patch --- and one mention in docx4j's own comment in
+  `odrawxml/office_drawing_2017_03_chart_.xsd` (since `c363a969f`, "Found by the docx4j-python
+  session's schema refresh"), which is not a marker. Twenty-four patch markers, then. (There were
+  27 matches between CR-003 Phase A and the 2026-09-20 refresh, when patch 5 was retired, and 27
+  again from `c363a969f`, with docx4j's mention, until patch 4 was retired on 2026-10-21.)
 * The refresh itself: each re-patched file differs from the previous copy by exactly docx4j's
   own commits (the hunks of `git diff` between the two copies, less the marker lines, equal
   `git diff 6b8048aab..58cce65a8 -- xsd/<file>`).
+* The 2026-10-21 refresh, the same way, as a three-way merge of each patched file (docx4j at
+  `c363a969f` the base, the old copy ours, docx4j at `2853b7280` theirs): only patch 4's region
+  conflicted, and took docx4j's; the lines by which each patched file differs from docx4j at
+  `2853b7280` are exactly the lines by which the old copy differed from docx4j at `c363a969f`,
+  less patch 4's; every other file of the closure is docx4j's at `2853b7280` byte for byte.
 * Round trip: `attribute-dropped` falls from 10 to 0 (see `codegen/README.md`).
 
 ## 3. `w:stylePaneFormatFilter`: `CT_StylePaneFilter` (CR-002 Phase A)
@@ -165,9 +173,11 @@ Word's `1`/`0`; `xsd:boolean` can hold all four of `1 0 true false` and the seri
 And `w:val` is kept `use="optional"` so that a 1st-edition document with only `w:val="3F01"` still
 round-trips.
 
-## 4. `w14:docId` before `w15:chartTrackingRefBased` (CR-002 Phase A)
+## 4. `w14:docId` before `w15:chartTrackingRefBased` (CR-002 Phase A) — retired 2026-10-21
 
-`wml/wml.xsd`, in `CT_Settings`: the two element declarations are swapped.
+**Retired at the 2026-10-21 refresh (CR-012 Phase A), subsumed by docx4j commit `dae2dfc8b`,** as the status below foresaw: docx4j's `CT_Settings` declares `w14:docId`, `w15:chartTrackingRefBased`, `w15:docId` in that order, with its own comment, so the region is docx4j's verbatim and the marker is gone. The generated `Settings` is unchanged, and so is every saved `settings.xml`. The text below is the record of the patch.
+
+`wml/wml.xsd`, in `CT_Settings`: the two element declarations were swapped.
 
 **Status at the 2026-09-20 refresh: kept**; docx4j `58cce65a8` still declares
 `w15:chartTrackingRefBased` first. **Subsumed at docx4j `dae2dfc8b`** (2026-09-23, on its

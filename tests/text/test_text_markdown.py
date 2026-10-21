@@ -571,11 +571,11 @@ def test_markdown_follows_the_text_model_through_alternate_content():
     md = export(load(made.save(), options=LoadOptions(mce_preprocess=True)))
     assert md == "before\n\nCHOICEW14\n\nafter\n"
 
-    # loaded kept, a block-level mc:AlternateContent is not in the typed tree here (CR-012, docx4j CR-051's
-    # gap, proposed): the part's skipped-content report names it, and the Markdown has neither branch
+    # loaded kept (CR-012 Phase A: the schema admits the element at block level), the Markdown follows the
+    # text model through it to the branch Word reads, as docx4j's does; nothing is skipped
     pkg = made.load()
-    assert export(pkg) == "before\n\nafter\n"
-    assert any("AlternateContent" in str(node) for node in pkg.main_document_part.skipped)
+    assert export(pkg) == "before\n\nCHOICEW14\n\nafter\n"
+    assert not pkg.main_document_part.skipped
 
 
 def test_a_pie_chart():
