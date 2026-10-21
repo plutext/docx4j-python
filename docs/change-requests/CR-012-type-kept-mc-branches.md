@@ -1168,7 +1168,8 @@ Beyond docx4j's tests, the new ones cover:
 5. **The python-docx facade passes row- and cell-level elements by**, as python-docx reads a
    table's own `w:tr` and a row's own `w:tc`. This is 9.9's departure 8, at these levels.
 6. **A twin `w:cellIns` or `w:cellDel` in a branch Word does not read is not resolved** (10.8),
-   as in docx4j: `remove_cell` finds cells through `cells_of`, which reads one branch.
+   as in docx4j before `60bd4b9ad`: `remove_cell` finds cells through `cells_of`, which reads one
+   branch.
 7. **OpenDoPE's two cases are not ported**, as section 4.4 item 5 says:
    - docx4j's `RemovalHandler.xslt` row count, `OpenDoPEHandler.emptyKeepingTableShape` and
      `McRowCellLevelOpenDoPETest`;
@@ -1218,6 +1219,15 @@ Nothing else in the suite moved. The fork's upstream tests are untouched.
     element and be shared by every branch, and the primary's removal has already widened it.
   - Left, with docx4j, and worth telling docx4j-25. Word never writes a row- or cell-level element
     (CR-051 phase 0).
+  - **docx4j fixed it in `60bd4b9ad`** (2026-10-22, on `VERSION_17_3_4`):
+    - `Tables.removeCell` looks a cell that is not among `Lister.cellsOf(tr)` up in its own branch
+      (`Lister.branchOf`, `Lister.cellsIn`), removes it and widens that branch's neighbour;
+    - a twin alone in its branch is removed without widening;
+    - its tests are `acceptingADeletedCellResolvesItsTwinInItsOwnBranch` and
+      `acceptingADeletedCellAloneInEachBranchWidensTheRowsNeighbourOnce`;
+    - one asymmetry is left (CR-051 section 12.5): a read branch of two cells beside a twin branch
+      of one leaves the twin branch's grid a span short.
+    - The port awaits the go.
 - **Phase B's typing.** A `w:p`, `w:tbl` or `w:r` in a branch is as before:
   - `w:p` and `w:r` are global, so typed already;
   - a `w:tbl` in a block-level branch is still a wildcard, so `Body.tables` passes a table there by
