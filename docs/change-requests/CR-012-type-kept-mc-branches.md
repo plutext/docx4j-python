@@ -1415,8 +1415,10 @@ with no repair prompt and show what the README says, file 2's empty Choice and F
   - docx4j at `60bd4b9ad` reads them the same way (`Tables.cells` and `rows` over
     `Lister.cellsOf` and `rowsOf`), by reading its code at that commit, not by a run;
   - worth telling docx4j-25. No producer writes the shape.
-  - **Told docx4j-25 on 2026-10-22, and confirmed there.** docx4j fixed it the same day, not yet
-    committed:
+  - **Told docx4j-25 on 2026-10-22, and confirmed there.** docx4j fixed it the same day, in
+    `901a922a3` (on `VERSION_17_3_4`), with two tests,
+    `resolvingATablePropertyRecordReachesEveryBranchsCell` and
+    `acceptingATablePropertyRecordReachesARowInAnotherBranch`:
     - `Tables.rows` and `cells` read every branch (`Lister.allRowsOf`, `allCellsOf`) for
       `recordOf`, `inChange`, `hasRecords`, accept and reject;
     - `collapseGrid` counts along `Lister.cellLayoutsOf(tr)`, one cell list per branch reading of
