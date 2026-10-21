@@ -1,7 +1,8 @@
 # Patches to the schema copy
 
 `schemas/` is docx4j's `xsd/` tree — the 95-file transitive closure of `wml/wml.xsd`, plus
-`relationships.xsd` and `docProps/` (CR-002 section 9), docx4j's own `wml/wml__ROOT.xsd` (kept
+`relationships.xsd` and `docProps/` (CR-002 section 9), the five VML schemas in `vml/` (CR-012
+Phase C, [below](#the-vml-schemas-cr-012-phase-c)), docx4j's own `wml/wml__ROOT.xsd` (kept
 from the first copy, referenced by nothing here) and `docx4j_python__ROOT.xsd`, which is not
 a docx4j schema at all but the one entry point `codegen/generate.sh` hands the generator — copied
 verbatim except for the patches listed here. Every patch is marked in the XSD by a
@@ -27,6 +28,44 @@ through docx4j's `ROOT.xsd`) and are not copied; SML (`xsd/xlsx`, `sml`) is CR-0
 Nothing else is changed. In particular `default="..."` is **not** stripped — the schema
 default is kept and the generator's `<SchemaDefaults>metadata</SchemaDefaults>` option puts
 it in the field metadata instead of the field default (CR-001 section 7).
+
+## The VML schemas (CR-012 Phase C)
+
+**Copied 2026-10-22 from docx4j `2853b7280`, the commit the rest of the copy is at, verbatim and
+with no patch.** The five files of docx4j's `xsd/vml/` that `vml-main.xsd`'s imports reach:
+
+| file | namespace | blob at `2853b7280` |
+| --- | --- | --- |
+| `vml/vml-main.xsd` | `urn:schemas-microsoft-com:vml` (`v:`) | `254eb6715bf4` |
+| `vml/vml-officedrawing.xsd` | `urn:schemas-microsoft-com:office:office` (`o:`) | `a5121ecb6314` |
+| `vml/vml-wordprocessingdrawing.xsd` | `urn:schemas-microsoft-com:office:word` (`w10:`) | `e37ebdaab1d9` |
+| `vml/vml-spreadsheetDrawing.xsd` | `urn:schemas-microsoft-com:office:excel` (`x:`, `xvml` in the prefix table) | `01b97c2e6089` |
+| `vml/vml-presentationDrawing.xsd` | `urn:schemas-microsoft-com:office:powerpoint` (`pvml`) | `444510777771` |
+
+* **The checks.** Each file was taken with `git -C ../docx4j show 2853b7280:xsd/vml/<file>`,
+  never from docx4j's working tree, and its `git hash-object` here equals its blob at
+  `2853b7280` and at `acd0defc9` (docx4j CR-048, which added `w14:anchorId` to
+  `AG_AllCoreAttributes` and `o:gfxdata` to the nine shape types that lacked it):
+  `git log acd0defc9..2853b7280 -- xsd/vml` is empty, and `acd0defc9` is an ancestor. Line endings
+  are docx4j's (CRLF, `vml-main.xsd`'s CR-048 lines LF), each file starts with docx4j's UTF-8 BOM,
+  and this repository has no `.gitattributes`, so the files are stored byte for byte.
+* **Reached from `docx4j_python__ROOT.xsd`**, which imports all five. `vml-main.xsd` imports
+  `../wml/w14_word_2010_wordml.xsd`, `../wml/wml.xsd` and `../shared/shared-relationshipReference.xsd`,
+  all three already in the copy, and the four other VML schemas; `vml-officedrawing.xsd` imports
+  `vml-main.xsd` back. `wml/wml.xsd` imports none of them: `CT_Picture`'s and `CT_Object`'s lax
+  wildcards name the VML and `o:` namespaces without an import, which is why the copy had no VML
+  until now.
+* **Not copied: `vml/vml__ROOT.xsd`.** It declares a vmlDrawing part's root, `<xml>` in no
+  namespace (docx4j CR-026). That part is SpreadsheetML's and PresentationML's (CR-001 Phase D,
+  CR-002 Phase C); WordprocessingML never holds one. Nor `vml/README.txt`.
+* **No patch.** The generator takes every construct (no new fork item for the generator), nothing
+  is skipped over the 422-document survey (CR-012 section 12), and VML's booleans are
+  `ST_TrueFalse`, a string enumeration (`t`, `f`, `true`, `false`), whose values are written as read.
+  The two VML values the converter would have spelled otherwise, `o:spt` (`xsd:float`) and
+  `o:gfxdata` (`xsd:base64Binary`), keep their source spelling through the fork's
+  `ParserConfig(lexical_types=)` (stage 12, item 28), not by a patch: the types stay docx4j's.
+* `grep -ro 'docx4j-python' schemas --include='*.xsd'` still finds 26 matches: the VML files carry
+  none.
 
 ## 1. `CT_Dir` / `CT_Bdo`: anonymous types promoted (pre-existing, Phase A)
 

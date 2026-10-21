@@ -12,9 +12,19 @@
     docProps/opc-coreProperties.xsd             docProps/core.xml, and Dublin Core with it
     docProps/shared-documentPropertiesExtended.xsd   docProps/app.xml
     docProps/shared-documentPropertiesCustom.xsd     docProps/custom.xml
+    vml/vml-main.xsd                            VML, under w:pict and w:object  (CR-012 Phase C)
+    vml/vml-officedrawing.xsd                   o:, the Office VML extensions
+    vml/vml-wordprocessingdrawing.xsd           w10:, Word's
+    vml/vml-spreadsheetDrawing.xsd              x:, Excel's (imported by vml-main.xsd)
+    vml/vml-presentationDrawing.xsd             pvml:, PowerPoint's (likewise)
 
   The two docProps property schemas both import the variant types, which is
-  where vt:vector and friends come from.
+  where vt:vector and friends come from. The five VML schemas import one
+  another, and wml/wml.xsd, which imports none of them: CT_Picture's and
+  CT_Object's lax wildcards name the VML and o: namespaces without an import.
+  docx4j's vml/vml__ROOT.xsd, the root of a vmlDrawing part (<xml> in no
+  namespace, docx4j CR-026), is not copied: that part is SpreadsheetML's and
+  PresentationML's, and WordprocessingML never holds one.
 -->
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
 	elementFormDefault="qualified" attributeFormDefault="qualified"
@@ -34,5 +44,20 @@
 
 	<xsd:import id="prop" namespace="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
 		schemaLocation="docProps/shared-documentPropertiesCustom.xsd"/>
+
+	<xsd:import id="v" namespace="urn:schemas-microsoft-com:vml"
+		schemaLocation="vml/vml-main.xsd"/>
+
+	<xsd:import id="o" namespace="urn:schemas-microsoft-com:office:office"
+		schemaLocation="vml/vml-officedrawing.xsd"/>
+
+	<xsd:import id="w10" namespace="urn:schemas-microsoft-com:office:word"
+		schemaLocation="vml/vml-wordprocessingdrawing.xsd"/>
+
+	<xsd:import id="xvml" namespace="urn:schemas-microsoft-com:office:excel"
+		schemaLocation="vml/vml-spreadsheetDrawing.xsd"/>
+
+	<xsd:import id="pvml" namespace="urn:schemas-microsoft-com:office:powerpoint"
+		schemaLocation="vml/vml-presentationDrawing.xsd"/>
 
 </xsd:schema>
