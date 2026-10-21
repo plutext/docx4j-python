@@ -287,11 +287,11 @@ extraction-probe.docx	25	TBX25_IN_HEADER	original	default	PASS
 extraction-probe.docx	25	TBX25_IN_HEADER	original	include: headers	PASS	
 extraction-probe.docx	25	TBX25_IN_HEADER	markup	default	PASS	
 extraction-probe.docx	25	TBX25_IN_HEADER	markup	include: headers	PASS	
-extraction-probe.docx	25	WA25_TEXTPATH	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	WA25_TEXTPATH	accepted	default	PASS	
 extraction-probe.docx	25	WA25_TEXTPATH	accepted	text_boxes: false	PASS	
-extraction-probe.docx	25	WA25_TEXTPATH	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	WA25_TEXTPATH	original	default	PASS	
 extraction-probe.docx	25	WA25_TEXTPATH	original	text_boxes: false	PASS	
-extraction-probe.docx	25	WA25_TEXTPATH	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	WA25_TEXTPATH	markup	default	PASS	
 extraction-probe.docx	25	WA25_TEXTPATH	markup	text_boxes: false	PASS	
 extraction-probe.docx	26	HDR26_DEFAULT	accepted	default	PASS	
 extraction-probe.docx	26	HDR26_DEFAULT	accepted	include: headers	PASS	
@@ -438,11 +438,11 @@ extraction-probe.docx	32	MTH32_B	accepted	default	PASS
 extraction-probe.docx	32	MTH32_B	original	default	PASS	
 extraction-probe.docx	32	MTH32_B	markup	default	PASS	
 extraction-probe.docx	33	IMG33_ALT_TEXT	accepted	default	PASS	
-extraction-probe.docx	33	IMG33_ALT_TEXT	accepted	alt_text: true	FAIL	expected 1, got 0
+extraction-probe.docx	33	IMG33_ALT_TEXT	accepted	alt_text: true	PASS	
 extraction-probe.docx	33	IMG33_ALT_TEXT	original	default	PASS	
-extraction-probe.docx	33	IMG33_ALT_TEXT	original	alt_text: true	FAIL	expected 1, got 0
+extraction-probe.docx	33	IMG33_ALT_TEXT	original	alt_text: true	PASS	
 extraction-probe.docx	33	IMG33_ALT_TEXT	markup	default	PASS	
-extraction-probe.docx	33	IMG33_ALT_TEXT	markup	alt_text: true	FAIL	expected 1, got 0
+extraction-probe.docx	33	IMG33_ALT_TEXT	markup	alt_text: true	PASS	
 extraction-probe.docx	33	IMG33_TITLE	accepted	default	PASS	
 extraction-probe.docx	33	IMG33_TITLE	original	default	PASS	
 extraction-probe.docx	33	IMG33_TITLE	markup	default	PASS	
@@ -450,11 +450,11 @@ extraction-probe.docx	33	IMG33_DECORATIVE_DESCR	accepted	default	PASS
 extraction-probe.docx	33	IMG33_DECORATIVE_DESCR	original	default	PASS	
 extraction-probe.docx	33	IMG33_DECORATIVE_DESCR	markup	default	PASS	
 extraction-probe.docx	33	IMG33_SVG_ALT	accepted	default	PASS	
-extraction-probe.docx	33	IMG33_SVG_ALT	accepted	alt_text: true	FAIL	expected 1, got 0
+extraction-probe.docx	33	IMG33_SVG_ALT	accepted	alt_text: true	PASS	
 extraction-probe.docx	33	IMG33_SVG_ALT	original	default	PASS	
-extraction-probe.docx	33	IMG33_SVG_ALT	original	alt_text: true	FAIL	expected 1, got 0
+extraction-probe.docx	33	IMG33_SVG_ALT	original	alt_text: true	PASS	
 extraction-probe.docx	33	IMG33_SVG_ALT	markup	default	PASS	
-extraction-probe.docx	33	IMG33_SVG_ALT	markup	alt_text: true	FAIL	expected 1, got 0
+extraction-probe.docx	33	IMG33_SVG_ALT	markup	alt_text: true	PASS	
 extraction-probe.docx	33	SVG33_INNER_TEXT	accepted	default	PASS	
 extraction-probe.docx	33	SVG33_INNER_TEXT	original	default	PASS	
 extraction-probe.docx	33	SVG33_INNER_TEXT	markup	default	PASS	
@@ -1078,11 +1078,11 @@ extraction-probe-inspect.docx	63	HDR63_USED	original	include: headers	PASS
 extraction-probe-inspect.docx	63	HDR63_USED	markup	default	PASS	
 extraction-probe-inspect.docx	63	HDR63_USED	markup	include: headers	PASS	
 extraction-probe-inspect.docx	63	WMK63_WATERMARK	accepted	default	PASS	
-extraction-probe-inspect.docx	63	WMK63_WATERMARK	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	WMK63_WATERMARK	accepted	include: headers	PASS	
 extraction-probe-inspect.docx	63	WMK63_WATERMARK	original	default	PASS	
-extraction-probe-inspect.docx	63	WMK63_WATERMARK	original	include: headers	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	WMK63_WATERMARK	original	include: headers	PASS	
 extraction-probe-inspect.docx	63	WMK63_WATERMARK	markup	default	PASS	
-extraction-probe-inspect.docx	63	WMK63_WATERMARK	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	WMK63_WATERMARK	markup	include: headers	PASS	
 extraction-probe-inspect.docx	64	LNK64_FILE_TEXT	accepted	default	PASS	
 extraction-probe-inspect.docx	64	LNK64_FILE_TEXT	original	default	PASS	
 extraction-probe-inspect.docx	64	LNK64_FILE_TEXT	markup	default	PASS	
@@ -1138,11 +1138,11 @@ extraction-probe-inspect.docx	65	FNT65_PUA_PLAIN	accepted	default	PASS
 extraction-probe-inspect.docx	65	FNT65_PUA_PLAIN	original	default	PASS	
 extraction-probe-inspect.docx	65	FNT65_PUA_PLAIN	markup	default	PASS	
 extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	accepted	default	PASS	
-extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	accepted	alt_text: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	accepted	alt_text: true	PASS	
 extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	original	default	PASS	
-extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	original	alt_text: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	original	alt_text: true	PASS	
 extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	markup	default	PASS	
-extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	markup	alt_text: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	66	PIC66_NAME_ONLY	markup	alt_text: true	PASS	
 extraction-probe-inspect.docx	66	PIC66_DECOR_NAME	accepted	default	PASS	
 extraction-probe-inspect.docx	66	PIC66_DECOR_NAME	original	default	PASS	
 extraction-probe-inspect.docx	66	PIC66_DECOR_NAME	markup	default	PASS	
@@ -1571,9 +1571,9 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
-extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 17 lines of the golden missing, 3 extra
-extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 17 lines of the golden missing, 3 extra
-extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 17 lines of the golden missing, 3 extra
+extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 16 lines of the golden missing, 3 extra
+extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 16 lines of the golden missing, 3 extra
+extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 16 lines of the golden missing, 3 extra
 extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	

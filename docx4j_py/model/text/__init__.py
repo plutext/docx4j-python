@@ -33,7 +33,10 @@ text from it::
   ``list_labels``, with the level's owner (REQ-510); the table of contents
   only under ``toc: true`` (REQ-520); the document properties in the
   result's metadata, and in the text before the body under ``metadata: true``
-  (REQ-515).
+  (REQ-515); legacy WordArt as a one-paragraph text box (REQ-511); each
+  picture an ``IMAGE`` run, described by the options' describer (the alt text
+  by default; ``[image: ...]`` under ``alt_text: true``, REQ-514), and each
+  object an ``OBJECT`` run with its ProgID (REQ-512).
 
 **The package is never changed** (REQ-204): every part is read with
 ``read_contents``, so a save afterwards is byte for byte where it was.
@@ -47,8 +50,7 @@ the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
 fields computed under ``fields: update``, bound values, charts, SmartArt,
-WordArt, embedded packages, ``w:altChunk``, images and alt text,
-math as LaTeX (an equation is its ``m:t`` text inside ``$...$``), REQ-605's
+embedded packages, ``w:altChunk``, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``), REQ-605's
 listed and grid tables (every table is written tab-separated), page markers,
 ``layout: indent``, the glossary.
 
@@ -60,6 +62,7 @@ from __future__ import annotations
 from typing import Any
 
 from docx4j_py.model.text.extractor import normalize
+from docx4j_py.model.text.images import ImageDescriber, ImageDescription, TextImage, alt_text_describer
 from docx4j_py.model.text.options import (
     NOT_YET,
     OPTION_NAMES,
@@ -86,10 +89,13 @@ from docx4j_py.model.text.result import (
 __all__ = [
     "NOT_YET",
     "OPTION_NAMES",
+    "ImageDescriber",
+    "ImageDescription",
     "TextBlock",
     "TextCell",
     "TextComment",
     "TextField",
+    "TextImage",
     "TextNumbering",
     "TextOptionError",
     "TextOptions",
@@ -100,6 +106,7 @@ __all__ = [
     "TextRunSource",
     "TextView",
     "TextWarning",
+    "alt_text_describer",
     "extract",
     "extract_resolved",
     "normalize",

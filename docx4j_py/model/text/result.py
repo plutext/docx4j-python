@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from docx4j_py.model.text.images import ImageDescription, TextImage
 from docx4j_py.model.text.options import TextOptions
 
 __all__ = [
@@ -94,8 +95,14 @@ class TextRun:
     note_id: str | None = None
     #: For a comment reference: the comment's ``w:id``.
     comment_id: str | None = None
-    #: For an object: its ProgID.
+    #: For an object: its ProgID (``o:OLEObject/@ProgID``), or None (an ActiveX control's is in its part).
     prog_id: str | None = None
+    #: For an image: what the document says of it (REQ-514).
+    image: TextImage | None = field(default=None, repr=False)
+    #: For an image: the describer's description, with its provenance; None for none (a decorative picture's).
+    description: ImageDescription | None = None
+    #: For a page marker: the number of the page that begins there, from 2 (REQ-708).
+    page_number: int = 0
     #: Bold, italic, struck through, monospaced where its paragraph's style is not (docx4j CR-046 phase 3).
     bold: bool = False
     italic: bool = False
@@ -153,6 +160,13 @@ class TextRun:
                 out[name] = value
         if self.note_type is not None:
             out["note_number"] = self.note_number
+        if self.kind == "IMAGE":
+            if self.description is not None:
+                out["description"] = {"text": self.description.text, "provenance": self.description.provenance}
+            if self.image is not None and self.image.decorative:
+                out["decorative"] = True
+        if self.kind == "PAGE_MARKER":
+            out["page_number"] = self.page_number
         return out
 
     def __repr__(self) -> str:
@@ -312,6 +326,19 @@ class TextBlock:
         return self.story == "TEXT_BOX"
 
     @property
+    def decorative(self) -> bool:
+        """A paragraph whose only content is one or more pictures marked decorative (REQ-514, REQ-706)."""
+        found = False
+        for r in self.runs:
+            if r.kind == "IMAGE":
+                if r.image is None or not r.image.decorative:
+                    return False
+                found = True
+            elif r.kind == "TEXT" and r.text:
+                return False
+        return found
+
+    @property
     def text(self) -> str:
         """The block's text in the view: its text runs and field codes; a table's rows a line apart, cells a tab apart.
 
@@ -332,6 +359,7 @@ class TextBlock:
         out["text"] = self.text
         out["placeholder"] = self.placeholder
         out["textbox"] = self.textbox
+        out["decorative"] = self.decorative
         out["hidden"] = self.hidden
         out["revisions"] = self.revisions
         if self.indent_left is not None or self.indent_hanging is not None or self.indent_first_line is not None:
@@ -412,8 +440,12 @@ class TextWarning:
     SDT_BINDING_DIFFERS = "sdt.binding_differs"
     #: An ``altChunk`` not expanded (REQ-513).
     ALTCHUNK_NOT_EXPANDED = "altchunk.not_expanded"
-    #: A part that cannot be read: a text box that would lose content as typed, a chart.
+    #: A part that cannot be read: a text box that would lose content as typed, a
+    #: chart, a SmartArt data part, an embedded package or a part inside it; it
+    #: contributes nothing (REQ-511, REQ-512, REQ-801).
     CONTENT_NOT_READ = "content.not_read"
+    #: An image the describer failed to describe: it has no description (REQ-514, REQ-801).
+    IMAGE_NOT_DESCRIBED = "image.not_described"
 
     kind: str
     address: str | None = None
@@ -421,7 +453,9 @@ class TextWarning:
     branch: str | None = None
     #: For ``altchunk.not_expanded``: the chunk's content type as the package declares it.
     content_type: str | None = None
-    #: For ``content.not_read``: the part's name.
+    #: For ``content.not_read``: the part's name (for a part inside an embedded
+    #: package, the embedded package part's); for ``image.not_described``, the
+    #: image part's.
     part_name: str | None = None
 
     @property

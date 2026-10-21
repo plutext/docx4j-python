@@ -228,7 +228,6 @@ def test_the_views(probe):
 PHASE_C_MISSING = collections.Counter(
     [
         "The control: BND23_XML_VALUE",  # bound values (REQ-509)
-        "WA25_TEXTPATH",  # legacy WordArt (REQ-511)
         "[table: listed format]",  # REQ-605's listed form
         "TBL31_CELL_P1; TBL31_CELL_P2\tTBL31_NESTED",
         "$$MTH32\\_A+\\frac{MTH32\\_B}{2}$$",  # math as LaTeX (REQ-604)

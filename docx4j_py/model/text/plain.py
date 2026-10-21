@@ -129,6 +129,11 @@ class _Writer:
         elif kind == "NOTE_MARK":
             if run.note_number > 0:
                 self.out.append(f"[{run.note_number}]")
+        elif kind == "IMAGE":
+            description = run.description
+            if self.options.alt_text and description is not None:
+                opening = "[image, generated: " if description.provenance == "GENERATED" else "[image: "
+                self.out.append(f"{opening}{description.text}]")
         elif kind == "COMMENT_REFERENCE":
             comments = self.result.comments
             comment = comments.get(run.comment_id or "")

@@ -14,7 +14,7 @@ from conformance import PHASE0
 from mini_docx import MiniDocx
 
 from docx4j_py import load
-from docx4j_py.model.text import TextResult, extract, plain_text
+from docx4j_py.model.text import ImageDescription, TextResult, TextWarning, extract, plain_text
 
 PROBE = PHASE0 / "extraction-probe.docx"
 EXTERNAL = PHASE0 / "extraction-probe-external.docm"
@@ -131,3 +131,88 @@ def test_every_core_property_in_the_schemas_order_and_custom_ones_typed():
         "[custom properties: Count: 7; Done: true; When: 2026-01-02T03:04:05Z]\nBody.\n"
     )
     assert r.to_dict()["metadata"]["custom"]["Done"] is True
+
+
+# ---------------------------------------------------------------------------
+# images and objects (REQ-514, REQ-512)
+# ---------------------------------------------------------------------------
+
+
+def runs(result, kind):
+    return [r for b in result.blocks for r in b.runs if r.kind == kind]
+
+
+def test_image_descriptions(probe):
+    """REQ-514, REQ-707: the alt text, else the name; nothing for a decorative picture; the title never."""
+    value = text(probe, alt_text=True)
+    assert between(value, "Alt text and title:", "Case 34") == (
+        "Alt text and title: [image: IMG33_ALT_TEXT]\nDecorative: \nSVG, its PNG fallback in a:blip: [image: IMG33_SVG_ALT]\n"
+    )
+    assert "IMG33_TITLE" not in value
+    assert "[image" not in text(probe)
+    images = runs(extract(probe), "IMAGE")
+    decorative = [r for r in images if r.image.decorative]
+    assert len(decorative) == 1
+    assert decorative[0].description is None
+    assert decorative[0].image.descr == "IMG33_DECORATIVE_DESCR"
+    assert all(r.description.provenance == "AUTHOR" for r in images if r.description is not None)
+
+
+def test_a_hosts_describer_is_marked_generated(probe):
+    def captions(image):
+        return None if image.decorative else ImageDescription.generated(f"a picture named {image.name}")
+
+    assert "Alt text and title: [image, generated: a picture named Picture 14]" in text(
+        probe, alt_text=True, image_describer=captions
+    )
+
+
+def test_a_vml_pictures_alt_and_no_decorative_block_in_the_probe(probe):
+    vml = MiniDocx.body(
+        '<w:p><w:r><w:pict><v:shape style="width:10pt;height:10pt" alt="VML alt"><v:imagedata r:id="rIdNone"/>'
+        "</v:shape></w:pict></w:r></w:p>"
+    ).load()
+    assert text(vml, alt_text=True) == "[image: VML alt]\n"
+    assert not any(b.decorative for b in extract(probe).blocks)
+
+
+def test_a_paragraph_of_decorative_pictures_is_a_decorative_block():
+    picture = (
+        '<w:r><w:drawing><wp:inline><wp:extent cx="1" cy="1"/><wp:docPr id="1" name="P" descr="D">'
+        '<a:extLst><a:ext uri="{C183D7F6-B498-43B3-948B-1728B52AA6E4}">'
+        '<adec:decorative xmlns:adec="http://schemas.microsoft.com/office/drawing/2017/decorative" val="1"/>'
+        "</a:ext></a:extLst></wp:docPr><a:graphic>"
+        '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr>'
+        '<pic:cNvPr id="0" name="P"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdNone"/>'
+        "</pic:blipFill><pic:spPr/></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"
+    )
+    block = extract(MiniDocx.body(f"<w:p>{picture}</w:p>").load()).blocks[0]
+    assert block.decorative and block.to_dict()["decorative"]
+    assert block.runs[0].image.part is None  # the relationship names nothing
+
+
+def test_a_describer_that_fails_raises_image_not_described(probe):
+    def failing(image):
+        raise RuntimeError("the describing service is down")
+
+    r = extract(probe, alt_text=True, image_describer=failing)
+    found = [w for w in r.warnings if w.kind == TextWarning.IMAGE_NOT_DESCRIBED]
+    assert found and all(w.selector.startswith("/word/media/") for w in found)
+    assert "[image" not in plain_text(r)
+
+
+def test_objects_are_object_runs_with_their_progids(probe):
+    assert [r.prog_id for r in runs(extract(probe), "OBJECT")] == [
+        "Excel.Sheet.12",
+        "Word.Document.12",
+        "Package",
+        None,
+        "PowerPoint.Show.12",
+    ]
+
+
+def test_legacy_wordart_is_a_one_paragraph_text_box(probe):
+    r = extract(probe)
+    word_art = [b for b in r.blocks if b.story == "TEXT_BOX" and b.text == "WA25_TEXTPATH"]
+    assert len(word_art) == 1 and word_art[0].address.endswith("/textbox:0/0")
+    assert "WA25_TEXTPATH" not in text(probe, text_boxes=False)

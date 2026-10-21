@@ -26,10 +26,15 @@ One pass over the unresolved tree makes the block model:
 Nothing in the package is changed (REQ-204): every tree here was read with
 ``read_contents``.
 
+Phase C (CR-011 section 13) adds what a run anchors besides text boxes:
+legacy WordArt as a one-paragraph text box (REQ-511), pictures as ``IMAGE``
+runs with their descriptions (REQ-514), objects as ``OBJECT`` runs (REQ-512);
+and the document properties in the metadata (REQ-515).
+
 Not yet (CR-011 Phase C): fields computed under ``fields: update``, bound
 values, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``,
-REQ-604's form for one that is not converted), charts and SmartArt, WordArt,
-embedded packages, ``w:altChunk``, images and their alt text, page markers.
+REQ-604's form for one that is not converted), charts and SmartArt, embedded
+packages, ``w:altChunk``, page markers.
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ from docx4j_py.child import (
     requires_of,
 )
 from docx4j_py.model.revisions import trees as rtrees
+from docx4j_py.model.text.images import TextImage
 from docx4j_py.model.text.options import TextOptions
 from docx4j_py.model.text.result import (
     TextBlock,
@@ -72,6 +78,38 @@ _W = f"{{{W_NS}}}"
 _MATH_NS = rtrees.MATH_NS
 _A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _TXBX = f"{_W}txbxContent"
+_W_OBJECT = f"{_W}object"
+_W_CONTROL = f"{_W}control"
+_R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_R_ID = f"{{{_R_NS}}}id"
+_R_EMBED = f"{{{_R_NS}}}embed"
+_R_DM = f"{{{_R_NS}}}dm"
+_WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+_WP_INLINE = f"{{{_WP_NS}}}inline"
+_WP_ANCHOR = f"{{{_WP_NS}}}anchor"
+_WP_DOC_PR = f"{{{_WP_NS}}}docPr"
+_A_GRAPHIC = f"{{{_A_NS}}}graphic"
+_A_GRAPHIC_DATA = f"{{{_A_NS}}}graphicData"
+_A_BLIP = f"{{{_A_NS}}}blip"
+_A_EXT_LST = f"{{{_A_NS}}}extLst"
+_A_EXT = f"{{{_A_NS}}}ext"
+_PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+_PIC = f"{{{_PIC_NS}}}pic"
+_PIC_NV = f"{{{_PIC_NS}}}nvPicPr"
+_PIC_CNV = f"{{{_PIC_NS}}}cNvPr"
+_PIC_BLIP_FILL = f"{{{_PIC_NS}}}blipFill"
+_C_CHART = "{http://schemas.openxmlformats.org/drawingml/2006/chart}chart"
+_CX_CHART = "{http://schemas.microsoft.com/office/drawing/2014/chartex}chart"
+_DGM_REL_IDS = "{http://schemas.openxmlformats.org/drawingml/2006/diagram}relIds"
+_V_NS = "urn:schemas-microsoft-com:vml"
+_V_SHAPE = f"{{{_V_NS}}}shape"
+_V_TEXTPATH = f"{{{_V_NS}}}textpath"
+_V_IMAGEDATA = f"{{{_V_NS}}}imagedata"
+_O_OLE_OBJECT = "{urn:schemas-microsoft-com:office:office}OLEObject"
+#: ``adec:decorative``'s extension of ``wp:docPr`` (docx4j ``DECORATIVE_EXT``).
+DECORATIVE_EXT = "{C183D7F6-B498-43B3-948B-1728B52AA6E4}"
+#: The extension Office 2016 writes an SVG picture's SVG in, beside the PNG copy ``a:blip/@r:embed`` names.
+SVG_BLIP_EXTENSION = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"
 
 #: Fonts whose glyphs are all one width (WD 1.3.2's list, docx4j's).
 MONOSPACE = frozenset(
@@ -243,8 +281,9 @@ class _Story:
         self.part = part
         #: Open complex fields; [0] is the innermost.
         self.fields: list[_Field] = []
-        #: The text boxes anchored since the last flush, to follow their anchor (or its table).
-        self.pending: list[tuple[Any, str]] = []
+        #: What was anchored since the last flush (text boxes, WordArt, charts,
+        #: SmartArt, embedded packages), to follow its anchor (or its table).
+        self.pending: list[_Anchored] = []
         self.table_depth = 0
         #: The sections ended so far (the main story only).
         self.sections: list[Any] | None = None
@@ -263,14 +302,17 @@ class _Paragraph:
         "address",
         "block",
         "boxes",
+        "charts",
         "display_math",
         "format",
         "link",
         "math",
         "merge_floor",
         "monospace",
+        "objects",
         "p",
         "p_style",
+        "smart_arts",
         "story",
         "text_chars",
         "toc",
@@ -283,7 +325,11 @@ class _Paragraph:
         self.address = address
         self.story = story
         self.view = view
+        #: The text boxes (WordArt among them), charts, SmartArt and objects anchored in it so far, each counted apart.
         self.boxes = 0
+        self.charts = 0
+        self.smart_arts = 0
+        self.objects = 0
         p_pr = getattr(p, "p_pr", None)
         style = getattr(p_pr, "p_style", None) if p_pr is not None else None
         #: The paragraph's own style id, for its runs' styles.
@@ -308,6 +354,67 @@ class _Paragraph:
         if self._office is None:
             self._office = _office_spans(self.p, self.view)
         return self._office.get(id(item))
+
+
+# ---------------------------------------------------------------------------
+# what follows its anchoring paragraph (REQ-511, REQ-512, REQ-518)
+# ---------------------------------------------------------------------------
+
+
+class _Anchored:
+    """What follows its anchoring paragraph, or the table its anchor is in, in anchor order. docx4j ``Anchored``."""
+
+    __slots__ = ("prefix",)
+
+    def __init__(self, prefix: str) -> None:
+        self.prefix = prefix
+
+    def anchor(self) -> str:
+        """The address of the block that anchors it."""
+        return self.prefix.rsplit("/", 1)[0]
+
+    def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
+        """Its blocks, in the story that anchors it."""
+        raise NotImplementedError
+
+
+class _Box(_Anchored):
+    """A text box: its content, read as a story of its own."""
+
+    __slots__ = ("content",)
+
+    def __init__(self, content: Any, prefix: str) -> None:
+        super().__init__(prefix)
+        self.content = content
+
+    def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
+        inner = _Story("TEXT_BOX", self.prefix, anchoring.part, anchoring.state)
+        inner.note_type = anchoring.note_type
+        inner.note_number = anchoring.note_number
+        inner.note_id = anchoring.note_id
+        x.blocks(self.content.content, self.prefix, inner, sink)
+
+
+class _WordArt(_Anchored):
+    """Legacy VML WordArt: a one-paragraph text box holding its ``v:textpath/@string`` (REQ-511)."""
+
+    __slots__ = ("shape", "text")
+
+    def __init__(self, text: str, shape: Any, prefix: str) -> None:
+        super().__init__(prefix)
+        self.text = text
+        self.shape = shape
+
+    def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
+        sink.append(paragraph_block("TEXT_BOX", f"{self.prefix}/0", self.text))
+
+
+def paragraph_block(story: str, address: str, text: str | None) -> TextBlock:
+    """A paragraph of one text run, for content read outside the walk (docx4j ``Embedded.paragraph``)."""
+    block = TextBlock("PARAGRAPH", story, address)  # type: ignore[arg-type]
+    if text:
+        block.runs.append(TextRun("TEXT", text))
+    return block
 
 
 # ---------------------------------------------------------------------------
@@ -538,13 +645,9 @@ class Extractor:
         pending = list(story.pending)
         story.pending.clear()
         section = len(story.sections) if story.sections is not None else 0
-        for content, prefix in pending:
-            inner = _Story("TEXT_BOX", prefix, story.part, story.state)
-            inner.note_type = story.note_type
-            inner.note_number = story.note_number
-            inner.note_id = story.note_id
+        for item in pending:
             blocks: list[TextBlock] = []
-            self.blocks(content.content, prefix, inner, blocks)
+            item.emit(self, story, blocks)
             for b in blocks:
                 b.section = section
             sink.extend(blocks)
@@ -896,7 +999,7 @@ class Extractor:
             return
         if name in ("drawing", "pict", "object"):
             if not _in_code(story) and not _suppressed(story) and not (hidden and not self.options.hidden):
-                self._anchored(item, para)
+                self._anchored(item, para, state)
             return
         if name == "AlternateContent":
             self._compare_branches(item, para.block.address)
@@ -1058,13 +1161,18 @@ class Extractor:
         finally:
             para.math, para.display_math = saved
 
-    # -- what a run anchors: text boxes (REQ-518) --------------------------------
+    # -- what a run anchors: text boxes (REQ-518), WordArt (REQ-511), pictures (REQ-514), objects (REQ-512)
 
-    def _anchored(self, value: Any, para: _Paragraph) -> None:
-        """The text boxes under a run's drawing, picture or object, branches selected, to follow the paragraph."""
-        if not self.options.text_boxes:
-            return
+    def _anchored(self, value: Any, para: _Paragraph, state: _RunState) -> None:
+        """What a run's drawing, picture or object holds, in document order, branches selected for text.
+
+        docx4j ``Extractor.anchored``: text boxes and WordArt to follow the
+        paragraph; pictures and objects as runs where they are. A kept branch is
+        a wildcard tree here (CR-002's lossless MCE), so each kind is found by
+        its element name there, as by its class in a typed tree.
+        """
         txbx_class = rtrees.cls("CTTxbxContent")
+        inline_class, anchor_class, pic_class, object_class, control_class = _drawing_classes()
 
         def visit(node: Any, holder: list | None) -> None:
             if isinstance(node, str) or node is None:
@@ -1079,17 +1187,48 @@ class Extractor:
                     visit(child, kids if is_any_element(child) else None)
                 return
             if isinstance(node, txbx_class):
-                self._box(node, para)
+                if self.options.text_boxes:
+                    self._box(node, para)
                 return
             if is_any_element(node):
-                if node.qname == _TXBX:
-                    typed = self._island(node, holder, para)
-                    if typed is not None:
-                        self._box(typed, para)
+                qname = node.qname
+                if qname == _TXBX:
+                    if self.options.text_boxes:
+                        typed = self._island(node, holder, para)
+                        if typed is not None:
+                            self._box(typed, para)
+                    return
+                if qname in (_WP_INLINE, _WP_ANCHOR):
+                    if not self._graphic(node, para, state):
+                        return
+                elif qname == _PIC:
+                    self._image(_wild_child(_wild_child(node, _PIC_NV), _PIC_CNV), self._blip_part(node, para), False, node, para, state)
+                    return
+                elif qname == _V_SHAPE:
+                    if not self._vml_shape(node, para, state):
+                        return
+                elif qname == _W_OBJECT:
+                    self._object(node, para, state)
+                    return
+                elif qname == _W_CONTROL:
+                    self._object_run(para, None, state)
                     return
                 kids = node.children or []
                 for child in list(kids):
                     visit(child, kids)
+                return
+            if isinstance(node, object_class):
+                self._object(node, para, state)
+                return
+            if isinstance(node, control_class):
+                self._object_run(para, None, state)
+                return
+            if isinstance(node, (inline_class, anchor_class)):
+                if not self._graphic(node, para, state):
+                    return
+            elif isinstance(node, pic_class):
+                nv = node.nv_pic_pr.c_nv_pr if node.nv_pic_pr is not None else None
+                self._image(nv, self._blip_part(node, para), False, node, para, state)
                 return
             for _qname, child in iter_children(node, mce="all", wildcards=True):
                 visit(child, _holder_of(node, child) if is_any_element(child) else None)
@@ -1097,8 +1236,115 @@ class Extractor:
         visit(value, None)
 
     def _box(self, content: Any, para: _Paragraph) -> None:
-        para.story.pending.append((content, f"{para.address}/textbox:{para.boxes}"))
+        para.story.pending.append(_Box(content, f"{para.address}/textbox:{para.boxes}"))
         para.boxes += 1
+
+    def _graphic(self, anchor: Any, para: _Paragraph, state: _RunState) -> bool:
+        """A ``wp:inline`` or ``wp:anchor``: a chart, SmartArt, a picture, or a shape to walk into (True)."""
+        doc_pr = _drawing_doc_pr(anchor)
+        data = _graphic_data(anchor)
+        if data is None:
+            return False
+        for item in data:
+            if isinstance(item, str):
+                continue
+            kind = _graphic_kind(item)
+            if kind == "chart":
+                return False  # charts are read in their own step (CR-011 Phase C)
+            if kind == "smartart":
+                return False
+            if kind == "picture":
+                self._image(doc_pr, self._blip_part(item, para), False, anchor, para, state)
+                return False
+        return True  # a shape, group or canvas: its text boxes and pictures
+
+    def _vml_shape(self, shape: Any, para: _Paragraph, state: _RunState) -> bool:
+        """A VML ``v:shape``: legacy WordArt, a picture, or a shape to walk into for its text box (True)."""
+        image_data = None
+        for child in shape.children or ():
+            if isinstance(child, str) or not is_any_element(child):
+                continue
+            if child.qname == _V_TEXTPATH:
+                string = (child.attributes or {}).get("string")
+                if string:
+                    if self.options.text_boxes:
+                        para.story.pending.append(_WordArt(string, shape, f"{para.address}/textbox:{para.boxes}"))
+                        para.boxes += 1
+                    return False
+            elif child.qname == _V_IMAGEDATA:
+                image_data = child
+        if image_data is not None:
+            part = self.trees.related(para.story.part, (image_data.attributes or {}).get(_R_ID))
+            self._image_of(
+                (shape.attributes or {}).get("alt"), None, None, False, True, part, shape, para, state
+            )
+        return True
+
+    def _object(self, obj: Any, para: _Paragraph, state: _RunState) -> None:
+        """A ``w:object``: an object run with its ProgID (REQ-512)."""
+        if is_any_element(obj):
+            kids = [c for c in obj.children or () if not isinstance(c, str)]
+            if any(is_any_element(c) and c.qname == _W_CONTROL for c in kids):
+                self._object_run(para, None, state)
+                return
+            items = kids
+        else:
+            if getattr(obj, "control", None) is not None:
+                self._object_run(para, None, state)
+                return
+            items = [
+                *(getattr(obj, "schemas_microsoft_com_vml_element", None) or ()),
+                *(getattr(obj, "schemas_microsoft_com_office_office_element", None) or ()),
+            ]
+        for item in items:
+            if not is_any_element(item):
+                continue
+            if item.qname == _O_OLE_OBJECT:
+                attributes = item.attributes or {}
+                self._object_run(para, attributes.get("ProgID"), state)
+                return
+            if item.qname == _W_CONTROL:
+                self._object_run(para, None, state)
+                return
+
+    def _object_run(self, para: _Paragraph, prog_id: str | None, state: _RunState) -> None:
+        run = TextRun("OBJECT", "", state.revision)
+        run.prog_id = prog_id
+        para.block.runs.append(run)
+
+    def _image(
+        self, nv: Any, part: Any, vml: bool, source: Any, para: _Paragraph, state: _RunState
+    ) -> None:
+        """A DrawingML picture, by its ``wp:docPr`` (or a nested picture's ``pic:cNvPr``)."""
+        self._image_of(_nv_attr(nv, "descr"), _nv_attr(nv, "name"), _nv_attr(nv, "title"), _decorative(nv), vml, part, source, para, state)
+
+    def _image_of(
+        self,
+        descr: str | None,
+        name: str | None,
+        title: str | None,
+        decorative: bool,
+        vml: bool,
+        part: Any,
+        source: Any,
+        para: _Paragraph,
+        state: _RunState,
+    ) -> None:
+        image = TextImage(descr, name, title, decorative, vml, part, source)
+        run = TextRun("IMAGE", "", state.revision)
+        run.image = image
+        try:
+            run.description = self.options.image_describer(image)
+        except Exception:  # noqa: BLE001 - a describer's failure is a warning, not the reading's
+            self.warn(TextWarning(TextWarning.IMAGE_NOT_DESCRIBED, para.block.address, part_name=_part_name(part)))
+        run.placeholder = state.placeholder
+        para.block.runs.append(run)
+
+    def _blip_part(self, pic: Any, para: _Paragraph) -> Any:
+        """A picture's image part: ``a:blip/@r:embed``'s, else its ``asvg:svgBlip``'s (an SVG with no PNG copy)."""
+        embed, svg = _blip_ids(pic)
+        part = self.trees.related(para.story.part, embed)
+        return part if part is not None else self.trees.related(para.story.part, svg)
 
     def _island(self, node: Any, holder: list | None, para: _Paragraph) -> Any:
         """A wildcard ``w:txbxContent`` as a typed island, shared with the plan's listing (CR-010 section 3.5)."""
@@ -1424,6 +1670,140 @@ def _holder_of(typed: Any, child: Any) -> list | None:
         if isinstance(found, list) and any(item is child for item in found):
             return found
     return None
+
+
+_DRAWING_CLASSES: tuple[type, type, type, type, type] | None = None
+
+
+def _drawing_classes() -> tuple[type, type, type, type, type]:
+    """``wp:inline``, ``wp:anchor``, ``pic:pic``, ``w:object`` and ``w:control``'s classes, imported on first use."""
+    global _DRAWING_CLASSES
+    if _DRAWING_CLASSES is None:
+        from docx4j_py.dml.picture import Pic
+        from docx4j_py.dml.wordprocessing_drawing import Anchor, Inline
+        from docx4j_py.wml import CTControl, CTObject
+
+        _DRAWING_CLASSES = (Inline, Anchor, Pic, CTObject, CTControl)
+    return _DRAWING_CLASSES
+
+
+def _wild_child(node: Any, qname: str) -> Any:
+    """A wildcard's first child of a name, or None."""
+    if node is None or not is_any_element(node):
+        return None
+    for child in node.children or ():
+        if not isinstance(child, str) and is_any_element(child) and child.qname == qname:
+            return child
+    return None
+
+
+def _drawing_doc_pr(anchor: Any) -> Any:
+    """A ``wp:inline``'s or ``wp:anchor``'s ``wp:docPr``, typed or a wildcard."""
+    if is_any_element(anchor):
+        return _wild_child(anchor, _WP_DOC_PR)
+    return getattr(anchor, "doc_pr", None)
+
+
+def _graphic_data(anchor: Any) -> list | None:
+    """The content of a ``wp:inline``'s or ``wp:anchor``'s ``a:graphicData``, or None."""
+    if is_any_element(anchor):
+        data = _wild_child(_wild_child(anchor, _A_GRAPHIC), _A_GRAPHIC_DATA)
+        return None if data is None else list(data.children or ())
+    graphic = getattr(anchor, "graphic", None)
+    data = getattr(graphic, "graphic_data", None) if graphic is not None else None
+    return None if data is None else list(data.any_element or ())
+
+
+def _graphic_kind(item: Any) -> str | None:
+    """What an item of ``a:graphicData`` is: ``chart``, ``chartex``, ``smartart``, ``picture``; None for a shape."""
+    if is_any_element(item):
+        qname = item.qname
+        if qname == _C_CHART:
+            return "chart"
+        if qname == _CX_CHART:
+            return "chartex"
+        if qname == _DGM_REL_IDS:
+            return "smartart"
+        if qname == _PIC:
+            return "picture"
+        return None
+    name = type(item).__name__
+    module = type(item).__module__
+    if name == "RelIds" and module.endswith("diagram"):
+        return "smartart"
+    if name == "Pic":
+        return "picture"
+    if name == "Chart" and module.endswith(".chart"):
+        return "chart"
+    return None
+
+
+def _nv_attr(nv: Any, name: str) -> str | None:
+    """An attribute of ``wp:docPr`` or ``pic:cNvPr``, typed or a wildcard."""
+    if nv is None:
+        return None
+    if is_any_element(nv):
+        return (nv.attributes or {}).get(name)
+    return getattr(nv, name, None)
+
+
+def _extensions(ext_lst: Any) -> list[tuple[str, list]]:
+    """An ``a:extLst``'s extensions as (uri, content), typed or a wildcard."""
+    if ext_lst is None:
+        return []
+    out = []
+    if is_any_element(ext_lst):
+        for ext in ext_lst.children or ():
+            if not isinstance(ext, str) and is_any_element(ext) and ext.qname == _A_EXT:
+                out.append(((ext.attributes or {}).get("uri") or "", [c for c in ext.children or () if not isinstance(c, str)]))
+        return out
+    for ext in getattr(ext_lst, "ext", None) or ():
+        content = getattr(ext, "any_element", None)
+        items = content if isinstance(content, list) else ([] if content is None else [content])
+        out.append((getattr(ext, "uri", None) or "", items))
+    return out
+
+
+def _decorative(nv: Any) -> bool:
+    """``adec:decorative val="1"`` among ``wp:docPr``'s extensions."""
+    if nv is None:
+        return False
+    ext_lst = _wild_child(nv, _A_EXT_LST) if is_any_element(nv) else getattr(nv, "ext_lst", None)
+    for uri, items in _extensions(ext_lst):
+        if uri.upper() != DECORATIVE_EXT:
+            continue
+        for item in items:
+            val = (item.attributes or {}).get("val") if is_any_element(item) else getattr(item, "val", None)
+            if val in (True, 1) or str(val).lower() in ("1", "true"):
+                return True
+    return False
+
+
+def _blip_ids(pic: Any) -> tuple[str | None, str | None]:
+    """A picture's ``a:blip/@r:embed`` and its ``asvg:svgBlip/@r:embed``."""
+    if is_any_element(pic):
+        blip = _wild_child(_wild_child(pic, _PIC_BLIP_FILL), _A_BLIP)
+        if blip is None:
+            return None, None
+        embed = (blip.attributes or {}).get(_R_EMBED)
+        ext_lst = _wild_child(blip, _A_EXT_LST)
+    else:
+        fill = getattr(pic, "blip_fill", None)
+        blip = getattr(fill, "blip", None) if fill is not None else None
+        if blip is None:
+            return None, None
+        embed = getattr(blip, "embed", None)
+        ext_lst = getattr(blip, "ext_lst", None)
+    svg = None
+    for uri, items in _extensions(ext_lst):
+        if uri.upper() != SVG_BLIP_EXTENSION:
+            continue
+        for item in items:
+            found = (item.attributes or {}).get(_R_EMBED) if is_any_element(item) else getattr(item, "embed", None)
+            if found:
+                svg = found
+                break
+    return embed, svg
 
 
 def _is_marker(item: Any) -> bool:

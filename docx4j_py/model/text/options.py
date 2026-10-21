@@ -14,6 +14,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any, Literal, get_args
 
 from docx4j_py.model.content.enums import TextView
+from docx4j_py.model.text.images import ImageDescriber, alt_text_describer
 from docx4j_py.openpackaging.exceptions import Docx4JException
 
 __all__ = [
@@ -103,7 +104,6 @@ NOT_YET: dict[tuple[str, Any], str] = {
     ("smartart", True): "REQ-511",
     ("embedded", True): "REQ-512",
     ("altchunks", True): "REQ-513",
-    ("alt_text", True): "REQ-514",
     ("tables", "grid"): "REQ-605",
     ("page_markers", True): "REQ-708",
     ("layout", "indent"): "REQ-709",
@@ -174,8 +174,8 @@ class TextOptions:
     converter) and ``symbols: unicode`` (no glyph tables).
 
     **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update``,
-    ``embedded: true``, ``alt_text: true``, ``tables: grid``, ``page_markers:
-    true`` and ``layout: indent`` are accepted and read as their defaults; under the default ``charts``, ``smartart``,
+    ``embedded: true``, ``tables: grid``, ``page_markers: true`` and ``layout:
+    indent`` are accepted and read as their defaults; under the default ``charts``, ``smartart``,
     ``altchunks`` and ``bindings`` a chart or SmartArt contributes nothing, an
     ``altChunk`` is not expanded and a bound control is read by its surface.
     In ``tables: auto`` every table is written in REQ-605's simple form.
@@ -192,6 +192,7 @@ class TextOptions:
         "field_codes",
         "fields",
         "hidden",
+        "image_describer",
         "layout",
         "list_labels",
         "markup_detail",
@@ -242,6 +243,10 @@ class TextOptions:
         self.page_markers = False
         self.layout = "none"
         self.warnings = True
+        #: What gives an image its description (REQ-514): beyond section 10, a
+        #: host's hook, as docx4j's ``TextOptions.imageDescriber``. The
+        #: author's alt text by default (:func:`~docx4j_py.model.text.images.alt_text_describer`).
+        self.image_describer: ImageDescriber = alt_text_describer
         for name, value in options.items():
             self.set(name, value)
 
@@ -276,6 +281,12 @@ class TextOptions:
         elif key in _CHOICES:
             values, statement = _CHOICES[key]
             setattr(self, key, _choice(key, value, values, statement))
+        elif key == "image_describer":
+            if value is not None and not callable(value):
+                raise TextOptionError(
+                    f"image_describer: {value!r} is not callable (WD REQ-514)", key, "REQ-514", "invalid"
+                )
+            self.image_describer = value or alt_text_describer
         else:
             raise TextOptionError(
                 f"Unknown text option {name!r}; the options are {', '.join(OPTION_NAMES)} (WD REQ-1001)",
