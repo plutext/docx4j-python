@@ -1229,8 +1229,8 @@ Nothing else in the suite moved. The fork's upstream tests are untouched.
     - one asymmetry is left (CR-051 section 12.5): a read branch of two cells beside a twin branch
       of one leaves the twin branch's grid a span short.
     - **Ported on 2026-10-22** at the user's go ("go on the port"), in `dde142e` (the code and
-      its eight tests) and the notes' commit after it (section 10.10, the CHANGELOG,
-      `tests/README.md`). The asymmetry is pinned as a known gap.
+      its eight tests) and `85cc8eb` (section 10.10, the CHANGELOG, `tests/README.md`). The
+      asymmetry is pinned as a known gap.
 - **Phase B's typing.** A `w:p`, `w:tbl` or `w:r` in a branch is as before:
   - `w:p` and `w:r` are global, so typed already;
   - a `w:tbl` in a block-level branch is still a wildcard, so `Body.tables` passes a table there by
@@ -1278,7 +1278,7 @@ after this package found the gap while porting Phase A2.
 
 - `dde142e`: `tables.branch_of`, `tables.cells_in` and the twin's lookup in `remove_cell`, with
   the tests;
-- the commit after it: this section, 10.6 item 6, 10.8, the CHANGELOG and `tests/README.md`.
+- `85cc8eb`: this section, 10.6 item 6, 10.8, the CHANGELOG and `tests/README.md`.
 
 **What landed** (`docx4j_py/model/revisions/tables.py`, beside `cells_of` and `_cells`):
 
