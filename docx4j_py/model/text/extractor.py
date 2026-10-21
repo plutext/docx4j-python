@@ -1753,10 +1753,8 @@ class Extractor:
             if getattr(obj, "control", None) is not None:
                 self._object_run(para, None, state)
                 return
-            items = [
-                *(getattr(obj, "schemas_microsoft_com_vml_element", None) or ()),
-                *(getattr(obj, "schemas_microsoft_com_office_office_element", None) or ()),
-            ]
+            # CT_PictureBase's one wildcard list, in document order (CR-012 section 12.15)
+            items = list(getattr(obj, "any_and_any", None) or ())
         ole_class = _vml_classes()[3]
         for item in items:
             if isinstance(item, ole_class):

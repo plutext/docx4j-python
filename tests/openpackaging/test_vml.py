@@ -14,6 +14,8 @@ stands, in a branch or not. What is held (CR-012 section 4.3 and section 12):
 * ``settings.xml``'s ``o:shapedefaults`` and ``o:shapelayout`` typed;
 * a header's VML watermark typed;
 * each part round-trips canonically identical;
+* ``w:object``'s and ``w:pict``'s children, one list (``any_and_any``,
+  docx4j's ``getAnyAndAny()``), saved in document order (section 12.15);
 * VML's booleans (``ST_TrueFalse``, a string enumeration) keep their
   spelling, and ``o:spt`` (``xsd:float``) and ``o:gfxdata``
   (``xsd:base64Binary``) theirs, through the fork's ``lexical_types``;
@@ -93,7 +95,7 @@ def test_vml_under_a_pict_outside_any_branch_is_typed():
     header = next(p for p in load(INSPECT).parts.values() if str(p.part_name) == "/word/header2.xml")
     (pict,) = find(header.contents, Pict)
     assert isinstance(pict.parent, R) and outside_any_branch(pict)
-    shapetype, shape = pict.schemas_microsoft_com_vml_element
+    shapetype, shape = pict.any_and_any
     assert isinstance(shapetype, CTShapetype) and isinstance(shape, CTShape)
     assert wildcards(header.contents) == []
 
@@ -104,7 +106,7 @@ def test_vml_under_a_pict_in_a_fallback_is_typed():
     (ac,) = find(contents, AlternateContent, mce="all")
     (pict,) = ac.fallback.any_element
     assert isinstance(pict, Pict)
-    (rect,) = pict.schemas_microsoft_com_vml_element
+    (rect,) = pict.any_and_any
     assert isinstance(rect, CTRect)
     assert (rect.spid, rect.anchor_id) == ("_x0000_s1026", "2953E3D1")
     assert wildcards(contents) == []
@@ -116,13 +118,11 @@ def test_vml_under_an_object_is_typed():
     assert len(objects) == 2
     for obj in objects:
         assert outside_any_branch(obj)
-        vml = obj.schemas_microsoft_com_vml_element
-        assert [isinstance(c, (CTShapetype, CTShape)) for c in vml] == [True, True]
-        (ole,) = obj.schemas_microsoft_com_office_office_element
-        assert isinstance(ole, CTOLEObject)
+        shapetype, shape, ole = obj.any_and_any
+        assert [isinstance(c, k) for c, k in ((shapetype, CTShapetype), (shape, CTShape), (ole, CTOLEObject))] == [True] * 3
         assert ole.prog_id in ("Word.Document.12", "Excel.Sheet.12")
         assert ole.id and ole.id.startswith("rId")
-        (image,) = [c for c in vml[1].content if isinstance(c, CTImageData)]
+        (image,) = [c for c in shape.content if isinstance(c, CTImageData)]
         assert image.schemas_openxmlformats_org_office_document_2006_relationships_id.startswith("rId")
 
 
@@ -191,11 +191,11 @@ def test_a_header_watermark_is_typed(path, string):
 # the round trip
 # ---------------------------------------------------------------------------
 
-#: The inspection probe's main part is left out: its two ``w:object`` are saved in
-#: the schema's order, a difference older than this phase (CR-012 section 11.5),
-#: which ``test_an_objects_order_is_the_one_difference_and_older`` pins.
+#: The inspection probe's main part, whose two ``w:object`` were saved in the
+#: schema's order until section 12.15's patch, is canonically identical now.
 ROUND_TRIP = [
     (INSPECT, "/word/header2.xml"),
+    (INSPECT, "/word/document.xml"),
     (WPS, "/word/document.xml"),
     (TRACKED, "/word/document.xml"),
     (WATERMARKED, "/word/header1.xml"),
@@ -217,11 +217,117 @@ def test_each_round_trips_canonically_identical(path, part_name):
     assert b"xsi:type" not in saved
 
 
-def test_an_objects_order_is_the_one_difference_and_older():
-    """``w:object``'s children written in the schema's order: the same differences as before Phase C typed them."""
-    part = load(INSPECT).main_document_part
-    report = canon.compare(part.xml, part._marshal(part.contents))
-    assert report.differences == {"child-order": 4, "element-renamed": 4}
+# ---------------------------------------------------------------------------
+# document order (CR-012 section 12.15)
+# ---------------------------------------------------------------------------
+
+PROBE = FIXTURES / "text-extraction" / "phase0" / "extraction-probe.docx"
+
+#: Prefixes for the names the order tests compare.
+_PREFIX = {
+    "http://schemas.openxmlformats.org/wordprocessingml/2006/main": "w",
+    "urn:schemas-microsoft-com:vml": "v",
+    "urn:schemas-microsoft-com:office:office": "o",
+}
+
+
+def children_of(xml: bytes, holder: str) -> list[list[str]]:
+    """Each ``holder`` (``w:object``, ``w:pict``) in ``xml``: its children, as ``prefix:local``."""
+    from lxml import etree
+
+    ns, _, local = holder.partition(":")
+    uri = next(u for u, p in _PREFIX.items() if p == ns)
+    out = []
+    for element in etree.fromstring(xml).iter(f"{{{uri}}}{local}"):
+        names = []
+        for child in element:
+            qname = etree.QName(child)
+            names.append(f"{_PREFIX.get(qname.namespace, qname.namespace)}:{qname.localname}")
+        out.append(names)
+    return out
+
+
+def saved_part(package_bytes: bytes, name: str = "word/document.xml") -> bytes:
+    import io
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(package_bytes)) as zf:
+        return zf.read(name)
+
+
+@pytest.mark.parametrize("path", [INSPECT, PROBE], ids=["inspect", "probe"])
+def test_an_objects_children_are_saved_in_document_order(path):
+    """``w:object``'s ``v:shapetype``, ``v:shape``, ``o:OLEObject`` survive a load, unmarshal and save in that order.
+
+    ``CT_PictureBase`` was a repeating sequence of a VML wildcard and an ``o:``
+    wildcard, two lists the serialiser wrote interleaved: ``o:OLEObject``
+    before the ``v:shape`` its ``ShapeID`` names, which Word shows and will
+    not activate (section 12.14, file 3). Patch 6 makes it one wildcard list
+    in document order. (The probe's fifth object is a control: ``v:shapetype``,
+    ``v:shape``, ``w:control``.)
+    """
+    pkg = load(path)
+    part = pkg.main_document_part
+    source = part.xml
+    in_source = children_of(source, "w:object")
+    three = [c for c in in_source if c == ["v:shapetype", "v:shape", "o:OLEObject"]]
+    assert three
+    part.contents  # unmarshalled, so the save re-marshals it
+    package_bytes = pkg.save()
+    saved = saved_part(package_bytes)
+    assert children_of(saved, "w:object") == in_source
+    report = canon.compare(source, saved)
+    assert report.identical, report.differences
+    assert b"xsi:type" not in saved
+    objects = find(load(package_bytes).main_document_part.contents, CTObject)
+    typed = [[type(c) for c in obj.any_and_any] for obj in objects if len(obj.any_and_any) == 3]
+    assert len(typed) == len(three)
+    for classes in typed:
+        assert [issubclass(c, k) for c, k in zip(classes, (CTShapetype, CTShape, CTOLEObject))] == [True] * 3
+
+
+#: A ``w:pict`` whose VML and ``o:`` children are not interleaved, in two orders:
+#: every ``v:`` then every ``o:``, and the other way about. Written interleaved, the
+#: first came back ``v:shapetype``, ``o:signatureline``, ``v:shape``, ``o:lock``, ``v:rect``.
+PICT_ORDERS = {
+    "v-then-o": (
+        '<v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75"/>'
+        '<v:shape id="s1" type="#_x0000_t75" style="width:10pt;height:10pt"/>'
+        '<v:rect id="s2" style="width:10pt;height:10pt"/>'
+        '<o:signatureline v:ext="edit" id="{00000000-0000-0000-0000-000000000001}" issignatureline="t"/>'
+        '<o:lock v:ext="edit" aspectratio="t"/>',
+        ["v:shapetype", "v:shape", "v:rect", "o:signatureline", "o:lock"],
+    ),
+    "o-then-v": (
+        '<o:lock v:ext="edit" aspectratio="t"/>'
+        '<o:signatureline v:ext="edit" id="{00000000-0000-0000-0000-000000000002}" issignatureline="t"/>'
+        '<v:shape id="s3" style="width:10pt;height:10pt"/>'
+        '<v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202"/>',
+        ["o:lock", "o:signatureline", "v:shape", "v:shapetype"],
+    ),
+}
+
+
+@pytest.mark.parametrize("order", PICT_ORDERS, ids=list(PICT_ORDERS))
+def test_a_picts_children_are_saved_in_document_order(order):
+    """A ``w:pict`` mixing ``v:`` and ``o:`` children keeps their order through a save, a load, an unmarshal and a save."""
+    from docx4j_py import create_package
+
+    inner, expected = PICT_ORDERS[order]
+    pkg = create_package()
+    pkg.main_document_part.contents.body.content.insert(0, wml(f"<w:p><w:r><w:pict>{inner}</w:pict></w:r></w:p>"))
+    package_bytes = pkg.save()
+    first = saved_part(package_bytes)
+    assert children_of(first, "w:pict") == [expected]
+
+    again = load(package_bytes)
+    part = again.main_document_part
+    (pict,) = find(part.contents, Pict)
+    assert [_PREFIX[c.Meta.namespace] for c in map(type, pict.any_and_any)] == [n.split(":")[0] for n in expected]
+    assert wildcards(part.contents) == []
+    second = saved_part(again.save())
+    assert children_of(second, "w:pict") == [expected]
+    assert canon.compare(first, second).identical
     assert part.skipped == []
 
 
