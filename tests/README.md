@@ -441,6 +441,20 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 >   plain. In All Markup its tracked changes show as in the source, which is staged beside it.
 > - **The eleven artefacts are canonically unchanged by Phase B.**
 
+> **2026-10-22, Word check of CR-012 Phase C: three of four passed, file 3 failed** (the user:
+> "__tmp/python-cr012c/ all good except the ole-object case, double clicking does not open the
+> embedded document (compare SOURCE, where it works)"). Phase C types VML everywhere. Four saves,
+> each with every WordprocessingML part unmarshalled, are staged in `out/cr012-c-word-check/` with
+> their sources and a README (CR-012 section 12.14):
+> - `cr043-tracked.docx` (C22's VML text box with tracked changes), `loadAndSave.docx` (header
+>   watermarks, both shape defaults) and `vml/textbox.docx` open with no repair prompt and look as
+>   their sources do.
+> - **`OLE/inserted doc.docx` fails:** its icon shows, but double-clicking does not open the
+>   embedded document. The save writes `w:object`'s `o:OLEObject` before the `v:shape` it names
+>   (CR-012 section 12.13), as `v0.1.0` does. Two order-only variants are staged in
+>   `__tmp/python-cr012c-ole/` to confirm the cause; not yet checked.
+> - **The eleven artefacts are canonically unchanged by Phase C.**
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

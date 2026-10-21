@@ -61,7 +61,11 @@ their spelling through the fork's stage 12 (`ParserConfig(lexical_types=)`), whi
 document reaches an island any more, and the islands stay for a text box below a wildcard node
 (12.9); the import costs about 100 ms more (cold 1.12 s), and the 403-branch document parses about
 15% and saves about 10% slower; acceptance, the ratchet and CR-010's Word-save comparisons are
-unchanged. **Its Word check of four saves is not yet checked** (12.14).
+unchanged; docx4j's agreement run 0 of 24 (12.13). **Its Word check (12.14): files 1, 2 and 4
+passed; file 3, an OLE object, failed** (the user: double-clicking "does not open the embedded
+document"): the save writes `w:object`'s `o:OLEObject` before the `v:shape` it names, an order
+older than this phase that `v0.1.0` writes too; two order-only variants are staged to confirm the
+cause.
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -2831,7 +2835,7 @@ mend them (12.8).
   coordinator's check found each row once, not twice as first reported, and moved rows 19 to 25
   into the table.)
 
-### 12.14 The Word check (Not yet checked)
+### 12.14 The Word check (2026-10-22: files 1, 2 and 4 passed; file 3 failed)
 
 Four files are in `out/cr012-c-word-check/`, with a `README.txt` saying, for each, the source, what
 was done and what Word should show. They are also copied to
@@ -2859,4 +2863,30 @@ is the same bytes.
   legacy VML text box straight in a run, its `o:gfxdata` wrapped across lines, and no
   `mc:AlternateContent`.
 
-Expected: each opens with no repair prompt and looks as its source does. **Not yet checked.**
+Expected: each opens with no repair prompt and looks as its source does.
+
+**The result, 2026-10-22** (the user: "__tmp/python-cr012c/ all good except the ole-object case,
+double clicking does not open the embedded document (compare SOURCE, where it works)"):
+
+- **Files 1, 2 and 4 passed.**
+- **File 3 failed.** The icon shows, but double-clicking it does not open the embedded document;
+  in the source it does. The coordinator's comparison of the two packages:
+  - the embedding (`word/embeddings/Microsoft_Word_97_-_2003_Document.doc`), the image and
+    `[Content_Types].xml` are the same bytes, and both relationships parts are the same in C14N;
+  - in `document.xml` the one difference beyond attribute order is 12.13's: the save writes
+    `o:OLEObject`, whose `ShapeID="_x0000_i1025"` names the shape, before the
+    `v:shape id="_x0000_i1025"`, where the source has the shape first.
+  - **The order is older than this phase and has shipped.** Saving the source with `f062c25` (before
+    this phase) and with the `v0.1.0` tag writes the same order. So any document with an OLE object
+    whose main part docx4j-python re-marshals (any edit of the body) loses the object's activation.
+- **Confirming the cause.** Two files, each differing from its base only in that order, are staged
+  in `~/vbShares/Office 2016/__tmp/python-cr012c-ole/` with the source and a README:
+  `cr012c-3a-save-with-shape-first.docx` (the save, `o:OLEObject` moved back after the `v:shape`)
+  and `cr012c-3b-SOURCE-with-OLEObject-first.docx` (Word's source, `o:OLEObject` moved before it).
+  **Not yet checked.**
+- **The class of bug.** A repeating `xsd:sequence` of two or more particles is serialised
+  interleaved, one particle's list then the next's, whatever the source's order. Over the schema
+  copy there are two: `CT_PictureBase` (wml.xsd, the base of `CT_Picture`, `CT_Object` and
+  `CT_Background`: `w:pict`, `w:object` and `w:background`), a repeating sequence of a VML wildcard
+  and an `o:` wildcard, and inkml's `traceGroup.type`, which no corpus document holds. JAXB binds
+  such a sequence as one content list, in document order (docx4j's `Pict.getAnyAndAny()`).
