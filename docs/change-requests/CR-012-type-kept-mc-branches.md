@@ -10,8 +10,11 @@ The 61 roots, which were Phase A, are now Phase B, and VML is Phase C. The quest
 carry recommendations. **Revised again 2026-10-21** for docx4j CR-051's D5 as Jason revised
 it the same day (docx4j-25's note; docx4j's record of it not yet committed): docx4j's load-time
 mode defaults to `preserve` from 17.4.0, and 17.3.x keeps `word`. Q7's recommendation moves to
-(b), `preserve` by default, and section 4.1's readers' audit grows to match. **Implementation
-waits on the user's go.**
+(b), `preserve` by default, and section 4.1's readers' audit grows to match. **Decided
+2026-10-21** (the user: "CR-012 questions section: i accept each of the recommendations"): Q1 to
+Q8 as recommended, Q7 on its revised answer, `preserve` by default. By Q6, Phase A goes first and
+now. It starts once CR-002 section 16, which changes the same `XmlPart._unmarshal`, has landed. B
+follows A, and C waits for its own go (Q4).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -452,7 +455,7 @@ answer is in one place. It starts only after Phase B, on its own go (Q4).
   The fork's version runs only in the wildcard path, and `bench_marshal.py` records the real
   figure.
 
-## 7. Questions
+## 7. Questions (decided 2026-10-21, each as recommended)
 
 1. **Q1: Phase B as proposed:** the 61 roots, as plain instances, through a table in the fork's
    context. *Recommended:* it is what docx4j and objects-ts do, measured lossless here.
