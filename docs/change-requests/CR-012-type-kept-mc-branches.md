@@ -32,7 +32,12 @@ canonically identical in `preserve` mode; acceptance unchanged. **The Word check
 on 2026-10-22** (the user: "python-cr012a2 each pass"; 10.9): **Phase A2 done**. The port of docx4j
 `60bd4b9ad`, a twin `w:cellDel` or `w:cellIns` in a branch Word does not read resolved in its own
 branch, landed the same day at the user's go ("go on the port"; 10.10), and its Word check of three
-saves passed (the user: "python-cr012a2-twin passes").
+saves passed (the user: "python-cr012a2-twin passes"). The port of docx4j `901a922a3`, a table's
+property records read and resolved through every branch, landed the same day at the user's go ("port
+the fix, then start phase b"; 10.11); its Word check of three saves is the user's
+(`out/cr012-a2-records-word-check/`). **Phase B started 2026-10-22** at the same go, its design
+revised first (section 4.2): Phase A's fork hooks take the root-element table, so the fork needs no
+code.
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -349,46 +354,86 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
 
 ### 4.2 Phase B: the 61 WordprocessingML roots
 
-After Phase A, a block-level branch kept in `preserve` mode holds `w:p` and `w:tr` (global here),
-`w:sdt` (typed by Phase A's kind rule), and `w:tbl`, `w:tc` and `w:bookmarkStart` (among the 61
-below). So this phase types those branches too.
+**Revised 2026-10-22, before implementation, for what Phases A and A2 built.**
+- **The fork has the two halves already.** Item 1 below, as first written, proposed a new table of
+  root-element names in the fork's `XmlContext`. Phase A's fork stage 11 has since added both
+  halves of it:
+  - for parsing, a hook for a lax wildcard's child (`ParserConfig(wildcard_class=,
+    wildcard_class_for=)`, item 25);
+  - for saving, a table naming an object that no field names (`SerializerConfig(element_names=)`,
+    item 26). Item 26 already names this phase as its next user.
+- **So the table lives in this package, with no fork code.** It is generated, and handed to the
+  fork through those two options. Q1's plain instances through a table, Q2's derivation and Q3 all
+  stand.
+- **What A and A2 already type.** After them, a branch's `w:sdt`, `w:tr` and `w:tc` are typed by
+  their container (`runtime.BRANCH_CHILD_NAMES`). `w:tbl`, `w:bookmarkStart`, `w:drawing`, `w:pict`,
+  `w:t` and the rest of the 61 are still wildcards in a branch (9.11, 10.8).
 
-1. **The fork's runtime: root-element names.** The `XmlContext` gains a table from qualified
-   element name to class, registered by the caller. JAXB gets the same thing from
-   `@XmlRootElement`.
-   - **Parsing:** in a wildcard whose `process_contents` isn't `"skip"`, the parser checks the
-     table after `xsi:type` and the context's own `find_type(qname)`. A registered name gives a
-     plain instance of its class.
-   - **Saving:** an instance written without a field name (in a wildcard, or as the document
-     root) takes its registered name instead of its type name. The table must be one-to-one,
-     class to name, and registration checks it.
-   - The change gets tests in the fork's `tests/fork/`, an entry in `docs/fork/CHANGES.md` and a
-     row in this repository's `docs/UPSTREAM.md`.
-2. **The table, derived mechanically.**
-   - `codegen/derive_names.py` writes `codegen/names/root_elements.json` from docx4j's XJC
-     output, the source of the other name tables. It takes every `@XmlRootElement` class and
-     unscoped `@XmlElementDecl` whose name this model doesn't declare globally, and gives each
-     the class the `el` table names for it.
+1. **The hook answers for the roots.** `runtime.branch_child_class`, the parser's hook, takes the
+   61 in three steps:
+   - **(a) In a branch, the container's binding.** For a name among the 61, as for `w:sdt`,
+     `w:tr` and `w:tc` already, the class is the one the container that holds the
+     `mc:AlternateContent` binds the name to. This is the rule A and A2 established: a branch's
+     child is read as the container's own child is.
+     - docx4j's root class is the class its containers bind, since docx4j has one class per
+       type.
+     - Where this model generated several classes for one type (`w:hyperlink` has seven), the
+       container's class is the one the same element gets outside a branch.
+   - **(b) Elsewhere, the root class.** Where (a) gives none, in any lax wildcard and in a branch
+     whose container does not take the name, the name binds to its root class. That is what JAXB
+     does with an `@XmlRootElement` name: section 6's first risk, every lax wildcard sees the
+     table.
+   - **(c) Otherwise None:** the lookup by name, as now.
+   - **The parser side:** `wildcard_class_for` becomes `BRANCH_CHILD_NAMES` together with the
+     roots' names.
+   - **The saving side:** `_branch_element_names` gains each root class under its name. That table
+     must be a function, class to name, and its build raises if it is not. The classes that (a)
+     can give besides the root class are named too, each under the one name that gives it.
+   - **No other name is typed.** A branch's `w:ins`, `w:instrText` or `w:delText` stays a wildcard
+     tree, as docx4j keeps it a DOM element.
+2. **The table, derived mechanically** (Q2, as first written).
+   - `codegen/derive_names.py` writes `codegen/names/root_elements.json` from docx4j's XJC output,
+     the source of the other name tables. It takes every `@XmlRootElement` class and unscoped
+     `@XmlElementDecl` whose name this model doesn't declare globally, and gives each the class the
+     `el` table names for it.
    - `w:sdtContent` is left out (Q3).
-   - It is cross-checked against the schema copy's annox annotations (61 of the 62).
+   - It is cross-checked against the schema copy's annox annotations (61 of the 62; `w:sdtPr` is
+     the 62nd).
+   - **Provenance.** The XJC output is a build in docx4j's checkout, not a commit. The cross-check
+     against the schema copy, which is at docx4j `2853b7280`, is what ties the table to a commit.
+     The implementation notes record both.
    - The file is committed for review and never hand-edited, like the other name tables.
 3. **Generated, then registered.**
-   - `codegen/generate_el.py` writes the table into `docx4j_py/el_index.py` as `ROOT_ELEMENTS`,
-     the module's class paths as strings.
-   - `docx4j_py/runtime.context()`, hand-written, registers it when it builds the shared context.
+   - `codegen/generate_el.py` writes the table into `docx4j_py/el_index.py` as `ROOT_ELEMENTS`:
+     qualified name to the class's path, as a string.
+   - `docx4j_py/runtime.py`, hand-written, resolves it when the hook and the serialiser's table
+     are first built. It never resolves it at import, since the engine imports no model class at
+     module level.
    - `codegen/generate.sh --check` stays byte-identical.
 4. **The readers the change exposes.**
-   - `traversal.text_of` and `walk` read a typed child of a kept branch as they read it
-     elsewhere (the three `test_mce.py` failures), under every `mce` mode.
+   - `traversal.text_of` and `walk` read a typed child of a kept branch as they read it elsewhere,
+     under every `mce` mode. This is the three `test_mce.py` failures of section 3.
    - The two `walk(mce="all")` tests expect `Wsp`.
-   - `revisions/islands.py`'s docstring says that only the VML Fallback's text box still needs an
-     island. The code stays as it is, since the Fallback still needs it.
-5. **The record.**
-   - CLAUDE.md's MCE paragraph: `mce_preprocess` is no longer the only way to get a typed
-     `Drawing` in a choice.
+   - **An audit**, as Phase A's (9.6). Every reader of text or structure is run over the corpus
+     documents that hold a branch, before and after, and any answer that changes is listed with
+     why. Two readers whose wildcard paths may now be dead:
+     - the text model's typed copy of a branch (`Extractor._typed_block`);
+     - `revisions/islands.py`, which reads a Choice's text box.
+     Each stays only where it is still reached. Its docstring says where.
+   - `Body.tables` reads a table in a block-level branch, and `find(P)` reaches a cell-level
+     branch's paragraphs (9.11).
+5. **The fork.** No code.
+   - The hook already runs for every lax wildcard. Item 26's table already writes any class it is
+     given.
+   - If the fork's tests do not pin a behaviour this phase relies on, a tests-only item 28 joins
+     stage 11, as item 27 did. Two candidates: the hook answering in a wildcard that is not a
+     branch's, and a typed child holding a branch of its own.
+6. **The record.**
+   - CHANGELOG "Changed": a kept branch's WordprocessingML children are typed. Code that looks for
+     an `AnyElement` `w:drawing` in `any_element` now finds a `Drawing`.
    - A note in CR-002 section 5.6.
-   - CHANGELOG "Changed": a kept branch's WordprocessingML children are typed. Code that looks
-     for an `AnyElement` `w:drawing` in `any_element` now finds a `Drawing`.
+   - CLAUDE.md's MCE paragraph: `mce_preprocess` is no longer the only way to get a typed
+     `Drawing` in a choice. This is the coordinator's.
 
 ### 4.3 Phase C: VML in the model (the Fallback side)
 
