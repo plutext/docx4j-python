@@ -1009,7 +1009,7 @@ def test_the_body_reads_words_branch_at_block_level():
     ],
 )
 def test_the_body_reads_words_branch_at_row_and_cell_level(stem: str, rows: list) -> None:
-    """CR-012 Phase A2 (docx4j CR-051 phase 2); Phase A passed the element by (section 10.6)."""
+    """CR-012 Phase A2 (docx4j CR-051 phase 2); Phase A passed the element by (CR-012 section 10.7)."""
     pkg = probe(stem)
     texts = [p_.text for p_ in pkg.body.paragraphs]
     assert "w16sdtfl" in texts
@@ -1546,6 +1546,17 @@ def test_a_tracked_deletion_into_a_kept_branch_is_refused(stem: str, first_row_h
     untracked = probe(stem)
     untracked.body.tables[0].delete()
     assert untracked.body.tables == []
+
+
+def test_a_tracked_clear_over_a_block_level_element_is_refused_before_any_change():
+    """Phase A's clear raised part-way, at the branch's first paragraph, the ones before it marked deleted."""
+    source = main_xml((PROBES_DIR / "mc-block-newest-first.docx").read_bytes())
+    pkg = probe("mc-block-newest-first")
+    pkg.change_tracking_mode = "TrackAll"
+    with pytest.raises(AddressError) as caught:
+        pkg.body.clear()
+    assert caught.value.code == "address.read_only"
+    assert normalize(main_xml(pkg.save())) == normalize(source)
 
 
 def test_the_outline_reads_words_branch_at_row_and_cell_level():
