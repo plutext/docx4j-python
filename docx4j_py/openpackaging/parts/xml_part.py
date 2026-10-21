@@ -7,7 +7,9 @@ Three rules, and they are the whole of the part's behaviour:
 
 **Lazy.** ``part.contents`` unmarshals on first access and not before, exactly as
 docx4j's ``getContents()`` does. Loading a package therefore costs the zip's
-central directory and the relationship parts, and nothing else.
+central directory and the relationship parts, and nothing else. A part that
+``read_contents()`` has already parsed is not parsed again: ``contents`` adopts
+that tree (CR-002 section 16).
 
 **Never silent.** The unmarshal uses a *per-call* :class:`ParserConfig` --- one
 per thread, CR-001 section 14 --- that is lenient and carries the fork's
@@ -29,6 +31,7 @@ does not, which is why the part remembers them.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Generic, TypeVar
 
 from lxml import etree
@@ -55,6 +58,34 @@ _MC_IGNORABLE = f"{{{_MC_NS}}}Ignorable"
 _NS_MAP: dict[str, str] = {p: u for p, u in PREFIXES.items() if p != "xml"}
 
 
+@dataclass(frozen=True, slots=True)
+class _ParseSettings:
+    """What a parse of a part reads from its package's load options. CR-002 section 16.2.
+
+    :meth:`XmlPart._unmarshal` reads the options through this and nothing else,
+    and a private tree keeps the settings it was parsed under, so that
+    :attr:`XmlPart.contents` adopts it only where a live parse now would read
+    the same. A later package-level setting read at parse time --- CR-012's
+    ``mc_block_level`` --- is a field here and a line in :meth:`of`, and
+    adoption follows it with no other change.
+    """
+
+    #: ``LoadOptions.strict``: a parse that skipped content raises.
+    strict: bool = False
+    #: ``LoadOptions.mce_preprocess``: ``mc:AlternateContent`` resolved first.
+    mce_preprocess: bool = False
+
+    @classmethod
+    def of(cls, options: Any) -> _ParseSettings:
+        """The settings of a package's ``LoadOptions``; the defaults for a part with no package."""
+        if options is None:
+            return _DEFAULT_SETTINGS
+        return cls(strict=bool(options.strict), mce_preprocess=bool(options.mce_preprocess))
+
+
+_DEFAULT_SETTINGS = _ParseSettings()
+
+
 class XmlPart(Part, Generic[T]):
     """A part whose content is a typed object of the model."""
 
@@ -63,6 +94,7 @@ class XmlPart(Part, Generic[T]):
         "_contents",
         "_options",
         "_private_contents",
+        "_private_settings",
         "_source_ns_map",
         "root_name",
         "skipped",
@@ -79,6 +111,8 @@ class XmlPart(Part, Generic[T]):
         super().__init__(part_name, content_type, relationship_type)
         self._contents: Any = None
         self._private_contents: Any = None
+        #: The settings the private tree was parsed under (CR-002 section 16.2).
+        self._private_settings: _ParseSettings | None = None
         self._bytes: bytes | None = None
         #: ``{namespace}localName`` of the root, when the class alone does not say.
         self.root_name = root_name
@@ -145,13 +179,30 @@ class XmlPart(Part, Generic[T]):
     def contents(self) -> T:
         """The typed content, unmarshalled on first access. docx4j ``getContents()``.
 
+        Where :meth:`read_contents` has already parsed the part, under the load
+        options a parse now would use, that private tree is **adopted** rather
+        than the bytes parsed a second time (CR-002 section 16): it becomes the
+        live tree, the part is unmarshalled from then on, and the private slot
+        and any set bytes are cleared, exactly as an unmarshal leaves them. Its
+        parent pointers are wired, and :attr:`skipped` and the source's
+        namespace declarations are what that parse of the same bytes found. A
+        private tree parsed under other options (``strict``, ``mce_preprocess``)
+        is dropped and the bytes are parsed afresh.
+
+        Adoption depends on one rule: **a private reader never writes into the
+        tree it reads**, since what it wrote would now be saved.
+        ``tests/openpackaging/test_private_readers.py`` holds every reader to it.
+
         Raises:
             Docx4JException: the part has no content and no source container, or
                 no model class to unmarshal as, or `strict` was asked for and
                 something was skipped.
         """
         if self._contents is None:
-            self._unmarshal()
+            if self._private_contents is not None and self._private_settings == self._parse_settings():
+                self._adopt()
+            else:
+                self._unmarshal()
         return self._contents  # type: ignore[return-value]
 
     def get_contents(self) -> T:
@@ -169,13 +220,20 @@ class XmlPart(Part, Generic[T]):
         byte-for-byte round trip the moment something asked for an effective
         property.
 
-        The tree is unmarshalled once into a private slot and cached there. Once
-        something else unmarshals the part for real, that live tree wins and the
-        private copy is dropped: a caller therefore never sees a stale tree, and
-        never writes into one nobody will save.
+        The tree is unmarshalled once into a private slot and cached there, with
+        the load options it was parsed under. Once the part is unmarshalled for
+        real, the live tree is what this returns. :attr:`contents` **adopts**
+        the private tree as that live tree where the options are unchanged, so
+        a read followed by an edit parses the part once (CR-002 section 16).
+
+        So the tree this returns may become the one that is saved, and a reader
+        must **never write into it**: what it wrote would be saved, as an edit
+        the caller never made. Every caller in this package keeps the rule, and
+        ``tests/openpackaging/test_private_readers.py`` holds each to it.
         """
         if self._contents is not None:
             self._private_contents = None
+            self._private_settings = None
             return self._contents  # type: ignore[return-value]
         if self._private_contents is None:
             self._unmarshal(private=True)
@@ -187,6 +245,7 @@ class XmlPart(Part, Generic[T]):
         from docx4j_py.runtime import context
 
         self._private_contents = None
+        self._private_settings = None
         self._contents = value
         self._bytes = None
         if value is not None:
@@ -197,6 +256,7 @@ class XmlPart(Part, Generic[T]):
         self._bytes = bytes(data)
         self._contents = None
         self._private_contents = None
+        self._private_settings = None
         self.skipped = []
 
     def set_xml(self, xml: str) -> None:
@@ -226,8 +286,8 @@ class XmlPart(Part, Generic[T]):
         data = self._raw_bytes()
         self._source_ns_map = _root_ns_map(data)
 
-        options = self._load_options()
-        if options is not None and options.mce_preprocess:
+        settings = self._parse_settings()
+        if settings.mce_preprocess:
             from docx4j_py.openpackaging.mce import mce_preprocess_bytes
 
             data = mce_preprocess_bytes(data)
@@ -241,10 +301,9 @@ class XmlPart(Part, Generic[T]):
         report = xml_parser.skipped
         self.skipped = list(getattr(report, "items", ()) or ())
         if self.skipped:
-            strict = options is not None and options.strict
             for item in self.skipped:
                 logger.warning("%s: skipped %s", self.part_name, item)
-            if strict:
+            if settings.strict:
                 raise Docx4JException(
                     f"{self.part_name}: {len(self.skipped)} item(s) were skipped "
                     f"and strict=True: {self.skipped[:5]}"
@@ -258,9 +317,27 @@ class XmlPart(Part, Generic[T]):
 
         if private:
             self._private_contents = obj
+            self._private_settings = settings
             return
         self._contents = obj
         self._bytes = None
+        self._private_contents = None
+        self._private_settings = None
+
+    def _adopt(self) -> None:
+        """The private tree made the live one: what :meth:`_unmarshal` would leave, without the parse.
+
+        :attr:`skipped` and ``_source_ns_map`` are already that parse's: the
+        private parse set them from the same bytes under the same settings.
+        """
+        self._contents = self._private_contents
+        self._bytes = None
+        self._private_contents = None
+        self._private_settings = None
+
+    def _parse_settings(self) -> _ParseSettings:
+        """What a parse now reads from the package's load options."""
+        return _ParseSettings.of(self._load_options())
 
     def _load_options(self) -> Any:
         package = self.package
