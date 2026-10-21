@@ -282,6 +282,17 @@ element name, as elsewhere. Below a `w:pict` the VML is still a wildcard tree (C
 resolved view's understood set is no longer `UNDERSTOOD` either: since CR-011 and CR-012 Q8 it is
 docx4j's published list (`child.understood_namespaces()`), matched by namespace URI.
 
+**Note (2026-10-22, CR-012 Phase C).** The VML is typed too: docx4j's five VML schemas are in the
+schema copy (`schemas/vml/`, at the copy's commit), so `CT_Picture`'s and `CT_Object`'s lax
+wildcards type `v:`, `o:` and `w10:` content by the global elements now in the context, in a
+branch or not, and `CT_ShapeDefaults`' does `settings.xml`'s `o:shapedefaults`. A Fallback's VML
+text box is a typed `TxbxContent`, so the typed islands of CR-010 section 3.5 are made for no
+corpus document any more (a text box below a wildcard node still makes one). The round-trip rule
+holds unchanged: over 2,746 parts nothing is newly skipped and no save gains a canonical
+difference, with the fork's stage 12 (`ParserConfig(lexical_types=)`) keeping VML's `o:spt`
+(`xsd:float`) and `o:gfxdata` (`xsd:base64Binary`) as the source spells them, and VML's booleans,
+a string enumeration, written as read. `UNDERSTOOD` names the five VML prefixes.
+
 ### 5.7 The `settings.xml` schema patch
 
 CR-001 section 14.8 found that Word writes ECMA-376 second-edition `CT_StylePaneFilter` attributes

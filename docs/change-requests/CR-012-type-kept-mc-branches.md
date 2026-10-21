@@ -2333,3 +2333,514 @@ not as expected", then, after a second look, "cr012b-2 fine in All Markup".
 - **The README now names the view** (All Markup), and the unmodified source is staged beside the save
   as `cr012b-2-SOURCE-cr043-tracked.docx` for comparison.
 - **In All Markup** C22's tracked changes show as in the source.
+
+## 12. Phase C implementation notes (2026-10-22)
+
+Phase C puts VML in the model, at the user's go ("do phase c"), on section 4.3 as revised before it
+started. docx4j's five VML schemas, at the schema copy's commit, are in `schemas/vml/` and reached
+from the root schema; their name tables are derived from docx4j's classes and cross-checked against
+the copy; the regeneration adds five namespace packages and touches no other generated module. So
+`CT_Picture`'s and `CT_Object`'s lax wildcards, and `CT_ShapeDefaults`', type VML by the global
+elements now in the context, wherever it stands: below every `w:pict` and `w:object`, in a branch or
+not, a header's watermark, a numbering picture bullet and `settings.xml`'s `o:shapedefaults`. A
+Fallback's VML text box is a typed `TxbxContent`. VML's booleans are a string enumeration and keep
+their spelling by the schema's own types; the two VML values the converter would have respelled,
+`o:spt` and `o:gfxdata`, keep theirs through a fork option (stage 12). The text model reads typed VML
+in place, `insert_ooxml` rewrites a typed `r:id`, and no corpus document makes a typed island any
+more.
+
+**Commits.**
+
+- docx4j-python:
+  - `6897210`: the schema copy, `schemas/vml/` and the root schema's imports, `schemas/PATCHES.md`;
+  - `3dbd31a`: the five name tables, `codegen/derive_names.py`'s cross-check, the substitutions,
+    `codegen/names/README.md`;
+  - `58096b6`: the regeneration;
+  - `a1a6abc`: `runtime.parser_config` sets the fork's `lexical_types`;
+  - `e658512`: the readers (the text model's `_vml_shape` and `_object`, `insert_ooxml`'s
+    `_rel_fields`), the docstrings that said VML was a wildcard tree, and the pre-existing tests
+    whose expectation changed (12.12);
+  - `b107e23` and `0800ad8`: `tests/openpackaging/test_vml.py`;
+  - `ef86b1d`: `scripts/vml_census.py`, and `scripts/mce_branches.py readers --holding` with four
+    more readers;
+  - and the commit of this section, the CHANGELOG, CR-002 section 5.6's note, `tests/README.md`
+    and `docs/UPSTREAM.md` report 25.
+- The fork (`~/git/docx4j-xsdata`, branch `docx4j`, local only): `d084a267`, stage 12 item 28,
+  `ParserConfig(lexical_types=)` (12.6).
+
+### 12.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the schema copy | `schemas/vml/` (five files), `schemas/docx4j_python__ROOT.xsd`, `schemas/PATCHES.md` | docx4j's `vml-main`, `vml-officedrawing`, `vml-wordprocessingdrawing`, `vml-spreadsheetDrawing` and `vml-presentationDrawing` at `2853b7280`, byte for byte; `vml__ROOT.xsd` left out; no patch (12.2, 12.4) |
+| the names | `codegen/derive_names.py`, `codegen/names/vml*.json` (five), `codegen/names/README.md` | 92 types and 49 elements from docx4j's XJC build; `cross_check_vml` against the copy (12.3) |
+| the modules | `.xsdata.phase-b.xml` | a `Substitution` per namespace: `vml.main`, `vml.officedrawing`, `vml.wordprocessing_drawing`, `vml.spreadsheet_drawing`, `vml.presentation_drawing` |
+| the regeneration | `docx4j_py/vml/` (five packages, each with its `el`), `docx4j_py/__init__.py`, `docx4j_py/el_index.py`, `codegen/el_tables/vml_*.json` (five) | 167 classes; `EL_MODULES` and `UNDERSTOOD` gain the five namespaces; no other generated module changed |
+| the fork | `docx4j_xsdata/models/datatype.py`, `parsers/config.py`, `parsers/utils.py`, `models/elements.py`, `serializers/mixins.py`; `tests/fork/test_lexical_types.py` | stage 12 item 28: a float or bytes value that keeps the spelling it was read with (12.6) |
+| the runtime | `docx4j_py/runtime.py` | `LEXICAL_TYPES` (float, bytes) in every parser config |
+| the readers | `docx4j_py/model/text/extractor.py`, `docx4j_py/model/content/ooxml.py` | `_vml_shape` and `_object` read a typed `v:shape` (its `v:textpath` string, `v:imagedata` `r:id`, `alt`) and `o:OLEObject` (ProgID, `r:id`), a wildcard tree still by name; `_rel_fields`: every relationships-namespace attribute field of a typed node (12.8) |
+| the docstrings | `model/revisions/islands.py`, `model/revisions/resolver.py`, the text model's, `openpackaging/parts/default_xml_part.py` (`VMLPart`), `model/content/ooxml.py` | where an island is still reached; why a vmlDrawing part stays a tree (12.9) |
+| tests | `tests/openpackaging/test_vml.py` (22); `test_mce.py` (+1), `test_mce_typed.py`, `test_builders_phase_a.py` (+1), `revisions/test_tracked_changes.py` | 12.10, 12.12 |
+| the survey | `scripts/vml_census.py`; `scripts/mce_branches.py` | `run` and `compare`; `readers --holding` (`mc`, `vml` or `either`), and the fonts and styles in use and Accept All and Reject All as readers (12.7, 12.8) |
+| documents | `CHANGELOG.md`, CR-002 section 5.6, `tests/README.md`, `docs/UPSTREAM.md` report 25; the fork's `docs/fork/CHANGES.md` stage 12 | |
+
+### 12.2 The copy and its checks
+
+- **From commits only.** Each file was taken with `git -C ../docx4j show 2853b7280:xsd/vml/<file>`,
+  never from docx4j's working tree. Its `git hash-object` here equals its blob at `2853b7280` and at
+  `acd0defc9` (docx4j CR-048): `git log acd0defc9..2853b7280 -- xsd/vml` is empty, and `acd0defc9`
+  is an ancestor of `2853b7280`. The files are docx4j's in every byte, BOM and line endings
+  included (CRLF; `vml-main.xsd`'s CR-048 lines LF), and the repository has no `.gitattributes`.
+- **Reached from the root.** `docx4j_python__ROOT.xsd` imports all five. `vml-main.xsd`'s own
+  imports, `../wml/wml.xsd`, `../wml/w14_word_2010_wordml.xsd` and
+  `../shared/shared-relationshipReference.xsd`, were already in the copy. `wml/wml.xsd` imports no
+  VML (`CT_Picture`'s wildcards name the namespaces without an import), so no file of the closure
+  changed.
+- **Left out:** `vml/vml__ROOT.xsd` (a vmlDrawing part's root, `<xml>` in no namespace,
+  SpreadsheetML's and PresentationML's) and `vml/README.txt`.
+- **Markers:** `grep -ro 'docx4j-python' schemas --include='*.xsd'` still finds 26; the VML files
+  carry none. lxml's `XMLSchema` over the root reports the one error it reported before (the
+  chartex QName with a trailing space, `PATCHES.md`'s verification).
+
+### 12.3 Names and modules
+
+**The source** is the XJC build Phase B used (11.2): `org.docx4j.vml`'s newest file was written at
+2026-10-20 14:11:44 +11:00, the same time as `org.docx4j.wml`'s. The build carries docx4j CR-048
+(`CTRect.java` has `anchorId` and `gfxdata`), so it postdates `acd0defc9`.
+
+**The derivation needed no change.** `derive_names.py` takes every namespace of the schema copy
+that a docx4j package declares, so with `schemas/vml/` in place it wrote five more tables:
+
+| table | java package | types | elements |
+|---|---|---:|---:|
+| `vml.json` | `org.docx4j.vml` | 36 | 21 |
+| `vml_officedrawing.json` | `org.docx4j.vml.officedrawing` | 42 | 18 |
+| `vml_wordprocessing_drawing.json` | `org.docx4j.vml.wordprocessingDrawing` | 9 | 6 |
+| `vml_spreadsheet_drawing.json` | `org.docx4j.vml.spreadsheetDrawing` | 3 | 2 |
+| `vml_presentation_drawing.json` | `org.docx4j.vml.presentationDrawing` | 2 | 2 |
+
+The other 56 tables and `root_elements.json` are rewritten byte for byte, before and after the
+regeneration (every docx4j VML root is a global element of the VML schemas, so `root_elements.json`'s
+`other_vocabularies` gains nothing). The run's dropped `@XmlElementDecl`s fall from 264 to 215: the
+49 in the VML namespaces are routed to their tables.
+
+**The cross-check** (`cross_check_vml`, made a check that stops the run, as Phase B's was). For each
+VML namespace, `types` must name exactly the schema's complex types and nothing that is not a type of
+the schema, and `elements` every global element of the schema and nothing but a local element of
+simple type besides. It holds for all five. It lists three enumerations JAXB makes no class for
+(`ST_TrueFalseBlank` in three schemas, `o:ST_Angle`, `o:ST_ScreenSize`: an enumeration value that is
+no Java identifier, `""`, `"30"`, `"544,376"`), which the generator names itself (`StTrueFalseBlank`,
+as `StOnOff` elsewhere), and `x:CF`, a local element of simple type docx4j's ObjectFactory declares
+scoped to `CTClientData`. The cross-check ties the tables to `2853b7280`.
+
+**The regeneration.**
+- 63 namespace modules to 68, 1,802 classes to 1,969, 2,063 element names over 60 namespaces to
+  2,189 over 65, 283 `.py` modules to 294.
+- 282 `ClassNames` warnings to 330. The 48 new ones are all of one kind: a global VML element whose
+  named type owns the docx4j name "is left alone" (`v:rect` of `CT_Rect`, the four `o:` stroke
+  children of `CT_StrokeChild`, the four `w10:` borders of `CT_Border`), CR-001 section 13.3's
+  case: the element's class keeps the generator's name (`Rect`, a subclass of `CTRect`).
+- `docx4j_py/wml/` and every other module are unchanged. The import-order manifest gains the five
+  packages, and `el_index.py` their `EL_MODULES` entries and `UNDERSTOOD`'s `v`, `o`, `w10`, `xvml`
+  and `pvml`.
+- **The `el` tables need no override:** no collision, one keyword rename (`o:complex`,
+  `el.complex_`). `o:fill` and `v:fill`, `o:shadow` and `v:shadow` are in separate modules.
+- `generate.sh --check`: byte identical.
+
+### 12.4 Patches
+
+**None.**
+- The generator took every construct of the five schemas (attribute groups, VML's `ST_` types,
+  `CT_Textbox`'s choice of `w:txbxContent` and a `##local` skip wildcard), with no fork change.
+- Nothing is newly skipped over the survey (12.7), so no attribute or element Word writes is
+  missing from the schemas: CR-048's `w14:anchorId` and `o:gfxdata` are there.
+- The booleans keep their spelling by the schema's own types (12.5), and the floats and base64 by a
+  fork option rather than a patch, so the types stay docx4j's: `o:spt` an `xsd:float`, as the
+  objects-ts session asked docx4j to keep it (docx4j CR-048, D3).
+
+### 12.5 Booleans
+
+**VML declares no `xsd:boolean`.** Its booleans are `ST_TrueFalse` (`t`, `f`, `true`, `false`) and
+`ST_TrueFalseBlank` (those and `""`), string enumerations in `vml-main.xsd`, `vml-officedrawing.xsd`
+and `vml-spreadsheetDrawing.xsd`. The generator makes them enums (`STTrueFalse`,
+`StTrueFalseBlank`), whose values are written as read, so the model's numeric booleans (CR-001 Q5)
+never meet them.
+
+- **No VML or `o:` attribute's spelling changes on a save.** Over the corpus there are 778
+  boolean-valued VML attributes, 245 `t` and 533 `f` (no `true` or `false`), on `stroked` (464),
+  `gradientshapeok` (84), `filled` (43), `o:preferrelative`, `o:extrusionok` and `aspectratio`
+  (33 each) and ten others; none changed.
+- A value outside an enumeration would be kept as its string, with the converter's warning; the
+  survey met none.
+- `test_the_boolean_spellings_are_kept` pins all four spellings.
+
+**What did change spelling**, until stage 12, was no boolean: with VML typed and no option, 97
+`o:spt` on `v:shapetype` (`202` written `202.0`, `75` as `75.0`, `136` as `136.0`, an `xsd:float`)
+and 54 `o:gfxdata` (48 on `v:shape`, 4 on `v:oval`, 2 on `v:rect`; `xsd:base64Binary`, which Word
+wraps at 76 characters with `&#xA;` and the converter wrote on one line), in 50 parts of 41
+documents. Those were the only new canonical differences typing VML made. docx4j writes both rewrites
+(its CR-048 D3), and Word read them in docx4j's checks; the gate here asks for none, so the fork keeps
+the source's spelling (12.6). No integer or decimal VML value changed.
+
+### 12.6 The fork's item
+
+**Stage 12, item 28 (`d084a267`): `ParserConfig(lexical_types=)`.** `docs/fork/CHANGES.md` stage 12
+has the detail, and `docs/UPSTREAM.md` report 25.
+
+- **The option:** `lexical_types`, of `float` and `bytes`, off (empty) by default.
+- **What it binds:** where the converter would write a value of one of them in another spelling than
+  its source's, the value bound is `XmlLexicalFloat` (a slotted `float`) or `XmlLexicalBytes`,
+  carrying the source text.
+  - Either is equal to and hashed as the plain value, and pickled and copied with its spelling.
+  - The serialiser writes the text.
+  - Arithmetic, or a value set in code, gives a plain value, written in the converter's spelling.
+  - A value spelled as the converter would spell it is bound plain.
+- **The cost:** the converter plan gains a fourth entry, so a value of any other type pays one tuple
+  index. Interleaved over 15 runs, `Symbols.docx` parses in 205 ms median with the option on and
+  off.
+- **docx4j-python** sets `frozenset({float, bytes})` (`runtime.LEXICAL_TYPES`) for every part, not
+  VML alone. Its one other effect over the corpus is an improvement:
+  `docx4j-core-ts/test/fixtures/onoff/pandoc-code.docx`'s `styles.xml`, whose 20 lower-case
+  `w:color` values (`ST_HexColor`, hexBinary) were written in upper case, is canonically identical
+  to its source for the first time.
+- **The fork's suite:** 1,668 passed and 1 skipped, against 1,656 and 1 before. Twelve new tests;
+  ten fail without the item, and the other two pin the behaviour with the option off.
+
+It joins stages 9 to 11 in needing a fork release before a docx4j-python release.
+
+### 12.7 The survey and the census
+
+`scripts/vml_census.py`, section 4.3 item 5's survey, over Phase B's corpus. `out/cr012-b-corpus/`
+was built from commits by `scripts/mce_branches.py corpus`, its `COMMITS.txt` recording
+docx4j-python `f1bb1d9`, docx4j-core-ts `df5b4af` and docx4j `901a922a3`. It was kept, since
+neither this repository's `samples/` and `tests/fixtures/` nor core-ts's `test/fixtures/` changed
+after those commits. It is 422 distinct documents and 2,746 WordprocessingML parts.
+
+VML is typed by the model, not by a hook, so the survey compares two runs.
+- **Before:** `out/cr012-c-survey/before`, at `f062c25`, before any change.
+- **After:** `out/cr012-c-survey/after`, at the last commit.
+- Each run loads every part, records its census, skipped report and save, and compares the save with
+  the source in `scripts/canon.py`'s form; `compare` sets the two runs' saves side by side. A run
+  takes 22 seconds.
+
+**The census**, every VML element by vocabulary, kind and place (an element in an `mc:Choice` or
+`mc:Fallback` counted on that side):
+
+| | before | after |
+|---|---:|---:|
+| `v:` in a Choice | wildcard 18 | typed 18 |
+| `v:` in a Fallback | wildcard 1,106 | typed 1,106 |
+| `v:` outside any branch | wildcard 975 | typed 975 |
+| `o:` in a Choice | wildcard 1 | typed 1 |
+| `o:` outside any branch | wildcard 1,046 | typed 1,041 |
+| `w10:` in a Fallback | wildcard 50 | typed 50 |
+| `w10:` outside any branch | wildcard 2 | typed 2 |
+| `x:`, `pvml:` | none | none |
+
+- The five `o:` fewer are `o:OLEObject`'s simple-typed children (`o:FieldCodes` 1, `o:LinkType` 2,
+  `o:LockedField` 2), field values of `CTOLEObject` now, not nodes.
+- **By part type:** the main document 2,052 (2,047 typed); settings 963 (`o:shapedefaults` 409,
+  `o:shapelayout` and `o:idmap` 277 each); headers 144; numbering 38 (picture bullets); comments 1.
+- **The holders:**
+  - `w:pict`: 1 in a Choice, 494 in a Fallback, 43 outside;
+  - `w:object`: 41, all outside;
+  - `w:txbxContent` in a Fallback: wildcard 490 before, typed 490 after;
+  - `w:txbxContent` outside a branch: 25 wildcard (VML) and 22 typed (DrawingML) before, 47 typed
+    after.
+- 333 parts hold VML. After, no VML element in any of them is a wildcard.
+- **On `samples/`**, pinned in `test_the_census_on_samples`:
+  - settings: 13 `o:shapedefaults`, 12 `o:shapelayout`, 12 `o:idmap`;
+  - in the three Fallbacks: 2 `v:oval`, 1 `v:rect`, 1 `v:textbox` and its `w:txbxContent`;
+  - all typed.
+
+**The gate.**
+
+- **Skipped:** no item is newly skipped. The same 24 parts have a report, all Strict OOXML (CR-002
+  section 12.3 item 7).
+- **Canonical form:** no part gained a difference. 2,698 parts were identical to their source
+  before, and 2,699 are after; the one more is `pandoc-code.docx`'s styles (12.6). The other 47 are
+  as before: 24 Strict parts, and 23 where the schema's order is imposed (three `settings.xml`, Word
+  Online's among them; eighteen main parts, among them the `w:object`s of the OLE fixtures and the
+  extraction probes, 12.13; two `styles.xml`), as Phase B listed them (11.5).
+- **Bytes:** 58 parts differ from the before run's save.
+  - 57 in attribute order alone, equal in C14N: a typed element writes the schema's order, where a
+    wildcard kept the source's. The elements: `v:rect` 412, `v:shape` 163, `w:p` 65 (a VML text
+    box's paragraphs, typed now: `w14:paraId` after `w:rsid*`, as Phase B found), `v:shapetype` 48,
+    `v:imagedata` 47, `v:path` 33, `v:textpath` 8, `v:oval` 4, and one each of `o:shapedefaults`
+    and `o:idmap`, in core-ts's `NumberingIndents.docx` settings, which writes `spidmax` before
+    `v:ext`. By part type: 43 main documents, 10 headers, 2 numbering parts, 1 comments part, 1
+    settings part.
+  - 1, `pandoc-code.docx`'s styles, in 20 `w:color` values kept in lower case.
+  - The other 2,688 saves are the same bytes as before: every `settings.xml` but one among them,
+    since the typed `o:shapedefaults` writes `v:ext` and `spidmax` in the order Word does.
+
+### 12.8 The readers' audit
+
+Every reader of text or structure was run over every distinct corpus document whose WordprocessingML
+parts hold `mc:AlternateContent` or declare a VML namespace, 384 of them (`readers --holding
+either`), and the answers diffed.
+- **The runs:** at `f062c25` before any change, in a worktree with the fork's new option off
+  (`out/cr012-c-survey/readers-either-before.json`), and at the last commit. Its answers on Phase
+  B's 85 documents and 17 readers equal those of a run made in the checkout before the fork
+  changed.
+- **The readers:** Phase B's 17 (11.4), and four more that a typed VML text box can move:
+  - `MainDocumentPart.fonts_in_use()` and `styles_in_use()`;
+  - every story's changes accepted and rejected (`revisions.accept_all` and `reject_all`): what is
+    left, the text after, and each part's canonical form.
+
+**For the coordinator's decision: none.**
+
+**The one answer that changed:**
+
+1. **`styles_in_use()`, 1 document,** `docx4j-core-tests/.../vml/textbox.docx`: `["Normal"]` before,
+   `["DefaultParagraphFont", "Normal"]` after.
+   - The document's VML text box (no `mc:AlternateContent`) holds a run with no `w:rStyle`, which
+     the walk (`iter_nodes`) reaches now that the box is typed, so the default character style counts
+     as used.
+   - **Clearly right by docx4j's contract.** docx4j's `FontAndStyleFinder` walks with
+     `TraversalUtil`, which descends `Pict`, `CTShape` and `CTTextbox` to the `w:txbxContent`
+     (`TraversalUtil.getChildrenImpl` at `2853b7280`), and counts a run with no `w:rStyle` as the
+     default character style's.
+   - Kept. `fonts_in_use()` did not move: the box's run names no font.
+
+**Nothing else changed** on the 384 documents: the content API's paragraphs, tables, inline
+pictures, addresses, `outline()`, `describe()`, `get_text`, `find` and `search`; the text model,
+plain text, Markdown and `to_markdown`; the tracked changes listed; Accept All and Reject All, their
+text and every part's canonical form; the facade's paragraphs, tables and inline shapes. The same
+four Strict documents fail to load both ways.
+- **CR-010's twins:** the VML text box of `cr043-tracked.docx`'s C22, the Fallback twin of the
+  Choice's (section 9's twins), is typed down to its `RunIns` and `RunDel` and is listed and resolved
+  as before (`test_the_tracked_vml_text_box_is_typed_down_to_its_changes`, and the audit's Accept
+  All and Reject All forms).
+
+**What made the answers stay.** With VML typed and no reader changed, the fast suite lost 14 tests
+to the readers, and 19 of CR-011's conformance checks went from PASS to FAIL:
+- legacy WordArt, a VML picture's description and an `o:OLEObject`'s ProgID, which the text model
+  read from a wildcard `v:shape`, `v:textpath`, `v:imagedata` and `o:OLEObject` by name;
+- the embedded objects a ProgID leads to.
+
+`_vml_shape` and `_object` now read the typed classes (`CTShape.content`, `CTTextPath.string`,
+`CTImageData`'s `r:id`, `CTOLEObject.prog_id` and `id`), and a wildcard tree still by name.
+`insert_ooxml`'s rewrite read typed nodes' relationship ids by a list of field names, among them
+`id`. Typed `v:imagedata`'s `r:id` is a field of another name, beside VML's own `id`, so it reads
+every relationships-namespace attribute field by the class's metadata now (`_rel_fields`), as the
+revisions engine's walk does (`trees._rel_fields`).
+`test_insert_ooxml_rewrites_a_typed_imagedatas_relationship_id` holds it.
+
+### 12.9 The islands
+
+Instrumented over the 422 documents, reading the text model and listing, accepting and rejecting
+the tracked changes, at `f062c25` and after:
+
+| code | before | after |
+|---|---:|---:|
+| `revisions.islands.Island` | 248 calls, 10 documents | 0 |
+| `Extractor._island` | 203 calls, 9 documents | 0 |
+| `Extractor._typed_block` | 0 | 0 |
+| `Extractor._typed_run_level` | 0 | 0 |
+
+**The islands do not retire:** something can still reach them.
+- **Below a wildcard node every element is a wildcard,** so a text box there is a wildcard
+  `w:txbxContent`. Such a node is:
+  - an element no class binds (a VML-namespace element the schema does not declare,
+    `<w:pict><v:unbound>`);
+  - a branch's `w:moveFrom` or `w:moveTo`, neither global nor a docx4j root;
+  - a tree built in code.
+- **Who reaches one:**
+  - for an unbound element, the text model, the listing and Accept All all go through islands;
+  - for a branch's move, the text model reads it through `_typed_run_level`'s typed copy, and the
+    listing does not walk it for text boxes.
+- No corpus document has either.
+- **Pinned:** `test_a_text_box_below_a_wildcard_node_is_still_a_wildcard_tree` and
+  `test_a_text_box_below_a_wildcard_node_is_read_through_an_island`.
+- **The docstrings** (`islands.py`, `_island`, the resolver's `_has_text`, the text model's) say so.
+
+Section 4.3 item 6 said each retires "only if nothing reaches it". Their readers read the typed tree
+in place wherever the parse types it, which is every corpus case. `_typed_block` and
+`_typed_run_level` are not VML's, and stay as Phase B left them (11.4).
+
+### 12.10 The numbers
+
+- **The suite:**
+  - the whole suite: 5,160 passed and 8 skipped in 3 minutes 21 seconds, against 5,136 passed and 8
+    skipped before (3 minutes 13 seconds);
+  - the fast suite (`-m "not slow"`): 3,880 passed, 8 skipped and 1,280 deselected, against 3,856,
+    8 and 1,280 before;
+  - the 24 new tests: `tests/openpackaging/test_vml.py`'s 22, `test_mce.py`'s
+    `test_understood_names_vml_since_it_has_classes` and `test_builders_phase_a.py`'s
+    `test_walk_all_reaches_both_branches_typed`;
+  - `tests/test_performance.py` (slow) passes, with no rerun needed.
+- **Unchanged:**
+  - `scripts/roundtrip.py`: 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign
+    respellings, exit 0;
+  - CR-011's ratchet: 1,291 pass, 0 fail, 293 pending of 1,584, goldens 12 of 12;
+    `conformance.tsv` unchanged (`test_conformance.py`, 24 passed);
+  - CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`): 68
+    passed, 0 lines;
+  - `tests/revisions`: 550 passed, the known-gap pin in `test_alternate_content.py` unchanged;
+  - `tests/openpackaging/test_threads_and_import.py` passes: the engine imports no model class at
+    module level, and the text model imports the VML classes on first use (`_vml_classes`);
+  - `scripts/threads.py`: no configuration lost or altered a document;
+  - `generate.sh --check`: byte identical.
+- **The acceptance artefacts:** `out/acceptance/` was regenerated and compared with the copy made
+  before the first change (`out/acceptance-before-cr012-c/`). `scripts/compare_acceptance.py`
+  found 13 artefacts and 175 entries, 0 differing beyond the wall-clock dates; entry by entry, 167
+  byte for byte and 8 in the dates only.
+- **Cost** (this machine; `import` in a fresh process, 7 runs; a cold import with an empty
+  `PYTHONPYCACHEPREFIX`, 3 runs; `bench_marshal.py`, `samples/` three runs of 7 and four VML-heavy
+  corpus documents three runs of 5):
+
+  | | before | after |
+  |---|---:|---:|
+  | `import docx4j_py` | 629 to 676 ms (median 640) | 716 to 782 ms (median 744) |
+  | cold import | 1,006 to 1,013 ms | 1,119 to 1,138 ms |
+  | `warm_up()` | 46 to 51 ms | 50 to 63 ms |
+  | `docx4j_py` modules after import and `warm_up()` | 100 | 106 |
+  | `Symbols.docx` parse / marshal | 202 to 207 / 250 to 261 ms | 201 to 204 / 252 to 256 ms |
+  | the 14 main parts of `samples/`, parse / marshal | 246 to 252 / 302 to 312 ms | 250 / 303 to 308 ms |
+  | `tc-p3-transforms.docx` (806 VML elements in 403 Fallbacks) parse / marshal | 322 to 333 / 256 to 275 ms | 362 to 393 / 285 to 297 ms |
+  | `extraction-probe.docx` (162) parse / marshal | 15 to 18 / 23 ms | 17 to 18 / 24 to 26 ms |
+  | `loadAndSave.docx` (watermarks) parse / marshal | 7 / 8 to 9 ms | 7 to 8 / 9 ms |
+  | `LegacyForms.docx` (VML only) parse / marshal | 2 / 2 ms | 2 / 2 ms |
+
+  - **The import:** about 100 ms more, for the five modules. `-X importtime` gives
+    `vml.officedrawing` with `vml.main` 61 ms, `vml.spreadsheet_drawing` 16 ms,
+    `vml.wordprocessing_drawing` 6 ms and `vml.presentation_drawing` 1 ms. `vml.main` is 7,319
+    lines: the eleven shape types each inline VML's attribute groups, some 60 fields a class. The
+    cold import is 1.12 s against `test_performance.py`'s 2.0 s budget.
+  - **A part with no VML** parses and marshals as before: the option's check is free (12.6).
+  - **A VML-heavy part** pays for typing, as Phase B's Choices did: `tc-p3-transforms.docx` parses
+    about 15% slower and marshals about 10% slower. That is less than Phase B's +21% and +35% on
+    the same document, whose Fallbacks are each two VML elements.
+
+### 12.11 Departures, with why
+
+1. **A fork item for floats and base64, not booleans.** Section 4.3 item 5 named VML's booleans
+   as the risk. They proved none (12.5); `o:spt` and `o:gfxdata` were the respellings. Section 4.3
+   item 7 sends a defect VML exposes to the fork, and the phase's brief prefers a fork fix to a
+   workaround here and to loosening a check:
+   - a schema patch typing them as strings is a workaround here, and changes docx4j's types;
+   - a `canon.py` category for them would loosen the check;
+   - so the fork keeps a value's spelling (12.6).
+2. **The option is on for every part,** not VML's alone: any float or bytes value keeps its
+   spelling. Its one other effect in the corpus is `pandoc-code.docx`'s colours (12.6), a part
+   canonically identical now that was not.
+3. **The survey compares two runs,** where Phase B toggled its hook within one: VML is typed by the
+   model's own classes, with no hook to switch off. The before run was made before any change.
+4. **The readers' audit is wider than Phase B's.** It covers 384 documents, those declaring a VML
+   namespace as well as those holding `mc:AlternateContent`, since VML outside a branch changed too.
+   It has 21 readers, adding the fonts and styles in use and Accept All and Reject All. Its before
+   run was made at `f062c25` in a worktree, after the fork had changed, with the fork's new option
+   off; on Phase B's documents and readers it equals a run made before the fork changed.
+5. **`cross_check_vml` stops the run,** as Phase B's root cross-check does, rather than being a one-off
+   check.
+6. **The islands stay** (12.9). Nothing in the corpus reaches them any more, but a text box below a
+   wildcard node still can.
+7. **The census counts nodes,** so the five simple-typed `o:` elements that are field values now
+   drop out of the after column (12.7).
+8. **Four Word-check files, not five.** `settings.xml`'s shape defaults are in all four, and both
+   `w:shapeDefaults` and `w:hdrShapeDefaults` in file 2. No corpus document has more notable ones:
+   273 settings parts have the standard `o:shapedefaults` and `o:shapelayout`, 132 an
+   `o:shapedefaults` in `w:hdrShapeDefaults`, and none a fill, stroke or colour menu.
+
+### 12.12 Pre-existing tests whose expectation changed, and why
+
+- `tests/openpackaging/test_mce.py::test_understood_is_narrower_than_the_prefix_table`.
+  - **Then:** `"v" not in UNDERSTOOD`, VML being the example of a prefix with no classes.
+  - **Now:** `mv` (Mac VML, no schema) is the example.
+  - `test_understood_names_vml_since_it_has_classes` holds the five VML prefixes. No branch
+    selection reads `UNDERSTOOD` (Q8), so no reader moved.
+- `tests/openpackaging/test_mce_typed.py::test_the_choice_is_typed_all_the_way_down_and_the_fallback_to_its_pict`,
+  renamed `test_both_branches_are_typed_all_the_way_down`.
+  - **Then:** the Fallback's `v:rect`, `v:textbox` and `w:txbxContent` were wildcards.
+  - **Now:** they are `CTRect`, `CTTextbox` and `CTTxbxContent`, and no node in either branch is a
+    wildcard.
+- `tests/openpackaging/test_mce_typed.py::test_the_census_on_samples`.
+  - **Then:** the Fallbacks' depth was 3 typed and 28 wildcard.
+  - **Now:** 44 typed.
+- `tests/test_builders_phase_a.py`'s walk_all tests over `samples/DrawingML_GraphicData_wps.docx`.
+  The document holds no wildcard any more, so the wildcard visitor's tests read a fragment whose
+  `w:pict` holds a VML-namespace element no class binds (`UNBOUND_VML`).
+  - `test_walk_all_reaches_the_wildcards_inside_an_alternate_content`: the wildcard visitor gets the
+    unbound element and its child.
+  - `test_walk_all_reaches_both_branches_typed` (new): the sample's `Wsp` and `CTRect` go to the
+    typed visitor, under their names, and no wildcard is met.
+  - `test_walk_all_sees_the_attributes_on_a_wildcard`: `o:spid` and `w14:anchorId` are read from
+    the unbound element's attributes and from the sample's typed `CTRect`'s fields.
+  - `test_walk_all_reports_the_parent_of_a_wildcard`: over the fragment, two wildcards. Over the
+    sample it would pass with none.
+- `tests/revisions/test_tracked_changes.py::test_a_comment_across_paragraphs_in_a_text_box_is_judged_in_its_wildcard_tree`,
+  renamed `test_a_comment_across_paragraphs_in_a_vml_text_box_is_judged_by_its_text`. Its
+  expectation is unchanged; its premise was that the VML box is a wildcard tree at the flush.
+
+Fourteen tests failed along the way and pass with their expectations unchanged:
+- `tests/agent/test_outline.py::test_the_counts_follow_the_text_model` (170 paragraphs for 171);
+- the plain-text and Markdown goldens of `extraction-probe` (`test_texts.py`,
+  `test_text_markdown.py`);
+- seven of `test_texts_phase2.py` (a VML picture's alt, objects' ProgIDs, legacy WordArt, embedded
+  documents and their warnings);
+- `test_conformance.py`'s two (19 checks PASS to FAIL).
+
+All went with VML typed and the text model still reading it by name. `_vml_shape` and `_object`
+mend them (12.8).
+
+### 12.13 Found, and not done
+
+- **`w:object`'s children are saved in the schema's order.** `CT_PictureBase` is a repeating
+  sequence of a VML element and an `o:` element, and its two wildcard lists are written
+  interleaved. So a `w:object`'s `v:shapetype`, `v:shape`, `o:OLEObject` is saved `v:shapetype`,
+  `o:OLEObject`, `v:shape`.
+  - It is older than this phase, the same with wildcards (11.5's 23 parts).
+  - It is the one canonical difference among the Word-check files (file 3).
+  - A marked schema patch making the sequence a choice, one compound list in document order, would
+    end it. That is for the coordinator: it changes `CT_PictureBase`'s generated fields.
+- **A tracked change in a branch's `w:moveFrom` or `w:moveTo`** is not listed. The move is a
+  wildcard tree, which the listing does not walk; the text model reads it through a typed copy. No
+  corpus document has one; this phase changed nothing there.
+- **The import's 100 ms** (12.10) could come down only by importing VML on first need. That means
+  the fork's context learning a namespace's module lazily, and is not attempted.
+- **A vmlDrawing part (`VMLPart`) stays an lxml tree.** Its root's schema, `vml__ROOT.xsd`, is
+  SpreadsheetML's and PresentationML's (CR-001 Phase D, CR-002 Phase C).
+- **`x:` and `pvml:`** are in the model and in no corpus document's WordprocessingML; they are typed
+  and untested beyond the regeneration.
+- **A fork release.** Stages 9 to 12 are local. docx4j-python cannot release on them before one
+  (`RELEASING.md`).
+- **docx4j's agreement run** (it calls `revisions.accept_all`) was not rerun for this phase. The
+  audit's Accept All and Reject All forms are unchanged on all 384 documents, the eleven fixtures
+  among them; asking docx4j-25 is the coordinator's.
+- **CLAUDE.md** still describes VML as untyped in places, for the coordinator:
+  - the generated packages' list (add `vml/`);
+  - the CR-012 status line;
+  - "WordprocessingML only until CR-001 D and CR-002 C" (true, VML aside).
+- **`docs/UPSTREAM.md`** has rows 20 to 24 twice, in the table and again after the notes below it.
+  This predates the phase; report 25 is appended after the second copy.
+
+### 12.14 The Word check (Not yet checked)
+
+Four files are in `out/cr012-c-word-check/`, with a `README.txt` saying, for each, the source, what
+was done and what Word should show. They are also copied to
+`~/vbShares/Office 2016/__tmp/python-cr012c/`. Each unmodified source is beside its save as
+`cr012c-<n>-SOURCE-<name>.docx`.
+
+Each was loaded with every WordprocessingML part unmarshalled, so that this engine writes the typed
+VML back, and saved. Each reads back with `LoadOptions(strict=True)` with nothing skipped and no
+`xsi:type` written. Every WordprocessingML part is canonically identical to its source, file 3's
+`w:object` order apart (12.13). Against the same save made by the engine before this phase, every
+part is the same in C14N: the parts holding VML differ in attribute order only, and `settings.xml`
+is the same bytes.
+
+- `cr012c-1-tracked-vml-text-box.docx`: docx4j-core-ts's `cr043-tracked.docx`.
+  - Its C22 Fallback, a VML text box, is typed down to its tracked deletion and insertion, the
+    Choice's twins.
+  - Word 365 shows the Choice's box. The README names Review > Display for Review > All Markup, and
+    what Simple Markup shows instead.
+- `cr012c-2-header-watermarks.docx`: docx4j's `loadAndSave.docx`.
+  - Three headers each hold a VML text watermark ("SAMPLE") straight in a run.
+  - Its settings have `w:shapeDefaults` and `w:hdrShapeDefaults`.
+- `cr012c-3-ole-object.docx`: docx4j's `OLE/inserted doc.docx`, an embedded Word document shown as
+  an icon (`w:object`, `v:shape`, `o:OLEObject`), with no `mc:AlternateContent`.
+- `cr012c-4-vml-only-text-box.docx`: docx4j's `vml/textbox.docx`, a Word 2010 document with a
+  legacy VML text box straight in a run, its `o:gfxdata` wrapped across lines, and no
+  `mc:AlternateContent`.
+
+Expected: each opens with no repair prompt and looks as its source does. **Not yet checked.**

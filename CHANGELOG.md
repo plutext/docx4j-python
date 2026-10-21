@@ -383,6 +383,36 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
     python-docx's `//w:p/w:r/w:drawing/wp:inline` does;
   - the text model reads a typed `cx:chart` as it read a wildcard one (`waterfall.docx`'s, in its
     Choice).
+- **VML is typed** ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) Phase C,
+  section [12](docs/change-requests/CR-012-type-kept-mc-branches.md#12-phase-c-implementation-notes-2026-10-22)):
+  docx4j's five VML schemas (`v:`, `o:`, `w10:`, Excel's `x:` and PowerPoint's `pvml:`, at the
+  schema copy's commit) are in the model, as `docx4j_py.vml.main`, `.officedrawing`,
+  `.wordprocessing_drawing`, `.spreadsheet_drawing` and `.presentation_drawing`, each with its
+  `el`. VML is typed wherever it stands, in a branch or not: below every `w:pict` and `w:object`,
+  a header's watermark, a numbering picture bullet, and `settings.xml`'s `o:shapedefaults` and
+  `o:shapelayout`, which nearly every Word document has. **Code that looked for an `AnyElement`
+  `v:shape`, `v:imagedata`, `o:OLEObject` or a VML text box's `w:txbxContent` now finds a
+  `Shape` (`CTShape`), a `CTImageData`, an `Oleobject` (`CTOLEObject`) or a `TxbxContent`**;
+  `v:imagedata`'s `r:id` is the field
+  `schemas_openxmlformats_org_office_document_2006_relationships_id`, beside VML's own `id`. VML's
+  booleans (`ST_TrueFalse`, `t`/`f`/`true`/`false`) are a string enumeration and are written as
+  read, and an `xsd:float` or base64 value keeps the spelling it was read with (the fork's
+  `ParserConfig(lexical_types=)`), so `o:spt="202"` is not saved `202.0` nor Word's wrapped
+  `o:gfxdata` on one line; a value set in code takes the converter's spelling. Over 2,746 parts of
+  422 documents nothing is newly skipped, no save gains a canonical difference, and 57 parts
+  differ in bytes, each in attribute order alone; `pandoc-code.docx`'s `styles.xml`, whose
+  lower-case `w:color` values were written in upper case, is canonically identical to its source
+  now. With it:
+  - the text model reads legacy WordArt, a VML picture's description and an object's ProgID from
+    the typed tree, as it read them from the wildcard one;
+  - `insert_ooxml` rewrites every relationships-namespace attribute of a typed node, so a VML
+    picture's `r:id` is rewritten;
+  - a VML text box's runs count in `styles_in_use()` and `fonts_in_use()`, as docx4j's traversal
+    counts them (`DefaultParagraphFont` joins `vml/textbox.docx`'s styles);
+  - no text box is made a typed island any more over the corpus; one below a wildcard node (in an
+    element no class binds) still is;
+  - `docx4j_py.namespaces.UNDERSTOOD` names `v`, `o`, `w10`, `xvml` and `pvml`;
+  - `import docx4j_py` takes about 100 ms longer (640 to 745 ms here), for the five modules.
 
 ### Fixed
 
