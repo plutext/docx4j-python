@@ -1656,3 +1656,422 @@ Expected: each opens with no repair prompt and no tracked change, and shows the 
 red in file 1, plain in files 2 and 3. `F` is not shown. **Passed on 2026-10-22** (the user: "the
 Word check of __tmp/python-cr012a2-records/ passes"): all three open with no repair prompt and show
 what the README says.
+
+## 11. Phase B implementation notes (2026-10-22)
+
+Phase B types what a kept branch holds, as docx4j types it, at the user's go ("port the fix, then
+start phase b"), on section 4.2 as revised before it started. docx4j's 61 WordprocessingML root
+elements that this model does not declare globally are derived from docx4j's own classes, generated
+into `docx4j_py/el_index.py` and handed to the fork's stage 11 hooks, with no fork code. In a branch
+each is bound as the container holding the `mc:AlternateContent` binds it, and in any other lax
+wildcard as its root class. A `w:drawing` in an `mc:Choice` is a `Drawing` now, down to the `wps`
+shape and its `w:txbxContent`; a `w:pict` in an `mc:Fallback` is a `Pict`, its VML still a wildcard
+tree (Phase C). The walks name a branch's typed child by its element name, and the readers read it
+as they read the same element elsewhere.
+
+**Commits.**
+
+- docx4j-python:
+  - `0d041e6`: `codegen/derive_names.py` writes `codegen/names/root_elements.json`; the table; the
+    names README;
+  - `44278d9`: `codegen/generate_el.py` writes `ROOT_ELEMENTS` and `ROOT_ELEMENT_BINDINGS` into
+    `docx4j_py/el_index.py`; the regeneration;
+  - `f02dcc7`: the runtime hook's three steps and the serialiser's element names; the `word`-mode
+    record's hook;
+  - `cb7581c`: the walks' names, and the readers (the text model's `_graphic_kind`,
+    `Body.tables`, the python-docx facade's inline shapes, the docstrings of the wildcard readers);
+    the two `walk_all` tests;
+  - `69f61e0`: `tests/openpackaging/test_mce_typed.py`;
+  - `a7ce5dd`: `scripts/mce_branches.py`;
+  - `14d0e89`: the `text_of` readers' paragraph-level reading pinned for the coordinator (11.4);
+  - the commit that adds this section: this section, the CHANGELOG, CR-002 section 5.6's note,
+    `tests/README.md` and `docs/UPSTREAM.md` report 24.
+- The fork (`~/git/docx4j-xsdata`, branch `docx4j`): none. Its tests already pin what this phase
+  relies on (11.7 item 8).
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the derivation | `codegen/derive_names.py`, `codegen/names/root_elements.json`, `codegen/names/README.md` | docx4j's WordprocessingML roots not global here, each with the `el` table's class; the cross-check against the schema copy's annotations, which stops the run on a disagreement (11.2) |
+| the generated table | `codegen/generate_el.py`, `docx4j_py/el_index.py` | `ROOT_ELEMENTS` (61 names to their root classes' paths) and `ROOT_ELEMENT_BINDINGS` (22 names to the 47 other classes a container binds them to), held to the model at generation |
+| the hook | `docx4j_py/runtime.py` | `branch_child_class`: (a) `container_binding`, (b) `root_element_class`, (c) None; `wildcard_names()`, the parser's default `wildcard_class_for`; `element_names_table`, which refuses a class claimed by two names; `_branch_element_names` gains 107 classes, 113 in all |
+| the record | `docx4j_py/openpackaging/mc_block_level.py` | `_record_hook` takes (a), then (a) with the level's container, then (b) |
+| the walks | `docx4j_py/child.py` | `iter_children` names a wildcard field's typed child by `wildcard_child_name`, the serialiser's name for it, where it gave the field's name, `any_element` |
+| the readers | `docx4j_py/model/text/extractor.py`, `model/content/body.py`, `docx/shape.py`, `model/revisions/islands.py` | `_graphic_kind` by element name; `Body.tables` through a block-level branch; the facade's `inline_shapes` without a branch's drawing; the docstrings say where each wildcard reader is still reached (11.4) |
+| tests | `tests/openpackaging/test_mce_typed.py` (260); `tests/test_builders_phase_a.py` (2 changed) | 11.6, 11.8 |
+| the survey | `scripts/mce_branches.py` | `corpus`, `survey`, `readers`, `compare-readers` (11.5) |
+| documents | `CHANGELOG.md`, CR-002 section 5.6, `tests/README.md`, `docs/UPSTREAM.md` report 24 | |
+
+### 11.2 The derivation and its provenance
+
+**The source.** docx4j's XJC output in its checkout,
+`docx4j-generated-objects/target/generated-sources/xjc`. It is a build, not a commit: its 2,709
+`.java` files were written at 2026-10-20 14:11:44 +11:00 (`root_elements.json`'s `xjc_built`, the
+newest file of `org.docx4j.wml`). That predates `1cff2cd5c` (17:32 the same day); docx4j's
+`VERSION_17_3_4` was at `cf1abf001` then. The build's own commit is not recorded.
+
+**The rule** (`build_root_elements`):
+
+- docx4j's global names are every `@XmlRootElement`, nested classes included, and every
+  `@XmlElementDecl` with no `scope`. The name tables' regexes see top-level classes only, so this
+  pass has its own, which tracks a class's enclosing classes by indentation (`R.Tab`,
+  `P.Hyperlink`, `PPrBase.Spacing`, `Numbering.Num.LvlOverride`).
+- In the WordprocessingML namespace that is 99 names. The schema copy declares 37 globally (a
+  top-level `xsd:element` of `wml/wml.xsd`), all 37 among the 99. So 62 are missing here, as
+  section 2 counted.
+- A name several docx4j classes claim as their root is left out. That is `w:sdtContent`, whose four
+  classes a name alone cannot choose among: Q3's decision, made a rule.
+- Each of the 61 left takes the class the `el` table names for it (`codegen/el_tables/wml.json`).
+- The other vocabularies' missing names, in a namespace this model has, are listed and not taken:
+  the custom properties' `property`, as section 2 said.
+
+**The cross-check.** The names `wml/wml.xsd` annotates with `annox` `@XmlRootElement` and does not
+declare globally must be exactly the 62 the rule finds, or the run stops with both lists. They are:
+62 and 62. **`w:sdtPr` is annotated** in the schema copy, written `@XmlRootElement(name =
+"sdtPr")` with spaces, and has been since the first copy. Section 2's count, which took it for the
+one unannotated name, matched only the unspaced form (70 names that way, 71 with it). So the two
+sources agree on all 62, and the cross-check ties the table to the schema copy's commit,
+`2853b7280`. Between the XJC build's likely tree (`cf1abf001`) and `2853b7280`, `xsd/wml/wml.xsd`
+changed only by `1cff2cd5c`, which touches no annotation; nothing under `xsd/` changed from
+`2853b7280` to `901a922a3`.
+
+**Not a `ClassNames` table.** The generator's `<ClassNames>` option reads every `*.json` in
+`codegen/names/`. The file's entries are under `roots`, with no `types` or `elements` key, so the
+generator takes nothing from it: the regeneration changed `el_index.py` alone, with the same 282
+`ClassNames` warnings. Re-running `derive_names.py` rewrites the other 56 tables byte for byte, and
+two runs write the same `root_elements.json`.
+
+**Held to the model** (`generate_el.root_elements`). Each root must not be a global element of the
+model, and its class must be the one `el` builds for the name, or the run stops and says to
+re-derive. The bindings are what step (a) can give besides the root class. Its containers are the
+122 classes that can hold an `mc:AlternateContent`: 45 by a field, 77 by a lax wildcard (a global
+`mc:AlternateContent` is typed in any of them), the `mc` wrappers aside. A class bound to two names
+stops the run; none is.
+
+### 11.3 The (a)/(b) table
+
+For each of the 61 names, every container's binding against the root class. "Containers" are the
+122 of 11.2; a container binding none of the 61 is not listed.
+
+| names | how many | step (a) gives | against (b) |
+|---|---:|---|---|
+| `w:altChunk` (10 containers), `w:bookmarkEnd`, `w:bookmarkStart`, `w:permEnd`, `w:permStart` (31 each), `w:drawing`, `w:pict` (6 each), `w:fldChar` (5), `w:fldSimple`, `w:smartTag` (14 each), `w:tbl` (11), `w:rPr` (5), `w:tc` (3), `w:sectPr` (2), `w:pPr`, `w:tblPr`, `w:tblGrid` (1 each) | 17 | the root class, in every container that binds the name | agree |
+| `w:abstractNum`, `w:alias`, `w:bibliography`, `w:citation`, `w:dataBinding`, `w:equation`, `w:group`, `w:ind`, `w:jc`, `w:lock`, `w:lvl`, `w:lvlOverride`, `w:num`, `w:numPicBullet`, `w:numPr`, `w:outlineLvl`, `w:pBdr`, `w:picture`, `w:richText`, `w:sdtPr`, `w:spacing`, `w:tabs` | 22 | nothing: no container binds the name | (b) always |
+| `w:annotationRef`, `w:commentReference`, `w:continuationSeparator`, `w:cr`, `w:dayLong`, `w:dayShort`, `w:endnoteRef`, `w:footnoteRef`, `w:lastRenderedPageBreak`, `w:monthLong`, `w:monthShort`, `w:noBreakHyphen`, `w:pgNum`, `w:ptab`, `w:separator`, `w:softHyphen`, `w:sym`, `w:tab`, `w:yearLong`, `w:yearShort` | 20 | the root class in `R`; in a math run (`CTR`) its `CtR...` class; in a math run's track change (`CTMathRunTrackChange` and its `Ins1`, `Del1`) its `CtMathRunTrackChange...` class | differ in the math run |
+| `w:t` | 1 | `RT` in `R` and the math run's track change; `T` in a math run (`CTR`) | differ in the math run |
+| `w:hyperlink` | 1 | each of its seven classes in its own container: `PHyperlink` in `P`, `CtSimpleFieldHyperlink` in `CTSimpleField`, and the bdo's, dir's, custom XML run's, run control's and smart tag's, each in its container and in itself (a hyperlink holding a branch) | differ for six of the seven kinds of container |
+
+Section 4.2 item 1 expected them to agree except where this model generated several classes for one
+type, such as `w:hyperlink`. That holds, and the exception is wider than the example:
+- the run content names have three classes each, one per scope, as `w:hyperlink` has seven;
+- the math run's own `w:t` is the `el` table's `t_math` class, `T`.
+
+So 22 names take 47 other classes. Each is in the serialiser's table under its name
+(`ROOT_ELEMENT_BINDINGS`). A test recomputes the containers apart from the generator and checks
+every class step (a) gives against that table.
+
+### 11.4 The readers' audit
+
+Every reader of text or structure was run over every distinct corpus document holding
+`mc:AlternateContent` in a WordprocessingML part (85, by content), at `f1bb1d9` before the first
+change and at `14d0e89` after the last, and the answers diffed (`scripts/mce_branches.py readers`
+and `compare-readers`). The readers: the content API's `Body.paragraphs` (addresses and text),
+`tables` (values), `inline_pictures`, `element_at` (every paragraph's and table's address),
+`outline()`, `describe()`, `get_text()`, `find` and `search`; the text model's `extract`,
+`plain_text` and `markdown`, and `to_markdown`; `revisions.tracked_changes`; the python-docx
+facade's `paragraphs`, `tables` and `inline_shapes`.
+
+**For the coordinator's decision: the `text_of` readers read a paragraph-level branch's runs.**
+
+- `text_of` is behind `Block.text`, `Table.text`, `TableCell.text` (and so `Table.values`), a
+  run-level control's text and `TrackedChange.text`.
+- Before this phase it read a run-level branch's text, whose `w:t` was a wildcard read by name, but
+  not a paragraph-level branch's runs: a typed `w:r` there was enumerated under the field's name,
+  `any_element`, and no walk of text read it.
+- Now it reads both, Word's branch, as its contract says ("only the branch a consumer that
+  understands ... would take contributes") and as Word shows. A cell `a` + a branch's run
+  `-PARA_CHOICE` reads `a-PARA_CHOICE` where it read `a`.
+- `Paragraph.text` and `get_text`, Office JS's text by CR-011 Q4, read neither branch, before and
+  after. So a cell's text and its paragraph's text can now differ at paragraph level, as they
+  already could at run level.
+- No corpus document has the shape. Kept, and pinned:
+  `test_pinned_for_the_coordinators_decision_text_of_readers_read_a_paragraph_level_branchs_runs`.
+  Whether the `text_of` readers that call themselves Office JS's text should descend into
+  `mc:AlternateContent` at all is CR-011 Q4's question.
+
+**The answers that changed over the corpus.**
+
+1. **The python-docx facade's `inline_shapes`: 24 documents**, 488 drawings, each a `w:drawing`
+   straight in a branch, joined the list (`tc-p3-transforms.docx` 403 of them). python-docx 1.2.0
+   lists `//w:p/w:r/w:drawing/wp:inline` (`docx/shape.py`, `InlineShapes._inline_lst`): a drawing
+   whose parent is an `mc:Choice` is no run's child, so **clearly wrong by python-docx's contract**.
+   Acted on: the facade keeps a drawing straight in a branch out (`_straight_in_a_branch`), and
+   the answer is the one before. No newly typed drawing stood inside a typed text box in a branch.
+2. **`Table.values`, `Table.text` and `element_at`'s table text: 1 document**,
+   `mc-txbx-tc-block.docx`. Its second cell holds a block-level element whose Choice paragraph has
+   two runs, the text `CELL_CHOICE_PARA ` and a text box. It read `CELL_CHOICE_PARA \n`: the
+   paragraph, typed `P` but named `any_element`, was not read as a paragraph, so each run was a
+   line. Now `CELL_CHOICE_PARA `. **Clearly right**: a paragraph is one line, docx4j `TextUtils`'
+   rule and `text_of`'s. Kept, and pinned (`test_a_paragraph_in_a_block_level_branch_is_one_line`).
+
+Nothing else changed: the paragraphs, pictures, outline, `describe()`, `get_text`, `find`,
+`search`, the text model, Markdown, the tracked changes and the facade's paragraphs and tables
+answer as before on all 85.
+
+**Beyond the corpus.** A probe built for the purpose holds a branch's `w:hyperlink`,
+`w:fldSimple`, `w:smartTag`, `w:bookmarkStart`, `w:fldChar`, run content (`w:tab`, `w:sym`,
+`w:noBreakHyphen`, `w:softHyphen`, `w:cr`), an inline picture, a `w:ins` and a table in a
+block-level branch. Read with Phase A2's parser and with this phase's, through the code after this
+phase:
+
+- the text model, Markdown, `to_markdown`, the tracked changes, `describe()` and the facade answer
+  the same both ways, so the text model's typed paths read what its wildcard paths read;
+- the content API moves only for the table in the block-level branch. `Body.tables` lists it, read
+  only (9.11's first item, below), and `Body.paragraphs`, `element_at`, `outline()` (a `table`
+  entry where an `AnyElement` one stood), `find`, `search` and `get_text` reach its paragraph, as
+  the text model already did. **Clearly right** by Phase A's rule: a reader of structure reads
+  Word's branch at block level. Pinned
+  (`test_the_content_api_reads_a_block_level_branchs_table_as_its_paragraphs`);
+- `describe()` reads the parts' bytes with lxml, so typing cannot move it.
+
+**9.11's two items.**
+
+- **`Body.tables` reads a table in a block-level branch.** It still passed it by once the table
+  was typed, since it read its own list's `w:tbl` items alone. It now reads through a block-level
+  `mc:AlternateContent` to Word's branch, as `Body.paragraphs` does, its views read-only (every
+  edit raises `address.read_only`, `add_rows` and `delete` included). Controls stay
+  `control.tables`, as Office JS reports them. Tested
+  (`test_body_tables_reads_a_table_in_a_block_level_branch`).
+- **`find(P)` reaches a cell-level branch's paragraphs**: since Phase A2's typed cells, tested
+  there (`test_mce_levels.py::test_traversal_reaches_a_cell_level_branchs_paragraphs`). Nothing more needed.
+
+**Code that may now be dead.** Each was instrumented over the 85 documents, reading the text model
+and listing, accepting and rejecting the tracked changes, both ways:
+
+| code | untyped | typed | still reached by |
+|---|---:|---:|---|
+| `Extractor._typed_block` (a wildcard `w:p`, `w:tbl` or `w:sdt` in a block list) | 0 | 0 | no parse this package makes: in a branch `w:p` is global, `w:tbl` a root and `w:sdt` bound by its container; a tree built in code or parsed with no branch hook |
+| `Extractor._typed_run_level` (a wildcard run-level item) | 0 | 0 | a branch's `w:moveFrom` and `w:moveTo`, which are neither global nor roots (no corpus document has one); `w:r`, `w:ins` and `w:del` are global, `w:hyperlink`, `w:fldSimple`, `w:smartTag` roots, `w:sdt` bound by its container |
+| `Extractor._island` | 531 | 28 | VML text boxes |
+| `revisions.islands.Island` | 566 | 48 | VML text boxes: every wildcard `w:txbxContent` left in the corpus, 514, is `v:textbox`'s, under `v:rect` (412) or `v:shape` (102) below a `Pict` |
+
+Each keeps its code, and its docstring now says where it is still reached. The islands retire with
+Phase C.
+
+### 11.5 The survey and the census
+
+`scripts/mce_branches.py`, section 5's survey. The corpus is built from commits by `git archive`
+into `out/cr012-b-corpus/` (git-ignored), its `COMMITS.txt` recording them:
+
+- docx4j-python `f1bb1d9`: `samples/`, `tests/fixtures/` (164 files);
+- docx4j-core-ts `df5b4af`: `test/fixtures/` (252);
+- docx4j `901a922a3`: `docx4j-core-tests/src/test/resources` (298).
+
+That is 422 distinct documents and 2,746 WordprocessingML parts. `docx4j-core/src/test/resources`,
+which the brief named, does not exist at `901a922a3`: `docx4j-core` has no `src/test`.
+
+Each part is loaded twice: **untyped**, Phase A2's parser (the hook asked about `w:sdt`, `w:tr` and
+`w:tc` only, no root class), and **typed**. The untyped pass gives the census taken at `f1bb1d9`
+before any change, count for count.
+
+**What a kept branch holds** (its direct children, over the corpus):
+
+| branch child | untyped | typed |
+|---|---:|---:|
+| `mc:Choice` / `w:drawing` | wildcard 521 | `Drawing` 521 |
+| `mc:Choice` / `w:pict` | wildcard 1 | `Pict` 1 |
+| `mc:Choice` / `w:t` | wildcard 24 | `RT` 24 |
+| `mc:Fallback` / `w:pict` | wildcard 491 | `Pict` 491 |
+| `mc:Fallback` / `w:drawing` | wildcard 4 | `Drawing` 4 |
+| `mc:Fallback` / `w:t` | wildcard 11 | `RT` 11 |
+| `mc:Choice` / `w:r` (global) | `R` 47 | `R` 51 |
+| `mc:Fallback` / `w:r` | `R` 16 | `R` 20 |
+| `mc:Choice` / `w:p`, `w:tr`, `w:tc` | `P` 54, `Tr` 20, `Tc` 20 | the same |
+| `mc:Fallback` / `w:p`, `w:tr`, `w:tc` | `P` 8, `Tr` 2, `Tc` 2 | the same |
+| `mc:AlternateContent` inside a wildcard tree | 4 | 0 (typed, in a typed drawing; their branches' runs are the 4 more `R` each side) |
+
+**How deep the typing reaches**, every node below a branch:
+
+| | untyped | typed |
+|---|---:|---:|
+| in a Choice, wildcard | 17,104 | 19 (VML below the one `Pict` in a Choice) |
+| in a Choice, typed | 959 | 21,238 |
+| in a Fallback, wildcard | 5,981 | 5,383 (VML below a `Pict`) |
+| in a Fallback, typed | 140 | 753 |
+
+**The census on `samples/`**, pinned in `test_the_census_on_samples`, as section 5 expected: 3
+`Drawing` in Choices, 3 `Pict` in Fallbacks, no wildcard `w:drawing` or `w:pict` left in a branch.
+The Choices' 135 wildcard nodes are 185 typed objects, and nothing in a Choice is a wildcard; the
+Fallbacks hold the 3 `Pict` and 28 wildcard VML nodes.
+
+**The gate.**
+
+- **Canonical form:** no part's typed save differs from its source where its untyped save does
+  not, and no part's two saves differ canonically. 2,698 parts are identical to the source both
+  ways. The other 48 are the same both ways, as before this phase: 24 Strict OOXML parts, whose
+  skipped content is a known gap (CR-002 section 12.3 item 7); 23 where the schema's order is
+  imposed (Word Online's `settings.xml` in `HelloWordOnline.docx`, `w:object`'s `v:shape` and
+  `o:OLEObject` in the OLE fixtures); and one hex colour's case (`pandoc-code.docx`'s styles).
+- **Skipped reports:** every one is the same both ways, part for part (24 parts have one, all
+  Strict).
+- **Bytes:** 25 parts differ, each holding a branch, as section 3 found: 19 in attribute order
+  only (equal in C14N), 6 in boolean spelling (`wps:bodyPr anchorCtr="false"` and `wps:cNvSpPr
+  txBox="true"` written `0` and `1`, 413 attributes, 403 of them `tc-p3-transforms.docx`'s). The
+  script fails if a part with no branch differs.
+
+### 11.6 The numbers
+
+- **The suite:**
+  - the whole suite: 5,133 passed, 8 skipped, in 3 minutes 8 seconds, with no timing flake (10.5's
+    4,855, then 10.10's 8 and 10.11's 10, then this phase's 260);
+  - the fast suite (`-m "not slow"`): 3,853 passed, 8 skipped, 1,280 deselected (3,593, 8 and
+    1,280 before);
+  - the 260 new tests are `tests/openpackaging/test_mce_typed.py`'s; nothing else moved but 11.8.
+- **Unchanged:**
+  - `scripts/roundtrip.py`: 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign
+    respellings;
+  - CR-011's ratchet: 1,291 pass, 0 fail, 293 pending of 1,584, goldens 12 of 12,
+    `conformance.tsv` unchanged;
+  - the agreement test: 638 passed;
+  - CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`): 68
+    passed; `tests/revisions`: 547 passed, its two known-gap pins unchanged;
+  - the parity goldens: 277 passed, `PINS` empty;
+  - `scripts/threads.py`: no configuration lost or altered a document;
+  - `generate.sh --check`: byte identical.
+- **`scripts/bench_marshal.py`** (`--runs 7`; `samples/` three runs, `tc-p3-transforms.docx` five,
+  this machine):
+
+  | | before | after |
+  |---|---:|---:|
+  | `Symbols.docx` parse | 204 to 211 ms | 195 to 201 ms |
+  | `Symbols.docx` marshal | 254 to 264 ms | 248 to 252 ms |
+  | the 14 main parts, parse | 249 to 257 ms | 238 to 244 ms |
+  | the 14 main parts, marshal | 305 to 319 ms | 298 to 302 ms |
+  | `tc-p3-transforms.docx` parse | 266 to 279 ms | 321 to 339 ms |
+  | `tc-p3-transforms.docx` marshal | 168 to 182 ms | 234 to 240 ms |
+
+  One of the five `tc-p3` parses before was 522 ms, an outlier left out. On `samples/` the change is
+  within the band. On `tc-p3-transforms.docx` (403 branches, a 1.9 MB main part) parse is up about
+  21% and marshal about 35%, near the prototype's upper bound (section 3: +24% and +40%):
+  - the hook is not the cost: its 806 calls there take 0.4 ms;
+  - the cost is the typing itself. The Choices' 13,345 wildcard nodes become 15,775 typed objects,
+    each built with its parent pointer and written through the metadata, where a wildcard tree is
+    built and written as plain nodes. That is Q1's trade, typed plain instances.
+- **`import docx4j_py`:** 630 to 680 ms, against 632 to 672 before (seven runs each, `-X
+  importtime`), 242 modules both times. The root table is strings, resolved on first use.
+- **The acceptance artefacts:** `out/acceptance/` was regenerated and compared with a copy made
+  before the first change (`out/acceptance-before-cr012-b/`). `scripts/compare_acceptance.py`
+  found 13 artefacts and 175 entries, 0 differing beyond the wall-clock dates; entry by entry, 167
+  byte for byte and 8 in the dates only.
+
+### 11.7 Departures, with why
+
+1. **The generated table has a second half, `ROOT_ELEMENT_BINDINGS`.** Section 4.2 item 3 names
+   `ROOT_ELEMENTS` alone, and item 1 asks the serialiser to name every class step (a) can give. The
+   runtime cannot list them without building every class's metadata. So the generator lists them,
+   from the same metadata, and checks them a function. They are strings, like `ROOT_ELEMENTS`.
+2. **"This model declares globally" is read from the schema copy** in `derive_names.py`, which is
+   stdlib only: a top-level `xsd:element` of `wml/wml.xsd`. `generate_el.py` then holds the table
+   to the model (`find_type`-equivalent: no root may be a global element class).
+3. **The cross-check found `w:sdtPr` annotated** (11.2). The brief allowed the two sources to
+   disagree on `w:sdtPr` only; they do not disagree at all.
+4. **The (a)/(b) exception is wider than `w:hyperlink`** (11.3): the 20 run content names and
+   `w:t` in a math run.
+5. **The walks' fix is in `child.iter_children`**, the one enumeration every walk shares, not in
+   `traversal` alone. So `walk`, `walk_all`, `iter_nodes`, `find`, `text_of` and the text model's
+   address walk all name a branch's typed child as the serialiser writes it. It also mends a gap
+   older than this phase: a branch's typed `w:r` and `w:p`, global since CR-001, were named
+   `any_element` and not read by `text_of` (11.4).
+6. **`Body.tables` reads through a block-level element**, 9.11's item, which Phase B's typing alone
+   did not close.
+7. **The python-docx facade keeps a drawing straight in a branch out of `inline_shapes`**, to keep
+   python-docx's `//w:p/w:r/w:drawing/wp:inline` (11.4).
+8. **No fork item 28.** The fork knows nothing of markup compatibility, so "a lax wildcard that is
+   not a branch's" is any lax wildcard to it. Its
+   `test_serializer_element_names.py::test_written_and_read_back_through_the_wildcard_class_hook`
+   asks the hook in, and names the hook's class in, the lax wildcard of a plain `x:branch` element.
+   Item 27 pins a typed child holding a branch of its own. Both of section 4.2 item 5's candidates
+   are pinned, so nothing was added; the fork's suite was not run, since the fork did not change.
+9. **The record's hook** (`mc_block_level._record_hook`) tries (a) with the parse's own ancestors,
+   then (a) with the record level's container, then (b), where it took `branch_child_class` and
+   the container. With (b) inside `branch_child_class`, the old order would have given a root class
+   before the level's container could bind the name.
+10. **"No other name is typed" is narrower than its examples.** `w:ins`, `w:del` and `w:delText` are
+    global elements of this model (`RunIns`, `RunDel`, `DelText`), so a branch's were typed by the
+    lookup by name before this phase. What stays a wildcard tree is a branch's `w:instrText`,
+    `w:delInstrText`, `w:moveFrom`, `w:moveTo` and `w:customXml` (`w:moveFrom` and `w:customXml`
+    tested, and none of them in `wildcard_names()`).
+11. **`tc-p3-transforms.docx`** is docx4j's (`docx4j-core-tests/src/test/resources/theme-colors/`),
+    not docx4j-core-ts's, and is in the corpus from there.
+
+### 11.8 Pre-existing tests whose expectation changed, and why
+
+Both are in `tests/test_builders_phase_a.py`, over `samples/DrawingML_GraphicData_wps.docx`, as
+section 3 foresaw.
+
+- `test_walk_all_reaches_the_wildcards_inside_an_alternate_content`.
+  - **Then:** the `wps:wsp` in the `mc:Choice` was a wildcard, handed to the wildcard visitor, and
+    wildcard nodes outnumbered typed ones.
+  - **Now:** the typed visitor gets a `Wsp` named `{wps}wsp`; the wildcard visitor gets the
+    Fallback's VML (`v:rect`), all `AnyElement`; no `wordprocessingShape` name is a wildcard. The
+    count comparison is gone (80 typed, 26 wildcard).
+- `test_walk_all_sees_the_attributes_on_a_wildcard`.
+  - **Then:** it read `distL` and `w14:anchorId` from the Choice's wildcard `wp:anchor`.
+  - **Now:** that is a typed `Anchor` (`dist_l` 114300, also asserted), and the wildcard whose
+    attributes it reads is the Fallback's `v:rect` (`o:spid`, `w14:anchorId`).
+
+Two kinds of test failed along the way and pass with their expectations unchanged:
+
+- `tests/openpackaging/test_mce.py`'s three `text_of` tests (section 3's), with the hook alone: a
+  typed `RT` was named `any_element`. The walks' fix (11.7 item 5) mends them.
+- `tests/text/test_text_markdown.py::test_a_chartex_chart_from_its_choice_and_no_picture` and
+  `tests/text/test_texts_phase2.py::test_a_chartex_chart_in_its_choice`: `waterfall.docx`'s
+  `cx:chart` in its Choice, typed now inside a typed drawing, was met by the text model's
+  `_graphic_kind` only as a wildcard before, so its typed path did not know chartex's class. It
+  reads a typed item by its element name now.
+
+Nothing else moved.
+
+### 11.9 Found, and not done
+
+- **The `text_of` question** (11.4), for the coordinator.
+- **CLAUDE.md's MCE paragraph** says `mce_preprocess` is the only way to a typed `Drawing` in a
+  choice; that is no longer so. The coordinator's, as section 4.2 item 6 says.
+- **A fork release.** Stages 9 to 11 are local, as before; this phase adds no fork code, so it
+  needs no more than Phases A and A2 did.
+- **docx4j's agreement run** (it calls `revisions.accept_all`): the coordinator asks docx4j-25.
+- **The content API's inline pictures** (`Body.inline_pictures`, `Paragraph.inline_pictures`) pass
+  a picture in a run-level branch by, before and after, as `Paragraph.text` passes its text by
+  (Q4). The text model reads it. Not a change, and Q4's.
+- **A drawing in a typed text box in a branch.** Its parent is a run, so the facade's
+  `inline_shapes` would list it (only Word's branch, `mce="resolve"`), where python-docx lists it
+  in every branch. No corpus document has one; before this phase the whole box was a wildcard tree.
+- **A `word`-mode record inside a text box in a run-level branch** (9.11's item): a DrawingML box
+  there is typed now, so the text model reads it directly rather than through a typed copy, and the
+  record's warning may now be raised there. Not probed; no probe has the shape.
+- **The corpus's 48 parts not canonically identical to their source**, the same before and after
+  (11.5): Strict OOXML, schema order in `settings.xml` and `w:object`, and a colour's case. Outside
+  this phase.
+
+### 11.10 The Word check (not yet checked)
+
+Four files are in `out/cr012-b-word-check/`, with a `README.txt` saying, for each, the source,
+what was done and what Word should show. They are also copied to
+`~/vbShares/Office 2016/__tmp/python-cr012b/`. Each was loaded, its main part unmarshalled so that
+this engine writes the typed branches back, and saved. Each reads back with
+`LoadOptions(strict=True)`, nothing skipped, its main part canonically identical to its source and
+no `xsi:type` written.
+
+- `cr012b-1-wps-shape.docx`: `samples/DrawingML_GraphicData_wps.docx`, a wps shape in a run-level
+  Choice and its VML in the Fallback. It differs from an untyped save in attribute order only.
+- `cr012b-2-tracked-text-box.docx`: docx4j-core-ts's `cr043-tracked.docx`. Its case C22 is a text
+  box in a run-level Choice, now typed down to its `RunIns` and `RunDel`, holding a tracked deletion
+  and insertion, with their twins in the VML Fallback. Attribute order only.
+- `cr012b-3-txbx-run.docx`: `tests/fixtures/mc-fun/mc-txbx-run.docx`, a text box in a run-level
+  element. The same bytes as an untyped save.
+- `cr012b-4-theme-colour-shapes.docx`: `tc-p3-transforms.docx`, 403 rectangles in run-level
+  elements. Its 403 typed `wps:bodyPr` are written `anchorCtr="0"` where the source has `false`.
+
+Expected: each opens with no repair prompt and looks as its source does, C22's tracked changes
+shown. **Not yet checked.**

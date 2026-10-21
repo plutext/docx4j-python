@@ -351,6 +351,32 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
     the port of docx4j `901a922a3`);
   - `outline()` gives a cell's blocks under the table at their full paths through any wrapper, so
     a row-level content control's rows no longer come out as `tc` entries.
+- **A kept `mc:AlternateContent` branch's WordprocessingML children are typed**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) Phase B, section
+  [11](docs/change-requests/CR-012-type-kept-mc-branches.md#11-phase-b-implementation-notes-2026-10-22)):
+  docx4j's 61 WordprocessingML root elements that this model does not declare globally
+  (`w:drawing`, `w:pict`, `w:t`, `w:tbl`, `w:hyperlink`, `w:bookmarkStart` and the rest, derived from
+  docx4j's own classes into `codegen/names/root_elements.json`) are typed in a branch as the
+  container holding the element binds them, and in any other lax wildcard as their root class, as
+  JAXB binds an `@XmlRootElement`. **Code that looked for an `AnyElement` `w:drawing` in
+  `any_element` now finds a `Drawing`**, and a `Pict`, an `RT` or a `Tbl` where it found a
+  wildcard `w:pict`, `w:t` or `w:tbl`; a DrawingML text box in a Choice is a typed `TxbxContent`,
+  while below a `Pict` the VML stays a wildcard tree (Phase C). A branch's `w:moveFrom`,
+  `w:moveTo`, `w:instrText` and `w:customXml` stay wildcard trees. The typed children are written
+  back under their element names, with no `xsi:type`: over 2,746 parts of 422 documents every save
+  is canonically what it was, and 25 parts, each holding a branch, differ in bytes, in attribute
+  order or in a boolean written `0` for `false`. `LoadOptions(mce_preprocess=True)` is no longer
+  the only way to a typed `Drawing` in a choice. With it:
+  - the walks (`walk`, `walk_all`, `iter_nodes`, `find`, `text_of`, `child.iter_children`) give a
+    branch's typed child its element name, where they gave the field's, `any_element`: `text_of`
+    reads a branch's `w:t`, and a paragraph-level branch's `w:r`, as it reads them elsewhere, and a
+    paragraph in a block-level branch as one line, where it read each run as a line;
+  - `Body.tables` reads a table in Word's branch of a block-level element, read-only, and
+    `Body.paragraphs`, `outline()`, `find` and `get_text` read its paragraphs;
+  - the python-docx facade's `inline_shapes` keeps a `w:drawing` straight in a branch out, as
+    python-docx's `//w:p/w:r/w:drawing/wp:inline` does;
+  - the text model reads a typed `cx:chart` as it read a wildcard one (`waterfall.docx`'s, in its
+    Choice).
 
 ### Fixed
 

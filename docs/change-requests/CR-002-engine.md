@@ -269,6 +269,19 @@ not know is kept with its source declaration (the part remembers the source root
 for this purpose). `to_xml` in CR-001 already does the fragment-level half; the part-level half is
 this CR's, and the 6 parts CR-001 section 13 identified as affected are the acceptance test.
 
+**Note (2026-10-22, CR-012 Phase B).** "Both branches as typed `docx4j_py.mce` objects" meant the
+branches themselves: what a branch held was a wildcard (`any_element`), typed only where the model
+declares the element globally (`w:r`, `w:p`), so a choice's `w:drawing` was an `AnyElement` tree
+and `mce_preprocess` the only way to a typed `Drawing` in it. Since CR-012 Phase B a branch's
+WordprocessingML children are typed as docx4j types them: docx4j's 61 root elements this model does
+not declare globally (`w:drawing`, `w:pict`, `w:t`, `w:tbl` and the rest), bound as the container
+the `mc:AlternateContent` stands in binds them, else as their root class, through the fork's stage 11
+hooks (`runtime.branch_child_class`, `serializer_config`'s `element_names`). The branches stay lossless:
+over 2,746 parts every save is canonically what it was. The walks name a branch's typed child by its
+element name, as elsewhere. Below a `w:pict` the VML is still a wildcard tree (CR-012 Phase C). The
+resolved view's understood set is no longer `UNDERSTOOD` either: since CR-011 and CR-012 Q8 it is
+docx4j's published list (`child.understood_namespaces()`), matched by namespace URI.
+
 ### 5.7 The `settings.xml` schema patch
 
 CR-001 section 14.8 found that Word writes ECMA-376 second-edition `CT_StylePaneFilter` attributes
