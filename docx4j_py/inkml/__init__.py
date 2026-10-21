@@ -775,47 +775,39 @@ class TraceGroupType(Child):
     class Meta:
         name = "traceGroup.type"
 
-    trace: list[TraceType] = field(
+    content: list[
+        TraceType | TraceGroupType | TraceViewType | AnnotationType | AnnotationXMLType
+    ] = field(
         default_factory=ChildList,
         metadata={
-            "type": "Element",
-            "namespace": "http://www.w3.org/2003/InkML",
-            "sequence": 1,
-        },
-    )
-    trace_group: list[TraceGroupType] = field(
-        default_factory=ChildList,
-        metadata={
-            "name": "traceGroup",
-            "type": "Element",
-            "namespace": "http://www.w3.org/2003/InkML",
-            "sequence": 1,
-        },
-    )
-    trace_view: list[TraceViewType] = field(
-        default_factory=ChildList,
-        metadata={
-            "name": "traceView",
-            "type": "Element",
-            "namespace": "http://www.w3.org/2003/InkML",
-            "sequence": 1,
-        },
-    )
-    annotation: list[AnnotationType] = field(
-        default_factory=ChildList,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.w3.org/2003/InkML",
-            "sequence": 1,
-        },
-    )
-    annotation_xml: list[AnnotationXMLType] = field(
-        default_factory=ChildList,
-        metadata={
-            "name": "annotationXML",
-            "type": "Element",
-            "namespace": "http://www.w3.org/2003/InkML",
-            "sequence": 1,
+            "type": "Elements",
+            "choices": (
+                {
+                    "name": "trace",
+                    "type": ForwardRef("TraceType"),
+                    "namespace": "http://www.w3.org/2003/InkML",
+                },
+                {
+                    "name": "traceGroup",
+                    "type": ForwardRef("TraceGroupType"),
+                    "namespace": "http://www.w3.org/2003/InkML",
+                },
+                {
+                    "name": "traceView",
+                    "type": ForwardRef("TraceViewType"),
+                    "namespace": "http://www.w3.org/2003/InkML",
+                },
+                {
+                    "name": "annotation",
+                    "type": ForwardRef("AnnotationType"),
+                    "namespace": "http://www.w3.org/2003/InkML",
+                },
+                {
+                    "name": "annotationXML",
+                    "type": ForwardRef("AnnotationXMLType"),
+                    "namespace": "http://www.w3.org/2003/InkML",
+                },
+            ),
         },
     )
     id: None | str = field(

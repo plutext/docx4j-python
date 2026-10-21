@@ -509,20 +509,11 @@ class CTPictureBase(Child):
     class Meta:
         name = "CT_PictureBase"
 
-    schemas_microsoft_com_vml_element: list[object] = field(
+    any_and_any: list[object] = field(
         default_factory=ChildList,
         metadata={
             "type": "Wildcard",
-            "namespace": "urn:schemas-microsoft-com:vml",
-            "sequence": 1,
-        },
-    )
-    schemas_microsoft_com_office_office_element: list[object] = field(
-        default_factory=ChildList,
-        metadata={
-            "type": "Wildcard",
-            "namespace": "urn:schemas-microsoft-com:office:office",
-            "sequence": 1,
+            "namespace": "urn:schemas-microsoft-com:vml urn:schemas-microsoft-com:office:office",
         },
     )
 
