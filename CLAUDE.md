@@ -43,7 +43,7 @@ departure; read them before changing the area they cover. Status, 2026-10-21:
   reader, is proposed. Its fork change (stage 10) needs a fork release before a docx4j-python
   release.
 - **CR-012** (`mc:AlternateContent` kept at every level, its branches typed): decided 2026-10-21;
-  Phase A implemented and Word-checked; A2 (docx4j CR-051 phase 2) in progress; B proposed; C on
+  Phases A and A2 (docx4j CR-051 phases 1 and 2) implemented and Word-checked; B proposed; C on
   its own go. Its fork change (stage 11) joins CR-011's in needing a fork release.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D

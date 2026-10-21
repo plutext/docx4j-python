@@ -28,8 +28,8 @@ the CLAUDE.md edits, then do phase A2"). **Phase A2 implemented the same day** (
 branch's `w:tr` and `w:tc` typed by their container (the fork's stage 11 item 27, tests only); the
 text model, the revisions engine (twins, the table-removal rule) and the content API (read-only) at
 row and cell level; docx4j's phase 2 tests; the five row and cell probes read `w16sdtfl` and save
-canonically identical in `preserve` mode; acceptance unchanged; **the Word check of six saves is the
-user's** (`out/cr012-a2-word-check/`).
+canonically identical in `preserve` mode; acceptance unchanged. **The Word check of six saves passed
+on 2026-10-22** (the user: "python-cr012a2 each pass"; 10.9): **Phase A2 done**.
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -1241,7 +1241,7 @@ Nothing else in the suite moved. The fork's upstream tests are untouched.
   row are left to the coordinator, by the brief.
 - **A fork release.** Stages 9 to 11 are local, item 27 among them, as 9.11 says.
 
-### 10.9 The Word check (staged, awaited)
+### 10.9 The Word check (passed 2026-10-22)
 
 Six files are in `out/cr012-a2-word-check/`, with a `README.txt` saying what each should show.
 They are also copied to `~/vbShares/Office 2016/__tmp/python-cr012a2/`. Each probe was loaded, its
@@ -1262,4 +1262,5 @@ main part unmarshalled so that this engine writes it (the branch rows and cells 
 
 Expected: each opens without a repair prompt and shows Word 365's branch, `w16sdtfl`, where the
 element stands, as Word 365's own save of the probe does. Each already reads so in the text model.
-**Not yet checked.**
+**Passed on 2026-10-22** (the user: "python-cr012a2 each pass"): all six open with no repair prompt
+and show what the README says.

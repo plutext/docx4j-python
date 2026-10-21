@@ -382,6 +382,17 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > All three open with no repair prompt and show the branch Word 365 shows for the source. The
 > eleven artefacts are canonically unchanged by Phase A.
 
+> **2026-10-22, Word check of CR-012 Phase A2 passed** (the user: "python-cr012a2 each pass"). Six
+> of docx4j's `mc-fun` probes were saved by this engine, the branch rows and cells written from
+> typed `Tr` and `Tc`, staged in `out/cr012-a2-word-check/` with a README (CR-012 section 10.9):
+> - in `preserve` mode, each canonically identical to its source: `mc-row-newest-first`,
+>   `mc-sdt-row-newest-first`, `mc-cell-newest-first`, `mc-sdt-cell-newest-first` and
+>   `mc-tc-block-newest-first`;
+> - in `word` mode, `mc-row-newest-first`, its row-level element replaced by the `w16sdtfl` row.
+>
+> All six open with no repair prompt and show `w16sdtfl` where the element stands, as Word 365's
+> own save of each probe does. The eleven artefacts are canonically unchanged by Phase A2.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
