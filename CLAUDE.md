@@ -11,35 +11,41 @@ docx4j-core-ts (`../docx4j-core-ts`) so the two engines stay recognisably one de
 docx4j is the behavioural oracle: names, defaults and quirks are docx4j's unless a CR records a
 departure.
 
-The design lives in `docs/change-requests/`. Each CR's implementation-notes sections (CR-001
-sections 12 to 14, CR-002 section 12, CR-003 sections 10 to 17) record what was actually built,
-the numbers and every deliberate departure; read them before changing the area they cover.
-Status: CR-001 (object model) Phases A to C implemented, D proposed; CR-002 (engine) Phases A and
-**B implemented** — B on 2026-09-19 (section 15): `PropertyResolver` and `StyleUtil` over a
-property catalogue, the numbering emulator completed (resolution through the resolver, docx4j's
-whole format registry, `getInd` and the label's `w:rPr`), and `org.docx4j.fonts`' decision half,
-with **zero differences on all 46 of docx4j's parity goldens with a fixture here**, which this repository consumes
-from `../docx4j-core-ts/test/golden/` and never builds — C (PML, SML, flat OPC, less the
-flat OPC read half) proposed; CR-003 (content API) **every phase implemented** --- A, B, D, K, C, G,
-F, E, H, I and J, sections 10 to 20 --- with Phase E every non-extension member of
-`tests/office_js_subset.json` is, and with Phase J `docx4j_py.docx` covers 305 of the 312 members of
-`tests/python_docx_subset.json`.
-CR-004 (PresentationML content API and python-pptx facade), CR-005 (SpreadsheetML, fidelity first,
-openpyxl facade) and CR-006 (the MCP server's contract; code in `../docx4j-mcp-py`) proposed 2026-09-19;
-**CR-007 (PyPI) closed 2026-09-20**: `docx4j 0.1.0` is on PyPI over `docx4j-xsdata 26.2.1`, both
-published by trusted publishing from a GitHub release (`RELEASING.md`; the fork's is its
-`REBASING.md` "Releasing"), the gates being `scripts/release_check.sh` plus the Word check;
-the xsdata fork's CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`) proposes the
-throughput work, whose **Phase A is this engine's `XmlPart._marshal` and is implemented**
-(2026-09-19, CR-002 section 12.13 and that CR's section 8: one render into an lxml tree and one
-serialisation, `Symbols.docx` 887 ms to 484 ms); its Phases B to D are the fork's.
-`REPORT.md` is the original xsdata feasibility experiment. CR-007 (PyPI): **Phase A released**
-(`docx4j-xsdata 26.2.1` on PyPI, 2026-09-20, section 9) and **Phase B implemented** (section 10,
-2026-09-20): this package is the distribution **`docx4j` 0.1.0** (import name `docx4j_py`),
-`pyproject.toml` depends on `docx4j-xsdata[lxml]>=26.2.1,<26.3`, `RELEASING.md` is the
-procedure, `CHANGELOG.md` the record, `docs/pypi-readme.md` the PyPI page (every fence executed
-by `tests/test_readme.py`), `scripts/release_check.sh` the wheel gates; awaiting the user's Word
-check of `out/acceptance/` and the tag `v0.1.0`. WordprocessingML only until CR-001 D and CR-002 C.
+The design lives in `docs/change-requests/`, indexed in its `README.md`. Each CR's
+implementation-notes sections record what was actually built, the numbers and every deliberate
+departure; read them before changing the area they cover. Status, 2026-10-21:
+
+- **CR-001** (the object model): Phases A to C implemented; D (PML and SML) proposed.
+- **CR-002** (the engine): Phases A and B implemented. B (section 15) is `PropertyResolver` and
+  `StyleUtil` over a property catalogue, the numbering emulator completed and
+  `org.docx4j.fonts`' decision half, with **zero differences on all 46 of docx4j's parity
+  goldens with a fixture here**, which this repository consumes from
+  `../docx4j-core-ts/test/golden/` and never builds. C (PML, SML, flat OPC, less the flat OPC read
+  half) proposed. The xsdata fork's CR-001 (`~/git/docx4j-xsdata/docs/fork/CR-001-serialiser.md`)
+  is the throughput work: its Phase A is this engine's `XmlPart._marshal` (CR-002 section 12.13,
+  `Symbols.docx` 887 ms to 484 ms), and B to D are the fork's.
+- **CR-003** (the content API): every phase implemented (sections 10 to 20; 21 is
+  `Range.hyperlink`, 22 docx4j CR-043's hand-off). With Phase E it covers every non-extension
+  member of `tests/office_js_subset.json`; with Phase J, `docx4j_py.docx` covers 305 of the 312
+  members of `tests/python_docx_subset.json`.
+- **CR-004** (PresentationML, a python-pptx facade), **CR-005** (SpreadsheetML, an openpyxl
+  facade) and **CR-006** (the MCP server's contract; code in `../docx4j-mcp-py`): proposed.
+- **CR-007** (PyPI): closed 2026-09-20. `docx4j 0.1.0` (import name `docx4j_py`) is on PyPI over
+  `docx4j-xsdata 26.2.1`, both published by trusted publishing from a GitHub release
+  (`RELEASING.md`; the fork's is its `REBASING.md` "Releasing"). The gates are
+  `scripts/release_check.sh` plus the Word check. `pyproject.toml` depends on
+  `docx4j-xsdata[lxml]>=26.2.1,<26.3`; `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
+  the PyPI page, every fence executed by `tests/test_readme.py`.
+- **CR-008** (table conditional formatting): proposed. **CR-009** (theme colours): Phase A
+  implemented; B and C proposed.
+- **CR-010** (tracked changes as Word resolves them, `model/revisions/`): complete, 2026-10-21.
+- **CR-011** (one text model, `model/text/`): Phases A to D implemented, 2026-10-21. E, the HTML
+  reader, is proposed. Its fork change (stage 10) needs a fork release before a docx4j-python
+  release.
+- **CR-012** (`mc:AlternateContent` kept at every level, its branches typed): proposed.
+
+`REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
+and CR-002 C.
 
 ## Environments and commands
 
@@ -120,6 +126,8 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 - `runtime.py`: the shared `XmlContext`, parser and serialiser factories, `warm_up()`
 - `fragments.py`: `wml(...)`, `to_xml(...)`
 - `traversal.py`: `walk`, `iter_nodes`, `find`, `text_of`, `element_name`
+- `mc_declarations.py`: where a save declares the prefixes an `mc` attribute names, on docx4j
+  CR-052's placement (CR-011 Q11)
 - `wml/builders.py`: the `p` / `r` / `t` / `tbl` / `br` / `tab` sugar (with `wml/pictures.py`
   and `wml/sdt.py` beside it)
 - `model/`: CR-002 Phase B's resolution utilities — `property_catalogue.py`, `style_util.py`,
@@ -130,8 +138,16 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `TrackedChange` views, `insert_ooxml`, addresses, `Outline`, `describe()`, `ChangeReport`,
   `dry_run`, `Author`, the `ChangeTracker`), `model/customxml/` (`CustomXmlPart`,
   `CustomXmlNode`, `XmlMapping`, the typed control kinds, the bindings, `describe()` / `fill()`),
-  `model/markdown/` (markdown out and in) and `model/sessions.py` (`DocumentSession`)
+  `model/markdown/` (markdown in; markdown out is the content API's readers and their address
+  comments over the text model's `markdown`) and `model/sessions.py` (`DocumentSession`). Then
+  CR-010's `model/revisions/` (the tracked-changes engine: `tracked_changes`, `accept_all`,
+  `reject_all`, `report`) and CR-011's text model:
+  `model/text/` (`extract`, `TextOptions`, `TextResult`, `plain_text`, `markdown`, the
+  commonmark-java renderer port), with Phase C's `model/chart/` (a chart as a table and a
+  description), `model/math/` (OMML to LaTeX), `model/fields/` (field formatting switches) and
+  `model/java_text.py` (Java's `DecimalFormat` and `SimpleDateFormat`, for those two)
 - `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
+  `understood-namespaces.txt` (docx4j's published understood list, copied at `198d015a3`; CR-011),
   and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office
   theme parts, written by `scripts/generate_fonts.py` and never hand-edited
 - `docx/`: CR-003 Phase J's python-docx facade (`Document`, `Paragraph`, `Run`, `Font`, `Table`,
