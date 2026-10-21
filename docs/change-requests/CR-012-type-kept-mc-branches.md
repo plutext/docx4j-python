@@ -29,7 +29,10 @@ branch's `w:tr` and `w:tc` typed by their container (the fork's stage 11 item 27
 text model, the revisions engine (twins, the table-removal rule) and the content API (read-only) at
 row and cell level; docx4j's phase 2 tests; the five row and cell probes read `w16sdtfl` and save
 canonically identical in `preserve` mode; acceptance unchanged. **The Word check of six saves passed
-on 2026-10-22** (the user: "python-cr012a2 each pass"; 10.9): **Phase A2 done**.
+on 2026-10-22** (the user: "python-cr012a2 each pass"; 10.9): **Phase A2 done**. The port of docx4j
+`60bd4b9ad`, a twin `w:cellDel` or `w:cellIns` in a branch Word does not read resolved in its own
+branch, landed the same day at the user's go ("go on the port"; 10.10); its Word check of three saves
+is the user's (`out/cr012-a2-twin-word-check/`).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
