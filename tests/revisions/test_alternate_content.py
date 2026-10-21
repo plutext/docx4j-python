@@ -16,6 +16,11 @@ listed, accepted or rejected.
 A cell's twin, a ``w:cellDel`` accepted or a ``w:cellIns`` rejected in a branch
 Word does not read, is removed from its own branch, and that branch's neighbour
 widened (docx4j ``60bd4b9ad``, its CR-051 section 12.5; CR-012 section 10.10).
+
+A table's property record, a ``w:tcPrChange`` or ``w:trPrChange`` in a branch
+Word does not read, is part of the table's one change: listed, and resolved in
+every branch, and a merged grid collapsed along each branch's reading of a row
+(docx4j ``901a922a3``, its CR-051 section 12.5; CR-012 section 10.11).
 """
 
 from __future__ import annotations
@@ -542,3 +547,323 @@ def test_word_mode_has_no_twin_to_resolve() -> None:
     assert xml.count('w:gridSpan w:val="2"') == 1
     assert xml.count('w:tcW w:w="2000"') == 1
     assert revisions.tracked_changes(pkg) == []
+
+
+# ---------------------------------------------------------------------------
+# a table's property records in every branch (docx4j 901a922a3, its CR-051 section 12.5)
+# ---------------------------------------------------------------------------
+
+
+def changed_cell(change_id: int, text: str) -> str:
+    """docx4j's ``changedCell``: a red-shaded cell whose ``w:tcPrChange`` records it unshaded."""
+    return cell(
+        text,
+        '<w:tcW w:w="1000" w:type="dxa"/><w:shd w:val="clear" w:fill="FF0000"/>'
+        f'<w:tcPrChange w:id="{change_id}" w:author="A"><w:tcPr><w:tcW w:w="1000" w:type="dxa"/></w:tcPr></w:tcPrChange>',
+    )
+
+
+def cell_record_in_each_branch(choice: str = "C", fallback: str = "F") -> str:
+    """docx4j's first shape: a ``w:tcPrChange`` in each branch's cell of a cell-level element."""
+    return (
+        f"<w:tbl>{TBL_PROPS}<w:tr>"
+        f'<mc:AlternateContent><mc:Choice Requires="w14">{choice and changed_cell(1, choice)}</mc:Choice>'
+        f"<mc:Fallback>{fallback and changed_cell(2, fallback)}</mc:Fallback></mc:AlternateContent></w:tr></w:tbl>"
+    )
+
+
+#: docx4j's second shape's row: a ``w:trPrChange`` recording no properties, the row now ``w:cantSplit``.
+CHANGED_ROW = (
+    '<w:tr><w:trPr><w:cantSplit/><w:trPrChange w:id="1" w:author="A"><w:trPr/></w:trPrChange></w:trPr>'
+    f"{plain_cell('F')}</w:tr>"
+)
+
+#: docx4j's second shape: the record only on the Fallback's row of a row-level element.
+ROW_RECORD_IN_THE_FALLBACK = (
+    f"<w:tbl>{TBL_PROPS}"
+    f'<mc:AlternateContent><mc:Choice Requires="w14">{plain_row("C")}</mc:Choice>'
+    f"<mc:Fallback>{CHANGED_ROW}</mc:Fallback></mc:AlternateContent></w:tbl>"
+)
+
+
+def first_table(pkg):
+    return pkg.main_document_part.contents.body.content[0]
+
+
+def both_cells_accepted(pkg) -> None:
+    """docx4j's first test's assertions after accepting: every branch's record gone, its shading kept."""
+    xml = body_xml(pkg)
+    assert xml.count("tcPrChange") == 0, xml
+    assert xml.count('w:fill="FF0000"') == 2, "accepted: both branches keep the shading"
+    assert revisions.tracked_changes(pkg) == []
+    assert Lister(pkg, False).list() == []
+
+
+def both_cells_rejected(pkg) -> None:
+    """docx4j's first test's assertions after rejecting: every branch's cell gets its recorded properties back."""
+    xml = body_xml(pkg)
+    assert xml.count("tcPrChange") == 0, xml
+    assert xml.count('w:fill="FF0000"') == 0, "rejected: both branches lose the shading"
+    assert xml.count('<w:tcW w:w="1000"') == 2
+    assert revisions.tracked_changes(pkg) == []
+    assert Lister(pkg, False).list() == []
+
+
+def test_resolving_a_table_property_record_reaches_every_branchs_cell() -> None:
+    """docx4j ``resolvingATablePropertyRecordReachesEveryBranchsCell`` (this package's finding, CR-012 section 10.10).
+
+    A ``w:tcPrChange`` in each branch's cell of a cell-level element: the
+    table's one property record is listed once; accepted, every branch's record
+    goes; rejected, every branch's cell gets its recorded properties back.
+    Before ``901a922a3`` the Fallback's record was kept either way.
+    """
+    pkg = with_body(cell_record_in_each_branch())
+    assert len(revisions.tracked_changes(pkg)) == 1, revisions.tracked_changes(pkg)
+    assert revisions.accept_all(pkg) == 1
+    both_cells_accepted(pkg)
+
+    pkg = with_body(cell_record_in_each_branch())
+    assert revisions.reject_all(pkg) == 1
+    both_cells_rejected(pkg)
+
+
+def test_accepting_a_table_property_record_reaches_a_row_in_another_branch() -> None:
+    """docx4j ``acceptingATablePropertyRecordReachesARowInAnotherBranch``.
+
+    A ``w:trPrChange`` only the Fallback's row of a row-level element holds:
+    listed, and accepted, the record goes and the row keeps ``w:cantSplit``.
+    Before ``901a922a3`` it was not listed, and ``accept_all`` kept it.
+    """
+    pkg = with_body(ROW_RECORD_IN_THE_FALLBACK)
+    assert len(revisions.tracked_changes(pkg)) == 1, revisions.tracked_changes(pkg)
+    assert revisions.accept_all(pkg) == 1
+    xml = body_xml(pkg)
+    assert xml.count("trPrChange") == 0, xml
+    assert "<w:cantSplit/>" in xml
+    assert revisions.tracked_changes(pkg) == []
+
+
+def test_the_listed_table_change_accepted_or_rejected_reaches_every_branchs_cell() -> None:
+    """Beyond docx4j's test: the one listed change's own ``accept()`` and ``reject()``, not only ``*_all``.
+
+    The table's change has no twin (its records are one change, read through
+    every branch), and its text is the row's as Word reads it, the Choice's cell.
+    """
+    pkg = with_body(cell_record_in_each_branch())
+    (change,) = revisions.tracked_changes(pkg)
+    assert change.twins == []
+    assert change.text == "C\r\n"
+    change.accept()
+    both_cells_accepted(pkg)
+
+    pkg = with_body(cell_record_in_each_branch())
+    (change,) = revisions.tracked_changes(pkg)
+    change.reject()
+    both_cells_rejected(pkg)
+
+
+def test_rejecting_a_table_property_record_reaches_a_row_in_another_branch() -> None:
+    """Beyond docx4j's test: the Fallback's ``w:trPrChange`` rejected, by its change and by ``reject_all``.
+
+    The record held no properties, so the row's ``w:trPr`` goes whole, its
+    ``w:cantSplit`` with it; the Choice's row is left as it was.
+    """
+    for reject in (lambda pkg: revisions.tracked_changes(pkg)[0].reject(), revisions.reject_all):
+        pkg = with_body(ROW_RECORD_IN_THE_FALLBACK)
+        (change,) = revisions.tracked_changes(pkg)
+        assert change.text == "F\r\n", "the text of the row the record is on"
+        reject(pkg)
+        xml = body_xml(pkg)
+        assert "trPrChange" not in xml and "cantSplit" not in xml and "<w:trPr" not in xml, xml
+        assert '<mc:Choice Requires="w14"><w:tr><w:tc><w:p><w:r><w:t>C</w:t>' in xml
+        assert ">F<" in xml
+        assert revisions.tracked_changes(pkg) == []
+        assert Lister(pkg, False).list() == []
+
+
+def test_a_record_only_a_branch_word_does_not_read_holds_is_one_of_the_tables() -> None:
+    """Beyond docx4j's test: ``has_records``, ``in_change`` and ``record_of`` answer for it.
+
+    A ``w:tcPrChange`` only in the Fallback's cell of a cell-level element, and
+    a ``w:trPrChange`` only on the Fallback's row of a row-level element. Before
+    ``901a922a3`` the table had no records, the row was not in the change, and
+    nothing was listed.
+    """
+    pkg = with_body(cell_record_in_each_branch(choice=""))
+    tbl, tr = first_table(pkg), first_row(pkg)
+    assert tables.in_change(tr)
+    assert tables.has_records(tbl)
+    fallback = branches_of_the_element(pkg)[1]
+    ((tc, _owner),) = tables.cells_in(fallback)
+    assert tables.record_of(tbl) is tc.tc_pr.tc_pr_change
+    (change,) = revisions.tracked_changes(pkg)
+    change.accept()
+    xml = body_xml(pkg)
+    assert "tcPrChange" not in xml and xml.count('w:fill="FF0000"') == 1
+    assert not tables.has_records(tbl)
+
+    pkg = with_body(ROW_RECORD_IN_THE_FALLBACK)
+    tbl = first_table(pkg)
+    assert tables.has_records(tbl)
+    assert [tables.in_change(tr) for tr, _owner in tables.all_rows_of(tbl)] == [False, True]
+    assert [tables.in_change(tr) for tr, _owner in tables.rows_of(tbl)] == [False], "Word's branch: the Choice's row"
+    fallback_row = tbl.content[0].fallback.any_element[0]
+    assert tables.record_of(tbl) is fallback_row.tr_pr.tr_pr_change
+
+
+# -- a merged grid collapsed along every branch reading of a row ------------------
+
+
+def spanned(text: str, span: int) -> str:
+    """A cell over `span` grid columns, with a ``w:tcPr`` either way, so that its span is counted again."""
+    return cell(text, f'<w:gridSpan w:val="{span}"/>' if span > 1 else '<w:tcW w:w="0" w:type="auto"/>')
+
+
+def regridded(columns: int, rows: str) -> str:
+    """A table whose recorded grid had `columns` columns of 1000, its ``w:tblPr`` changed too, so that it is listed.
+
+    Rejected, the recorded grid comes back and is collapsed (check 27, C23):
+    the columns no row keeps apart are merged, those past every row's last cell
+    dropped.
+    """
+    grid = '<w:gridCol w:w="1000"/>' * columns
+    return (
+        '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>'
+        '<w:tblPrChange w:id="9" w:author="A"><w:tblPr/></w:tblPrChange></w:tblPr>'
+        '<w:tblGrid><w:gridCol w:w="1000"/>'
+        f'<w:tblGridChange w:id="10"><w:tblGrid>{grid}</w:tblGrid></w:tblGridChange></w:tblGrid>'
+        f"{rows}</w:tbl>"
+    )
+
+
+def grid_of(pkg) -> list[int]:
+    return [int(col.w) for col in first_table(pkg).tbl_grid.grid_col]
+
+
+def spans_in(branch) -> list[int]:
+    return [_span(tc) for tc, _owner in tables.cells_in(branch)]
+
+
+def test_rejecting_a_merged_grid_counts_it_along_every_branch_reading_of_a_row() -> None:
+    """``collapse_grid`` along ``cell_layouts_of`` (docx4j ``Tables.collapseGrid`` since ``901a922a3``).
+
+    The recorded grid is six columns. The row skips two (``w:gridBefore``),
+    then a cell-level element: the Choice's cells span 1 and 3 columns, the
+    Fallback's 2 and 2, so the Choice keeps edge 3 apart and the Fallback edge
+    4. Rejected, the edges of both readings are kept: four columns, 2000, 1000,
+    1000 and 2000. ``w:gridBefore`` is read once and counted again (2 to 1),
+    and each branch's spans are counted again along its own reading: the
+    Choice's 1 and 2, the Fallback's 2 and 1. With Word's branch alone the
+    grid was three columns and the Fallback kept spans of 2 and 2, five
+    columns in a grid of three.
+    """
+    pkg = with_body(
+        regridded(
+            6,
+            '<w:tr><w:trPr><w:gridBefore w:val="2"/></w:trPr>'
+            f'<mc:AlternateContent><mc:Choice Requires="w14">{spanned("C1", 1)}{spanned("C2", 3)}</mc:Choice>'
+            f'<mc:Fallback>{spanned("F1", 2)}{spanned("F2", 2)}</mc:Fallback></mc:AlternateContent></w:tr>',
+        )
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    change.reject()
+    assert grid_of(pkg) == [2000, 1000, 1000, 2000]
+    tr = first_row(pkg)
+    assert tr.tr_pr.content[0].val == 1, "w:gridBefore counted again, once"
+    choice, fallback = branches_of_the_element(pkg)
+    assert spans_in(choice) == [1, 2]
+    assert spans_in(fallback) == [2, 1]
+    assert columns_through_each_branch(pkg) == [3, 3], "each reading of the row spans the grid, less w:gridBefore"
+    assert revisions.tracked_changes(pkg) == []
+
+
+def test_a_collapsed_rows_grid_after_is_counted_from_the_branch_word_reads() -> None:
+    """docx4j's rule: the row's ``w:gridAfter`` from the branch Word reads, the first layout.
+
+    A shape no producer writes, branches ending at different columns, so that
+    the rule decides: the recorded grid is four columns; the row's Choice cell
+    spans 3, its Fallback cell 2, and the row skips one column after its cells.
+    Rejected, the grid is two columns (2000 and 1000), the fourth past every
+    row's last cell dropped. Word's branch ends on the last edge kept, so the
+    row's ``w:gridAfter`` and ``w:wAfter`` go; counted from the Fallback's end
+    it would stay 1. The Choice's cell spans 2, the Fallback's 1.
+    """
+    pkg = with_body(
+        regridded(
+            4,
+            '<w:tr><w:trPr><w:gridAfter w:val="1"/><w:wAfter w:w="1000" w:type="dxa"/></w:trPr>'
+            f'<mc:AlternateContent><mc:Choice Requires="w14">{spanned("C", 3)}</mc:Choice>'
+            f'<mc:Fallback>{spanned("F", 2)}</mc:Fallback></mc:AlternateContent></w:tr>',
+        )
+    )
+    assert revisions.reject_all(pkg) == 1
+    assert grid_of(pkg) == [2000, 1000]
+    assert first_row(pkg).tr_pr is None, "w:gridAfter and w:wAfter gone, the w:trPr left empty pruned"
+    choice, fallback = branches_of_the_element(pkg)
+    assert spans_in(choice) == [2]
+    assert spans_in(fallback) == [1]
+
+
+def test_rejecting_a_merged_grid_counts_every_branchs_row() -> None:
+    """``collapse_grid`` over ``all_rows_of``: a row-level element's Fallback row keeps its edges, and its spans are counted again.
+
+    The recorded grid is four columns; the Choice's row spans 1 and 3, the
+    Fallback's 2 and 2. Rejected, three columns (1000, 1000, 2000), the
+    Choice's row 1 and 2, the Fallback's 2 and 1.
+    """
+    pkg = with_body(
+        regridded(
+            4,
+            f'<mc:AlternateContent><mc:Choice Requires="w14"><w:tr>{spanned("A", 1)}{spanned("B", 3)}</w:tr></mc:Choice>'
+            f'<mc:Fallback><w:tr>{spanned("X", 2)}{spanned("Y", 2)}</w:tr></mc:Fallback></mc:AlternateContent>',
+        )
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    change.reject()
+    assert grid_of(pkg) == [1000, 1000, 2000]
+    ac = first_table(pkg).content[0]
+    choice_row, fallback_row = ac.choice[0].any_element[0], ac.fallback.any_element[0]
+    assert [_span(tc) for tc in choice_row.content] == [1, 2]
+    assert [_span(tc) for tc in fallback_row.content] == [2, 1]
+
+
+def test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows() -> None:
+    """PINNED, docx4j's reading since ``901a922a3``, not wanted behaviour: see CR-012 section 10.11.
+
+    docx4j's ``changeText`` reads the table's rows through its ``rows``, which
+    now reads every branch of a row-level element. So where the table's own
+    properties or grid changed, the change's text has every branch's row: the
+    Choice's and the Fallback's, where Word reads one. The commit's message
+    names the record paths, not the text. A fix would read Word's branch for a
+    whole table and every branch only for the changed rows: docx4j's to decide
+    first. If this test fails, the reading has moved: update CR-012 section
+    10.11 with docx4j.
+    """
+    pkg = with_body(
+        regridded(
+            4,
+            f'<mc:AlternateContent><mc:Choice Requires="w14"><w:tr>{spanned("A", 1)}{spanned("B", 3)}</w:tr></mc:Choice>'
+            f'<mc:Fallback><w:tr>{spanned("X", 2)}{spanned("Y", 2)}</w:tr></mc:Fallback></mc:AlternateContent>',
+        )
+    )
+    (change,) = revisions.tracked_changes(pkg)
+    assert change.text == "A\tB\r\nX\tY\r\n", "the known gap: the Fallback's row is in the text"
+
+
+def test_word_mode_lists_and_resolves_a_table_property_record_as_before() -> None:
+    """In ``word`` mode the element is replaced on load by Word's branch: one cell, one record, resolved as before."""
+    for accept in (True, False):
+        pkg = load(with_body(cell_record_in_each_branch()).save(), options=LoadOptions(mc_block_level="word"))
+        (change,) = revisions.tracked_changes(pkg)
+        assert change.twins == []
+        assert len(pkg.main_document_part.resolved_alternate_content) == 1, "recorded when the part was read"
+        if accept:
+            change.accept()
+        else:
+            change.reject()
+        xml = body_xml(pkg)
+        assert "AlternateContent" not in xml and "tcPrChange" not in xml
+        assert ">C<" in xml and ">F<" not in xml
+        assert xml.count('w:fill="FF0000"') == (1 if accept else 0)
+        assert xml.count('<w:tcW w:w="1000"') == 1
+        assert revisions.tracked_changes(pkg) == []

@@ -22,6 +22,13 @@ saves of C23 add):
 
 The recorded properties are not the live classes (CR-043 section 3.4): they go
 back through their XML (:func:`~docx4j_py.model.revisions.props.convert`).
+
+The records are read through every branch of a row- or cell-level
+``mc:AlternateContent`` kept whole (:func:`all_rows_of`, :func:`all_cells_of`;
+docx4j ``Tables.rows`` and ``cells`` since ``901a922a3``, CR-012 section 10.11):
+they are the table's one change whichever branch holds them, and resolving it
+reaches every branch. A merged grid is collapsed along each branch's reading of
+a row (:func:`cell_layouts_of`).
 """
 
 from __future__ import annotations
@@ -34,6 +41,7 @@ from docx4j_py.child import (
     MC_FALLBACK,
     is_alternate_content,
     is_any_element,
+    mce_branch,
     mce_branch_content,
     mce_choices,
     mce_fallback,
@@ -44,7 +52,10 @@ from docx4j_py.traversal import element_name
 
 __all__ = [
     "accept",
+    "all_cells_of",
+    "all_rows_of",
     "branch_of",
+    "cell_layouts_of",
     "cells_in",
     "cells_of",
     "change_text",
@@ -114,17 +125,147 @@ def _has_rows(items: list) -> bool:
         if isinstance(item, tr_class):
             return True
         if is_alternate_content(item):
-            branches = [*mce_choices(item)]
-            fallback = mce_fallback(item)
-            if fallback is not None:
-                branches.append(fallback)
-            if any(_has_rows(mce_branch_content(branch)) for branch in branches):
+            if any(_has_rows(mce_branch_content(branch)) for branch in _every_branch(item)):
                 return True
         elif not isinstance(item, tc_class):
             nested = trees.block_items(item)
             if nested is not None and _has_rows(nested):
                 return True
     return False
+
+
+def all_rows_of(tbl: Any) -> list[tuple[Any, list]]:
+    """A table's rows through every branch of a row-level ``mc:AlternateContent``, each with the live list holding it.
+
+    docx4j ``Lister.allRowsOf`` (since ``901a922a3``, its CR-051 section 12.5;
+    CR-012 section 10.11), for the table's property records: a
+    ``w:trPrChange`` or ``w:tcPrChange`` in a branch Word does not read is part
+    of the table's one record, and resolving it reaches every branch. As
+    :func:`rows_of`, through row-level controls and custom XML, but every branch
+    of an element (docx4j ``McMode.ALL``: its Choices, then its Fallback), where
+    :func:`rows_of` reads Word's.
+    """
+    out: list[tuple[Any, list]] = []
+    _all_rows(tbl.content, out)
+    return out
+
+
+def _all_rows(items: list, out: list[tuple[Any, list]]) -> None:
+    tr_class, tc_class = trees.cls("Tr"), trees.cls("Tc")
+    for item in items:
+        if isinstance(item, tr_class):
+            out.append((item, items))
+        elif is_alternate_content(item):
+            for branch in _every_branch(item):
+                children = _content_of(branch)
+                if children is not None:
+                    _all_rows(children, out)
+        elif not isinstance(item, tc_class):
+            nested = trees.block_items(item)
+            if nested is not None:
+                _all_rows(nested, out)
+
+
+def all_cells_of(tr: Any) -> list[tuple[Any, list]]:
+    """A row's cells through every branch of a cell-level element, as :func:`all_rows_of`.
+
+    docx4j ``Lister.allCellsOf`` (since ``901a922a3``): the order across
+    branches means nothing; :func:`cell_layouts_of` where it does.
+    """
+    out: list[tuple[Any, list]] = []
+    _all_cells(tr.content, out)
+    return out
+
+
+def _all_cells(items: list, out: list[tuple[Any, list]]) -> None:
+    tc_class = trees.cls("Tc")
+    for item in items:
+        if isinstance(item, tc_class):
+            out.append((item, items))
+        elif is_alternate_content(item):
+            for branch in _every_branch(item):
+                children = _content_of(branch)
+                if children is not None:
+                    _all_cells(children, out)
+        else:
+            nested = trees.block_items(item)
+            if nested is not None:
+                _all_cells(nested, out)
+
+
+def cell_layouts_of(tr: Any) -> list[list[tuple[Any, list]]]:
+    """A row's cells as laid along the grid, one list per reading of the row.
+
+    docx4j ``Lister.cellLayoutsOf`` (since ``901a922a3``), for
+    :func:`collapse_grid`: the branch Word reads first (:func:`cells_of`), then,
+    for each cell-level ``mc:AlternateContent`` among the cells and each of its
+    other branches, the row read with that branch in the element's place (every
+    other element still read by Word's branch). Every cell is in some list at
+    its grid position, since every branch spans the same columns.
+    """
+    out = [cells_of(tr)]
+    elements: list[Any] = []
+    _cell_elements(tr.content, elements)
+    for ac in elements:
+        read = mce_branch(ac)  # docx4j McMode.READ: one branch, or none
+        for branch in _every_branch(ac):
+            if branch is read:
+                continue
+            layout: list[tuple[Any, list]] = []
+            _cells_reading(tr.content, ac, branch, layout)
+            out.append(layout)
+    return out
+
+
+def _cell_elements(items: list, out: list[Any]) -> None:
+    """The cell-level ``mc:AlternateContent`` elements of a row, through every branch, controls and custom XML."""
+    tc_class = trees.cls("Tc")
+    for item in items:
+        if is_alternate_content(item):
+            out.append(item)
+            for branch in _every_branch(item):
+                children = _content_of(branch)
+                if children is not None:
+                    _cell_elements(children, out)
+        elif not isinstance(item, tc_class):
+            nested = trees.block_items(item)
+            if nested is not None:
+                _cell_elements(nested, out)
+
+
+def _cells_reading(items: list, ac: Any, branch: Any, out: list[tuple[Any, list]]) -> None:
+    """:func:`_cells` with one element, `ac`, read by `branch` instead of the branch Word reads (docx4j ``Lister.cellsReading``)."""
+    tc_class = trees.cls("Tc")
+    for item in items:
+        if isinstance(item, tc_class):
+            out.append((item, items))
+        elif item is ac:
+            children = _content_of(branch)
+            if children is not None:
+                _cells_reading(children, ac, branch, out)
+        else:
+            nested = trees.block_items(item)
+            if nested is not None:
+                _cells_reading(nested, ac, branch, out)
+
+
+def _every_branch(ac: Any) -> list[Any]:
+    """Every branch of an ``mc:AlternateContent``, typed or wildcard: its Choices, then its Fallback.
+
+    docx4j ``McSelection.branches(ac, McMode.ALL)``, as :func:`has_rows` read
+    them before; the lister's ``_branch_objects`` gives the same branches, and
+    is not imported, the lister importing this module.
+    """
+    out = list(mce_choices(ac))
+    fallback = mce_fallback(ac)
+    if fallback is not None:
+        out.append(fallback)
+    return out
+
+
+def _content_of(branch: Any) -> list | None:
+    """A branch's live list: a typed one's ``any_element``, a wildcard one's ``children`` (docx4j ``McSplice.contentOf``)."""
+    return branch.children if is_any_element(branch) else branch.any_element
 
 
 def cells_of(tr: Any) -> list[tuple[Any, list]]:
@@ -160,7 +301,7 @@ def cells_in(branch: Any) -> list[tuple[Any, list]]:
     takes the row as well, for its ``Row`` records; the pairs here need none.
     """
     out: list[tuple[Any, list]] = []
-    items = branch.children if is_any_element(branch) else branch.any_element
+    items = _content_of(branch)
     if items is not None:
         _cells(items, out)
     return out
@@ -187,23 +328,29 @@ def branch_of(tc: Any, tr: Any) -> Any:
 
 
 def in_change(tr: Any) -> bool:
-    """A row in the change: one with a ``w:trPrChange`` or a ``w:tblPrExChange``, or a cell with a ``w:tcPrChange``."""
+    """A row in the change: one with a ``w:trPrChange`` or a ``w:tblPrExChange``, or a cell with a ``w:tcPrChange``.
+
+    Its cells read through every branch of a cell-level element (:func:`all_cells_of`).
+    """
     tr_pr = tr.tr_pr
     if tr_pr is not None and tr_pr.tr_pr_change is not None:
         return True
     ex = tr.tbl_pr_ex
     if ex is not None and ex.tbl_pr_ex_change is not None:
         return True
-    return any(tc.tc_pr is not None and tc.tc_pr.tc_pr_change is not None for tc, _owner in cells_of(tr))
+    return any(tc.tc_pr is not None and tc.tc_pr.tc_pr_change is not None for tc, _owner in all_cells_of(tr))
 
 
 def has_records(tbl: Any) -> bool:
-    """True when a table has any property record, whether it changes anything or not."""
+    """True when a table has any property record, whether it changes anything or not.
+
+    Its rows read through every branch of a row-level element (:func:`all_rows_of`).
+    """
     if tbl.tbl_pr is not None and tbl.tbl_pr.tbl_pr_change is not None:
         return True
     if tbl.tbl_grid is not None and tbl.tbl_grid.tbl_grid_change is not None:
         return True
-    return any(in_change(tr) for tr, _owner in rows_of(tbl))
+    return any(in_change(tr) for tr, _owner in all_rows_of(tbl))
 
 
 def _table_differs(tbl: Any) -> bool:
@@ -239,7 +386,7 @@ def _row_differs(tr: Any) -> bool:
         and props.canonical(ex, "tblPrEx", _EX_SKIP) != props.canonical(ex.tbl_pr_ex_change.tbl_pr_ex, "tblPrEx")
     ):
         return True
-    for tc, _owner in cells_of(tr):
+    for tc, _owner in all_cells_of(tr):
         tc_pr = tc.tc_pr
         if (
             tc_pr is not None
@@ -258,7 +405,7 @@ def record_of(tbl: Any) -> Any:
     """
     if not has_records(tbl):
         return None
-    changed = [tr for tr, _owner in rows_of(tbl) if in_change(tr)]
+    changed = [tr for tr, _owner in all_rows_of(tbl) if in_change(tr)]
     if not _table_differs(tbl) and not any(_row_differs(tr) for tr in changed):
         return None
     if tbl.tbl_pr is not None and tbl.tbl_pr.tbl_pr_change is not None:
@@ -268,19 +415,23 @@ def record_of(tbl: Any) -> Any:
             return tr.tr_pr.tr_pr_change
         if tr.tbl_pr_ex is not None and tr.tbl_pr_ex.tbl_pr_ex_change is not None:
             return tr.tbl_pr_ex.tbl_pr_ex_change
-        for tc, _owner in cells_of(tr):
+        for tc, _owner in all_cells_of(tr):
             if tc.tc_pr is not None and tc.tc_pr.tc_pr_change is not None:
                 return tc.tc_pr.tc_pr_change
     return None
 
 
 def change_text(tbl: Any) -> str:
-    """A table's change's text: every row's where its own properties or grid changed, else the changed rows' (checks 27, 28)."""
+    """A table's change's text: every row's where its own properties or grid changed, else the changed rows' (checks 27, 28).
+
+    The rows through every branch of a row-level element, as docx4j's
+    ``changeText`` reads them since ``901a922a3`` (CR-012 section 10.11).
+    """
     from docx4j_py.model.revisions.texts import row_text
 
     whole = _table_differs(tbl)
     return "".join(
-        row_text(tr, View.ACCEPTED) for tr, _owner in rows_of(tbl) if whole or (in_change(tr) and _row_differs(tr))
+        row_text(tr, View.ACCEPTED) for tr, _owner in all_rows_of(tbl) if whole or (in_change(tr) and _row_differs(tr))
     )
 
 
@@ -290,19 +441,22 @@ def change_text(tbl: Any) -> str:
 
 
 def accept(tbl: Any) -> None:
-    """Accepting keeps the properties as they are and drops every record; a row's ``w:trPr`` left empty goes."""
-    changed = [tr for tr, _owner in rows_of(tbl) if in_change(tr)]
+    """Accepting keeps the properties as they are and drops every record; a row's ``w:trPr`` left empty goes.
+
+    Every branch's, of a row- or cell-level element (:func:`all_rows_of`, :func:`all_cells_of`).
+    """
+    changed = [tr for tr, _owner in all_rows_of(tbl) if in_change(tr)]
     if tbl.tbl_pr is not None:
         tbl.tbl_pr.tbl_pr_change = None
     if tbl.tbl_grid is not None:
         tbl.tbl_grid.tbl_grid_change = None
-    for tr, _owner in rows_of(tbl):
+    for tr, _owner in all_rows_of(tbl):
         if tr.tr_pr is not None:
             tr.tr_pr.tr_pr_change = None
         if tr.tbl_pr_ex is not None:
             tr.tbl_pr_ex.tbl_pr_ex_change = None
         prune_row(tr)
-        for tc, _cell_owner in cells_of(tr):
+        for tc, _cell_owner in all_cells_of(tr):
             if tc.tc_pr is not None:
                 tc.tc_pr.tc_pr_change = None
     for tr in changed:
@@ -315,11 +469,12 @@ def reject(tbl: Any) -> None:
     Its properties, its grid, and each row and cell in the change as recorded
     --- a row in the change without a ``w:trPrChange`` cleared, having had no
     properties (check 28) --- then a merged grid collapsed (check 27, C23).
-    Rows outside the change are left.
+    Rows outside the change are left. Every branch's rows and cells, of a row-
+    or cell-level element (:func:`all_rows_of`, :func:`all_cells_of`).
     """
     from docx4j_py.wml import CTTblPrEx, TblGrid, TblPr, TcPr, TrPr
 
-    changed = [tr for tr, _owner in rows_of(tbl) if in_change(tr)]
+    changed = [tr for tr, _owner in all_rows_of(tbl) if in_change(tr)]
     tbl_pr = tbl.tbl_pr
     if tbl_pr is not None and tbl_pr.tbl_pr_change is not None:
         restored = props.convert(tbl_pr.tbl_pr_change.tbl_pr, "tblPr", TblPr) or TblPr()
@@ -342,7 +497,7 @@ def reject(tbl: Any) -> None:
             restored.tr_pr_change = None
             _relink(restored, "ins", "del_value")
             _set(tr, "tr_pr", restored)
-        for tc, _owner in cells_of(tr):
+        for tc, _owner in all_cells_of(tr):
             tc_pr = tc.tc_pr
             if tc_pr is None or tc_pr.tc_pr_change is None:
                 continue
@@ -353,7 +508,7 @@ def reject(tbl: Any) -> None:
             _set(tc, "tc_pr", None if trees.is_empty(restored) else restored)
     if grid_changed:
         collapse_grid(tbl)
-    for tr, _owner in rows_of(tbl):
+    for tr, _owner in all_rows_of(tbl):
         prune_row(tr)
     for tr in changed:
         _drop_redundant_exception(tr, tbl)
@@ -458,6 +613,11 @@ def _span(tc: Any) -> int:
     return max(int(value), 1)
 
 
+def _layouts(tr: Any) -> list[list[Any]]:
+    """A row's cells along the grid, one list per branch reading of the row (docx4j ``Tables.layouts``, :func:`cell_layouts_of`)."""
+    return [[tc for tc, _owner in layout] for layout in cell_layouts_of(tr)]
+
+
 def collapse_grid(tbl: Any) -> None:
     """Grid columns that no row keeps apart become one.
 
@@ -466,6 +626,14 @@ def collapse_grid(tbl: Any) -> None:
     reject of C23 left two columns where the merged grid had five, the first
     row's ``w:gridAfter`` gone); each cell's ``w:gridSpan`` and each row's
     skipped columns are counted again over the columns kept.
+
+    Every branch's rows of a row-level element are counted
+    (:func:`all_rows_of`), and a row's cells along each branch reading of it
+    (:func:`cell_layouts_of`): every branch spans the same columns, so the
+    edges are gathered along each, and the new spans set along each, the last
+    first. The row's ``w:gridBefore`` is the row's own, read once; its
+    ``w:gridAfter`` is counted from the branch Word reads, the first layout
+    (docx4j ``Tables.collapseGrid`` since ``901a922a3``, CR-012 section 10.11).
     """
     from docx4j_py.wml import el
 
@@ -475,14 +643,15 @@ def collapse_grid(tbl: Any) -> None:
     cols = grid.grid_col
     if len(cols) < 2:
         return
-    rows = [tr for tr, _owner in rows_of(tbl)]
+    rows = [tr for tr, _owner in all_rows_of(tbl)]
     edges = {0}
     for tr in rows:
-        at = _grid_before(tr)
-        edges.add(at)
-        for tc, _owner in cells_of(tr):
-            at += _span(tc)
+        for layout in _layouts(tr):
+            at = _grid_before(tr)
             edges.add(at)
+            for tc in layout:
+                at += _span(tc)
+                edges.add(at)
     last = min(max(edges), len(cols))
     kept = sorted(edge for edge in edges if edge <= last)
     if len(kept) - 1 == len(cols):
@@ -501,21 +670,29 @@ def collapse_grid(tbl: Any) -> None:
     cols.clear()
     cols.extend(merged)
     for tr in rows:
-        at = _grid_before(tr)
-        _set_row_member(tr, "gridBefore", "wBefore", index(at))
-        for tc, _owner in cells_of(tr):
-            following = at + _span(tc)
-            count = index(min(following, last)) - index(min(at, last))
-            tc_pr = tc.tc_pr
-            if tc_pr is not None:
-                if count > 1:
-                    grid_span = tc_pr.grid_span if tc_pr.grid_span is not None else el.gridSpan()
-                    grid_span.val = count
-                    _set(tc_pr, "grid_span", grid_span)
-                else:
-                    tc_pr.grid_span = None
-            at = following
-        _set_row_member(tr, "gridAfter", "wAfter", len(kept) - 1 - index(min(at, last)))
+        layouts = _layouts(tr)
+        before = _grid_before(tr)
+        _set_row_member(tr, "gridBefore", "wBefore", index(before))
+        end = before
+        # a layout per branch reading of the row: every branch spans the same
+        # columns, so the new spans are counted along each, and the row's
+        # members from the branch Word reads (the first, so the last done)
+        for layout in reversed(layouts):
+            at = before
+            for tc in layout:
+                following = at + _span(tc)
+                count = index(min(following, last)) - index(min(at, last))
+                tc_pr = tc.tc_pr
+                if tc_pr is not None:
+                    if count > 1:
+                        grid_span = tc_pr.grid_span if tc_pr.grid_span is not None else el.gridSpan()
+                        grid_span.val = count
+                        _set(tc_pr, "grid_span", grid_span)
+                    else:
+                        tc_pr.grid_span = None
+                at = following
+            end = at
+        _set_row_member(tr, "gridAfter", "wAfter", len(kept) - 1 - index(min(end, last)))
 
 
 # ---------------------------------------------------------------------------
@@ -567,8 +744,9 @@ def remove_cell(tc: Any, tr: Any, removals: Any, story: Any) -> None:
     # a twin alone in its branch has no neighbour, so it is taken out with none
     # widened: the row's neighbour was widened once already, when the read
     # branch's cell went, and every branch spans the same grid columns. docx4j
-    # also tests `inOtherBranch && cells.size() == 1` here, which only a cell
-    # with no neighbour meets (CR-012 section 10.10). Not so when the read
+    # also tested `inOtherBranch && cells.size() == 1` here, which only a cell
+    # with no neighbour meets (CR-012 section 10.10), until it dropped the
+    # clause in `901a922a3` (section 10.11). Not so when the read
     # branch's cell had a neighbour in its own branch: the twin's branch is left
     # its span short (docx4j CR-051 section 12.5, pinned in
     # tests/revisions/test_alternate_content.py)
