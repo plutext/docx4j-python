@@ -18,7 +18,14 @@ docx4j's switches, bound values, charts and SmartArt (`docx4j_py.model.chart`), 
 WordprocessingML, the glossary, plain-text `w:altChunk`s (the HTML reader absent, Q13), pictures'
 alt text, metadata, equations as LaTeX, listed and grid tables, page markers and `layout: indent`;
 1,284 pass, 7 fail (Markdown's, Phase D's), 293 pending, goldens 9 of 12; Q7's 60 pending by name.
-**Phase D in progress.**
+**Phase D implemented the same day** (section 14), the port of docx4j CR-046 phase 3:
+`markdown(result)`, docx4j-markdown's exporter with commonmark-java's renderer ported, byte for
+byte docx4j's on 1,385 of 1,385 exports; `to_markdown` and `outline()` on the model, the Office JS
+readers kept on Office JS's text (Q4); a read leaves every part's bytes as they were; CR-010's ten
+pins closed. 1,291 pass, 0 fail, 293 pending (docx4j's 19, the inspector's 214, Q7's 60), goldens
+12 of 12: section 3.6's gate is met and **the four phases are done**. Open: Q7's content (after
+CR-001 D), the HTML reader as its own phase (Q12, Q13), the `dry_run` comment defect (12.3), and
+the fork release.
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
@@ -383,6 +390,15 @@ and the model itself is reached through `extract`.
 - **The inspector** (REQ-901 to 907, REQ-903's counts in a result, and REQ-1204's check of it; WD
   section 9 and section 12.1's inspector class): the paper's later CR (its D29), after the model.
   docx4j's is CR-050 (`Inspect.of`). Its 214 checks of the suite pend here (section 3.6).
+  docx4j handed off CR-050 phase 3 on 2026-10-21 (`2853b7280`, unpushed; CR-050 done there), and
+  this package acknowledged it the same day (recorded in docx4j `a9ec5680a`). The inspector's
+  kinds are frozen, D21 adding `image.svg_text` and `image.metafile_text`. The reference is
+  `text-extraction/support/inspect_oracle.py`, a stdlib-only implementation of every rule with
+  its own WMF and EMF record reader. The fixtures and the expected rows go with it. A later
+  inspector CR here would port it. The acknowledgement listed, kind by kind, what this engine
+  already holds the data for, what needs a rule, and what it cannot see: metafile text, embedded
+  fonts' glyphs, an HTML chunk's scripts (Q12) and Q7's embedded workbooks and presentations.
+  The suite here stays at `198d015a3`, so phase 3's rows reach this package only at a re-cite.
 - **Strict OOXML** (REQ-203, converted on load): an engine change, recommended as its own CR
   (Q8); the three Strict fixtures stay pending until then.
 - **HTML** (REQ-705): this package has no HTML serialiser.
