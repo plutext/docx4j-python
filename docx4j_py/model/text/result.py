@@ -314,6 +314,16 @@ class TextBlock:
     #: For a table: always written in REQ-605's simple form, whatever its shape
     #: (an embedded workbook's sheet, docx4j's; none is read here, CR-011 Q7).
     simple_form: bool = False
+    #: For a chart: its description (docx4j CR-047), whose kind, axes and
+    #: secondary series are the chart block's fields of REQ-706; its note,
+    #: which plain text writes before the title, is not in the block's text (REQ-707).
+    chart: Any = field(default=None, repr=False)
+    #: For a chart: its title as Office shows it, or None for none.
+    chart_title: str | None = None
+    #: For a chart: its table's column headings, the categories' columns then the series shown.
+    chart_header: list[str] = field(default_factory=list)
+    #: For a chart: its table's rows, each number in its format code.
+    chart_rows: list[list[str]] = field(default_factory=list)
     #: What the block was read from (not in the JSON): a paragraph's ``w:p``
     #: (a joined block's first), a table's ``w:tbl``.
     source: Any = field(default=None, repr=False)
@@ -345,8 +355,17 @@ class TextBlock:
     def text(self) -> str:
         """The block's text in the view: its text runs and field codes; a table's rows a line apart, cells a tab apart.
 
-        No list label, note number or comment.
+        No list label, note number or comment. A chart's is its title, then its
+        table's rows a line apart, their cells a tab apart.
         """
+        if self.kind == "CHART":
+            lines = [self.chart_title] if self.chart_title else []
+            if self.chart_header:
+                lines.append("\t".join(self.chart_header))
+            text = "\n".join(lines)
+            for row in self.chart_rows:
+                text += "\n" + "\t".join(row)
+            return text
         if self.kind == "TABLE":
             return "\n".join(
                 "\t".join(" ".join(b.text for b in cell.blocks) for cell in row.cells) for row in self.rows
@@ -381,7 +400,15 @@ class TextBlock:
         if self.kind == "PARAGRAPH":
             out["runs"] = [r.to_dict() for r in self.runs]
             if self.fields:
-                out["fields"] = [{"instr": f.instr, "result": f.result} for f in self.fields]
+                out["fields"] = [{"instr": f.instr, "result": f.result, "updated": f.updated} for f in self.fields]
+        elif self.kind == "CHART":
+            if self.chart is not None:
+                out["chart_kind"] = self.chart.kind
+                out["axes"] = [{"role": a.role, "title": a.title} for a in self.chart.axes]
+                out["secondary_series"] = list(self.chart.secondary_series)
+            out["title"] = self.chart_title
+            out["header"] = list(self.chart_header)
+            out["rows"] = [list(r) for r in self.chart_rows]
         else:
             out["rows"] = [r.to_dict() for r in self.rows]
         return out

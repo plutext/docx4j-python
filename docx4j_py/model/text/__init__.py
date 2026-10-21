@@ -33,7 +33,10 @@ text from it::
   ``list_labels``, with the level's owner (REQ-510); the table of contents
   only under ``toc: true`` (REQ-520); the document properties in the
   result's metadata, and in the text before the body under ``metadata: true``
-  (REQ-515); legacy WordArt as a one-paragraph text box (REQ-511); each
+  (REQ-515); a chart as a ``CHART`` block after its anchor, its description's
+  note (docx4j CR-047), title and table (:mod:`docx4j_py.model.chart`), and
+  SmartArt's lines in reading order (REQ-511); legacy WordArt as a
+  one-paragraph text box (REQ-511); each
   picture an ``IMAGE`` run, described by the options' describer (the alt text
   by default; ``[image: ...]`` under ``alt_text: true``, REQ-514), and each
   object an ``OBJECT`` run with its ProgID (REQ-512); equations as LaTeX
@@ -53,8 +56,8 @@ where its text lies in its paragraph's ``get_text()`` (``office_offset``), so
 the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
-fields computed under ``fields: update``, charts, SmartArt, embedded
-packages, ``w:altChunk``, the glossary.
+fields computed under ``fields: update``, embedded packages,
+``w:altChunk``, the glossary.
 
 Imported on first use: ``import docx4j_py`` does not import it.
 """

@@ -217,8 +217,22 @@ class _Writer:
     def block(self, block: TextBlock) -> None:
         if block.kind == "TABLE":
             self.table(block)
+        elif block.kind == "CHART":
+            self.chart(block)
         else:
             self.paragraph(block)
+
+    def chart(self, block: TextBlock) -> None:
+        """A chart: its note (docx4j CR-047's description), its title, then its table's rows a tab apart (REQ-511)."""
+        lines: list[str] = []
+        if block.chart is not None:
+            lines.append(block.chart.note)
+        if block.chart_title:
+            lines.append(block.chart_title)
+        if block.chart_header:
+            lines.append("\t".join(block.chart_header))
+        lines.extend("\t".join(row) for row in block.chart_rows)
+        self.out.append("\n".join(lines))
 
     def paragraph(self, block: TextBlock) -> None:
         if block.list_label is not None:

@@ -458,59 +458,59 @@ extraction-probe.docx	33	IMG33_SVG_ALT	markup	alt_text: true	PASS
 extraction-probe.docx	33	SVG33_INNER_TEXT	accepted	default	PASS	
 extraction-probe.docx	33	SVG33_INNER_TEXT	original	default	PASS	
 extraction-probe.docx	33	SVG33_INNER_TEXT	markup	default	PASS	
-extraction-probe.docx	34	CHT34_TITLE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_TITLE	accepted	default	PASS	
 extraction-probe.docx	34	CHT34_TITLE	accepted	charts: false	PASS	
-extraction-probe.docx	34	CHT34_TITLE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_TITLE	original	default	PASS	
 extraction-probe.docx	34	CHT34_TITLE	original	charts: false	PASS	
-extraction-probe.docx	34	CHT34_TITLE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_TITLE	markup	default	PASS	
 extraction-probe.docx	34	CHT34_TITLE	markup	charts: false	PASS	
-extraction-probe.docx	34	CHT34_SERIES_ONE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_SERIES_ONE	accepted	default	PASS	
 extraction-probe.docx	34	CHT34_SERIES_ONE	accepted	charts: false	PASS	
-extraction-probe.docx	34	CHT34_SERIES_ONE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_SERIES_ONE	original	default	PASS	
 extraction-probe.docx	34	CHT34_SERIES_ONE	original	charts: false	PASS	
-extraction-probe.docx	34	CHT34_SERIES_ONE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_SERIES_ONE	markup	default	PASS	
 extraction-probe.docx	34	CHT34_SERIES_ONE	markup	charts: false	PASS	
-extraction-probe.docx	34	CHT34_SERIES_TWO	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_SERIES_TWO	accepted	default	PASS	
 extraction-probe.docx	34	CHT34_SERIES_TWO	accepted	charts: false	PASS	
-extraction-probe.docx	34	CHT34_SERIES_TWO	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_SERIES_TWO	original	default	PASS	
 extraction-probe.docx	34	CHT34_SERIES_TWO	original	charts: false	PASS	
-extraction-probe.docx	34	CHT34_SERIES_TWO	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_SERIES_TWO	markup	default	PASS	
 extraction-probe.docx	34	CHT34_SERIES_TWO	markup	charts: false	PASS	
-extraction-probe.docx	34	CHT34_CAT_A	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_CAT_A	accepted	default	PASS	
 extraction-probe.docx	34	CHT34_CAT_A	accepted	charts: false	PASS	
-extraction-probe.docx	34	CHT34_CAT_A	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_CAT_A	original	default	PASS	
 extraction-probe.docx	34	CHT34_CAT_A	original	charts: false	PASS	
-extraction-probe.docx	34	CHT34_CAT_A	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_CAT_A	markup	default	PASS	
 extraction-probe.docx	34	CHT34_CAT_A	markup	charts: false	PASS	
-extraction-probe.docx	34	CHT34_CAT_B	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_CAT_B	accepted	default	PASS	
 extraction-probe.docx	34	CHT34_CAT_B	accepted	charts: false	PASS	
-extraction-probe.docx	34	CHT34_CAT_B	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_CAT_B	original	default	PASS	
 extraction-probe.docx	34	CHT34_CAT_B	original	charts: false	PASS	
-extraction-probe.docx	34	CHT34_CAT_B	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_CAT_B	markup	default	PASS	
 extraction-probe.docx	34	CHT34_CAT_B	markup	charts: false	PASS	
-extraction-probe.docx	34	CHT34_AXIS_TITLE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_AXIS_TITLE	accepted	default	PASS	
 extraction-probe.docx	34	CHT34_AXIS_TITLE	accepted	charts: false	PASS	
-extraction-probe.docx	34	CHT34_AXIS_TITLE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_AXIS_TITLE	original	default	PASS	
 extraction-probe.docx	34	CHT34_AXIS_TITLE	original	charts: false	PASS	
-extraction-probe.docx	34	CHT34_AXIS_TITLE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	34	CHT34_AXIS_TITLE	markup	default	PASS	
 extraction-probe.docx	34	CHT34_AXIS_TITLE	markup	charts: false	PASS	
-extraction-probe.docx	35	SMA35_ROOT	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_ROOT	accepted	default	PASS	
 extraction-probe.docx	35	SMA35_ROOT	accepted	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_ROOT	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_ROOT	original	default	PASS	
 extraction-probe.docx	35	SMA35_ROOT	original	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_ROOT	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_ROOT	markup	default	PASS	
 extraction-probe.docx	35	SMA35_ROOT	markup	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_CHILD_ONE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_CHILD_ONE	accepted	default	PASS	
 extraction-probe.docx	35	SMA35_CHILD_ONE	accepted	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_CHILD_ONE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_CHILD_ONE	original	default	PASS	
 extraction-probe.docx	35	SMA35_CHILD_ONE	original	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_CHILD_ONE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_CHILD_ONE	markup	default	PASS	
 extraction-probe.docx	35	SMA35_CHILD_ONE	markup	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_CHILD_TWO	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_CHILD_TWO	accepted	default	PASS	
 extraction-probe.docx	35	SMA35_CHILD_TWO	accepted	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_CHILD_TWO	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_CHILD_TWO	original	default	PASS	
 extraction-probe.docx	35	SMA35_CHILD_TWO	original	smartart: false	PASS	
-extraction-probe.docx	35	SMA35_CHILD_TWO	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	35	SMA35_CHILD_TWO	markup	default	PASS	
 extraction-probe.docx	35	SMA35_CHILD_TWO	markup	smartart: false	PASS	
 extraction-probe.docx	36	ALT36_CHUNK_TEXT	accepted	html reader absent	PASS	
 extraction-probe.docx	36	ALT36_CHUNK_TEXT	accepted	html reader present	PENDING	phase 2; html reader present
@@ -1571,9 +1571,9 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
-extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 12 lines of the golden missing, 0 extra
-extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 12 lines of the golden missing, 0 extra
-extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 12 lines of the golden missing, 0 extra
+extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 4 lines of the golden missing, 0 extra
+extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 4 lines of the golden missing, 0 extra
+extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 4 lines of the golden missing, 0 extra
 extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	

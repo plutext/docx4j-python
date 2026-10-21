@@ -38,8 +38,13 @@ Equations are LaTeX (REQ-604), by docx4j's ``OmmlToLatex``, in the view.
 A plain-text control bound to a custom XML part or the document properties
 is its bound value (REQ-509, docx4j's ``BoundValues``).
 
-Not yet (CR-011 Phase C): fields computed under ``fields: update``, charts
-and SmartArt, embedded packages, ``w:altChunk``.
+A chart follows its anchoring paragraph as a ``CHART`` block, its description
+and table docx4j's ``ChartDescription`` and ``ChartTable`` (REQ-511, CR-047);
+SmartArt as its data part's lines in reading order (REQ-511); content that
+cannot be read raises ``content.not_read`` (REQ-801).
+
+Not yet (CR-011 Phase C): fields computed under ``fields: update``, embedded
+packages, ``w:altChunk``.
 """
 
 from __future__ import annotations
@@ -106,6 +111,7 @@ _PIC_BLIP_FILL = f"{{{_PIC_NS}}}blipFill"
 _C_CHART = "{http://schemas.openxmlformats.org/drawingml/2006/chart}chart"
 _CX_CHART = "{http://schemas.microsoft.com/office/drawing/2014/chartex}chart"
 _DGM_REL_IDS = "{http://schemas.openxmlformats.org/drawingml/2006/diagram}relIds"
+_DGM_DATA_MODEL = "{http://schemas.openxmlformats.org/drawingml/2006/diagram}dataModel"
 _V_NS = "urn:schemas-microsoft-com:vml"
 _V_SHAPE = f"{{{_V_NS}}}shape"
 _V_TEXTPATH = f"{{{_V_NS}}}textpath"
@@ -412,6 +418,67 @@ class _WordArt(_Anchored):
 
     def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
         sink.append(paragraph_block("TEXT_BOX", f"{self.prefix}/0", self.text))
+
+
+class _Chart(_Anchored):
+    """A chart: its description, title and table (REQ-511; docx4j CR-047)."""
+
+    __slots__ = ("chartex", "part")
+
+    def __init__(self, part: Any, chartex: bool, prefix: str) -> None:
+        super().__init__(prefix)
+        self.part = part
+        self.chartex = chartex
+
+    def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
+        from docx4j_py.model.chart import ChartDescription, ChartExModel, ChartModel
+
+        try:
+            if self.chartex:
+                description = ChartDescription.of_chartex(ChartExModel.read(self.part))
+            else:
+                description = ChartDescription.of(ChartModel.read(self.part))
+        except Exception:  # noqa: BLE001 - a chart that cannot be read is content.not_read
+            x.not_read(self.anchor(), self.part)
+            return
+        table = description.table
+        block = TextBlock("CHART", anchoring.kind, self.prefix)  # type: ignore[arg-type]
+        block.chart = description
+        block.chart_title = table.title
+        block.chart_header = list(table.header)
+        block.chart_rows = [list(row) for row in table.rows]
+        block.source = self.part
+        sink.append(block)
+
+
+class _SmartArt(_Anchored):
+    """SmartArt: its data part's text in reading order, a line a paragraph (REQ-511)."""
+
+    __slots__ = ("part",)
+
+    def __init__(self, part: Any, prefix: str) -> None:
+        super().__init__(prefix)
+        self.part = part
+
+    def emit(self, x: Extractor, anchoring: _Story, sink: list[TextBlock]) -> None:
+        from docx4j_py.model.text.drawings import smart_art
+
+        from docx4j_py.model.chart.model import root_tag
+
+        try:
+            if root_tag(self.part) != _DGM_DATA_MODEL:
+                raise ValueError("no data model")
+            lines = smart_art(self.part.read_contents())
+        except Exception:  # noqa: BLE001 - a data part that cannot be read is content.not_read
+            x.not_read(self.anchor(), self.part)
+            return
+        for i, line in enumerate(lines):
+            sink.append(paragraph_block("SMARTART", f"{self.prefix}/{i}", line))
+
+
+def _is_chart_part(part: Any) -> bool:
+    """A chart part or a chartex one (docx4j ``ChartRef``: anything else places no chart)."""
+    return part is not None and type(part).__name__ in ("ChartPart", "ChartExSpacePart")
 
 
 def paragraph_block(story: str, address: str, text: str | None) -> TextBlock:
@@ -1297,9 +1364,24 @@ class Extractor:
             if isinstance(item, str):
                 continue
             kind = _graphic_kind(item)
-            if kind == "chart":
-                return False  # charts are read in their own step (CR-011 Phase C)
+            if kind in ("chart", "chartex"):
+                rel_id = (item.attributes or {}).get(_R_ID) if is_any_element(item) else getattr(item, "id", None)
+                part = self.trees.related(para.story.part, rel_id)
+                if _is_chart_part(part):
+                    if self.options.charts:
+                        para.story.pending.append(_Chart(part, kind == "chartex", f"{para.address}/chart:{para.charts}"))
+                        para.charts += 1
+                    return False
+                continue  # no chart part: docx4j's ChartRef is null, and the graphic is walked
             if kind == "smartart":
+                if self.options.smartart:
+                    dm = (item.attributes or {}).get(_R_DM) if is_any_element(item) else getattr(item, "dm", None)
+                    part = self.trees.related(para.story.part, dm)
+                    if type(part).__name__ == "DiagramDataPart":
+                        para.story.pending.append(_SmartArt(part, f"{para.address}/smartart:{para.smart_arts}"))
+                        para.smart_arts += 1
+                    elif part is not None:
+                        self.not_read(para.address, part)
                 return False
             if kind == "picture":
                 self._image(doc_pr, self._blip_part(item, para), False, anchor, para, state)
@@ -1480,6 +1562,10 @@ class Extractor:
                 label = f'mc:Choice Requires="{requires_of(selected)}"' if is_choice else "mc:Fallback"
                 self.warn(TextWarning(TextWarning.MCE_BRANCHES_DIFFER, address, branch=label))
                 return
+
+    def not_read(self, anchor: str, part: Any) -> None:
+        """Content that cannot be read contributes nothing and raises ``content.not_read`` (REQ-801)."""
+        self.warn(TextWarning(TextWarning.CONTENT_NOT_READ, anchor, part_name=_part_name(part)))
 
     def warn(self, warning: TextWarning) -> None:
         """A warning, kept once (REQ-801)."""

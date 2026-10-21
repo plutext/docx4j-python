@@ -534,3 +534,79 @@ def test_bound_values(probe):
     assert plain_text(b) == "Bound A\nClick here\nSurface C\nRich D\nCore title\n"
     assert b.warnings == [TextWarning(TextWarning.SDT_BINDING_DIFFERS, "body/4")]
     assert pkg.save() == before  # REQ-204
+
+
+# ---------------------------------------------------------------------------
+# charts, SmartArt (REQ-511)
+# ---------------------------------------------------------------------------
+
+
+def test_charts_and_smartart(probe):
+    """REQ-511: a chart's title and table as a block after its paragraph; SmartArt's lines in reading order."""
+    r = extract(probe)
+    chart = next(b for b in r.blocks if b.kind == "CHART")
+    assert chart.address.endswith("/chart:0") and chart.story == "MAIN"
+    assert chart.chart_title == "CHT34_TITLE"
+    # its description's fields (CR-047, REQ-706), and its note before the title in plain text only (REQ-707)
+    assert chart.chart.kind == "clustered column"
+    assert chart.chart.axes[1].title == "CHT34_AXIS_TITLE"
+    assert "[chart" not in chart.text
+    assert between(plain_text(r), "[chart:", "Case 35") == (
+        "[chart: clustered column; value axis: CHT34_AXIS_TITLE]\nCHT34_TITLE\n\tCHT34_SERIES_ONE\tCHT34_SERIES_TWO\n"
+        "CHT34_CAT_A\t3\t4\nCHT34_CAT_B\t5\t2\n"
+    )
+    assert chart.chart_header == ["", "CHT34_SERIES_ONE", "CHT34_SERIES_TWO"]
+    assert chart.chart_rows == [["CHT34_CAT_A", "3", "4"], ["CHT34_CAT_B", "5", "2"]]
+    data = chart.to_dict()
+    assert data["chart_kind"] == "clustered column" and data["secondary_series"] == []
+    assert data["axes"] == [{"role": "category axis", "title": None}, {"role": "value axis", "title": "CHT34_AXIS_TITLE"}]
+    assert not [b for b in extract(probe, charts=False).blocks if b.kind == "CHART"]
+
+    smart_art = [b for b in r.blocks if b.story == "SMARTART"]
+    assert [b.text for b in smart_art] == ["SMA35_ROOT", "SMA35_CHILD_ONE", "SMA35_CHILD_TWO"]
+    assert smart_art[2].address.endswith("/smartart:0/2")
+    assert not [b for b in extract(probe, smartart=False).blocks if b.story == "SMARTART"]
+
+
+def test_a_chart_or_smartart_that_cannot_be_read_raises_content_not_read():
+    """REQ-801: content that can't be read contributes nothing; the part's name its selector, the anchor's address its address."""
+    inline = (
+        '<w:p><w:r><w:t>Chart</w:t></w:r><w:r><w:drawing><wp:inline><wp:extent cx="1" cy="1"/><wp:docPr id="1" name="C"/>'
+        '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">'
+        '<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rIdC"/>'
+        "</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
+        '<w:p><w:r><w:t>Diagram</w:t></w:r><w:r><w:drawing><wp:inline><wp:extent cx="1" cy="1"/><wp:docPr id="2" name="D"/>'
+        '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram">'
+        '<dgm:relIds xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" r:dm="rIdD" r:lo="" r:qs="" r:cs=""/>'
+        "</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
+    )
+    drawings = (
+        MiniDocx.body(inline)
+        .part(
+            "charts/chart1.xml",
+            "application/vnd.openxmlformats-officedocument.drawingml.chart+xml",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart",
+            "rIdC",
+            "<notAChart/>",
+        )
+        .part(
+            "diagrams/data1.xml",
+            "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData",
+            "rIdD",
+            "<notData/>",
+        )
+        .load()
+    )
+    r = extract(drawings)
+    assert TextWarning(TextWarning.CONTENT_NOT_READ, "body/0", part_name="/word/charts/chart1.xml") in r.warnings
+    assert TextWarning(TextWarning.CONTENT_NOT_READ, "body/1", part_name="/word/diagrams/data1.xml") in r.warnings
+    assert plain_text(r) == "Chart\nDiagram\n"
+
+
+def test_a_chartex_chart_in_its_choice():
+    """waterfall.docx's chart, a cx:chart in an mc:Choice (Requires cx1, understood), is read; its picture is not."""
+    r = extract(load(PHASE0.parent.parent / "waterfall.docx"))
+    charts = [b for b in r.blocks if b.kind == "CHART"]
+    assert len(charts) == 1 and charts[0].chart.note == "[chart: waterfall]"
+    assert charts[0].chart_header == ["", "Series1"] and charts[0].chart_rows[3] == ["Category 4", "-40"]

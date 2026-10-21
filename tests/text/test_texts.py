@@ -227,14 +227,6 @@ def test_the_views(probe):
 #: The goldens' lines Phase B does not write: Phase C's content (CR-011 section 6).
 PHASE_C_MISSING = collections.Counter(
     [
-        "[chart: clustered column; value axis: CHT34_AXIS_TITLE]",  # charts (REQ-511)
-        "CHT34_TITLE",
-        "\tCHT34_SERIES_ONE\tCHT34_SERIES_TWO",
-        "CHT34_CAT_A\t3\t4",
-        "CHT34_CAT_B\t5\t2",
-        "SMA35_ROOT",  # SmartArt (REQ-511)
-        "SMA35_CHILD_ONE",
-        "SMA35_CHILD_TWO",
         "ALT43_TEXT_LINE_ONE",  # w:altChunk (REQ-513)
         "ALT43_TEXT_LINE_TWO",
         "ALT46_FLATOPC_CHUNK",
