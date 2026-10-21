@@ -79,7 +79,19 @@ def test_understood_is_narrower_than_the_prefix_table():
     """A prefix with no classes behind it must not count as understood."""
     assert set(ns.UNDERSTOOD) < set(ns.PREFIXES)
     assert "wpi" not in ns.UNDERSTOOD  # wordprocessingInk: no bindings in this build
-    assert "v" not in ns.UNDERSTOOD  # VML: CR-001 section 13.5, Phase D
+    assert "mv" not in ns.UNDERSTOOD  # Mac VML: no schema, no bindings
+
+
+def test_understood_names_vml_since_it_has_classes():
+    """CR-012 Phase C put VML in the model, so its five prefixes have classes behind them.
+
+    Before it, ``v`` was the test's example of a prefix the prefix table has
+    and the model does not (CR-001 section 13.5). No branch selection reads
+    this set (they read docx4j's published list, CR-012 Q8), so no reader
+    moves.
+    """
+    for prefix in ("v", "o", "w10", "xvml", "pvml"):
+        assert prefix in ns.UNDERSTOOD
 
 
 # ---------------------------------------------------------------------------

@@ -930,11 +930,14 @@ def test_a_comment_across_paragraphs_stays_while_a_mark_or_text_is_left_in_its_r
     assert _comment_ids(round_trip(package)) == [2, 3, 4, 5]
 
 
-def test_a_comment_across_paragraphs_in_a_text_box_is_judged_in_its_wildcard_tree():
-    """A text box is a wildcard tree again at the flush (CR-010 section 3.5): its text is read by element name.
+def test_a_comment_across_paragraphs_in_a_vml_text_box_is_judged_by_its_text():
+    """A comment whose range crosses paragraphs in a VML text box is judged at the flush by the text left in it.
 
     Comment 1's range is left empty and goes; comment 3's still holds the
-    text "kept" and stays.
+    text "kept" and stays. Until CR-012 Phase C the box was a wildcard tree,
+    resolved as a typed island and written back before the flush, which read
+    its text by element name (CR-010 section 3.5); it is typed now, and the
+    outcome is the same.
     """
     v = 'xmlns:v="urn:schemas-microsoft-com:vml"'
     box = (

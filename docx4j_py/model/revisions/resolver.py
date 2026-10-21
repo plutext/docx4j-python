@@ -516,7 +516,8 @@ def _has_text(item: Any) -> bool:
 
     A wildcard node too, by element name, for a comment's range in a text box,
     which is a wildcard tree again once its island is written back
-    (:func:`range_is_empty` at the flush).
+    (:func:`range_is_empty` at the flush). Since CR-012 Phase C a VML text box
+    is typed and makes no island; one below a wildcard node still does.
     """
     if is_any_element(item):
         return _wildcard_has_text(item)

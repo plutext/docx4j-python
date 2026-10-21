@@ -11,9 +11,12 @@ CR-002 section 5.4. Three of them:
     definition no generated binding covers. Indexed by the ``ds:itemID`` of its
     sibling properties part.
 :class:`VMLPart`
-    docx4j ``VMLPart``: Word writes an unqualified ``<xml>`` root and VML is not
-    in this model's schema closure (CR-001 section 13.5), so it is a tree. The
-    same departure docx4j-core-ts made.
+    docx4j ``VMLPart``: Word writes an unqualified ``<xml>`` root, which this
+    model does not declare (CR-001 section 13.5), so it is a tree. The same
+    departure docx4j-core-ts made. VML itself has been in the model since
+    CR-012 Phase C, but not docx4j's ``vml__ROOT.xsd``, the root's schema: a
+    vmlDrawing part is SpreadsheetML's and PresentationML's, and
+    WordprocessingML never holds one.
 """
 
 from __future__ import annotations

@@ -824,15 +824,29 @@ def wps_document():
         yield pkg.main_document_part.contents
 
 
-def test_walk_all_reaches_the_wildcards_inside_an_alternate_content(wps_document):
-    """Both branches: the Choice's shape typed, the Fallback's VML a wildcard tree.
+#: A Fallback whose ``w:pict`` holds a VML-namespace element no class binds: since
+#: CR-012 Phase C that is what is left of a wildcard below a ``Pict`` (the
+#: Fallback's VML in ``samples/`` is typed), and ``walk_all`` hands it over.
+UNBOUND_VML = (
+    "<w:r><mc:AlternateContent>"
+    '<mc:Choice Requires="wps"><w:drawing/></mc:Choice>'
+    '<mc:Fallback><w:pict><v:custom o:spid="_x0000_s1026" w14:anchorId="2953E3D1">'
+    "<v:inner/></v:custom></w:pict></mc:Fallback>"
+    "</mc:AlternateContent></w:r>"
+)
+
+
+def test_walk_all_reaches_both_branches_typed(wps_document):
+    """Both branches typed: the Choice's wps shape and, since CR-012 Phase C, the Fallback's VML.
 
     Since CR-012 Phase B a kept branch's ``w:drawing`` and ``w:pict`` are
-    typed, so the wps shape inside the ``mc:Choice`` is a ``Wsp`` handed to
-    the typed visitor under its name. Below the Fallback's ``Pict`` the VML,
-    which this model has no classes for (CR-012 Phase C), is still a wildcard
-    tree, and ``walk_all`` hands it over.
+    typed, so the wps shape inside the ``mc:Choice`` is a ``Wsp`` handed to the
+    typed visitor under its name. Until Phase C the VML below the Fallback's
+    ``Pict`` was a wildcard tree, handed to the wildcard visitor; it is typed
+    now, the ``v:rect`` a ``CTRect`` under its name, and the document holds no
+    wildcard at all.
     """
+    from docx4j_py.vml.main import CTRect
     from docx4j_py.word.wps import Wsp
 
     typed: list[tuple] = []
@@ -844,41 +858,62 @@ def test_walk_all_reaches_the_wildcards_inside_an_alternate_content(wps_document
     )
     shapes = [name for name, node in typed if isinstance(node, Wsp)]
     assert shapes == ["{http://schemas.microsoft.com/office/word/2010/wordprocessingShape}wsp"]
-    names = {name for name, _node, _parent in wildcards}
-    assert "{urn:schemas-microsoft-com:vml}rect" in names
-    assert not any("wordprocessingShape" in name for name in names)
+    rects = [name for name, node in typed if isinstance(node, CTRect)]
+    assert rects == ["{urn:schemas-microsoft-com:vml}rect"]
+    assert wildcards == []
+
+
+def test_walk_all_reaches_the_wildcards_inside_an_alternate_content():
+    """A Fallback's element no class binds is a wildcard, handed to the wildcard visitor with what it holds."""
+    typed: list[tuple] = []
+    wildcards: list[tuple] = []
+    walk_all(
+        wml(UNBOUND_VML),
+        lambda node, parent, name: typed.append((name, node)),
+        lambda node, parent, name: wildcards.append((name, node, parent)),
+    )
+    names = [name for name, _node, _parent in wildcards]
+    assert names == ["{urn:schemas-microsoft-com:vml}custom", "{urn:schemas-microsoft-com:vml}inner"]
     assert all(is_any_element(node) for _n, node, _p in wildcards)
+    assert "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict" in [n for n, _ in typed]
 
 
 def test_walk_all_sees_the_attributes_on_a_wildcard(wps_document):
     """The reason ``walk`` is not enough: ``r:embed`` and friends live here.
 
-    The wildcard is the Fallback's VML rectangle; the Choice's ``wp:anchor``,
-    which this test read as a wildcard before CR-012 Phase B, is a typed
-    ``Anchor`` now, its attributes fields.
+    The wildcard is the unbound VML element of :data:`UNBOUND_VML`. The
+    Fallback's VML rectangle in ``samples/``, which this test read as a
+    wildcard before CR-012 Phase C, is a typed ``CTRect`` now, and the Choice's
+    ``wp:anchor`` (a wildcard before Phase B) an ``Anchor``: their attributes
+    are fields.
     """
     from docx4j_py.dml.wordprocessing_drawing import Anchor
+    from docx4j_py.vml.main import CTRect
 
     seen: dict[str, dict] = {}
-    anchors: list = []
     walk_all(
-        wps_document,
-        lambda node, parent, name: anchors.append(node) if isinstance(node, Anchor) else None,
+        wml(UNBOUND_VML),
+        lambda node, parent, name: None,
         lambda node, parent, name: seen.setdefault(name, dict(node.attributes or {})),
     )
-    rect = seen["{urn:schemas-microsoft-com:vml}rect"]
-    assert rect["{urn:schemas-microsoft-com:office:office}spid"] == "_x0000_s1026"
-    assert rect["{http://schemas.microsoft.com/office/word/2010/wordml}anchorId"] == "2953E3D1"
-    assert [a.dist_l for a in anchors] == [114300]
+    custom = seen["{urn:schemas-microsoft-com:vml}custom"]
+    assert custom["{urn:schemas-microsoft-com:office:office}spid"] == "_x0000_s1026"
+    assert custom["{http://schemas.microsoft.com/office/word/2010/wordml}anchorId"] == "2953E3D1"
+
+    typed: list = []
+    walk_all(wps_document, lambda node, parent, name: typed.append(node))
+    assert [a.dist_l for a in typed if isinstance(a, Anchor)] == [114300]
+    assert [(r.spid, r.anchor_id) for r in typed if isinstance(r, CTRect)] == [("_x0000_s1026", "2953E3D1")]
 
 
-def test_walk_all_reports_the_parent_of_a_wildcard(wps_document):
+def test_walk_all_reports_the_parent_of_a_wildcard():
     parents: list[tuple] = []
     walk_all(
-        wps_document,
+        wml(UNBOUND_VML),
         lambda node, parent, name: None,
         lambda node, parent, name: parents.append((name, parent)),
     )
+    assert len(parents) == 2
     for name, parent in parents:
         assert parent is not None, name
 

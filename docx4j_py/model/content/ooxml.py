@@ -18,8 +18,9 @@ correction:
   package really has a relationship of that id, so a numeric id
   (``w:bookmarkStart/@w:id``, ``wp:docPr/@id``) is never touched;
 * the walk enters wildcard content (:func:`~docx4j_py.traversal.walk_all`),
-  because a reference may sit in a DOM tree an ``xs:any`` holds --- a chart, a
-  VML fallback;
+  because a reference may sit in a DOM tree an ``xs:any`` holds (a VML
+  fallback was one until CR-012 Phase C typed VML, whose ``r:id`` fields are
+  found by their namespace now, :func:`_rel_fields`);
 * **styles and numbering are not merged.** That is docx4j's ``MergeDocx``, and
   a paste that silently redefined ``Heading 1`` would be worse than one that
   looks like the target document.
@@ -328,11 +329,45 @@ def rewrite_relationship_ids(value: Any, mapping: dict[str, str]) -> None:
     _visit_references(value, lambda rel_id: mapping.get(rel_id))
 
 
+_rel_fields_cache: dict[type, tuple[str, ...]] = {}
+
+
+def _rel_fields(klass: type) -> tuple[str, ...]:
+    """The fields of a typed class that may carry a relationship id.
+
+    :data:`REL_ATTRIBUTES` by name, and every attribute field in the
+    relationships namespace by the class's metadata, whatever the generator
+    named it: VML's ``v:imagedata/@r:id`` is
+    ``schemas_openxmlformats_org_office_document_2006_relationships_id``,
+    since ``v:imagedata`` has an ``id`` of its own (CR-012 Phase C; before it,
+    VML was a wildcard tree and its ``r:id`` was rewritten as a wildcard
+    attribute).
+    """
+    try:
+        return _rel_fields_cache[klass]
+    except KeyError:
+        pass
+    import dataclasses
+
+    found = list(REL_ATTRIBUTES)
+    try:
+        for field in dataclasses.fields(klass):
+            metadata = field.metadata
+            if metadata.get("type") == "Attribute" and metadata.get("namespace") == _R_NS and field.name not in found:
+                found.append(field.name)
+    except TypeError:
+        pass
+    result = tuple(found)
+    _rel_fields_cache[klass] = result
+    return result
+
+
 def _visit_references(value: Any, rewrite: Any) -> None:
     """Offer every value that could be a relationship id to `rewrite`.
 
     Both halves of the tree are walked: the typed objects, which carry an id in
-    one of :data:`REL_ATTRIBUTES`, and the lxml nodes a wildcard field holds,
+    one of :data:`REL_ATTRIBUTES` or a relationships-namespace attribute
+    (:func:`_rel_fields`), and the lxml nodes a wildcard field holds,
     which carry one in an attribute of the relationships namespace.
     :func:`~docx4j_py.traversal.walk_all` is the walk that enters the second
     (CR-003 section 10.3 item 8: it defaults to ``mce="all"``, so a reference in
@@ -341,7 +376,7 @@ def _visit_references(value: Any, rewrite: Any) -> None:
     """
 
     def typed(node: Any, _parent: Any = None, _name: str | None = None) -> None:
-        for field in REL_ATTRIBUTES:
+        for field in _rel_fields(node.__class__):
             current = getattr(node, field, None)
             if not isinstance(current, str):
                 continue

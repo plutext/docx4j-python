@@ -251,8 +251,14 @@ def test_a_drawing_in_a_choice_and_a_pict_in_a_fallback_parse_typed_and_save_who
     assert part.skipped == []
 
 
-def test_the_choice_is_typed_all_the_way_down_and_the_fallback_to_its_pict():
-    """Section 3's depth: 63 wildcard nodes become typed in the Choice; VML stays below the Pict (Phase C)."""
+def test_both_branches_are_typed_all_the_way_down():
+    """Section 3's depth: 63 wildcard nodes become typed in the Choice, and since Phase C the Fallback's VML too.
+
+    Until CR-012 Phase C the VML below the Fallback's ``Pict`` stayed a
+    wildcard tree (``v:rect``, ``v:textbox``, ``w:txbxContent``); it is typed
+    now, the VML text box's content a ``CTTxbxContent`` like the Choice's.
+    """
+    from docx4j_py.vml.main import CTRect, CTTextbox
     from docx4j_py.wml import CTTxbxContent
     from docx4j_py.word.wps import Wsp
 
@@ -261,9 +267,13 @@ def test_the_choice_is_typed_all_the_way_down_and_the_fallback_to_its_pict():
     counts = mce_branches.census(contents)
     assert counts["deep"][("choice", "any")] == 0
     assert counts["deep"][("choice", "typed")] > 0
+    assert counts["deep"][("fallback", "any")] == 0
+    assert counts["deep"][("fallback", "typed")] > 0
     (drawing,) = choice(ac)
     assert find(drawing, Wsp) and find(drawing, CTTxbxContent)
-    assert {name for (side, name) in counts["wildcard"] if side == "fallback"} >= {"rect", "textbox", "txbxContent"}
+    (pict,) = ac.fallback.any_element
+    assert find(pict, CTRect) and find(pict, CTTextbox) and find(pict, CTTxbxContent)
+    assert not counts["wildcard"]
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +372,12 @@ def test_nothing_written_through_a_field_changes():
 
 
 def test_the_census_on_samples():
-    """Section 5: 3 Drawing in Choices, 3 Pict in Fallbacks, no wildcard w:drawing or w:pict left in a branch."""
+    """Section 5: 3 Drawing in Choices, 3 Pict in Fallbacks, no wildcard w:drawing or w:pict left in a branch.
+
+    Since CR-012 Phase C the Fallbacks' VML is typed too: the 28 wildcard
+    nodes below the three ``Pict`` are 41 typed objects, and no node in a
+    branch is a wildcard.
+    """
     children: dict = {}
     deep: dict = {}
     for path in sorted(SAMPLES.glob("*.docx")):
@@ -374,7 +389,7 @@ def test_the_census_on_samples():
             for key, value in counts["deep"].items():
                 deep[key] = deep.get(key, 0) + value
     assert children == {("choice", "typed:Drawing"): 3, ("fallback", "typed:Pict"): 3}
-    assert deep == {("choice", "typed"): 185, ("fallback", "typed"): 3, ("fallback", "any"): 28}
+    assert deep == {("choice", "typed"): 185, ("fallback", "typed"): 44}
 
 
 # ---------------------------------------------------------------------------

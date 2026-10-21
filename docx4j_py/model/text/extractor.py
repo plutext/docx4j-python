@@ -8,10 +8,11 @@ One pass over the unresolved tree makes the block model:
   a reader of text takes (:func:`docx4j_py.child.mce_branch`: by namespace
   URI over docx4j's published list, REQ-302 to 306), and
   ``mce.branches_differ`` is warned where the branches' texts differ
-  (REQ-307). A kept branch is a wildcard tree in this model (CR-002's lossless
-  MCE): its run content is read by element name, and a text box's
-  ``w:txbxContent`` in it is read as a typed island (CR-010 section 3.5),
-  shared with the views' plan;
+  (REQ-307). A kept branch is typed since CR-012 Phases B and C, VML and its
+  text boxes included; what is still a wildcard tree in one (a branch's
+  ``w:moveFrom`` or ``w:moveTo``) is read through a typed copy, and a
+  wildcard ``w:txbxContent`` as a typed island (CR-010 section 3.5), shared
+  with the views' plan;
 * **view** (item 2): ``accepted`` and ``original`` ask a
   :class:`~docx4j_py.model.text.view.ResolvedView` what Accept All or Reject
   All would remove or join; ``markup`` reads every run with its revision;
@@ -1591,12 +1592,16 @@ class Extractor:
         paragraph; pictures and objects as runs where they are. Since CR-012
         Phase B a kept branch's ``w:drawing`` and ``w:pict`` are typed, and a
         DrawingML text box with them (``wps:txbx`` declares its
-        ``w:txbxContent``), so they are found by class as anywhere. Below a
-        ``Pict`` the VML is still a wildcard tree (CR-012 Phase C), and there
-        each kind is found by its element name.
+        ``w:txbxContent``), so they are found by class as anywhere. Since
+        CR-012 Phase C the VML below a ``Pict`` or a ``w:object`` is typed too,
+        ``v:textbox``'s ``w:txbxContent`` with it, and read in place: a
+        ``v:shape`` by :meth:`_vml_shape`, a text box by class. A tree that
+        still holds a wildcard (one built in code, or a ``w:object`` in a
+        branch, which is no root element) is read by element name.
         """
         txbx_class = rtrees.cls("CTTxbxContent")
         inline_class, anchor_class, pic_class, object_class, control_class = _drawing_classes()
+        vml_shape_class = _vml_classes()[0]
 
         def visit(node: Any, holder: list | None) -> None:
             if isinstance(node, str) or node is None:
@@ -1650,6 +1655,9 @@ class Extractor:
             if isinstance(node, (inline_class, anchor_class)):
                 if not self._graphic(node, para, state):
                     return
+            elif isinstance(node, vml_shape_class):
+                if not self._vml_shape(node, para, state):
+                    return
             elif isinstance(node, pic_class):
                 nv = node.nv_pic_pr.c_nv_pr if node.nv_pic_pr is not None else None
                 self._image(nv, self._blip_part(node, para), False, node, para, state)
@@ -1698,25 +1706,39 @@ class Extractor:
         return True  # a shape, group or canvas: its text boxes and pictures
 
     def _vml_shape(self, shape: Any, para: _Paragraph, state: _RunState) -> bool:
-        """A VML ``v:shape``: legacy WordArt, a picture, or a shape to walk into for its text box (True)."""
-        image_data = None
-        for child in shape.children or ():
-            if isinstance(child, str) or not is_any_element(child):
+        """A VML ``v:shape``: legacy WordArt, a picture, or a shape to walk into for its text box (True).
+
+        Typed (``CTShape``, CR-012 Phase C) or a wildcard tree: its
+        ``v:textpath``'s ``string``, its ``v:imagedata``'s ``r:id`` and its own
+        ``alt`` are read the same way from either.
+        """
+        _shape_class, textpath_class, imagedata_class, _ole_class = _vml_classes()
+        wild = is_any_element(shape)
+        image_rel: str | None = None
+        found_image = False
+        for child in (shape.children if wild else shape.content) or ():
+            if isinstance(child, str):
                 continue
-            if child.qname == _V_TEXTPATH:
+            if is_any_element(child):
+                is_textpath, is_imagedata = child.qname == _V_TEXTPATH, child.qname == _V_IMAGEDATA
                 string = (child.attributes or {}).get("string")
+                rel = (child.attributes or {}).get(_R_ID)
+            else:
+                is_textpath, is_imagedata = isinstance(child, textpath_class), isinstance(child, imagedata_class)
+                string = getattr(child, "string", None) if is_textpath else None
+                rel = child.schemas_openxmlformats_org_office_document_2006_relationships_id if is_imagedata else None
+            if is_textpath:
                 if string:
                     if self.options.text_boxes:
                         para.story.pending.append(_WordArt(string, shape, f"{para.address}/textbox:{para.boxes}"))
                         para.boxes += 1
                     return False
-            elif child.qname == _V_IMAGEDATA:
-                image_data = child
-        if image_data is not None:
-            part = self.trees.related(para.story.part, (image_data.attributes or {}).get(_R_ID))
-            self._image_of(
-                (shape.attributes or {}).get("alt"), None, None, False, True, part, shape, para, state
-            )
+            elif is_imagedata:
+                found_image, image_rel = True, rel
+        if found_image:
+            part = self.trees.related(para.story.part, image_rel)
+            alt = (shape.attributes or {}).get("alt") if wild else shape.alt
+            self._image_of(alt, None, None, False, True, part, shape, para, state)
         return True
 
     def _object(self, obj: Any, para: _Paragraph, state: _RunState) -> None:
@@ -1735,24 +1757,28 @@ class Extractor:
                 *(getattr(obj, "schemas_microsoft_com_vml_element", None) or ()),
                 *(getattr(obj, "schemas_microsoft_com_office_office_element", None) or ()),
             ]
+        ole_class = _vml_classes()[3]
         for item in items:
-            if not is_any_element(item):
-                continue
-            if item.qname == _O_OLE_OBJECT:
+            if isinstance(item, ole_class):
+                # o:OLEObject, typed since CR-012 Phase C
+                prog_id, rel_id = item.prog_id, item.id
+            elif is_any_element(item) and item.qname == _O_OLE_OBJECT:
                 attributes = item.attributes or {}
-                prog_id = attributes.get("ProgID")
-                self._object_run(para, prog_id, state)
-                if not self.options.embedded or self.nested:
-                    return
-                part = self.trees.related(para.story.part, attributes.get(_R_ID))
-                ole1 = prog_id is not None and prog_id.lower().startswith("package")
-                if type(part).__name__ == "EmbeddedPackagePart" or (ole1 and _is_binary(part)):
-                    para.story.pending.append(_EmbeddedObject(part, f"{para.address}/object:{para.objects}"))
-                    para.objects += 1
-                return
-            if item.qname == _W_CONTROL:
+                prog_id, rel_id = attributes.get("ProgID"), attributes.get(_R_ID)
+            elif is_any_element(item) and item.qname == _W_CONTROL:
                 self._object_run(para, None, state)
                 return
+            else:
+                continue
+            self._object_run(para, prog_id, state)
+            if not self.options.embedded or self.nested:
+                return
+            part = self.trees.related(para.story.part, rel_id)
+            ole1 = prog_id is not None and prog_id.lower().startswith("package")
+            if type(part).__name__ == "EmbeddedPackagePart" or (ole1 and _is_binary(part)):
+                para.story.pending.append(_EmbeddedObject(part, f"{para.address}/object:{para.objects}"))
+                para.objects += 1
+            return
 
     def _object_run(self, para: _Paragraph, prog_id: str | None, state: _RunState) -> None:
         run = TextRun("OBJECT", "", state.revision)
@@ -1796,8 +1822,11 @@ class Extractor:
     def _island(self, node: Any, holder: list | None, para: _Paragraph) -> Any:
         """A wildcard ``w:txbxContent`` as a typed island, shared with the plan's listing (CR-010 section 3.5).
 
-        Since CR-012 Phase B the one wildcard text box left is VML's,
-        ``v:textbox``'s, below a ``Pict`` in a Fallback or anywhere else.
+        Since CR-012 Phase C VML is typed, ``v:textbox``'s ``w:txbxContent``
+        with it, so no parse of a corpus document reaches here: a text box is a
+        wildcard only below a wildcard node (an element no class binds, a tree
+        built in code). A branch's ``w:moveFrom`` or ``w:moveTo`` is read
+        through :meth:`_typed_run_level`'s typed copy, which types the box too.
         """
         islands = self.context.islands
         island = islands.get(id(node))
@@ -2236,6 +2265,20 @@ def _drawing_classes() -> tuple[type, type, type, type, type]:
 
         _DRAWING_CLASSES = (Inline, Anchor, Pic, CTObject, CTControl)
     return _DRAWING_CLASSES
+
+
+_VML_CLASSES: tuple[type, type, type, type] | None = None
+
+
+def _vml_classes() -> tuple[type, type, type, type]:
+    """``v:shape``, ``v:textpath``, ``v:imagedata`` and ``o:OLEObject``'s classes (CR-012 Phase C), imported on first use."""
+    global _VML_CLASSES
+    if _VML_CLASSES is None:
+        from docx4j_py.vml.main import CTImageData, CTShape, CTTextPath
+        from docx4j_py.vml.officedrawing import CTOLEObject
+
+        _VML_CLASSES = (CTShape, CTTextPath, CTImageData, CTOLEObject)
+    return _VML_CLASSES
 
 
 def _wild_child(node: Any, qname: str) -> Any:

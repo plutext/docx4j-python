@@ -7,15 +7,22 @@ of a text box is reached through ``wps:txbx`` or ``v:textbox``, and in a
 wildcard tree everything below is a wildcard too. A typed engine cannot see
 the revisions in there --- which is why CR-003 Phase F's listing missed them.
 
-**Where an island is still needed (CR-012 Phase B).** Since Phase B a kept
-branch's ``w:drawing`` and ``w:pict`` are typed (docx4j's root elements), and
-a DrawingML text box with them: ``wps:txbx`` declares its ``w:txbxContent``, so
-a ``wps`` text box in a branch is a typed ``TxbxContent`` and never an island.
-The one wildcard text box left is **VML's**: ``v:textbox``'s ``w:txbxContent``,
-below a ``Pict`` --- a Fallback's legacy copy of a text box, or a ``w:pict``
-anywhere --- because VML has no classes in this model until CR-012 Phase C.
-Over CR-012 Phase B's survey corpus every wildcard ``w:txbxContent`` is one,
-514 of them under ``v:rect`` or ``v:shape``. Islands retire with Phase C.
+**Where an island is still needed (CR-012 Phases B and C).** Since Phase B a
+kept branch's ``w:drawing`` and ``w:pict`` are typed (docx4j's root elements),
+and a DrawingML text box with them: ``wps:txbx`` declares its
+``w:txbxContent``. Since Phase C VML is typed too, wherever it stands, and
+``v:textbox`` declares its ``w:txbxContent`` as well, so a Fallback's legacy
+copy of a text box, and a ``w:pict``'s anywhere, is a typed ``TxbxContent``.
+Over CR-012's survey corpus (422 documents) no island is made any more: the
+text model, the listing and Accept All and Reject All made 248 before Phase C,
+in 10 documents, and make none.
+
+An island is still reached where a text box stands **below a wildcard node**,
+since everything below a wildcard is a wildcard: a branch's ``w:moveFrom`` or
+``w:moveTo``, which are neither global nor docx4j roots (docx4j keeps them a
+DOM element), an element no class binds (a VML-namespace element the schema
+does not declare), or a tree built in code. No corpus document has one, and
+``tests/openpackaging/test_vml.py`` pins the first. That is why islands stay.
 
 An **island** is one such ``w:txbxContent``, made typed for as long as it is
 being resolved:
