@@ -41,13 +41,13 @@ fork's parser sees them, as :mod:`docx4j_py.openpackaging.mce`'s preprocessor
 does, so the selected content is parsed typed by the ordinary path; a part
 whose bytes do not hold ``AlternateContent`` pays one substring test.
 
-Departures from docx4j ``2853b7280``, recorded in CR-012 section 9: the default
-is ``preserve`` (CR-012 Q7, as docx4j's D5 decides for 17.4.0; its code at that
-commit defaults to ``word``); ``preserve`` keeps row- and cell-level elements
-whole too, where docx4j's phase 1 still resolves them in that mode until its
-phase 2; the splice is on the source's lxml tree rather than on the
-unmarshalled objects, so a record's element is a parse of its own, not the
-objects the tree held.
+Departures from docx4j ``9db1a3cbd`` (its CR-051 phase 2), recorded in CR-012
+sections 9 and 10: the default is ``preserve`` (CR-012 Q7, as docx4j's D5
+decides for 17.4.0; its 17.3.x code defaults to ``word``); the splice is on the
+source's lxml tree rather than on the unmarshalled objects, so a record's
+element is a parse of its own, not the objects the tree held. ``preserve``
+keeps row- and cell-level elements whole, as docx4j's phase 2 does (its phase 1
+still resolved them in that mode).
 """
 
 from __future__ import annotations
@@ -460,22 +460,24 @@ def _record(item: _Taken) -> ResolvedAlternateContent:
 
 
 def _record_hook(level: str) -> Any:
-    """The fork's ``wildcard_class`` for a record's own parse: no container above it, so the level says."""
+    """The fork's ``wildcard_class`` for a record's own parse: no container above it, so the level says.
+
+    A ``w:sdt``, ``w:tr`` or ``w:tc`` straight in one of the element's branches
+    is bound as a container of the record's level binds it: a body for block
+    level, a table for row level, a row for cell level (so a cell-level
+    branch's ``w:tc`` is a ``Tc``, CR-012 Phase A2).
+    """
     from docx4j_py import wml
     from docx4j_py.runtime import branch_child_class
 
-    kind = {ROW: wml.CTSdtRow, CELL: wml.CTSdtCell}.get(level, wml.SdtBlock)
+    container = {ROW: wml.Tbl, CELL: wml.Tr}.get(level, wml.Body1)
 
     def hook(qname: str, ancestors: tuple[type, ...]) -> type | None:
         found = branch_child_class(qname, ancestors)
         if found is not None:
             return found
-        if (
-            qname == _SDT
-            and ancestors
-            and all(cls.__module__ == "docx4j_py.mce" for cls in ancestors)
-        ):
-            return kind
+        if ancestors and all(cls.__module__ == "docx4j_py.mce" for cls in ancestors):
+            return branch_child_class(qname, (*ancestors, container))
         return None
 
     return hook

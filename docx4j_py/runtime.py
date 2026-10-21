@@ -93,7 +93,9 @@ def parser_config(
     ``wildcard_class`` is the fork's third (stage 11, CR-012 Phase A): a
     ``w:sdt`` straight in an ``mc:Choice`` or ``mc:Fallback`` is bound as the
     container the ``mc:AlternateContent`` stands in binds one
-    (:func:`branch_child_class`), as docx4j's ``McBranchSdt`` binds it.
+    (:func:`branch_child_class`), as docx4j's ``McBranchSdt`` binds it; and
+    since CR-012 Phase A2 a ``w:tr`` or ``w:tc`` there too, as docx4j binds
+    them by name.
 
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
@@ -139,7 +141,8 @@ def serializer_config(*, pretty: bool = False, **kwargs: Any) -> SerializerConfi
 
     ``element_names`` (the fork's stage 11) names an object that no field
     names: the ``w:sdt`` kinds :func:`branch_child_class` binds in a branch
-    are written ``w:sdt``, not under their types' names (``CT_SdtRun``).
+    are written ``w:sdt``, not under their types' names (``CT_SdtRun``), and
+    a branch's ``Tr`` and ``Tc`` ``w:tr`` and ``w:tc`` (CR-012 Phase A2).
     """
     kwargs.setdefault("bool_format", "numeric")
     kwargs.setdefault("xml_declaration", False)
@@ -179,11 +182,18 @@ def tree_serializer(*, pretty: bool = False, **kwargs: Any) -> TreeSerializer:
 
 _W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
-#: The names :func:`branch_child_class` is asked about: a content control. Its
-#: four classes share one element name, and only the block-level one
-#: (``SdtBlock``) is global, so a lookup by name alone gives the block class
-#: at every level.
-BRANCH_CHILD_NAMES = frozenset({f"{{{_W_NS}}}sdt"})
+#: The names :func:`branch_child_class` is asked about.
+#:
+#: * ``w:sdt``, a content control (CR-012 Phase A). Its four classes share one
+#:   element name, and only the block-level one (``SdtBlock``) is global, so a
+#:   lookup by name alone gives the block class at every level.
+#: * ``w:tr`` and ``w:tc``, a row among a table's rows and a cell among a row's
+#:   cells (CR-012 Phase A2, docx4j CR-051 phase 2). ``w:tc`` is declared only
+#:   inside ``CT_Row`` and its controls, so a lookup by name leaves a
+#:   cell-level branch's cell a wildcard tree that no walk of cells reads;
+#:   ``w:tr`` is global as ``Tr``, which a row-level branch's container binds
+#:   it to as well, and it is asked so that both are bound by the one rule.
+BRANCH_CHILD_NAMES = frozenset({f"{{{_W_NS}}}sdt", f"{{{_W_NS}}}tr", f"{{{_W_NS}}}tc"})
 
 #: The classes of ``mc:AlternateContent`` and its branches: what stands
 #: between a branch's child and the container the element stands in.
@@ -203,7 +213,9 @@ def branch_child_class(qname: str, ancestors: tuple[type, ...]) -> type | None:
     ``mc:AlternateContent`` stands in, and the class its own content binds
     `qname` to is the answer: ``SdtBlock`` in a body, a cell or a block-level
     control, ``SdtRun`` in a paragraph, ``CTSdtRow`` among a table's rows,
-    ``CTSdtCell`` among a row's cells. None where that container takes no such
+    ``CTSdtCell`` among a row's cells; ``Tr`` among a table's rows and ``Tc``
+    among a row's cells, in a row- or cell-level control's content and custom
+    XML too (CR-012 Phase A2). None where that container takes no such
     element, or the wildcard is not a branch's; the lookup by name then
     applies.
     """
@@ -224,12 +236,19 @@ def _is_mc_wrapper(clazz: type) -> bool:
 
 
 def _branch_element_names() -> dict[type, str]:
-    """The serialiser's ``element_names``: each ``w:sdt`` class the branch hook may bind, as ``w:sdt``."""
+    """The serialiser's ``element_names``: each class the branch hook may bind, under its element's name.
+
+    The four ``w:sdt`` classes as ``w:sdt``, and ``Tr`` and ``Tc`` as ``w:tr``
+    and ``w:tc`` (``Tc``'s own name is its type's, ``CT_Tc``).
+    """
     global _branch_names
     if _branch_names is None:
-        from docx4j_py.wml import CTSdtCell, CTSdtRow, SdtBlock, SdtRun
+        from docx4j_py.wml import CTSdtCell, CTSdtRow, SdtBlock, SdtRun, Tc, Tr
 
-        _branch_names = {cls: f"{{{_W_NS}}}sdt" for cls in (SdtBlock, SdtRun, CTSdtRow, CTSdtCell)}
+        names = {cls: f"{{{_W_NS}}}sdt" for cls in (SdtBlock, SdtRun, CTSdtRow, CTSdtCell)}
+        names[Tr] = f"{{{_W_NS}}}tr"
+        names[Tc] = f"{{{_W_NS}}}tc"
+        _branch_names = names
     return _branch_names
 
 
