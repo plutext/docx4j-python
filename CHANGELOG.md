@@ -55,6 +55,25 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   `docs/user/hyperlinks.md` is brought up to date; `get_hyperlink_ranges`, an `insert_hyperlink`
   sugar, the facade's `add_hyperlink` and the fix for text appended after a link joining it remain
   proposals.
+- **One text model: `docx4j_py.model.text`**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md), Phase B, section
+  [12](docs/change-requests/CR-011-one-text-model.md#12-phase-b-implementation-notes-2026-10-21)):
+  the port of docx4j's `org.docx4j.model.text` (its CR-046 phase 1), after docx4j-core-ts's
+  CR-012. `extract(pkg, view=, **options)` gives the block model (`TextResult`: `TextBlock`s with
+  their runs, fields, numbering, addresses and flags; comments; warnings), and
+  `plain_text(result)` its text. The views are `accepted`, `original` and `markup` (`current` a
+  synonym): the first two the text of the document Accept All or Reject All leaves, worked out
+  without resolving anything and held equal to CR-010's resolved copy over 159 fixtures in two
+  scopes; `markup` every run as stored, written as CriticMarkup. The scope is the specification's:
+  text boxes after their anchoring paragraph (`body/3/textbox:0/0`), notes in reference order as
+  `[n]`, headers and footers by section under `include`, comments in `markup`, field codes under
+  `field_codes`, hidden text left out through the styles, placeholders, list labels under
+  `list_labels`, the table of contents only under `toc: true`; the options are the specification's
+  26 names verbatim. A reading never changes the package. Against docx4j's text-extraction suite,
+  1,146 checks pass, 205 fail and 233 pend of 1,584 (941, 410 and 233 before). Not yet: fields
+  updated, bound values, charts, SmartArt, WordArt, embedded packages, `w:altChunk`, images and
+  alt text, metadata, math as LaTeX, the listed and grid table forms, page markers, `layout:
+  indent`, the glossary.
 
 ### Changed
 
@@ -139,9 +158,49 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   applies the mark's `w:pPr/w:rPr/w:rStyle` as a style level, then the mark's direct formatting,
   where 0.1.0 copied the `w:rStyle` and never read it. It sizes an empty paragraph and starts a
   list label's run properties, so both follow the mark's character style, as Word draws them.
+- **`mce="resolve"` reads the branch a reader of text takes**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) sections 3.3 and
+  [12.2](docs/change-requests/CR-011-one-text-model.md#122-resolve-and-the-save-q3-q11), its Q2
+  and Q3): the first `mc:Choice` whose `Requires` namespaces are all in docx4j's published
+  understood list (118 URIs, now `docx4j_py/resources/understood-namespaces.txt`), matched by
+  **namespace URI** through the declarations in scope where the Choice was parsed (a `wps` Choice
+  under the prefix `shape2010` is understood); else the `mc:Fallback`; else, where there is none,
+  the first Choice (before, nothing). An empty `Requires` is no longer understood. `text_of`,
+  `walk`, `find` and the content API read through it. `mce_preprocess` keeps what the model can
+  type (`UNDERSTOOD`). Each Choice's `Requires`, `mc:Ignorable` and `mc:MustUnderstand` carry the
+  bindings they were parsed with (`child.source_bindings`); the fork's parser gives them
+  (`docx4j-xsdata` stage 10, unreleased).
+- **`get_text(view="markup")` is the text model's markup view**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
+  [12.6](docs/change-requests/CR-011-one-text-model.md#126-the-readers-q4-q10)): on a body or a
+  paragraph, and their `text_budget`s, the runs as stored with each revision as CriticMarkup and
+  each comment at its reference; a range refuses it with `SpanError` (`range.no_markup_view`), as
+  it refuses `original`. `current` is read as `accepted`. The other views, and every other Office
+  JS reader, keep Office JS's text.
+- **A numbering level belongs to one paragraph style**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
+  [12.7](docs/change-requests/CR-011-one-text-model.md#127-req-510-and-the-parity-goldens-risk-3),
+  WD REQ-510): the one its `w:lvl/w:pStyle` names, else the first paragraph style in `styles.xml`
+  whose own `w:numPr` names a `w:num` on the same `w:abstractNum` at that level
+  (`Emulator.level_style_id`, docx4j's `levelStyleId`). A paragraph numbered through any other
+  style gets no label and is not counted, as in Word: the three documents of docx4j's
+  `LevelOwnerTest` are numbered as Word numbers them, where 27 of 61 paragraphs differed. A
+  paragraph naming no style is in the default paragraph style, and one with no `w:pPr` is resolved
+  as one with an empty one (docx4j `c283dffdb`).
 
 ### Fixed
 
+- **A save declares every prefix an `mc:Choice` names**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
+  [12.2](docs/change-requests/CR-011-one-text-model.md#122-resolve-and-the-save-q3-q11), its Q11,
+  by docx4j CR-052's rule): a part re-marshalled after it was read left a prefix only a Choice's
+  `Requires` named undeclared (docx4j's probe's `zz9` and `shape2010`, Word's own `cx1` on a
+  chartex chart), which Word 365 repairs. Now each is declared where Word 365 puts it: a prefix
+  bound as docx4j's table binds it on the root, any other on the `mc:Choice` that names it, ahead
+  of `Requires`, with the binding the source gave it, which travels with the Choice when it is
+  moved or copied; a Choice's own `mc:Ignorable` and `mc:MustUnderstand` likewise. `to_xml`
+  follows the same rule. The root's `mc:Ignorable` prefixes take the source's binding before the
+  table's.
 - **`get_text(view="markup")` raises instead of returning neither view**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
   [11.5](docs/change-requests/CR-011-one-text-model.md#115-q10), its Q10). 0.1.0 took the value
@@ -150,8 +209,8 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   text on a range. `Body.get_text`, `Paragraph.get_text`, both `text_budget`s and `Range.get_text`
   now raise `ContentError` with the code `text.no_markup_view`, whose hint names the views they
   take and `to_markdown(view="markup")` for the changes as CriticMarkup. CR-011 Phase B gives
-  `get_text` the text model's markup view. Any other view name raises `text.view_invalid`, for
-  the same reason.
+  `get_text` the text model's markup view (under "Changed"). Any other view name raises
+  `text.view_invalid`, for the same reason.
 - **A comment's range is read right when its markers are inside a `w:ins` or a hyperlink**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section 12.8).
   A marker's offset was counted from the start of the holder it sat in, not the paragraph's. So a

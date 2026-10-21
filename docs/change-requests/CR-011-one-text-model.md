@@ -728,3 +728,239 @@ filter, through `text_of_view` (11.3), and docx4j-mcp-py calls neither. CHANGELO
 - `LevelOwnerTest`'s documents and the understood list are copied and not yet read: REQ-510's
   owner and section 3.3's `docx4j_py/resources/understood-namespaces.txt`.
 - `get_text(view="markup")`'s refusal becomes the model's markup view.
+
+## 12. Phase B implementation notes (2026-10-21)
+
+Phase B is done, with Q3 and, at the coordinator's word, Q11 by docx4j CR-052's rule (phase 1,
+`5df2e253e`). `docx4j_py.model.text` is the text model in plain text, the port of docx4j
+CR-046 phase 1 after core-ts CR-012's phase 2. The adapter reads it, and the report moves from
+941 pass, 410 fail and 233 pending to **1,146, 205 and 233 of 1,584, goldens 6 of 12**: 205
+checks from `FAIL` to `PASS` and none the other way (12.9). The agreement test (REQ-406) holds
+the walk equal to the resolved copy in **636 of 636** comparisons. `get_text(view="markup")` is
+the model's view. The Office JS readers keep Office JS's text (Q4).
+
+### 12.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the fork | `~/git/docx4j-xsdata`, stage 10 (its `docs/fork/CHANGES.md`; report 19 in `docs/UPSTREAM.md`) | `ParserConfig(on_namespaces=..., namespaces_for=...)`: each object built for the elements named, typed or a wildcard, handed over with the namespace declarations in scope there. Nine tests in its `tests/fork/test_parser_namespaces.py` |
+| the record | `docx4j_py/child.py`, `runtime.py` | `BoundPrefixes`, `record_bindings` (the hook, for `mc:Choice`), `source_bindings`, `set_source_bindings`; the TEXT selection: `understood_namespaces`, `requires_namespaces`, `understands`, `mce_branch` |
+| the understood list | `docx4j_py/resources/understood-namespaces.txt` | docx4j's 118 URIs, copied verbatim from the suite's copy (REQ-306) |
+| the writer | `docx4j_py/mc_declarations.py` (new, in `KEEP`), `openpackaging/parts/xml_part.py`, `fragments.py`, `model/revisions/islands.py` | docx4j CR-052's placement, on every marshal path (12.2) |
+| the package | `docx4j_py/model/text/`: `__init__.py`, `options.py`, `result.py`, `trees.py`, `view.py`, `extractor.py`, `plain.py` (3,596 lines) | `extract`, `extract_resolved`, `plain_text`, `normalize`; `TextOptions` (the 26 names), `TextOptionError`, `TextView`; `TextResult`, `TextBlock`, `TextRun`, `TextRow`, `TextCell`, `TextField`, `TextNumbering`, `TextRevision`, `TextWarning`, `TextComment` |
+| REQ-510 | `model/listnumbering/emulator.py`, `definitions.py` | `Emulator.level_style_id`, docx4j `Emulator.levelStyleId` (`d9acdf5e2`); `style_linked_elsewhere` asks it, a paragraph naming no style taken in the default style; `number(None)` resolved as an empty `w:pPr` (`c283dffdb`) |
+| the readers | `model/content/text_model.py`, `paragraph.py`, `body.py`, `range.py`, `enums.py` | `get_text(view="markup")` and `text_budget` on the model; `current` read as `accepted`; `TextView` gains `"markup"` |
+| the engine's share | `model/revisions/lister.py`, `model/content/trial.py` | `Lister(islands=)`, so the plan and the walk see one typed text box; a trial part's `read_contents`, `header_parts` and `footer_parts` |
+| tests | `tests/text/test_texts.py` (46), `tests/openpackaging/test_mc_declarations.py` (18), `tests/openpackaging/test_mce.py` (+3), `tests/agent/test_errors.py` | the rows of `tests/README.md` |
+| the harness | `tests/text/adapter.py`, `conformance.tsv`, `test_agreement.py`, `agreement-docx4j.tsv` | the adapter on the model; the report rewritten; the agreement test on `extract` |
+
+### 12.2 Resolve, and the save (Q3, Q11)
+
+- **The record.** The runtime parser hands each `mc:Choice` it builds, typed
+  (`AlternateContentChoice`) or a wildcard (`AnyElement`), to `record_bindings`. Its `Requires`,
+  `mc:Ignorable` and `mc:MustUnderstand` values are replaced by a `BoundPrefixes`: the same
+  string, with each prefix it names and the URI that prefix had in scope. Equality and
+  serialisation see the string. A move keeps the record, `deep_copy` and `copy.deepcopy` carry it
+  (the value copies as itself), and an edit that sets a plain string drops it. The probe's eleven
+  Choices load with their bindings, `shape2010` to the wps namespace among them.
+- **The selection** (REQ-301 to 306, docx4j's TEXT purpose, which is also its `McMode.READ`): the
+  first Choice whose `Requires` names at least one prefix, each bound to a namespace in docx4j's
+  list; else the Fallback; else the first Choice. A Choice with no record (built in code, or its
+  `Requires` set since) is matched through docx4j's prefix table, as REQ-303 permits. The
+  traversal's `mce="resolve"` uses it, so `text_of`, `walk` and the content API read the same
+  branch as the model (Q2). `mce_preprocess` keeps `UNDERSTOOD`, what the model can type.
+- **REQ-307.** `mce.branches_differ` where the selected branch and another both hold text and
+  differ after REQ-1201's normalisation, a branch's text being every `w:t`, `m:t` and `a:t` in
+  it in every view, hidden or not (WD 0.29, the user's ruling for core-ts). The warning names the
+  branch (`mc:Choice Requires="wps"`, `mc:Fallback`), never the text. Off under `warnings: false`.
+- **The save** (docx4j CR-052 sections 4 and 9, its D3 and D4 (c)). After the cleanup and the
+  root's `mc:Ignorable` reconciliation, every prefix an `mc:Choice`'s `Requires`, `mc:Ignorable`
+  or `mc:MustUnderstand` names is placed: the source's binding, else the table's; a prefix the
+  table binds as the source did goes on the root, as Word puts its fixed set; any other (a private
+  `zz9`, the alias `shape2010`, a table prefix the source bound otherwise) goes on the Choice,
+  ahead of `Requires`; a prefix the root already binds alike (its `mc:Ignorable` names it) is
+  declared once, on the root; nothing goes on `mc:Fallback`. Where the Choice's content uses the
+  namespace the prefix has in scope, the content's binding stands and a warning is logged (D3's
+  clash). A prefix neither binds is left undeclared, with a warning. The root's `mc:Ignorable`
+  prefixes now take the source's binding before the table's, as D3 orders it (it was the table's
+  first). `fragments.to_xml` follows the same rule, and the typed islands of CR-010 declare a
+  Choice's recorded bindings when they re-parse a text box, so a nested Choice keeps them.
+- **Measured**: a re-marshalled save of the probe declares `zz9` on its three Choices and
+  `shape2010` on its one, `<mc:Choice xmlns:zz9="http://example.com/zz9" Requires="zz9">`, and
+  `wps` and `w14` on the root; `waterfall.docx` declares `cx1` on the root. Before, all of these
+  were undeclared, which Word 365 repairs (docx4j CR-052 phase 0). Every case of docx4j's
+  `McSourcePrefixesTest` that is not about Java's marshal paths is ported
+  (`test_mc_declarations.py`, 18 tests), each checking every prefix an `mc` attribute of the saved
+  `document.xml` names against the declarations in scope where it is named. **This changes saved
+  output**, for a document whose Choices name such a prefix only. `out/acceptance/` regenerated is
+  canonically identical to the artefacts before (`scripts/compare_acceptance.py`, 13 artefacts),
+  and none of them has such a Choice. The Word check of the two fixtures saved is the user's,
+  staged in `out/cr011-q11-word-check/` with a README.
+- **The cost.** The rendered tree is scanned for `mc:Choice`; the object tree is read for the
+  records only once a binding the table does not make has been recorded in the process (`zz9`,
+  `shape2010`), since until then the table gives every answer the records would. A declaration
+  lxml would strip (an alias of a namespace in scope) is written with a placeholder namespace and
+  given its URI in the serialised bytes.
+
+### 12.3 The views (REQ-401 to 406)
+
+As docx4j and core-ts build them: **the walk is the implementation, the copy its oracle.**
+`view.py` is docx4j's `ResolvedView` as core-ts ports it over its own resolution, here over
+CR-010's engine: the `Lister` over every story with revision markup (the stories read with
+`read_contents`; a part whose bytes hold none is not listed), and each change planned as the
+`Resolver` would resolve it --- a revision taken away, the moves replayed story by story last
+half first (`_Moves.pieces_of`), an inserted field rejected whole, a row or cell, an equation's
+revision or structure, a paragraph mark, an inserted control unwrapped, and the comments a
+resolution takes whole (CR-010 section 12.9's rule, `a8bc6cda9`, U23's spans included). A text
+box kept as a wildcard is one typed island shared by the listing and the walk
+(`Lister(islands=)`), so the plan's identities are the walk's. `markup` plans nothing.
+
+**The agreement test** (`test_agreement.py`): the walk, `plain_text(extract(pkg, view=))`, against
+the same fixture loaded again, resolved by `revisions.accept_all` or `reject_all`, and read by
+`extract_resolved` with no view logic; in two scopes, the default and every story with hidden
+text and field codes. The copied twelve, 48 tests, and docx4j's 147 (`slow`), 588: **no
+difference** (before: 10 of 24 and 80 and 81 of 147 in the default scope alone). The reference is
+a second load, as docx4j's is, not a `dry_run`: **found on the way**, a trial keeps a comment the
+resolution empties (`review-for-word`'s comment 0, rejected), which the walk drops and Word drops,
+because the engine's flush does not take a trial's copy of a part for a part (`Removals._is_part`
+asks for a `Part`). Not fixed here: a fix lets the flush drop a trial's emptied comment parts,
+which must not reach the real package's relationships, and wants its own test.
+
+### 12.4 Scope as built (WD section 5)
+
+core-ts's `Extractor` over this model, its rules unchanged:
+
+- **Text boxes** after their anchoring paragraph, or after the table it is in, once, addressed
+  from it: `body/3/textbox:0/0`, `body/68/0/0/0/textbox:0/0` (REQ-518, REQ-519, D4). A box is found
+  in a run's `w:drawing`, `w:pict` or `w:object`, typed (`wps:txbx`'s `TxbxContent`) or a wildcard
+  `w:txbxContent` read as its island; in an `mc:AlternateContent`, in the selected branch only.
+  `text_boxes: false` reads none. A box that would lose content as typed raises
+  `content.not_read` at its anchor.
+- **A kept branch** is a wildcard tree in this model (CR-002's lossless MCE; CR-012 not
+  implemented): run content in it (`w:t`, `w:tab`, `w:sym`, a field's characters) is read by
+  element name, and a wildcard run, revision, link or control at paragraph or block level is
+  parsed typed for the reading.
+- **Notes** in reference order, `[n]` at the reference and at the note's start, a note whose
+  reference the view removes absent (REQ-402, REQ-503); `notes` and `note_references`.
+- **Headers and footers** by section under `include` (REQ-502): each section's first, default and
+  even ones as `w:titlePg` and `w:evenAndOddHeaders` show them, before and after its blocks, each
+  part once, at `header:<rId>/<n>`.
+- **Comments** at their references in `markup` and under `comments: true`, replies after their
+  parent, never one with no anchor (REQ-504); `resolved` from `commentsExtended`.
+- **Fields**: the cached result; the code under `field_codes` as `FIELD_CODE` runs; a field with
+  no result `field.no_result` (REQ-505); a HYPERLINK field's target on its runs. The table of
+  contents (a TOC field) left out whole under the default `toc: false`, its code too, and a
+  paragraph with nothing else in it no paragraph (REQ-520).
+- **Hidden text** left out, through the `PropertyResolver` (the run's `w:vanish`, else its
+  paragraph and character styles'); a paragraph hidden mark and all has no line (REQ-507).
+- **Placeholders** read and flagged; `placeholders: false` leaves them out (REQ-508).
+- **List labels** under `list_labels`, counted per story by the emulator with REQ-510's owner;
+  every numbered block has its `TextNumbering`, its `value` the label's count (REQ-510, REQ-706).
+- **Equations** as their `m:t` text inside `$...$` or `$$...$$`, REQ-604's form for one not
+  converted, and in `markup` the Reject All form deleted and the Accept All form inserted; ruby as
+  its base.
+
+### 12.5 Serialise (WD section 7.1)
+
+`plain.py`: a line per paragraph, U+000A after each; section 6.1's characters (`w:tab` and
+`w:ptab` a tab, `w:br` and `w:cr` a line feed, the two hyphens U+2011 and U+00AD, `w:sym` its
+character), as stored (REQ-602); a table a row a line, its cells a tab apart and a cell's
+paragraphs a space apart (REQ-605's simple form); `[n]`; and in `markup` CriticMarkup written
+flat, consecutive runs of one kind of revision under one marker and never one marker inside
+another, so a deletion inside an insertion reads `{++TC14_INS_KEPT ++}{--TC14_DEL_IN_INS--}` as
+the golden has it (section 2's Markdown nests it); `markup_detail` adds `author:` or `author,
+date:` and splits the markers by author or date.
+
+### 12.6 The readers (Q4, Q10)
+
+- `Paragraph.get_text(view="markup")` and `text_budget` are the model's markup view of the
+  paragraph's own runs; `Body.get_text(view="markup")` and its `text_budget` the model's view of
+  the body's content, text boxes after their anchors. Content is read in the package's view.
+  Content with no package is read as it stands (no styles; in `accepted` and `original` run-level
+  revisions only).
+- `current` is `accepted` in every `get_text` (REQ-401's synonym, as section 11.5 said).
+- In every other view the Office JS readers keep Office JS's text, as decided (Q4): `text`,
+  `get_text`, `search`, `TrackedChange.text`, `text_of`, and the python-docx facade.
+- Each `TextRun` carries its `source` (its `w:r` and `w:p`) and, where its text is in the content
+  API's `get_text()` (`get_text(view="original")` in the original view), its `office_offset`
+  there; within a run the two agree character for character, and runs stay apart where
+  `get_text()` holds text between them (hidden text is the gap). Neither is in `to_dict()`.
+
+### 12.7 REQ-510 and the parity goldens (risk 3)
+
+`level_style_id` gives `LevelOwnerTest`'s owners, and the emulator and the text model number its
+three Word documents as Word does, all 61 paragraphs (27 differed, section 1). The 46 parity
+goldens of CR-002 still give zero differences (277 tests, `PINS` empty), as core-ts's 62 and
+docx4j `5c691fc1f` led us to expect: none of their fixtures has a style that loses a level.
+CR-010's Word-save comparisons are unchanged (68 tests).
+
+### 12.8 Departures, with why
+
+1. **Phase C's values are accepted, not refused** (section 3.1 said an unimplemented value
+   raises). `fields: update`, `embedded: true`, `alt_text: true`, `metadata: true`, `tables:
+   grid`, `page_markers: true` and `layout: indent` are read as their defaults, and listed in
+   `NOT_YET` and `TextOptions.not_yet()`, as REQ-1001 allows ("document any it does not
+   implement"). A refusal would fail every check under those scenarios that the default's text
+   meets: 78 that pass today, against the ratchet's rule. `math: unicodemath` and `symbols:
+   unicode` are refused, as docx4j refuses them.
+2. **The record is the attribute's value**, a `str` subclass, not a slot (section 3.4): no
+   generated class changes, so no regeneration, and the value carries it through a move and a
+   copy and loses it with an edit, which is CR-052's D2 without a copy listener.
+3. **The clash case of `McSourcePrefixesTest` does not arise as written.** The serialiser writes
+   SpreadsheetML content as `s:`, not `x:`, so declaring Excel's `x` on the Choice rebinds
+   nothing, and the test asserts that. The clash itself is tested with the root binding `zz9` one
+   way and the Choice's content using it.
+4. **`tables: auto` writes every table tab-separated**: the listed form is Phase C's.
+5. **Equations are their text**, not LaTeX (Phase C).
+6. **A range has no markup view**: `Range.get_text(view="markup")` raises `SpanError`
+   (`range.no_markup_view`), as `original` does, its offsets being the accepted view's; the
+   paragraph has it.
+7. **The agreement reference is a second load**, not a `dry_run`, for 12.3's trial defect.
+8. **A wildcard paragraph or block in a branch is parsed typed for the reading**, so the plan
+   knows nothing in it. None of the 119 packages of `samples/` and `tests/fixtures/` has one:
+   their branches hold run content (`w:drawing` 39, `w:pict` 19, `w:t` 2) and typed runs (14).
+9. **Run boundaries follow `office_offset`**, as core-ts's (its departure 3).
+10. **The glossary is not read** under `include: glossary` (REQ-516, Phase C).
+
+### 12.9 The numbers
+
+- **The report**: 1,146 pass, 205 fail, 233 pending of 1,584; goldens 6 of 12 (the three plain
+  text goldens of the structure fixture join the external fixture's three). 205 moves, all `FAIL
+  -> PASS`, by cause: text boxes and `mc:Choice` content 76 (cases 1 to 8, 17, 25 and its
+  header's box, 48, 59, 67); field codes 36 (19, 20, 49, 61); hidden text 18 (18, 58); headers and
+  footers by section 18 (26, 63); notes 16 (17, 27, 63); the views 9 (9, 10, 13, 14, 15);
+  equations as their text and ruby 9 (32, 37); comments 8 (28, 63); the table of contents 6 (55);
+  placeholders 3 (22); `fields_update_on_open` in the metadata 3 (50); goldens 3.
+- **What fails** (205) is Phase C's and D's: embedded packages 69 (cases 39 to 42, 53, 57, 63,
+  66); `w:altChunk` and its warnings 45 (36, 43 to 47, 63); charts and SmartArt 27 (34, 35);
+  metadata 18 (38, 52); bound values 12 (23, 67); alt text 9 (33, 66); the glossary 9 (54);
+  legacy WordArt and the watermark 6 (25, 63); Markdown 4 (21); and 6 goldens: the three
+  Markdown ones (Phase D) and the probe's three plain ones, which differ only by Phase C's lines
+  (17 of the golden's missing, 3 written in their place: the bound value's surface, the table in
+  the simple form and the equation as its text), as
+  `test_the_probes_goldens_differ_only_by_phase_cs_lines` holds.
+- **The suites**: the fast suite 2,660 passed, 8 skipped, 10 xfailed and 628 deselected (88 s);
+  the whole suite 3,288 passed, 8 skipped and 10 xfailed (133 s). The 10 are CR-010's pins
+  (Phase D). The fork's suite 1,604 passed.
+- **Unchanged**: `scripts/bench_marshal.py`, `Symbols.docx` parse 192 and 193 ms against 192 and
+  200 at `d8e4b8b`, marshal 248 and 249 ms against 248 and 250, the 14 main parts 233 to 235 and
+  297 to 298 ms against 233 to 243 and 297 to 301; `import docx4j_py` 644 to 648 ms against 646
+  to 678, `docx4j_py.model.text` not among what it imports (`tests/test_performance.py` passes);
+  `scripts/roundtrip.py` 50 of 50 parts canonically identical.
+- **The cost** (CR-003 section 16.4's 200-page document, the median of five, the body
+  unmarshalled): `get_text()` 9 ms; `plain_text(extract(pkg))` 34 ms in `accepted`, 33 in
+  `original`, 29 in `markup`. With 3,900 tracked changes (`replace_text` tracked): `get_text()` 20
+  ms, the model 94 to 100 ms, the plan among it. So three to five times the filter, within risk
+  6's bound. The probe: 0.8 ms and 15 ms. The first profile spent two thirds of the time
+  resolving each paragraph mark's properties; they are cached by the two style ids.
+
+### 12.10 What Phase C and D need
+
+- Phase C: section 6's content, each value of `NOT_YET` turned on with its statement, the
+  adapter unchanged; the probe's goldens then exact.
+- Phase D: `markdown(result)` and the Markdown readers on the blocks; `outline()` on the model;
+  CR-010's ten pins; CR-006's tools.
+- The `dry_run` comment defect of 12.3.
+- A Word check of the probe and `waterfall.docx` saved after their main parts are unmarshalled
+  (12.2), the user's.
+- The fork's stage 10 needs a fork release before this package releases on it (risk 4).
