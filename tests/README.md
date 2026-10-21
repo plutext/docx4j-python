@@ -452,7 +452,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > - **`OLE/inserted doc.docx` fails:** its icon shows, but double-clicking does not open the
 >   embedded document. The save writes `w:object`'s `o:OLEObject` before the `v:shape` it names
 >   (CR-012 section 12.13), as `v0.1.0` does. Two order-only variants are staged in
->   `__tmp/python-cr012c-ole/` to confirm the cause; not yet checked.
+>   `__tmp/python-cr012c-ole/`, and confirmed it (the user: both "correct"): the save with the
+>   shape put first opens the object, and Word's source with `o:OLEObject` put first does not.
 > - **The eleven artefacts are canonically unchanged by Phase C.**
 
 Saved output must open in Word **without a repair prompt**. After any change to

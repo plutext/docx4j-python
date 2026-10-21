@@ -64,8 +64,8 @@ document reaches an island any more, and the islands stay for a text box below a
 unchanged; docx4j's agreement run 0 of 24 (12.13). **Its Word check (12.14): files 1, 2 and 4
 passed; file 3, an OLE object, failed** (the user: double-clicking "does not open the embedded
 document"): the save writes `w:object`'s `o:OLEObject` before the `v:shape` it names, an order
-older than this phase that `v0.1.0` writes too; two order-only variants are staged to confirm the
-cause.
+older than this phase that `v0.1.0` writes too, and two order-only variants confirmed it as the
+cause (the user: both "correct").
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -2835,7 +2835,7 @@ mend them (12.8).
   coordinator's check found each row once, not twice as first reported, and moved rows 19 to 25
   into the table.)
 
-### 12.14 The Word check (2026-10-22: files 1, 2 and 4 passed; file 3 failed)
+### 12.14 The Word check (2026-10-22: files 1, 2 and 4 passed; file 3 failed, on `w:object`'s order)
 
 Four files are in `out/cr012-c-word-check/`, with a `README.txt` saying, for each, the source, what
 was done and what Word should show. They are also copied to
@@ -2883,10 +2883,54 @@ double clicking does not open the embedded document (compare SOURCE, where it wo
   in `~/vbShares/Office 2016/__tmp/python-cr012c-ole/` with the source and a README:
   `cr012c-3a-save-with-shape-first.docx` (the save, `o:OLEObject` moved back after the `v:shape`)
   and `cr012c-3b-SOURCE-with-OLEObject-first.docx` (Word's source, `o:OLEObject` moved before it).
-  **Not yet checked.**
+  **Confirmed 2026-10-22** (the user: 3a, "Double-clicking should work. correct"; 3b,
+  "Double-clicking should fail. correct"): the order alone decides it. With `o:OLEObject` before the
+  `v:shape` its `ShapeID` names, Word shows the icon and quietly does not activate the object; with
+  the shape first, it does.
 - **The class of bug.** A repeating `xsd:sequence` of two or more particles is serialised
   interleaved, one particle's list then the next's, whatever the source's order. Over the schema
   copy there are two: `CT_PictureBase` (wml.xsd, the base of `CT_Picture`, `CT_Object` and
   `CT_Background`: `w:pict`, `w:object` and `w:background`), a repeating sequence of a VML wildcard
   and an `o:` wildcard, and inkml's `traceGroup.type`, which no corpus document holds. JAXB binds
   such a sequence as one content list, in document order (docx4j's `Pict.getAnyAndAny()`).
+
+### 12.15 The `w:object` order fix (proposed 2026-10-22; waiting on the user's go)
+
+12.14's file 3 fails because a save writes `w:object`'s children in an order Word does not
+activate, and that order comes from the binding, not from VML: `CT_PictureBase` (wml.xsd, the base
+of `CT_Picture`, `CT_Object` and `CT_Background`) is
+`<xsd:sequence maxOccurs="unbounded">` of a lax `xsd:any` for VML and one for `o:`, which the
+generator makes two lists (`schemas_microsoft_com_vml_element`,
+`schemas_microsoft_com_office_office_element`) and the serialiser writes interleaved, one item of
+each in turn. The fix is Phase C's, since its Word check needs it, and is also a fix to every
+release so far.
+
+1. **A marked schema patch** (`docx4j-python` comment, `schemas/PATCHES.md` entry): the repeating
+   sequence becomes one `xsd:any processContents="lax"
+   namespace="urn:schemas-microsoft-com:vml urn:schemas-microsoft-com:office:office"
+   minOccurs="0" maxOccurs="unbounded"`. **It accepts the same documents:** both particles are
+   optional, so `(v? o?)*` is `(v | o)*`. It is JAXB's own reading of the type, one content list
+   in document order (docx4j's `Pict.getAnyAndAny()`).
+2. **One generated list, in document order.** A scratch generation of both shapes with the fork
+   (outside this repository) gave the pair two lists, written `v:shapetype`, `o:OLEObject`,
+   `v:shape` from a source of `v:shapetype`, `v:shape`, `o:OLEObject`, and the single wildcard one
+   list, written as read. The generator names the field
+   `schemas_microsoft_com_vml_schemas_microsoft_com_office_office_element`; recommended: docx4j's
+   name, `any_and_any`, by a field `Substitution` in `.xsdata.phase-b.xml`, if the fork's
+   generator takes one for a field, and the generator's name otherwise.
+3. **Every reader of the two old fields** moves to the one list: the text model's `_object` and
+   `w:pict` walk, the revisions engine's trees, the content API's pictures, `insert_ooxml`, the
+   census scripts and the tests that name them. Phase C has not been released, so the rename is
+   one CHANGELOG entry with the rest of Phase C's.
+4. **inkml's `traceGroup.type`** has the same shape (a repeating sequence of five elements). It is
+   patched the same way only if every particle is optional (the same language), and is otherwise
+   recorded and left; no corpus document holds ink.
+5. **The gates:** Phase C's, rerun. The survey's 23 parts where the schema's order was imposed
+   should lose those whose only cause was `CT_PictureBase` (the `w:object`s of the OLE fixtures and
+   the extraction probes), with nothing newly skipped and no part gaining a difference. A test pins
+   `w:object`'s order through a load and save. The suites, the round trip, acceptance and the
+   readers' audit are as Phase C's. **The Word check:** file 3 saved again by the fixed engine,
+   whose embedded document must open on a double-click, beside its source.
+6. **A fix release** for the 0.1.0 line is the user's decision. The patch needs no fork change, so it
+   could be made at the `v0.1.0` tag over `docx4j-xsdata 26.2.1`; `main` itself cannot release
+   before the fork's stages 9 to 12 do.
