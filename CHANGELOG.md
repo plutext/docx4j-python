@@ -343,6 +343,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
     listed as a twin but kept its cell and its marker (section
     [10.10](docs/change-requests/CR-012-type-kept-mc-branches.md#1010-the-cell-twin-port-2026-10-22),
     the port of docx4j `60bd4b9ad`);
+  - a table's property record, a `w:tcPrChange` or a `w:trPrChange`, in a branch Word does not
+    read is listed and resolved with the table's one change, and a grid restored by a reject is
+    collapsed along each branch's reading of a row. Such a record was not listed when only that
+    branch held one, and was kept after accepting or rejecting (section
+    [10.11](docs/change-requests/CR-012-type-kept-mc-branches.md#1011-the-table-records-port-2026-10-22),
+    the port of docx4j `901a922a3`);
   - `outline()` gives a cell's blocks under the table at their full paths through any wrapper, so
     a row-level content control's rows no longer come out as `tc` entries.
 

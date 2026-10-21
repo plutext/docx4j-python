@@ -1426,4 +1426,185 @@ with no repair prompt and show what the README says, file 2's empty Choice and F
     - `removeCell` still reads Word's branch for the neighbour;
     - docx4j also dropped the dead clause (departure 1 above).
 
-    The port waits for the commit and the user's go.
+    **Closed on 2026-10-22 by the port of `901a922a3`** (`4cd1798`, section 10.11), at the user's
+    go ("port the fix"): the records are listed and resolved in every branch, and `collapse_grid`
+    counts the grid along every branch reading of a row.
+
+### 10.11 The table records port (2026-10-22)
+
+This is the port of docx4j `901a922a3` (on `VERSION_17_3_4`, read by commit), at the user's go
+("port the fix"). It closes 10.10's "Found, and not done" item. docx4j made the fix after this
+package found the gap while porting `60bd4b9ad`.
+
+**Commits.**
+
+- `4cd1798`: `tables.all_rows_of`, `all_cells_of` and `cell_layouts_of`, the record paths and
+  `collapse_grid` over them, with the tests;
+- the commit after it: this section, 10.10's item, the CHANGELOG and `tests/README.md`.
+
+**What landed** (`docx4j_py/model/revisions/tables.py`, beside `rows_of`, `cells_of`, `cells_in`
+and `branch_of`):
+
+- `all_rows_of(tbl)` is docx4j's `Lister.allRowsOf`, and `all_cells_of(tr)` its `allCellsOf`.
+  - They read as `rows_of` and `cells_of` read, through row- and cell-level controls and custom
+    XML, but through every branch of an `mc:AlternateContent` (docx4j's `McMode.ALL`: its
+    Choices, then its Fallback), where `rows_of` and `cells_of` read Word's.
+  - Each gives `(row or cell, live list)` pairs. The order across branches means nothing.
+- The record paths read them where they read `rows_of` and `cells_of`: `in_change`,
+  `has_records`, `_row_differs`, `record_of`, `change_text`, `accept` and `reject`. These are
+  docx4j's paths over `Tables.rows` and `cells`, which `901a922a3` points at `allRowsOf` and
+  `allCellsOf`.
+- `cell_layouts_of(tr)` is docx4j's `Lister.cellLayoutsOf`: one cell list per reading of the row.
+  - Word's branch is first (`cells_of`).
+  - Then, for each cell-level element among the cells and each of its branches other than Word's,
+    the row read with that branch in the element's place. Every other element is still read by
+    Word's branch.
+  - The elements are found through every branch, controls and custom XML (`_cell_elements`,
+    docx4j's `cellElements`); a row is read with one branch swapped by `_cells_reading` (docx4j's
+    `cellsReading`). `_layouts(tr)` is docx4j's `Tables.layouts`.
+- `collapse_grid` reads every branch's rows (`all_rows_of`) and gathers the grid edges along every
+  layout of each row.
+  - It sets the new spans along each layout, the last first, so Word's branch is done last.
+  - The row's `w:gridBefore` is the row's own, read once before the layouts.
+  - Its `w:gridAfter` is counted from where Word's branch's layout ends.
+- `remove_cell` still reads Word's branch (`cells_of`) for its neighbour, then the twin's own
+  branch (`cells_in`), as since 10.10. Its comment now says docx4j dropped the dead clause too.
+- The helpers are `_every_branch(ac)` (docx4j `McSelection.branches(ac, McMode.ALL)`) and
+  `_content_of(branch)` (docx4j `McSplice.contentOf`, a branch's live list). `has_rows` and
+  `cells_in` use them now too, with no change in what they read.
+- docx4j's dead guard clause is gone in `901a922a3`. 10.10's departure 1 dropped it here already,
+  so docx4j now agrees and there was nothing to port.
+
+**Where `collapse_grid` is reached.** `reject` calls it when the table's grid has a
+`w:tblGridChange` (check 27, C23).
+
+- A grid record alone has no author, so it is swept, not listed (`record_of`).
+- So the tests give the table a `w:tblPrChange` as well, and reject its one change.
+- So the public API reaches `collapse_grid` with a kept element, and it is tested there, not as a
+  private function.
+
+**Tests** (`tests/revisions/test_alternate_content.py`, 28 to 37). docx4j's documents are built as
+its test builds them, from its `TBL_PROPS`, `cell`, `plainCell` and `plainRow`, and the new
+`changedCell`: a red-shaded cell whose `w:tcPrChange` records it unshaded.
+
+- docx4j's two, with its assertions:
+  - `test_resolving_a_table_property_record_reaches_every_branchs_cell`: a `w:tcPrChange` in each
+    branch's cell of a cell-level element.
+    - One change is listed.
+    - After `accept_all`: no `tcPrChange`, and two `w:fill="FF0000"`.
+    - After `reject_all`: no `tcPrChange`, no fill, and two `<w:tcW w:w="1000"`.
+  - `test_accepting_a_table_property_record_reaches_a_row_in_another_branch`: a `w:trPrChange`
+    only on the Fallback's row of a row-level element, the row now `w:cantSplit` and recorded with
+    no properties. One change is listed. After `accept_all`: no `trPrChange`, `<w:cantSplit/>`
+    kept, and nothing listed.
+- Beyond docx4j's:
+  - The listed change's own `accept()` and `reject()` on the first shape, with docx4j's
+    assertions. The change has no twin, and its text is the row's as Word reads it, `C\r\n`.
+  - The Fallback row's `w:trPrChange` rejected, by its change and by `reject_all`. The row's
+    `w:trPr` goes whole, since the record held none. The Choice's row is as it was. The change's
+    text is `F\r\n`.
+  - `has_records`, `in_change` and `record_of` for a record that only an unread branch holds:
+    - a `w:tcPrChange` only in the Fallback's cell: the row is in the change, the table has
+      records, and the record is the Fallback's; accepted, it goes;
+    - a `w:trPrChange` only on the Fallback's row: the table has records; `all_rows_of` gives the
+      Fallback's row in the change, `rows_of` only the Choice's.
+  - `collapse_grid` along every layout: three tests, below.
+  - The change's text over a row-level element, pinned (below).
+  - `word` mode: the element is replaced on load by Word's branch, so there is one cell, one
+    record and no twin. Accepted, one fill is left; rejected, none.
+
+The three `collapse_grid` tests. Each recorded grid is of 1000-twip columns, and each table's
+change is rejected:
+
+- **Cell level.** A recorded grid of six. The row skips two columns (`w:gridBefore 2`); the
+  Choice's cells span 1 and 3, the Fallback's 2 and 2.
+  - Rejected: four columns (2000, 1000, 1000, 2000), `w:gridBefore 1`, the Choice's spans 1 and
+    2, the Fallback's 2 and 1.
+  - With Word's branch alone: three columns, and the Fallback left spanning five of them.
+- **`w:gridAfter` from Word's branch**, in a shape no producer writes. The branches end at
+  different columns, so that the rule decides.
+  - A recorded grid of four. The Choice's cell spans 3, the Fallback's 2, and the row has
+    `w:gridAfter 1` and `w:wAfter`.
+  - Rejected: two columns (2000 and 1000), the fourth dropped. Word's branch ends on the last edge
+    kept, so `w:gridAfter` and `w:wAfter` go, and the row's `w:trPr` with them.
+  - Counted from the Fallback's end, `w:gridAfter` would stay 1. With the layouts walked first to
+    last, the test fails.
+- **Row level.** A recorded grid of four. The Choice's row spans 1 and 3, the Fallback's 2 and 2.
+  Rejected: three columns (1000, 1000, 2000); the Choice's row spans 1 and 2, the Fallback's 2
+  and 1.
+
+Without the change, nine of the ten fail. The tenth, `word` mode, passes, as it should: that mode
+has one branch. With `all_rows_of` and `all_cells_of` in place and only `collapse_grid`'s layouts
+reverted to `cells_of`, the two cell-level grid tests fail and the row-level one passes.
+
+**The numbers.**
+
+- the fast suite (`-m "not slow"`): 3,593 passed, 8 skipped (3,583 and 8 before);
+- `tests/revisions` and `tests/openpackaging/test_mce_levels.py`: 866 passed (856 before);
+- CR-011's ratchet (`tests/text/conformance.py`): 1,291 pass, 0 fail, 293 pending of 1,584,
+  goldens 12 of 12, `conformance.tsv` unchanged; `tests/text/test_conformance.py` 24 passed;
+- the acceptance artefacts: `out/acceptance/` was regenerated and compared with a copy made before
+  the change (`out/acceptance-before-cr012-records/`). `scripts/compare_acceptance.py` found 13
+  artefacts and 175 entries, 0 differing beyond the wall-clock dates;
+- `generate.sh --check` was not run: no input of the generated code changed.
+
+**Departures, with why.** All are in form only. The behaviour is docx4j's.
+
+1. **No `Tables.rows` and `cells` wrappers.** docx4j's record paths read `Tables.rows` and
+   `cells`, private wrappers over `Lister`'s lists, and `901a922a3` repoints those two.
+   - This module has no such wrappers: its record paths read `rows_of` and `cells_of` directly,
+     and now `all_rows_of` and `all_cells_of`.
+   - The names `_rows` and `_cells` here are `Lister`'s private walkers already.
+   - `Tables.layouts` is `_layouts`.
+2. **Pairs, with no row passed.** `all_cells_of`, `cell_layouts_of` and their walkers take no row.
+   This is as `cells_in` takes none (10.10 departure 2): the `(cell, list)` pairs need none.
+3. **Word's branch is compared by identity.** docx4j skips the branch `McSelection.branches(ac,
+   McMode.READ)` gives with `List.contains`.
+   - Here the one branch `mce_branch` gives is skipped by `is`, as the lister's `_alternate_level`
+     skips it.
+   - A dataclass's `==` compares fields. So two Choices with the same content would compare equal,
+     and `in` would skip both.
+4. **Every branch through `child.py`'s helpers.** `McMode.ALL` is `mce_choices`, then
+   `mce_fallback`, as `has_rows` read them.
+   - The lister's `_branch_objects` gives the same branches.
+   - It is not imported, since the lister imports this module.
+
+**Found, and not done: the text of a table's change.**
+
+- docx4j's `changeText` reads the table's rows through `Tables.rows`, which `901a922a3` points at
+  every branch. The commit's message names the record paths (`recordOf`, `inChange`,
+  `hasRecords`, accept, reject, `collapseGrid`), not the text.
+- For a changed row only a Fallback holds, that is wanted. Its change's text is that row's
+  (`F\r\n`, tested), where reading Word's branch would give none.
+- For a table whose own properties or grid changed, the change's text is every row's.
+  - So it is now every branch's row: the Choice's and the Fallback's.
+  - In the pinned test that is `A\tB\r\nX\tY\r\n`, where Word reads `A\tB\r\n`.
+- The port keeps docx4j's reading, and pins it:
+  `test_known_gap_pinned_a_whole_tables_change_text_reads_every_branchs_rows`.
+- A fix would read Word's branch for a whole table, and every branch only for the changed rows.
+  That is docx4j's to decide first: worth telling docx4j-25. No producer writes the shape.
+
+**The Word check (not yet checked).** Three files are in `out/cr012-a2-records-word-check/`, with
+a `README.txt` saying, for each, the source, what was done and what Word should show. They are also
+copied to `~/vbShares/Office 2016/__tmp/python-cr012a2-records/`.
+
+- The sources are docx4j's two tests' shapes, built with `create_package()` and `set_contents()`,
+  with a heading paragraph before the table and one after it. The tests' `w:tblPr` is empty; here
+  it has single borders on every edge, so that the table shows. The grid is one 1000-twip column.
+- The listed change was resolved with `accept()` or `reject()`, and the package saved from the
+  typed objects.
+- Each `w:document` declares `xmlns:w14`, which the Choice's `Requires` names.
+- Each was read back with `LoadOptions(strict=True)`: nothing skipped, no tracked change, no
+  `w:tcPrChange` or `w:trPrChange` left. The text model reads the w14 Choice.
+
+The three files:
+
+- `cr012a2-records-1-cell-record-accepted.docx`: the cell-level shape, accepted. Both branches'
+  cells keep the red shading, and neither has a record.
+- `cr012a2-records-2-cell-record-rejected.docx`: the same shape, rejected. Both branches' cells
+  are back to `w:tcW 1000`, unshaded.
+- `cr012a2-records-3-fallback-row-record-accepted.docx`: the row-level shape, accepted. The
+  Fallback's row keeps `w:cantSplit`, and has no record.
+
+Expected: each opens with no repair prompt and no tracked change, and shows the Choice's cell, `C`:
+red in file 1, plain in files 2 and 3. `F` is not shown. **Not yet checked.**
