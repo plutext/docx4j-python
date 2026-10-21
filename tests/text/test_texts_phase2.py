@@ -455,3 +455,82 @@ def test_omml_to_latex(omml, latex):
 
     equation = next(item for item in p.content if rtrees.is_math(item))
     assert OmmlToLatex().convert(equation) == latex
+
+
+# ---------------------------------------------------------------------------
+# bound values (REQ-509)
+# ---------------------------------------------------------------------------
+
+STORE = "{11111111-2222-3333-4444-555555555555}"
+
+
+def bound(body: str):
+    return (
+        MiniDocx.body(body)
+        .relationship(
+            "rIdXml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml", "../customXml/item1.xml"
+        )
+        .entry("customXml/item1.xml", None, '<d xmlns="urn:t"><a>Bound A</a><empty/></d>')
+        .entry(
+            "customXml/_rels/item1.xml.rels",
+            None,
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps" '
+            'Target="itemProps1.xml"/></Relationships>',
+        )
+        .entry(
+            "customXml/itemProps1.xml",
+            "application/vnd.openxmlformats-officedocument.customXmlProperties+xml",
+            f'<ds:datastoreItem xmlns:ds="http://schemas.openxmlformats.org/officeDocument/2006/customXml" ds:itemID="{STORE}"/>',
+        )
+        .package_part(
+            "docProps/core.xml",
+            "application/vnd.openxmlformats-package.core-properties+xml",
+            "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
+            "rIdCore",
+            '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+            'xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Core title</dc:title></cp:coreProperties>',
+        )
+        .load()
+    )
+
+
+def control(kind: str, binding: str, placeholder: bool, surface: str) -> str:
+    return (
+        f"<w:p><w:sdt><w:sdtPr>{'<w:showingPlcHdr/>' if placeholder else ''}{binding}{kind}</w:sdtPr><w:sdtContent>"
+        f'<w:r><w:t xml:space="preserve">{surface}</w:t></w:r></w:sdtContent></w:sdt></w:p>'
+    )
+
+
+def binding(xpath: str, store: str, mappings: str = "xmlns:t='urn:t'") -> str:
+    return f'<w:dataBinding w:prefixMappings="{mappings}" w:xpath="{xpath}" w:storeItemID="{store}"/>'
+
+
+def test_bound_values(probe):
+    """REQ-509: the bound value where the binding resolves; else the surface; the placeholder where the value is empty."""
+    r = extract(probe)
+    assert "The control: BND23_XML_VALUE\n" in plain_text(r)
+    block = next(b for b in r.blocks if "BND23_XML_VALUE" in b.text)
+    assert TextWarning(TextWarning.SDT_BINDING_DIFFERS, block.address) in r.warnings
+    surface = extract(probe, bindings="surface")
+    assert "The control: BND23_SURFACE_STALE\n" in plain_text(surface)
+    assert any(w.kind == TextWarning.SDT_BINDING_DIFFERS for w in surface.warnings)
+
+    core = "xmlns:ns0='http://schemas.openxmlformats.org/package/2006/metadata/core-properties' xmlns:ns1='http://purl.org/dc/elements/1.1/'"
+    pkg = bound(
+        control("<w:text/>", binding("/t:d/t:a", STORE), False, "Bound A")  # agrees: no warning
+        + control("<w:text/>", binding("/t:d/t:empty", STORE), True, "Click here")  # empty, a placeholder shown
+        + control("<w:text/>", binding("/t:d/t:missing", STORE), False, "Surface C")  # doesn't resolve
+        + control("", binding("/t:d/t:a", STORE), False, "Rich D")  # rich text: the surface
+        + control(
+            "<w:text/>",
+            binding("/ns0:coreProperties[1]/ns1:title[1]", "{6C3C8BC8-F283-45AE-878A-BAB7291924A1}", core),
+            False,
+            "Old title",
+        )  # the core properties
+    )
+    before = pkg.save()
+    b = extract(pkg)
+    assert plain_text(b) == "Bound A\nClick here\nSurface C\nRich D\nCore title\n"
+    assert b.warnings == [TextWarning(TextWarning.SDT_BINDING_DIFFERS, "body/4")]
+    assert pkg.save() == before  # REQ-204

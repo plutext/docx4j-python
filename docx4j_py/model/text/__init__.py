@@ -38,7 +38,9 @@ text from it::
   by default; ``[image: ...]`` under ``alt_text: true``, REQ-514), and each
   object an ``OBJECT`` run with its ProgID (REQ-512); equations as LaTeX
   (REQ-604, docx4j's ``OmmlToLatex``, :mod:`docx4j_py.model.math`); REQ-605's
-  table forms; ``[page n]`` under ``page_markers``; ``layout: indent``.
+  table forms; ``[page n]`` under ``page_markers``; ``layout: indent``; a
+  bound plain-text control's bound value, through the custom XML parts or the
+  document properties (REQ-509, ``sdt.binding_differs``).
 
 **The package is never changed** (REQ-204): every part is read with
 ``read_contents``, so a save afterwards is byte for byte where it was.
@@ -51,8 +53,8 @@ where its text lies in its paragraph's ``get_text()`` (``office_offset``), so
 the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
-fields computed under ``fields: update``, bound values, charts, SmartArt,
-embedded packages, ``w:altChunk``, the glossary.
+fields computed under ``fields: update``, charts, SmartArt, embedded
+packages, ``w:altChunk``, the glossary.
 
 Imported on first use: ``import docx4j_py`` does not import it.
 """

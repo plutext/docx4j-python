@@ -99,7 +99,6 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
 #: would fail checks of the suite that the default's text meets.
 NOT_YET: dict[tuple[str, Any], str] = {
     ("fields", "update"): "REQ-506",
-    ("bindings", "bound"): "REQ-509",
     ("charts", True): "REQ-511",
     ("smartart", True): "REQ-511",
     ("embedded", True): "REQ-512",
@@ -172,9 +171,8 @@ class TextOptions:
 
     **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update`` and
     ``embedded: true`` are accepted and read as their defaults; under the
-    default ``charts``, ``smartart``, ``altchunks`` and ``bindings`` a chart or
-    SmartArt contributes nothing, an ``altChunk`` is not expanded and a bound
-    control is read by its surface.
+    default ``charts``, ``smartart`` and ``altchunks`` a chart or SmartArt
+    contributes nothing and an ``altChunk`` is not expanded.
     """
 
     __slots__ = (

@@ -35,8 +35,11 @@ page numbered from 2 (REQ-708); and the document properties in the metadata
 
 Equations are LaTeX (REQ-604), by docx4j's ``OmmlToLatex``, in the view.
 
-Not yet (CR-011 Phase C): fields computed under ``fields: update``, bound
-values, charts and SmartArt, embedded packages, ``w:altChunk``.
+A plain-text control bound to a custom XML part or the document properties
+is its bound value (REQ-509, docx4j's ``BoundValues``).
+
+Not yet (CR-011 Phase C): fields computed under ``fields: update``, charts
+and SmartArt, embedded packages, ``w:altChunk``.
 """
 
 from __future__ import annotations
@@ -459,6 +462,7 @@ class Extractor:
         self.nested = False
         #: The ``w:lastRenderedPageBreak``\ s of the main story so far (REQ-708).
         self.page_markers = 0
+        self._bound_values: Any = None
 
     # -- the package ----------------------------------------------------------
 
@@ -563,6 +567,16 @@ class Extractor:
                 # an inserted control rejected: its content in its place
                 self.blocks(rtrees.children(item), address, story, sink, state)
             elif _local(item) == "sdt":
+                bound = self._bound(item, address)
+                if bound is not None:
+                    # a plain-text control bound at block level: its bound value as one paragraph (REQ-509)
+                    block = paragraph_block(story.kind, address, bound)
+                    block.section = len(story.sections) if story.sections is not None else 0
+                    block.source = item
+                    sink.append(block)
+                    self._flush_outside_table(story, sink)
+                    i += 1
+                    continue
                 placeholder = self._showing_placeholder(item)
                 if not (placeholder and not self.options.placeholders):
                     inner = state.with_placeholder() if placeholder else state
@@ -836,6 +850,10 @@ class Extractor:
             elif rtrees.is_holder(item) and self.unwraps(item):
                 self.runs(rtrees.children(item), para, state)
             elif _local(item) == "sdt":
+                bound = self._bound(item, para.block.address)
+                if bound is not None:
+                    self._text(para, bound, False, state)
+                    continue
                 placeholder = self._showing_placeholder(item)
                 if placeholder and not self.options.placeholders:
                     continue
@@ -1670,6 +1688,68 @@ class Extractor:
                 found = False
             self._style_rpr[key] = found
         return found
+
+    # -- bound values (REQ-509) -----------------------------------------------------------
+
+    def _bound(self, sdt: Any, address: str) -> str | None:
+        """A plain-text control's bound value, where its binding resolves and is what Word shows.
+
+        docx4j ``Extractor.bound``: not where the value is empty and the control
+        shows its placeholder, nor under ``bindings: surface``. None to read
+        the surface. Raises ``sdt.binding_differs`` where the two differ.
+        """
+        from docx4j_py.wml.sdt import sdt_property
+
+        pr = getattr(sdt, "sdt_pr", None)
+        if self.trees.document is None or pr is None:
+            return None
+        try:
+            if sdt_property(pr, "text", W_NS) is None:
+                return None
+            binding = sdt_property(pr, "dataBinding", W_NS)
+        except Exception:  # noqa: BLE001 - properties that will not read bind nothing
+            return None
+        if binding is None:
+            return None
+        if self._bound_values is None:
+            from docx4j_py.model.text.bound_values import BoundValues
+
+            self._bound_values = BoundValues(self.trees.package)
+        value = self._bound_values.value(binding)
+        if value is None:
+            return None
+        placeholder = self._showing_placeholder(sdt)
+        if not value and placeholder:
+            return None
+        surface = None if placeholder else self._surface_text(sdt)
+        if value != surface:
+            self.warn(TextWarning(TextWarning.SDT_BINDING_DIFFERS, address))
+        return None if self.options.bindings == "surface" else value
+
+    def _surface_text(self, sdt: Any) -> str:
+        """A control's surface in the view: its ``w:t``, tabs and breaks, what the view removes left out."""
+        out: list[str] = []
+        content = getattr(sdt, "sdt_content", None)
+
+        def visit(node: Any) -> None:
+            for _qname, child in iter_children(node, mce="resolve", wildcards=True):
+                if isinstance(child, str) or self.removes(child):
+                    continue
+                name = _local(child)
+                if name == "t":
+                    value = child.text if is_any_element(child) else getattr(child, "value", None)
+                    if value:
+                        out.append(value)
+                elif name == "tab":
+                    out.append("\t")
+                elif name in ("br", "cr"):
+                    out.append("\n")
+                if name != "instrText":
+                    visit(child)
+
+        if content is not None:
+            visit(content)
+        return "".join(out)
 
     def _showing_placeholder(self, sdt: Any) -> bool:
         from docx4j_py.wml.sdt import sdt_property

@@ -239,17 +239,17 @@ extraction-probe.docx	22	PLC22_PLACEHOLDER	original	default	PASS
 extraction-probe.docx	22	PLC22_PLACEHOLDER	original	placeholders: false	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	markup	default	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	markup	placeholders: false	PASS	
-extraction-probe.docx	23	BND23_XML_VALUE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	23	BND23_XML_VALUE	accepted	default	PASS	
 extraction-probe.docx	23	BND23_XML_VALUE	accepted	bindings: surface	PASS	
-extraction-probe.docx	23	BND23_XML_VALUE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	23	BND23_XML_VALUE	original	default	PASS	
 extraction-probe.docx	23	BND23_XML_VALUE	original	bindings: surface	PASS	
-extraction-probe.docx	23	BND23_XML_VALUE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	23	BND23_XML_VALUE	markup	default	PASS	
 extraction-probe.docx	23	BND23_XML_VALUE	markup	bindings: surface	PASS	
-extraction-probe.docx	23	BND23_SURFACE_STALE	accepted	default	FAIL	expected 0, got 1
+extraction-probe.docx	23	BND23_SURFACE_STALE	accepted	default	PASS	
 extraction-probe.docx	23	BND23_SURFACE_STALE	accepted	bindings: surface	PASS	
-extraction-probe.docx	23	BND23_SURFACE_STALE	original	default	FAIL	expected 0, got 1
+extraction-probe.docx	23	BND23_SURFACE_STALE	original	default	PASS	
 extraction-probe.docx	23	BND23_SURFACE_STALE	original	bindings: surface	PASS	
-extraction-probe.docx	23	BND23_SURFACE_STALE	markup	default	FAIL	expected 0, got 1
+extraction-probe.docx	23	BND23_SURFACE_STALE	markup	default	PASS	
 extraction-probe.docx	23	BND23_SURFACE_STALE	markup	bindings: surface	PASS	
 extraction-probe.docx	24	SDT24_CONTENT	accepted	default	PASS	
 extraction-probe.docx	24	SDT24_CONTENT	original	default	PASS	
@@ -1179,17 +1179,17 @@ extraction-probe-inspect.docx	67	MCE67_FALLBACK_WHITE	markup	default	PASS
 extraction-probe-inspect.docx	67	SDT67_HERE	accepted	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_HERE	original	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_HERE	markup	default	PASS	
-extraction-probe-inspect.docx	67	SDT67_VALUE	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	67	SDT67_VALUE	accepted	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_VALUE	accepted	bindings: surface	PASS	
-extraction-probe-inspect.docx	67	SDT67_VALUE	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	67	SDT67_VALUE	original	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_VALUE	original	bindings: surface	PASS	
-extraction-probe-inspect.docx	67	SDT67_VALUE	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	67	SDT67_VALUE	markup	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_VALUE	markup	bindings: surface	PASS	
-extraction-probe-inspect.docx	67	SDT67_SURFACE	accepted	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	67	SDT67_SURFACE	accepted	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_SURFACE	accepted	bindings: surface	PASS	
-extraction-probe-inspect.docx	67	SDT67_SURFACE	original	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	67	SDT67_SURFACE	original	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_SURFACE	original	bindings: surface	PASS	
-extraction-probe-inspect.docx	67	SDT67_SURFACE	markup	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	67	SDT67_SURFACE	markup	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_SURFACE	markup	bindings: surface	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	accepted	embedded: true	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	original	embedded: true	PASS	
@@ -1571,9 +1571,9 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
-extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 13 lines of the golden missing, 1 extra
-extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 13 lines of the golden missing, 1 extra
-extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 13 lines of the golden missing, 1 extra
+extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 12 lines of the golden missing, 0 extra
+extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 12 lines of the golden missing, 0 extra
+extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 12 lines of the golden missing, 0 extra
 extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	

@@ -227,7 +227,6 @@ def test_the_views(probe):
 #: The goldens' lines Phase B does not write: Phase C's content (CR-011 section 6).
 PHASE_C_MISSING = collections.Counter(
     [
-        "The control: BND23_XML_VALUE",  # bound values (REQ-509)
         "[chart: clustered column; value axis: CHT34_AXIS_TITLE]",  # charts (REQ-511)
         "CHT34_TITLE",
         "\tCHT34_SERIES_ONE\tCHT34_SERIES_TWO",
@@ -243,7 +242,7 @@ PHASE_C_MISSING = collections.Counter(
     ]
 )
 #: What Phase B writes in their place.
-PHASE_B_EXTRA = collections.Counter(["The control: BND23_SURFACE_STALE"])
+PHASE_B_EXTRA: collections.Counter[str] = collections.Counter()
 
 
 @pytest.mark.parametrize("view", ["accepted", "original", "markup"])
