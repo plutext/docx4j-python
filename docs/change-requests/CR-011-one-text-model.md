@@ -1430,7 +1430,9 @@ This package wrote `markdown(extract(pkg, options), pkg)` for the same.
 8. **A kept block-level `mc:AlternateContent` reads neither branch.** It is not in this engine's
    typed tree (CR-012, docx4j CR-051's gap, proposed): the part's skipped-content report names it.
    `MarkdownAlternateContentTest`'s kept load is pinned so; its `mce_preprocess` load reads the
-   Choice, as docx4j's does.
+   Choice, as docx4j's does. **Closed by CR-012 Phase A (2026-10-21, its section 9):** the schema
+   copy admits the element at block level, the extractor's existing `mc` case reads Word's branch,
+   and the pin now reads the Choice with nothing skipped, in both load modes.
 
 ### 14.8 Pre-existing tests whose expectation changed, and why
 
@@ -1554,6 +1556,7 @@ of that difference. No CR-010 `xfail` is left.
 - **Charts, SmartArt, embedded and chunk blocks have no outline entries**, only text boxes (Q9 asked
   for those).
 - **A block-level `mc:AlternateContent` kept on load** is not read (CR-012), as 14.7 item 8 says.
+  Closed by CR-012 Phase A (its section 9).
 - Section 13.8's other items stand: Q7's content, the HTML reader (Q12, Q13), the `dry_run` comment
   defect of 12.3, and a fork release before this package releases on stage 10.
 - Lint: the new modules pass `ruff check`; the files they touch keep their earlier findings

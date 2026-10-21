@@ -109,6 +109,28 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   (`OmmlToLatex`, docx4j's OMML to LaTeX for its subset) and `docx4j_py.model.fields`
   (`FldSimpleModel`, `apply_formatting_switch`, the `DOCPROPERTY` and `DOCVARIABLE` resolvers;
   docx4j's 138 switch cases), each imported on first use.
+- **`mc:AlternateContent` at block, row and cell level, and the load mode that says what to do with it**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) Phase A, section
+  [9](docs/change-requests/CR-012-type-kept-mc-branches.md#9-phase-a-implementation-notes-2026-10-21),
+  the port of docx4j's CR-051 phase 1): the schema copy, refreshed to docx4j `2853b7280`, admits the
+  element in every block container (the body, a header or footer, a cell, a note, a comment, a
+  text box, a block-level content control or custom XML element), among a table's rows and among a
+  row's cells, as Word 365 reads it there. `LoadOptions(mc_block_level=...)`, and
+  `pkg.mc_block_level` over it for one package, read when each part is first parsed:
+  `"preserve"` (the default) keeps each such element whole with every branch, as at run and
+  paragraph level, so a part saved unchanged is canonically identical to its source; `"word"`
+  replaces each on load by the branch Word reads (the first Choice whose `Requires` namespaces are
+  all in docx4j's published understood list, else the Fallback; one with no understood Choice and
+  no Fallback kept whole, WD REQ-305; one with no branch removed), adds the selected Choice's
+  prefixes to the root's `mc:Ignorable`, and records each element taken out with its address in
+  `part.resolved_alternate_content` (`ResolvedAlternateContent`), so a save writes what Word's
+  save writes, text boxes apart. A part without the element pays one substring test. Readers of
+  text and structure read Word's branch at block level in `preserve` mode: the text model and
+  Markdown (with `mce.branches_differ`, raised in `word` mode from the record), `outline()`,
+  `Body.paragraphs`, `element_at` and `traversal`; a view over content in a kept branch is
+  read-only, and every mutating verb refuses it with `address.read_only`. The python-docx facade,
+  `describe()` and, at row and cell level, the content API pass the element by. Held to docx4j's
+  19 `mc-fun` probes and Word 365's saves of 14 of them, copied into `tests/fixtures/mc-fun/`.
 
 ### Changed
 
@@ -276,6 +298,26 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   `LevelOwnerTest` are numbered as Word numbers them, where 27 of 61 paragraphs differed. A
   paragraph naming no style is in the default paragraph style, and one with no `w:pPr` is resolved
   as one with an empty one (docx4j `c283dffdb`).
+- **`mce_preprocess` selects over docx4j's published understood list**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) Q8, section
+  [9](docs/change-requests/CR-012-type-kept-mc-branches.md#9-phase-a-implementation-notes-2026-10-21)),
+  as a reader of text and the `word` mode do, where it selected over the namespaces the generated
+  model types (`UNDERSTOOD`, which stays the prefix table's own list). It now takes the branch Word
+  365 takes: `w16sdtfl` where it took `w16cid` on Choices written newest first, and a chart's
+  chartex Choice (`cx1`) where it took the Fallback picture (`waterfall.docx`). No other document of
+  `samples/`, `tests/fixtures/` or docx4j-core-ts's fixtures selects differently.
+- **Tracked changes inside a block- or paragraph-level `mc:AlternateContent` are listed, accepted
+  and rejected** ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 4.1 item 6,
+  docx4j's `TrackedChangesAlternateContentTest`): the changes of the branch Word reads are listed
+  once, where the element stands, each with the other branches' change of its kind at its position
+  as a twin that resolves with it; `accept_all` and `reject_all` resolve every branch. Until now
+  such an element was read as holding nothing. The revisions engine's trees answer the element
+  with Word's branch; a row- or cell-level one is passed by.
+- **A view over content in a kept `mc:AlternateContent` branch is read-only**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 4.1 item 5): an edit there,
+  at any level, would change one branch alone, so the content API raises `AddressError`
+  (`address.read_only`), as for a text box's address (CR-011 Q9). Load with
+  `LoadOptions(mc_block_level="word")` to edit Word's branch of a block-level element in place.
 
 ### Fixed
 
@@ -367,6 +409,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   and writing the object back left it out. It now reads `False` and is written back qualified.
   - The schema file is docx4j CR-040 phase 2's (`14fcb2f4e`), copied verbatim.
   - Loading and saving a package was never affected.
+- **A block-, row- or cell-level `mc:AlternateContent` is no longer lost**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 1.1 item 1): the parser
+  skipped it (`part.skipped`, and `strict=True` raised), and a part read and saved lost it whole,
+  every branch. It is kept whole by default, or resolved as Word reads it in `word` mode.
+- **A content control straight in an `mc:Choice` or `mc:Fallback` keeps its content**
+  ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 1.1 item 2): every
+  `w:sdt` there was typed as a block-level control, so a run-level one's runs were skipped and lost
+  on save, and `wml(...)` refused it. It is now bound as its container binds it (`SdtBlock`,
+  `SdtRun`, `CTSdtRow`, `CTSdtCell`) and written back as `w:sdt`, through the fork's stage 11
+  (`docx4j-xsdata` after `26.2.1`; this package is never released against an unreleased fork).
 
 ## [0.1.0] --- 2026-09-20
 

@@ -67,6 +67,7 @@ from docx4j_py.openpackaging.parts.wml import (
 )
 from docx4j_py.traversal import find, text_of
 from docx4j_py.wml import (
+    CTCustomXmlBlock,
     CTSdtCell,
     CTSdtRow,
     CTTxbxContent,
@@ -1191,3 +1192,26 @@ def test_the_text_models_warnings_are_the_same_in_both_modes_in_every_block_cont
     assert _branch_warnings(made().load("word")) == preserve
     assert len(preserve) == 1, preserve
     assert preserve[0][1] == 'mc:Choice Requires="w14"'
+
+
+def test_a_custom_xml_element_straight_in_a_branch():
+    """docx4j McBlockLevelLoadTest's custom XML in a branch: typed once word mode promotes it; whole in preserve."""
+    element = (
+        '<mc:AlternateContent><mc:Choice Requires="w14"><w:customXml w:element="x">'
+        f"{p('CX_W14')}</w:customXml></mc:Choice><mc:Fallback>{p('CX_FB')}</mc:Fallback></mc:AlternateContent>"
+    )
+    made = Probe(p("before") + element)
+    word = made.load("word")
+    promoted = word.main_document_part.contents.body.content[1]
+    assert type(promoted) is CTCustomXmlBlock
+    assert text_of(promoted) == "CX_W14"
+    saved = main_xml(word.save())
+    assert b'<w:customXml w:element="x">' in saved and b"CX_W14" in saved
+    preserve = made.load("preserve")
+    assert isinstance(
+        preserve.main_document_part.contents.body.content[1], AlternateContent
+    )
+    assert preserve.main_document_part.skipped == []
+    assert normalize(main_xml(preserve.save())) == normalize(
+        made.parts["word/document.xml"].encode()
+    )
