@@ -29,6 +29,12 @@ The wheel carries these files taken from docx4j's docx4j-core module (Apache Lic
 
 The warm-up parts (warmup_document.xml, warmup_styles.xml) were written for this package.
 
+The Markdown writer (docx4j_py/model/text/commonmark.py) is a port of the Markdown renderer of
+commonmark-java (https://github.com/commonmark/commonmark-java) 0.30.0, Copyright (c) 2015,
+Atlassian Pty Ltd, under the BSD 2-Clause License; its notice and conditions are kept in that
+file. Its block-model writer (docx4j_py/model/text/markdown.py) ports docx4j-markdown's
+WmlToMarkdown and MarkdownExporter (Apache License 2.0).
+
 The generated modules import docx4j-xsdata (https://github.com/plutext/docx4j-xsdata), a
 fork of xsdata (https://github.com/tefra/xsdata, Copyright Christodoulos Tsoulloftas),
 which is a dependency of this package and is distributed under the MIT License; it is not

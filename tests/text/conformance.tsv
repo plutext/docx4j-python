@@ -221,18 +221,18 @@ extraction-probe.docx	21	FLD21_LINK_TEXT	markup	default	PASS
 extraction-probe.docx	21	FLD21_URL_MARK	accepted	default	PASS	
 extraction-probe.docx	21	FLD21_URL_MARK	accepted	markdown	PASS	
 extraction-probe.docx	21	FLD21_URL_MARK	original	default	PASS	
-extraction-probe.docx	21	FLD21_URL_MARK	original	markdown	FAIL	ContentError: to_markdown takes view='accepted' or 'markup', not 'original' ('accepted' reads the document as if every change were accepted)
+extraction-probe.docx	21	FLD21_URL_MARK	original	markdown	PASS	
 extraction-probe.docx	21	FLD21_URL_MARK	markup	default	PASS	
 extraction-probe.docx	21	FLD21_URL_MARK	markup	markdown	PASS	
 extraction-probe.docx	21	FLD21_FIELD_LINK_TEXT	accepted	default	PASS	
 extraction-probe.docx	21	FLD21_FIELD_LINK_TEXT	original	default	PASS	
 extraction-probe.docx	21	FLD21_FIELD_LINK_TEXT	markup	default	PASS	
 extraction-probe.docx	21	FLD21_FIELD_URL_MARK	accepted	default	PASS	
-extraction-probe.docx	21	FLD21_FIELD_URL_MARK	accepted	markdown	FAIL	expected 1, got 0
+extraction-probe.docx	21	FLD21_FIELD_URL_MARK	accepted	markdown	PASS	
 extraction-probe.docx	21	FLD21_FIELD_URL_MARK	original	default	PASS	
-extraction-probe.docx	21	FLD21_FIELD_URL_MARK	original	markdown	FAIL	ContentError: to_markdown takes view='accepted' or 'markup', not 'original' ('accepted' reads the document as if every change were accepted)
+extraction-probe.docx	21	FLD21_FIELD_URL_MARK	original	markdown	PASS	
 extraction-probe.docx	21	FLD21_FIELD_URL_MARK	markup	default	PASS	
-extraction-probe.docx	21	FLD21_FIELD_URL_MARK	markup	markdown	FAIL	expected 1, got 0
+extraction-probe.docx	21	FLD21_FIELD_URL_MARK	markup	markdown	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	accepted	default	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	accepted	placeholders: false	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	original	default	PASS	
@@ -1574,12 +1574,12 @@ extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050)
 extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	PASS	
 extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	PASS	
 extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	PASS	
-extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
+extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.markup.txt	markup	default	PASS	
-extraction-probe-external.docm	0	golden:extraction-probe-external.md	accepted	default	FAIL	normalised text differs: 2 lines of the golden missing, 0 extra
+extraction-probe-external.docm	0	golden:extraction-probe-external.md	accepted	default	PASS	
 extraction-probe-structure.docx	0	golden:extraction-probe-structure.accepted.txt	accepted	default	PASS	
 extraction-probe-structure.docx	0	golden:extraction-probe-structure.original.txt	original	default	PASS	
 extraction-probe-structure.docx	0	golden:extraction-probe-structure.markup.txt	markup	default	PASS	
-extraction-probe-structure.docx	0	golden:extraction-probe-structure.md	accepted	default	FAIL	normalised text differs: 5 lines of the golden missing, 7 extra
+extraction-probe-structure.docx	0	golden:extraction-probe-structure.md	accepted	default	PASS	

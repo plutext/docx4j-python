@@ -1035,10 +1035,14 @@ class Extractor:
                 if definition is not None:
                     if definition.abstract_definition is not None:
                         abstract = definition.abstract_definition.id
+                    # the instance's level, its w:lvlOverride applied; else the abstract definition's
                     level = definition.level(str(ilvl))
+                    if level is None and definition.abstract_definition is not None:
+                        level = definition.abstract_definition.levels.get(str(ilvl))
                     if level is not None:
                         fmt = level.num_fmt if level.num_fmt is not None else ("bullet" if level.is_bullet else None)
-                        text = level.lvl_text
+                        text = level.level_text
+                        # ListLevel's start value is w:start less one, a counter's
                         start = level.start_value + 1
             except Exception:  # noqa: BLE001 - the definitions could not be read
                 pass

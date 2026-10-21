@@ -10,9 +10,9 @@ Since Phase B it reads the text model, as docx4j's adapter reads its own:
   specification names (docx4j's ``TextsAdapter.options``: ``; `` apart, each
   ``name: value``; ``default``, ``markdown`` and the HTML reader scenarios set
   none);
-* Markdown (``md``): ``pkg.to_markdown(view=)`` as before, which has
-  ``accepted`` and ``markup`` (CriticMarkup) and refuses ``original``, until
-  Phase D writes Markdown from the blocks;
+* Markdown (``md``): :func:`docx4j_py.model.text.markdown` of the same
+  result, with the package (docx4j's ``new MarkdownExporter().export(result,
+  pkg)``), since Phase D;
 * the findings: each warning by ``warning<TAB>kind<TAB>selector``, counted, and
   the metadata by ``metadata<TAB>name<TAB>`` (``fields_update_on_open``, and
   each core, application and custom property by its own name, as docx4j's
@@ -37,7 +37,7 @@ from typing import Any
 from conformance import HTML_READER_ABSENT, Engine, Output
 
 from docx4j_py import load
-from docx4j_py.model.text import TextOptions, extract, plain_text
+from docx4j_py.model.text import TextOptions, extract, markdown, plain_text
 
 __all__ = ["DEFERRED", "DOCX4J_IMPLEMENTED", "INSPECTOR", "TextsAdapter"]
 
@@ -116,7 +116,7 @@ def options(view: str, scenario: str) -> TextOptions:
 
 
 class TextsAdapter(Engine):
-    """The harness's engine over the text model, and ``to_markdown`` for Markdown.
+    """The harness's engine over the text model, in plain text and Markdown.
 
     Each fixture is loaded once and read as often as the harness asks, as
     docx4j's adapter caches its packages.
@@ -151,5 +151,5 @@ class TextsAdapter(Engine):
             for key, item in value.items() if isinstance(value, dict) else ((name, value),):
                 findings[f"metadata\t{key}\t"] = str(item).lower() if isinstance(item, bool) else str(item)
         if format == "md":
-            return Output(package.to_markdown(view=view), findings)
+            return Output(markdown(result, package), findings)
         return Output(plain_text(result), findings)

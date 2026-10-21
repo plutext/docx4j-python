@@ -210,6 +210,17 @@ class TextNumbering:
         """A bullet level."""
         return self.format == "bullet"
 
+    @property
+    def label(self) -> bool:
+        """A level that is a label rather than a number (``NOTE``, ``EXAMPLE``). docx4j ``TextNumbering.isLabel``.
+
+        Not a bullet, and its format ``none`` or its text with no ``%n``; a
+        level the definitions do not give is a list's.
+        """
+        if self.bullet or (self.format is None and self.level_text is None):
+            return False
+        return self.format == "none" or self.level_text is None or "%" not in self.level_text
+
     def to_dict(self) -> dict[str, Any]:
         """REQ-706's names."""
         return {
