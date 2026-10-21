@@ -23,7 +23,7 @@ twins; and docx4j's 19 probes with Word 365's 14 saves. In `preserve` mode all 1
 canonically identical; in `word` mode all 14 read as Word's save. The acceptance artefacts are
 unchanged and CR-011's ratchet does not move. **The Word check of three probe saves passed the
 same day** (the user: "__tmp/python-cr012a/ are all good"; 9.12): **Phase A done**. Row and cell level are passed by; docx4j's phase 2
-(`9db1a3cbd`), which reads them, is ported as Phase A2 (section 4.4), started the same day at the user's go ("make the CLAUDE.md edits, then do phase A2").
+(`9db1a3cbd`), which reads them, is ported as Phase A2 (section 4.4), started the same day at the user's go ("make the CLAUDE.md edits, then do phase A2"). **Phase A2 implemented the same day** (section 10): a branch's `w:tr` and `w:tc` typed by their container (the fork's stage 11 item 27, tests only); the text model, the revisions engine (twins, the table-removal rule) and the content API (read-only) at row and cell level; docx4j's phase 2 tests; the five row and cell probes read `w16sdtfl` and save canonically identical in `preserve` mode; acceptance unchanged; **the Word check of six saves is the user's** (`out/cr012-a2-word-check/`).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
