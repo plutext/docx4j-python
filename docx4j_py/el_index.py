@@ -83,6 +83,11 @@ EL_MODULES: dict[str, str] = {
     "http://www.w3.org/1998/Math/MathML": "docx4j_py.mathml.el",
     "http://www.w3.org/2003/InkML": "docx4j_py.inkml.el",
     "http://www.w3.org/XML/1998/namespace": "docx4j_py.xml_ns.el",
+    "urn:schemas-microsoft-com:office:excel": "docx4j_py.vml.spreadsheet_drawing.el",
+    "urn:schemas-microsoft-com:office:office": "docx4j_py.vml.officedrawing.el",
+    "urn:schemas-microsoft-com:office:powerpoint": "docx4j_py.vml.presentation_drawing.el",
+    "urn:schemas-microsoft-com:office:word": "docx4j_py.vml.wordprocessing_drawing.el",
+    "urn:schemas-microsoft-com:vml": "docx4j_py.vml.main.el",
 }
 
 UNDERSTOOD: dict[str, str] = {
@@ -125,16 +130,20 @@ UNDERSTOOD: dict[str, str] = {
     "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
     "mml": "http://www.w3.org/1998/Math/MathML",
     "msink": "http://schemas.microsoft.com/ink/2010/main",
+    "o": "urn:schemas-microsoft-com:office:office",
     "pic": "http://schemas.openxmlformats.org/drawingml/2006/picture",
     "pic14": "http://schemas.microsoft.com/office/drawing/2010/picture",
     "prop": "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
     "properties": "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties",
+    "pvml": "urn:schemas-microsoft-com:office:powerpoint",
     "rel": "http://schemas.openxmlformats.org/package/2006/relationships",
     "sl": "http://schemas.openxmlformats.org/schemaLibrary/2006/main",
     "st": "http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes",
     "thm15": "http://schemas.microsoft.com/office/thememl/2012/main",
+    "v": "urn:schemas-microsoft-com:vml",
     "vt": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes",
     "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    "w10": "urn:schemas-microsoft-com:office:word",
     "w14": "http://schemas.microsoft.com/office/word/2010/wordml",
     "w15": "http://schemas.microsoft.com/office/word/2012/wordml",
     "w16cid": "http://schemas.microsoft.com/office/word/2016/wordml/cid",
@@ -149,6 +158,7 @@ UNDERSTOOD: dict[str, str] = {
     "xdr": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
     "xdr14": "http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing",
     "xml": "http://www.w3.org/XML/1998/namespace",
+    "xvml": "urn:schemas-microsoft-com:office:excel",
 }
 
 #: CR-012 Phase B: qualified name -> the root class, docx4j's

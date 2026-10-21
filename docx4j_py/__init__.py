@@ -2958,6 +2958,11 @@ import docx4j_py.oart.spreadsheet_drawing_2010  # noqa: F401
 import docx4j_py.oart.svg_2016  # noqa: F401
 import docx4j_py.oart.theme_2012  # noqa: F401
 import docx4j_py.relationships  # noqa: F401
+import docx4j_py.vml.presentation_drawing  # noqa: F401
+import docx4j_py.vml.spreadsheet_drawing  # noqa: F401
+import docx4j_py.vml.wordprocessing_drawing  # noqa: F401
+import docx4j_py.vml.officedrawing  # noqa: F401
+import docx4j_py.vml.main  # noqa: F401
 import docx4j_py.w16cid  # noqa: F401
 import docx4j_py.wne  # noqa: F401
 import docx4j_py.word.msink  # noqa: F401

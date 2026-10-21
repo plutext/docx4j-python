@@ -1,0 +1,63 @@
+{
+  "namespace": "urn:schemas-microsoft-com:office:office",
+  "module": "docx4j_py.vml.officedrawing",
+  "generated_by": "codegen/generate_el.py",
+  "note": "Output, except for `overrides`, which is the input a human edits: `defaults` maps an element name to the class `el.<name>` must build, `aliases` maps '<element>:<ClassName>' to the scope-qualified name that class must get. Regenerate with codegen/generate.sh.",
+  "overrides": {
+    "defaults": {},
+    "aliases": {}
+  },
+  "counts": {
+    "element_names": 28,
+    "simple_type_elements": 3,
+    "scoped_names": 0,
+    "keyword_renames": 1,
+    "collisions": 0
+  },
+  "note_simple_type_elements": "Element names whose schema type is a simple type, so xsdata generated no class for them and `el` has no function: the parent class holds the value directly (w:recipientData.uniqueTag is bytes). Listed, not built.",
+  "simple_type_elements": {
+    "FieldCodes": [
+      "str"
+    ],
+    "LinkType": [
+      "STOLELinkType"
+    ],
+    "LockedField": [
+      "StTrueFalseBlank"
+    ]
+  },
+  "keyword_renames": {
+    "complex": "complex_"
+  },
+  "collisions": {},
+  "elements": {
+    "OLEObject": "Oleobject",
+    "bottom": "Bottom",
+    "callout": "Callout",
+    "clippath": "Clippath",
+    "colormenu": "CTColorMenu",
+    "colormru": "CTColorMru",
+    "column": "Column",
+    "complex": "Complex",
+    "diagram": "Diagram",
+    "entry": "CTEntry",
+    "extrusion": "Extrusion",
+    "fill": "Fill",
+    "idmap": "CTIdMap",
+    "ink": "Ink",
+    "left": "Left",
+    "lock": "Lock",
+    "proxy": "CTProxy",
+    "r": "CTR",
+    "regrouptable": "CTRegroupTable",
+    "rel": "CTRelation",
+    "relationtable": "CTRelationTable",
+    "right": "Right",
+    "rules": "CTRules",
+    "shapedefaults": "Shapedefaults",
+    "shapelayout": "Shapelayout",
+    "signatureline": "Signatureline",
+    "skew": "Skew",
+    "top": "Top"
+  }
+}
