@@ -15,18 +15,15 @@ mode defaults to `preserve` from 17.4.0, and 17.3.x keeps `word`. Q7's recommend
 Q8 as recommended, Q7 on its revised answer, `preserve` by default. By Q6, Phase A goes first and
 now. It starts once CR-002 section 16, which changes the same `XmlPart._unmarshal`, has landed. B
 follows A, and C waits for its own go (Q4). **Phase A implemented the same day** (section 9), the
-port of docx4j CR-051 phase 1:
-- the schema copy refreshed to docx4j `2853b7280`;
-- the fork's stage 11 (a branch's child typed by its container, and a generator fix that makes
-  the output independent of the bytecode cache);
-- `LoadOptions(mc_block_level=)`, `preserve` by default;
-- the readers reading Word's branch at block level, an edit inside a kept branch refused;
-- the revisions twins, and docx4j's 19 probes with Word 365's 14 saves.
-
-In `preserve` mode all 19 probes save canonically identical; in `word` mode all 14 read as Word's
-save. The acceptance artefacts are unchanged and CR-011's ratchet does not move. **The Word check
-of three probe saves is the user's** (`out/cr012-a-word-check/`). Row and cell level are passed
-by; docx4j's phase 2 (`9db1a3cbd`), which reads them, is a follow-up port.
+port of docx4j CR-051 phase 1: the schema copy refreshed to docx4j `2853b7280`; the fork's stage
+11 (a branch's child typed by its container, and a generator fix that makes the output
+independent of the bytecode cache); `LoadOptions(mc_block_level=)`, `preserve` by default; the
+readers reading Word's branch at block level, an edit inside a kept branch refused; the revisions
+twins; and docx4j's 19 probes with Word 365's 14 saves. In `preserve` mode all 19 probes save
+canonically identical; in `word` mode all 14 read as Word's save. The acceptance artefacts are
+unchanged and CR-011's ratchet does not move. **The Word check of three probe saves is the
+user's** (`out/cr012-a-word-check/`). Row and cell level are passed by; docx4j's phase 2
+(`9db1a3cbd`), which reads them, is a follow-up port.
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
