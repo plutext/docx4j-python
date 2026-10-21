@@ -9,7 +9,10 @@ CR-011"): every question of section 9 on its recommendation. Q4 is the revised a
 JS readers keep Office JS's text, as core-ts CR-012's D2), and Q11's fix waits for docx4j CR-052's
 hand-off (its note). **Phase A and Q10 implemented the same day** (section 11): the suite at
 `198d015a3`, its harness and the baseline as a ratchet, 941 pass, 410 fail, 233 pending of
-1,584.
+1,584. **Phase B implemented the same day** (section 12), with Q3 and with Q11 on docx4j CR-052's
+placement, which landed as `5df2e253e`: `docx4j_py.model.text`; 1,146 pass, 205 fail, 233 pending,
+goldens 6 of 12; the agreement test at zero. Q11 awaits its Word check, and Q3's change to the
+xsdata fork (stage 10) needs a fork release before a docx4j-python release.
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
