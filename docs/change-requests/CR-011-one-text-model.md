@@ -339,14 +339,26 @@ and the model itself is reached through `extract`.
   1,584 assertions: 1,565 and 19 pending with `html reader absent`, 1,526 and 58 with `present`
   (this CR's survey mirror, 2026-10-21).
 - **The adapter**, `tests/text/adapter.py`, docx4j's `TextsAdapter` protocol:
-  `implemented()` (the REQ ids this package meets, grown phase by phase) and
-  `extract(fixture, view, scenario, format) -> (text, findings)`; it has no `inspect` or `counts`
-  (section 3.7). It advertises `html reader absent` until the HTML reader exists (Q12, Q13). Then
+  `implemented()` and `extract(fixture, view, scenario, format) -> (text, findings)`; it has no
+  `inspect` or `counts` (section 3.7). From Phase A on, `implemented()` is docx4j's statements less
+  the inspector's: the target, not what this package meets (it was to grow phase by phase), so that
+  a gap is a failure the ratchet holds rather than a pending check (section 11.3). It advertises
+  `html reader absent` until the HTML reader exists (Q12, Q13). Then
   it takes the capability as a parameter, the reader switched off by an adapter-only hook for the
   absent run, and the suite runs twice. Absent is the gate's run: it checks the goldens and the
   default rows of cases 36, 44 and 63, and leaves docx4j's 19 pending (the 18 checks that need a
   reader, and the fifth fixture's inspection). Present, where html5lib imports, checks the 18 and
   leaves the goldens and the absent run's rows pending.
+- **The report and the ratchet.** The adapter's run is committed as the suite's report,
+  `tests/text/conformance.tsv`, in docx4j's form with this port's `FAIL` rows (docx4j's run stops
+  at the first failure, since none of its checks fails). `tests/text/test_conformance.py` runs the
+  suite and compares it with the report check by check, keyed by fixture, case, item, view and
+  scenario. Any difference fails the test: a check newly failing, newly passing or newly pending,
+  its reason changed, a check added or gone. The message counts the moves (`'FAIL -> PASS': 40`) and
+  lists the first. A change that moves a check rewrites the report in the same commit
+  (`.venv-fork/bin/python tests/text/conformance.py`). So the pytest suite is green while today's
+  checks fail, each phase's progress is in its diff, and no regression passes unseen. The gate of
+  Phase D is a report with no `FAIL` row.
 - **The agreement test** (REQ-406): the walk against the resolved copy, as section 3.2.
 - **CR-010's ten pins** (`tests/revisions/test_content_api.py`) turn to passing tests in Phase D;
   `xfail(strict=True)` makes each one's closing visible.
@@ -571,3 +583,146 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
 6. **Speed.** The walk costs more than today's filter (`get_text` is 1 ms on the probe). Measure
    on CR-003 section 16.4's 200-page document in Phase B, and keep a call under a few times the
    filter's.
+
+## 11. Phase A implementation notes (2026-10-21)
+
+Phase A is done, with Q10. docx4j's text-extraction suite at `198d015a3` is in
+`tests/fixtures/text-extraction/`. The port of its harness and an adapter over today's readers
+are in `tests/text/`. The adapter's run is committed as the suite's first report: **941 pass,
+410 fail and 233 pending of 1,584 checks, 3 of the 12 goldens**, section 1's baseline row for row.
+The pytest suite holds every check to that report (the ratchet, 11.3). The agreement test
+(REQ-406) pins today's views where they differ from a resolved copy. `get_text(view="markup")`
+raises (Q10, 11.5). No reader's text changed.
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the suite | `tests/fixtures/text-extraction/` (32 files) | `phase0/`: the five fixtures, the five TSVs, the four inspection tables and the twelve goldens; `GOLDENS.md`, `INSPECTION.md`; `level-owner/`, `LevelOwnerTest`'s three Word documents; `understood-namespaces.txt`. Each written by `git show 198d015a3:<path>`, byte for byte |
+| the harness | `tests/text/conformance.py` (872 lines) | `Engine` (`implemented`, `extract`; `inspect` and `counts` raising, as docx4j's defaults throw), `Output`, `Inspection`, `run(engine, directory)`, `Run` (`checks`, `report()`, `summary()`), `Check`, `read_report`, docx4j's rules as functions (`table`, `normalize`, `count`, `verify`, `verify_order`, `verify_golden`, `image_destinations`, `requirements`, `scenario_requirements`, `row_requirements`, `text_requirements`, `phase`, `compare_inspection`), and `main`, which rewrites the report |
+| the adapter | `tests/text/adapter.py` | `TextsAdapter` over `get_text` and `to_markdown`; `DOCX4J_IMPLEMENTED`, docx4j's set at `198d015a3`; `INSPECTOR` |
+| the report | `tests/text/conformance.tsv` | 1,584 rows in docx4j's columns |
+| the ratchet, the gate, the copy | `tests/text/test_conformance.py` | 23 tests |
+| the agreement test | `tests/text/test_agreement.py`, `agreement-docx4j.tsv` | 24 tests over the copied fixtures and 2 of the pins themselves; 294 over docx4j's (`slow`) |
+| Q10 | `model/content/text_model.py` (`require_view`, `VIEWS`), `paragraph.py`, `body.py`, `range.py`; `tests/agent/test_errors.py` | the view refused, two tests |
+
+### 11.2 The harness as ported
+
+Every rule of section 3.6, in docx4j's order: the token rows in three views under the default and
+the option scenarios, the supplemental scenarios, the findings (an `inspect` row in `accepted`
+only), the orders, the inspections and REQ-903's counts, the goldens. Ported from the Java where
+the survey's mirror differed, none of which moves a count:
+
+- a check's statements are a set, as Java's `LinkedHashSet`; the mirror's list named a statement
+  twice in a pending reason when the row and its scenario both needed it;
+- an empty marker raises, as in Java (the mirror looped);
+- the tables are split as `Files.readAllLines` splits them (`\r\n`, `\r`, `\n`), and the goldens
+  read as bytes, without Python's newline translation;
+- an expectation is a count when it is ASCII digits (Java's `\d+`), not `str.isdigit()`;
+- an unknown scenario or marking is an error of the suite and stops the run, as Java's
+  `IllegalArgumentException` does;
+- a golden's readiness is checked before its output is read.
+
+With docx4j's whole statement set advertised and empty output behind it, the port makes docx4j's
+1,584 checks: 1,565 and 19 pending under `html reader absent`, 1,526 and 58 under `present`
+(`test_the_port_makes_docx4js_checks`). Under `absent` the 19 are case 36's, 44's and 47's rows
+under `html reader present` (15), case 63's (3) and the fifth fixture's inspection.
+
+**The one departure.** docx4j's run stops at the first failing check, so its report has `PASS`
+and `PENDING` rows only. The port records a failing check as a `FAIL` row with its reason and goes
+on. An engine's exception fails every check that reads its output, not the run. The reasons are
+the port's own: Java's assertion messages without the context the row's columns give
+(`expected 1, got 0`, `total: expected 2, got 1`, `marking del: expected 1, got 0`), and for a
+golden the lines that differ (`normalised text differs: 43 lines of the golden missing, 22
+extra`). Only a `CheckFailed` is a failure: an error of the suite or the harness stops the run.
+
+### 11.3 The report and the ratchet
+
+`tests/text/conformance.tsv` is the run's report: docx4j's header (`fixture`, `case`, `item`,
+`view`, `scenario`, `status`, `reason`) and one row per check. `.venv-fork/bin/python
+tests/text/conformance.py` runs the adapter, rewrites it and prints docx4j's summary line with the
+failures and goldens added (`CR-046: 941 assertions passed, 410 failed, 233 pending of 1584;
+goldens 3 of 12`).
+
+`test_the_run_is_the_committed_report` runs the suite once per module and compares it with the
+file by check. Any difference fails, and the message counts the moves and lists the first 25, with
+the command that rewrites the report. Last, it compares the file's bytes with the run's, so the
+order is held too. Flipping one row of the file by hand gives `1 checks differ from
+conformance.tsv ({'PASS -> FAIL': 1})` and the row. A change that moves a check rewrites the
+report in the same commit, and the diff is the progress. This is written into section 3.6.
+
+**The adapter advertises the target** (section 3.6 had it grow phase by phase): docx4j's
+statements at `198d015a3` less the inspector's (REQ-901 to 907, REQ-1204), with `CR-047` and
+`html reader absent`. So every check docx4j makes is made here. Today's gaps are `FAIL` rows, and
+a phase's progress is checks going from `FAIL` to `PASS`. Grown phase by phase, 410 failures
+would instead have been pending checks indistinguishable from docx4j's, and each phase would have
+changed `implemented()` and the report together. Only docx4j's 19 and the inspector's 214 pend,
+and `test_only_docx4js_pending_checks_and_the_inspectors_pend` holds that. For Q7's deferred
+content, Phase C's adapter will need a way to pend a named check, since its statement (REQ-512)
+also covers content that is read.
+
+**The adapter's `markup` plain text** is the filter `get_text(view="markup")` applied before
+Q10: each paragraph's `text_of_view(view="markup")`, joined as `Body.get_text` joins. The
+report is therefore section 1's measurement. Read through the call that now raises, 303
+passing checks would fail, giving 638 pass, 713 fail and 2 of 12 goldens. That would measure the
+refusal, not the readers. Phase B replaces both with the model's markup view.
+
+### 11.4 The agreement test
+
+The walk is `Body.get_text(view=)` on the fixture as loaded. The reference is a `dry_run` copy
+resolved by `revisions.accept_all` (`accepted`) or `reject_all` (`original`), read by
+`get_text()`. docx4j loads its copy a second time because a save drops probe case 6's `Requires`
+prefix. A trial copies the parsed tree and saves nothing, so it keeps the prefix. On three
+fixtures (`revisions-word15`, `review-for-word`, the probe) the trial's text equals a reloaded
+copy's, and the real package's listing is unchanged after it. Only the default scope is read:
+today's `get_text` reads the main story and takes no options, where docx4j's test also reads every
+story with hidden text and field codes.
+
+- **The copied twelve** (CR-010's eleven and the probe), 24 tests: 14 agree, and 10 are
+  `xfail(strict=True)` with what differs, 6 in `accepted` and 4 in `original`, as section 1
+  measured. Each is a deleted (in `original`, an inserted) paragraph mark not joined, or a
+  paragraph the resolution removes left as an empty line. In `original` there is also `cr043`'s
+  C01 inserted field result and C16 inserted link, kept. CR-010's five `get_text` pins in
+  `tests/revisions/test_content_api.py` are the `accepted` half of these and stay as they are.
+- **docx4j's fixtures**: the 147 revisions and text-extraction `.docx` at `198d015a3`, where the
+  sibling checkout has them, `slow` (about 6 s). Section 1's 139 was an earlier count, and the
+  working tree at `4b9c71288` has 153. The list and today's outcomes are committed in
+  `agreement-docx4j.tsv`: 80 differ in `accepted`, 81 in `original` (section 1: 79 and 80 of
+  139). A fixture docx4j adds later is not read, so the sibling moving on cannot fail the suite. A
+  fixture docx4j changes in place can.
+
+### 11.5 Q10
+
+`require_view` in `model/content/text_model.py` refuses a view `get_text` cannot read. It is
+called by `Paragraph.get_text` and `text_budget`, `Body.get_text` (and through it `text_budget`)
+and `Range.get_text`. `"markup"` raises `ContentError` with the code `text.no_markup_view`
+("get_text has no markup view yet: CR-011 Phase B gives it the text model's"). Its hint names the
+views the reader takes and `to_markdown(view='markup')`. A range raises its `SpanError` for
+`original` first, as before. Any other name raises `text.view_invalid`: the filter shows a
+revision holder only in its own view, so every other name, `current` included, gave neither view
+too. `current` becomes REQ-401's synonym in Phase B. In 0.1.0 a paragraph's and a body's markup
+view was the text outside every tracked change (5,093 characters on the probe), and a range's was
+the accepted text. No test or readme fence called it. The adapter is the one reader of that
+filter, through `text_of_view` (11.3), and docx4j-mcp-py calls neither. CHANGELOG "Fixed".
+
+### 11.6 The numbers
+
+- The report: 941 pass, 410 fail, 233 pending of 1,584. By scenario: the default scenarios 669,
+  219 and 190; `markdown` 2, 4 and 4; the options 270, 187 and 39. The 233 pending are 18 checks
+  needing an HTML reader, the fifth fixture's inspection, the 186 `inspect` rows, 4 inspections
+  and 24 counts. Goldens: 3 of 12, the external fixture's three plain-text views. The other nine
+  differ by the lines section 1 gives.
+- The harness: the adapter's run takes 1.35 s standalone, the model's import included.
+- The tests: `tests/text` adds 49 items to the fast suite (39 pass, 10 `xfail`) in 1.7 s
+  wall-clock, and 294 to the slow one (133 pass, 161 `xfail`) in about 6 s. `test_errors.py`
+  gains two. The fast suite is 2,558 passed, 8 skipped and 20 xfailed, 334 deselected (82 s);
+  the whole suite 2,731 passed, 8 skipped and 181 xfailed (105 s).
+
+### 11.7 What Phase B needs
+
+- The adapter's `extract` on `docx4j_py.model.text` (`extract`, `plain_text`, and Markdown in
+  Phase D), its statement set unchanged; every commit that moves a check rewrites the report.
+- The agreement test's walk becomes `extract`, and its pins close.
+- `LevelOwnerTest`'s documents and the understood list are copied and not yet read: REQ-510's
+  owner and section 3.3's `docx4j_py/resources/understood-namespaces.txt`.
+- `get_text(view="markup")`'s refusal becomes the model's markup view.
