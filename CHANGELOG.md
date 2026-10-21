@@ -142,6 +142,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **`get_text(view="markup")` raises instead of returning neither view**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
+  [11.5](docs/change-requests/CR-011-one-text-model.md#115-q10), its Q10). 0.1.0 took the value
+  and answered with the text outside every tracked change on a body or a paragraph (5,093
+  characters on docx4j's probe, against 5,166 accepted and 5,148 original), and with the accepted
+  text on a range. `Body.get_text`, `Paragraph.get_text`, both `text_budget`s and `Range.get_text`
+  now raise `ContentError` with the code `text.no_markup_view`, whose hint names the views they
+  take and `to_markdown(view="markup")` for the changes as CriticMarkup. CR-011 Phase B gives
+  `get_text` the text model's markup view. Any other view name raises `text.view_invalid`, for
+  the same reason.
 - **A comment's range is read right when its markers are inside a `w:ins` or a hyperlink**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section 12.8).
   A marker's offset was counted from the start of the holder it sat in, not the paragraph's. So a

@@ -36,6 +36,7 @@ from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.text_model import (
     RUN_HOLDER_NAMES,
     find_all,
+    require_view,
     search_pattern,
 )
 from docx4j_py.model.content.tracking import REVISION_NAMES
@@ -110,6 +111,9 @@ class Range:
         Raises:
             SpanError: `view` is ``"original"``; read that view on the
                 paragraph, whose offsets it belongs to (CR-003 section 4).
+            ContentError: ``view="markup"`` (``text.no_markup_view``), which
+                0.1.0 answered with the accepted text, or any other view
+                (``text.view_invalid``).
         """
         if view == "original":
             raise SpanError(
@@ -117,6 +121,7 @@ class Range:
                 code="range.no_original_view",
                 hint="call get_text(view='original') on the paragraph instead",
             )
+        require_view(view, ("accepted",))
         return self.text
 
     @property

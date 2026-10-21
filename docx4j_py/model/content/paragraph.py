@@ -52,6 +52,7 @@ from docx4j_py.model.content.styles import (
 )
 from docx4j_py.model.content.text_model import (
     find_all,
+    require_view,
     runs_of,
     search_pattern,
     segments_of,
@@ -181,7 +182,12 @@ class Paragraph:
         document as it was before the tracked changes (CR-003 section 3.8).
         `max_chars` is the budget of CR-003 section 3.4; it truncates and does
         not say so, which is what :meth:`text_budget` is for.
+
+        Raises:
+            ContentError: ``view="markup"`` (``text.no_markup_view``), until
+                CR-011 Phase B, or any other view (``text.view_invalid``).
         """
+        require_view(view)
         out = text_of_view(self.element, view=view)
         return out if max_chars is None else out[:max_chars]
 
@@ -189,6 +195,7 @@ class Paragraph:
         self, max_chars: int | None = None, *, view: TextView = "accepted"
     ) -> TextExcerpt:
         """:meth:`get_text` with the flag: ``TextExcerpt(text, chars, truncated)``."""
+        require_view(view)
         full = text_of_view(self.element, view=view)
         if max_chars is None or len(full) <= max_chars:
             return TextExcerpt(full, len(full), False)

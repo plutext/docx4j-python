@@ -95,6 +95,37 @@ def test_a_range_has_no_original_view():
     assert "on the paragraph" in raised.value.hint
 
 
+def test_get_text_has_no_markup_view_yet():
+    """CR-011 Q10: 0.1.0's markup view was neither view; it raises until Phase B gives it the model's."""
+    package = sample("sample-docx.docx")  # one w:ins and one w:del
+    paragraph = package.body.paragraphs[0]
+    for read in (
+        lambda: package.body.get_text(view="markup"),
+        lambda: package.body.text_budget(view="markup"),
+        lambda: paragraph.get_text(view="markup"),
+        lambda: paragraph.text_budget(view="markup"),
+        lambda: paragraph.get_range().get_text(view="markup"),
+    ):
+        with pytest.raises(ContentError) as raised:
+            read()
+        assert raised.value.code == "text.no_markup_view"
+        assert "CR-011" in raised.value.message
+        assert "to_markdown(view='markup')" in raised.value.hint
+    assert "{++" in package.body.to_markdown(view="markup")
+
+
+def test_get_text_refuses_a_view_it_does_not_have():
+    package = sample("sample-docx.docx")
+    with pytest.raises(ContentError) as raised:
+        package.body.get_text(view="current")
+    assert raised.value.code == "text.view_invalid"
+    assert "'accepted' or 'original'" in raised.value.message
+    with pytest.raises(ContentError) as raised:
+        package.body.paragraphs[0].get_range().get_text(view="current")
+    assert "takes view='accepted', not" in raised.value.message
+    assert package.body.get_text(view="original") != package.body.get_text(view="accepted")
+
+
 def test_a_session_error_says_how_to_recover():
     from docx4j_py import DocumentSession
 

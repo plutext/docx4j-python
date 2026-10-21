@@ -56,7 +56,11 @@ from docx4j_py.model.content.reports import (
     recording,
 )
 from docx4j_py.model.content.table import Table, insert_table_into
-from docx4j_py.model.content.text_model import block_children_of, block_list_of
+from docx4j_py.model.content.text_model import (
+    block_children_of,
+    block_list_of,
+    require_view,
+)
 from docx4j_py.namespaces import PREFIXES
 from docx4j_py.runtime import context
 from docx4j_py.traversal import element_name
@@ -389,7 +393,13 @@ class Body(Sequence):
                 as it read before its tracked changes.
             max_chars: stop after this many characters, so that a 200-page
                 document can be read into a context window that cannot hold it.
+
+        Raises:
+            ContentError: ``view="markup"`` (``text.no_markup_view``), until
+                CR-011 Phase B gives it the text model's markup view; or any
+                other view (``text.view_invalid``).
         """
+        require_view(view)
         out: list[str] = []
         total = 0
         for paragraph in self.iter_paragraphs():

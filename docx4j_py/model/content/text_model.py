@@ -40,12 +40,14 @@ import unicodedata
 from typing import Any
 
 from docx4j_py.child import iter_children
+from docx4j_py.model.content.errors import ContentError
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
 
 __all__ = [
     "RUN_HOLDER_NAMES",
     "TEXT_ITEM_NAMES",
+    "VIEWS",
     "Segment",
     "block_children_of",
     "block_list_of",
@@ -54,6 +56,7 @@ __all__ = [
     "grapheme_clusters",
     "is_grapheme_boundary",
     "item_text",
+    "require_view",
     "rows_of",
     "runs_of",
     "search_pattern",
@@ -263,6 +266,39 @@ def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
 def text_of_view(container: Any, *, view: str = "accepted") -> str:
     """The text of one run holder in one of the two views."""
     return "".join(segment.text for segment in segments_of(container, view=view))
+
+
+#: The views ``get_text`` and ``text_budget`` read (CR-003 section 3.8).
+VIEWS = ("accepted", "original")
+
+
+def require_view(view: str, views: tuple[str, ...] = VIEWS) -> None:
+    """Refuse a view ``get_text`` cannot read, rather than return neither.
+
+    The filter shows a revision holder only in the view it belongs to, so any
+    other name keeps the text outside every insertion, deletion and move. That
+    is what a paragraph's and a body's ``view="markup"`` returned in 0.1.0
+    (a range's returned the accepted text). It raises until CR-011 Phase B
+    gives ``get_text`` the text model's markup view (CR-011 section 9, Q10).
+
+    Raises:
+        ContentError: ``text.no_markup_view`` for ``"markup"``, and
+            ``text.view_invalid`` for any other view not in `views`.
+    """
+    if view in views:
+        return
+    taken = " or ".join(repr(v) for v in views)
+    if view == "markup":
+        raise ContentError(
+            "get_text has no markup view yet: CR-011 Phase B gives it the text model's",
+            code="text.no_markup_view",
+            hint=f"read view={taken}, or to_markdown(view='markup') for the changes as CriticMarkup",
+        )
+    raise ContentError(
+        f"get_text takes view={taken}, not {view!r}",
+        code="text.view_invalid",
+        hint="'accepted' reads the document as if every change were accepted",
+    )
 
 
 def runs_of(container: Any, *, view: str = "accepted") -> list[Any]:
