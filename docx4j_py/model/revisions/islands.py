@@ -17,12 +17,15 @@ Over CR-012's survey corpus (422 documents) no island is made any more: the
 text model, the listing and Accept All and Reject All made 248 before Phase C,
 in 10 documents, and make none.
 
-An island is still reached where a text box stands **below a wildcard node**,
-since everything below a wildcard is a wildcard: a branch's ``w:moveFrom`` or
-``w:moveTo``, which are neither global nor docx4j roots (docx4j keeps them a
-DOM element), an element no class binds (a VML-namespace element the schema
-does not declare), or a tree built in code. No corpus document has one, and
-``tests/openpackaging/test_vml.py`` pins the first. That is why islands stay.
+An island is still made where a text box stands **below a wildcard node**,
+since everything below a wildcard is a wildcard: an element no class binds (a
+VML-namespace element the schema does not declare, ``<w:pict><v:unbound>``),
+or a tree built in code. The text model, the listing and Accept All and Reject
+All all reach such a box through an island, which
+``tests/openpackaging/test_vml.py`` pins. (A branch's ``w:moveFrom`` or
+``w:moveTo`` is a wildcard node too, neither global nor a docx4j root: the text
+model reads one through a typed copy, and the listing does not walk it for
+text boxes.) No corpus document has either. That is why islands stay.
 
 An **island** is one such ``w:txbxContent``, made typed for as long as it is
 being resolved:

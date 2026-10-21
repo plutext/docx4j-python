@@ -332,42 +332,66 @@ def test_the_census_on_samples():
 
 
 # ---------------------------------------------------------------------------
-# the islands: still reached below a wildcard node, and nowhere else
+# the islands: still reached below a wildcard node
 # ---------------------------------------------------------------------------
 
+#: A text box in a VML-namespace element no class binds: everything below a
+#: wildcard node is a wildcard, so its ``w:txbxContent`` is one too.
 BELOW_A_WILDCARD = (
+    "<w:p><w:r><w:t>before</w:t></w:r><w:r><w:pict><v:unbound><v:textbox><w:txbxContent><w:p>"
+    '<w:ins w:id="10" w:author="A" w:date="2026-10-22T00:00:00Z"><w:r><w:t>boxed</w:t></w:r></w:ins>'
+    "</w:p></w:txbxContent></v:textbox></v:unbound></w:pict></w:r></w:p>"
+)
+
+#: A branch's ``w:moveTo``, neither global nor a docx4j root: a wildcard tree,
+#: with the ``w:pict`` and its VML below it.
+IN_A_BRANCHS_MOVE = (
     '<w:p><w:r><w:t>before</w:t></w:r><mc:AlternateContent><mc:Choice Requires="w14">'
     '<w:moveTo w:id="9" w:author="A" w:date="2026-10-22T00:00:00Z"><w:r><w:pict><v:shape id="box">'
-    "<v:textbox><w:txbxContent><w:p><w:ins w:id=\"10\" w:author=\"A\" w:date=\"2026-10-22T00:00:00Z\">"
-    "<w:r><w:t>boxed</w:t></w:r></w:ins></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r>"
-    "</w:moveTo></mc:Choice><mc:Fallback/></mc:AlternateContent></w:p>"
+    "<v:textbox><w:txbxContent><w:p><w:r><w:t>boxed</w:t></w:r></w:p></w:txbxContent></v:textbox>"
+    "</v:shape></w:pict></w:r></w:moveTo></mc:Choice><mc:Fallback/></mc:AlternateContent></w:p>"
 )
+
+TXBX = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}txbxContent"
 
 
 def test_a_text_box_below_a_wildcard_node_is_still_a_wildcard_tree():
-    """Why the islands stay (CR-012 section 12): a branch's ``w:moveTo`` is no global or root element.
+    """Why the islands stay (CR-012 section 12.9): below a wildcard node every element is a wildcard.
 
-    docx4j keeps it a DOM element, and this model a wildcard tree, so the
-    ``w:pict`` below it, its VML and its text box are wildcards too: the one
-    shape, with an element no class binds, that still makes a wildcard
-    ``w:txbxContent``.
+    An element no class binds (a VML-namespace element the schema does not
+    declare), and a branch's ``w:moveFrom`` or ``w:moveTo``, which docx4j
+    keeps a DOM element, are such nodes; a text box below either is a wildcard
+    ``w:txbxContent``. No corpus document has one.
     """
-    paragraph = wml(BELOW_A_WILDCARD)
-    names = wildcards(paragraph)
-    assert "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}txbxContent" in names
-    assert "{urn:schemas-microsoft-com:vml}shape" in names
+    for fragment in (BELOW_A_WILDCARD, IN_A_BRANCHS_MOVE):
+        assert TXBX in wildcards(wml(fragment))
 
 
-def test_the_island_reads_a_text_box_below_a_wildcard_node():
-    """The revisions engine lists the insertion in that box through an island, as before Phase C."""
-    from docx4j_py.model.revisions.islands import Island, holds_revisions
-    from docx4j_py.model.revisions.lister import box_refs
+def test_a_text_box_below_a_wildcard_node_is_read_through_an_island():
+    """The text model, the listing and Accept All reach it through a typed island, as before Phase C."""
+    import functools
 
-    paragraph = wml(BELOW_A_WILDCARD)
-    (ac,) = find(paragraph, AlternateContent, mce="all")
-    refs = box_refs(ac.choice[0], alternate=False)
-    assert [kind for kind, _node, _holder in refs] == ["wild"]
-    _kind, node, holder = refs[0]
-    assert holds_revisions(node)
-    island = Island(node, holder)
-    assert isinstance(island.typed, CTTxbxContent)
+    from docx4j_py import create_package
+    from docx4j_py.model import revisions
+    from docx4j_py.model.revisions import islands
+    from docx4j_py.model.text import extract, plain_text
+
+    made: list = []
+    original = islands.Island.__init__
+
+    @functools.wraps(original)
+    def counting(self, *args, **kwargs):
+        made.append(self)
+        original(self, *args, **kwargs)
+
+    pkg = create_package()
+    pkg.main_document_part.contents.body.content.insert(0, wml(BELOW_A_WILDCARD))
+    islands.Island.__init__ = counting
+    try:
+        assert plain_text(extract(pkg)) == "before\nboxed\n"
+        assert [(change.type, change.text) for change in revisions.tracked_changes(pkg)] == [("Added", "boxed")]
+        assert revisions.accept_all(pkg) == 1
+        assert revisions.tracked_changes(pkg) == []
+    finally:
+        islands.Island.__init__ = original
+    assert made and all(isinstance(island.typed, CTTxbxContent) for island in made)
