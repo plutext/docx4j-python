@@ -2816,13 +2816,16 @@ mend them (12.8).
   and untested beyond the regeneration.
 - **A fork release.** Stages 9 to 12 are local. docx4j-python cannot release on them before one
   (`RELEASING.md`).
-- **docx4j's agreement run** (it calls `revisions.accept_all`) was not rerun for this phase. The
-  audit's Accept All and Reject All forms are unchanged on all 384 documents, the eleven fixtures
-  among them; asking docx4j-25 is the coordinator's.
-- **CLAUDE.md** still describes VML as untyped in places, for the coordinator:
-  - the generated packages' list (add `vml/`);
-  - the CR-012 status line;
-  - "WordprocessingML only until CR-001 D and CR-002 C" (true, VML aside).
+- **docx4j's agreement run** (it calls `revisions.accept_all`): rerun by docx4j-25 on 2026-10-22
+  against `30abcd2` (this phase), through `.venv-fork` with the fork's stage 12 as installed,
+  docx4j's side at `f62314d3b`'s revisions code (unchanged since `84b202c5a`): **0 lines differ in
+  all 24 comparisons** (the eleven fixtures, accepted and rejected, and the 2026-10-21 set's
+  `review-for-word-word365-rejected`, accepted and rejected). Section 5's gate holds, as the audit's
+  Accept All and Reject All forms, unchanged on all 384 documents, said it would.
+- **CLAUDE.md** described VML as untyped in places, for the coordinator: done in `30abcd2` (the
+  generated packages' list names `vml/`, the CR-012 line, the MCE paragraph, the fork's
+  `lexical_types` beside the boolean rule, `scripts/vml_census.py` among the commands). "WordprocessingML
+  only until CR-001 D and CR-002 C" stays: VML is WordprocessingML's here.
 - **`docs/UPSTREAM.md`**: rows 19 to 24 stood after the notes below the table, where they did not
   render as table rows, and report 25 was appended after them. This predates the phase. (The
   coordinator's check found each row once, not twice as first reported, and moved rows 19 to 25
