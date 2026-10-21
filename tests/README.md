@@ -418,6 +418,14 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > All three open with no repair prompt and no tracked change, and show the Choice's cell, `C`. The
 > eleven artefacts are canonically unchanged by the port.
 
+> **2026-10-22, Word check of CR-012's change text and grid port passed** (the user:
+> "python-cr012a2-grid passes"). The port of docx4j `84b202c5a` counts a merged grid's spans along
+> every branch before writing any. One save of docx4j's grid test's shape after `reject_all`, with
+> borders, is staged in `out/cr012-a2-grid-word-check/` with a README (CR-012 section 10.12): three
+> equal columns, row 1 X across one and C across two, row 2 a, b and c. It opens with no repair
+> prompt and no tracked change, and shows that. The eleven artefacts are canonically unchanged by the
+> port.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

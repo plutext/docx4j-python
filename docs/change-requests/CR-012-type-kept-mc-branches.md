@@ -37,7 +37,18 @@ property records read and resolved through every branch, landed the same day at 
 the fix, then start phase b"; 10.11), and its Word check of three saves passed (the user: "the Word
 check of __tmp/python-cr012a2-records/ passes"). **Phase B started 2026-10-22** at the same go, its design
 revised first (section 4.2): Phase A's fork hooks take the root-element table, so the fork needs no
-code.
+code. The port of docx4j `84b202c5a`, a table change's text read from Word's branch and a merged
+grid's spans counted along every branch before any is written, landed the same day at the user's go
+("go on the port"; 10.12), and its Word check passed (the user: "python-cr012a2-grid passes").
+**Phase B implemented the same day** (section 11): docx4j's 61 WordprocessingML root elements,
+derived from docx4j's classes into `codegen/names/root_elements.json` and `el_index.py`, typed in a
+branch by the container's binding and elsewhere by their root class; over 422 documents built from
+commits every `w:drawing` in a Choice is a `Drawing` and every `w:pict` in a Fallback a `Pict`, no
+new canonical difference and no skipped report changed; the readers' audit kept the python-docx
+facade's `inline_shapes` as python-docx reads them; the `text_of` readers now read a
+paragraph-level branch as a run-level one (11.4, kept); parse +21% and save +35% on the
+403-branch document; acceptance and the ratchet unchanged; **the Word check of four saves is the
+user's** (`out/cr012-b-word-check/`).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose

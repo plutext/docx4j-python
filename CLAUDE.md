@@ -43,8 +43,9 @@ departure; read them before changing the area they cover. Status, 2026-10-21:
   reader, is proposed. Its fork change (stage 10) needs a fork release before a docx4j-python
   release.
 - **CR-012** (`mc:AlternateContent` kept at every level, its branches typed): decided 2026-10-21;
-  Phases A and A2 (docx4j CR-051 phases 1 and 2) implemented and Word-checked; B proposed; C on
-  its own go. Its fork change (stage 11) joins CR-011's in needing a fork release.
+  Phases A and A2 (docx4j CR-051 phases 1 and 2) implemented and Word-checked; B (docx4j's 61
+  root elements typed in a branch) implemented 2026-10-22, its Word check awaited; C on its own go.
+  Its fork change (stage 11) joins CR-011's in needing a fork release.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -72,6 +73,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata
 .venv-fork/bin/python scripts/checks.py out/phase-b    # targeted fidelity checks over roundtrip.py's artefacts
 .venv-fork/bin/python scripts/parents.py               # parent pointers over the corpus, and their cost
+.venv-fork/bin/python scripts/mce_branches.py survey   # CR-012 Phase B: what a kept mc branch holds (corpus, readers)
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
 .venv-fork/bin/python scripts/bench_marshal.py         # parse and marshal, part by part (--json)
 .venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
@@ -192,7 +194,9 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
   written (the scoped `t@r` and friends, giving `RT`, `RInstrText`, `RDelInstrText`). Tables are
   matched by the `namespace` key inside each file, not by file name. `Meta.name` always stays the
   schema's name. The expected ~280 `ClassNames` warnings are explained in `codegen/names/README.md`
-  and CR-001 section 13.3.
+  and CR-001 section 13.3. `root_elements.json` (CR-012 Phase B), also `derive_names.py`'s, lists
+  docx4j's root elements this model does not declare globally; `generate_el.py` writes it into
+  `el_index.py` as `ROOT_ELEMENTS` and `ROOT_ELEMENT_BINDINGS`.
 - **The `el` tables** (`codegen/el_tables/<namespace>.json`). Written by `generate_el.py` from the
   `XmlContext` metadata, never from the schema, and committed for review. The `overrides` object at
   the top of each file (`defaults`, `aliases`) is the only input; the rest is output. The naming
@@ -254,10 +258,15 @@ section 12.3.
 - Booleans serialise numeric (`1`/`0`), as Word writes them; the docProps parts use
   `bool_format = "words"`. On write, `XmlPart.xml` re-declares every prefix that `mc:Ignorable`
   names.
-- MCE is lossless by default: both branches of `mc:AlternateContent` are kept as wildcard
-  (`AnyElement`) trees, and traversal takes `mce="resolve"` (the default), `"all"` or `"none"`.
-  `LoadOptions(mce_preprocess=True)` replaces each one with the branch Word would take, which is
-  the only way to get typed content such as `Drawing` inside a choice. Since CR-012 Phase A (Q8),
+- MCE is lossless by default: every branch of `mc:AlternateContent` is kept, and traversal takes
+  `mce="resolve"` (the default), `"all"` or `"none"`. Since CR-012 Phase B a branch's children are
+  typed where docx4j types them: docx4j's 61 WordprocessingML root elements (`w:drawing`,
+  `w:pict`, `w:t`, `w:tbl` and the rest), bound in a branch as the container holding the element
+  binds them, elsewhere in a lax wildcard as their root class, through the fork's stage 11 hooks
+  (`runtime.branch_child_class` and the serialiser's `element_names`); any other name, and the VML
+  under a `w:pict` until Phase C, stays a wildcard (`AnyElement`) tree.
+  `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. Since
+  CR-012 Phase A (Q8),
   it and `mc_block_level="word"` select over docx4j's published understood list
   (`resources/understood-namespaces.txt`), matched by namespace URI, so they take the branch Word
   365 takes. `UNDERSTOOD` is generated, deliberately narrower than the prefix table, and stays
