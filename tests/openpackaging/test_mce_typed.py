@@ -518,3 +518,47 @@ def test_a_word_mode_records_parse_types_the_roots():
     assert [type(c) for c in record.element.choice[0].any_element] == [Tbl]
     assert [type(c) for c in record.element.fallback.any_element] == [P]
     assert isinstance(record.element.fallback, AlternateContentFallback)
+
+
+# ---------------------------------------------------------------------------
+# pinned for the coordinator's decision (CR-012 section 11.4)
+# ---------------------------------------------------------------------------
+
+_CELLS = (
+    '<w:body><w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="1000"/><w:gridCol w:w="1000"/></w:tblGrid><w:tr>'
+    "<w:tc><w:p><w:r><w:t>a</w:t></w:r><mc:AlternateContent>"
+    '<mc:Choice Requires="w14"><w:r><w:t>-PARA_CHOICE</w:t></w:r></mc:Choice>'
+    "<mc:Fallback><w:r><w:t>-PARA_FALLBACK</w:t></w:r></mc:Fallback></mc:AlternateContent></w:p></w:tc>"
+    "<w:tc><w:p><w:r><w:t>b</w:t><mc:AlternateContent>"
+    '<mc:Choice Requires="w14"><w:t>-RUN_CHOICE</w:t></mc:Choice>'
+    "<mc:Fallback><w:t>-RUN_FALLBACK</w:t></mc:Fallback></mc:AlternateContent></w:r></w:p></w:tc>"
+    "</w:tr></w:tbl><w:sectPr/></w:body>"
+)
+
+
+def test_pinned_for_the_coordinators_decision_text_of_readers_read_a_paragraph_level_branchs_runs():
+    """The text_of readers now read Word's branch at paragraph level, as at run level; Paragraph.text reads neither.
+
+    Before Phase B, ``text_of`` (``Block.text``, ``Table.text``, ``TableCell.text``,
+    a run control's text, ``TrackedChange.text``) read a run-level branch's
+    wildcard ``w:t`` but not a paragraph-level branch's typed ``w:r``, which the
+    walks named ``any_element``: this cell read ``a``. Now it reads ``a-PARA_CHOICE``,
+    as ``text_of``'s own contract says (the resolved branch contributes) and as
+    Word shows. ``Paragraph.text`` and ``get_text``, Office JS's text by CR-011
+    Q4, read neither branch, before and after. Whether the ``text_of`` readers
+    that claim Office JS's text should descend at all is CR-011 Q4's question,
+    left to the coordinator (CR-012 section 11.4).
+    """
+    from docx4j_py import create_package
+    from docx4j_py.child import link_parents
+
+    pkg = create_package()
+    pkg.main_document_part.contents.body = wml(_CELLS)
+    link_parents(pkg.main_document_part.contents)
+    body = pkg.body
+    (table,) = body.tables
+    assert table.values == [["a-PARA_CHOICE", "b-RUN_CHOICE"]]
+    assert table.text == "a-PARA_CHOICE\nb-RUN_CHOICE"
+    assert [cell.text for cell in table.rows[0].cells] == ["a-PARA_CHOICE", "b-RUN_CHOICE"]
+    assert [p.text for p in body.paragraphs] == ["a", "b"]
+    assert body.get_text() == "a\nb"

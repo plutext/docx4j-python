@@ -47,7 +47,6 @@ import json
 import subprocess
 import sys
 import time
-import traceback
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -487,7 +486,7 @@ def readers(roots: list[Path], out_path: Path) -> int:
         try:
             answers[key] = reader_answers(path)
         except Exception as exc:  # noqa: BLE001
-            answers[key] = {"load": f"ERROR {type(exc).__name__}: {exc}"[:400], "trace": traceback.format_exc()[-800:]}
+            answers[key] = {"load": f"ERROR {type(exc).__name__}: {exc}"[:400]}
         if index % 20 == 0:
             print(f".. {index} of {len(docs)}, {time.perf_counter() - started:.0f} s", flush=True)
     out_path.write_text(json.dumps(answers, indent=1, sort_keys=True), encoding="utf-8")
@@ -502,7 +501,7 @@ def compare_readers(before_path: Path, after_path: Path) -> int:
     changed: dict[str, list[str]] = collections.defaultdict(list)
     for key in sorted(set(before) | set(after)):
         a, b = before.get(key, {}), after.get(key, {})
-        for reader in sorted(set(a) | set(b)):
+        for reader in sorted((set(a) | set(b)) - {"trace"}):  # a traceback is the script's, not a reader's
             if a.get(reader) != b.get(reader):
                 changed[reader].append(key)
     print(f"{len(before)} documents before, {len(after)} after")
