@@ -558,8 +558,12 @@ def test_charts_and_smartart(probe):
     assert chart.chart_header == ["", "CHT34_SERIES_ONE", "CHT34_SERIES_TWO"]
     assert chart.chart_rows == [["CHT34_CAT_A", "3", "4"], ["CHT34_CAT_B", "5", "2"]]
     data = chart.to_dict()
-    assert data["chart_kind"] == "clustered column" and data["secondary_series"] == []
-    assert data["axes"] == [{"role": "category axis", "title": None}, {"role": "value axis", "title": "CHT34_AXIS_TITLE"}]
+    assert data["kind"] == "CHART" and data["chart"]["kind"] == "clustered column"
+    assert data["chart"]["secondary_series"] == [] and "[chart" not in str(data)
+    assert data["chart"]["axes"] == [
+        {"role": "category axis", "title": None},
+        {"role": "value axis", "title": "CHT34_AXIS_TITLE"},
+    ]
     assert not [b for b in extract(probe, charts=False).blocks if b.kind == "CHART"]
 
     smart_art = [b for b in r.blocks if b.story == "SMARTART"]

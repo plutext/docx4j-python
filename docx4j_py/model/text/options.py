@@ -165,6 +165,10 @@ class TextOptions:
     docx4j refuses them: ``math: unicodemath`` (no OMML to UnicodeMath
     converter) and ``symbols: unicode`` (no glyph tables).
 
+    ``page_markers: true`` writes ``[page n]`` where Word last broke a page
+    (``w:lastRenderedPageBreak``, REQ-708): the markers are current only when
+    the package was last paginated after its last edit.
+
     Beyond section 10, ``image_describer`` (REQ-514): what gives an image its
     description, the author's alt text by default.
     """

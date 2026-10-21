@@ -402,10 +402,13 @@ class TextBlock:
             if self.fields:
                 out["fields"] = [{"instr": f.instr, "result": f.result, "updated": f.updated} for f in self.fields]
         elif self.kind == "CHART":
+            # REQ-706's chart fields, apart from the block's own kind; the note is plain text's alone (REQ-707)
             if self.chart is not None:
-                out["chart_kind"] = self.chart.kind
-                out["axes"] = [{"role": a.role, "title": a.title} for a in self.chart.axes]
-                out["secondary_series"] = list(self.chart.secondary_series)
+                out["chart"] = {
+                    "kind": self.chart.kind,
+                    "axes": [{"role": a.role, "title": a.title} for a in self.chart.axes],
+                    "secondary_series": list(self.chart.secondary_series),
+                }
             out["title"] = self.chart_title
             out["header"] = list(self.chart_header)
             out["rows"] = [list(r) for r in self.chart_rows]
