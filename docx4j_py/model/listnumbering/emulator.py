@@ -397,17 +397,49 @@ class Emulator:
         level = definition.level(ilvl if ilvl else "0")
         return None if level is None else level.p_style
 
+    def level_style_id(self, num_id: str, ilvl: str | None) -> str | None:
+        """The paragraph style a numbering level belongs to (WD REQ-510), or None. docx4j ``Emulator.levelStyleId``.
+
+        The one its ``w:lvl/w:pStyle`` names (the ``w:num``'s override level's
+        first, :meth:`linked_style_id`); else the first paragraph style in
+        styles.xml whose own ``w:numPr`` names a ``w:num`` on the same
+        ``w:abstractNum`` at that level (its ``w:ilvl``, 0 where it states
+        none). None where neither: no style carries the level, so a paragraph
+        reaches it only through its own ``w:numPr``. docx4j ``d9acdf5e2``,
+        held to Word by ``LevelOwnerTest``'s three documents.
+        """
+        linked = self.linked_style_id(num_id, ilvl)
+        if linked:
+            return linked
+        definition = self.instance_list_definitions.get(num_id)
+        if definition is None or definition.abstract_definition is None:
+            return None
+        level = ilvl if ilvl else "0"
+        for style in self.styles.values():
+            if style.kind != "paragraph" or style.num_id is None:
+                continue
+            other = self.instance_list_definitions.get(style.num_id)
+            if other is None or other.abstract_definition is not definition.abstract_definition:
+                continue
+            if (style.ilvl or "0") == level:
+                return style.style_id
+        return None
+
     def style_linked_elsewhere(self, num_id: str, ilvl: str, style_id: str | None) -> bool:
         """Whether the level belongs to a different style than brought the numbering.
 
         docx4j ``Emulator.styleLinkedElsewhere``, measured on probe
         ``numbering-label-ilvl0``: Word paints no label and does not count such
-        a paragraph. The style itself or any style it is based on counts as the
-        level's own.
+        a paragraph. The level's owner is :meth:`level_style_id` (docx4j
+        ``d9acdf5e2``, REQ-510); a paragraph naming no style is in the default
+        paragraph style, which can own a level. The style itself or any style
+        it is based on counts as the level's own.
         """
-        linked = self.linked_style_id(num_id, ilvl)
+        linked = self.level_style_id(num_id, ilvl)
         if not linked:
             return False
+        if style_id is None:
+            style_id = self.default_paragraph_style_id
         if style_id is None:
             return True
         resolver = self.resolver
@@ -517,9 +549,11 @@ class Emulator:
     # -- counting ----------------------------------------------------------
 
     def number(self, p_pr: Any, state: NumberingState | None = None) -> NumberingResult | None:
-        """The next number for a paragraph, from its ``w:pPr``. Increments `state`."""
-        if p_pr is None:
-            return None
+        """The next number for a paragraph, from its ``w:pPr``. Increments `state`.
+
+        A paragraph with no ``w:pPr`` is resolved as an empty one, against the
+        default paragraph style, which may be numbered (docx4j ``c283dffdb``).
+        """
         p_style_val = _value(getattr(p_pr, "p_style", None))
         num_pr = getattr(p_pr, "num_pr", None)
         num_id = None
@@ -879,7 +913,7 @@ def _read_styles(package: Any) -> tuple[dict[str, StyleNumbering], str | None]:
         if based_on_element is not None:
             based_on = based_on_element.get(_w("val"))
         default = (style.get(_w("default")) or "") in ("1", "true", "on")
-        styles[style_id] = StyleNumbering(style_id, based_on, num_id, ilvl, default, ind)
+        styles[style_id] = StyleNumbering(style_id, based_on, num_id, ilvl, default, ind, kind=kind)
         if default and default_id is None and kind == "paragraph":
             default_id = style_id
     return styles, default_id

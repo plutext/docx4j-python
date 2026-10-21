@@ -95,35 +95,41 @@ def test_a_range_has_no_original_view():
     assert "on the paragraph" in raised.value.hint
 
 
-def test_get_text_has_no_markup_view_yet():
-    """CR-011 Q10: 0.1.0's markup view was neither view; it raises until Phase B gives it the model's."""
+def test_get_text_has_the_text_models_markup_view():
+    """CR-011 Q10, Phase B: 0.1.0's markup view was neither view; it is the text model's now."""
     package = sample("sample-docx.docx")  # one w:ins and one w:del
     paragraph = package.body.paragraphs[0]
-    for read in (
-        lambda: package.body.get_text(view="markup"),
-        lambda: package.body.text_budget(view="markup"),
-        lambda: paragraph.get_text(view="markup"),
-        lambda: paragraph.text_budget(view="markup"),
-        lambda: paragraph.get_range().get_text(view="markup"),
-    ):
-        with pytest.raises(ContentError) as raised:
-            read()
-        assert raised.value.code == "text.no_markup_view"
-        assert "CR-011" in raised.value.message
-        assert "to_markdown(view='markup')" in raised.value.hint
-    assert "{++" in package.body.to_markdown(view="markup")
+    body = package.body.get_text(view="markup")
+    assert "{++" in body and "{--" in body
+    assert package.body.text_budget(view="markup").text == body
+    line = paragraph.get_text(view="markup")
+    assert paragraph.text_budget(view="markup").text == line
+    assert line == body.split("\n")[0]
+    with pytest.raises(SpanError) as raised:
+        paragraph.get_range().get_text(view="markup")
+    assert raised.value.code == "range.no_markup_view"
+    assert "on the paragraph" in raised.value.hint
 
 
 def test_get_text_refuses_a_view_it_does_not_have():
     package = sample("sample-docx.docx")
     with pytest.raises(ContentError) as raised:
-        package.body.get_text(view="current")
+        package.body.get_text(view="later")
     assert raised.value.code == "text.view_invalid"
-    assert "'accepted' or 'original'" in raised.value.message
+    assert "'accepted' or 'original' or 'markup'" in raised.value.message
     with pytest.raises(ContentError) as raised:
-        package.body.paragraphs[0].get_range().get_text(view="current")
+        package.body.paragraphs[0].get_range().get_text(view="later")
     assert "takes view='accepted', not" in raised.value.message
     assert package.body.get_text(view="original") != package.body.get_text(view="accepted")
+
+
+def test_current_is_the_accepted_view():
+    """WD REQ-401's synonym, since CR-011 Phase B."""
+    package = sample("sample-docx.docx")
+    assert package.body.get_text(view="current") == package.body.get_text(view="accepted")
+    paragraph = package.body.paragraphs[0]
+    assert paragraph.get_text(view="current") == paragraph.text
+    assert paragraph.get_range().get_text(view="current") == paragraph.text
 
 
 def test_a_session_error_says_how_to_recover():

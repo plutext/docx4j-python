@@ -353,6 +353,10 @@ class StyleNumbering:
     """Whether the style states a ``w:numPr`` at all. docx4j tells "not numbered"
     from "a ``w:numPr`` without a ``w:numId`` val" and gives each its own
     reason; :attr:`num_id` alone cannot."""
+    kind: str = "paragraph"
+    """``w:type``: ``paragraph``, or ``numbering`` for a numbering style, which
+    the map holds too; only a paragraph style can own a level
+    (:meth:`Emulator.level_style_id`)."""
 
 
 class ListLevel:

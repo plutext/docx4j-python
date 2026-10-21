@@ -36,6 +36,7 @@ from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.text_model import (
     RUN_HOLDER_NAMES,
     find_all,
+    canonical_view,
     require_view,
     search_pattern,
 )
@@ -109,18 +110,18 @@ class Range:
         """The span's text. The original view is not offered on a range.
 
         Raises:
-            SpanError: `view` is ``"original"``; read that view on the
-                paragraph, whose offsets it belongs to (CR-003 section 4).
-            ContentError: ``view="markup"`` (``text.no_markup_view``), which
-                0.1.0 answered with the accepted text, or any other view
-                (``text.view_invalid``).
+            SpanError: `view` is ``"original"`` or ``"markup"``; read that view
+                on the paragraph, whose offsets it belongs to (CR-003 section
+                4). 0.1.0 answered ``"markup"`` with the accepted text.
+            ContentError: any other view (``text.view_invalid``).
         """
-        if view == "original":
+        if view in ("original", "markup"):
             raise SpanError(
-                "a Range's offsets are accepted-view offsets, so it has no original view",
-                code="range.no_original_view",
-                hint="call get_text(view='original') on the paragraph instead",
+                f"a Range's offsets are accepted-view offsets, so it has no {view} view",
+                code=f"range.no_{view}_view",
+                hint=f"call get_text(view={view!r}) on the paragraph instead",
             )
+        view = canonical_view(view)  # type: ignore[assignment]
         require_view(view, ("accepted",))
         return self.text
 

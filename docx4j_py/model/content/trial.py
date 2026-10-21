@@ -90,6 +90,18 @@ class TrialPart:
         """The copy."""
         return self._contents
 
+    def read_contents(self) -> Any:
+        """The copy, as a reader that must not unmarshal the real part reads it (the text model, CR-011)."""
+        return self._contents
+
+    def header_parts(self) -> list[Any]:
+        """The trial's copies of the headers the real part relates to."""
+        return [self.package.trial_part(part) for part in self._wrapped.header_parts()]
+
+    def footer_parts(self) -> list[Any]:
+        """The trial's copies of the footers the real part relates to."""
+        return [self.package.trial_part(part) for part in self._wrapped.footer_parts()]
+
     @property
     def tree(self) -> Any:
         """The copied lxml element, for a part the model does not type."""

@@ -214,9 +214,15 @@ class _FieldState(enum.Enum):
 class Lister:
     """Lists the changes of some stories (by default, every story of a package)."""
 
-    __slots__ = ("_stories", "attach_twins", "package")
+    __slots__ = ("_islands", "_stories", "attach_twins", "package")
 
-    def __init__(self, package: Any, attach_twins: bool, stories: list[Story] | None = None) -> None:
+    def __init__(
+        self,
+        package: Any,
+        attach_twins: bool,
+        stories: list[Story] | None = None,
+        islands: dict[int, Island] | None = None,
+    ) -> None:
         """Build the lister.
 
         Args:
@@ -226,10 +232,15 @@ class Lister:
                 twins; False for ``accept_all``'s, where every branch's are
                 listed.
             stories: the stories to list; every story of the package when None.
+            islands: the typed islands of wildcard text boxes, by ``id`` of
+                the wildcard node, to take and add to: a reader that walks the
+                same boxes (the text model, CR-011) then sees the very objects
+                the listing names. None for islands of the lister's own.
         """
         self.package = package
         self.attach_twins = attach_twins
         self._stories = stories
+        self._islands = islands
 
     def stories(self) -> list[Story]:
         """The stories this lister walks."""
@@ -638,10 +649,14 @@ class Lister:
             return Story(self.package, part, node.content, node, twin)
         if not holds_revisions(node):
             return None
-        try:
-            island = Island(node, holder)
-        except ValueError:
-            return None
+        island = self._islands.get(id(node)) if self._islands is not None else None
+        if island is None:
+            try:
+                island = Island(node, holder)
+            except ValueError:
+                return None
+            if self._islands is not None:
+                self._islands[id(node)] = island
         return Story(self.package, part, island.typed.content, island.typed, twin, island)
 
 

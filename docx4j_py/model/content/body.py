@@ -59,6 +59,8 @@ from docx4j_py.model.content.table import Table, insert_table_into
 from docx4j_py.model.content.text_model import (
     block_children_of,
     block_list_of,
+    canonical_view,
+    markup_text,
     require_view,
 )
 from docx4j_py.namespaces import PREFIXES
@@ -394,12 +396,19 @@ class Body(Sequence):
             max_chars: stop after this many characters, so that a 200-page
                 document can be read into a context window that cannot hold it.
 
+        ``"markup"`` is the text model's view (CR-011 Phase B): the body's
+        content as stored, each revision written as CriticMarkup, each comment
+        at its reference, each text box after its anchoring paragraph, hidden
+        text left out (:func:`~.text_model.markup_text`).
+
         Raises:
-            ContentError: ``view="markup"`` (``text.no_markup_view``), until
-                CR-011 Phase B gives it the text model's markup view; or any
-                other view (``text.view_invalid``).
+            ContentError: any other view (``text.view_invalid``).
         """
+        view = canonical_view(view)  # type: ignore[assignment]
         require_view(view)
+        if view == "markup":
+            text = markup_text(self)
+            return text if max_chars is None else text[:max_chars]
         out: list[str] = []
         total = 0
         for paragraph in self.iter_paragraphs():

@@ -56,6 +56,8 @@ __all__ = [
     "grapheme_clusters",
     "is_grapheme_boundary",
     "item_text",
+    "canonical_view",
+    "markup_text",
     "require_view",
     "rows_of",
     "runs_of",
@@ -268,37 +270,52 @@ def text_of_view(container: Any, *, view: str = "accepted") -> str:
     return "".join(segment.text for segment in segments_of(container, view=view))
 
 
-#: The views ``get_text`` and ``text_budget`` read (CR-003 section 3.8).
-VIEWS = ("accepted", "original")
+#: The views ``get_text`` and ``text_budget`` read (CR-003 section 3.8), and
+#: since CR-011 Phase B the text model's ``markup`` view.
+VIEWS = ("accepted", "original", "markup")
+
+
+def canonical_view(view: str) -> str:
+    """A view's name, ``current`` read as ``accepted`` (WD REQ-401's synonym, CR-011 Phase B)."""
+    return "accepted" if view == "current" else view
 
 
 def require_view(view: str, views: tuple[str, ...] = VIEWS) -> None:
     """Refuse a view ``get_text`` cannot read, rather than return neither.
 
     The filter shows a revision holder only in the view it belongs to, so any
-    other name keeps the text outside every insertion, deletion and move. That
-    is what a paragraph's and a body's ``view="markup"`` returned in 0.1.0
-    (a range's returned the accepted text). It raises until CR-011 Phase B
-    gives ``get_text`` the text model's markup view (CR-011 section 9, Q10).
+    other name would keep the text outside every insertion, deletion and move.
+    ``"markup"`` is the text model's view (CR-011 Q10, Phase B:
+    :func:`markup_text`), which in 0.1.0 a paragraph's and a body's
+    ``view="markup"`` was not.
 
     Raises:
-        ContentError: ``text.no_markup_view`` for ``"markup"``, and
-            ``text.view_invalid`` for any other view not in `views`.
+        ContentError: ``text.view_invalid`` for a view not in `views`.
     """
     if view in views:
         return
     taken = " or ".join(repr(v) for v in views)
-    if view == "markup":
-        raise ContentError(
-            "get_text has no markup view yet: CR-011 Phase B gives it the text model's",
-            code="text.no_markup_view",
-            hint=f"read view={taken}, or to_markdown(view='markup') for the changes as CriticMarkup",
-        )
     raise ContentError(
         f"get_text takes view={taken}, not {view!r}",
         code="text.view_invalid",
         hint="'accepted' reads the document as if every change were accepted",
     )
+
+
+def markup_text(target: Any, *, text_boxes: bool = True) -> str:
+    """The text model's ``markup`` view of a paragraph or a body, as plain text (CR-011 Phase B).
+
+    Every run as stored, its revision written ``{++...++}`` or ``{--...--}``,
+    each comment ``{>>...<<}`` at its reference with its replies (WD REQ-403,
+    REQ-504, REQ-702); a line per paragraph, hidden text left out, a text box
+    after its anchoring paragraph unless `text_boxes` is off. The model's, not
+    Office JS's: :func:`docx4j_py.model.text.extract` is the block model under
+    it.
+    """
+    from docx4j_py.model.text import extract, plain_text
+
+    text = plain_text(extract(target, view="markup", text_boxes=text_boxes))
+    return text[:-1] if text.endswith("\n") else text
 
 
 def runs_of(container: Any, *, view: str = "accepted") -> list[Any]:

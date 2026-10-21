@@ -52,6 +52,8 @@ from docx4j_py.model.content.styles import (
 )
 from docx4j_py.model.content.text_model import (
     find_all,
+    canonical_view,
+    markup_text,
     require_view,
     runs_of,
     search_pattern,
@@ -183,20 +185,31 @@ class Paragraph:
         `max_chars` is the budget of CR-003 section 3.4; it truncates and does
         not say so, which is what :meth:`text_budget` is for.
 
+        ``"markup"`` is the text model's view (CR-011 Phase B): the paragraph's
+        runs as stored, each revision written as CriticMarkup and each comment
+        at its reference (:func:`~.text_model.markup_text`); hidden text left
+        out.
+
         Raises:
-            ContentError: ``view="markup"`` (``text.no_markup_view``), until
-                CR-011 Phase B, or any other view (``text.view_invalid``).
+            ContentError: any other view (``text.view_invalid``).
         """
+        view = canonical_view(view)  # type: ignore[assignment]
         require_view(view)
-        out = text_of_view(self.element, view=view)
+        out = self._text_in(view)
         return out if max_chars is None else out[:max_chars]
+
+    def _text_in(self, view: str) -> str:
+        if view == "markup":
+            return markup_text(self, text_boxes=False)
+        return text_of_view(self.element, view=view)
 
     def text_budget(
         self, max_chars: int | None = None, *, view: TextView = "accepted"
     ) -> TextExcerpt:
         """:meth:`get_text` with the flag: ``TextExcerpt(text, chars, truncated)``."""
+        view = canonical_view(view)  # type: ignore[assignment]
         require_view(view)
-        full = text_of_view(self.element, view=view)
+        full = self._text_in(view)
         if max_chars is None or len(full) <= max_chars:
             return TextExcerpt(full, len(full), False)
         return TextExcerpt(full[:max_chars], len(full), True)

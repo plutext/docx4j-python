@@ -57,8 +57,12 @@ TextLocation = Literal["Start", "End", "Replace"]
 ParagraphLocation = Literal["Before", "After"]
 #: Office JS ``Word.RangeLocation``, what ``get_range`` takes.
 RangeLocation = Literal["Whole", "Start", "End", "Content"]
-#: The two views of a document with tracked changes (CR-003 section 3.8).
-TextView = Literal["accepted", "original"]
+#: The views of a document with tracked changes (CR-003 section 3.8): the
+#: document as Accept All leaves it, as Reject All leaves it, and, since
+#: CR-011 Phase B, every run as stored with its revision marked (the text
+#: model's ``markup`` view, REQ-401). ``current`` is accepted by the text
+#: model as a synonym of ``accepted``.
+TextView = Literal["accepted", "original", "markup"]
 
 
 class InsertLocation(StrEnum):
