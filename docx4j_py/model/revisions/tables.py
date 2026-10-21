@@ -30,16 +30,22 @@ import enum
 from typing import Any
 
 from docx4j_py.child import (
+    MC_CHOICE,
+    MC_FALLBACK,
     is_alternate_content,
+    is_any_element,
     mce_branch_content,
     mce_choices,
     mce_fallback,
 )
 from docx4j_py.model.revisions import props, trees
 from docx4j_py.model.revisions.trees import View
+from docx4j_py.traversal import element_name
 
 __all__ = [
     "accept",
+    "branch_of",
+    "cells_in",
     "cells_of",
     "change_text",
     "collapse_grid",
@@ -60,6 +66,8 @@ _GRID_SKIP = frozenset({"tblGridChange"})
 _EX_SKIP = frozenset({"tblPrExChange"})
 _ROW_SKIP = frozenset({"ins", "del", "trPrChange"})
 _CELL_SKIP = frozenset({"cellIns", "cellDel", "cellMerge", "tcPrChange"})
+#: The qualified names of an ``mc:AlternateContent``'s branches.
+_MC_BRANCHES = frozenset({MC_CHOICE, MC_FALLBACK})
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +147,38 @@ def _cells(items: list, out: list[tuple[Any, list]]) -> None:
             nested = trees.block_items(item)
             if nested is not None:
                 _cells(nested, out)
+
+
+def cells_in(branch: Any) -> list[tuple[Any, list]]:
+    """The cells of one branch of a cell-level ``mc:AlternateContent``, and the live list holding each.
+
+    docx4j ``Lister.cellsIn`` (since ``60bd4b9ad``, its CR-051 section 12.5):
+    the branch's own cells, in order, through cell-level controls and custom
+    XML, for a cell in a branch Word does not read, whose neighbours are its
+    branch's. The list is the branch's live one (docx4j ``McSplice.contentOf``):
+    a typed branch's ``any_element``, a wildcard one's ``children``. docx4j's
+    takes the row as well, for its ``Row`` records; the pairs here need none.
+    """
+    out: list[tuple[Any, list]] = []
+    items = branch.children if is_any_element(branch) else branch.any_element
+    if items is not None:
+        _cells(items, out)
+    return out
+
+
+def branch_of(tc: Any, tr: Any) -> Any:
+    """The ``mc:Choice`` or ``mc:Fallback`` a cell stands in, below its row, or None.
+
+    docx4j ``Lister.branchOf`` (since ``60bd4b9ad``): the parents climbed from
+    the cell to the row, through cell-level controls and custom XML; None for a
+    cell standing in the row itself. Typed and wildcard branches both answer.
+    """
+    node = getattr(tc, "parent", None)
+    while node is not None and node is not tr:
+        if (node.qname if is_any_element(node) else element_name(node)) in _MC_BRANCHES:
+            return node
+        node = getattr(node, "parent", None)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -488,13 +528,30 @@ def remove_cell(tc: Any, tr: Any, removals: Any, story: Any) -> None:
 
     As Word did rejecting an inserted cell and accepting a deleted one (check
     27: ``w:gridSpan`` added, and the widths added when both are ``dxa``).
+
+    A cell that is not among the row's cells (:func:`cells_of`, Word's branch)
+    stands in a branch of a cell-level ``mc:AlternateContent`` that Word does
+    not read: a twin. It is looked up in its own branch (:func:`branch_of`,
+    :func:`cells_in`), taken out of that branch's list, and that branch's
+    neighbour is widened; a twin alone in its branch is taken out with none
+    widened (docx4j ``Tables.removeCell`` since ``60bd4b9ad``, its CR-051
+    section 12.5; CR-012 section 10.10).
     """
     from docx4j_py.wml import el
 
     cells = cells_of(tr)
-    at = next((i for i, (cell, _owner) in enumerate(cells) if cell is tc), -1)
+    at = _index_in(cells, tc)
     if at < 0:
-        return
+        # docx4j CR-051 phase 2: a cell in a branch of a cell-level
+        # mc:AlternateContent that Word does not read (a twin): its neighbours
+        # are its own branch's cells
+        branch = branch_of(tc, tr)
+        if branch is None:
+            return
+        cells = cells_in(branch)
+        at = _index_in(cells, tc)
+        if at < 0:
+            return
     owner = cells[at][1]
     if at > 0:
         neighbour = cells[at - 1][0]
@@ -507,6 +564,14 @@ def remove_cell(tc: Any, tr: Any, removals: Any, story: Any) -> None:
         return
     removals.discard(story, tc)
     del owner[i]
+    # a twin alone in its branch has no neighbour, so it is taken out with none
+    # widened: the row's neighbour was widened once already, when the read
+    # branch's cell went, and every branch spans the same grid columns. docx4j
+    # also tests `inOtherBranch && cells.size() == 1` here, which only a cell
+    # with no neighbour meets (CR-012 section 10.10). Not so when the read
+    # branch's cell had a neighbour in its own branch: the twin's branch is left
+    # its span short (docx4j CR-051 section 12.5, pinned in
+    # tests/revisions/test_alternate_content.py)
     if neighbour is None:
         return
     kept = neighbour.tc_pr
@@ -525,6 +590,11 @@ def remove_cell(tc: Any, tr: Any, removals: Any, story: Any) -> None:
         and theirs.w is not None
     ):
         theirs.w = int(theirs.w) + int(mine.w)
+
+
+def _index_in(cells: list[tuple[Any, list]], tc: Any) -> int:
+    """Where a cell stands among `cells`, by identity; -1 when it does not (docx4j ``Tables.indexOf``)."""
+    return next((i for i, (cell, _owner) in enumerate(cells) if cell is tc), -1)
 
 
 def cell_marker(tc_pr: Any, local: str) -> Any:
