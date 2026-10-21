@@ -9,7 +9,10 @@ parent pointers are wired during the parse (12.14); **Phase B implemented 2026-0
 15): `PropertyResolver`, `StyleUtil`, the numbering completed and the fonts, with **zero
 differences on all 45 of docx4j's parity goldens** --- 984 style ids, 618 paragraphs, 1,113 runs,
 8 tables, 183 numbered paragraphs and 1,112 font spans. Word acceptance of the five created
-artefacts that gained a theme part is outstanding (15.5). Phase C proposed.
+artefacts that gained a theme part is outstanding (15.5). Phase C proposed. **Section 16
+proposed and started 2026-10-21** (the user: "add it to CR-002 and have an agent implement it
+with those tests"): `contents` adopts the private tree `read_contents` already parsed, with
+tests that make "a private reader never writes" a rule the suite holds.
 **Depends on:** CR-001 Phases A to C (implemented 2026-09-12): the generated model under `docx4j_py`,
 `Child` and `ChildList`, `link_parents`, `deep_copy`, `el`, `wml(...)`, `to_xml`, `text_of`,
 `walk`, `find`, `warm_up()`, the prefix table in `docx4j_py.namespaces`, the fork runtime's
@@ -1429,3 +1432,75 @@ The suite is **1,942 tests**, all passing, with one skip (the corpus round trip 
 * ~~**A Word check** of the five acceptance artefacts that gained a theme part (3, 4, 5, 6 and 11)~~
   --- **passed in Word on 2026-09-19**, the same day: no repair prompt, the body in Aptos and the
   headings in Aptos Display, as `tests/README.md` records. Nothing of Phase B awaits a check.
+
+## 16. Adopting the private tree (proposed 2026-10-21)
+
+The user's go, the same day: "add it to CR-002 and have an agent implement it with those tests".
+It comes from CR-011 section 14.10, where Phase D found the cost.
+
+### 16.1 Why
+
+`XmlPart` has two slots for its tree:
+- `contents` parses into the live slot, which marks the part for re-marshalling on save;
+- `read_contents()` parses into a private slot, cached, and the part still saves byte for byte
+  (section 6.1).
+
+The property resolver, the numbering emulator, the font selector and, since CR-011, the text
+model and every Markdown reader read privately. When `contents` is asked for after a private read,
+it parses the source bytes again, and the private copy is dropped at the next `read_contents`.
+So `pkg.to_markdown()` followed by an edit through `pkg.body` parses `document.xml` twice. On
+CR-003 section 16.4's 200-page document that is about 40 ms of 132 (CR-011 section 14.9). Styles
+and numbering pay the same, smaller, when an edit follows a resolver read.
+
+### 16.2 The change
+
+`contents`, finding the live slot empty and a private tree cached, promotes the private tree to
+the live slot instead of parsing. It clears the private slot and `_bytes`, as `_unmarshal` does.
+The part is then unmarshalled, as it would have been, from the same bytes. Nothing else changes:
+`read_contents` still answers the live tree once there is one, and `set_contents`, `set_bytes`
+and `set_xml` still clear both slots.
+
+A private tree is adopted only if it was parsed under the load options the live parse would use
+(`strict`, `mce_preprocess`, and any later package-level setting read at parse time, such as
+CR-012's `mc_block_level`). Otherwise `contents` parses afresh, as today.
+
+### 16.3 The rule the change depends on, and its tests
+
+Adoption is safe only if no private reader changes its tree. Today that is a convention, stated
+in `read_contents`' docstring ("never writes into one nobody will save"), and a reader that broke
+it did no harm, since its copy was thrown away. After this change a broken convention would be
+saved: an edit the caller never made, with nothing to say so. So the change comes with tests that
+hold the rule:
+
+1. **Each private reader leaves its tree as parsed.** Over `samples/`, the text-extraction
+   fixtures and CR-010's revisions fixtures, each reader runs with the options that reach the most
+   code: the property resolver and `StyleUtil`, the numbering emulator, the font selector
+   (`fonts_in_use`), the text model in its three views with every option on, Markdown and
+   `outline()`. After each one, every part's private tree marshals to the same bytes as a fresh
+   parse of that part. A deliberate write in a test reader makes the test fail.
+2. **An adopted tree is a parsed one.** Its parent pointers are linked. `part.skipped` is what an
+   ordinary unmarshal reports. `LoadOptions(strict=True)` still raises, at the private read or at
+   `contents`, whichever comes first.
+3. **A save after adoption writes the bytes a save after a fresh parse writes.** That holds for
+   the workflows of CR-011 section 14.4 (`to_markdown()`, then an edit by address, then save) and
+   for a resolver read followed by a style edit. `out/acceptance/` is regenerated and
+   canonically identical to the artefacts before (`scripts/compare_acceptance.py`).
+4. **Changed load options block adoption.** A private tree parsed under one set of options is
+   not adopted under another.
+5. **The thread rule is unchanged.** One package per thread, and the thread-safety check passes
+   (`scripts/threads.py`, `tests/openpackaging/test_threads_and_import.py`).
+
+### 16.4 The gate
+
+- Tests 1 to 5.
+- The whole suite.
+- `scripts/roundtrip.py` 50 of 50.
+- CR-011's ratchet unchanged, and its agreement test at zero.
+- The parity goldens at zero.
+- CR-010's Word-save comparisons unchanged.
+- Measured, before and after, on the 200-page document: CR-011 section 14.9's read-then-edit
+  workflow, a resolver read followed by `contents`, and `scripts/bench_marshal.py`.
+
+The change should not alter saved output. If the acceptance artefacts differ, that is a finding
+to report, and then a Word check. Half a day.
+
