@@ -39,7 +39,6 @@ from typing import Any
 
 from docx4j_py.child import (
     MC_CHOICE,
-    MC_FALLBACK,
     is_alternate_content,
     is_any_element,
     iter_children,
@@ -137,7 +136,7 @@ def _date_text(value: Any) -> str | None:
         try:
             return to_string()
         except Exception:  # noqa: BLE001 - fall back to str
-            pass
+            return str(value)
     return str(value)
 
 
@@ -671,10 +670,7 @@ class Extractor:
                 cell_state = state
                 if tc_pr is not None:
                     if tc_pr.grid_span is not None and tc_pr.grid_span.val is not None:
-                        try:
-                            cell.grid_span = int(_v(tc_pr.grid_span.val))
-                        except (TypeError, ValueError):
-                            pass
+                        cell.grid_span = _twips(_v(tc_pr.grid_span.val)) or 1
                     if tc_pr.v_merge is not None:
                         if _v(tc_pr.v_merge.val) == "restart":
                             cell.merge_restart = True
@@ -1086,10 +1082,7 @@ class Extractor:
                     visit(child, kids)
                 return
             for _qname, child in iter_children(node, mce="all", wildcards=True):
-                if is_any_element(child):
-                    visit(child, _holder_of(node, child))
-                elif not (is_alternate_content(child) and False):
-                    visit(child, None)
+                visit(child, _holder_of(node, child) if is_any_element(child) else None)
 
         visit(value, None)
 
@@ -1689,6 +1682,3 @@ def _math_text(value: Any, keep: Any) -> str:
     visit(value, 0)
     return "".join(out)
 
-
-#: The names the wildcard branches use for a Choice and a Fallback (for readers of this module).
-BRANCH_NAMES = (MC_CHOICE, MC_FALLBACK)

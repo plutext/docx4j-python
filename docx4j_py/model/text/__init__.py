@@ -58,7 +58,14 @@ from __future__ import annotations
 from typing import Any
 
 from docx4j_py.model.text.extractor import normalize
-from docx4j_py.model.text.options import NOT_YET, OPTION_NAMES, TextOptionError, TextOptions, TextView, view_of
+from docx4j_py.model.text.options import (
+    NOT_YET,
+    OPTION_NAMES,
+    TextOptionError,
+    TextOptions,
+    TextView,
+    view_of,
+)
 from docx4j_py.model.text.plain import plain_text
 from docx4j_py.model.text.result import (
     TextBlock,

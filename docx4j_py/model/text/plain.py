@@ -23,7 +23,13 @@ followed by ``author:`` or ``author, date:``.
 
 from __future__ import annotations
 
-from docx4j_py.model.text.result import TextBlock, TextComment, TextResult, TextRevision, TextRun
+from docx4j_py.model.text.result import (
+    TextBlock,
+    TextComment,
+    TextResult,
+    TextRevision,
+    TextRun,
+)
 
 __all__ = ["plain_text"]
 

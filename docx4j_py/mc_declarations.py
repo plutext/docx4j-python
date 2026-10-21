@@ -157,7 +157,13 @@ def _other_bindings_seen() -> bool:
 
 def _records(obj: Any, elements: list[etree._Element]) -> list[dict[str, str | None]] | None:
     """Each ``mc:Choice``'s source bindings, in document order, paired with `elements`; None where they do not pair."""
-    from docx4j_py.child import MC_CHOICE, is_any_element, iter_children, requires_of, source_bindings
+    from docx4j_py.child import (
+        MC_CHOICE,
+        is_any_element,
+        iter_children,
+        requires_of,
+        source_bindings,
+    )
 
     found: list[Any] = []
     stack: list[Any] = [obj]
