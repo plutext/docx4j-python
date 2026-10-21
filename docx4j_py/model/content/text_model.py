@@ -48,16 +48,18 @@ __all__ = [
     "RUN_HOLDER_NAMES",
     "TEXT_ITEM_NAMES",
     "VIEWS",
+    "Reading",
     "Segment",
     "block_children_of",
     "block_list_of",
+    "canonical_view",
     "cells_of",
     "find_all",
     "grapheme_clusters",
     "is_grapheme_boundary",
     "item_text",
-    "canonical_view",
     "markup_text",
+    "reading_of",
     "require_view",
     "rows_of",
     "runs_of",
@@ -315,7 +317,67 @@ def markup_text(target: Any, *, text_boxes: bool = True) -> str:
     from docx4j_py.model.text import extract, plain_text
 
     text = plain_text(extract(target, view="markup", text_boxes=text_boxes))
-    return text[:-1] if text.endswith("\n") else text
+    return text.removesuffix("\n")
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Reading:
+    """A body read by the text model (CR-011 Phase D): the result, and how its addresses map onto the body's.
+
+    ``result`` is :func:`docx4j_py.model.text.extract`'s; ``prefix`` is what
+    its blocks' ordinal addresses start with (``body``, ``header:rId4``, or
+    ``content`` for a body that is not a whole story); ``package`` is the
+    package it was read from, None for a detached body.
+    """
+
+    result: Any
+    prefix: str
+    package: Any
+
+    def address_of(self, body_prefix: str, block: Any) -> str:
+        """A block's address in the content API's form: its paraId first, else its ordinal.
+
+        A block of the body's own story (its model address a plain ordinal
+        under :attr:`prefix`) takes ``w14:`` and its ``w14:paraId`` where it
+        has one, else the ordinal under the body's own prefix (`body_prefix`), which
+        :meth:`~docx4j_py.model.content.body.Body.element_at` resolves (CR-003
+        section 3.4). Any other block --- a text box's, a note's, a chart's, a
+        chunk's --- keeps the model's address (REQ-519, ``body/3/textbox:0/1``),
+        which ``element_at`` does not take (CR-011 Q9: read only).
+        """
+        address = block.address
+        prefix = self.prefix
+        if address.startswith(prefix + "/") and address[len(prefix) + 1 :].replace("/", "").isdigit():
+            if block.para_id:
+                return f"w14:{block.para_id}"
+            return body_prefix + address[len(prefix) :]
+        return address
+
+
+def reading_of(body: Any, **options: Any) -> Reading:
+    """The text model's reading of a :class:`~docx4j_py.model.content.body.Body` (CR-011 Phase D).
+
+    The main document's body is read as the package is (docx4j
+    ``Texts.of(pkg)``: the main story, its text boxes and its notes, the notes'
+    numbers in reference order); a header's or a footer's as its part
+    (``Texts.of(part)``); any other body --- a cell, a content control, a
+    comment, a notes part --- as content in its package's view. Every part is
+    read with ``read_contents``, so nothing is unmarshalled by the reading
+    (REQ-204). `options` are :class:`~docx4j_py.model.text.TextOptions`' by name.
+    """
+    from docx4j_py.model.text import extract
+
+    package = body.package
+    part = body.part
+    contents = getattr(part, "contents", None) if part is not None else None
+    if package is not None and part is not None:
+        if part is getattr(package, "main_document_part", None) and body.container is getattr(contents, "body", None):
+            return Reading(extract(package, **options), "body", package)
+        if type(part).__name__ in ("HeaderPart", "FooterPart") and body.container is contents:
+            result = extract(part, package=package, **options)
+            prefix = result.blocks[0].address.split("/", 1)[0] if result.blocks else body.prefix
+            return Reading(result, prefix, package)
+    return Reading(extract(body, **options), "content", package)
 
 
 def runs_of(container: Any, *, view: str = "accepted") -> list[Any]:

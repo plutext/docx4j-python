@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import json
 
-from conftest import sample
+from conftest import ROOT, sample
 
+from docx4j_py import create_package, load
 from docx4j_py.model.content import Outline, OutlineEntry
 from docx4j_py.model.content.reports import DEFAULT_ENTRY_LIMIT
 
@@ -157,3 +158,48 @@ def test_reading_an_outline_does_not_unmarshal_the_other_parts():
 
 def test_the_default_limit_is_the_documented_one():
     assert DEFAULT_ENTRY_LIMIT == 300
+
+
+# ---------------------------------------------------------------------------
+# on the text model (CR-011 Phase D)
+# ---------------------------------------------------------------------------
+
+PROBE = ROOT / "tests" / "fixtures" / "text-extraction" / "phase0" / "extraction-probe.docx"
+
+
+def test_a_text_box_is_listed_after_its_anchor_at_its_textbox_address():
+    """REQ-518, REQ-519, CR-011 Q9: after the paragraph that anchors it, flagged, read only."""
+    outline = load(PROBE).outline(limit=None)
+    entries = list(outline.entries)
+    at = {entry.address: i for i, entry in enumerate(entries)}
+
+    box = entries[at["body/3/textbox:0/0"]]
+    assert at["body/3/textbox:0/0"] == at["body/3"] + 1
+    assert (box.textbox, box.ordinal, box.text) == (True, "body/3/textbox:0/0", "CHOICE_ALPHA_123")
+    assert box.to_dict()["textbox"] is True
+    assert "textbox" not in entries[at["body/3"]].to_dict()
+    # a box anchored in a table cell comes after the table, as the text model reads it
+    assert at["body/68/0/0/0/textbox:0/0"] == at["body/68"] + 1
+    assert "CHOICE_ALPHA_123" in outline.to_markdown()
+
+
+def test_the_entries_text_is_the_text_models():
+    """Hidden text left out (REQ-507); a deleted paragraph mark joined in the accepted view (REQ-402)."""
+    package = create_package()
+    package.body.insert_xml(
+        "<w:p><w:r><w:t xml:space=\"preserve\">shown </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>hidden</w:t></w:r></w:p>"
+    )
+    entry = package.body.outline().entries[0]
+    assert (entry.text, entry.chars) == ("shown ", 6)
+    assert package.body.paragraphs[0].text == "shown hidden", "Office JS's text keeps it (CR-011 Q4)"
+
+    joined = load(ROOT / "tests" / "fixtures" / "revisions" / "core-ts" / "check22" / "22-deleted.docx").body.outline()
+    texts = [(entry.ordinal, entry.text) for entry in joined.entries]
+    assert texts[3] == ("body/3", "Four.Five eight."), "the joined text on the first paragraph's entry"
+    assert texts[4] == ("body/4", ""), "and the second's empty"
+    assert joined.stats.paragraphs == 5, "the counts follow the blocks: a joined pair is one paragraph"
+
+
+def test_the_counts_follow_the_text_model():
+    stats = load(PROBE).outline().stats
+    assert (stats.paragraphs, stats.tables) == (171, 5)

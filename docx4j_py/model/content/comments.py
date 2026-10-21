@@ -859,7 +859,12 @@ class Comment:
 
     @property
     def content(self) -> str:
-        """The comment's text, a paragraph per line. Setting it replaces them."""
+        """The comment's text, a paragraph per line. Setting it replaces them.
+
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         return self.comment_body.text
 
     @content.setter

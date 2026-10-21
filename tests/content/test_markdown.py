@@ -70,7 +70,7 @@ def test_a_heading_is_hashes_from_the_shared_heading_level(body):
     body.insert_paragraph("Sub", style="Heading 2")
     body.insert_paragraph("Plain")
 
-    assert body.to_markdown() == "# Title\n\n## Sub\n\nPlain"
+    assert body.to_markdown() == "# Title\n\n## Sub\n\nPlain\n"
 
 
 def test_an_outline_level_is_a_heading_without_a_heading_style(body):
@@ -79,10 +79,13 @@ def test_an_outline_level_is_a_heading_without_a_heading_style(body):
         "<w:r><w:t>By outline level</w:t></w:r></w:p>"
     )
 
-    assert body.to_markdown() == "### By outline level"
+    assert body.to_markdown() == "### By outline level\n"
 
 
 def test_bold_italic_strike_and_code(body):
+    # a run is code by its font (CR-011: the text model's monospace fonts, through the
+    # character style), so the code style has to be in the package
+    ensure_style(body.package, STYLE_IDS["code_char"])
     body.insert_xml(
         "<w:p>"
         "<w:r><w:t>plain </w:t></w:r>"
@@ -96,7 +99,7 @@ def test_bold_italic_strike_and_code(body):
         "</w:p>"
     )
 
-    assert body.to_markdown() == "plain **bold** *italic* ~~gone~~ `x = 1`"
+    assert body.to_markdown() == "plain **bold** *italic* ~~gone~~ `x = 1`\n"
 
 
 def test_a_monospace_font_is_code_when_no_style_says_so(body):
@@ -105,7 +108,7 @@ def test_a_monospace_font_is_code_when_no_style_says_so(body):
         "<w:t>mono</w:t></w:r></w:p>"
     )
 
-    assert body.to_markdown() == "`mono`"
+    assert body.to_markdown() == "`mono`\n"
 
 
 def test_two_bold_runs_in_a_row_are_one_pair_of_markers(body):
@@ -116,21 +119,26 @@ def test_two_bold_runs_in_a_row_are_one_pair_of_markers(body):
         "</w:p>"
     )
 
-    assert body.to_markdown() == "**one two**"
+    assert body.to_markdown() == "**one two**\n"
 
 
 def test_a_hyperlink_reads_its_relationship_and_an_anchor_reads_its_anchor():
     package = fixture("hyperlink")
 
     assert package.to_markdown() == (
-        "This document contains a [hyperlink](http://slashdot.org/)"
+        "This document contains a [hyperlink](http://slashdot.org/)\n"
     )
 
 
 def test_an_internal_link_is_a_fragment():
+    from docx4j_py.model.text import extract, markdown
+
     package = sample("toc.docx")
 
-    assert "[Article 1\t92](#_Toc467580795)" in package.to_markdown()
+    # the table of contents is left out by default (CR-011, WD REQ-520's toc: false);
+    # read with toc: true, its entries are links to their bookmarks
+    assert "[Article 1\t92](#_Toc467580795)" not in package.to_markdown()
+    assert "[Article 1\t92](#_Toc467580795)" in markdown(extract(package, toc=True), package)
 
 
 def test_a_list_is_bullets_or_numbers_from_the_numbering_parts_numFmt():
@@ -155,7 +163,7 @@ def test_a_bullet_list_nests_by_ilvl(new_package):
     body = new_package.body
     body.insert_markdown("- one\n- two\n  - nested\n")
 
-    assert body.to_markdown() == "- one\n- two\n  - nested"
+    assert body.to_markdown() == "- one\n- two\n  - nested\n"
 
 
 def test_a_table_is_a_gfm_pipe_table(new_package):
@@ -170,7 +178,7 @@ def test_a_table_is_a_gfm_pipe_table(new_package):
     )
 
     assert body.to_markdown() == (
-        "| Region | Total |\n| --- | --- |\n| North | 120 |"
+        "|Region|Total|\n|---|---|\n|North|120|\n"
     )
 
 
@@ -187,7 +195,7 @@ def test_a_vertically_merged_cells_first_row_keeps_its_text(new_package):
         "</w:tbl>"
     )
 
-    assert body.to_markdown() == "| A |\n| --- |\n| Merged |\n|  |"
+    assert body.to_markdown() == "|A|\n|---|\n|Merged|\n||\n"
 
 
 def test_the_table_renderer_works_over_the_element_alone_for_phase_c(new_package):
@@ -200,8 +208,8 @@ def test_the_table_renderer_works_over_the_element_alone_for_phase_c(new_package
 
     # Phase C's Table.to_markdown hangs on this, so it takes the element and
     # any context (a Body, or none at all)
-    assert table_markdown(blocks[0].element, body) == "| A |\n| --- |"
-    assert table_markdown(blocks[0].element) == "| A |\n| --- |"
+    assert table_markdown(blocks[0].element, body) == "|A|\n|---|"
+    assert table_markdown(blocks[0].element) == "|A|\n|---|"
 
 
 def test_a_header_rows_bold_is_convention_and_is_not_marked(new_package):
@@ -210,14 +218,14 @@ def test_a_header_rows_bold_is_convention_and_is_not_marked(new_package):
 
     # the import bolds the header row (TableGrid has no header formatting of
     # its own), and the export must not read that back as markdown emphasis
-    assert body.to_markdown() == "| A | B |\n| --- | --- |\n| 1 | 2 |"
+    assert body.to_markdown() == "|A|B|\n|---|---|\n|1|2|\n"
 
 
 def test_an_image_is_its_part_name_relative_to_word():
     package = sample("Images.docx")
 
     assert package.to_markdown() == (
-        "![Picture 1](media/image1.png)\n\n![pangolin.jpeg](media/image2.jpeg)"
+        "![Picture 1](media/image1.png)\n\n![pangolin.jpeg](media/image2.jpeg)\n"
     )
 
 
@@ -226,7 +234,7 @@ def test_a_footnote_reference_is_a_gfm_footnote_with_its_definition_at_the_end()
     markdown = package.to_markdown()
 
     assert markdown.startswith("Hello hello[^1]")
-    assert markdown.endswith("[^1]: Hello")
+    assert markdown.endswith("[^1]: Hello\n")
 
 
 def test_a_paragraph_renders_on_its_own_without_the_footnote_definitions():
@@ -234,6 +242,25 @@ def test_a_paragraph_renders_on_its_own_without_the_footnote_definitions():
     first = package.body.paragraphs[0]
 
     assert first.to_markdown() == "Hello hello[^1]"
+
+
+def test_a_paragraph_is_written_as_its_story_writes_it():
+    """CR-011 Phase D: a list item's marker is its count in the document, and a cell's paragraph stands alone."""
+    package = load(FIXTURES / "text-extraction" / "phase0" / "extraction-probe-structure.docx")
+    by_text = {paragraph.text: paragraph for paragraph in package.body.paragraphs}
+
+    assert by_text["LST56_PLUMS"].to_markdown() == "3. LST56\\_PLUMS"
+    assert by_text["LST56_QUINCE_TWO"].to_markdown() == "4. 2. LST56\\_QUINCE\\_TWO"
+    assert by_text["LST56_INDENTED_NOTE"].to_markdown() == "   LST56\\_INDENTED\\_NOTE"
+    note = by_text["LST56_PLUMS"]
+    assert note.to_markdown(addresses=True) == f"<!-- {note.address} -->\n3. LST56\\_PLUMS"
+
+    created = WordprocessingMLPackage.create_package()
+    created.body.insert_xml(
+        "<w:tbl><w:tblPr/><w:tblGrid/><w:tr><w:tc><w:p><w:r><w:t>in_a_cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+    )
+    [paragraph] = list(created.body.iter_paragraphs())
+    assert paragraph.to_markdown() == "in\\_a\\_cell", "a cell's paragraph on its own, not its table's row"
 
 
 def test_the_accepted_view_drops_deletions_and_the_markup_view_is_criticmarkup():
@@ -248,17 +275,20 @@ def test_the_accepted_view_drops_deletions_and_the_markup_view_is_criticmarkup()
 
 
 def test_a_comment_is_criticmarkup_in_the_markup_view_only():
-    assert fixture("comments").to_markdown() == "One paragraph"
-    assert fixture("comments").to_markdown(view="markup") == "One paragraph{>>One comment<<}"
+    assert fixture("comments").to_markdown() == "One paragraph\n"
+    assert fixture("comments").to_markdown(view="markup") == "One paragraph{>>One comment<<}\n"
 
 
 def test_the_view_values_are_a_literal_with_a_strenum_beside_them(body):
     body.insert_paragraph("x")
 
     assert MarkdownView.ACCEPTED == "accepted"
-    assert body.to_markdown(view=MarkdownView.MARKUP) == "x"
+    assert body.to_markdown(view=MarkdownView.MARKUP) == "x\n"
+    # CR-011: the original view is the text model's, and current the accepted one's synonym
+    assert body.to_markdown(view=MarkdownView.ORIGINAL) == "x\n"
+    assert body.to_markdown(view="current") == "x\n"
     with pytest.raises(ContentError) as error:
-        body.to_markdown(view="original")
+        body.to_markdown(view="final")
     assert error.value.code == "markdown.view_invalid"
 
 
@@ -266,13 +296,13 @@ def test_a_code_style_paragraph_becomes_a_fence_and_consecutive_ones_merge(body)
     for line in ("x = 1", "y = 2"):
         body.insert_paragraph(line).style_id = "SourceCode"
 
-    assert body.to_markdown() == "```\nx = 1\ny = 2\n```"
+    assert body.to_markdown() == "```\nx = 1\ny = 2\n```\n"
 
 
 def test_a_quote_style_paragraph_is_a_block_quote(body):
     body.insert_paragraph("Quoted.").style_id = "Quote"
 
-    assert body.to_markdown() == "> Quoted."
+    assert body.to_markdown() == "> Quoted.\n"
 
 
 def test_markup_that_would_be_read_back_as_markup_is_escaped(body):
@@ -281,7 +311,7 @@ def test_markup_that_would_be_read_back_as_markup_is_escaped(body):
     body.insert_paragraph("- not a bullet")
 
     assert body.to_markdown() == (
-        "a \\* b \\_ c \\[d\\] \\`e\\` \\\\f\n\n\\1. not a list\n\n\\- not a bullet"
+        "a \\* b \\_ c \\[d\\] \\`e\\` \\\\f\n\n1\\. not a list\n\n\\- not a bullet\n"
     )
 
 
@@ -290,7 +320,7 @@ def test_an_empty_paragraph_contributes_nothing(body):
     body.insert_paragraph("")
     body.insert_paragraph("two")
 
-    assert body.to_markdown() == "one\n\ntwo"
+    assert body.to_markdown() == "one\n\ntwo\n"
 
 
 # ---------------------------------------------------------------------------
@@ -408,7 +438,7 @@ def test_a_link_becomes_a_hyperlink_with_an_external_relationship(body, new_pack
     relationships = new_package.main_document_part.relationships_part
     targets = [rel.target for rel in relationships.list]
     assert "https://www.docx4java.org/" in targets
-    assert body.to_markdown() == "See [docx4j](https://www.docx4java.org/)."
+    assert body.to_markdown() == "See [docx4j](https://www.docx4java.org/).\n"
 
 
 def test_a_list_gets_a_numPr_and_the_numbering_part_is_created(body, new_package):
@@ -430,7 +460,7 @@ def test_an_ordered_list_keeps_its_start_value(body, new_package):
 
     part = new_package.numbering_definitions_part
     assert int(part.contents.abstract_num[0].lvl[0].start.val) == 3
-    assert body.to_markdown() == "3. three\n4. four"
+    assert body.to_markdown() == "3. three\n4. four\n"
 
 
 def test_a_nested_list_of_the_other_kind_takes_the_signature_javas_scan_gives(
@@ -457,7 +487,7 @@ def test_a_code_block_becomes_source_code_paragraphs(body):
     body.insert_markdown("```python\nx = 1\ny = 2\n```\n")
 
     assert body.paragraphs[0].style_id == "SourceCode"
-    assert body.to_markdown() == "```\nx = 1\ny = 2\n```"
+    assert body.to_markdown() == "```\nx = 1\ny = 2\n```\n"
 
 
 def test_a_block_quote_becomes_a_quote_styled_paragraph(body):
@@ -475,14 +505,14 @@ def test_a_thematic_break_is_an_empty_paragraph_with_a_bottom_border(body):
 def test_an_image_is_never_fetched_and_is_reported(body, new_package):
     body.insert_markdown("![a pangolin](https://example.com/pangolin.png)\n")
 
-    assert body.to_markdown() == "[a pangolin](https://example.com/pangolin.png)"
+    assert body.to_markdown() == "[a pangolin](https://example.com/pangolin.png)\n"
     assert any("not fetched" in w for w in new_package.last_change.warnings)
 
 
 def test_an_html_block_is_skipped_and_reported(body, new_package):
     body.insert_markdown("Text.\n\n<div>raw</div>\n")
 
-    assert body.to_markdown() == "Text."
+    assert body.to_markdown() == "Text.\n"
     assert any("HTML block was skipped" in w for w in new_package.last_change.warnings)
 
 
@@ -548,7 +578,58 @@ def test_reading_a_document_as_markdown_leaves_every_other_part_byte_for_byte():
     after = part_bytes(package.save())
 
     changed = [name for name, data in before.items() if after.get(name) != data]
+    # CR-011 Phase D: the package's Markdown is read from the package, so not even
+    # word/document.xml is unmarshalled (it was, through pkg.body, before)
+    assert changed == []
+
+    package = sample("tables.docx")
+    package.body.to_markdown()
+    after = part_bytes(package.save())
+    changed = [name for name, data in before.items() if after.get(name) != data]
     assert changed == ["word/document.xml"], "only the part the body needed"
+
+
+#: What a save writes whatever was read: the content types and the relationships parts
+#: are the engine's to write (CR-002), the same after a read as after none.
+_ENGINE_WRITTEN = re.compile(r"(^|/)_rels/[^/]*\.rels$|^\[Content_Types\]\.xml$")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [FIXTURES / "footnotes.docx", FIXTURES / "text-extraction" / "phase0" / "extraction-probe.docx"],
+    ids=["footnotes", "probe"],
+)
+def test_reading_the_markdown_unmarshals_nothing_and_a_save_is_the_source(path):
+    """CR-011 Phase D: a save after ``to_markdown`` writes every part as the source has it.
+
+    The reader of 0.1.0 unmarshalled ``word/document.xml`` (through
+    ``pkg.body``) and ``word/footnotes.xml`` (for the note definitions), so a
+    save afterwards re-marshalled both, canonically identical; the text
+    model reads every part with ``read_contents``.
+    """
+    import zipfile
+
+    untouched = part_bytes(load(path).save())
+
+    def unmarshalled(package):
+        return [str(name) for name, part in package.parts.items() if getattr(part, "is_unmarshalled", False)]
+
+    package = load(path)
+    package.to_markdown()
+    assert unmarshalled(package) == []
+    assert part_bytes(package.save()) == untouched
+
+    for view in ("accepted", "original", "markup"):
+        package.to_markdown(view=view)
+        package.to_markdown(view=view, addresses=True, max_chars=500)
+        package.markdown_budget(200, view=view)
+    assert unmarshalled(package) == []
+    saved = part_bytes(package.save())
+    assert saved == untouched
+    with zipfile.ZipFile(path) as source:
+        for name in source.namelist():
+            if not _ENGINE_WRITTEN.search(name):
+                assert saved[name] == source.read(name), name
 
 
 def test_inserting_markdown_that_needs_no_new_style_touches_only_the_body():
@@ -641,7 +722,7 @@ def test_the_whole_fragment_survives_a_save_and_a_reload(new_package):
 
     assert after == before
     assert after.startswith("# Report")
-    assert "| Region | Total |" in after
+    assert "|Region|Total|" in after
     assert "[docx4j](https://www.docx4java.org/)" in after
 
 

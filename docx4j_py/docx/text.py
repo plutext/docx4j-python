@@ -3,6 +3,13 @@
 CR-003 section 3.6, Phase J: python-docx's text proxies, with python-docx's
 semantics, over CR-001's typed tree and CR-003's content API.
 
+**python-docx's text, not the text model's** (CR-011 Q5; WD REQ-202's exemption
+for a reader of an emulated API). ``Paragraph.text`` is its ``w:r`` and
+``w:hyperlink`` children's text in order, as python-docx 1.2.0 reads it: a
+``w:ins`` and a ``w:del`` both skipped, no content control, a break nothing but
+``\n``. The text model is :func:`docx4j_py.model.text.extract`; each of its runs
+records its source ``w:r``, which is the facade's ``Run`` it lies in, or none.
+
 Two of python-docx's habits shape this module.
 
 **Tri-state.** ``run.bold`` is ``True``, ``False`` or ``None``, and ``None``
@@ -1457,7 +1464,7 @@ class Run:
 
     @property
     def text(self) -> str:
-        """The run's text: ``w:tab`` as ``\\t``, a line ``w:br`` as ``\\n``."""
+        """The run's text: ``w:tab`` as ``\\t``, a line ``w:br`` as ``\\n``. python-docx's, not the text model's (CR-011 Q5)."""
         return run_text(self._r)
 
     @text.setter
@@ -1706,7 +1713,7 @@ class Paragraph:
 
     @property
     def text(self) -> str:
-        """The paragraph's text: its runs and its hyperlinks, as python-docx reads it."""
+        """The paragraph's text: its runs and its hyperlinks, as python-docx reads it; not the text model's (CR-011 Q5)."""
         return holder_text(self._p)
 
     @text.setter

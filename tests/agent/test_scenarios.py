@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from conftest import SEED, WITH_PARA_IDS, WITHOUT_PARA_IDS, reloaded, sample
 
 from docx4j_py import DocumentSession, WordprocessingMLPackage
+from docx4j_py.model.content import AddressError
 
 
 def tool(result: object) -> object:
@@ -57,7 +59,8 @@ def test_a_session_over_a_document_that_has_para_ids():
     package = sample(WITH_PARA_IDS)
 
     outline = package.outline()
-    stamped = [entry for entry in outline.entries if entry.para_id]
+    # a text box's paragraph is listed at its textbox: address, read only (CR-011 Q9)
+    stamped = [entry for entry in outline.entries if entry.para_id and not entry.textbox]
     assert stamped, "DrawingML_GraphicData_wps.docx carries w14:paraId"
     address = stamped[-1].address
     assert address.startswith("w14:")
@@ -156,6 +159,12 @@ def test_a_scripted_session_over_every_docx_in_the_corpus():
         outline = package.outline(max_chars=40)
         assert outline.stats.paragraphs > 0, name
         for address in outline.addresses():
+            if "/textbox:" in address:
+                # a text box's paragraph: the text model's address, read only (CR-011 Q9)
+                with pytest.raises(AddressError) as raised:
+                    package.element_at(address)
+                assert raised.value.code == "address.read_only", f"{name} {address}"
+                continue
             assert package.element_at(address) is not None, f"{name} {address}"
 
         description = package.describe()

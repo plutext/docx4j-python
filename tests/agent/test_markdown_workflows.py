@@ -20,9 +20,10 @@ import json
 import re
 import time
 
-from conftest import SEED, big_document, part_bytes, reloaded, sample
+import pytest
+from conftest import ROOT, SEED, big_document, part_bytes, reloaded, sample
 
-from docx4j_py import WordprocessingMLPackage, create_package
+from docx4j_py import WordprocessingMLPackage, create_package, load
 from docx4j_py.model.markdown import ADDRESS_COMMENT
 
 #: What an agent would write, and what a server would hand back.
@@ -74,7 +75,7 @@ def test_markdown_in_and_out_gives_back_the_same_structure():
     assert "1. review the diff" in markdown
     assert "3. ship it" in markdown
     assert "> " in markdown
-    assert "| Area | State |" in markdown
+    assert "|Area|State|" in markdown, "docx4j's GFM table: no padding inside the pipes (CR-011)"
     assert "[the CR](https://example.invalid/cr-003)" in markdown
     assert "`--check`" in markdown
 
@@ -156,6 +157,59 @@ def test_the_fine_edit_leaves_every_other_part_byte_for_byte():
 
     changed = [name for name, data in before.items() if after.get(name) != data]
     assert changed == ["word/document.xml"]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [ROOT / "samples" / "2010-sample1.docx", ROOT / "tests" / "fixtures" / "text-extraction" / "phase0" / "extraction-probe.docx"],
+    ids=["2010-sample1", "probe"],
+)
+def test_every_address_the_markdown_writes_resolves_once_the_body_is_read(path):
+    """CR-011 Phase D: read first, then edit by address, on documents whose blocks have ordinal addresses.
+
+    ``pkg.to_markdown(addresses=True)`` reads the package with nothing
+    unmarshalled; ``pkg.body`` is touched only afterwards. Every address it
+    wrote resolves, in that body, to the block the Markdown showed: the same
+    element a fresh reading reads at that address, with the same text. A text
+    box's, a chart's or a note's address is the text model's and is refused as
+    read only (CR-011 Q9). Then one edit by address.
+    """
+    from docx4j_py.model.content import AddressError, Paragraph
+    from docx4j_py.model.content.text_model import Reading
+    from docx4j_py.model.text import extract
+
+    package = load(path)
+    first = extract(package)
+    shown = {Reading(first, "body", package).address_of("body", b): b.text for b in first.blocks}
+    markdown = package.to_markdown(addresses=True)
+    assert not [name for name, part in package.parts.items() if getattr(part, "is_unmarshalled", False)]
+    addresses = ADDRESS_COMMENT.findall(markdown)
+    assert addresses and not any(a.startswith("w14:") for a in addresses), "a document without paraIds: ordinals"
+
+    body = package.body  # first touched here
+    live = Reading(extract(package), "body", package)
+    by_address = {live.address_of("body", b): b for b in live.result.blocks}
+    resolved = 0
+    for address in addresses:
+        block = by_address[address]
+        assert block.text == shown[address], address
+        if not re.fullmatch(r"body(/\d+)+", address):
+            with pytest.raises(AddressError) as raised:
+                package.element_at(address)
+            assert raised.value.code == "address.read_only", address
+            continue
+        view = package.element_at(address)
+        assert view.element is block.source, address
+        if block.kind == "PARAGRAPH":
+            paragraph = package.paragraph_at(address)
+            assert isinstance(paragraph, Paragraph) and paragraph.element is block.source, address
+        resolved += 1
+    assert resolved >= 4
+
+    target = next(a for a in addresses if re.fullmatch(r"body/\d+", a) and shown[a].strip())
+    package.paragraph_at(target).insert_text(" EDITED_BY_ADDRESS", location="End")
+    assert body.element_at(target).text.endswith(" EDITED_BY_ADDRESS")
+    assert "EDITED\\_BY\\_ADDRESS" in package.to_markdown()
 
 
 def test_the_addresses_in_the_markdown_are_the_outlines_top_level_ones(report):

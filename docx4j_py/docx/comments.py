@@ -120,7 +120,7 @@ class Comment(BlockItemContainer):
 
     @property
     def text(self) -> str:
-        """The comment's text, a line per paragraph."""
+        """The comment's text, a line per paragraph: python-docx's, not the text model's (CR-011 Q5)."""
         return self._view.content
 
     # -- content -----------------------------------------------------------

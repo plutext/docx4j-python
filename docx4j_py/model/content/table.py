@@ -273,7 +273,12 @@ class Table:
 
     @property
     def text(self) -> str:
-        """The table's text, as docx4j's ``TextUtils`` reads it. Extension."""
+        """The table's text, as docx4j's ``TextUtils`` reads it. Extension.
+
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         return text_of(self.element)
 
     @property
@@ -558,11 +563,13 @@ class Table:
     # -- output ------------------------------------------------------------
 
     def to_markdown(self, **options: Any) -> str:
-        """This table as a GFM pipe table (CR-003 section 3.5).
+        """This table as a GFM pipe table: its lines in its body's Markdown, the text model's (CR-011 Phase D).
 
-        The renderer is :func:`docx4j_py.model.markdown.table_markdown`, which
-        already unwraps row- and cell-level content controls, pads a
-        ``w:gridSpan`` and leaves a ``w:vMerge`` continuation empty.
+        :func:`docx4j_py.model.markdown.table_markdown`, as docx4j-markdown
+        writes it: the header the ``w:tblHeader`` rows or the first row, a
+        ``w:gridSpan`` padded with empty cells, a ``w:vMerge`` continuation
+        empty, a cell's paragraphs ``<br>`` apart. Trailing white space is
+        left out.
         """
         from docx4j_py.model.markdown import table_markdown
 
@@ -874,7 +881,12 @@ class TableCell:
 
     @property
     def text(self) -> str:
-        """The cell's text, a line per paragraph."""
+        """The cell's text, a line per paragraph.
+
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         return text_of(self.element)
 
     @property

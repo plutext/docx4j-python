@@ -152,7 +152,12 @@ class Paragraph:
 
     @property
     def text(self) -> str:
-        """The text: runs joined, tabs as ``\\t``, breaks as ``\\n``, deletions out."""
+        """The text: runs joined, tabs as ``\\t``, breaks as ``\\n``, deletions out.
+
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         return text_of_view(self.element)
 
     @text.setter
@@ -178,7 +183,11 @@ class Paragraph:
             change.touched(self)
 
     def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
-        """The text in one of the two views of a tracked document.
+        """The text in one of the views of a tracked document.
+
+        In ``accepted`` and ``original``, Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
 
         ``"accepted"`` (the default) is :attr:`text`; ``"original"`` reads the
         document as it was before the tracked changes (CR-003 section 3.8).
@@ -986,17 +995,19 @@ class Paragraph:
             return [self.parent_body.view_for(element) for element in elements]
 
     def to_markdown(self, *, addresses: bool = False, view: str = "accepted") -> str:
-        """This paragraph as markdown (CR-003 section 3.5).
+        """This paragraph as Markdown: its lines in its story's, the text model's (CR-011 Phase D).
 
-        Its block form: a heading is ``# ...``, a list paragraph a ``- `` or
-        ``1. `` item, a quote ``> ...``. A footnote reference is ``[^1]``, but
-        the definitions belong to the document, so only
-        :meth:`Body.to_markdown` writes them.
+        Its block form as :meth:`Body.to_markdown` writes it: a heading is
+        ``# ...``, a list item has its marker and indent (``3. ...``,
+        ``4. 2. ...``), a quote ``> ...``; a paragraph in a table cell is
+        written on its own. A footnote reference is ``[^1]``, but the
+        definitions belong to the document, so only :meth:`Body.to_markdown`
+        writes them. Trailing white space is left out.
 
         Args:
             addresses: put :attr:`address` in an HTML comment on its own line
                 before the paragraph.
-            view: ``"accepted"`` or ``"markup"`` (CriticMarkup).
+            view: ``"accepted"``, ``"original"`` or ``"markup"`` (CriticMarkup).
         """
         from docx4j_py.model.markdown import paragraph_markdown
 
@@ -1004,6 +1015,10 @@ class Paragraph:
 
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text` in this paragraph, as ranges.
+
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
 
         Matches are found on the paragraph's whole text, so one **spans runs**
         freely; only formatting a match splits them.
@@ -1052,6 +1067,10 @@ class Paragraph:
 
     def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
         """Every match in this paragraph, as hits with addresses and context.
+
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
 
         :class:`~docx4j_py.model.content.reports.SearchHit`\\ s for a tool
         result, where :meth:`search` gives

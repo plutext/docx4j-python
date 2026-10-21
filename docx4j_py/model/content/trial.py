@@ -211,6 +211,7 @@ class TrialPackage:
         "_package",
         "_para_ids_taken",
         "_parts",
+        "_property_resolver",
         "_split_runs",
         "_split_spaces",
         "_tracked_change_date",
@@ -250,6 +251,10 @@ class TrialPackage:
         #: copy of ``/word/numbering.xml``: a trial that starts a list counts in
         #: its own definitions and leaves the real package's emulator alone.
         self._numbering_emulator: Any = None
+        #: The trial's own property resolver (CR-011 Phase D), over its copy of
+        #: ``/word/styles.xml``: a style a trial's ``insert_markdown`` adds is
+        #: the trial's, and the text model reads the trial's headings by it.
+        self._property_resolver: Any = None
         # a trial allocates ids from its own generator, seeded like the real
         # one, so that a trial and the commit that follows it agree
         self._id_seed = package.id_seed
@@ -286,6 +291,28 @@ class TrialPackage:
     def footer_parts(self) -> list[Any]:
         """The trial's copies of the footer parts."""
         return [self.trial_part(part) for part in self._package.footer_parts()]
+
+    def get_property_resolver(self, refresh: bool = False) -> Any:
+        """The trial's own :class:`~docx4j_py.model.property_resolver.PropertyResolver`, over its copies.
+
+        Spelled out rather than left to ``__getattr__``, which would answer
+        from the real package's styles: the text model's reading of a trial
+        (``to_markdown``, ``outline``) resolves a paragraph's outline level
+        through the styles the trial has, a style the trial added among them.
+        """
+        from docx4j_py.model.property_resolver import PropertyResolver
+
+        if self._property_resolver is None:
+            self._property_resolver = PropertyResolver(self)
+        elif refresh:
+            self._property_resolver.refresh()
+        return self._property_resolver
+
+    def refresh_property_resolver(self) -> Any:
+        """Re-read the trial's copy of the styles part into its resolver, if one has been built."""
+        if self._property_resolver is not None:
+            self._property_resolver.refresh()
+        return self._property_resolver
 
     @property
     def style_definitions_part(self) -> Any:

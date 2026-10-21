@@ -361,8 +361,9 @@ def test_views_compare_equal_hash_and_repr(new_package, table):
 
 
 def test_to_markdown_is_the_renderer_over_the_element(table):
-    assert table.to_markdown().splitlines()[0] == "| Region | Quarter | Total |"
-    assert table.to_markdown().splitlines()[1] == "| --- | --- | --- |"
+    # docx4j's GFM table (CR-011): no padding inside the pipes
+    assert table.to_markdown().splitlines()[0] == "|Region|Quarter|Total|"
+    assert table.to_markdown().splitlines()[1] == "|---|---|---|"
     # and it still works over a bare element, which is what Phase K's tests do
     from docx4j_py.model.markdown import table_markdown
 

@@ -756,7 +756,7 @@ class _Cell(BlockItemContainer):
 
     @property
     def text(self) -> str:
-        """The cell's text, a line per paragraph."""
+        """The cell's text, a line per paragraph: python-docx's, not the text model's (CR-011 Q5)."""
         return "\n".join(paragraph.text for paragraph in self.paragraphs)
 
     @text.setter

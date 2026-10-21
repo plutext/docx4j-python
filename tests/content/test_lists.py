@@ -563,7 +563,7 @@ def test_a_two_level_list_with_a_restart_round_trips_through_markdown():
     body.insert_paragraph("Restarted").start_new_list(like=first)
 
     markdown = body.to_markdown()
-    assert markdown == "1. Alpha\n2. Beta\n   1. Beta.a\n\n1) Restarted"
+    assert markdown == "1. Alpha\n2. Beta\n   1. Beta.a\n\n1) Restarted\n"
 
     again = create_package()
     again.id_seed = 20260917
@@ -580,7 +580,8 @@ def test_a_loose_items_follow_on_paragraph_is_rendered_under_it():
     package.id_seed = 20260917
     package.body.insert_markdown("- one\n\n  continued here\n- two\n")
 
-    assert package.body.to_markdown() == "- one\n\n  continued here\n- two"
+    # docx4j's loose list: the item's blank line keeps its prefix, and the list is loose throughout (CR-011)
+    assert package.body.to_markdown() == "- one\n  \n  continued here\n\n- two\n"
 
 
 def test_the_same_seed_and_the_same_calls_give_the_same_bytes():

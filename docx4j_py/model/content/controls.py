@@ -273,6 +273,10 @@ class ContentControl:
     def text(self) -> str:
         """The control's text, a line per paragraph (docx4j ``TextUtils``).
 
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+
         A run-level control holds run content, which is one line;
         :func:`~docx4j_py.traversal.text_of` reads a ``w:sdtContent`` as a run
         holder and would join a block control's paragraphs into one, so the
@@ -392,7 +396,12 @@ class ContentControl:
         return paragraphs[0].get_range(location)
 
     def search(self, text: str, **options: Any) -> list[Range]:
-        """Every match of `text` inside the control, as ranges."""
+        """Every match of `text` inside the control, as ranges.
+
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         if self.form != "run":
             return self.body().search(text, **options)
         span = self._run_span()

@@ -121,7 +121,12 @@ class Block:
 
     @property
     def text(self) -> str:
-        """The block's text, as docx4j's ``TextUtils`` reads it."""
+        """The block's text, as docx4j's ``TextUtils`` reads it.
+
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         from docx4j_py.traversal import text_of
 
         return text_of(self.element)
@@ -383,12 +388,20 @@ class Body(Sequence):
         """The text, a paragraph per line: Word's main story, the accepted view.
 
         No text boxes (CR-003 decided question 8): a text box lives in a
-        ``w:drawing``, which the text model does not descend into.
+        ``w:drawing``, which this reader does not descend into. Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
         """
         return "\n".join(paragraph.text for paragraph in self.iter_paragraphs())
 
     def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
         """The text, with a budget and a choice of view (CR-003 section 3.4).
+
+        In ``accepted`` and ``original``, Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text. A view here is a filter of
+        the revision holders: a deleted paragraph mark is not joined, and a
+        paragraph whose content and mark are deleted is an empty line.
 
         Args:
             view: ``"accepted"`` (the default) or ``"original"``, the document
@@ -704,7 +717,15 @@ class Body(Sequence):
         view: str = "accepted",
         max_chars: int | None = None,
     ) -> str:
-        """This body as markdown (CR-003 section 3.5). Unmarshals nothing.
+        """This body as Markdown: the text model's (CR-011 Phase D, REQ-202, REQ-703).
+
+        :func:`docx4j_py.model.text.markdown` over the text model's reading of
+        the body, as docx4j-markdown writes it: the main document's body read
+        as the package is (its story, each text box after its anchor, the notes
+        as ``[^1]`` and ``[^e1]`` with their definitions at the end), hidden text
+        left out, fields' results, bound values, charts, equations as LaTeX, the
+        table of contents left out, pictures pointing at their parts
+        (``media/image1.png``). Nothing is unmarshalled beyond this body's part.
 
         Args:
             addresses: put each block's :attr:`Paragraph.address` in an HTML
@@ -714,10 +735,10 @@ class Body(Sequence):
                 :data:`~docx4j_py.model.markdown.ADDRESS_COMMENT` is the regex
                 that recovers one, and :meth:`element_at` accepts what it
                 yields.
-            view: ``"accepted"`` (the default), the document as if every
-                tracked change were accepted, or ``"markup"``, which writes
-                CriticMarkup: ``{++inserted++}``, ``{--deleted--}`` and
-                ``{>>a comment<<}``.
+            view: ``"accepted"`` (the default; ``"current"`` its synonym), the
+                document as Accept All leaves it; ``"original"``, as Reject All
+                leaves it; or ``"markup"``, which writes CriticMarkup flat:
+                ``{++inserted++}``, ``{--deleted--}`` and ``{>>a comment<<}``.
             max_chars: a budget. The result is **cut at a block boundary**
                 where one fits, and truncated in the middle of a block only
                 when the first block is already over budget. It truncates and
@@ -953,6 +974,10 @@ class Body(Sequence):
     def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
         """Every match, as hits with addresses and the text around them.
 
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+
         ``search()`` returns :class:`~docx4j_py.model.content.range.Range`\\ s
         for code; this returns
         :class:`~docx4j_py.model.content.reports.SearchHit`\\ s for tools, so a
@@ -1017,6 +1042,10 @@ class Body(Sequence):
 
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text`, over every paragraph, in document order.
+
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
 
         A match is found on each paragraph's whole text, so it **spans runs**
         freely; only formatting one splits them (CR-003 section 8).

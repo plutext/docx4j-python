@@ -123,7 +123,7 @@ def test_a_comment_is_a_body_of_its_own():
     comment = threaded_package().body.get_comments()[0]
     assert comment.comment_body.text == "Is this right?"
     assert [p.style_id for p in comment.paragraphs] == [COMMENT_TEXT_STYLE]
-    assert comment.comment_body.to_markdown() == "Is this right?"
+    assert comment.comment_body.to_markdown() == "Is this right?\n"
 
 
 def test_to_dict_carries_the_thread():

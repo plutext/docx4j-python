@@ -287,21 +287,30 @@ def _package_bodies(self: object) -> list:
 
 
 def _package_to_markdown(self: object, **options: object) -> str:
-    """The main document part as markdown (CR-003 section 3.5, Phase K).
+    """The document as Markdown (CR-003 section 3.5, Phase K; CR-011 Phase D).
 
-    docx4j-mcp's ``docx_to_markdown``, in one call: the body's blocks, with the
-    footnotes it refers to as GFM footnotes at the end.
+    docx4j-mcp's ``docx_to_markdown``, in one call: the text model's reading of
+    the package --- its main story, each text box after its anchor, the notes
+    as GFM footnotes at the end --- written as docx4j-markdown writes it
+    (:func:`docx4j_py.model.text.markdown`), pictures pointing at their parts.
+    Read from the package, so no part is unmarshalled: a save afterwards
+    writes every part the caller has not touched byte for byte.
 
     Args:
-        **options: ``addresses``, ``view`` (``"accepted"`` or ``"markup"``) and
-            ``max_chars``, as :meth:`docx4j_py.model.content.Body.to_markdown`.
+        **options: ``addresses``, ``view`` (``"accepted"``, ``"original"`` or
+            ``"markup"``) and ``max_chars``, as
+            :meth:`docx4j_py.model.content.Body.to_markdown`.
     """
-    return self.body.to_markdown(**options)  # type: ignore[attr-defined,no-any-return]
+    from docx4j_py.model.markdown.export import package_markdown
+
+    return package_markdown(self, **options)  # type: ignore[arg-type]
 
 
 def _package_markdown_budget(self: object, max_chars: object = None, **options: object) -> object:
     """:meth:`to_markdown` with the flag: ``TextExcerpt(text, chars, truncated)``."""
-    return self.body.markdown_budget(max_chars, **options)  # type: ignore[attr-defined]
+    from docx4j_py.model.markdown.export import package_markdown_budget
+
+    return package_markdown_budget(self, max_chars, **options)  # type: ignore[arg-type]
 
 
 def _package_insert_markdown(self: object, markdown: str, **options: object) -> object:

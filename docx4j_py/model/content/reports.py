@@ -40,9 +40,8 @@ from docx4j_py.model.content.text_model import (
     block_children_of,
     cells_of,
     rows_of,
-    text_of_view,
 )
-from docx4j_py.traversal import element_name, text_of
+from docx4j_py.traversal import element_name
 from docx4j_py.wml import P
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -146,7 +145,7 @@ class OutlineEntry:
     level: int | None
     """1 to 9 for a heading, from ``w:outlineLvl`` or a ``HeadingN`` style."""
     text: str
-    """The text, cut to ``max_chars``; a table's is its first row."""
+    """The text model's text (CR-011), cut to ``max_chars``; a table's is its first row."""
     chars: int
     """How many characters the block really has."""
     truncated: bool
@@ -157,6 +156,10 @@ class OutlineEntry:
     """A table's column count, from its first row."""
     children: tuple[OutlineEntry, ...] = ()
     """The blocks inside a table's cells or a content control."""
+    textbox: bool = False
+    """A text box's paragraph (CR-011 Phase D): listed after its anchor, at the text
+    model's ``textbox:`` address (``body/3/textbox:0/1``), which is for reading;
+    ``element_at`` does not take it (CR-011 Q9)."""
 
     def to_dict(self) -> dict[str, Any]:
         """The JSON-ready view; what is None or empty is left out."""
@@ -178,6 +181,8 @@ class OutlineEntry:
             out["cols"] = self.cols
         if self.children:
             out["children"] = [child.to_dict() for child in self.children]
+        if self.textbox:
+            out["textbox"] = True
         return out
 
 
@@ -190,13 +195,14 @@ class OutlineStats:
     """
 
     paragraphs: int = 0
-    """Every ``w:p``, tables and content controls descended into."""
+    """The text model's paragraphs (CR-011): tables' and text boxes' included, a joined
+    pair one, a hidden or a table-of-contents paragraph none; the notes not."""
     tables: int = 0
-    """Every ``w:tbl``, nested ones included."""
+    """The text model's tables, nested ones included."""
     words: int = 0
-    """Whitespace-separated words of the accepted view."""
+    """Whitespace-separated words of the text model's accepted view."""
     chars: int = 0
-    """Characters of the accepted view, a paragraph's text at a time."""
+    """Characters of the text model's accepted view, a paragraph's text at a time."""
     comments: int = 0
     """``w:comment`` elements in the comments part, if there is one."""
     tracked_changes: int = 0
@@ -367,20 +373,19 @@ def _kind_of(element: Any) -> str:
     return name.rpartition("}")[2]
 
 
-def _table_shape(element: Any) -> tuple[int, int, str]:
-    """A table's rows, columns and first-row preview.
+def _table_shape(element: Any) -> tuple[int, int]:
+    """A table's rows and columns (its first row's), in the tree.
 
     CR-003 section 12.8: the ``Table`` view is slotted in here rather than
     duplicated beside it. ``rows_of`` and ``cells_of`` unwrap a row- or
     cell-level ``w:sdt`` --- the OpenDoPE repeat of section 4 --- so a repeat
-    reports the rows it holds rather than counting itself as one.
+    reports the rows it holds rather than counting itself as one. The preview
+    is the text model's since CR-011 Phase D (:func:`_preview_of`).
     """
     rows = rows_of(element)
     if not rows:
-        return 0, 0, ""
-    cells = cells_of(rows[0][0])
-    preview = " | ".join(text_of(cell).replace("\n", " ").strip() for cell, _ in cells)
-    return len(rows), len(cells), preview
+        return 0, 0
+    return len(rows), len(cells_of(rows[0][0]))
 
 
 class _Budget:
@@ -402,16 +407,78 @@ class _Budget:
         return True
 
 
-class _Counter:
-    """The running stats of one body."""
+class _Model:
+    """The text model's reading of a body, indexed for the outline (CR-011 Phase D).
 
-    __slots__ = ("chars", "paragraphs", "tables", "words")
+    Each block by the ``id`` of the element it was read from (a joined
+    paragraph's first, a table's ``w:tbl``), the text boxes by the model
+    address of the paragraph that anchors them, and the counts.
+    """
 
-    def __init__(self) -> None:
-        self.paragraphs = 0
-        self.tables = 0
-        self.words = 0
-        self.chars = 0
+    __slots__ = ("boxes", "by_source", "chars", "paragraphs", "prefix", "tables", "words")
+
+    def __init__(self, body: Body) -> None:
+        from docx4j_py.model.content.text_model import reading_of
+
+        reading = reading_of(body)
+        self.prefix = reading.prefix
+        self.by_source: dict[int, Any] = {}
+        self.boxes: dict[str, list[Any]] = {}
+        self.paragraphs = self.tables = self.words = self.chars = 0
+        for block in reading.result.blocks:
+            if block.note_type is not None:
+                continue  # a note is not the body's (the main body's reading holds its notes)
+            if block.story == "TEXT_BOX" and "/textbox:" in block.address:
+                self.boxes.setdefault(block.address.split("/textbox:", 1)[0], []).append(block)
+            self._index(block)
+
+    def _index(self, block: Any) -> None:
+        if block.source is not None and block.story != "TEXT_BOX":
+            self.by_source.setdefault(id(block.source), block)
+        if block.kind == "PARAGRAPH":
+            self.paragraphs += 1
+            text = block.text
+            self.chars += len(text)
+            self.words += len(text.split())
+        elif block.kind == "TABLE":
+            self.tables += 1
+            for row in block.rows:
+                for cell in row.cells:
+                    for inner in cell.blocks:
+                        self._index(inner)
+
+    def model_address(self, body: Body, ordinal: str) -> str:
+        """A content API ordinal as the reading's address (``body/3``; ``content/3`` for a nested body)."""
+        return self.prefix + ordinal[len(body.prefix) :]
+
+
+def _level_of(block: Any) -> int | None:
+    """1 to 9 for a heading: the text model's outline level (through the styles), else none."""
+    if block is None:
+        return None
+    level = block.outline_level
+    return None if level is None or level > 8 else level + 1
+
+
+def _preview_of(block: Any) -> str:
+    """A table's preview: its first row's cells in the text model's view, `` | `` apart."""
+    if not block.rows:
+        return ""
+    return " | ".join(
+        " ".join(_texts_of(cell.blocks)).replace("\n", " ").replace("\t", " ").strip() for cell in block.rows[0].cells
+    )
+
+
+def _texts_of(blocks: list) -> list[str]:
+    out: list[str] = []
+    for block in blocks:
+        if block.kind == "TABLE":
+            for row in block.rows:
+                for cell in row.cells:
+                    out.extend(_texts_of(cell.blocks))
+        elif block.kind == "PARAGRAPH":
+            out.append(block.text)
+    return out
 
 
 def outline_of(
@@ -424,10 +491,19 @@ def outline_of(
 ) -> tuple[tuple[OutlineEntry, ...], OutlineStats, bool]:
     """The entries, the counts and the truncation flag for one body.
 
-    The counts are over the whole body; the entries are what the budget allowed.
-    ``Body.outline`` and ``pkg.outline`` are this plus the headers and footers.
+    Since CR-011 Phase D the entries' texts, levels and previews and the
+    counts are the text model's (WD REQ-706), its accepted view with the
+    specification's defaults: hidden text left out, a deleted paragraph mark
+    joined (the joined text on the first paragraph's entry, the second's
+    empty), fields' results, bound values; each text box's paragraphs after
+    the paragraph that anchors it (after the table, for one in a table), at
+    their ``textbox:`` addresses and flagged (REQ-518, REQ-519; CR-011 Q9).
+    The entries are still one per block of the tree, so that every address
+    the body has is listed. The counts are over the whole body; the entries
+    are what the budget allowed. ``Body.outline`` and ``pkg.outline`` are
+    this plus the headers and footers.
     """
-    counter = _Counter()
+    model = _Model(body)
     budget = _Budget(limit)
     entries = _entries(
         body,
@@ -437,17 +513,46 @@ def outline_of(
         depth=depth,
         max_chars=max_chars,
         headings_only=headings_only,
-        counter=counter,
+        model=model,
         budget=budget,
+        in_table=False,
     )
     stats = OutlineStats(
-        paragraphs=counter.paragraphs,
-        tables=counter.tables,
-        words=counter.words,
-        chars=counter.chars,
+        paragraphs=model.paragraphs,
+        tables=model.tables,
+        words=model.words,
+        chars=model.chars,
         tracked_changes=_tracked_changes(body),
     )
     return tuple(entries), stats, budget.truncated
+
+
+def _box_entries(blocks: list, *, max_chars: int, headings_only: bool, budget: _Budget) -> list[OutlineEntry]:
+    """A text box's paragraphs as entries, at their model addresses (read only: CR-011 Q9)."""
+    out: list[OutlineEntry] = []
+    for block in blocks:
+        level = _level_of(block)
+        if headings_only and level is None:
+            continue
+        if not budget.take():
+            continue
+        text, chars, cut = _compact(block.text, max_chars)
+        budget.truncated = budget.truncated or cut
+        out.append(
+            OutlineEntry(
+                address=block.address,
+                para_id=block.para_id,
+                ordinal=block.address,
+                kind="paragraph",
+                style_id=block.style,
+                level=level,
+                text=text,
+                chars=chars,
+                truncated=cut,
+                textbox=True,
+            )
+        )
+    return out
 
 
 def _entries(
@@ -459,28 +564,27 @@ def _entries(
     depth: int | None,
     max_chars: int,
     headings_only: bool,
-    counter: _Counter,
+    model: _Model,
     budget: _Budget,
+    in_table: bool,
 ) -> list[OutlineEntry]:
-    """The entries of one block list, counting everything it walks over."""
+    """The entries of one block list, each followed by the text boxes it anchors."""
     out: list[OutlineEntry] = []
     for index, element in enumerate(items):
         here = [*path, index]
         ordinal = "/".join([body.prefix, *(str(i) for i in here)])
         kind = _kind_of(element)
+        block = model.by_source.get(id(element))
         level: int | None = None
         rows: int | None = None
         cols: int | None = None
 
         if kind == "paragraph":
-            counter.paragraphs += 1
-            raw = text_of_view(element)
-            counter.chars += len(raw)
-            counter.words += len(raw.split())
-            level = heading_level_of(element)
+            raw = block.text if block is not None else ""
+            level = _level_of(block)
         elif kind == "table":
-            counter.tables += 1
-            rows, cols, raw = _table_shape(element)
+            rows, cols = _table_shape(element)
+            raw = _preview_of(block) if block is not None else ""
         else:
             raw = ""
 
@@ -493,7 +597,6 @@ def _entries(
                     if inner is None:
                         continue
                     if not descend:
-                        _count_only(inner, counter)
                         budget.truncated = True
                         continue
                     children.extend(
@@ -505,15 +608,15 @@ def _entries(
                             depth=depth,
                             max_chars=max_chars,
                             headings_only=headings_only,
-                            counter=counter,
+                            model=model,
                             budget=budget,
+                            in_table=True,
                         )
                     )
         elif kind != "paragraph":
             inner = block_children_of(element)
             if inner is not None:
                 if not descend:
-                    _count_only(inner, counter)
                     budget.truncated = True
                 else:
                     children.extend(
@@ -525,10 +628,21 @@ def _entries(
                             depth=depth,
                             max_chars=max_chars,
                             headings_only=headings_only,
-                            counter=counter,
+                            model=model,
                             budget=budget,
+                            in_table=in_table,
                         )
                     )
+
+        # the text boxes this block anchors, as the model reads them (REQ-518): after their
+        # paragraph, or after the table a paragraph that anchors one is in
+        boxes: list[Any] = []
+        if model.boxes and not in_table:
+            anchor = model.model_address(body, ordinal)
+            if kind == "paragraph":
+                boxes = model.boxes.get(anchor, [])
+            elif kind == "table":
+                boxes = [b for key, found in model.boxes.items() if key.startswith(anchor + "/") for b in found]
 
         if headings_only:
             # a table of contents is flat: the headings, wherever they are
@@ -549,6 +663,7 @@ def _entries(
                     )
                 )
             out.extend(children)
+            out.extend(_box_entries(boxes, max_chars=max_chars, headings_only=True, budget=budget))
             continue
 
         if not budget.take():
@@ -572,28 +687,13 @@ def _entries(
                 children=tuple(children),
             )
         )
+        out.extend(_box_entries(boxes, max_chars=max_chars, headings_only=False, budget=budget))
     return out
 
 
 def _address_for(element: Any, ordinal: str) -> str:
     para_id = getattr(element, "para_id", None)
     return para_id_address(para_id) if para_id else ordinal
-
-
-def _count_only(items: list, counter: _Counter) -> None:
-    """Count a subtree the budget refused to list."""
-    for element in items:
-        if isinstance(element, P):
-            counter.paragraphs += 1
-            raw = text_of_view(element)
-            counter.chars += len(raw)
-            counter.words += len(raw.split())
-            continue
-        if element_name(element) == _W_TBL:
-            counter.tables += 1
-        inner = block_children_of(element)
-        if inner is not None:
-            _count_only(inner, counter)
 
 
 def _tracked_changes(body: Body) -> int:

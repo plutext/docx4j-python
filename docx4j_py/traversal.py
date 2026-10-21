@@ -433,7 +433,12 @@ def text_of(obj: Any, *, context: Any = None, mce: str = "resolve") -> str:
     """The text of a run, a paragraph or anything that holds them.
 
     docx4j's ``TextUtils``, and the same rules as ``builders/wml.mts``'s
-    ``textOf``:
+    ``textOf``. It is not the text model (CR-011), and it is not deprecated:
+    it is the counterpart of core-ts's ``textOf``, which stays (Jason,
+    2026-10-19; CR-011 Q4), and the Office JS readers' text. The text model,
+    which every reader of a document's text reads (views by resolution, text
+    boxes, notes, hidden text left out), is :func:`docx4j_py.model.text.extract`.
+    The rules:
 
     * ``w:t`` contributes its value, ``w:tab`` a tab, ``w:br`` and ``w:cr`` a
       newline, ``w:noBreakHyphen`` U+2011, ``w:softHyphen`` U+00AD and ``w:sym``

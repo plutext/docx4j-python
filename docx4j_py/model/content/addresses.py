@@ -380,8 +380,24 @@ def nearest_address(body: Body, address: str) -> str | None:
     return best[1]
 
 
+#: The text model's segments after an anchor (WD REQ-519): what ``outline()`` and
+#: ``to_markdown(addresses=True)`` report for a text box's paragraph, and the content API
+#: does not resolve (CR-011 Q9).
+_MODEL_SEGMENTS = ("/textbox:", "/chart:", "/smartart:", "/object:", "/altchunk:")
+#: The text model's story prefixes the content API spells otherwise (``footnotes/1/0``) or not at all.
+_MODEL_STORIES = ("footnote:", "endnote:", "comment:", "glossary:")
+
+
 def _not_found(body: Body, address: str) -> AddressError:
     """The error CR-003 section 3.4 asks for, nearest address and all."""
+    if any(segment in address for segment in _MODEL_SEGMENTS) or address.startswith(_MODEL_STORIES):
+        return AddressError(
+            f"{address!r} is the text model's address of content the content API does not resolve "
+            "(a text box's, a chart's, a note's paragraph); it is for reading (CR-011 Q9)",
+            code="address.read_only",
+            hint="read it with outline(), to_markdown() or docx4j_py.model.text.extract(); "
+            "edit a text box through its anchor, a note through its part's body (footnotes/<n>/<i>)",
+        )
     nearest = nearest_address(body, address)
     if address.startswith(PARA_ID_PREFIX):
         message = f"no paragraph has the paraId {address[len(PARA_ID_PREFIX) :]!r}"

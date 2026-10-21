@@ -6,14 +6,14 @@
   shows), and nothing once ``revisions.accept_all`` has run.
 - ``describe()``'s ``tracking_on`` is ``w:trackRevisions``, which accepting
   and rejecting never change (docx4j CR-043 section 3.3).
-- The text and Markdown views are **not yet** the engine's: ``get_text()`` and
-  ``to_markdown(view="accepted")`` filter runs by their revision holders, so a
-  deleted paragraph mark is not joined and a paragraph Word's Accept All
-  removes is still a line. The user moved the agreement to CR-011, after
-  docx4j CR-046 phase 0's goldens (the portfolio's text-extraction paper,
-  sections 3.1 and 10; CR-010 section 12). The fixtures where the views differ
-  today are pinned ``xfail(strict=True)``, measured, so that CR-011 closing
-  them shows; where they agree, the agreement is held.
+- The text model's accepted view (CR-011) is the text Accept All leaves:
+  ``plain_text(extract(pkg))`` and ``to_markdown()``, a deleted paragraph mark
+  joined and a paragraph Word's Accept All removes gone, on every fixture.
+  These were CR-010's ten ``xfail(strict=True)`` pins, which CR-011 Phase D
+  closed (its section 14): the five Markdown ones as they were, the five text
+  ones re-pointed from ``get_text(view="accepted")`` to the model, since under
+  CR-011 Q4 ``get_text`` keeps Office JS's filtered text, which does not join a
+  deleted mark. One test holds that form on ``22-deleted``.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ import pytest
 from revision_helpers import fixture, revisions, round_trip
 
 from docx4j_py.model.content.addresses import package_bodies
+from docx4j_py.model.text import extract, plain_text
 
 #: The agreement run's eleven Word-made fixtures (CR-010 section 3.6).
 TRACKED = [
@@ -81,12 +82,16 @@ def test_tracking_on_is_the_setting_and_resolving_leaves_it(name, accept):
 
 
 # ---------------------------------------------------------------------------
-# the views: CR-011's, pinned where they differ today
+# the views: the text model's, CR-011's (its section 14)
 # ---------------------------------------------------------------------------
 
-#: Measured 2026-10-18: where the accepted view differs from the text after
-#: ``revisions.accept_all``, and why (the same five for both views; the line
-#: counts are the text view's).
+#: The record of what CR-010 pinned (measured 2026-10-18): where the content
+#: API's accepted view, ``get_text(view="accepted")`` and the ``to_markdown``
+#: of 0.1.0, differed from the text after ``revisions.accept_all``, and why
+#: (the same five for both views; the line counts are the text view's). CR-011
+#: Phase D put ``to_markdown`` on the text model, which agrees on all eleven;
+#: ``get_text`` keeps Office JS's text (CR-011 Q4), so its differences stand,
+#: and the text pins read the model instead.
 DIFFERS = {
     "cr043-tracked": "C06's, C09's and C10b's deleted marks not joined; a deleted table's and row's cells as 6 empty lines",
     "revisions-word15": "a deleted mark not joined; a moved paragraph's source and a deleted row's cells as 4 empty lines",
@@ -96,24 +101,30 @@ DIFFERS = {
 }
 
 
-def _view_cases():
-    for name in TRACKED:
-        why = DIFFERS.get(_id(name))
-        marks = [pytest.mark.xfail(strict=True, reason=f"CR-011: {why}")] if why else []
-        yield pytest.param(name, marks=marks, id=_id(name))
-
-
 def _accepted(name):
     package = fixture(name)
     revisions.accept_all(package)
     return package
 
 
-@pytest.mark.parametrize("name", list(_view_cases()))
-def test_get_text_reads_as_accept_all_leaves_the_document(name):
-    assert fixture(name).body.get_text(view="accepted") == _accepted(name).body.get_text()
+@pytest.mark.parametrize("name", TRACKED, ids=[_id(n) for n in TRACKED])
+def test_the_text_models_accepted_view_reads_as_accept_all_leaves_the_document(name):
+    assert plain_text(extract(fixture(name), view="accepted")) == plain_text(extract(_accepted(name)))
 
 
-@pytest.mark.parametrize("name", list(_view_cases()))
+@pytest.mark.parametrize("name", TRACKED, ids=[_id(n) for n in TRACKED])
 def test_the_accepted_markdown_reads_as_accept_all_leaves_the_document(name):
     assert fixture(name).body.to_markdown(view="accepted") == _accepted(name).body.to_markdown()
+
+
+def test_get_text_keeps_office_jss_filtered_text():
+    """CR-011 Q4: ``get_text(view="accepted")`` is Office JS's text, a filter, not the text model's.
+
+    A deleted paragraph mark is not joined, and a paragraph whose content and
+    mark are deleted is an empty line (:data:`DIFFERS`), where the model and
+    Accept All give ``Four.Five eight.`` and no line for ``Two.``.
+    """
+    package = fixture("core-ts/check22/22-deleted.docx")
+    assert package.body.get_text(view="accepted") == "One.\n\nThree.\nFour.\nFive \neight.\nNine.\n"
+    assert _accepted("core-ts/check22/22-deleted.docx").body.get_text() == "One.\nThree.\nFour.Five eight.\nNine.\n"
+    assert plain_text(extract(package)) == "One.\nThree.\nFour.Five eight.\nNine.\n\n"

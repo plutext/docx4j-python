@@ -99,7 +99,12 @@ class Range:
 
     @property
     def text(self) -> str:
-        """The span's text."""
+        """The span's text: a slice of its paragraph's :attr:`text`.
+
+        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         return self.paragraph.text[self.start : self.end]
 
     @text.setter
@@ -402,7 +407,12 @@ class Range:
         return insert_ooxml_into_range(self, ooxml, location=location)
 
     def search(self, text: str, **options: Any) -> list[Range]:
-        """Every match of `text` within this span, as ranges of the paragraph."""
+        """Every match of `text` within this span, as ranges of the paragraph.
+
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         base = self.start
         limit = options.pop("limit", None)
         hits = find_all(self.text, search_pattern(text, **options))
@@ -428,7 +438,12 @@ class Range:
             return len(matches)
 
     def find(self, text: str, *, context: int = 40, limit: int = 20, **options: Any) -> list[Any]:
-        """Every match within this span, as hits with addresses and context."""
+        """Every match within this span, as hits with addresses and context.
+
+        Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
+        records its ``office_offset`` in this text.
+        """
         from docx4j_py.model.content.reports import hit_for
 
         base = self.start

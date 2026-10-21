@@ -124,6 +124,10 @@ class TrackedChange:
     def text(self) -> str:
         """The text the change covers, as Office JS gives it.
 
+        It describes a change, not the document: Office JS's form, not the text
+        model's (CR-011 Q6; WD REQ-202's exemption for a reader of an emulated
+        API), whose ``markup`` view is :func:`docx4j_py.model.text.extract`'s.
+
         A deletion's is the **deleted** text; a paragraph mark is ``\\r``; a row
         its cells a tab apart and then ``\\r\\n``; a field's is its result.
         """
