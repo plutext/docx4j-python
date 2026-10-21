@@ -1504,3 +1504,155 @@ hold the rule:
 The change should not alter saved output. If the acceptance artefacts differ, that is a finding
 to report, and then a Word check. Half a day.
 
+
+### 16.5 Implementation notes (2026-10-21)
+
+Three commits: `30f131f` (test 1, first, so that it audits the readers as they were), `0fd4ef2`
+(the change, with tests 2 to 5) and `33aff26` (the settings read from the package).
+
+**What landed**, all in `docx4j_py/openpackaging/parts/xml_part.py`:
+
+- **`contents`**, finding the live slot empty and a private tree cached, calls `_adopt()` when the
+  settings the private parse used equal the settings a parse now would read, and `_unmarshal()`
+  otherwise. `_adopt()` moves the tree to the live slot and clears `_bytes`, `_private_contents`
+  and `_private_settings`, as `_unmarshal` leaves them. It leaves `skipped` and `_source_ns_map`
+  alone: the private parse set both, in the same `_unmarshal`, from the same bytes and under the
+  same settings, so they are what an ordinary unmarshal sets. Test 2 compares them.
+- **`_ParseSettings`**, a frozen dataclass of what a parse reads from its package: `strict` and
+  `mce_preprocess`. Those were the only two `LoadOptions` fields `_unmarshal` read. The third,
+  `registry`, is read at load, to choose part classes, not at parse. `_unmarshal` now reads the
+  options through `_ParseSettings` and nowhere else, and a private parse keeps its settings in a
+  new slot, `_private_settings`. `_ParseSettings.of` takes the **package**, not its options:
+  CR-012 section 4.1 item 3 puts `mc_block_level` on `LoadOptions` and on the package, so either
+  way the mode is one field and one line. `_load_options()`, whose one reader this was, is gone.
+- **A live parse also clears the private slot.** Where the options changed and `contents` parses
+  afresh, the stale private tree goes then, not at the next `read_contents`. Nothing reads it in
+  between, so no answer changes. `set_contents` and `set_bytes` clear `_private_settings` with the
+  tree.
+- The docstrings of the module, `contents` and `read_contents` say what adoption does and the
+  rule it depends on, and name the test that holds it.
+
+**What else reads the slots, checked.**
+- `is_unmarshalled` (`_contents is not None`) is false after a private read and true after
+  `contents`, as before. `is_loaded` (`_contents` or `_bytes`) is the same.
+- `xml` is the source (or set) bytes until `contents` and the live tree's marshal after, as before.
+- No module outside `xml_part.py` reads `_private_contents`. The revisions module reads
+  `_raw_bytes()`, and only for a part not unmarshalled.
+- `TrialPart` has its own `contents` and `read_contents`, over a deep copy. `DefaultXmlPart` and
+  `BinaryPart` are not `XmlPart`s. `MainDocumentPart.contents` is `super().contents`.
+- `pkg.skipped` sums the parts' `skipped`, which a private parse already set, so it is unchanged.
+
+**One answer changes, as intended.** An object a private reader took from its tree before
+`contents` was read is now part of the live tree. The property resolver keeps such objects. Built
+before `styles_part.contents`, its `styles_tree` and style map used to be a copy that went stale at
+the first edit; now they are the live styles. Its resolved chains are still cached, so `refresh()`
+after a style edit is still the rule its docstring states. `activate_style` still refuses until a
+`refresh()` has seen the part unmarshalled. The font selector's theme and the mapper's font table
+become live in the same way. Nothing in the suite depended on the copy.
+
+**The readers, audited (test 1, `tests/openpackaging/test_private_readers.py`).**
+`grep -rn read_contents docx4j_py` finds twelve callers:
+
+| caller | reads | reached by | result |
+|---|---|---|---|
+| `PropertyResolver._read_source` | styles | the resolver, and every reader that builds one | writes nothing |
+| `WordprocessingMLPackage.get_run_font_selector` | theme, settings | fonts | writes nothing |
+| `WordprocessingMLPackage.set_font_mapper` | font table | fonts | writes nothing |
+| `MainDocumentPart.fonts_in_use` | numbering | fonts | writes nothing |
+| `model/text/trees.py` `_read` | document, headers, footers, notes, comments, `commentsExtended`, settings | text model, Markdown, `outline()` | writes nothing |
+| `_SmartArt.emit` (extractor) | diagram data | text model (`smartart`) | writes nothing |
+| `Extractor._glossary` | glossary document | text model (`include: glossary`) | writes nothing |
+| `ChartModel.read` | charts | text model (`charts`) | writes nothing |
+| `model/text/metadata.py` `_contents` | core, extended, custom properties | text model (`metadata`) | writes nothing |
+| `FieldValues._keywords` | core properties | text model (`fields: update`) | writes nothing |
+| `model/fields/resolvers.py` `_contents` | the properties parts, settings | text model (`fields: update`) | writes nothing |
+| `fields.formatting._decimal_symbol` | settings | text model (`fields: update`) | writes nothing |
+
+The nine readers:
+- the resolver with `StyleUtil`, over every style, paragraph, run and table;
+- the numbering emulator, numbering every paragraph of every story and reading every level's
+  indent;
+- the fonts: the selector's spans of every run, `fonts_in_use`, `styles_in_use` and the mapper;
+- the text model in each of its three views, under the defaults, every option on, and every option
+  on with the other values of the choices;
+- Markdown, in each view, with and without addresses, and `markdown_budget`;
+- `outline()`;
+- `describe()`.
+
+**Test 1 found no reader that writes**, private or live, before the change and after. It checks
+more than section 16.3 asks:
+- The live trees a reader unmarshals are held to the same bytes. `fonts_in_use` and `outline()`
+  unmarshal trees, both through `contents`.
+- Every tree's parent pointers are held to `link_parents`' invariants. A reader that re-parented
+  a node would leave an adopted tree misparented without changing a byte.
+
+It has these checks of its own:
+- Three deliberate writers fail it: one sets a style's `styleId`, one a paragraph's `w:pPr`, one
+  a paragraph's parent.
+- An `ast` scan of `docx4j_py` keeps the list of callers whole.
+- Recording the calling frame proves that each caller is reached.
+
+No file of the corpus reaches two of the callers, `FieldValues._keywords` and
+`_decimal_symbol`: none has a `KEYWORDS` field or a `DOCPROPERTY` with a numeric picture. So the
+fast set includes `2010-sample1.docx` with those two fields added.
+
+Two readers do not call `read_contents` themselves, and are run anyway. The emulator reads the
+numbering and the styles' numbering with lxml from `get_xml()`, and its style resolution goes
+through the resolver. `describe()` reads every part with lxml from `part.xml`.
+
+The fast suite runs the nine readers over four documents (36 cases, about 5 s). The `slow` run
+covers all 71 documents of `samples/`, `tests/fixtures/text-extraction/` and
+`tests/fixtures/revisions/` (639 cases).
+
+**The numbers.** Measured on this machine at `3d9b3a2` (before) and at the change (after), back to
+back, each the median of 7. The method is CR-011 section 14.9's: `tests/agent/conftest.py`'s
+`big_document()` is saved to bytes, and each run loads it fresh, the load not timed.
+
+| | before | after |
+|---|---:|---:|
+| `pkg.to_markdown()` then the first `pkg.body` | 131 to 136 ms | 88 to 92 ms |
+| the first `pkg.body` then `pkg.to_markdown()` | 89 to 91 ms | 92 to 95 ms |
+| `pkg.to_markdown()` alone | 90 to 95 ms | 89 ms |
+| `PropertyResolver(pkg)` then `styles_part.contents` | 6.7 to 6.9 ms | 3.2 ms |
+| `PropertyResolver(pkg)` alone | 3.1 to 3.2 ms | 3.1 ms |
+
+- **The read-then-edit workflow now costs what body-first costs.** Section 14.9's second parse of
+  the main part, about 42 ms, is gone.
+- **The resolver read then `contents` costs the resolver alone.** The created package's styles
+  are docx4j's defaults, so here that saves their 3 ms parse; on a document's own styles part it
+  saves that part's parse.
+- **`scripts/bench_marshal.py` is unchanged**, as it should be (7 runs, before and after):
+  - `Symbols.docx`: parse 192 and 194 ms, marshal 247 and 254 ms;
+  - the 14 main parts: parse 234 and 236 ms, marshal 296 and 303 ms.
+- **`import docx4j_py` is unchanged.** Under `-X importtime`, seven runs each: 614 to 647 ms
+  before, 615 to 633 ms after (one run at 717).
+
+**The gate.**
+- Tests 1 to 5 pass.
+- The whole suite: 4,512 passed and 8 skipped (184 s; CR-011 Phase D's was 3,790 and 8). The fast
+  suite: 3,232 passed, 8 skipped and 1,280 deselected (102 s; CR-011 Phase D's was 3,162, 8 and
+  628).
+- `scripts/roundtrip.py`: 50 of 50, 0 differences, 0 skipped.
+- CR-011's ratchet: `tests/text/conformance.py` reports 1,291 pass, 0 fail, 293 pending and the
+  goldens 12 of 12, and leaves `conformance.tsv` unchanged.
+- The agreement test: 638 passed, as before.
+- The parity goldens: 277 passed, `PINS` empty.
+- CR-010's Word-save comparisons: 68 passed, before and after.
+- `scripts/threads.py`: no configuration lost or altered a document, as before.
+  `test_threads_and_import.py` and `test_round_trip.py` pass.
+
+**The acceptance artefacts.** `out/acceptance/` was regenerated from the change and compared with a
+copy made before it:
+- `scripts/compare_acceptance.py`: 13 artefacts, 175 entries, 0 differing beyond the wall-clock
+  dates;
+- entry by entry, byte for byte, with the same dates scrubbed: 175 of 175 identical.
+
+Saved output does not change. The change asks for no Word check.
+
+**Departures, and what is not done.**
+- Test 1's extra checks (live trees, parent pointers) and its built document, above.
+- The private slot is cleared on a live parse, above.
+- **Not changed:** if the load options change after a private read, `read_contents()` itself
+  still answers the tree parsed under the old ones until `contents` is read. Section 16.2 changes
+  only `contents`, and nothing in the package changes load options after a load. This is
+  recorded, not fixed.

@@ -136,13 +136,25 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 - **`to_markdown` is slower on large documents**: on CR-003 section 16.4's 200-page document,
   `pkg.to_markdown()` is about 48 ms where 0.1.0's was 8 ms with the body parsed, and about 90 ms
   where it was 53 ms read fresh from a file, the main part's parse included (CR-011 section 14.9).
-  A first `pkg.body` after it parses the main part again, about 40 ms more.
+  A first `pkg.body` after it no longer parses the main part again (CR-002 section 16, below).
 - **A read leaves every part as it was**: `pkg.to_markdown()` and `pkg.markdown_budget()` read the
   package with nothing unmarshalled, so a save afterwards writes `word/document.xml`, and
   `word/footnotes.xml` in a document with a footnote reference, from the source bytes, where
   0.1.0 unmarshalled both (through `pkg.body` and for the note definitions) and re-marshalled
-  them, canonically identical. A first `pkg.body` afterwards parses the main part again.
+  them, canonically identical. A first `pkg.body` afterwards adopts the tree the reading parsed.
   `outline()` still unmarshals the notes parts, through the package's bodies.
+- **A read followed by an edit parses a part once**
+  ([CR-002](docs/change-requests/CR-002-engine.md) section
+  [16](docs/change-requests/CR-002-engine.md#165-implementation-notes-2026-10-21)): a part's
+  `contents` adopts the tree `read_contents()` already parsed, instead of parsing the part's bytes
+  again. The readers that leave such a tree are `pkg.to_markdown()`, the text model, the property
+  resolver, the numbering emulator's styles and the font selector. A tree is adopted only where the
+  load options (`strict`, `mce_preprocess`) are the ones it was parsed under. On CR-003
+  section 16.4's 200-page document, `pkg.to_markdown()` then the first `pkg.body` takes 88 to
+  92 ms, down from 131 to 136 ms, which is what body first costs. A resolver read then
+  `style_definitions_part.contents` costs one parse of the styles part, not two. Saved output does
+  not change. A resolver built before the styles part is unmarshalled now holds the live styles
+  rather than a copy; `refresh()` after a style edit is still the rule.
 - **`outline()` reads the text model** (CR-011 section 14, REQ-706): each entry's text, its
   heading level (the effective outline level, through the styles: a `HeadingN` style id without
   an outline level is body text, a style with one a heading whatever its name) and a table's
