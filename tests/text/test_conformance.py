@@ -2,17 +2,17 @@
 
 CR-011 sections 3.6 and 4. The suite is docx4j's at ``198d015a3``, copied
 into ``tests/fixtures/text-extraction/``; ``conformance.py`` is the port of
-its harness and ``adapter.py`` the engine over today's ``get_text`` and
-``to_markdown``.
+its harness and ``adapter.py`` the engine over the text model
+(``docx4j_py.model.text``, CR-011 Phase B) and, for Markdown, ``to_markdown``.
 
 - **The ratchet.** The adapter's run is compared, check by check, with the
   committed report ``tests/text/conformance.tsv``, and any difference fails: a
   check newly failing, one newly passing, a reason changed, a check added or
   gone. A change that moves a check rewrites the report in the same commit
   (``.venv-fork/bin/python tests/text/conformance.py``), so that every phase's
-  progress is in the diff and nothing regresses silently. Phase A's report is
+  progress is in the diff and nothing regresses silently. Phase A's report was
   CR-011 section 1's baseline: 941 pass, 410 fail and 233 pending of 1,584,
-  3 of the 12 goldens.
+  3 of the 12 goldens; Phase B's is 1,146, 205 and 233, 6 of 12 (section 12).
 - **The port's gate.** With docx4j's statement set advertised and nothing
   behind it, the harness makes docx4j's 1,584 checks: 1,565 and 19 pending
   with ``html reader absent``, 1,526 and 58 with ``present``.

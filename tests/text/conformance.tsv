@@ -1,51 +1,51 @@
 fixture	case	item	view	scenario	status	reason
-extraction-probe.docx	1	CHOICE_ALPHA_123	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	1	CHOICE_ALPHA_123	accepted	default	PASS	
 extraction-probe.docx	1	CHOICE_ALPHA_123	accepted	text_boxes: false	PASS	
-extraction-probe.docx	1	CHOICE_ALPHA_123	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	1	CHOICE_ALPHA_123	original	default	PASS	
 extraction-probe.docx	1	CHOICE_ALPHA_123	original	text_boxes: false	PASS	
-extraction-probe.docx	1	CHOICE_ALPHA_123	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	1	CHOICE_ALPHA_123	markup	default	PASS	
 extraction-probe.docx	1	CHOICE_ALPHA_123	markup	text_boxes: false	PASS	
 extraction-probe.docx	1	FALLBACK_BETA_456	accepted	default	PASS	
 extraction-probe.docx	1	FALLBACK_BETA_456	original	default	PASS	
 extraction-probe.docx	1	FALLBACK_BETA_456	markup	default	PASS	
-extraction-probe.docx	2	CHOICE_ONLY_789	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	2	CHOICE_ONLY_789	accepted	default	PASS	
 extraction-probe.docx	2	CHOICE_ONLY_789	accepted	text_boxes: false	PASS	
-extraction-probe.docx	2	CHOICE_ONLY_789	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	2	CHOICE_ONLY_789	original	default	PASS	
 extraction-probe.docx	2	CHOICE_ONLY_789	original	text_boxes: false	PASS	
-extraction-probe.docx	2	CHOICE_ONLY_789	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	2	CHOICE_ONLY_789	markup	default	PASS	
 extraction-probe.docx	2	CHOICE_ONLY_789	markup	text_boxes: false	PASS	
 extraction-probe.docx	3	UNSUPPORTED_GAMMA	accepted	default	PASS	
 extraction-probe.docx	3	UNSUPPORTED_GAMMA	original	default	PASS	
 extraction-probe.docx	3	UNSUPPORTED_GAMMA	markup	default	PASS	
-extraction-probe.docx	3	SUPPORTED_DELTA	accepted	default	FAIL	expected 1, got 0
-extraction-probe.docx	3	SUPPORTED_DELTA	original	default	FAIL	expected 1, got 0
-extraction-probe.docx	3	SUPPORTED_DELTA	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	3	SUPPORTED_DELTA	accepted	default	PASS	
+extraction-probe.docx	3	SUPPORTED_DELTA	original	default	PASS	
+extraction-probe.docx	3	SUPPORTED_DELTA	markup	default	PASS	
 extraction-probe.docx	4	CHOICE1_UNKNOWN_ZETA	accepted	default	PASS	
 extraction-probe.docx	4	CHOICE1_UNKNOWN_ZETA	original	default	PASS	
 extraction-probe.docx	4	CHOICE1_UNKNOWN_ZETA	markup	default	PASS	
-extraction-probe.docx	4	CHOICE2_WPS_ETA	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	4	CHOICE2_WPS_ETA	accepted	default	PASS	
 extraction-probe.docx	4	CHOICE2_WPS_ETA	accepted	text_boxes: false	PASS	
-extraction-probe.docx	4	CHOICE2_WPS_ETA	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	4	CHOICE2_WPS_ETA	original	default	PASS	
 extraction-probe.docx	4	CHOICE2_WPS_ETA	original	text_boxes: false	PASS	
-extraction-probe.docx	4	CHOICE2_WPS_ETA	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	4	CHOICE2_WPS_ETA	markup	default	PASS	
 extraction-probe.docx	4	CHOICE2_WPS_ETA	markup	text_boxes: false	PASS	
 extraction-probe.docx	4	FALLBACK_EPSILON	accepted	default	PASS	
 extraction-probe.docx	4	FALLBACK_EPSILON	original	default	PASS	
 extraction-probe.docx	4	FALLBACK_EPSILON	markup	default	PASS	
-extraction-probe.docx	5	MCE5_FIRST_SUPPORTED	accepted	default	FAIL	expected 1, got 0
-extraction-probe.docx	5	MCE5_FIRST_SUPPORTED	original	default	FAIL	expected 1, got 0
-extraction-probe.docx	5	MCE5_FIRST_SUPPORTED	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	5	MCE5_FIRST_SUPPORTED	accepted	default	PASS	
+extraction-probe.docx	5	MCE5_FIRST_SUPPORTED	original	default	PASS	
+extraction-probe.docx	5	MCE5_FIRST_SUPPORTED	markup	default	PASS	
 extraction-probe.docx	5	MCE5_SECOND_SUPPORTED	accepted	default	PASS	
 extraction-probe.docx	5	MCE5_SECOND_SUPPORTED	original	default	PASS	
 extraction-probe.docx	5	MCE5_SECOND_SUPPORTED	markup	default	PASS	
 extraction-probe.docx	5	MCE5_FALLBACK	accepted	default	PASS	
 extraction-probe.docx	5	MCE5_FALLBACK	original	default	PASS	
 extraction-probe.docx	5	MCE5_FALLBACK	markup	default	PASS	
-extraction-probe.docx	6	MCE6_REBOUND_CHOICE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	6	MCE6_REBOUND_CHOICE	accepted	default	PASS	
 extraction-probe.docx	6	MCE6_REBOUND_CHOICE	accepted	text_boxes: false	PASS	
-extraction-probe.docx	6	MCE6_REBOUND_CHOICE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	6	MCE6_REBOUND_CHOICE	original	default	PASS	
 extraction-probe.docx	6	MCE6_REBOUND_CHOICE	original	text_boxes: false	PASS	
-extraction-probe.docx	6	MCE6_REBOUND_CHOICE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	6	MCE6_REBOUND_CHOICE	markup	default	PASS	
 extraction-probe.docx	6	MCE6_REBOUND_CHOICE	markup	text_boxes: false	PASS	
 extraction-probe.docx	6	MCE6_FALLBACK	accepted	default	PASS	
 extraction-probe.docx	6	MCE6_FALLBACK	original	default	PASS	
@@ -53,23 +53,23 @@ extraction-probe.docx	6	MCE6_FALLBACK	markup	default	PASS
 extraction-probe.docx	7	MCE7_TWO_REQ_CHOICE	accepted	default	PASS	
 extraction-probe.docx	7	MCE7_TWO_REQ_CHOICE	original	default	PASS	
 extraction-probe.docx	7	MCE7_TWO_REQ_CHOICE	markup	default	PASS	
-extraction-probe.docx	7	MCE7_FALLBACK	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	7	MCE7_FALLBACK	accepted	default	PASS	
 extraction-probe.docx	7	MCE7_FALLBACK	accepted	text_boxes: false	PASS	
-extraction-probe.docx	7	MCE7_FALLBACK	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	7	MCE7_FALLBACK	original	default	PASS	
 extraction-probe.docx	7	MCE7_FALLBACK	original	text_boxes: false	PASS	
-extraction-probe.docx	7	MCE7_FALLBACK	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	7	MCE7_FALLBACK	markup	default	PASS	
 extraction-probe.docx	7	MCE7_FALLBACK	markup	text_boxes: false	PASS	
-extraction-probe.docx	8	MCE8_OUTER	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	8	MCE8_OUTER	accepted	default	PASS	
 extraction-probe.docx	8	MCE8_OUTER	accepted	text_boxes: false	PASS	
-extraction-probe.docx	8	MCE8_OUTER	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	8	MCE8_OUTER	original	default	PASS	
 extraction-probe.docx	8	MCE8_OUTER	original	text_boxes: false	PASS	
-extraction-probe.docx	8	MCE8_OUTER	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	8	MCE8_OUTER	markup	default	PASS	
 extraction-probe.docx	8	MCE8_OUTER	markup	text_boxes: false	PASS	
-extraction-probe.docx	8	MCE8_INNER_CHOICE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	8	MCE8_INNER_CHOICE	accepted	default	PASS	
 extraction-probe.docx	8	MCE8_INNER_CHOICE	accepted	text_boxes: false	PASS	
-extraction-probe.docx	8	MCE8_INNER_CHOICE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	8	MCE8_INNER_CHOICE	original	default	PASS	
 extraction-probe.docx	8	MCE8_INNER_CHOICE	original	text_boxes: false	PASS	
-extraction-probe.docx	8	MCE8_INNER_CHOICE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	8	MCE8_INNER_CHOICE	markup	default	PASS	
 extraction-probe.docx	8	MCE8_INNER_CHOICE	markup	text_boxes: false	PASS	
 extraction-probe.docx	8	MCE8_INNER_FALLBACK	accepted	default	PASS	
 extraction-probe.docx	8	MCE8_INNER_FALLBACK	original	default	PASS	
@@ -82,10 +82,10 @@ extraction-probe.docx	9	TC9_BASE	original	default	PASS
 extraction-probe.docx	9	TC9_BASE	markup	default	PASS	
 extraction-probe.docx	9	TC9_INSERTED	accepted	default	PASS	
 extraction-probe.docx	9	TC9_INSERTED	original	default	PASS	
-extraction-probe.docx	9	TC9_INSERTED	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	9	TC9_INSERTED	markup	default	PASS	
 extraction-probe.docx	9	TC9_DELETED	accepted	default	PASS	
 extraction-probe.docx	9	TC9_DELETED	original	default	PASS	
-extraction-probe.docx	9	TC9_DELETED	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	9	TC9_DELETED	markup	default	PASS	
 extraction-probe.docx	10	TC10_PARA_A	accepted	default	PASS	
 extraction-probe.docx	10	TC10_PARA_A	original	default	PASS	
 extraction-probe.docx	10	TC10_PARA_A	markup	default	PASS	
@@ -94,7 +94,7 @@ extraction-probe.docx	10	TC10_PARA_B	original	default	PASS
 extraction-probe.docx	10	TC10_PARA_B	markup	default	PASS	
 extraction-probe.docx	10	TC10_MOVED	accepted	default	PASS	
 extraction-probe.docx	10	TC10_MOVED	original	default	PASS	
-extraction-probe.docx	10	TC10_MOVED	markup	default	FAIL	total: expected 2, got 0
+extraction-probe.docx	10	TC10_MOVED	markup	default	PASS	
 extraction-probe.docx	11	TC11_FIRST	accepted	default	PASS	
 extraction-probe.docx	11	TC11_FIRST	original	default	PASS	
 extraction-probe.docx	11	TC11_FIRST	markup	default	PASS	
@@ -112,75 +112,75 @@ extraction-probe.docx	13	TC13_PLAIN_ROW	original	default	PASS
 extraction-probe.docx	13	TC13_PLAIN_ROW	markup	default	PASS	
 extraction-probe.docx	13	TC13_DELETED_ROW	accepted	default	PASS	
 extraction-probe.docx	13	TC13_DELETED_ROW	original	default	PASS	
-extraction-probe.docx	13	TC13_DELETED_ROW	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	13	TC13_DELETED_ROW	markup	default	PASS	
 extraction-probe.docx	13	TC13_INSERTED_ROW	accepted	default	PASS	
 extraction-probe.docx	13	TC13_INSERTED_ROW	original	default	PASS	
-extraction-probe.docx	13	TC13_INSERTED_ROW	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	13	TC13_INSERTED_ROW	markup	default	PASS	
 extraction-probe.docx	14	TC14_INS_KEPT	accepted	default	PASS	
 extraction-probe.docx	14	TC14_INS_KEPT	original	default	PASS	
-extraction-probe.docx	14	TC14_INS_KEPT	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	14	TC14_INS_KEPT	markup	default	PASS	
 extraction-probe.docx	14	TC14_DEL_IN_INS	accepted	default	PASS	
 extraction-probe.docx	14	TC14_DEL_IN_INS	original	default	PASS	
-extraction-probe.docx	14	TC14_DEL_IN_INS	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	14	TC14_DEL_IN_INS	markup	default	PASS	
 extraction-probe.docx	15	TC15_INSERTED_FIELD	accepted	default	PASS	
 extraction-probe.docx	15	TC15_INSERTED_FIELD	original	default	PASS	
-extraction-probe.docx	15	TC15_INSERTED_FIELD	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	15	TC15_INSERTED_FIELD	markup	default	PASS	
 extraction-probe.docx	15	TC15_DELETED_FIELD	accepted	default	PASS	
 extraction-probe.docx	15	TC15_DELETED_FIELD	original	default	PASS	
-extraction-probe.docx	15	TC15_DELETED_FIELD	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	15	TC15_DELETED_FIELD	markup	default	PASS	
 extraction-probe.docx	16	TC16_FORMAT_ONLY	accepted	default	PASS	
 extraction-probe.docx	16	TC16_FORMAT_ONLY	original	default	PASS	
 extraction-probe.docx	16	TC16_FORMAT_ONLY	markup	default	PASS	
-extraction-probe.docx	17	TC17_BOX_BASE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_BASE	accepted	default	PASS	
 extraction-probe.docx	17	TC17_BOX_BASE	accepted	text_boxes: false	PASS	
-extraction-probe.docx	17	TC17_BOX_BASE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_BASE	original	default	PASS	
 extraction-probe.docx	17	TC17_BOX_BASE	original	text_boxes: false	PASS	
-extraction-probe.docx	17	TC17_BOX_BASE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_BASE	markup	default	PASS	
 extraction-probe.docx	17	TC17_BOX_BASE	markup	text_boxes: false	PASS	
-extraction-probe.docx	17	TC17_BOX_INS	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_INS	accepted	default	PASS	
 extraction-probe.docx	17	TC17_BOX_INS	accepted	text_boxes: false	PASS	
 extraction-probe.docx	17	TC17_BOX_INS	original	default	PASS	
 extraction-probe.docx	17	TC17_BOX_INS	original	text_boxes: false	PASS	
-extraction-probe.docx	17	TC17_BOX_INS	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_INS	markup	default	PASS	
 extraction-probe.docx	17	TC17_BOX_INS	markup	text_boxes: false	PASS	
 extraction-probe.docx	17	TC17_BOX_DEL	accepted	default	PASS	
 extraction-probe.docx	17	TC17_BOX_DEL	accepted	text_boxes: false	PASS	
-extraction-probe.docx	17	TC17_BOX_DEL	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_DEL	original	default	PASS	
 extraction-probe.docx	17	TC17_BOX_DEL	original	text_boxes: false	PASS	
-extraction-probe.docx	17	TC17_BOX_DEL	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	17	TC17_BOX_DEL	markup	default	PASS	
 extraction-probe.docx	17	TC17_BOX_DEL	markup	text_boxes: false	PASS	
 extraction-probe.docx	17	TC17_NOTE_REF_HERE	accepted	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_REF_HERE	original	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_REF_HERE	markup	default	PASS	
-extraction-probe.docx	17	TC17_NOTE_BASE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_NOTE_BASE	accepted	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_BASE	accepted	notes: false	PASS	
-extraction-probe.docx	17	TC17_NOTE_BASE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_NOTE_BASE	original	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_BASE	original	notes: false	PASS	
-extraction-probe.docx	17	TC17_NOTE_BASE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_NOTE_BASE	markup	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_BASE	markup	notes: false	PASS	
 extraction-probe.docx	17	TC17_NOTE_DEL	accepted	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_DEL	accepted	notes: false	PASS	
-extraction-probe.docx	17	TC17_NOTE_DEL	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	17	TC17_NOTE_DEL	original	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_DEL	original	notes: false	PASS	
-extraction-probe.docx	17	TC17_NOTE_DEL	markup	default	FAIL	total: expected 1, got 0
+extraction-probe.docx	17	TC17_NOTE_DEL	markup	default	PASS	
 extraction-probe.docx	17	TC17_NOTE_DEL	markup	notes: false	PASS	
-extraction-probe.docx	18	HID18_VANISH	accepted	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_VANISH	accepted	default	PASS	
 extraction-probe.docx	18	HID18_VANISH	accepted	hidden: true	PASS	
-extraction-probe.docx	18	HID18_VANISH	original	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_VANISH	original	default	PASS	
 extraction-probe.docx	18	HID18_VANISH	original	hidden: true	PASS	
-extraction-probe.docx	18	HID18_VANISH	markup	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_VANISH	markup	default	PASS	
 extraction-probe.docx	18	HID18_VANISH	markup	hidden: true	PASS	
-extraction-probe.docx	18	HID18_STYLE_VANISH	accepted	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_STYLE_VANISH	accepted	default	PASS	
 extraction-probe.docx	18	HID18_STYLE_VANISH	accepted	hidden: true	PASS	
-extraction-probe.docx	18	HID18_STYLE_VANISH	original	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_STYLE_VANISH	original	default	PASS	
 extraction-probe.docx	18	HID18_STYLE_VANISH	original	hidden: true	PASS	
-extraction-probe.docx	18	HID18_STYLE_VANISH	markup	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_STYLE_VANISH	markup	default	PASS	
 extraction-probe.docx	18	HID18_STYLE_VANISH	markup	hidden: true	PASS	
-extraction-probe.docx	18	HID18_HIDDEN_PARA	accepted	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_HIDDEN_PARA	accepted	default	PASS	
 extraction-probe.docx	18	HID18_HIDDEN_PARA	accepted	hidden: true	PASS	
-extraction-probe.docx	18	HID18_HIDDEN_PARA	original	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_HIDDEN_PARA	original	default	PASS	
 extraction-probe.docx	18	HID18_HIDDEN_PARA	original	hidden: true	PASS	
-extraction-probe.docx	18	HID18_HIDDEN_PARA	markup	default	FAIL	expected 0, got 1
+extraction-probe.docx	18	HID18_HIDDEN_PARA	markup	default	PASS	
 extraction-probe.docx	18	HID18_HIDDEN_PARA	markup	hidden: true	PASS	
 extraction-probe.docx	18	HID18_WHITE_TEXT	accepted	default	PASS	
 extraction-probe.docx	18	HID18_WHITE_TEXT	original	default	PASS	
@@ -192,26 +192,26 @@ extraction-probe.docx	18	HID18_WEBHIDDEN	accepted	default	PASS
 extraction-probe.docx	18	HID18_WEBHIDDEN	original	default	PASS	
 extraction-probe.docx	18	HID18_WEBHIDDEN	markup	default	PASS	
 extraction-probe.docx	19	FLD19_RESULT	accepted	default	PASS	
-extraction-probe.docx	19	FLD19_RESULT	accepted	field_codes: true	FAIL	expected 2, got 1
+extraction-probe.docx	19	FLD19_RESULT	accepted	field_codes: true	PASS	
 extraction-probe.docx	19	FLD19_RESULT	original	default	PASS	
-extraction-probe.docx	19	FLD19_RESULT	original	field_codes: true	FAIL	expected 2, got 1
+extraction-probe.docx	19	FLD19_RESULT	original	field_codes: true	PASS	
 extraction-probe.docx	19	FLD19_RESULT	markup	default	PASS	
-extraction-probe.docx	19	FLD19_RESULT	markup	field_codes: true	FAIL	expected 2, got 1
+extraction-probe.docx	19	FLD19_RESULT	markup	field_codes: true	PASS	
 extraction-probe.docx	19	FLD19_INSTR_ONLY	accepted	default	PASS	
-extraction-probe.docx	19	FLD19_INSTR_ONLY	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	19	FLD19_INSTR_ONLY	accepted	field_codes: true	PASS	
 extraction-probe.docx	19	FLD19_INSTR_ONLY	original	default	PASS	
-extraction-probe.docx	19	FLD19_INSTR_ONLY	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	19	FLD19_INSTR_ONLY	original	field_codes: true	PASS	
 extraction-probe.docx	19	FLD19_INSTR_ONLY	markup	default	PASS	
-extraction-probe.docx	19	FLD19_INSTR_ONLY	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	19	FLD19_INSTR_ONLY	markup	field_codes: true	PASS	
 extraction-probe.docx	19	FLD19_RESULT_TWO	accepted	default	PASS	
 extraction-probe.docx	19	FLD19_RESULT_TWO	original	default	PASS	
 extraction-probe.docx	19	FLD19_RESULT_TWO	markup	default	PASS	
 extraction-probe.docx	20	FLD20_SIMPLE_INSTR	accepted	default	PASS	
-extraction-probe.docx	20	FLD20_SIMPLE_INSTR	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	20	FLD20_SIMPLE_INSTR	accepted	field_codes: true	PASS	
 extraction-probe.docx	20	FLD20_SIMPLE_INSTR	original	default	PASS	
-extraction-probe.docx	20	FLD20_SIMPLE_INSTR	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	20	FLD20_SIMPLE_INSTR	original	field_codes: true	PASS	
 extraction-probe.docx	20	FLD20_SIMPLE_INSTR	markup	default	PASS	
-extraction-probe.docx	20	FLD20_SIMPLE_INSTR	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	20	FLD20_SIMPLE_INSTR	markup	field_codes: true	PASS	
 extraction-probe.docx	20	FLD20_SIMPLE_RESULT	accepted	default	PASS	
 extraction-probe.docx	20	FLD20_SIMPLE_RESULT	original	default	PASS	
 extraction-probe.docx	20	FLD20_SIMPLE_RESULT	markup	default	PASS	
@@ -234,11 +234,11 @@ extraction-probe.docx	21	FLD21_FIELD_URL_MARK	original	markdown	FAIL	ContentErro
 extraction-probe.docx	21	FLD21_FIELD_URL_MARK	markup	default	PASS	
 extraction-probe.docx	21	FLD21_FIELD_URL_MARK	markup	markdown	FAIL	expected 1, got 0
 extraction-probe.docx	22	PLC22_PLACEHOLDER	accepted	default	PASS	
-extraction-probe.docx	22	PLC22_PLACEHOLDER	accepted	placeholders: false	FAIL	expected 0, got 1
+extraction-probe.docx	22	PLC22_PLACEHOLDER	accepted	placeholders: false	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	original	default	PASS	
-extraction-probe.docx	22	PLC22_PLACEHOLDER	original	placeholders: false	FAIL	expected 0, got 1
+extraction-probe.docx	22	PLC22_PLACEHOLDER	original	placeholders: false	PASS	
 extraction-probe.docx	22	PLC22_PLACEHOLDER	markup	default	PASS	
-extraction-probe.docx	22	PLC22_PLACEHOLDER	markup	placeholders: false	FAIL	expected 0, got 1
+extraction-probe.docx	22	PLC22_PLACEHOLDER	markup	placeholders: false	PASS	
 extraction-probe.docx	23	BND23_XML_VALUE	accepted	default	FAIL	expected 1, got 0
 extraction-probe.docx	23	BND23_XML_VALUE	accepted	bindings: surface	PASS	
 extraction-probe.docx	23	BND23_XML_VALUE	original	default	FAIL	expected 1, got 0
@@ -257,36 +257,36 @@ extraction-probe.docx	24	SDT24_CONTENT	markup	default	PASS
 extraction-probe.docx	24	SDT24_IN_CELL	accepted	default	PASS	
 extraction-probe.docx	24	SDT24_IN_CELL	original	default	PASS	
 extraction-probe.docx	24	SDT24_IN_CELL	markup	default	PASS	
-extraction-probe.docx	25	TBX25_FLOAT	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_FLOAT	accepted	default	PASS	
 extraction-probe.docx	25	TBX25_FLOAT	accepted	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_FLOAT	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_FLOAT	original	default	PASS	
 extraction-probe.docx	25	TBX25_FLOAT	original	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_FLOAT	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_FLOAT	markup	default	PASS	
 extraction-probe.docx	25	TBX25_FLOAT	markup	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_INLINE	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_INLINE	accepted	default	PASS	
 extraction-probe.docx	25	TBX25_INLINE	accepted	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_INLINE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_INLINE	original	default	PASS	
 extraction-probe.docx	25	TBX25_INLINE	original	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_INLINE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_INLINE	markup	default	PASS	
 extraction-probe.docx	25	TBX25_INLINE	markup	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_VML_ONLY	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_VML_ONLY	accepted	default	PASS	
 extraction-probe.docx	25	TBX25_VML_ONLY	accepted	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_VML_ONLY	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_VML_ONLY	original	default	PASS	
 extraction-probe.docx	25	TBX25_VML_ONLY	original	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_VML_ONLY	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_VML_ONLY	markup	default	PASS	
 extraction-probe.docx	25	TBX25_VML_ONLY	markup	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_IN_CELL	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_IN_CELL	accepted	default	PASS	
 extraction-probe.docx	25	TBX25_IN_CELL	accepted	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_IN_CELL	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_IN_CELL	original	default	PASS	
 extraction-probe.docx	25	TBX25_IN_CELL	original	text_boxes: false	PASS	
-extraction-probe.docx	25	TBX25_IN_CELL	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_IN_CELL	markup	default	PASS	
 extraction-probe.docx	25	TBX25_IN_CELL	markup	text_boxes: false	PASS	
 extraction-probe.docx	25	TBX25_IN_HEADER	accepted	default	PASS	
-extraction-probe.docx	25	TBX25_IN_HEADER	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_IN_HEADER	accepted	include: headers	PASS	
 extraction-probe.docx	25	TBX25_IN_HEADER	original	default	PASS	
-extraction-probe.docx	25	TBX25_IN_HEADER	original	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_IN_HEADER	original	include: headers	PASS	
 extraction-probe.docx	25	TBX25_IN_HEADER	markup	default	PASS	
-extraction-probe.docx	25	TBX25_IN_HEADER	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	25	TBX25_IN_HEADER	markup	include: headers	PASS	
 extraction-probe.docx	25	WA25_TEXTPATH	accepted	default	FAIL	expected 1, got 0
 extraction-probe.docx	25	WA25_TEXTPATH	accepted	text_boxes: false	PASS	
 extraction-probe.docx	25	WA25_TEXTPATH	original	default	FAIL	expected 1, got 0
@@ -294,64 +294,64 @@ extraction-probe.docx	25	WA25_TEXTPATH	original	text_boxes: false	PASS
 extraction-probe.docx	25	WA25_TEXTPATH	markup	default	FAIL	expected 1, got 0
 extraction-probe.docx	25	WA25_TEXTPATH	markup	text_boxes: false	PASS	
 extraction-probe.docx	26	HDR26_DEFAULT	accepted	default	PASS	
-extraction-probe.docx	26	HDR26_DEFAULT	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_DEFAULT	accepted	include: headers	PASS	
 extraction-probe.docx	26	HDR26_DEFAULT	original	default	PASS	
-extraction-probe.docx	26	HDR26_DEFAULT	original	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_DEFAULT	original	include: headers	PASS	
 extraction-probe.docx	26	HDR26_DEFAULT	markup	default	PASS	
-extraction-probe.docx	26	HDR26_DEFAULT	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_DEFAULT	markup	include: headers	PASS	
 extraction-probe.docx	26	HDR26_FIRST	accepted	default	PASS	
-extraction-probe.docx	26	HDR26_FIRST	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_FIRST	accepted	include: headers	PASS	
 extraction-probe.docx	26	HDR26_FIRST	original	default	PASS	
-extraction-probe.docx	26	HDR26_FIRST	original	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_FIRST	original	include: headers	PASS	
 extraction-probe.docx	26	HDR26_FIRST	markup	default	PASS	
-extraction-probe.docx	26	HDR26_FIRST	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_FIRST	markup	include: headers	PASS	
 extraction-probe.docx	26	HDR26_EVEN	accepted	default	PASS	
-extraction-probe.docx	26	HDR26_EVEN	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_EVEN	accepted	include: headers	PASS	
 extraction-probe.docx	26	HDR26_EVEN	original	default	PASS	
-extraction-probe.docx	26	HDR26_EVEN	original	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_EVEN	original	include: headers	PASS	
 extraction-probe.docx	26	HDR26_EVEN	markup	default	PASS	
-extraction-probe.docx	26	HDR26_EVEN	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_EVEN	markup	include: headers	PASS	
 extraction-probe.docx	26	FTR26_DEFAULT	accepted	default	PASS	
-extraction-probe.docx	26	FTR26_DEFAULT	accepted	include: footers	FAIL	expected 1, got 0
+extraction-probe.docx	26	FTR26_DEFAULT	accepted	include: footers	PASS	
 extraction-probe.docx	26	FTR26_DEFAULT	original	default	PASS	
-extraction-probe.docx	26	FTR26_DEFAULT	original	include: footers	FAIL	expected 1, got 0
+extraction-probe.docx	26	FTR26_DEFAULT	original	include: footers	PASS	
 extraction-probe.docx	26	FTR26_DEFAULT	markup	default	PASS	
-extraction-probe.docx	26	FTR26_DEFAULT	markup	include: footers	FAIL	expected 1, got 0
+extraction-probe.docx	26	FTR26_DEFAULT	markup	include: footers	PASS	
 extraction-probe.docx	26	HDR26_SECTION2	accepted	default	PASS	
-extraction-probe.docx	26	HDR26_SECTION2	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_SECTION2	accepted	include: headers	PASS	
 extraction-probe.docx	26	HDR26_SECTION2	original	default	PASS	
-extraction-probe.docx	26	HDR26_SECTION2	original	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_SECTION2	original	include: headers	PASS	
 extraction-probe.docx	26	HDR26_SECTION2	markup	default	PASS	
-extraction-probe.docx	26	HDR26_SECTION2	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe.docx	26	HDR26_SECTION2	markup	include: headers	PASS	
 extraction-probe.docx	26	HDR26_ORPHAN	accepted	default	PASS	
 extraction-probe.docx	26	HDR26_ORPHAN	original	default	PASS	
 extraction-probe.docx	26	HDR26_ORPHAN	markup	default	PASS	
 extraction-probe.docx	27	FN27_REF_HERE	accepted	default	PASS	
 extraction-probe.docx	27	FN27_REF_HERE	original	default	PASS	
 extraction-probe.docx	27	FN27_REF_HERE	markup	default	PASS	
-extraction-probe.docx	27	FN27_NOTE_TEXT	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	FN27_NOTE_TEXT	accepted	default	PASS	
 extraction-probe.docx	27	FN27_NOTE_TEXT	accepted	notes: false	PASS	
-extraction-probe.docx	27	FN27_NOTE_TEXT	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	FN27_NOTE_TEXT	original	default	PASS	
 extraction-probe.docx	27	FN27_NOTE_TEXT	original	notes: false	PASS	
-extraction-probe.docx	27	FN27_NOTE_TEXT	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	FN27_NOTE_TEXT	markup	default	PASS	
 extraction-probe.docx	27	FN27_NOTE_TEXT	markup	notes: false	PASS	
 extraction-probe.docx	27	EN27_REF_HERE	accepted	default	PASS	
 extraction-probe.docx	27	EN27_REF_HERE	original	default	PASS	
 extraction-probe.docx	27	EN27_REF_HERE	markup	default	PASS	
-extraction-probe.docx	27	EN27_NOTE_TEXT	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	EN27_NOTE_TEXT	accepted	default	PASS	
 extraction-probe.docx	27	EN27_NOTE_TEXT	accepted	notes: false	PASS	
-extraction-probe.docx	27	EN27_NOTE_TEXT	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	EN27_NOTE_TEXT	original	default	PASS	
 extraction-probe.docx	27	EN27_NOTE_TEXT	original	notes: false	PASS	
-extraction-probe.docx	27	EN27_NOTE_TEXT	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	EN27_NOTE_TEXT	markup	default	PASS	
 extraction-probe.docx	27	EN27_NOTE_TEXT	markup	notes: false	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_HERE	accepted	default	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_HERE	original	default	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_HERE	markup	default	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_NOTE	accepted	default	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_NOTE	accepted	notes: false	PASS	
-extraction-probe.docx	27	FN27_DELETED_REF_NOTE	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	FN27_DELETED_REF_NOTE	original	default	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_NOTE	original	notes: false	PASS	
-extraction-probe.docx	27	FN27_DELETED_REF_NOTE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	27	FN27_DELETED_REF_NOTE	markup	default	PASS	
 extraction-probe.docx	27	FN27_DELETED_REF_NOTE	markup	notes: false	PASS	
 extraction-probe.docx	28	CMT28_ANCHOR	accepted	default	PASS	
 extraction-probe.docx	28	CMT28_ANCHOR	original	default	PASS	
@@ -361,16 +361,16 @@ extraction-probe.docx	28	CMT28_RESOLVED_ANCHOR	original	default	PASS
 extraction-probe.docx	28	CMT28_RESOLVED_ANCHOR	markup	default	PASS	
 extraction-probe.docx	28	CMT28_COMMENT_TEXT	accepted	default	PASS	
 extraction-probe.docx	28	CMT28_COMMENT_TEXT	original	default	PASS	
-extraction-probe.docx	28	CMT28_COMMENT_TEXT	markup	default	FAIL	total: expected 1, got 0
-extraction-probe.docx	28	CMT28_COMMENT_TEXT	markup	comments: true	FAIL	total: expected 1, got 0
+extraction-probe.docx	28	CMT28_COMMENT_TEXT	markup	default	PASS	
+extraction-probe.docx	28	CMT28_COMMENT_TEXT	markup	comments: true	PASS	
 extraction-probe.docx	28	CMT28_REPLY	accepted	default	PASS	
 extraction-probe.docx	28	CMT28_REPLY	original	default	PASS	
-extraction-probe.docx	28	CMT28_REPLY	markup	default	FAIL	total: expected 1, got 0
-extraction-probe.docx	28	CMT28_REPLY	markup	comments: true	FAIL	total: expected 1, got 0
+extraction-probe.docx	28	CMT28_REPLY	markup	default	PASS	
+extraction-probe.docx	28	CMT28_REPLY	markup	comments: true	PASS	
 extraction-probe.docx	28	CMT28_RESOLVED_COMMENT	accepted	default	PASS	
 extraction-probe.docx	28	CMT28_RESOLVED_COMMENT	original	default	PASS	
-extraction-probe.docx	28	CMT28_RESOLVED_COMMENT	markup	default	FAIL	total: expected 1, got 0
-extraction-probe.docx	28	CMT28_RESOLVED_COMMENT	markup	comments: true	FAIL	total: expected 1, got 0
+extraction-probe.docx	28	CMT28_RESOLVED_COMMENT	markup	default	PASS	
+extraction-probe.docx	28	CMT28_RESOLVED_COMMENT	markup	comments: true	PASS	
 extraction-probe.docx	29	SYM29_MARK	accepted	default	PASS	
 extraction-probe.docx	29	SYM29_MARK	original	default	PASS	
 extraction-probe.docx	29	SYM29_MARK	markup	default	PASS	
@@ -431,12 +431,12 @@ extraction-probe.docx	31	TBL31_MERGED	markup	default	PASS
 extraction-probe.docx	31	TBL31_LAST_CELL	accepted	default	PASS	
 extraction-probe.docx	31	TBL31_LAST_CELL	original	default	PASS	
 extraction-probe.docx	31	TBL31_LAST_CELL	markup	default	PASS	
-extraction-probe.docx	32	MTH32_A	accepted	default	FAIL	expected 1, got 0
-extraction-probe.docx	32	MTH32_A	original	default	FAIL	expected 1, got 0
-extraction-probe.docx	32	MTH32_A	markup	default	FAIL	expected 1, got 0
-extraction-probe.docx	32	MTH32_B	accepted	default	FAIL	expected 1, got 0
-extraction-probe.docx	32	MTH32_B	original	default	FAIL	expected 1, got 0
-extraction-probe.docx	32	MTH32_B	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	32	MTH32_A	accepted	default	PASS	
+extraction-probe.docx	32	MTH32_A	original	default	PASS	
+extraction-probe.docx	32	MTH32_A	markup	default	PASS	
+extraction-probe.docx	32	MTH32_B	accepted	default	PASS	
+extraction-probe.docx	32	MTH32_B	original	default	PASS	
+extraction-probe.docx	32	MTH32_B	markup	default	PASS	
 extraction-probe.docx	33	IMG33_ALT_TEXT	accepted	default	PASS	
 extraction-probe.docx	33	IMG33_ALT_TEXT	accepted	alt_text: true	FAIL	expected 1, got 0
 extraction-probe.docx	33	IMG33_ALT_TEXT	original	default	PASS	
@@ -518,9 +518,9 @@ extraction-probe.docx	36	ALT36_CHUNK_TEXT	original	html reader absent	PASS
 extraction-probe.docx	36	ALT36_CHUNK_TEXT	original	html reader present	PENDING	phase 2; html reader present
 extraction-probe.docx	36	ALT36_CHUNK_TEXT	markup	html reader absent	PASS	
 extraction-probe.docx	36	ALT36_CHUNK_TEXT	markup	html reader present	PENDING	phase 2; html reader present
-extraction-probe.docx	37	RBY37_BASE	accepted	default	FAIL	expected 1, got 0
-extraction-probe.docx	37	RBY37_BASE	original	default	FAIL	expected 1, got 0
-extraction-probe.docx	37	RBY37_BASE	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	37	RBY37_BASE	accepted	default	PASS	
+extraction-probe.docx	37	RBY37_BASE	original	default	PASS	
+extraction-probe.docx	37	RBY37_BASE	markup	default	PASS	
 extraction-probe.docx	37	RBY37_RUBY	accepted	default	PASS	
 extraction-probe.docx	37	RBY37_RUBY	original	default	PASS	
 extraction-probe.docx	37	RBY37_RUBY	markup	default	PASS	
@@ -608,45 +608,45 @@ extraction-probe.docx	48	ZW48_SP​LIT	markup	default	PASS
 extraction-probe.docx	48	TAG48_MARK	accepted	default	PASS	
 extraction-probe.docx	48	TAG48_MARK	original	default	PASS	
 extraction-probe.docx	48	TAG48_MARK	markup	default	PASS	
-extraction-probe.docx	48	OFF48_BOX	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	48	OFF48_BOX	accepted	default	PASS	
 extraction-probe.docx	48	OFF48_BOX	accepted	text_boxes: false	PASS	
-extraction-probe.docx	48	OFF48_BOX	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	48	OFF48_BOX	original	default	PASS	
 extraction-probe.docx	48	OFF48_BOX	original	text_boxes: false	PASS	
-extraction-probe.docx	48	OFF48_BOX	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	48	OFF48_BOX	markup	default	PASS	
 extraction-probe.docx	48	OFF48_BOX	markup	text_boxes: false	PASS	
-extraction-probe.docx	48	ZER48_BOX	accepted	default	FAIL	expected 1, got 0
+extraction-probe.docx	48	ZER48_BOX	accepted	default	PASS	
 extraction-probe.docx	48	ZER48_BOX	accepted	text_boxes: false	PASS	
-extraction-probe.docx	48	ZER48_BOX	original	default	FAIL	expected 1, got 0
+extraction-probe.docx	48	ZER48_BOX	original	default	PASS	
 extraction-probe.docx	48	ZER48_BOX	original	text_boxes: false	PASS	
-extraction-probe.docx	48	ZER48_BOX	markup	default	FAIL	expected 1, got 0
+extraction-probe.docx	48	ZER48_BOX	markup	default	PASS	
 extraction-probe.docx	48	ZER48_BOX	markup	text_boxes: false	PASS	
 extraction-probe.docx	48	SPV48_SEPARATOR	accepted	default	PASS	
 extraction-probe.docx	48	SPV48_SEPARATOR	original	default	PASS	
 extraction-probe.docx	48	SPV48_SEPARATOR	markup	default	PASS	
 extraction-probe.docx	49	DDE49_INSTR	accepted	default	PASS	
-extraction-probe.docx	49	DDE49_INSTR	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	DDE49_INSTR	accepted	field_codes: true	PASS	
 extraction-probe.docx	49	DDE49_INSTR	original	default	PASS	
-extraction-probe.docx	49	DDE49_INSTR	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	DDE49_INSTR	original	field_codes: true	PASS	
 extraction-probe.docx	49	DDE49_INSTR	markup	default	PASS	
-extraction-probe.docx	49	DDE49_INSTR	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	DDE49_INSTR	markup	field_codes: true	PASS	
 extraction-probe.docx	49	DDE49_RESULT	accepted	default	PASS	
 extraction-probe.docx	49	DDE49_RESULT	original	default	PASS	
 extraction-probe.docx	49	DDE49_RESULT	markup	default	PASS	
 extraction-probe.docx	49	INC49_INSTR	accepted	default	PASS	
-extraction-probe.docx	49	INC49_INSTR	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	INC49_INSTR	accepted	field_codes: true	PASS	
 extraction-probe.docx	49	INC49_INSTR	original	default	PASS	
-extraction-probe.docx	49	INC49_INSTR	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	INC49_INSTR	original	field_codes: true	PASS	
 extraction-probe.docx	49	INC49_INSTR	markup	default	PASS	
-extraction-probe.docx	49	INC49_INSTR	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	INC49_INSTR	markup	field_codes: true	PASS	
 extraction-probe.docx	49	INC49_RESULT	accepted	default	PASS	
 extraction-probe.docx	49	INC49_RESULT	original	default	PASS	
 extraction-probe.docx	49	INC49_RESULT	markup	default	PASS	
 extraction-probe.docx	49	FLD49_FILE_MARK	accepted	default	PASS	
-extraction-probe.docx	49	FLD49_FILE_MARK	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	FLD49_FILE_MARK	accepted	field_codes: true	PASS	
 extraction-probe.docx	49	FLD49_FILE_MARK	original	default	PASS	
-extraction-probe.docx	49	FLD49_FILE_MARK	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	FLD49_FILE_MARK	original	field_codes: true	PASS	
 extraction-probe.docx	49	FLD49_FILE_MARK	markup	default	PASS	
-extraction-probe.docx	49	FLD49_FILE_MARK	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe.docx	49	FLD49_FILE_MARK	markup	field_codes: true	PASS	
 extraction-probe-external.docm	50	TPL50_MARK	accepted	default	PASS	
 extraction-probe-external.docm	50	TPL50_MARK	original	default	PASS	
 extraction-probe-external.docm	50	TPL50_MARK	markup	default	PASS	
@@ -752,17 +752,17 @@ extraction-probe.docx	54	GLS54_ENTRY_TWO	markup	include: glossary	FAIL	expected 
 extraction-probe-structure.docx	55	TOC55_TITLE	accepted	default	PASS	
 extraction-probe-structure.docx	55	TOC55_TITLE	original	default	PASS	
 extraction-probe-structure.docx	55	TOC55_TITLE	markup	default	PASS	
-extraction-probe-structure.docx	55	HEAD55_ONE	accepted	default	FAIL	expected 1, got 2
+extraction-probe-structure.docx	55	HEAD55_ONE	accepted	default	PASS	
 extraction-probe-structure.docx	55	HEAD55_ONE	accepted	toc: true	PASS	
-extraction-probe-structure.docx	55	HEAD55_ONE	original	default	FAIL	expected 1, got 2
+extraction-probe-structure.docx	55	HEAD55_ONE	original	default	PASS	
 extraction-probe-structure.docx	55	HEAD55_ONE	original	toc: true	PASS	
-extraction-probe-structure.docx	55	HEAD55_ONE	markup	default	FAIL	expected 1, got 2
+extraction-probe-structure.docx	55	HEAD55_ONE	markup	default	PASS	
 extraction-probe-structure.docx	55	HEAD55_ONE	markup	toc: true	PASS	
-extraction-probe-structure.docx	55	HEAD55_TWO	accepted	default	FAIL	expected 1, got 2
+extraction-probe-structure.docx	55	HEAD55_TWO	accepted	default	PASS	
 extraction-probe-structure.docx	55	HEAD55_TWO	accepted	toc: true	PASS	
-extraction-probe-structure.docx	55	HEAD55_TWO	original	default	FAIL	expected 1, got 2
+extraction-probe-structure.docx	55	HEAD55_TWO	original	default	PASS	
 extraction-probe-structure.docx	55	HEAD55_TWO	original	toc: true	PASS	
-extraction-probe-structure.docx	55	HEAD55_TWO	markup	default	FAIL	expected 1, got 2
+extraction-probe-structure.docx	55	HEAD55_TWO	markup	default	PASS	
 extraction-probe-structure.docx	55	HEAD55_TWO	markup	toc: true	PASS	
 extraction-probe-structure.docx	56	LST56_APPLES	accepted	default	PASS	
 extraction-probe-structure.docx	56	LST56_APPLES	original	default	PASS	
@@ -821,26 +821,26 @@ extraction-probe-structure.docx	57	SHT57_LAST	markup	embedded: true	FAIL	expecte
 extraction-probe-inspect.docx	58	VAN58_SHOWN	accepted	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_SHOWN	original	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_SHOWN	markup	default	PASS	
-extraction-probe-inspect.docx	58	VAN58_INHERITED	accepted	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	VAN58_INHERITED	accepted	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_INHERITED	accepted	hidden: true	PASS	
-extraction-probe-inspect.docx	58	VAN58_INHERITED	original	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	VAN58_INHERITED	original	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_INHERITED	original	hidden: true	PASS	
-extraction-probe-inspect.docx	58	VAN58_INHERITED	markup	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	VAN58_INHERITED	markup	default	PASS	
 extraction-probe-inspect.docx	58	VAN58_INHERITED	markup	hidden: true	PASS	
 extraction-probe-inspect.docx	58	PAR58_VISIBLE	accepted	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_VISIBLE	original	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_VISIBLE	markup	default	PASS	
-extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	accepted	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	accepted	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	accepted	hidden: true	PASS	
-extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	original	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	original	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	original	hidden: true	PASS	
-extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	markup	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	markup	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_PART_HIDDEN	markup	hidden: true	PASS	
-extraction-probe-inspect.docx	58	PAR58_WHOLE	accepted	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	PAR58_WHOLE	accepted	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_WHOLE	accepted	hidden: true	PASS	
-extraction-probe-inspect.docx	58	PAR58_WHOLE	original	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	PAR58_WHOLE	original	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_WHOLE	original	hidden: true	PASS	
-extraction-probe-inspect.docx	58	PAR58_WHOLE	markup	default	FAIL	expected 0, got 1
+extraction-probe-inspect.docx	58	PAR58_WHOLE	markup	default	PASS	
 extraction-probe-inspect.docx	58	PAR58_WHOLE	markup	hidden: true	PASS	
 extraction-probe-inspect.docx	58	SZ58_TWO	accepted	default	PASS	
 extraction-probe-inspect.docx	58	SZ58_TWO	original	default	PASS	
@@ -875,41 +875,41 @@ extraction-probe-inspect.docx	58	BODY58_LAST	markup	default	PASS
 extraction-probe-inspect.docx	58	HEAD58_AFTER	accepted	default	PASS	
 extraction-probe-inspect.docx	58	HEAD58_AFTER	original	default	PASS	
 extraction-probe-inspect.docx	58	HEAD58_AFTER	markup	default	PASS	
-extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	accepted	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	accepted	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	original	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	original	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	markup	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_OFF_PAGE	markup	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_PARTLY	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_PARTLY	accepted	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_PARTLY	accepted	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_PARTLY	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_PARTLY	original	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_PARTLY	original	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_PARTLY	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_PARTLY	markup	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_PARTLY	markup	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_FLAT	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_FLAT	accepted	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_FLAT	accepted	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_FLAT	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_FLAT	original	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_FLAT	original	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_FLAT	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_FLAT	markup	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_FLAT	markup	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	accepted	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	accepted	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	original	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	original	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	markup	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_INDETERMINATE	markup	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_ALIGNED	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_ALIGNED	accepted	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_ALIGNED	accepted	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_ALIGNED	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_ALIGNED	original	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_ALIGNED	original	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_ALIGNED	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_ALIGNED	markup	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_ALIGNED	markup	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_HIDDEN	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_HIDDEN	accepted	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_HIDDEN	accepted	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_HIDDEN	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_HIDDEN	original	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_HIDDEN	original	text_boxes: false	PASS	
-extraction-probe-inspect.docx	59	GEO59_HIDDEN	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	59	GEO59_HIDDEN	markup	default	PASS	
 extraction-probe-inspect.docx	59	GEO59_HIDDEN	markup	text_boxes: false	PASS	
 extraction-probe-inspect.docx	59	HDR59_UNUSED	accepted	default	PASS	
 extraction-probe-inspect.docx	59	HDR59_UNUSED	original	default	PASS	
@@ -936,38 +936,38 @@ extraction-probe-inspect.docx	60	ICN60_ICON_FONT	accepted	default	PASS
 extraction-probe-inspect.docx	60	ICN60_ICON_FONT	original	default	PASS	
 extraction-probe-inspect.docx	60	ICN60_ICON_FONT	markup	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	accepted	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	accepted	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	original	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	original	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	markup	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_INCPIC_SIMPLE	markup	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_SIMPLE_RESULT	accepted	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_SIMPLE_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_SIMPLE_RESULT	markup	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	accepted	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	accepted	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	original	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	original	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	markup	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_INCPIC_COMPLEX	markup	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_COMPLEX_RESULT	accepted	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_COMPLEX_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_COMPLEX_RESULT	markup	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_BARE	accepted	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_LINK_BARE	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_LINK_BARE	accepted	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_BARE	original	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_LINK_BARE	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_LINK_BARE	original	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_BARE	markup	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_LINK_BARE	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_LINK_BARE	markup	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_SIMPLE_RESULT	accepted	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_SIMPLE_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_SIMPLE_RESULT	markup	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	accepted	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	accepted	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	original	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	original	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	markup	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_LINK_QUOTED	markup	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_COMPLEX_RESULT	accepted	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_COMPLEX_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_LINK_COMPLEX_RESULT	markup	default	PASS	
@@ -978,20 +978,20 @@ extraction-probe-inspect.docx	61	FLD61_BOOKMARK_RESULT	accepted	default	PASS
 extraction-probe-inspect.docx	61	FLD61_BOOKMARK_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_BOOKMARK_RESULT	markup	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_FILE	accepted	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_FILE	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_FILE	accepted	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_FILE	original	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_FILE	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_FILE	original	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_FILE	markup	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_FILE	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_FILE	markup	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_FILE_RESULT	accepted	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_FILE_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_FILE_RESULT	markup	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_UNC	accepted	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_UNC	accepted	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_UNC	accepted	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_UNC	original	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_UNC	original	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_UNC	original	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_UNC	markup	default	PASS	
-extraction-probe-inspect.docx	61	FLD61_UNC	markup	field_codes: true	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	61	FLD61_UNC	markup	field_codes: true	PASS	
 extraction-probe-inspect.docx	61	FLD61_UNC_RESULT	accepted	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_UNC_RESULT	original	default	PASS	
 extraction-probe-inspect.docx	61	FLD61_UNC_RESULT	markup	default	PASS	
@@ -1025,11 +1025,11 @@ extraction-probe-inspect.docx	62	BG62_PATTERN	markup	default	PASS
 extraction-probe-inspect.docx	63	NOTE63_HERE	accepted	default	PASS	
 extraction-probe-inspect.docx	63	NOTE63_HERE	original	default	PASS	
 extraction-probe-inspect.docx	63	NOTE63_HERE	markup	default	PASS	
-extraction-probe-inspect.docx	63	NOTE63_REFERENCED	accepted	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	NOTE63_REFERENCED	accepted	default	PASS	
 extraction-probe-inspect.docx	63	NOTE63_REFERENCED	accepted	notes: false	PASS	
-extraction-probe-inspect.docx	63	NOTE63_REFERENCED	original	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	NOTE63_REFERENCED	original	default	PASS	
 extraction-probe-inspect.docx	63	NOTE63_REFERENCED	original	notes: false	PASS	
-extraction-probe-inspect.docx	63	NOTE63_REFERENCED	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	NOTE63_REFERENCED	markup	default	PASS	
 extraction-probe-inspect.docx	63	NOTE63_REFERENCED	markup	notes: false	PASS	
 extraction-probe-inspect.docx	63	NOTE63_UNREFERENCED	accepted	default	PASS	
 extraction-probe-inspect.docx	63	NOTE63_UNREFERENCED	original	default	PASS	
@@ -1039,8 +1039,8 @@ extraction-probe-inspect.docx	63	CMT63_HERE	original	default	PASS
 extraction-probe-inspect.docx	63	CMT63_HERE	markup	default	PASS	
 extraction-probe-inspect.docx	63	CMT63_ANCHORED	accepted	default	PASS	
 extraction-probe-inspect.docx	63	CMT63_ANCHORED	original	default	PASS	
-extraction-probe-inspect.docx	63	CMT63_ANCHORED	markup	default	FAIL	total: expected 1, got 0
-extraction-probe-inspect.docx	63	CMT63_ANCHORED	markup	comments: true	FAIL	total: expected 1, got 0
+extraction-probe-inspect.docx	63	CMT63_ANCHORED	markup	default	PASS	
+extraction-probe-inspect.docx	63	CMT63_ANCHORED	markup	comments: true	PASS	
 extraction-probe-inspect.docx	63	CMT63_UNANCHORED	accepted	default	PASS	
 extraction-probe-inspect.docx	63	CMT63_UNANCHORED	original	default	PASS	
 extraction-probe-inspect.docx	63	CMT63_UNANCHORED	markup	default	PASS	
@@ -1072,11 +1072,11 @@ extraction-probe-inspect.docx	63	VAR63_VALUE	accepted	default	PASS
 extraction-probe-inspect.docx	63	VAR63_VALUE	original	default	PASS	
 extraction-probe-inspect.docx	63	VAR63_VALUE	markup	default	PASS	
 extraction-probe-inspect.docx	63	HDR63_USED	accepted	default	PASS	
-extraction-probe-inspect.docx	63	HDR63_USED	accepted	include: headers	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	HDR63_USED	accepted	include: headers	PASS	
 extraction-probe-inspect.docx	63	HDR63_USED	original	default	PASS	
-extraction-probe-inspect.docx	63	HDR63_USED	original	include: headers	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	HDR63_USED	original	include: headers	PASS	
 extraction-probe-inspect.docx	63	HDR63_USED	markup	default	PASS	
-extraction-probe-inspect.docx	63	HDR63_USED	markup	include: headers	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	63	HDR63_USED	markup	include: headers	PASS	
 extraction-probe-inspect.docx	63	WMK63_WATERMARK	accepted	default	PASS	
 extraction-probe-inspect.docx	63	WMK63_WATERMARK	accepted	include: headers	FAIL	expected 1, got 0
 extraction-probe-inspect.docx	63	WMK63_WATERMARK	original	default	PASS	
@@ -1170,9 +1170,9 @@ extraction-probe-inspect.docx	66	ROW66_HIDDEN	markup	embedded: true	FAIL	expecte
 extraction-probe-inspect.docx	67	MCE67_HERE	accepted	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_HERE	original	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_HERE	markup	default	PASS	
-extraction-probe-inspect.docx	67	MCE67_CHOICE	accepted	default	FAIL	expected 1, got 0
-extraction-probe-inspect.docx	67	MCE67_CHOICE	original	default	FAIL	expected 1, got 0
-extraction-probe-inspect.docx	67	MCE67_CHOICE	markup	default	FAIL	expected 1, got 0
+extraction-probe-inspect.docx	67	MCE67_CHOICE	accepted	default	PASS	
+extraction-probe-inspect.docx	67	MCE67_CHOICE	original	default	PASS	
+extraction-probe-inspect.docx	67	MCE67_CHOICE	markup	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_FALLBACK_WHITE	accepted	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_FALLBACK_WHITE	original	default	PASS	
 extraction-probe-inspect.docx	67	MCE67_FALLBACK_WHITE	markup	default	PASS	
@@ -1491,9 +1491,9 @@ extraction-probe-inspect.docx	64	inspect:relationship.external:file:///C:/CR050-
 extraction-probe-inspect.docx	64	inspect:relationship.external:file:///\\cr050-missing\share\LNK64_UNC.docx	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	64	inspect:hyperlink.web:https://example.com/LNK64_WEB	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	64	inspect:hyperlink.web:mailto:probe@example.com?subject=LNK64_MAIL	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
-extraction-probe-external.docm	50	metadata:fields_update_on_open:	accepted	default	FAIL	expected true, got None
-extraction-probe-external.docm	50	metadata:fields_update_on_open:	original	default	FAIL	expected true, got None
-extraction-probe-external.docm	50	metadata:fields_update_on_open:	markup	default	FAIL	expected true, got None
+extraction-probe-external.docm	50	metadata:fields_update_on_open:	accepted	default	PASS	
+extraction-probe-external.docm	50	metadata:fields_update_on_open:	original	default	PASS	
+extraction-probe-external.docm	50	metadata:fields_update_on_open:	markup	default	PASS	
 extraction-probe-external.docm	52	metadata:ProbeCustom:	accepted	default	FAIL	expected CPR52_CUSTOM, got None
 extraction-probe-external.docm	52	metadata:ProbeCustom:	original	default	FAIL	expected CPR52_CUSTOM, got None
 extraction-probe-external.docm	52	metadata:ProbeCustom:	markup	default	FAIL	expected CPR52_CUSTOM, got None
@@ -1539,9 +1539,9 @@ extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	
 extraction-probe.docx	53	order	accepted	embedded: true	FAIL	order marker EMB53_SLIDE_ONE: expected 1, got 0
 extraction-probe.docx	53	order	original	embedded: true	FAIL	order marker EMB53_SLIDE_ONE: expected 1, got 0
 extraction-probe.docx	53	order	markup	embedded: true	FAIL	order marker EMB53_SLIDE_ONE: expected 1, got 0
-extraction-probe.docx	54	order	accepted	include: glossary	FAIL	order marker EN27_NOTE_TEXT: expected 1, got 0
-extraction-probe.docx	54	order	original	include: glossary	FAIL	order marker EN27_NOTE_TEXT: expected 1, got 0
-extraction-probe.docx	54	order	markup	include: glossary	FAIL	order marker EN27_NOTE_TEXT: expected 1, got 0
+extraction-probe.docx	54	order	accepted	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
+extraction-probe.docx	54	order	original	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
+extraction-probe.docx	54	order	markup	include: glossary	FAIL	order marker GLS54_ENTRY_ONE: expected 1, got 0
 extraction-probe.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
 extraction-probe-external.docm	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
 extraction-probe-structure.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
@@ -1571,15 +1571,15 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
-extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 43 lines of the golden missing, 22 extra
-extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 45 lines of the golden missing, 23 extra
-extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 52 lines of the golden missing, 28 extra
+extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	FAIL	normalised text differs: 17 lines of the golden missing, 3 extra
+extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	FAIL	normalised text differs: 17 lines of the golden missing, 3 extra
+extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	FAIL	normalised text differs: 17 lines of the golden missing, 3 extra
 extraction-probe.docx	0	golden:extraction-probe.md	accepted	default	FAIL	normalised text differs: 78 lines of the golden missing, 26 extra
 extraction-probe-external.docm	0	golden:extraction-probe-external.accepted.txt	accepted	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.original.txt	original	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.markup.txt	markup	default	PASS	
 extraction-probe-external.docm	0	golden:extraction-probe-external.md	accepted	default	FAIL	normalised text differs: 2 lines of the golden missing, 0 extra
-extraction-probe-structure.docx	0	golden:extraction-probe-structure.accepted.txt	accepted	default	FAIL	normalised text differs: 0 lines of the golden missing, 3 extra
-extraction-probe-structure.docx	0	golden:extraction-probe-structure.original.txt	original	default	FAIL	normalised text differs: 0 lines of the golden missing, 3 extra
-extraction-probe-structure.docx	0	golden:extraction-probe-structure.markup.txt	markup	default	FAIL	normalised text differs: 0 lines of the golden missing, 3 extra
+extraction-probe-structure.docx	0	golden:extraction-probe-structure.accepted.txt	accepted	default	PASS	
+extraction-probe-structure.docx	0	golden:extraction-probe-structure.original.txt	original	default	PASS	
+extraction-probe-structure.docx	0	golden:extraction-probe-structure.markup.txt	markup	default	PASS	
 extraction-probe-structure.docx	0	golden:extraction-probe-structure.md	accepted	default	FAIL	normalised text differs: 5 lines of the golden missing, 7 extra

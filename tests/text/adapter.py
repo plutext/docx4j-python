@@ -1,30 +1,28 @@
-"""docx4j's ``TextsAdapter``, over this package's text readers as they are before the text model.
+"""docx4j's ``TextsAdapter``, over this package's text model. CR-011 sections 3.6 and 12.
 
-CR-011 section 4. Not a test: the :class:`~conformance.Engine` the conformance
-harness runs, :meth:`TextsAdapter.implemented` and
-:meth:`TextsAdapter.extract`, with no ``inspect`` or ``counts`` (the inspector
-is out of scope, CR-011 section 3.7). Phase A reads what the package ships
-today, the baseline CR-011 section 1 measured:
+Not a test: the :class:`~conformance.Engine` the conformance harness runs,
+:meth:`TextsAdapter.implemented` and :meth:`TextsAdapter.extract`, with no
+``inspect`` or ``counts`` (the inspector is out of scope, CR-011 section 3.7).
+Since Phase B it reads the text model, as docx4j's adapter reads its own:
 
-* plain text (``txt``): ``pkg.body.get_text(view=)`` in ``accepted`` and
-  ``original``. In ``markup``, the filter that ``get_text(view="markup")``
-  applied until CR-011's Q10 made that call raise: each paragraph's runs
-  outside every revision holder, joined as ``Body.get_text`` joins them. So
-  the report records what the call returned, until Phase B gives it the
-  model's markup view;
-* Markdown (``md``): ``pkg.to_markdown(view=)``, which has ``accepted`` and
-  ``markup`` (CriticMarkup) and refuses ``original``.
-
-Every scenario's options are ignored, since today's readers take none, and
-the findings are empty: nothing here raises a warning or reads the metadata.
+* plain text (``txt``): :func:`docx4j_py.model.text.plain_text` of
+  :func:`~docx4j_py.model.text.extract`, the scenario's options set by their
+  specification names (docx4j's ``TextsAdapter.options``: ``; `` apart, each
+  ``name: value``; ``default``, ``markdown`` and the HTML reader scenarios set
+  none);
+* Markdown (``md``): ``pkg.to_markdown(view=)`` as before, which has
+  ``accepted`` and ``markup`` (CriticMarkup) and refuses ``original``, until
+  Phase D writes Markdown from the blocks;
+* the findings: each warning by ``warning<TAB>kind<TAB>selector``, counted, and
+  the metadata by ``metadata<TAB>name<TAB>`` (``fields_update_on_open``).
 
 It advertises what docx4j's adapter advertises at ``198d015a3``, less the
 inspector's statements, and ``html reader absent``: the target, not what the
-package meets. So every check docx4j makes is made here, today's gaps are
-``FAIL`` rows rather than pending ones, and a phase's progress shows as checks
-going from ``FAIL`` to ``PASS`` in the committed report (CR-011 sections 3.6
-and 11). Pending are docx4j's 19, which need an HTML reader, and the
-inspector's 214.
+package meets. So every check docx4j makes is made here, a gap is a ``FAIL``
+row rather than a pending one, and a phase's progress shows as checks going
+from ``FAIL`` to ``PASS`` in the committed report (CR-011 sections 3.6 and
+11). Pending are docx4j's 19, which need an HTML reader, and the inspector's
+214.
 """
 
 from __future__ import annotations
@@ -36,7 +34,7 @@ from typing import Any
 from conformance import HTML_READER_ABSENT, Engine, Output
 
 from docx4j_py import load
-from docx4j_py.model.content.text_model import text_of_view
+from docx4j_py.model.text import TextOptions, extract, plain_text
 
 __all__ = ["DOCX4J_IMPLEMENTED", "INSPECTOR", "TextsAdapter"]
 
@@ -68,8 +66,21 @@ DOCX4J_IMPLEMENTED = frozenset(
 INSPECTOR = frozenset({*(f"REQ-{n}" for n in range(901, 908)), "REQ-1204"})
 
 
+def options(view: str, scenario: str) -> TextOptions:
+    """A scenario as options, by the specification's names. docx4j ``TextsAdapter.options``."""
+    out = TextOptions(view=view)
+    if scenario in ("default", "markdown") or scenario.startswith("html reader"):
+        return out
+    for option in scenario.split(";"):
+        name, colon, value = option.partition(":")
+        if not colon:
+            raise ValueError(f"Unknown scenario: {scenario}")
+        out.set(name.strip(), value.strip())
+    return out
+
+
 class TextsAdapter(Engine):
-    """The harness's engine over today's ``get_text`` and ``to_markdown``.
+    """The harness's engine over the text model, and ``to_markdown`` for Markdown.
 
     Each fixture is loaded once and read as often as the harness asks, as
     docx4j's adapter caches its packages.
@@ -84,15 +95,19 @@ class TextsAdapter(Engine):
         return (DOCX4J_IMPLEMENTED - INSPECTOR) | {HTML_READER_ABSENT}
 
     def extract(self, fixture: Path, view: str, scenario: str, format: str) -> Output:
-        """One fixture in one view as plain text or Markdown; the scenario is not read."""
+        """One fixture in one view under one scenario, as plain text or Markdown."""
         if format not in ("txt", "md"):
             raise NotImplementedError(f"format {format}")
         package = self._packages.get(fixture)
         if package is None:
             package = self._packages[fixture] = load(fixture)
+        result = extract(package, options(view, scenario))
+        findings: dict[str, str] = {}
+        for warning in result.warnings:
+            key = f"warning\t{warning.kind}\t{warning.selector or ''}"
+            findings[key] = str(int(findings.get(key, "0")) + 1)
+        for name, value in result.metadata.items():
+            findings[f"metadata\t{name}\t"] = str(value).lower() if isinstance(value, bool) else str(value)
         if format == "md":
-            return Output(package.to_markdown(view=view), {})
-        if view == "markup":
-            paragraphs = package.body.iter_paragraphs()
-            return Output("\n".join(text_of_view(p.element, view="markup") for p in paragraphs), {})
-        return Output(package.body.get_text(view=view), {})
+            return Output(package.to_markdown(view=view), findings)
+        return Output(plain_text(result), findings)
