@@ -340,6 +340,25 @@ class DisplayMath(Node):
 # ---------------------------------------------------------------- the writer (MarkdownWriter)
 
 
+_NOTHING: frozenset[str] = frozenset()
+_ESCAPE_TABLES: dict[frozenset[str], dict[int, str]] = {}
+
+
+def _escape_table(chars: frozenset[str]) -> dict[int, str]:
+    """A ``str.translate`` table escaping `chars`: ``\\`` before each, a line end as ``&#10;``.
+
+    commonmark-java's ``MarkdownWriter.append``, a character at a time; here a
+    table per set of characters, made once (CR-011 section 14: the loop was the
+    writer's largest cost).
+    """
+    table = _ESCAPE_TABLES.get(chars)
+    if table is None:
+        # a line end can't be escaped with \: a numeric character reference
+        table = {ord(c): ("&#10;" if c == "\n" else "\\" + c) for c in chars}
+        _ESCAPE_TABLES[chars] = table
+    return table
+
+
 class _Writer:
     """commonmark-java's ``MarkdownWriter``, with the tag starts (``starts``)."""
 
@@ -432,14 +451,10 @@ class _Writer:
             self.pending_tag = None
         chunk = s
         if self._raw_escapes or escape is not None:
-            parts: list[str] = []
-            for c in s:
-                if (escape is not None and c in escape) or any(c in e for e in self._raw_escapes):
-                    # a line end can't be escaped with \: a numeric character reference
-                    parts.append("&#10;" if c == "\n" else "\\" + c)
-                else:
-                    parts.append(c)
-            chunk = "".join(parts)
+            chars = escape if escape is not None else _NOTHING
+            for raw in self._raw_escapes:
+                chars = chars | raw
+            chunk = s.translate(_escape_table(chars))
         newline = chunk.rfind("\n")
         if newline >= 0:
             self._line_start = self._size + newline + 1
