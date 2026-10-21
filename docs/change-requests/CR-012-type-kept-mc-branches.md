@@ -1169,7 +1169,8 @@ Beyond docx4j's tests, the new ones cover:
    table's own `w:tr` and a row's own `w:tc`. This is 9.9's departure 8, at these levels.
 6. **A twin `w:cellIns` or `w:cellDel` in a branch Word does not read is not resolved** (10.8),
    as in docx4j before `60bd4b9ad`: `remove_cell` finds cells through `cells_of`, which reads one
-   branch.
+   branch. **Closed on 2026-10-22 by the port of `60bd4b9ad`** (`dde142e`, section 10.10): the
+   twin is removed from its own branch, and that branch's neighbour widened.
 7. **OpenDoPE's two cases are not ported**, as section 4.4 item 5 says:
    - docx4j's `RemovalHandler.xslt` row count, `OpenDoPEHandler.emptyKeepingTableShape` and
      `McRowCellLevelOpenDoPETest`;
@@ -1227,7 +1228,9 @@ Nothing else in the suite moved. The fork's upstream tests are untouched.
       `acceptingADeletedCellAloneInEachBranchWidensTheRowsNeighbourOnce`;
     - one asymmetry is left (CR-051 section 12.5): a read branch of two cells beside a twin branch
       of one leaves the twin branch's grid a span short.
-    - The port awaits the go.
+    - **Ported on 2026-10-22** at the user's go ("go on the port"), in `dde142e` (the code and
+      its eight tests) and the notes' commit after it (section 10.10, the CHANGELOG,
+      `tests/README.md`). The asymmetry is pinned as a known gap.
 - **Phase B's typing.** A `w:p`, `w:tbl` or `w:r` in a branch is as before:
   - `w:p` and `w:r` are global, so typed already;
   - a `w:tbl` in a block-level branch is still a wildcard, so `Body.tables` passes a table there by
@@ -1264,3 +1267,147 @@ Expected: each opens without a repair prompt and shows Word 365's branch, `w16sd
 element stands, as Word 365's own save of the probe does. Each already reads so in the text model.
 **Passed on 2026-10-22** (the user: "python-cr012a2 each pass"): all six open with no repair prompt
 and show what the README says.
+
+### 10.10 The cell-twin port (2026-10-22)
+
+This is the port of docx4j `60bd4b9ad` (on `VERSION_17_3_4`, read by commit), at the user's go
+("go on the port"). It closes 10.8's first item and 10.6's sixth departure. docx4j made the fix
+after this package found the gap while porting Phase A2.
+
+**Commits.**
+
+- `dde142e`: `tables.branch_of`, `tables.cells_in` and the twin's lookup in `remove_cell`, with
+  the tests;
+- the commit after it: this section, 10.6 item 6, 10.8, the CHANGELOG and `tests/README.md`.
+
+**What landed** (`docx4j_py/model/revisions/tables.py`, beside `cells_of` and `_cells`):
+
+- `branch_of(tc, tr)` is docx4j's `Lister.branchOf`. It climbs the parent pointers from a cell to
+  its row and answers the `mc:Choice` or `mc:Fallback` it meets, typed or wildcard. A cell standing
+  in the row itself, or in a cell-level control or custom XML element there, answers None.
+- `cells_in(branch)` is docx4j's `Lister.cellsIn`. It gives a branch's cells, each with the live
+  list holding it, through `_cells`, so through cell-level controls and custom XML. The list is a
+  typed branch's `any_element` (a wildcard one's `children`), what `McSplice.contentOf` gives
+  docx4j. `mce_branch_content` copies the list, so it is not used.
+- `remove_cell` looks up a cell that is not among `cells_of(tr)` in its own branch. It removes the
+  cell from that branch's list and widens that branch's neighbour, the cell before it, else the one
+  after it. A twin alone in its branch is removed with nothing widened. `_index_in` is docx4j's
+  `Tables.indexOf`.
+
+Two things were checked before the port:
+
+- **Parent pointers.** A branch's typed `Tc` has its branch as `parent`, both after
+  `set_contents(wml(...))` and in a document saved and loaded again. The branch's parent is the
+  element, and the element's the row. So `branch_of` needed nothing new.
+- **The order of resolution.** `TrackedChange.accept()` and `reject()` resolve the listed change
+  and then its twins, so the read branch's cell is gone when the twin is looked up. `accept_all`
+  and `reject_all` resolve last first, so there the twin goes while the read branch's cell is still
+  in place. Both orders give the same markup, and the tests run both.
+
+**Tests** (`tests/revisions/test_alternate_content.py`, 19 to 27). The documents are built as
+docx4j's test builds them, from its `TBL_PROPS` and its `cell`, `deletedCell` and `plainCell`.
+The serialiser writes `w:gridSpan w:val="2"` and `w:tcW w:w="2000" w:type="dxa"`, so docx4j's
+counts of serialised markup are asserted unchanged.
+
+- docx4j's two, with its assertions:
+  - `test_accepting_a_deleted_cell_resolves_its_twin_in_its_own_branch`: one change, with one
+    twin; after the accept no `cellDel`, `>C<` or `>F<`, `Ckeep` and `Fkeep` kept, two
+    `w:gridSpan w:val="2"`, two `w:tcW w:w="2000"`, and nothing listed;
+  - `test_accepting_a_deleted_cell_alone_in_each_branch_widens_the_rows_neighbour_once`: one
+    `w:gridSpan w:val="2"`, one `w:tcW w:w="2000"`, and the element kept, both branches empty of
+    cells (asserted through `cells_in`; the serialiser writes `<mc:Choice Requires="w14"/>` and
+    `<mc:Fallback/>`).
+- Beyond docx4j's:
+  - `w:cellIns` rejected, in both shapes, with the same assertions. The commit names the case, and
+    docx4j has no test of it.
+  - `accept_all` and `reject_all`. Each removes the marked cells in both shapes, with the counts
+    above. Over the first shape with the other marker, each keeps every cell, the markers gone and
+    nothing widened.
+  - the pinned asymmetry, below;
+  - `word` mode. The element is replaced on load by Word's branch, so there is one change with no
+    twin, and accepting it widens `Ckeep` once.
+
+Without the change, seven of the eight fail. The eighth, `word` mode, passes, as it should: that
+mode has no twin.
+
+**The numbers.**
+
+- the fast suite (`-m "not slow"`): 3,583 passed, 8 skipped (3,575 and 8 before);
+- `tests/revisions` and `tests/openpackaging/test_mce_levels.py`: 856 passed;
+- CR-011's ratchet (`tests/text/conformance.py`): 1,291 pass, 0 fail, 293 pending of 1,584,
+  goldens 12 of 12, `conformance.tsv` unchanged; `tests/text/test_conformance.py` 24 passed;
+- the acceptance artefacts: `out/acceptance/` was regenerated and compared with a copy made before
+  the change (`out/acceptance-before-cr012-twin/`). `scripts/compare_acceptance.py` found 13
+  artefacts and 175 entries, 0 differing beyond the wall-clock dates;
+- `generate.sh --check` was not run: no input of the generated code changed.
+
+**Departures, with why.** Both are in form only. The behaviour is docx4j's.
+
+1. **docx4j's guard's second clause is dropped.** docx4j returns after the removal when
+   `neighbour == null || inOtherBranch && cells.size() == 1`. The second clause can never decide:
+   - `cells` is the twin's branch's list, built before the removal, and the twin is in it;
+   - if it holds one cell, that cell is the twin, at index 0;
+   - then there is no cell at `at - 1` and none at `at + 1`, so `neighbour` is null already.
+
+   So the port tests `neighbour is None` alone. It keeps docx4j's reasoning in a comment: the
+   row's neighbour was widened when the read branch's cell went, and every branch spans the same
+   grid columns. Without the clause, `inOtherBranch` has no other use, so there is no flag either.
+2. **`cells_in` takes no row.** docx4j's `cellsIn(branch, tr)` passes the row to the `Row` records
+   its `cells` builds. Here `_cells` builds `(cell, list)` pairs, which need no row.
+
+**The asymmetry, pinned.** docx4j leaves it (its CR-051 section 12.5) and so does the port. The test
+is `test_known_gap_pinned_a_lone_twin_beside_a_read_branch_of_two_cells_leaves_its_branch_short`.
+
+- The shape: a Choice holding a deleted cell and a plain one (`Ckeep`), and a Fallback holding
+  only the twin, which spans the same two grid columns (`w:gridSpan 2`). A plain cell (`keep`)
+  follows the element.
+- Before the accept, the row spans 3 grid columns read through either branch.
+- Accepted, the read branch's cell goes, and its neighbour in its own branch, `Ckeep`, is widened.
+  The twin, alone in its branch, goes with nothing widened, on the rule that the row's neighbour
+  was widened already. Here it was not: `keep` stays one column, 1000 twips.
+- After the accept, the row spans 3 columns through the Choice and 1 through the Fallback. The
+  Fallback is short by the twin's span.
+- No producer writes the shape: Word writes no row- or cell-level element at all (docx4j CR-051
+  phase 0).
+- A fix would widen the row's neighbour for a lone twin only when the read branch's cell had a
+  neighbour in its own branch. That is docx4j's to decide first.
+
+**The Word check (Not yet checked).** Three files are in `out/cr012-a2-twin-word-check/`, with a
+`README.txt` saying, for each, the source, what was done and what Word should show. They are also
+copied to `~/vbShares/Office 2016/__tmp/python-cr012a2-twin/`.
+
+- The sources are the tests' shapes, built with `create_package()` and `set_contents()`, with a
+  heading paragraph before the table and one after it. The grid has two 1000-twip columns, where
+  the tests have one, with single borders, so that a widened cell shows across both columns.
+- The listed change was resolved with `accept()` or `reject()`, and the package saved from the
+  typed objects.
+- Each `w:document` declares `xmlns:w14`, which the Choice's `Requires` names. Each was read back
+  with nothing skipped and no change left, and the text model reads the w14 Choice.
+
+The three files:
+
+- `cr012a2-twin-1-deleted-cell-beside-accepted.docx`: the first shape, accepted. Each branch is one
+  cell of `w:gridSpan 2` and `w:tcW 2000`, `Ckeep` and `Fkeep`.
+- `cr012a2-twin-2-deleted-cell-alone-accepted.docx`: the second shape, accepted. `keep` is widened
+  once, and the element is left with an empty Choice and an empty Fallback.
+- `cr012a2-twin-3-inserted-cell-beside-rejected.docx`: the first shape with `w:cellIns`, rejected,
+  as file 1.
+
+Expected: each opens with no repair prompt and no tracked change. The table shows the Choice's
+cells, one cell across both columns: `Ckeep` in files 1 and 3, `keep` in file 2. None of `C`, `F`
+or `Fkeep` shows.
+
+**Found, and not done.**
+
+- **A table's property records in a branch Word does not read are neither listed nor resolved.**
+  This is the same one-branch reading as the gap closed here, in the table records:
+  - `record_of`, `in_change`, `has_records` and `reject` read cells through `cells_of` and rows
+    through `rows_of`, so through Word's branch alone;
+  - so a `w:tcPrChange` in a cell-level element's Fallback is never seen. Probed: with one in
+    each branch, the table's change is listed once, with no twin. After `accept_all`, and after
+    `reject_all`, the Fallback's cell keeps its `w:tcPrChange` and its properties;
+  - a `w:trPrChange` in a row-level element's Fallback is the same (probed);
+  - `collapse_grid` recounts Word's branch's spans alone, by reading;
+  - docx4j at `60bd4b9ad` reads them the same way (`Tables.cells` and `rows` over
+    `Lister.cellsOf` and `rowsOf`), by reading its code at that commit, not by a run;
+  - worth telling docx4j-25. No producer writes the shape.

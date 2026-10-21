@@ -338,6 +338,11 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   - the revisions engine lists Word's branch's row and cell changes once, the other branches' as
     twins that resolve with them, and removes a table left with no rows only when no branch has
     one;
+  - a `w:cellDel` accepted, or a `w:cellIns` rejected, in a branch Word does not read is removed
+    from its own branch with the change it twins, and that branch's neighbour widened; it was
+    listed as a twin but kept its cell and its marker (section
+    [10.10](docs/change-requests/CR-012-type-kept-mc-branches.md#1010-the-cell-twin-port-2026-10-22),
+    the port of docx4j `60bd4b9ad`);
   - `outline()` gives a cell's blocks under the table at their full paths through any wrapper, so
     a row-level content control's rows no longer come out as `tc` entries.
 
