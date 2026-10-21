@@ -114,6 +114,21 @@ Markdown goes both ways: `pkg.to_markdown(addresses=True)` puts each block's add
 comment before it, and `body.insert_markdown(text)` writes CommonMark plus GFM tables through the
 document's own styles, creating the numbering part when there is none.
 
+The text an agent reads is one text model, the port of docx4j's (`docx4j_py.model.text`): text
+boxes after their anchors, notes, hidden text left out, the views by resolution. `to_markdown` and
+`outline()` read through it, and so can a tool:
+
+```python
+from docx4j_py import load
+from docx4j_py.model.text import extract, markdown, plain_text
+
+pkg = load("in.docx")
+result = extract(pkg, view="markup")          # the block model, CriticMarkup in this view
+plain_text(result)                            # plain text, as the specification writes it
+markdown(result, pkg)                         # docx4j-markdown's Markdown of the same reading
+[block.to_dict() for block in result.blocks]  # the blocks as JSON
+```
+
 ## python-docx code runs
 
 `docx4j_py.docx` is a structural subset of python-docx's public API --- python-docx's names and

@@ -66,14 +66,39 @@ sniffs) unless noted. Results are JSON from the library's `to_dict()`s.
 
 | Tool | Input | Output |
 |---|---|---|
-| `outline` | `path`, `max_chars`, `budget`, `depth` | `Outline.to_dict()`: blocks with addresses for a document, slides and shapes for a deck, sheets and used ranges for a workbook; `stats`; `truncated` |
-| `find` | `path`, `text`, `limit`, `match_case`, `match_whole_word`, `context` | `SearchHit`s with addresses and snippets |
-| `read` | `path`, `address` (optional; the whole when omitted), `view` (`accepted` / `markup`), `max_chars`, `notes` (decks), `max_rows` (workbooks) | markdown with addresses, from `to_markdown(addresses=True)`; the block, slide or range named, or the whole under the cap |
+| `outline` | `path`, `max_chars`, `budget`, `depth`, the text options (below) | `Outline.to_dict()`: blocks with addresses for a document (the text model's text, levels and counts; a text box's paragraphs after their anchor at `textbox:` addresses, flagged `textbox`), slides and shapes for a deck, sheets and used ranges for a workbook; `stats`; `truncated`; `warnings` |
+| `find` | `path`, `text`, `limit`, `match_case`, `match_whole_word`, `context` | `SearchHit`s with addresses and snippets, over Office JS's text (below); `warnings` |
+| `read` | `path`, `address` (optional; the whole when omitted), the text options (`view`: `accepted`, `original` or `markup`, and the rest), `format` (`markdown`, the default, `plain` or `blocks`), `max_chars`, `notes` (decks), `max_rows` (workbooks) | for a document, `markdown`: the Markdown with addresses, `to_markdown(addresses=True)` under the default options and `markdown_blocks(extract(pkg, **options), pkg)` with the address comments under others; `plain`: `plain_text`; `blocks`: `TextResult.to_dict()`, REQ-706's block model; the block, slide or range named, or the whole under the cap; `warnings` |
 | `describe` | `path` | `describe()`: styles, bindings and repeats for a document; layouts, placeholders and theme for a deck; sheets, tables, names and validations for a workbook |
-| `extract_text` | `path` | plain text, one line per paragraph, slide or row (the Java tool, kept) |
+| `extract_text` | `path`, the text options | plain text, `plain_text(extract(pkg, **options))`: one line per paragraph, slide or row (the Java tool, kept, now docx4j's text model's as the Java tool's is since docx4j CR-046); `warnings` |
 | `docx_to_markdown` | `path`, `output_path`, `tracked_changes` | the Java tool, kept; `read` without an address is the same thing |
 | `get_comments`, `get_tracked_changes` | `path` | the threads / the changes, with addresses |
 | `reveal` | `path`, `address` | `to_api_script` for the block, slide or range: the calls that would make it |
+
+**The text the reading tools give** is the library's one text model,
+[CR-011](CR-011-one-text-model.md) (`docx4j_py.model.text`, docx4j's CR-046, the portfolio's
+specification at WD 0.28), the same as docx4j-mcp's since docx4j CR-046 phase 3:
+
+- **The text options** are WD section 10's, by their names verbatim and taking its values
+  (`view`, `include`, `text_boxes`, `notes`, `note_references`, `comments`, `hidden`,
+  `field_codes`, `fields`, `toc`, `placeholders`, `bindings`, `list_labels`, `charts`, `smartart`,
+  `embedded`, `altchunks`, `alt_text`, `metadata`, `symbols`, `math`, `tables`, `markup_detail`,
+  `page_markers`, `layout`, `warnings`), passed through to `extract(pkg, **options)`
+  (`TextOptions.of`); an unknown name or value is the library's `TextOptionError`, naming its
+  statement (REQ-1001), returned as an error with that statement. `outline`, `read` and
+  `extract_text` take them; `outline`'s entries are the text model's under the defaults and the
+  options decide its `warnings`.
+- **The blocks** are REQ-706's: `TextResult.to_dict()` (`blocks`, `comments`, `warnings`,
+  `metadata`, `options`), the JSON docx4j-mcp's `blocks` output has.
+- **The warnings** are REQ-801's, in every reading tool's result: each `TextWarning.to_dict()`
+  (`kind`, `address`, `selector`: `mce.branches_differ`, `field.no_result`,
+  `sdt.binding_differs`, `altchunk.not_expanded`, `content.not_read`, `image.not_described`), so
+  an agent knows where what it read is not the whole document. `find` gives the default
+  reading's.
+- **`find` stays on Office JS's text** (CR-011 Q4): its matches, offsets and addresses are
+  `Paragraph.text`'s, so a hit converts to a `Range` and an edit; a text box's paragraphs are not
+  searched, and `outline` and `read` list them at their `textbox:` addresses, which are read only
+  (Q9; the library's `address.read_only`).
 
 ### 3.2 Editing, always through the library's verbs
 

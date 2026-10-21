@@ -435,6 +435,14 @@ markdown and written back through `insert_markdown` is a coarse workflow that lo
 the markdown could not carry, and `to_markdown(addresses=True)` plus in-place edits is the fine
 one. The README says which to use when.
 
+**Superseded for the export by [CR-011](CR-011-one-text-model.md) (2026-10-21).** Since its Phase D
+(its section 14) the four `to_markdown`s are the text model's: `docx4j_py.model.text.markdown`
+over `extract`, docx4j-markdown's `MarkdownExporter` ported with commonmark-java's renderer, so
+the Markdown is docx4j's byte for byte, with REQ-703's rules for lists, code, tables and links, an
+`original` view, CriticMarkup written flat, text boxes after their anchors and endnotes `[^e1]`;
+`outline()` reads the same model. The keywords, the address comments and the budgets are as this
+section has them; the import half (`insert_markdown`) is unchanged.
+
 ### 3.6 A python-docx facade, so existing code and model memory keep working
 
 *Implemented 2026-09-18, section 20.*
@@ -565,6 +573,12 @@ transitional and the strict attribute names and write whichever the paragraph us
   rejects an element a container cannot hold, naming what was passed.
 - `text_of` (CR-001) is docx4j's `TextUtils` over any subtree and decides its own text-box rule
   under CR-002 question 7; `Body.text` is Word's main story, the accepted view, no text boxes.
+- **The text model is [CR-011](CR-011-one-text-model.md)'s** (decided 2026-10-21): `text`,
+  `get_text` in `accepted` and `original`, `search`, `find`, `Comment.content`,
+  `TrackedChange.text`, `text_of` and the python-docx facade keep the text this CR gives them
+  (Office JS's, or python-docx's), documented as not the text model, under CR-011's Q4, Q5 and Q6;
+  `get_text(view="markup")`, `to_markdown` and `outline()` are the text model's
+  (`docx4j_py.model.text.extract`), CR-011 sections 12.6 and 14.
 
 ## 4. What the TypeScript implementation learned, adopted here from the start
 

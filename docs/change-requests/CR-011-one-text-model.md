@@ -1200,3 +1200,345 @@ without `hidden: true`, the speaker notes) still passes, so none goes from `PASS
 - Section 12.10's open items stand: the `dry_run` comment defect (12.3) and a fork release
   before this package releases on stage 10. The Word check of the probe and `waterfall.docx`
   saved after their main parts are unmarshalled passed on 2026-10-21.
+
+## 14. Phase D implementation notes (2026-10-21)
+
+Phase D is done: the port of docx4j CR-046 phase 3 at `198d015a3`. Markdown is written from the
+blocks by docx4j-markdown's exporter, and every shipped reader the specification governs reads
+the model: `to_markdown` (package, body, paragraph, table) and `outline()`. Under Q4 as revised,
+the Office JS readers keep Office JS's text and say so. The report moves from 1,284 pass, 7 fail
+and 293 pending to **1,291, 0 and 293 of 1,584, goldens 12 of 12**: 7 checks from `FAIL` to
+`PASS`, none the other way. Against docx4j's own `MarkdownExporter`, built from a read-only export
+of `198d015a3`, **1,385 of 1,385 exports are byte-identical** (277 documents, five readings each),
+and so are the 61 `to_markdown` calls the test suite makes, pictures' destinations aside (14.5).
+CR-010's ten pins are closed and no `xfail` is left in the suite.
+
+### 14.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the writer | `docx4j_py/model/text/commonmark.py` (807 lines, commonmark-java's BSD-2-Clause notice kept; `NOTICE` names it) | commonmark-java 0.30.0's `MarkdownWriter` and `CoreMarkdownNodeRenderer`, the Markdown renderers of its GFM tables, strikethrough and footnotes extensions, and docx4j-markdown's math renderer, for the nodes `WmlToMarkdown` builds; each node may carry a tag, and `render` records the line each tagged node's first character is written on |
+| the exporter | `docx4j_py/model/text/markdown.py` (1,204 lines) | docx4j's `WmlToMarkdown`, `MarkdownExporter` and `MarkdownExportOptions`; `markdown(result, package=None, *, image_destination=None)` (Q1), `markdown_blocks(...)` (core-ts's `blocks`), `front_matter(result)` (REQ-704), `MarkdownImage`, `MarkdownBlock` (with `merged`), `MarkdownBlocks`; `TextNumbering.label` (docx4j's `isLabel`) |
+| the readers | `model/markdown/export.py` (430 lines, from 1,071), `model/content/text_model.py` (`Reading`, `reading_of`), `model/content/__init__.py` | `body_markdown`, `paragraph_markdown`, `table_markdown`, `markdown_budget_of`, and the new `package_markdown` and `package_markdown_budget`, all on the model; `escape`, `address_comment`, `ADDRESS_COMMENT`, `CODE_STYLE_IDS`, `MONOSPACE_FONTS`, `MarkdownView` (gaining `ORIGINAL`) and `MarkdownViewValue` kept; the old renderer deleted |
+| the outline | `model/content/reports.py` | `outline_of` over the reading (`_Model`); `OutlineEntry.textbox` |
+| addresses | `model/content/addresses.py` | `address.read_only` for an address of the text model that the content API does not resolve |
+| the trial | `model/content/trial.py` | `TrialPackage.get_property_resolver`, `refresh_property_resolver`: a trial's own resolver over its copies |
+| the docstrings | `model/content/{body,paragraph,range,table,controls,comments,tracked_change}.py`, `traversal.py`, `docx/{text,table,comments}.py` | each Office JS reader, `text_of` and the facade documented as not the text model (Q4, Q5, Q6) |
+| the fixes | `model/text/extractor.py`, `metadata.py` | a level's text and start; the core dates as written and `lastPrinted`; a table given as content one block (14.6) |
+| the harness | `tests/text/adapter.py`, `conformance.tsv` | Markdown as docx4j's adapter writes it, `markdown(result, pkg)`; the report rewritten |
+| tests | `tests/text/test_text_markdown.py` (53), `content/test_markdown.py` (+3), `agent/test_outline.py` (+3), `agent/test_markdown_workflows.py` (+2), `revisions/test_content_api.py` | docx4j-markdown's tests and this package's (14.8, `tests/README.md`) |
+| documents | `CHANGELOG.md`, `README.md`, `docs/pypi-readme.md`, CR-003 sections 3.5 and 3.13, CR-006 section 3.1 | the entries of section 7 as Q4 revised adjusts them (14.3) |
+
+Commits: `e0ec105` (Markdown from the blocks), `f2b8e58` (the two defects the byte check found),
+`77b2f50` (the readers, CR-010's pins), `382f96f` (the writer's escaping), and this section with
+the documents.
+
+### 14.2 Markdown as ported (REQ-703, REQ-704)
+
+docx4j's rules, unchanged, as core-ts's section 16 ports them:
+
+- **Blocks.** A heading from its outline level (0 to 5), before the numbering. A list from its
+  numbering: two `w:num` on one `w:abstractNum` are one list; a margin paragraph ends it and it
+  goes on at Word's count; a paragraph indented to an item's text (or in `ListParagraph`) is a
+  follow-on of the deepest item it reaches; an empty paragraph leaves it alone; an adjacent list
+  takes the other delimiter or bullet; a nested list resumed after an interruption opens under an
+  empty item showing its parent's count. A label level (`none`, or a `w:lvlText` with no `%n`) is
+  a bold label. A code-styled paragraph, or one in a named paragraph style whose own font is
+  mono, is a fence, consecutive ones one fence. A Quote or IntenseQuote paragraph is a block
+  quote nested by its indent beyond the style's own (the package asked through its resolver). An
+  empty paragraph with a bottom border of its own is `---`; a paragraph that is one `m:oMathPara`
+  is display math.
+- **Inlines.** Bold, italic, strike and code where a run adds them to its paragraph's style, a
+  header row's bold not marked; links from a `w:hyperlink` or a HYPERLINK field; a picture with
+  the describer's text; notes `[^1]` and `[^e1]`, `[^f-5]` for a custom mark, the definitions
+  where the model reads them; `[page n]` under `page_markers`; in `markup` CriticMarkup flat,
+  comments `{>>...<<}` at their reference with their replies, `markup_detail` splitting by
+  author or date.
+- **Tables.** GFM: the header the `w:tblHeader` rows (several joined ` / ` by grid column) or the
+  first row, the alignment the header cell's first paragraph's, a span padded with empty cells, a
+  merge's continuation empty, a cell's paragraphs `<br>` apart. A chart is its note, its title and
+  its table, the value columns right-aligned.
+- **The tags** (core-ts's departure 5): each node made for a block carries it, and the writer notes
+  the line its first character lands on, so `markdown_blocks` cuts the Markdown into whole lines
+  per block, joining to `markdown`'s. A block that writes nothing has `""`; `merged` says it is a
+  code paragraph whose line is in the fence of a block before it, which the address comments need
+  (14.3).
+- **Pictures.** `image_destination`, a callable, stands for docx4j's `imageDirPath` and
+  `imageTargetUri` (core-ts's departure 2): it is given the run, the part, its bytes, its content
+  type, its number among the export's pictures and docx4j's file name (`image1.png`), and returns
+  the link. The default is docx4j's data URI. An SVG picture's bytes are the part's as stored
+  (core-ts's departure 3); in this engine an SVG part is an `ImagePart`, so no export of the 277
+  differs by it.
+
+### 14.3 The readers (section 3.5 under Q4 as revised)
+
+- **`to_markdown`** is `markdown()` over the text model's reading, every keyword kept. The reading
+  (`reading_of`) is the package's for the main body (docx4j `Texts.of(pkg)`: its story, text boxes
+  and notes), the part's for a header or a footer, and the content route for any other body (a
+  cell, a control, a comment, a notes part). `view` takes `accepted`, `original`, `markup` and
+  `current`; anything else is `markdown.view_invalid`, as before. `pkg.to_markdown()` and
+  `pkg.markdown_budget()` read the package itself, with nothing unmarshalled (14.4). A heading is
+  the block's effective outline level through the styles, where 0.1.0 also took a `HeadingN`
+  style id that names no style as one, so such a paragraph is now body text, as in docx4j; the
+  outline's levels follow.
+- **Addresses.** `addresses=True` writes each block's address in today's `ADDRESS_COMMENT` form, on
+  its own line before the block's first line and indented as it is. A block of the body's own story
+  has its content API address: `w14:` and its paraId where it has one, else the model's ordinal
+  under the body's prefix, which is the content API's (measured: 2,088 main-story blocks over
+  `samples/` and `tests/fixtures/`, each resolving with `element_at` to the element it was read
+  from). Any other block keeps the model's address, read only (Q9): `body/3/textbox:0/0`,
+  `body/103/chart:0`, `footnote:2/0`. `element_at` refuses those with `address.read_only` rather
+  than `address.not_found`. A code paragraph merged into a fence has no comment, as in 0.1.0; an
+  empty paragraph keeps its own.
+- **`max_chars`** cuts after the last whole block that fits, trailing white space dropped, and in
+  the middle of the first block only when that one is over the budget.
+- **`Paragraph.to_markdown`** is the paragraph's lines in its story's Markdown, trailing white space
+  dropped, so a list item has its document marker (`3. LST56\_PLUMS`, `4. 2. LST56\_QUINCE\_TWO`).
+  A paragraph in a table cell, or a code paragraph merged into a fence, is written on its own. One
+  joined into the paragraph before it is that block's. **`Table.to_markdown`** is the table's
+  block, likewise: the brief named `table_markdown` among what had to keep working, and putting it
+  on the model leaves no second Markdown in the package (REQ-202).
+- **`outline()`** keeps one entry per block of the tree (controls, tables and their cells, `depth`,
+  `limit`, `headings_only`, the addresses). An entry's text, its heading level and a table's
+  first-row preview are the model's, in the accepted view with the defaults: a joined pair's text
+  on the first paragraph's entry and the second's empty; a hidden or a table-of-contents paragraph
+  empty. The counts are the model's blocks', the notes' left out (`paragraphs`, `tables`, `words`,
+  `chars`); the probe's are 171 paragraphs and 5 tables. Each text box's paragraphs follow their
+  anchor at their `textbox:` addresses with `OutlineEntry.textbox` (Q9). For a box anchored in a
+  cell they come after the table, as the model reads them (REQ-518). Charts, SmartArt and chunks
+  have no entries. `stats.tracked_changes` and `describe().tracking_on` are untouched; CR-010's
+  tests of them pass unchanged.
+- **Kept off the model** (Q4 revised, Q5, Q6), each now saying so in its docstring: `text` on
+  `Paragraph`, `Body` (and its `Block`), `Range`, `Table`, `TableCell` and `ContentControl`;
+  `Comment.content`; `get_text` in `accepted` and `original`; `search` and `find`;
+  `TrackedChange.text`; `text_of`; and the python-docx facade. **`text_of` is not deprecated**:
+  Q4 revised supersedes section 7's "Deprecated" bullet, and the CHANGELOG deprecates nothing.
+
+### 14.4 A read leaves every part as it was (decided with the coordinator, 2026-10-21)
+
+**A behaviour change of the save after a read.** 0.1.0's `pkg.to_markdown()` went through
+`pkg.body`, which unmarshals `word/document.xml`, and read the note definitions through
+`part.contents`, which unmarshals `word/footnotes.xml`. So a save afterwards re-marshalled both,
+canonically identical to the source. The text model reads every part with `read_contents`, and
+`pkg.to_markdown()` reads the package without a body. So a save after it now writes both parts from
+the source bytes. Measured over the 70 documents of `samples/`, `tests/fixtures/` and the probes:
+`word/document.xml` in all 70 (`document22.xml` in one), `word/footnotes.xml` in the 7 with a
+footnote reference, no other part's bytes changed. This is the fidelity rule: a part the caller
+never asked to unmarshal is written back byte for byte. The coordinator accepted it: it needs no
+Word check, and nothing should unmarshal a part on purpose to keep the old bytes. `Body.to_markdown`
+on an existing `pkg.body` is as before, the body's part being unmarshalled already. **`outline()`
+still unmarshals the notes parts**, through `package_bodies` (unchanged in this phase; 14.10).
+`test_reading_the_markdown_unmarshals_nothing_and_a_save_is_the_source` (footnotes.docx, the probe)
+holds it: no part unmarshalled, and every part of the save byte-identical to an untouched save and,
+outside the content types and the relationships parts that every save writes, to the source. It
+fails on the old reader, which leaves `/word/document.xml` and `/word/footnotes.xml` unmarshalled.
+
+**Read, then edit by address.** `test_every_address_the_markdown_writes_resolves_once_the_body_is_read`
+(`2010-sample1.docx` and the probe, both with ordinal addresses) reads `pkg.to_markdown(addresses=True)`
+with nothing unmarshalled, then touches `pkg.body`. Every address written resolves to the element a
+fresh reading reads there, with the text the Markdown showed: all 4 of `2010-sample1.docx`'s and 134
+of the probe's 159, with `element_at` and, for paragraphs, `paragraph_at`. The probe's other 25
+(text boxes, the chart, SmartArt, the chunks' paragraphs, the notes) are refused as
+`address.read_only`. Then one edit by address. A first `pkg.body` after a read parses the main part a second
+time (14.9).
+
+### 14.5 Checked against docx4j itself (the brief's byte check)
+
+docx4j at `198d015a3` was exported with `git archive` into the scratch directory and built there
+offline, `mvn -o -q package -DskipTests -pl docx4j-markdown,docx4j-JAXB-ReferenceImpl -am`, with
+`-Dmaven.repo.local` a scratch directory and `-Dmaven.repo.local.tail=~/.m2/repository`, which
+Maven reads and never writes. Nothing was installed and the scratch repository stayed empty. A
+runner wrote `new MarkdownExporter().export(Texts.of(pkg, options), pkg)`, docx4j's adapter's call,
+for each document in five readings, as core-ts's sweep did: `accepted`, `markup`, `original`,
+`accepted` with `metadata: true`, and `markup` with `markup_detail: author_date; comments: true`.
+This package wrote `markdown(extract(pkg, options), pkg)` for the same.
+
+- **The brief's set**: the suite's five fixtures, CR-010's eleven and the 147 docx4j fixtures of
+  the agreement test (163 documents, 815 exports). The first comparison gave 665 identical. All 150
+  differences were lists: the extractor's `TextNumbering` read `level.lvl_text`, which
+  `ListLevel` does not have, and the `AttributeError` its `except` swallowed left every
+  `level_text` None (so every level a label) and every `start` 1. Fixed (`e0ec105`), and docx4j's
+  fallback to the abstract definition's level ported: **815 of 815 identical**, data URIs included.
+- **Extended** to this package's `samples/` and `tests/fixtures/` (114 more documents, 1,385
+  exports in all): 4 differed, all in `metadata: true`'s front matter, two defects of Phase C's
+  `metadata.py`. `lastPrinted` was dropped, an `XmlDateTime` being neither a literal nor a W3CDTF.
+  `created` and `modified` came out with xsdata's nine fractional digits (`.495027100` for the
+  part's `.4950271`). Both are now read as the part writes them, as docx4j reads them (`f2b8e58`):
+  **1,385 of 1,385 identical**.
+- **The readers.** A pytest plugin saved, with its package, every main-body or package
+  `to_markdown` the suite calls with no addresses and no budget (61 calls in `tests/content`,
+  `tests/agent`, `tests/revisions` and the readme fences). docx4j's export of each saved package
+  was compared with what the reader returned: **61 of 61 identical** with picture destinations
+  masked. The first run's one difference was an empty document's `""` against docx4j's `"\n"`,
+  fixed.
+
+### 14.6 Found on the way, and fixed
+
+- `TextNumbering`'s `level_text` and `start` (above), a Phase B defect; the block JSON's
+  `levelText` and `start` are now docx4j's. Plain text never read them, so no check moved.
+- The core properties' dates and `lastPrinted` (above), Phase C's.
+- **A table given as content is one `TABLE` block** (`extract(tbl)`, a `Table` view), as docx4j's
+  `Texts.of(pkg, content)` reads it: its `blockItems` gives a table none. It was its cells'
+  paragraphs read flat. `Table.to_markdown` needs it.
+- **A trial's own property resolver.** A dry run's `to_markdown` read the trial's headings through
+  the real package's styles, `__getattr__` handing `get_property_resolver` through. So a heading
+  `insert_markdown` had just defined in the trial's copy of `styles.xml` was body text
+  (`test_a_dry_run_of_insert_markdown_previews_without_committing`). `TrialPackage` now has its
+  own, refreshed when the trial writes a style.
+- **The writer's escaping**, the profile's largest local cost (14.9): a `str.translate` table per
+  set of characters in place of a character at a time (`382f96f`). Output unchanged, 1,385 of
+  1,385.
+
+### 14.7 Departures, with why
+
+1. **`image_destination`, a callable**, for docx4j's `imageDirPath` and `imageTargetUri` (core-ts's
+   departure 2): the exporter writes no file; a host that wants files writes them in the callable.
+2. **The readers' pictures point at their parts** (`media/image1.png`, relative to `/word/`), as
+   0.1.0's did, where `markdown()` writes docx4j's data URI. A reader's Markdown goes into a
+   context window, and REQ-703 leaves the destination to the implementation. This is the one way
+   the readers' Markdown is not docx4j's.
+3. **An SVG picture's bytes are the part's as stored** (core-ts's departure 3), docx4j's being its
+   `XmlPart` re-serialised; no export of the 277 differs by it here.
+4. **`MarkdownBlock.merged`**, beside core-ts's two fields, for the address comments.
+5. **A block's content API address in the comments** (paraId first), not the model's ordinal
+   alone, which CR-003 section 12.7 decided and its tests hold: the model's address is the
+   comment's only for the blocks the content API does not reach.
+6. **`Paragraph.to_markdown` and `Table.to_markdown` drop trailing white space**: a block's lines
+   end with the blank line before the next block, which an excerpt does not want. The document's
+   Markdown (`pkg`, `Body`) ends as docx4j's does, with a line end.
+7. **docx4j's deprecated `TrackedChangesPolicy` is not ported** (core-ts's departure 4): the view
+   is the option. **docx4j's Markdown importer** (`MarkdownImporter`, `LatexToOmml`) is not ported
+   either: the importer is CR-003's, on `markdown-it-py`. So the four of `MarkdownMathExportTest`'s
+   six that read LaTeX through docx4j's importer or `LatexToOmml` are not ported, and the picture
+   tests build their picture instead of importing it.
+8. **A kept block-level `mc:AlternateContent` reads neither branch.** It is not in this engine's
+   typed tree (CR-012, docx4j CR-051's gap, proposed): the part's skipped-content report names it.
+   `MarkdownAlternateContentTest`'s kept load is pinned so; its `mce_preprocess` load reads the
+   Choice, as docx4j's does.
+
+### 14.8 Pre-existing tests whose expectation changed, and why
+
+Every new output below is **docx4j's**: each `to_markdown` these tests call is among 14.5's 61,
+identical to docx4j's export of the same package with picture destinations masked, and a
+paragraph's or table's is a slice of that Markdown. The reason given is the rule that moves it.
+
+`tests/content/test_markdown.py` (CR-003's Markdown tests):
+
+| test | changed to | why |
+|---|---|---|
+| `test_a_heading_is_hashes_from_the_shared_heading_level` | `...Plain\n` | the document's Markdown ends with a line end (commonmark-java's `Document`) |
+| `test_an_outline_level_is_a_heading_without_a_heading_style` | `...level\n` | the line end |
+| `test_bold_italic_strike_and_code` | `` `x = 1`\n ``, with `CodeChar` defined first | a run is code by its font through its styles (REQ-703's monospace fonts); an undefined `CodeChar` gives no font, and docx4j writes `x = 1` plain, so the test defines the style to keep its subject |
+| `test_a_monospace_font_is_code_when_no_style_says_so` | `` `mono`\n `` | the line end |
+| `test_two_bold_runs_in_a_row_are_one_pair_of_markers` | `**one two**\n` | the line end |
+| `test_a_hyperlink_reads_its_relationship_and_an_anchor_reads_its_anchor` | `...slashdot.org/)\n` | the line end |
+| `test_an_internal_link_is_a_fragment` | the TOC's link absent from `to_markdown()`, present in `markdown(extract(pkg, toc=True), pkg)` | the table of contents is left out by default (REQ-520, `toc: false`) |
+| `test_a_bullet_list_nests_by_ilvl` | `...nested\n` | the line end |
+| `test_a_table_is_a_gfm_pipe_table` | `\|Region\|Total\|\n\|---\|---\|\n\|North\|120\|\n` | commonmark-java's table renderer: no padding inside the pipes, `---` |
+| `test_a_vertically_merged_cells_first_row_keeps_its_text` | `\|A\|\n\|---\|\n\|Merged\|\n\|\|\n` | the same |
+| `test_the_table_renderer_works_over_the_element_alone_for_phase_c` | `\|A\|\n\|---\|` (both forms) | the same, trailing white space dropped (departure 6) |
+| `test_a_header_rows_bold_is_convention_and_is_not_marked` | `\|A\|B\|\n\|---\|---\|\n\|1\|2\|\n` | the same |
+| `test_an_image_is_its_part_name_relative_to_word` | `...image2.jpeg)\n` | the line end; the destinations are kept (departure 2) |
+| `test_a_footnote_reference_is_a_gfm_footnote_with_its_definition_at_the_end` | ends `[^1]: Hello\n` | the line end |
+| `test_a_comment_is_criticmarkup_in_the_markup_view_only` | `One paragraph\n`, `One paragraph{>>One comment<<}\n` | the line end |
+| `test_the_view_values_are_a_literal_with_a_strenum_beside_them` | `original` and `current` read; `final` refused | the views are REQ-401's |
+| `test_a_code_style_paragraph_becomes_a_fence_and_consecutive_ones_merge` | `...```\n` | the line end |
+| `test_a_quote_style_paragraph_is_a_block_quote` | `> Quoted.\n` | the line end |
+| `test_markup_that_would_be_read_back_as_markup_is_escaped` | `1\. not a list`, and the line end | commonmark-java escapes an ordered-list marker's delimiter, not its first digit |
+| `test_an_empty_paragraph_contributes_nothing` | `one\n\ntwo\n` | the line end |
+| `test_a_link_becomes_a_hyperlink_with_an_external_relationship` | `...).\n` | the line end |
+| `test_an_ordered_list_keeps_its_start_value` | `3. three\n4. four\n` | the line end |
+| `test_a_code_block_becomes_source_code_paragraphs` | `...```\n` | the line end |
+| `test_an_image_is_never_fetched_and_is_reported` | `...pangolin.png)\n` | the line end |
+| `test_an_html_block_is_skipped_and_reported` | `Text.\n` | the line end |
+| `test_the_whole_fragment_survives_a_save_and_a_reload` | `\|Region\|Total\|` | the table form |
+| `test_reading_a_document_as_markdown_leaves_every_other_part_byte_for_byte` | `pkg.to_markdown()` changes no part; `pkg.body.to_markdown()` still only `word/document.xml` | 14.4 |
+
+Elsewhere:
+
+- `tests/content/test_comments.py::test_a_comment_is_a_body_of_its_own`: `Is this right?\n`, the
+  line end.
+- `tests/content/test_lists.py::test_a_two_level_list_with_a_restart_round_trips_through_markdown`:
+  the line end.
+- `tests/content/test_lists.py::test_a_loose_items_follow_on_paragraph_is_rendered_under_it`:
+  `- one\n  \n  continued here\n\n- two\n`. commonmark-java's loose list writes the item's blank
+  line with its prefix and separates every item, the list being loose throughout.
+- `tests/content/test_table.py::test_to_markdown_is_the_renderer_over_the_element`:
+  `|Region|Quarter|Total|`, `|---|---|---|`, the table form.
+- `tests/agent/test_markdown_workflows.py::test_markdown_in_and_out_gives_back_the_same_structure`:
+  `|Area|State|`, the table form.
+- `tests/agent/test_scenarios.py`, two tests: the outline's text-box entries are left out of the
+  paraId session, and in the corpus session each is checked to be refused as `address.read_only`
+  rather than to resolve (Q9).
+- `tests/revisions/test_content_api.py`, CR-010's ten pins (14.4's decision, below).
+- The README's shown outputs, which nothing asserts: the table form, the line end, the budget's
+  `chars` (1,585 for 1,610).
+
+**CR-010's pins (the coordinator's decision, recorded).** The five `to_markdown` pins pass as they
+were written, so their `xfail` marks are gone. The five `get_text` pins cannot pass: under Q4,
+`get_text(view="accepted")` stays Office JS's filtered text, which does not join a deleted
+paragraph mark. They are re-pointed to the model, on the same eleven fixtures:
+`plain_text(extract(fixture, view="accepted")) == plain_text(extract(accept_all copy))`, which
+holds on all eleven. `test_get_text_keeps_office_jss_filtered_text` holds `get_text`'s documented
+form on `22-deleted` (`'One.\n\nThree.\nFour.\nFive \neight.\nNine.\n'` against Accept All's
+`'One.\nThree.\nFour.Five eight.\nNine.\n'`). `DIFFERS` keeps the measured reasons as the record
+of that difference. No CR-010 `xfail` is left.
+
+### 14.9 The numbers
+
+- **The report**: 1,291 pass, 0 fail, 293 pending of 1,584; goldens 12 of 12. 7 checks `FAIL ->
+  PASS`, by cause: case 21's four link rows (`FLD21_URL_MARK` and `FLD21_FIELD_URL_MARK` under
+  `markdown`, the original view and a HYPERLINK field's link) and the three Markdown goldens. None
+  `PASS -> FAIL` or `PASS -> PENDING`. The 293 are docx4j's 19, the inspector's 214 and Q7's 60.
+- **The gate** (section 3.6): no `FAIL` row; the agreement test at zero (636 of 636, the slow
+  run's 588 among them); `LevelOwnerTest`'s 61 paragraphs as Word numbers them; CR-002's 46 parity
+  goldens at zero (277 tests, `PINS` empty) and CR-010's Word-save comparisons (68) unchanged;
+  `scripts/roundtrip.py` 50 of 50 parts canonically identical; `test_readme.py` and
+  `test_performance.py` pass. The fast suite: 3,162 passed, 8 skipped and 628 deselected (97 s;
+  Phase C: 3,088 passed, 8 skipped, 10 xfailed); the whole suite 3,790 passed and 8 skipped (144
+  s; Phase C: 3,716, 8 and 10 `xfail`). No `xfail` is left.
+- **Unchanged**: `scripts/bench_marshal.py`, measured beside Phase C's `48d00de` on this machine:
+  `Symbols.docx` parse 202 to 218 ms and marshal 269 to 276 ms (`48d00de`: 204 to 235, 254 to
+  264), the 14 main parts 250 to 263 and 320 to 329 ms (247 to 280, 305 to 317). `import
+  docx4j_py` takes 639 to 685 ms (`48d00de`: 636 to 700) and imports none of the new modules.
+- **The cost** (CR-003 section 16.4's 200-page document, the median of five or seven):
+  - With the body parsed, as the fixture builds it: `to_markdown()` 48 ms (0.1.0: 8), `markup` 45
+    (8), `addresses=True` 59 (49), `outline()` 50 ms (16); `markdown(extract(pkg), pkg)` 45 and
+    `plain_text(extract(pkg))` 34.
+  - **The read-then-body workflow**, loaded fresh from its bytes: `pkg.to_markdown()` then the first
+    `pkg.body`. Before (0.1.0): **50 ms**. At `77b2f50`: **169 ms**, and body first then
+    `to_markdown`, one parse, **134 ms**. The jump is mostly the model and the renderer; the
+    main part's second parse is 35 ms, 26%. After the escaping fix (`382f96f`), 132 to 135 ms, and
+    90 to 96 body first. The second parse is the same 39 to 42 ms, now about 40 to 45% of the
+    rest. The coordinator chose to keep it: every part staying byte for byte after a read is worth
+    it (14.4).
+  - **The profile** of `pkg.to_markdown()` (cProfile, cumulative). Before the fix, the top three
+    were the main part's `read_contents` parse (149 ms profiled), the commonmark render (145 ms,
+    130 of it `_Writer._write`'s character loop) and `extract`'s walk (114 ms;
+    `Extractor._paragraph` 106, `office_span` 31). After it, the parse (145 to 158 ms profiled,
+    about 42 ms real), the walk (117 ms) and `WmlToMarkdown.convert` (27 ms), the render down to
+    31 ms. Nothing else local is left: the walk is Phase B's, and the parse is the engine's.
+    Unprofiled, `pkg.to_markdown()` went from 127 ms to 89 to 93 ms.
+
+### 14.10 Follow-ups, and what is not done
+
+- **`XmlPart.contents` adopting the private tree** (the engine's, CR-002, not this phase's).
+  `read_contents` parses a part into a private tree and `contents` parses it again. Where nothing
+  has mutated the private tree, `contents` could adopt it, for the main part, styles and
+  numbering, which the resolvers read privately. That removes 14.9's second parse (about 40 ms on
+  the 200-page document). It needs tests that a private tree is never mutated by a reader (the
+  text model, the resolver, the emulator, the font selector), that an adopted tree is linked and
+  reports its skipped content as an unmarshalled one does, that a save after adoption marshals
+  what a fresh parse would, and the thread rule (one package per thread) unchanged.
+- **`outline()` could move to `read_contents` without changing what it returns.**
+  `package_outline` builds a body for every part through `package_bodies` (`body_of`, which
+  unmarshals) only to keep the headers' and footers'. So the notes and comments parts are
+  unmarshalled for nothing. Its structural walk could also run over the reading's trees, since
+  the addresses and entries would be the same. Not done in this phase, at the coordinator's word.
+- **Charts, SmartArt, embedded and chunk blocks have no outline entries**, only text boxes (Q9 asked
+  for those).
+- **A block-level `mc:AlternateContent` kept on load** is not read (CR-012), as 14.7 item 8 says.
+- Section 13.8's other items stand: Q7's content, the HTML reader (Q12, Q13), the `dry_run` comment
+  defect of 12.3, and a fork release before this package releases on stage 10.
+- Lint: the new modules pass `ruff check`; the files they touch keep their earlier findings
+  (`extractor.py`'s `S110`, the import order of `paragraph.py` and `range.py`).

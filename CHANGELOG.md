@@ -88,6 +88,19 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   pend of 1,584 (941, 410 and 233 at Phase A; 1,146, 205 and 233 at B), the 7 Markdown's (Phase
   D), the 293 docx4j's 19, the inspector's 214 and the 60 of the deferred content; 9 of the 12
   goldens are exact, every plain-text one.
+- **Markdown from the text model: `docx4j_py.model.text.markdown`**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md), Phase D, section
+  [14](docs/change-requests/CR-011-one-text-model.md#14-phase-d-implementation-notes-2026-10-21)):
+  `markdown(result, package=None, *, image_destination=None)` writes a reading as docx4j-markdown's
+  `MarkdownExporter` writes it (WD REQ-703, REQ-704), the port of its `WmlToMarkdown` with a port
+  of commonmark-java 0.30.0's Markdown renderer (`docx4j_py.model.text.commonmark`, BSD-2-Clause,
+  named in `NOTICE`), so the escaping, the list markers and the block separators are docx4j's:
+  over 277 documents in five readings each, 1,385 of 1,385 exports are docx4j's byte for byte,
+  pictures' data URIs included. `markdown_blocks(...)` gives each block's Markdown, joining to the
+  whole; `MarkdownExporter` and `MarkdownExportOptions` are docx4j's classes, `image_destination`
+  (a callable given the image, its bytes and docx4j's file name) standing for docx4j's
+  `imageDirPath`. With it the text-extraction suite gives 1,291 checks passed, none failed and 293
+  pending of 1,584, and 12 of 12 goldens.
 - **Charts, equations and field switches as docx4j reads them**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md#13-phase-c-implementation-notes-2026-10-21)
   section 13): `docx4j_py.model.chart` (`ChartModel`, `ChartExModel`, `ChartTable`,
@@ -99,6 +112,46 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **`to_markdown` is the text model's** ([CR-011](docs/change-requests/CR-011-one-text-model.md)
+  section [14](docs/change-requests/CR-011-one-text-model.md#14-phase-d-implementation-notes-2026-10-21),
+  REQ-202): `pkg.to_markdown`, `Body.to_markdown`, `Paragraph.to_markdown`, `Table.to_markdown`
+  and `markdown_budget` are `markdown()` over the text model's reading, every keyword kept
+  (`addresses=`, `view=`, `max_chars=`). The Markdown is docx4j's, which moves what 0.1.0 wrote:
+  each text box's paragraphs after its anchor; endnotes `[^e1]` beside footnotes `[^1]`; hidden
+  text left out; fields' results, bound values, charts (their note, title and table), SmartArt
+  and equations as LaTeX; the table of contents left out (REQ-520); a heading by its effective
+  outline level through the styles (a `HeadingN` style id that names no style with one is body
+  text, as in docx4j); a GFM table with no padding
+  inside the pipes (`|A|B|` and `|---|---|`) and a header row from `w:tblHeader`; lists by their
+  numbering, a list interrupted by a paragraph going on at Word's count and an adjacent list
+  taking the other delimiter (`1)`), a paragraph indented to an item's text a follow-on paragraph
+  of it; a run code by its font through its styles (a `CodeChar` that the package does not
+  define marks nothing); commonmark-java's escaping (`1\. not a list`); the document's Markdown
+  ending with a line end. `view` takes `original` (Reject All's text) and `current`; `markup` is
+  CriticMarkup written flat. `addresses=True` still writes the content API's address (paraId,
+  else the ordinal) for a block of the body's story; a text box's, a note's or a chart's block
+  has the text model's (`body/3/textbox:0/0`), which `element_at` refuses as `address.read_only`.
+  Pictures still point at their parts (`media/image1.png`), where `markdown()` writes docx4j's
+  data URI. A paragraph is written as its story writes it (`3. Plums`, `4. 2. Quince`).
+- **`to_markdown` is slower on large documents**: on CR-003 section 16.4's 200-page document,
+  `pkg.to_markdown()` is about 48 ms where 0.1.0's was 8 ms with the body parsed, and about 90 ms
+  where it was 53 ms read fresh from a file, the main part's parse included (CR-011 section 14.9).
+  A first `pkg.body` after it parses the main part again, about 40 ms more.
+- **A read leaves every part as it was**: `pkg.to_markdown()` and `pkg.markdown_budget()` read the
+  package with nothing unmarshalled, so a save afterwards writes `word/document.xml`, and
+  `word/footnotes.xml` in a document with a footnote reference, from the source bytes, where
+  0.1.0 unmarshalled both (through `pkg.body` and for the note definitions) and re-marshalled
+  them, canonically identical. A first `pkg.body` afterwards parses the main part again.
+  `outline()` still unmarshals the notes parts, through the package's bodies.
+- **`outline()` reads the text model** (CR-011 section 14, REQ-706): each entry's text, its
+  heading level (the effective outline level, through the styles: a `HeadingN` style id without
+  an outline level is body text, a style with one a heading whatever its name) and a table's
+  preview are the text model's accepted view, and `stats.paragraphs`, `tables`, `words` and
+  `chars` count its blocks (a hidden or a table-of-contents paragraph none, a joined pair one).
+  Each text box's paragraphs are entries after their anchor (after the table, for one in a cell)
+  at their `textbox:` addresses, with `OutlineEntry.textbox` (Q9). The entries are still one per
+  block of the tree. `stats.tracked_changes` is unchanged. On the 200-page document `outline()`
+  takes about 50 ms, where it took 16.
 - **Dates are written and read as Word 365 writes them**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section 12.9):
   every revision the tracker writes carries `w:date` on the process's **local wall clock** with a
@@ -214,6 +267,14 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **The text model's numbering, document dates and table content**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) section 14, found by the byte check
+  against docx4j): a block's `TextNumbering` has its level's `levelText` and `start` (they were
+  None and 1 for every list, an attribute misnamed); the core properties' dates are as the part
+  writes them, `lastPrinted` among them (it was left out, and `created` had nine fractional
+  digits for seven); a table given to `extract` as content is one `TABLE` block, as docx4j reads
+  it (it was its cells' paragraphs). A dry run reads the styles it added, through a property
+  resolver of its own.
 - **A save declares every prefix an `mc:Choice` names**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
   [12.2](docs/change-requests/CR-011-one-text-model.md#122-resolve-and-the-save-q3-q11), its Q11,

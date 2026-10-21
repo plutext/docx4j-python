@@ -824,8 +824,8 @@ pkg.last_change.to_dict()["parts_touched"]
 
 WordprocessingMLPackage.load(pkg.save()).to_markdown()
 # '# Weekly brief\n\nThree things happened, and one was **important**.\n\n- the build went green\n
-#  - the corpus grew\n  - two new fixtures\n\n| Area | State |\n| --- | --- |\n| engine | green |\n\n
-#  See [the CR](https://example.invalid/cr-003).'
+#  - the corpus grew\n  - two new fixtures\n\n|Area|State|\n|---|---|\n|engine|green|\n\n
+#  See [the CR](https://example.invalid/cr-003).\n'
 ```
 
 The fragment is **one** `ChangeReport` however many blocks it brings; the styles it needs are added
@@ -871,20 +871,48 @@ pkg.last_change.to_dict()
 ```
 
 The address is `paragraph.address`: the `w14:paraId` when Word has stamped one, so it survives an
-insert in front of it, and the ordinal otherwise. `view="markup"` writes tracked changes and
-comments as CriticMarkup (`{++inserted++}`, `{--deleted--}`, `{>>a comment<<}`) where the default
-`view="accepted"` reads the document as if every change had been accepted; `max_chars=` cuts at a
-block boundary and `markdown_budget(max_chars)` is the twin that says whether it bit:
+insert in front of it, and the ordinal otherwise; a text box's paragraph has the text model's
+`body/3/textbox:0/0`, which is for reading. `view="markup"` writes tracked changes and comments as
+CriticMarkup (`{++inserted++}`, `{--deleted--}`, `{>>a comment<<}`) where the default
+`view="accepted"` reads the document as Accept All leaves it, and `view="original"` as Reject All
+does; `max_chars=` cuts at a block boundary and `markdown_budget(max_chars)` is the twin that says
+whether it bit:
 
 ```python
 pkg.markdown_budget(60).to_dict()
-# {'text': 'Docx sample document', 'chars': 1610, 'truncated': True}
+# {'text': 'Docx sample document', 'chars': 1585, 'truncated': True}
 ```
 
 **Which to use when.** Round trip is not a goal — markdown cannot hold a docx. Use the coarse pair
 to *create* a document from what a model wrote, or to *read* one whose formatting does not matter.
 Use `to_markdown(addresses=True)` plus in-place edits to *change* a document that exists: the
 coarse route would rewrite the whole body and throw away everything the markdown has no form for.
+
+**One text model.** `to_markdown` and `outline()` read the document through
+`docx4j_py.model.text`, the port of docx4j's text model (CR-011): each text box after its anchor,
+notes as `[^1]`, hidden text left out, fields' results, bound values, charts, equations as LaTeX,
+and the views by resolution, so a deleted paragraph mark is joined as Accept All joins it. The
+same reading gives plain text, Markdown byte for byte as docx4j-markdown writes it, and a block
+model as JSON:
+
+```python
+from docx4j_py import load
+from docx4j_py.model.text import extract, markdown, plain_text
+
+pkg = load("in.docx")
+result = extract(pkg, view="accepted")   # the block model; nothing is unmarshalled
+plain_text(result)[:42]
+# 'Chapter 1\nMy first document: the quick bro'
+markdown(result, pkg)[:12]               # docx4j's Markdown of the same reading
+# '# Chapter 1\n'
+result.blocks[0].to_dict()["address"]    # REQ-706's block JSON, for a tool
+# 'body/0'
+[warning.to_dict() for warning in result.warnings]   # where the text is not the whole document
+# []
+```
+
+`Paragraph.text`, `get_text()` and `search()` keep Office JS's text, as Word's own Office JS
+gives it (CR-011 Q4), and the python-docx facade keeps python-docx's.
 
 ### Serving many documents
 

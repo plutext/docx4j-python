@@ -13,9 +13,10 @@ Ported from docx4j at ``198d015a3``, each with docx4j's expected string:
 * ``MarkdownExportExtensionsTest``, its 9 (the two picture tests build the
   picture with this package's importer, as docx4j's builds it with its own);
 * ``MarkdownAlternateContentTest`` (built, loaded kept, loaded with
-  ``mce_preprocess``), ``MarkdownChartTest`` (both), and
-  ``MarkdownMathExportTest.unsupportedOmmlFlattensWithWarning``, the one of
-  its six that reads no LaTeX through docx4j's importer.
+  ``mce_preprocess``), ``MarkdownChartTest`` (both), and the two of
+  ``MarkdownMathExportTest``'s six that read no LaTeX through docx4j's
+  importer (``unsupportedOmmlFlattensWithWarning``,
+  ``trackedChangesAcceptedRevisionsView``).
 
 Then this package's own: :func:`markdown_blocks` joining to :func:`markdown`,
 the destination callable, the per-block slices, and REQ-204.
@@ -595,6 +596,23 @@ def test_an_equation_outside_the_subset_is_its_runs_text():
         "<m:e><m:r><m:t>x</m:t></m:r></m:e></m:func></m:oMath></w:p>"
     ).load()
     assert export(pkg) == "$cosechx$\n"
+
+
+def test_an_equations_tracked_changes_are_read_in_the_accepted_view():
+    """``MarkdownMathExportTest.trackedChangesAcceptedRevisionsView`` (docx4j CR-010, issue 348)."""
+    from docx4j_py.model.math import OmmlToLatex
+    from docx4j_py.model.revisions import trees as rtrees
+    from docx4j_py.wml import wml
+
+    paragraph = wml(
+        f"<w:p {NS}><m:oMath><m:r><m:t>a+</m:t></m:r>"
+        '<m:r><w:ins w:id="1" w:author="a" w:date="2026-09-01T12:43:00Z"><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr>'
+        "<m:t>b</m:t></w:ins></m:r>"
+        '<m:r><w:del w:id="2" w:author="a" w:date="2026-09-01T12:43:00Z"><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr>'
+        "<m:t>c</m:t></w:del></m:r></m:oMath></w:p>"
+    )
+    equation = next(item for item in paragraph.content if rtrees.is_math(item))
+    assert OmmlToLatex().convert(equation) == "a+b"
 
 
 # ---------------------------------------------------------------------------
