@@ -50,9 +50,8 @@ the two map onto each other. ``get_text(view="markup")`` is this model's.
 
 **Not yet** (CR-011 Phase C, :data:`~docx4j_py.model.text.options.NOT_YET`):
 fields computed under ``fields: update``, bound values, charts, SmartArt,
-embedded packages, ``w:altChunk``, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``), REQ-605's
-listed and grid tables (every table is written tab-separated), page markers,
-``layout: indent``, the glossary.
+embedded packages, ``w:altChunk``, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``), the
+glossary.
 
 Imported on first use: ``import docx4j_py`` does not import it.
 """

@@ -104,9 +104,6 @@ NOT_YET: dict[tuple[str, Any], str] = {
     ("smartart", True): "REQ-511",
     ("embedded", True): "REQ-512",
     ("altchunks", True): "REQ-513",
-    ("tables", "grid"): "REQ-605",
-    ("page_markers", True): "REQ-708",
-    ("layout", "indent"): "REQ-709",
 }
 
 
@@ -173,12 +170,11 @@ class TextOptions:
     docx4j refuses them: ``math: unicodemath`` (no OMML to UnicodeMath
     converter) and ``symbols: unicode`` (no glyph tables).
 
-    **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update``,
-    ``embedded: true``, ``tables: grid``, ``page_markers: true`` and ``layout:
-    indent`` are accepted and read as their defaults; under the default ``charts``, ``smartart``,
-    ``altchunks`` and ``bindings`` a chart or SmartArt contributes nothing, an
-    ``altChunk`` is not expanded and a bound control is read by its surface.
-    In ``tables: auto`` every table is written in REQ-605's simple form.
+    **Not yet** (CR-011 Phase C; :data:`NOT_YET`): ``fields: update`` and
+    ``embedded: true`` are accepted and read as their defaults; under the
+    default ``charts``, ``smartart``, ``altchunks`` and ``bindings`` a chart or
+    SmartArt contributes nothing, an ``altChunk`` is not expanded and a bound
+    control is read by its surface.
     """
 
     __slots__ = (

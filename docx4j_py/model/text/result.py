@@ -311,6 +311,9 @@ class TextBlock:
     note_id: str | None = None
     #: The section the block ends or is in (the main story only).
     section: int = 0
+    #: For a table: always written in REQ-605's simple form, whatever its shape
+    #: (an embedded workbook's sheet, docx4j's; none is read here, CR-011 Q7).
+    simple_form: bool = False
     #: What the block was read from (not in the JSON): a paragraph's ``w:p``
     #: (a joined block's first), a table's ``w:tbl``.
     source: Any = field(default=None, repr=False)

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 from conformance import PHASE0
-from mini_docx import MiniDocx
+from mini_docx import NS, MiniDocx
 
 from docx4j_py import load
 from docx4j_py.model.text import ImageDescription, TextResult, TextWarning, extract, plain_text
@@ -216,3 +216,171 @@ def test_legacy_wordart_is_a_one_paragraph_text_box(probe):
     word_art = [b for b in r.blocks if b.story == "TEXT_BOX" and b.text == "WA25_TEXTPATH"]
     assert len(word_art) == 1 and word_art[0].address.endswith("/textbox:0/0")
     assert "WA25_TEXTPATH" not in text(probe, text_boxes=False)
+
+
+# ---------------------------------------------------------------------------
+# tables (REQ-605)
+# ---------------------------------------------------------------------------
+
+
+def tc(props: str, *paragraphs: str) -> str:
+    cells = "".join("<w:p/>" if not value else p(value) for value in paragraphs)
+    return f"<w:tc><w:tcPr>{props}</w:tcPr>{cells}</w:tc>"
+
+
+def grid(*widths: int) -> str:
+    return "<w:tbl><w:tblGrid>" + "".join(f'<w:gridCol w:w="{w}"/>' for w in widths) + "</w:tblGrid>"
+
+
+SPAN2, SPAN3 = '<w:gridSpan w:val="2"/>', '<w:gridSpan w:val="3"/>'
+HEADER = "<w:trPr><w:tblHeader/></w:trPr>"
+
+
+def test_table_forms(probe):
+    """REQ-605: case 31 in the listed format, as TSV under tables: tsv, as a grid under tables: grid."""
+    listed = text(probe)
+    # its one header cell spans the grid: written once, labelling nothing, the rows' cells a tab apart
+    assert between(listed, "[table: listed format]\nTBL31", "After the table.\nCase 32") == (
+        "[table: listed format]\nTBL31_HEADER\nTBL31_CELL_P1; TBL31_CELL_P2\tTBL31_NESTED\n"
+        "TBL31_MERGED\tTBL31_LAST_CELL\n"
+    )
+    # a block-level control in a cell, with Word's empty paragraph after it, is a simple table's cell
+    assert between(listed, "SDT24_IN_CELL", "After the table.\nCase 25") == "SDT24_IN_CELL\n"
+    assert between(text(probe, tables="tsv"), "TBL31_HEADER", "After the table.\nCase 32") == (
+        "TBL31_HEADER\nTBL31_CELL_P1 TBL31_CELL_P2\tTBL31_NESTED\t\nTBL31_MERGED\tTBL31_LAST_CELL\n"
+    )
+    assert between(text(probe, tables="grid"), "Case 31: a table", "After the table.\nCase 32") == (
+        "Case 31: a table: header row, two-paragraph cell, nested table, merged cell, empty cell\n"
+        "+---------------+------------------+-----------------+\n"
+        "| TBL31_HEADER                                       |\n"
+        "+===============+==================+=================+\n"
+        "| TBL31_CELL_P1 | +--------------+ |                 |\n"
+        "|               | | TBL31_NESTED | |                 |\n"
+        "| TBL31_CELL_P2 | +--------------+ |                 |\n"
+        "+---------------+------------------+-----------------+\n"
+        "| TBL31_MERGED                     | TBL31_LAST_CELL |\n"
+        "+---------------+------------------+-----------------+\n"
+    )
+
+
+MERGED_TABLE = (
+    '<w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>'
+    f"<w:tr>{tc('', 'Name')}{tc('', 'Value')}</w:tr>"
+    f"<w:tr>{tc('<w:vMerge w:val=\"restart\"/>', 'a')}{tc('', '1')}</w:tr>"
+    f"<w:tr>{tc('<w:vMerge/>', '')}{tc('', '2')}</w:tr>"
+    f"<w:tr>{tc('', '')}{tc('', '3')}</w:tr></w:tbl>{p('After.')}"
+)
+
+
+def test_listed_format_and_grid_spans():
+    """REQ-605: headers from the first row; a vertical merge's value on each row it covers; an empty cell left out."""
+    pkg = MiniDocx.body(MERGED_TABLE).load()
+    assert text(pkg) == "[table: listed format]\nName: a; Value: 1\nName: a; Value: 2\nValue: 3\nAfter.\n"
+    assert text(pkg, tables="grid") == (
+        "+------+-------+\n"
+        "| Name | Value |\n"
+        "+======+=======+\n"
+        "| a    | 1     |\n"
+        "|      +-------+\n"
+        "|      | 2     |\n"
+        "+------+-------+\n"
+        "|      | 3     |\n"
+        "+------+-------+\n"
+        "After.\n"
+    )
+    # a row whose one cell spans the grid is its text alone, a header row (labelling nothing) or a body row
+    headed = MiniDocx.body(
+        '<w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>'
+        f"<w:tr><w:trPr><w:tblHeader/></w:trPr>{tc('', 'H1')}{tc('', 'H2')}</w:tr>"
+        f"<w:tr>{tc(SPAN2, 'wide')}</w:tr></w:tbl>"
+        '<w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>'
+        f"<w:tr>{tc(SPAN2, 'only')}</w:tr><w:tr>{tc('', 'x')}{tc('', 'y')}</w:tr></w:tbl>"
+    ).load()
+    assert text(headed) == "[table: listed format]\nwide\n[table: listed format]\nonly\nx\ty\n"
+
+
+def test_listed_format_headers():
+    """REQ-605's listed format, as ruled on 18 October 2026 (docx4j's listedFormatHeaders)."""
+    rows = f"<w:tr>{tc('', 'P1', 'P2')}{tc('', 'N')}{tc('', '')}</w:tr><w:tr>{tc(SPAN2, 'M')}{tc('', 'L')}</w:tr></w:tbl>"
+
+    def of(body: str) -> str:
+        return text(MiniDocx.body(body).load())
+
+    # one header a column; a cell spanning two headed columns takes the first's
+    assert of(grid(3000, 3000, 3000) + f"<w:tr>{HEADER}{tc('', 'A')}{tc('', 'B')}{tc('', 'C')}</w:tr>" + rows) == (
+        "[table: listed format]\nA: P1; P2; B: N\nA: M; C: L\n"
+    )
+    # a header spanning two columns labels each cell under it
+    assert of(grid(3000, 3000, 3000) + f"<w:tr>{HEADER}{tc(SPAN2, 'AB')}{tc('', 'C')}</w:tr>" + rows) == (
+        "[table: listed format]\nAB: P1; P2; AB: N\nAB: M; C: L\n"
+    )
+    # a group header over its sub-headers; a header with no text over the first column
+    assert of(
+        grid(3000, 3000, 3000)
+        + f"<w:tr>{HEADER}{tc('<w:vMerge w:val=\"restart\"/>', 'Region')}{tc(SPAN2, 'Sales')}</w:tr>"
+        + f"<w:tr>{HEADER}{tc('<w:vMerge/>', '')}{tc('', '2024')}{tc('', '2025')}</w:tr>"
+        + f"<w:tr>{tc('', 'North')}{tc('', '1')}{tc('', '2')}</w:tr></w:tbl>"
+    ) == "[table: listed format]\nRegion: North; Sales / 2024: 1; Sales / 2025: 2\n"
+    assert of(
+        grid(3000, 3000, 3000)
+        + f"<w:tr>{HEADER}{tc('', '')}{tc('', 'B')}{tc('', 'C')}</w:tr>"
+        + f"<w:tr>{tc(SPAN2, 'ab')}{tc('', 'c')}</w:tr>"
+        + f"<w:tr>{tc('', 'x')}{tc('', 'y')}{tc('', 'z')}</w:tr></w:tbl>"
+    ) == "[table: listed format]\nB: ab; C: c\nx; B: y; C: z\n"
+    # a title row over column headers, and a divider row in the body
+    assert of(
+        grid(3000, 3000)
+        + f"<w:tr>{HEADER}{tc(SPAN2, 'Title')}</w:tr>"
+        + f"<w:tr>{HEADER}{tc('', 'H1')}{tc('', 'H2')}</w:tr>"
+        + f"<w:tr>{tc('', 'a')}{tc('', 'b')}</w:tr>"
+        + f"<w:tr>{tc(SPAN2, 'Part B')}</w:tr>"
+        + f"<w:tr>{tc('', 'c')}{tc('', 'd')}</w:tr></w:tbl>"
+    ) == "[table: listed format]\nTitle\nH1: a; H2: b\nPart B\nH1: c; H2: d\n"
+    # every header row spans the grid: the body is unlabelled (no data row promoted), its cells a tab apart
+    assert of(
+        grid(3000, 3000, 3000)
+        + f"<w:tr>{HEADER}{tc(SPAN3, 'Title')}</w:tr>"
+        + f"<w:tr>{tc('', 'a', 'a2')}{tc('', '')}{tc('', 'b')}</w:tr></w:tbl>"
+    ) == "[table: listed format]\nTitle\na; a2\tb\n"
+
+
+# ---------------------------------------------------------------------------
+# page markers and indents (REQ-708, REQ-709)
+# ---------------------------------------------------------------------------
+
+
+def test_page_markers():
+    """REQ-708: [page n] at each w:lastRenderedPageBreak of the main story, under page_markers: true only."""
+    resaved = load(PHASE0.parent / "extraction-probe.word-resave.docx")
+    assert "[page " not in text(resaved)
+    value = text(resaved, page_markers=True)
+    markers = runs(extract(resaved), "PAGE_MARKER")
+    assert markers
+    for i, marker in enumerate(markers):
+        assert marker.page_number == i + 2
+        assert f"[page {i + 2}]" in value
+    assert f"[page {len(markers) + 2}]" not in value
+
+
+def test_layout_indent():
+    """REQ-709: four spaces a 720-twip tab stop of a paragraph's first-line indent; tabs kept; none in a table."""
+    pkg = (
+        MiniDocx.body(
+            '<w:p><w:pPr><w:ind w:left="720"/></w:pPr><w:r><w:t>one stop</w:t></w:r></w:p>'
+            '<w:p><w:pPr><w:ind w:left="1440" w:firstLine="720"/></w:pPr><w:r><w:t>three</w:t></w:r></w:p>'
+            '<w:p><w:pPr><w:ind w:left="1440" w:hanging="720"/></w:pPr><w:r><w:t>a</w:t><w:tab/><w:t>b</w:t></w:r></w:p>'
+            + p("none")
+            + '<w:tbl><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:p><w:pPr><w:ind w:left="720"/>'
+            "</w:pPr><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+        )
+        .part(
+            "styles.xml",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+            "rIdStyles",
+            f"<w:styles {NS}/>",
+        )
+        .load()
+    )
+    assert text(pkg) == "one stop\nthree\na\tb\nnone\ncell\n"
+    assert text(pkg, layout="indent") == "    one stop\n            three\n    a\tb\nnone\ncell\n"

@@ -29,12 +29,14 @@ Nothing in the package is changed (REQ-204): every tree here was read with
 Phase C (CR-011 section 13) adds what a run anchors besides text boxes:
 legacy WordArt as a one-paragraph text box (REQ-511), pictures as ``IMAGE``
 runs with their descriptions (REQ-514), objects as ``OBJECT`` runs (REQ-512);
-and the document properties in the metadata (REQ-515).
+each ``w:lastRenderedPageBreak`` of the main story a ``PAGE_MARKER`` run, its
+page numbered from 2 (REQ-708); and the document properties in the metadata
+(REQ-515).
 
 Not yet (CR-011 Phase C): fields computed under ``fields: update``, bound
 values, math as LaTeX (an equation is its ``m:t`` text inside ``$...$``,
 REQ-604's form for one that is not converted), charts and SmartArt, embedded
-packages, ``w:altChunk``, page markers.
+packages, ``w:altChunk``.
 """
 
 from __future__ import annotations
@@ -455,6 +457,8 @@ class Extractor:
         #: A reading one level down (an embedded package's, an ``altChunk``'s):
         #: none of its own are expanded, and it has no metadata (REQ-512, REQ-513).
         self.nested = False
+        #: The ``w:lastRenderedPageBreak``\ s of the main story so far (REQ-708).
+        self.page_markers = 0
 
     # -- the package ----------------------------------------------------------
 
@@ -1000,6 +1004,15 @@ class Extractor:
         if name in ("drawing", "pict", "object"):
             if not _in_code(story) and not _suppressed(story) and not (hidden and not self.options.hidden):
                 self._anchored(item, para, state)
+            return
+        if name == "lastRenderedPageBreak":
+            # where the page began when Word last laid the document out (REQ-708)
+            if story.kind != "MAIN" or _in_code(story) or (hidden and not self.options.hidden) or _suppressed(story):
+                return
+            run = TextRun("PAGE_MARKER", "", state.revision)
+            self.page_markers += 1
+            run.page_number = self.page_markers + 1
+            para.block.runs.append(run)
             return
         if name == "AlternateContent":
             self._compare_branches(item, para.block.address)
