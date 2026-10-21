@@ -21,8 +21,8 @@ independent of the bytecode cache); `LoadOptions(mc_block_level=)`, `preserve` b
 readers reading Word's branch at block level, an edit inside a kept branch refused; the revisions
 twins; and docx4j's 19 probes with Word 365's 14 saves. In `preserve` mode all 19 probes save
 canonically identical; in `word` mode all 14 read as Word's save. The acceptance artefacts are
-unchanged and CR-011's ratchet does not move. **The Word check of three probe saves is the
-user's** (`out/cr012-a-word-check/`). Row and cell level are passed by; docx4j's phase 2
+unchanged and CR-011's ratchet does not move. **The Word check of three probe saves passed the
+same day** (the user: "__tmp/python-cr012a/ are all good"; 9.12): **Phase A done**. Row and cell level are passed by; docx4j's phase 2
 (`9db1a3cbd`), which reads them, is a follow-up port.
 **Depends on:**
 - **Phase A:**
@@ -900,9 +900,9 @@ tests.
 - **A fork release.** Stages 9 to 11 are local, so this package is not released against them
   (`RELEASING.md`). That is the user's, as CR-011's Q3 already needed.
 - **CR-011 section 14.7 item 8 and 14.10's matching bullet** now say they are closed here.
-- **The Word check** is the user's (9.12).
+- **The Word check** passed on 2026-10-21 (9.12).
 
-### 9.12 The Word check (staged, not done)
+### 9.12 The Word check (passed 2026-10-21)
 
 Three files are in `out/cr012-a-word-check/`, with a `README.txt` saying what each should show.
 They are also copied to `~/vbShares/Office 2016/__tmp/python-cr012a/`. Each was loaded, its main
@@ -917,4 +917,5 @@ part unmarshalled so that this engine writes it, and saved.
   whole, and each Choice's `w14` is declared.
 
 Expected: each opens without a repair prompt and shows the `w16sdtfl` or `w14` branch, as the
-source does in Word 365.
+source does in Word 365. **Passed on 2026-10-21** (the user: "__tmp/python-cr012a/ are all good"):
+all three open with no repair prompt and show what the README says.

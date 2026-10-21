@@ -371,6 +371,17 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > Choices, and `waterfall.docx` re-saved, declaring `cx1` on the root. Both open with no repair
 > prompt. The eleven artefacts hold no such Choice and are canonically unchanged by the fix.
 
+> **2026-10-21, Word check of CR-012 Phase A passed** (the user: "__tmp/python-cr012a/ are all
+> good"). Three of docx4j's `mc-fun` probes were saved by this engine, staged in
+> `out/cr012-a-word-check/` with a README (CR-012 section 9.12):
+> - `mc-block-newest-first` in `word` mode, the body's element replaced by the `w16sdtfl` paragraph;
+> - `mc-sdt-row-newest-first` in `word` mode, the element among a row-level control's rows
+>   replaced by the `w16sdtfl` row;
+> - `mc-mixed` in `preserve` mode, all four elements kept whole.
+>
+> All three open with no repair prompt and show the branch Word 365 shows for the source. The
+> eleven artefacts are canonically unchanged by Phase A.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
