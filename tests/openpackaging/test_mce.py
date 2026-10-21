@@ -141,14 +141,62 @@ def test_mce_branch_picks_the_first_understood_choice():
     assert mce_branch(second) is second.fallback
 
 
-def test_a_choice_with_no_fallback_and_nothing_understood_contributes_nothing():
+def test_a_choice_with_no_fallback_and_nothing_understood_is_read():
+    """WD REQ-305 (CR-011 section 3.2): Choices and no Fallback, none understood, give the first Choice.
+
+    Before CR-011 the resolved view read nothing of such an element.
+    """
     run = wml(
         "<w:r><w:t>a</w:t><mc:AlternateContent>"
         '<mc:Choice Requires="zz99"><w:t>-x</w:t></mc:Choice>'
+        '<mc:Choice Requires="zz98"><w:t>-y</w:t></mc:Choice>'
         "</mc:AlternateContent></w:r>"
     )
-    assert text_of(run, mce="resolve") == "a"
-    assert text_of(run, mce="all") == "a-x"
+    assert text_of(run, mce="resolve") == "a-x"
+    assert text_of(run, mce="all") == "a-x-y"
+    assert text_of(run, mce="none") == "a"
+
+
+def test_an_empty_requires_is_not_understood():
+    """WD REQ-304: a Choice whose Requires names nothing is not taken (``all()`` over nothing was True)."""
+    run = wml(
+        "<w:r><mc:AlternateContent>"
+        '<mc:Choice Requires=""><w:t>empty</w:t></mc:Choice>'
+        "<mc:Fallback><w:t>fallback</w:t></mc:Fallback>"
+        "</mc:AlternateContent></w:r>"
+    )
+    assert text_of(run, mce="resolve") == "fallback"
+
+
+def test_requires_is_matched_by_namespace_not_prefix():
+    """WD REQ-303 (CR-011 Q3): the wps namespace under another prefix is understood; wps bound elsewhere is not."""
+    wps = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+    rebound = wml(
+        f'<w:r><mc:AlternateContent xmlns:shape2010="{wps}">'
+        '<mc:Choice Requires="shape2010"><w:t>choice</w:t></mc:Choice>'
+        "<mc:Fallback><w:t>fallback</w:t></mc:Fallback>"
+        "</mc:AlternateContent></w:r>"
+    )
+    assert text_of(rebound, mce="resolve") == "choice"
+    elsewhere = wml(
+        '<w:r><mc:AlternateContent xmlns:wps="urn:not-wps">'
+        '<mc:Choice Requires="wps"><w:t>choice</w:t></mc:Choice>'
+        "<mc:Fallback><w:t>fallback</w:t></mc:Fallback>"
+        "</mc:AlternateContent></w:r>"
+    )
+    assert text_of(elsewhere, mce="resolve") == "fallback"
+
+
+def test_a_choice_built_in_code_is_matched_through_the_prefix_table():
+    """No declarations recorded: REQ-303's permitted fallback, docx4j's prefix table."""
+    from docx4j_py.child import BoundPrefixes
+    from docx4j_py.mce import AlternateContent, AlternateContentChoice, AlternateContentFallback
+
+    ac = AlternateContent(
+        choice=[AlternateContentChoice(requires="wps")], fallback=AlternateContentFallback()
+    )
+    assert not isinstance(ac.choice[0].requires, BoundPrefixes)
+    assert mce_branch(ac) is ac.choice[0]
 
 
 def test_link_parents_and_iter_tree_still_see_everything():

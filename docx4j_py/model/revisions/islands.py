@@ -31,7 +31,7 @@ from typing import Any
 
 from lxml import etree
 
-from docx4j_py.child import is_any_element, link_parents
+from docx4j_py.child import MC_CHOICE, is_any_element, link_parents, source_bindings
 from docx4j_py.namespaces import PREFIXES, WML_NS
 
 __all__ = ["REVISION_LOCALS", "Island", "holds_revisions"]
@@ -94,14 +94,31 @@ def holds_revisions(node: Any) -> bool:
     return False
 
 
-def _to_lxml(node: Any, root: bool = True) -> etree._Element:
-    """A wildcard subtree as an lxml element, its attributes, text and tails kept."""
+def _to_lxml(node: Any, parent: etree._Element | None = None) -> etree._Element:
+    """A wildcard subtree as an lxml element, its attributes, text and tails kept.
+
+    An ``mc:Choice`` is declared what its ``Requires`` (and its own
+    ``mc:Ignorable`` and ``mc:MustUnderstand``) were bound to in its source
+    (:func:`~docx4j_py.child.source_bindings`), so that the typed parse
+    records the same bindings and selects the same branch (CR-011 Q3). Made
+    with ``SubElement``, which keeps a declaration whose namespace is in scope
+    under another prefix (``shape2010``), where ``append`` would strip it.
+    """
     if not is_any_element(node):
         from docx4j_py.fragments import to_xml
 
         element = etree.fromstring(to_xml(node).encode("utf-8"))
+        if parent is not None:
+            parent.append(element)
         return element
-    element = etree.Element(node.qname, nsmap=_NSMAP if root else None)
+    nsmap: dict[str, str] | None = None
+    if node.qname == MC_CHOICE:
+        bound = {prefix: uri for prefix, uri in source_bindings(node).items() if uri is not None}
+        nsmap = bound or None
+    if parent is None:
+        element = etree.Element(node.qname, nsmap={**_NSMAP, **(nsmap or {})})
+    else:
+        element = etree.SubElement(parent, node.qname, nsmap=nsmap)
     for key, value in (node.attributes or {}).items():
         if value is not None:
             element.set(key, str(value))
@@ -109,8 +126,8 @@ def _to_lxml(node: Any, root: bool = True) -> etree._Element:
     for child in node.children or ():
         if isinstance(child, str):
             continue
-        element.append(_to_lxml(child, False))
-    if not root:
+        _to_lxml(child, element)
+    if parent is not None:
         element.tail = node.tail
     return element
 

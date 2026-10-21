@@ -255,7 +255,22 @@ def to_xml(obj: Any, *, pretty: bool = False, name: str | None = None) -> str:
         root = renamed
 
     etree.cleanup_namespaces(root, keep_ns_prefixes=sorted(_ignorable_prefixes(root)))
-    return etree.tostring(root, pretty_print=pretty, encoding="unicode")
+    # what an mc:Choice names and nothing else uses, declared as a part's save
+    # declares it (CR-011 Q3, docx4j CR-052)
+    from docx4j_py import mc_declarations
+
+    declarations = mc_declarations.plan(root, obj, {})
+    if declarations.root:
+        etree.cleanup_namespaces(
+            root,
+            top_nsmap=declarations.root,
+            keep_ns_prefixes=sorted({*_ignorable_prefixes(root), *declarations.root}),
+        )
+    declarations.apply()
+    if not declarations.placeholders:
+        return etree.tostring(root, pretty_print=pretty, encoding="unicode")
+    data = etree.tostring(root, pretty_print=pretty, encoding="utf-8")
+    return mc_declarations.finish(data, declarations).decode("utf-8")
 
 
 #: The prefixes :func:`wml` declares on its synthetic root, for the record.

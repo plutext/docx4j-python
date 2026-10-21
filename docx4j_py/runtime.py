@@ -81,6 +81,13 @@ def parser_config(
     plain parser may pass ``on_bind=None``; the tree then needs ``link_parents``
     before anything reads ``.parent``.
 
+    ``on_namespaces`` is the fork's other hook (CR-011 Q3): each ``mc:Choice``
+    the parser builds, typed or a wildcard, has its ``Requires`` recorded with
+    the namespace URIs its prefixes resolve to in scope there
+    (:func:`docx4j_py.child.record_bindings`), as are its ``mc:Ignorable`` and
+    ``mc:MustUnderstand``,, so that a branch is selected by
+    URI (WD REQ-303) and a save can declare a prefix only ``Requires`` names.
+
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
     """
@@ -90,6 +97,11 @@ def parser_config(
         from docx4j_py.child import link_children
 
         kwargs["on_bind"] = partial(link_children, context=context())
+    if "on_namespaces" not in kwargs:
+        from docx4j_py.child import MC_CHOICE, record_bindings
+
+        kwargs["on_namespaces"] = record_bindings
+        kwargs.setdefault("namespaces_for", frozenset({MC_CHOICE}))
 
     return ParserConfig(
         fail_on_unknown_properties=not lenient,

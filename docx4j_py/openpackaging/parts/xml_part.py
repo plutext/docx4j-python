@@ -304,6 +304,7 @@ class XmlPart(Part, Generic[T]):
         re-parsed it, and copied the whole tree into a new root to change its
         namespace map --- 42% of a marshal of a 771 KB part.
         """
+        from docx4j_py import mc_declarations
         from docx4j_py.runtime import tree_serializer
 
         ns_map = _NS_MAP
@@ -327,7 +328,8 @@ class XmlPart(Part, Generic[T]):
         for prefix in sorted(_ignorable_prefixes(root)):
             if prefix in declared:
                 continue
-            uri = PREFIXES.get(prefix) or self._source_ns_map.get(prefix)
+            # the source's binding first, then the table's (docx4j CR-052's D3)
+            uri = self._source_ns_map.get(prefix) or PREFIXES.get(prefix)
             if uri is not None:
                 missing[prefix] = uri
             else:
@@ -337,12 +339,20 @@ class XmlPart(Part, Generic[T]):
                     self.part_name,
                     prefix,
                 )
+        # A prefix only an mc:Choice's Requires (or its own mc:Ignorable or
+        # mc:MustUnderstand) names is no element's or attribute's, so the
+        # cleanup took its declaration: on the root or on the Choice, as Word
+        # places it (CR-011 Q3 and Q11, docx4j CR-052).
+        declarations = mc_declarations.plan(root, obj, missing, self.part_name)
+        missing.update(declarations.root)
         if missing:
             # ``top_nsmap`` declares them on the root, ``keep_ns_prefixes`` stops
             # the cleanup taking them straight back off again.
             etree.cleanup_namespaces(root, top_nsmap=missing, keep_ns_prefixes=list(missing))
+        declarations.apply()
 
-        return XML_DECLARATION + etree.tostring(root, encoding="utf-8")
+        data = etree.tostring(root, encoding="utf-8")
+        return XML_DECLARATION + mc_declarations.finish(data, declarations)
 
     # -- introspection -----------------------------------------------------
 

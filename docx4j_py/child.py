@@ -49,7 +49,20 @@ __all__ = [
     "iter_tree",
     "link_children",
     "link_parents",
+    "MC_PREFIX_ATTRIBUTES",
+    "BoundPrefixes",
+    "is_alternate_content",
     "mce_branch",
+    "mce_branch_content",
+    "mce_choices",
+    "mce_fallback",
+    "other_bindings_seen",
+    "record_bindings",
+    "requires_namespaces",
+    "set_source_bindings",
+    "source_bindings",
+    "understands",
+    "understood_namespaces",
 ]
 
 #: The markup-compatibility namespace and the three element names of it that
@@ -504,7 +517,9 @@ def understood_prefixes() -> frozenset[str]:
     """The prefixes this build of the model can parse.
 
     ``docx4j_py.namespaces.UNDERSTOOD``'s keys, generated from the set of
-    generated packages; see CR-002 section 5.6.
+    generated packages; see CR-002 section 5.6. What ``mce_preprocess`` keeps
+    a Choice by (CR-011 section 3.3): what the model can type. The traversal's
+    ``mce="resolve"`` reads by :func:`understood_namespaces` instead.
     """
     global _understood
     if _understood is None:
@@ -515,6 +530,214 @@ def understood_prefixes() -> frozenset[str]:
         else:
             _understood = frozenset(UNDERSTOOD)
     return _understood
+
+
+#: docx4j's published understood set, copied verbatim (CR-011 section 3.3).
+UNDERSTOOD_NAMESPACES_RESOURCE = "understood-namespaces.txt"
+
+_understood_namespaces: frozenset[str] | None = None
+
+
+def understood_namespaces() -> frozenset[str]:
+    """The namespaces a reader of text understands (WD REQ-306): docx4j's published list.
+
+    ``docx4j_py/resources/understood-namespaces.txt``, copied verbatim from
+    docx4j's ``org/docx4j/jaxb/understood-namespaces.txt`` (118 URIs at
+    ``198d015a3``), the set docx4j's ``McSelection.understoodNamespaces``
+    reads for its TEXT and READ purposes. Wider than
+    :func:`understood_prefixes`: a namespace whose content a reader of text
+    can reach, typed or not (VML's text box, chartex), is understood here.
+    """
+    global _understood_namespaces
+    if _understood_namespaces is None:
+        from importlib.resources import files
+
+        text = files("docx4j_py.resources").joinpath(UNDERSTOOD_NAMESPACES_RESOURCE).read_text("utf-8")
+        _understood_namespaces = frozenset(line.strip() for line in text.splitlines() if line.strip())
+    return _understood_namespaces
+
+
+class BoundPrefixes(str):
+    """An ``mc`` attribute's value, with the namespaces its prefixes were bound to where it was parsed.
+
+    CR-011 Q3, docx4j CR-052's ``McSourceBindings``. A binding keeps an
+    attribute's string and not the declarations in scope at the element, and
+    a producer may bind any prefix (docx4j's probe case 6 binds the wps
+    namespace to ``shape2010``, and declares ``zz9`` on the
+    ``mc:AlternateContent``). The fork's parser hands each ``mc:Choice`` it
+    builds, typed or a wildcard, to :func:`record_bindings` with the
+    declarations in scope (``ParserConfig.on_namespaces``), which replaces its
+    ``Requires``, ``mc:Ignorable`` and ``mc:MustUnderstand`` values with these.
+
+    It is the string it was, so equality and serialisation see the string.
+    :attr:`namespaces` travels with it wherever the Choice goes: a move into
+    another tree, ``deep_copy`` (it is immutable, and copies as itself), a
+    pickle. An edit that sets a plain string drops it, and that value is then
+    resolved through the prefix table; :func:`set_source_bindings` records one
+    by hand. A ``str`` subclass cannot have slots, so the namespaces are its
+    one instance attribute.
+    """
+
+    namespaces: dict[str, str | None]
+
+    def __new__(cls, value: str, namespaces: Iterable[tuple[str, str | None]] = ()) -> BoundPrefixes:
+        """The value, and each prefix it names with the URI it was bound to (None for none)."""
+        self = super().__new__(cls, value)
+        self.namespaces = dict(namespaces)
+        return self
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        """Pickled with its namespaces."""
+        return (BoundPrefixes, (str(self), tuple(self.namespaces.items())))
+
+    def __copy__(self) -> BoundPrefixes:
+        """Immutable: itself."""
+        return self
+
+    def __deepcopy__(self, memo: dict) -> BoundPrefixes:
+        """Immutable: itself."""
+        return self
+
+
+#: An ``mc:Choice``'s attributes that name prefixes: the typed field, and the
+#: key a wildcard node keeps it under.
+MC_PREFIX_ATTRIBUTES: tuple[tuple[str, str], ...] = (
+    ("requires", "Requires"),
+    ("ignorable", f"{{{MCE_NS}}}Ignorable"),
+    ("must_understand", f"{{{MCE_NS}}}MustUnderstand"),
+)
+
+#: Whether any binding recorded in this process differs from the prefix
+#: table's: until one does, a save can place every prefix from the table alone
+#: and need not read the records (:mod:`docx4j_py.mc_declarations`).
+_other_bindings_seen = False
+
+
+def other_bindings_seen() -> bool:
+    """Whether a binding the prefix table does not make has been recorded in this process.
+
+    A private prefix (``zz9``), an alias (``shape2010``), a table prefix bound
+    to another namespace, or a prefix bound to nothing.
+    """
+    return _other_bindings_seen
+
+
+def record_bindings(qname: str, obj: Any, ns_map: dict) -> None:
+    """The fork parser's ``on_namespaces`` hook for ``mc:Choice``: its prefix-naming values recorded.
+
+    Typed (``AlternateContentChoice.requires``, ``.ignorable``,
+    ``.must_understand``) or a wildcard (``AnyElement.attributes``). Only the
+    prefixes each value names are kept, each with the URI it is bound to in
+    scope there, or None.
+    """
+    if _is_any_element(obj):
+        attributes = obj.attributes
+        if not attributes:
+            return
+        for _field, key in MC_PREFIX_ATTRIBUTES:
+            value = attributes.get(key)
+            if isinstance(value, str) and value.split():
+                attributes[key] = _recorded(value, ns_map)
+        return
+    for field, _key in MC_PREFIX_ATTRIBUTES:
+        value = getattr(obj, field, None)
+        if isinstance(value, str) and value.split():
+            setattr(obj, field, _recorded(value, ns_map))
+
+
+def _recorded(value: str, bindings: Any) -> BoundPrefixes:
+    global _other_bindings_seen
+    pairs = tuple((prefix, bindings.get(prefix) or None) for prefix in dict.fromkeys(value.split()))
+    if not _other_bindings_seen:
+        from docx4j_py.namespaces import PREFIXES
+
+        if any(uri is None or PREFIXES.get(prefix) != uri for prefix, uri in pairs):
+            _other_bindings_seen = True
+    return BoundPrefixes(value, pairs)
+
+
+def source_bindings(choice: Any) -> dict[str, str | None]:
+    """What a Choice's prefix-naming values were bound to in its source; empty where nothing was recorded.
+
+    docx4j ``McSourceBindings.of``: ``Requires``, ``mc:Ignorable`` and
+    ``mc:MustUnderstand`` together, typed or a wildcard.
+    """
+    out: dict[str, str | None] = {}
+    for value in _prefix_values(choice):
+        if isinstance(value, BoundPrefixes):
+            for prefix, uri in value.namespaces.items():
+                out.setdefault(prefix, uri)
+    return out
+
+
+def set_source_bindings(choice: Any, bindings: dict[str, str]) -> None:
+    """Record what a Choice's prefixes mean, for a Choice built or renamed in code. docx4j ``McSourceBindings.set``.
+
+    Each of its ``Requires``, ``mc:Ignorable`` and ``mc:MustUnderstand``
+    values is recorded with `bindings`' URI for each prefix it names.
+    """
+    if _is_any_element(choice):
+        attributes = choice.attributes or {}
+        for _field, key in MC_PREFIX_ATTRIBUTES:
+            value = attributes.get(key)
+            if isinstance(value, str) and value.split():
+                attributes[key] = _recorded(str(value), bindings)
+        return
+    for field, _key in MC_PREFIX_ATTRIBUTES:
+        value = getattr(choice, field, None)
+        if isinstance(value, str) and value.split():
+            setattr(choice, field, _recorded(str(value), bindings))
+
+
+def _prefix_values(choice: Any) -> list[Any]:
+    if _is_any_element(choice):
+        attributes = choice.attributes or {}
+        return [attributes.get(key) for _field, key in MC_PREFIX_ATTRIBUTES]
+    return [getattr(choice, field, None) for field, _key in MC_PREFIX_ATTRIBUTES]
+
+
+def requires_of(choice: Any) -> str | None:
+    """An ``mc:Choice``'s ``Requires``, typed or a wildcard."""
+    if _is_any_element(choice):
+        return (choice.attributes or {}).get("Requires")
+    return getattr(choice, "requires", None)
+
+
+def requires_namespaces(choice: Any) -> list[str | None]:
+    """The namespace URIs a Choice's ``Requires`` names, one per prefix, in order; None for a prefix bound to none.
+
+    docx4j ``McSelection.requiresNamespaces`` (WD REQ-303): matched by URI,
+    through the declarations recorded where the Choice was parsed
+    (:class:`BoundPrefixes`). Where none were recorded --- a Choice built in
+    code, or one whose ``Requires`` was set since --- docx4j's prefix table
+    (:data:`docx4j_py.namespaces.PREFIXES`) is used instead, as REQ-303
+    permits. Empty for an empty or whitespace-only ``Requires``.
+    """
+    requires = requires_of(choice)
+    if not isinstance(requires, str):
+        return []
+    prefixes = requires.split()
+    recorded = requires.namespaces if isinstance(requires, BoundPrefixes) else None
+    if recorded is None:
+        from docx4j_py.namespaces import PREFIXES
+
+        return [PREFIXES.get(prefix) for prefix in prefixes]
+    return [recorded.get(prefix) for prefix in prefixes]
+
+
+def understands(choice: Any) -> bool:
+    """Whether a reader of text understands a Choice (WD REQ-302 to REQ-304).
+
+    Its ``Requires`` names at least one prefix (REQ-304: an empty one is not
+    understood), and every prefix resolves to a namespace in
+    :func:`understood_namespaces` (REQ-303: by URI). docx4j
+    ``McSelection.understands``.
+    """
+    uris = requires_namespaces(choice)
+    if not uris:
+        return False
+    known = understood_namespaces()
+    return all(uri is not None and uri in known for uri in uris)
 
 
 def is_alternate_content(node: Any) -> bool:
@@ -529,40 +752,54 @@ def is_alternate_content(node: Any) -> bool:
     )
 
 
-def _requires_understood(requires: str | None) -> bool:
-    known = understood_prefixes()
-    return all(prefix in known for prefix in (requires or "").split())
+def mce_choices(node: Any) -> list[Any]:
+    """The ``mc:Choice`` branches of an ``mc:AlternateContent``, typed or wildcard, in order."""
+    if _is_any_element(node):
+        return [child for child in node.children or () if getattr(child, "qname", None) == MC_CHOICE]
+    return list(getattr(node, "choice", None) or ())
+
+
+def mce_fallback(node: Any) -> Any | None:
+    """The ``mc:Fallback`` of an ``mc:AlternateContent``, typed or wildcard, or None."""
+    if _is_any_element(node):
+        for child in node.children or ():
+            if getattr(child, "qname", None) == MC_FALLBACK:
+                return child
+        return None
+    return getattr(node, "fallback", None)
 
 
 def mce_branch(node: Any) -> Any | None:
-    """The branch of an ``mc:AlternateContent`` a consumer like this one takes.
+    """The branch of an ``mc:AlternateContent`` a reader of text takes (CR-011 section 3.2 item 1).
 
-    ECMA-376 Part 3: the **first** ``mc:Choice`` whose ``Requires`` prefixes are
-    *all* understood, and ``mc:Fallback`` if there is no such choice. "Under-
-    stood" is :func:`understood_prefixes`, which is the set of namespaces this
-    build generated classes for. Returns None when there is no choice and no
-    fallback --- which is legal and means "ignore this element".
+    docx4j's TEXT purpose (``McSelection.selectedBranch(TEXT, ...)``), which
+    is also its ``McMode.READ`` since 17.3.4: the **first** ``mc:Choice`` that
+    :func:`understands`, by namespace URI over docx4j's published list (WD
+    REQ-302, 303, 304, 306); else the ``mc:Fallback``; else, for an element
+    with Choices and no Fallback, its first Choice (REQ-305: a reading rule).
+    None for an element with no branch at all.
 
     Both shapes are handled: the typed ``docx4j_py.mce.AlternateContent`` the
     parser builds where the schema declares the element, and the ``AnyElement``
     one it builds inside a wildcard.
     """
-    if _is_any_element(node):
-        fallback = None
-        for child in node.children or ():
-            qname = getattr(child, "qname", None)
-            if qname == MC_CHOICE:
-                requires = (getattr(child, "attributes", None) or {}).get("Requires")
-                if _requires_understood(requires):
-                    return child
-            elif qname == MC_FALLBACK and fallback is None:
-                fallback = child
-        return fallback
-
-    for choice in getattr(node, "choice", None) or ():
-        if _requires_understood(getattr(choice, "requires", None)):
+    choices = mce_choices(node)
+    for choice in choices:
+        if understands(choice):
             return choice
-    return getattr(node, "fallback", None)
+    fallback = mce_fallback(node)
+    if fallback is not None:
+        return fallback
+    return choices[0] if choices else None
+
+
+def mce_branch_content(branch: Any) -> list[Any]:
+    """What a branch holds: a typed one's ``any_element``, a wildcard one's children; empty for None."""
+    if branch is None:
+        return []
+    if _is_any_element(branch):
+        return [child for child in branch.children or () if not isinstance(child, str)]
+    return list(getattr(branch, "any_element", None) or ())
 
 
 def iter_children(
@@ -585,11 +822,12 @@ def iter_children(
         mce: what to do with ``mc:AlternateContent`` (CR-002 section 5.6).
 
             ``"resolve"`` (the default)
-                the view Word takes: the element is transparent and its
-                children are the children of the branch a consumer that
-                understands :func:`understood_prefixes` would take --- the
-                first ``mc:Choice`` whose ``Requires`` prefixes are all
-                understood, else ``mc:Fallback``.
+                the view a reader of text takes: the element is transparent
+                and its children are the children of :func:`mce_branch`'s
+                branch --- the first ``mc:Choice`` whose ``Requires``
+                namespaces are all in docx4j's published understood list
+                (matched by URI, CR-011 section 3.3), else ``mc:Fallback``,
+                else the first ``mc:Choice``.
             ``"all"``
                 every branch, ``mc:Choice`` and ``mc:Fallback`` nodes included.
                 This is what :func:`link_parents` and the serialiser need: the
