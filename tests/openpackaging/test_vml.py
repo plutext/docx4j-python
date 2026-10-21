@@ -255,8 +255,32 @@ def saved_part(package_bytes: bytes, name: str = "word/document.xml") -> bytes:
         return zf.read(name)
 
 
-@pytest.mark.parametrize("path", [INSPECT, PROBE], ids=["inspect", "probe"])
-def test_an_objects_children_are_saved_in_document_order(path):
+#: docx4j's ``OLE/inserted doc.docx``'s ``w:object`` (Phase C's Word-check file 3), its
+#: ``v:shapetype``'s formulas left out: that file is not among this repository's fixtures.
+INSERTED_DOC_OBJECT = (
+    '<w:p><w:r><w:object w:dxaOrig="1512" w:dyaOrig="994" w14:anchorId="2867363E">'
+    '<v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"'
+    ' path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"><v:stroke joinstyle="miter"/>'
+    '<v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/><o:lock v:ext="edit" aspectratio="t"/>'
+    '</v:shapetype>'
+    '<v:shape id="_x0000_i1025" type="#_x0000_t75" style="width:75.6pt;height:49.8pt" o:ole="">'
+    '<v:imagedata r:id="rId4" o:title=""/></v:shape>'
+    '<o:OLEObject Type="Embed" ProgID="Word.Document.8" ShapeID="_x0000_i1025" DrawAspect="Icon"'
+    ' ObjectID="_1833807432" r:id="rId5"><o:FieldCodes>\\s</o:FieldCodes></o:OLEObject>'
+    "</w:object></w:r></w:p>"
+)
+
+
+def _inserted_doc_package() -> bytes:
+    from docx4j_py import create_package
+
+    pkg = create_package()
+    pkg.main_document_part.contents.body.content.insert(0, wml(INSERTED_DOC_OBJECT))
+    return pkg.save()
+
+
+@pytest.mark.parametrize("source", [INSPECT, PROBE, "inserted-doc"], ids=["inspect", "probe", "inserted-doc"])
+def test_an_objects_children_are_saved_in_document_order(source):
     """``w:object``'s ``v:shapetype``, ``v:shape``, ``o:OLEObject`` survive a load, unmarshal and save in that order.
 
     ``CT_PictureBase`` was a repeating sequence of a VML wildcard and an ``o:``
@@ -264,9 +288,10 @@ def test_an_objects_children_are_saved_in_document_order(path):
     before the ``v:shape`` its ``ShapeID`` names, which Word shows and will
     not activate (section 12.14, file 3). Patch 6 makes it one wildcard list
     in document order. (The probe's fifth object is a control: ``v:shapetype``,
-    ``v:shape``, ``w:control``.)
+    ``v:shape``, ``w:control``.) ``inserted-doc`` is file 3's object in a
+    package made here, saved once, then loaded, unmarshalled and saved.
     """
-    pkg = load(path)
+    pkg = load(_inserted_doc_package() if source == "inserted-doc" else source)
     part = pkg.main_document_part
     source = part.xml
     in_source = children_of(source, "w:object")
