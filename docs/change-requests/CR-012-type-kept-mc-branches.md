@@ -1785,7 +1785,7 @@ passed and 8 skipped at the parent commit, as the checkout does.
    beside 10.11's `regridded` (columns of 1000). `element(choice, fallback)` builds the
    `mc:AlternateContent` for the new tests.
 
-**The Word check (not yet checked).** One file is in `out/cr012-a2-grid-word-check/`, with a
+**The Word check (passed 2026-10-22).** One file is in `out/cr012-a2-grid-word-check/`, with a
 `README.txt` saying the source, what was done and what Word should show. Both are also copied to
 `~/vbShares/Office 2016/__tmp/python-cr012a2-grid/`.
 
@@ -1806,7 +1806,8 @@ The file is `cr012a2-grid-rejected.docx`.
 
 Expected: it opens with no repair prompt and no tracked change. It shows a bordered table of three
 equal columns: row 1 is X across one column and C across two, and row 2 is a, b and c. `F` is not
-shown. **Not yet checked.**
+shown. **Passed on 2026-10-22** (the user: "python-cr012a2-grid passes"): it opens with no repair
+prompt and shows what the README says.
 
 ## 11. Phase B implementation notes (2026-10-22)
 
