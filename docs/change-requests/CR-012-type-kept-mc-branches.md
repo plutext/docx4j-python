@@ -1,29 +1,35 @@
 # CR-012: Keep `mc:AlternateContent` at every level, and type what its branches hold, as docx4j does
 
-**Status:** Proposed 2026-10-19, at the user's request ("docx4j and docx4j-generated-objects-ts
-both retain all mc content ... do we? if not, please draft a CR"). Section 1 answers the
-question. **Revised 2026-10-21** at the user's request ("assess CR-051 and modify your CR-012 as
-appropriate"), after docx4j's CR-051. Section 1.1 corrects section 1's answer: an element at
-block, row or cell level is not kept, and a content control directly in a branch loses its runs.
-Section 3.1 measures both on Jason's probes. A new Phase A (section 4.1) ports CR-051's phase 1.
-The 61 roots, which were Phase A, are now Phase B, and VML is Phase C. The questions of section 7
-carry recommendations. **Revised again 2026-10-21** for docx4j CR-051's D5 as Jason revised
-it the same day (docx4j-25's note; docx4j's record of it not yet committed): docx4j's load-time
-mode defaults to `preserve` from 17.4.0, and 17.3.x keeps `word`. Q7's recommendation moves to
-(b), `preserve` by default, and section 4.1's readers' audit grows to match. **Decided
-2026-10-21** (the user: "CR-012 questions section: i accept each of the recommendations"): Q1 to
-Q8 as recommended, Q7 on its revised answer, `preserve` by default. By Q6, Phase A goes first and
-now. It starts once CR-002 section 16, which changes the same `XmlPart._unmarshal`, has landed. B
-follows A, and C waits for its own go (Q4). **Phase A implemented the same day** (section 9), the
-port of docx4j CR-051 phase 1: the schema copy refreshed to docx4j `2853b7280`; the fork's stage
-11 (a branch's child typed by its container, and a generator fix that makes the output
-independent of the bytecode cache); `LoadOptions(mc_block_level=)`, `preserve` by default; the
-readers reading Word's branch at block level, an edit inside a kept branch refused; the revisions
-twins; and docx4j's 19 probes with Word 365's 14 saves. In `preserve` mode all 19 probes save
-canonically identical; in `word` mode all 14 read as Word's save. The acceptance artefacts are
-unchanged and CR-011's ratchet does not move. **The Word check of three probe saves passed the
-same day** (the user: "__tmp/python-cr012a/ are all good"; 9.12): **Phase A done**. Row and cell level are passed by; docx4j's phase 2
-(`9db1a3cbd`), which reads them, is ported as Phase A2 (section 4.4), started the same day at the user's go ("make the CLAUDE.md edits, then do phase A2"). **Phase A2 implemented the same day** (section 10): a branch's `w:tr` and `w:tc` typed by their container (the fork's stage 11 item 27, tests only); the text model, the revisions engine (twins, the table-removal rule) and the content API (read-only) at row and cell level; docx4j's phase 2 tests; the five row and cell probes read `w16sdtfl` and save canonically identical in `preserve` mode; acceptance unchanged; **the Word check of six saves is the user's** (`out/cr012-a2-word-check/`).
+**Status:** Proposed 2026-10-19, at the user's request ("docx4j and docx4j-generated-objects-ts both
+retain all mc content ... do we? if not, please draft a CR"). Section 1 answers the question.
+**Revised 2026-10-21** at the user's request ("assess CR-051 and modify your CR-012 as
+appropriate"), after docx4j's CR-051. Section 1.1 corrects section 1's answer: an element at block,
+row or cell level is not kept, and a content control directly in a branch loses its runs. Section
+3.1 measures both on Jason's probes. A new Phase A (section 4.1) ports CR-051's phase 1. The 61
+roots, which were Phase A, are now Phase B, and VML is Phase C. The questions of section 7 carry
+recommendations. **Revised again 2026-10-21** for docx4j CR-051's D5 as Jason revised it the same
+day (docx4j-25's note; docx4j's record of it not yet committed): docx4j's load-time mode defaults to
+`preserve` from 17.4.0, and 17.3.x keeps `word`. Q7's recommendation moves to (b), `preserve` by
+default, and section 4.1's readers' audit grows to match. **Decided 2026-10-21** (the user: "CR-012
+questions section: i accept each of the recommendations"): Q1 to Q8 as recommended, Q7 on its
+revised answer, `preserve` by default. By Q6, Phase A goes first and now. It starts once CR-002
+section 16, which changes the same `XmlPart._unmarshal`, has landed. B follows A, and C waits for
+its own go (Q4). **Phase A implemented the same day** (section 9), the port of docx4j CR-051 phase
+1: the schema copy refreshed to docx4j `2853b7280`; the fork's stage 11 (a branch's child typed by
+its container, and a generator fix that makes the output independent of the bytecode cache);
+`LoadOptions(mc_block_level=)`, `preserve` by default; the readers reading Word's branch at block
+level, an edit inside a kept branch refused; the revisions twins; and docx4j's 19 probes with Word
+365's 14 saves. In `preserve` mode all 19 probes save canonically identical; in `word` mode all 14
+read as Word's save. The acceptance artefacts are unchanged and CR-011's ratchet does not move.
+**The Word check of three probe saves passed the same day** (the user: "__tmp/python-cr012a/ are all
+good"; 9.12): **Phase A done**. Row and cell level are passed by; docx4j's phase 2 (`9db1a3cbd`),
+which reads them, is ported as Phase A2 (section 4.4), started the same day at the user's go ("make
+the CLAUDE.md edits, then do phase A2"). **Phase A2 implemented the same day** (section 10): a
+branch's `w:tr` and `w:tc` typed by their container (the fork's stage 11 item 27, tests only); the
+text model, the revisions engine (twins, the table-removal rule) and the content API (read-only) at
+row and cell level; docx4j's phase 2 tests; the five row and cell probes read `w16sdtfl` and save
+canonically identical in `preserve` mode; acceptance unchanged; **the Word check of six saves is the
+user's** (`out/cr012-a2-word-check/`).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -31,8 +37,10 @@ same day** (the user: "__tmp/python-cr012a/ are all good"; 9.12): **Phase A done
   - docx4j's published understood list (`understood-namespaces.txt`, CR-046), which CR-011's
     Q2 also ports;
   - a change to the xsdata fork's runtime (section 4.1 item 2);
-  - CR-002 section 16 (in progress 2026-10-21), which changes the same `XmlPart._unmarshal` and
+  - CR-002 section 16 (implemented 2026-10-21), which changes the same `XmlPart._unmarshal` and
     records the load options a private parse used, the record the mode joins.
+- **Phase A2:** docx4j CR-051 phase 2 (`9db1a3cbd` on `VERSION_17_3_4`, pushed), whose readers
+  it ports.
 - **Phase B:** a further change to the fork's runtime (section 4.2).
 - **Phase C:** docx4j CR-048 (`acd0defc9` on `VERSION_17_3_4`, pushed 2026-10-18, to ship in
   17.3.4), whose VML schema this phase copies.
