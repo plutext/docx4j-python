@@ -474,12 +474,15 @@ def reader_answers(path: Path) -> dict[str, Any]:
     read("body.outline", lambda: body.outline().to_dict())
     read("package.describe", lambda: package.describe().to_dict())
     read("body.get_text", lambda: body.get_text())
+    # CR-011 Phase F: the original view, and each text model run's place in the paragraph's get_text()
+    read("body.get_text.original", lambda: body.get_text(view="original"))
     read("body.find", lambda: {w: [h.to_dict() for h in body.find(w)] for w in WORDS})
     read("body.search", lambda: {w: [r.text for r in body.search(w)] for w in WORDS})
     read("text.extract", lambda: extract(package).to_dict())
     read("text.plain_text", lambda: plain_text(extract(package)))
     read("text.markdown", lambda: markdown(extract(package), package))
     read("package.to_markdown", lambda: package.to_markdown())
+    read("text.office_offsets", lambda: _office_offsets(package))
     read(
         "revisions.tracked_changes",
         lambda: [[c.type, str(c.kind), c.author, c.text] for c in tracked_changes(package)],
@@ -499,6 +502,25 @@ def reader_answers(path: Path) -> dict[str, Any]:
     for verb in ("accept_all", "reject_all"):
         read(f"revisions.{verb}", lambda verb=verb: _resolved(path, verb))
     return out
+
+
+def _office_offsets(package: Any) -> dict[str, Any]:
+    """Each text model run's ``office_offset`` in both views, and how many disagree with ``get_text()`` (CR-011 12.6)."""
+    from docx4j_py.model.content.text_model import text_of_view
+    from docx4j_py.model.text import extract
+
+    runs: list[list[Any]] = []
+    disagree = 0
+    for view in ("accepted", "original"):
+        for block in extract(package, view=view).blocks:
+            for run in block.runs:
+                if run.office_offset is None:
+                    continue
+                runs.append([view, block.address, run.text, run.office_offset])
+                office = text_of_view(run.source.paragraph, view=view)
+                if office[run.office_offset : run.office_offset + len(run.text)] != run.text:
+                    disagree += 1
+    return {"runs": runs, "disagree": disagree}
 
 
 def _resolved(path: Path, verb: str) -> dict[str, Any]:
