@@ -6,7 +6,7 @@ section 3. Three commands:
 
     .venv-fork/bin/python scripts/mce_branches.py corpus
     .venv-fork/bin/python scripts/mce_branches.py survey [--json out.json] [ROOT ...]
-    .venv-fork/bin/python scripts/mce_branches.py readers --out FILE [--holding mc|vml|either] [ROOT ...]
+    .venv-fork/bin/python scripts/mce_branches.py readers --out FILE [--holding mc|vml|either|all] [ROOT ...]
     .venv-fork/bin/python scripts/mce_branches.py compare-readers BEFORE AFTER
 
 ``corpus`` builds ``out/cr012-b-corpus/`` from commits, never from a working
@@ -32,9 +32,10 @@ does not, if the two saves differ canonically, or if a skipped report differs.
 
 ``readers`` runs every reader of text or structure over every distinct corpus
 document holding ``mc:AlternateContent`` in a WordprocessingML part (``--holding
-vml``: VML, CR-012 Phase C's audit; ``either``: both) and writes the answers as
-JSON; ``compare-readers`` lists every answer that changed between two such
-runs. Run it before a change and after it.
+vml``: VML, CR-012 Phase C's audit; ``either``: both; ``all``: every distinct
+document, CR-013 Phase A's, since Office JS's characters move documents with no
+``mc`` at all) and writes the answers as JSON; ``compare-readers`` lists every
+answer that changed between two such runs. Run it before a change and after it.
 """
 
 from __future__ import annotations
@@ -471,6 +472,10 @@ def reader_answers(path: Path) -> dict[str, Any]:
         return answers
 
     read("body.element_at", element_at)
+    # CR-013 Phase A: the multi-paragraph texts Office JS's characters move, a block
+    # control's text and a comment's content (a cell's value is body.tables')
+    read("body.content_controls", lambda: [[c.address, c.text] for c in body.content_controls])
+    read("body.comments", lambda: [[c.id, c.content] for c in body.get_comments()])
     read("body.outline", lambda: body.outline().to_dict())
     read("package.describe", lambda: package.describe().to_dict())
     read("body.get_text", lambda: body.get_text())
@@ -543,11 +548,13 @@ def _resolved(path: Path, verb: str) -> dict[str, Any]:
 
 
 #: Which documents ``readers`` reads: those holding ``mc:AlternateContent`` (Phase B's audit), those
-#: holding VML (Phase C's), or either.
+#: holding VML (Phase C's), either, or all of them (CR-013 Phase A's: Office JS's characters move
+#: documents with no ``mc`` at all).
 HOLDING = {
     "mc": holds_alternate_content,
     "vml": holds_vml,
     "either": lambda path: holds_alternate_content(path) or holds_vml(path),
+    "all": lambda path: True,
 }
 
 
@@ -565,8 +572,13 @@ def readers(roots: list[Path], out_path: Path, holding: str = "mc") -> int:
             print(f".. {index} of {len(docs)}, {time.perf_counter() - started:.0f} s", flush=True)
     out_path.write_text(json.dumps(answers, indent=1, sort_keys=True), encoding="utf-8")
     errors = sum(1 for a in answers.values() for v in a.values() if isinstance(v, str) and v.startswith("ERROR"))
-    what = {"mc": "mc:AlternateContent", "vml": "VML", "either": "mc:AlternateContent or VML"}[holding]
-    print(f"{len(docs)} documents holding {what}; {errors} reader errors; written to {out_path}")
+    what = {
+        "mc": "holding mc:AlternateContent",
+        "vml": "holding VML",
+        "either": "holding mc:AlternateContent or VML",
+        "all": "(every distinct document)",
+    }[holding]
+    print(f"{len(docs)} documents {what}; {errors} reader errors; written to {out_path}")
     return 0
 
 
@@ -614,7 +626,7 @@ def main(argv: list[str] | None = None) -> int:
         "--holding",
         choices=sorted(HOLDING),
         default="mc",
-        help="the documents read: those holding mc:AlternateContent (the default), VML, or either",
+        help="the documents read: those holding mc:AlternateContent (the default), VML, either, or all",
     )
     c = sub.add_parser("compare-readers", help="the answers that changed between two reader runs")
     c.add_argument("before", type=Path)
