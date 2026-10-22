@@ -2,7 +2,7 @@
 # The distribution is `docx4j`, the import name `docx4j_py` (CR-007 section 4.1, as
 # python-docx / docx). The release procedure is RELEASING.md.
 name = "docx4j"
-version = "0.1.0"
+version = "0.2.0"
 description = "docx4j for Python: ECMA-376 WordprocessingML as typed objects, the Open Packaging engine, and a content API in Office JS's vocabulary with a python-docx facade"
 readme = "docs/pypi-readme.md"
 requires-python = ">=3.12"

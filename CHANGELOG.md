@@ -9,6 +9,20 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
+## [0.2.0] --- 2026-10-22
+
+Still WordprocessingML only; PresentationML and SpreadsheetML remain CR-001 Phase D and CR-002
+Phase C. Three change requests are new, each complete and Word-checked:
+[CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), tracked changes
+listed, accepted and rejected as Word 365 resolves them (`docx4j_py.model.revisions`);
+[CR-011](docs/change-requests/CR-011-one-text-model.md), one text model under every reader of
+text, with Markdown, charts, equations and field switches as docx4j reads them
+(`docx4j_py.model.text`); and [CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md),
+`mc:AlternateContent` kept at every level with its branches typed, VML among them. With them,
+CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
+of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
+save. It needs docx4j-xsdata 26.2.2.
+
 ### Added
 
 - **Tracked changes listed, accepted and rejected as Word resolves them**
@@ -634,5 +648,6 @@ SpreadsheetML are CR-001 Phase D and CR-002 Phase C, for `0.2` and `0.3`.
 | `docx4j_py.model` (resolver, `StyleUtil`, fonts, numbering) | Stable: docx4j's, zero differences on the goldens |
 | Anything under `codegen/`, `scripts/`, `baseline/` | Not shipped in the wheel; in the source distribution for the suite |
 
-[Unreleased]: https://github.com/plutext/docx4j-python/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/plutext/docx4j-python/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/plutext/docx4j-python/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/plutext/docx4j-python/releases/tag/v0.1.0
