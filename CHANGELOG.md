@@ -174,6 +174,34 @@ save. It needs docx4j-xsdata 26.2.2.
   `pkg.to_markdown()` is about 48 ms where 0.1.0's was 8 ms with the body parsed, and about 90 ms
   where it was 53 ms read fresh from a file, the main part's parse included (CR-011 section 14.9).
   A first `pkg.body` after it no longer parses the main part again (CR-002 section 16, below).
+- **`Paragraph.text`, `get_text`, `search` and `find` read the branch Word shows of a run- or
+  paragraph-level `mc:AlternateContent`, as Office JS does**
+  ([CR-011](docs/change-requests/CR-011-one-text-model.md) Phase F, sections
+  [15](docs/change-requests/CR-011-one-text-model.md#15-phase-f-the-office-js-readers-read-words-branch-q4-revised-2026-10-22-implemented-2026-10-22-section-16)
+  and [16](docs/change-requests/CR-011-one-text-model.md#16-phase-f-implementation-notes-2026-10-22);
+  Q4 revised 2026-10-22). Word 365's `paragraph.text` gives the selected branch's words, never a
+  Fallback's and never nothing, and `body.search` finds a word only a Choice holds and none only a
+  Fallback holds (docx4j-core-ts check 49). 0.1.0 passed the element by: `"I prefer "` where Word
+  shows `I prefer w14`, and nothing for a paragraph whose text is all in a branch. The branch is
+  the one `text_of`, the text model and docx4j's TEXT purpose take, so `Paragraph.text`,
+  `Body.text`, `Range.text`, a block control's text, `get_text` in `accepted` and `original`,
+  `search`, `find` and `replace_text`'s matches now agree with a cell's text and with the text
+  model; a branch's insertions and deletions are filtered as the paragraph's own, and a text box
+  in a branch still gives nothing (check 42). A break stays `\n` where Office JS gives U+000B.
+  **An edit through that text is refused** with `address.read_only` before anything changes (an
+  edit there would change Word's branch alone): an insertion strictly inside it, and any span
+  holding it --- `insert_text`, `delete`, `font` and `style` writes through a `Range`, a
+  paragraph's `font` writes, `insert_content_control`, `insert_comment`, `hyperlink` and
+  `insert_ooxml` through a range, `replace_text` (every match checked first) and, with change
+  tracking on, `Paragraph.text = ...`, `delete`, `Body.clear` and a row's or a table's deletion.
+  An insertion at either end of the element's text goes beside the element, and an edit
+  elsewhere in the paragraph works as before. **Offsets in such a paragraph count the branch's
+  text**, so a stored `Range` or `SearchHit` offset after the element moves by its length, and
+  each text model run read from a branch has its `office_offset`. Text model runs either side of
+  a branch's boundary with the same formatting are now one run in `TextBlock.runs`, as docx4j
+  writes them; their text is unchanged. The python-docx facade's readers are unchanged, and its
+  `add_comment` on a run whose only text is a branch's is refused, where 0.1.0 anchored the
+  comment at the paragraph's start.
 - **A read leaves every part as it was**: `pkg.to_markdown()` and `pkg.markdown_budget()` read the
   package with nothing unmarshalled, so a save afterwards writes `word/document.xml`, and
   `word/footnotes.xml` in a document with a footnote reference, from the source bytes, where

@@ -1576,7 +1576,7 @@ of that difference. No CR-010 `xfail` is left.
 - Lint: the new modules pass `ruff check`; the files they touch keep their earlier findings
   (`extractor.py`'s `S110`, the import order of `paragraph.py` and `range.py`).
 
-## 15. Phase F: the Office JS readers read Word's branch (Q4 revised 2026-10-22; started 2026-10-22)
+## 15. Phase F: the Office JS readers read Word's branch (Q4 revised 2026-10-22; implemented 2026-10-22, section 16)
 
 **Why.** Q4 kept `text`, `get_text` and `search` on Office JS's text. This package's readers took
 that to be the paragraph's own runs, a kept `mc:AlternateContent`'s branches passed by, and so did
@@ -1660,3 +1660,348 @@ core-ts until its CR-012 phase 4. Word 365 measures otherwise.
 - `body.text` over a paragraph-level element, `range.text` over such a paragraph and
   `tableCell.value` for a cell holding one, which check 49 did not measure. They follow from
   `Paragraph.text` here by construction, and are recorded as unmeasured.
+
+## 16. Phase F implementation notes (2026-10-22)
+
+Section 15 as built, at the user's go ("go for phase F, now please"). A run- or paragraph-level
+`mc:AlternateContent` in a paragraph is read by the Office JS readers as the branch Word shows,
+`child.mce_branch`'s, which is docx4j's TEXT rule over `understood_namespaces()` and the branch
+`text_of` and the text model already read. Its runs are read as the paragraph's own: the same
+characters, deletions out in `accepted` and insertions out in `original`. Its text is not editable.
+An edit through it is refused with `address.read_only` before anything changes. An insertion at
+either end of it goes beside the element. On check 49's probe each case's `Paragraph.text` is Word
+365's, case 2's U+000B apart, and every Word 365 save of docx4j's `mc-fun` probes reads as its
+probe does.
+
+**Commits.**
+- `4ea4977`: the audit's two new readers (`scripts/mce_branches.py readers`: `get_text` in the
+  original view, and each text model run's `office_offset` with a count of those that disagree
+  with `get_text()`).
+- `e71874d`: the readers, the edit rule, the tests and the fixture.
+- The commit adding this section: this section, section 15's heading, the CHANGELOG entry and
+  `tests/README.md`'s two rows.
+
+### 16.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the reading | `model/content/text_model.py` | `segments_of`'s walk (`_Walker`) reads a run-level element's branch as the run's items and a paragraph-level one's runs as the paragraph's; `Segment.branch`, `outer`, `outer_owner`, `outer_index` and `site()`; `branch_text`, `branch_extents`, `touches_branch_text`, `refuse_branch_text`; `kept_content_under` also answers a paragraph whose text holds a branch's |
+| the edit rule | `model/content/paragraph.py`, `range.py`, `font.py`, `body.py`, `comments.py`, `hyperlinks.py`, `ooxml.py`, `controls.py`, `model/customxml/insert.py` | the refusals (16.3); the placements beside an element (`Segment.site()`) in `splice`, `insert_items_at`, the tracked insertion, an empty span's comment reference run, an empty content control inserted at an offset, and a run control's `insert_text` at its edges; `Font(guard=)`; `Range.get_xml`'s trim around an element |
+| the offsets' own walkers | `comments.py` (`_visit_runs`), `tracked_change.py` (`_accepted_offset_of`, `_accepted_run_text`) | count a branch's text, so a comment marker's offset and a revision's collapsed place agree with the new text |
+| docstrings | `paragraph.py`, `range.py`, `body.py`, `table.py`, `controls.py`, `comments.py`, `model/text/__init__.py`, `result.py`, `extractor.py` | each Office JS reader that said it keeps Office JS's text under Q4 now says it reads Word's branch (Q4 revised, section 15); the module docs of `text_model` and `range` say what is read and refused |
+| tests | `tests/content/test_word_branch_text.py` (98, new); `tests/openpackaging/test_mce_typed.py` (one pin moved, 16.10) | 16.4 to 16.6 |
+| fixture | `tests/fixtures/mc-branches.docx` | check 49's probe, docx4j-ts-editor `4e02089`, by `git show`, checked against its blob (`4c1af10f`) |
+| documents | `CHANGELOG.md` (a "Changed" entry under 0.2.0), `tests/README.md` (the test file's row, the fixture's row) | |
+
+### 16.2 The readers changed
+
+- **Through `segments_of`**, which all of them read: `Paragraph.text`, `get_text` and
+  `text_budget` in `accepted` and `original`; `Body.text`, `get_text` and `text_budget`; a block
+  control's and a cell's body text and `Comment.content`, each a `Body`'s; `Range.text`, and
+  `Range.runs`, which now lists a paragraph-level branch's runs a span covers; `search`, `find`
+  and `replace_text`'s matches on `Body`, `Paragraph`, `Range` and `ContentControl`, a run
+  control's span (`get_range`, `search`) and `SearchHit`'s context; `Paragraph.to_dict()`'s text
+  and `repr`; `Range.hyperlink` read through a link holding branch text; `TrackedChange.get_range()`
+  (a change inside a paragraph-level branch, a twin since CR-012 Phase A, now has its span there);
+  and the text model's `office_offset`, which `extract` takes from the segments by item, so a run
+  read from a branch gets its offset with no change to the model.
+- **The offsets' own walkers** count a branch's text: the comment markers' (`CommentMarker.offset`,
+  so `Comment.get_range()` and a range's `get_comments()`), and a revision's collapsed place.
+  A comment marker inside a paragraph-level branch is one branch's and is still not listed.
+- **Unchanged:** `Paragraph.runs` and `runs_of`, which list no paragraph-level branch's run (a
+  run-level element's `w:r` always was one), and with them `Paragraph.font`'s reads (the first
+  own run's); `inline_pictures` (CR-012); `text_of` and its readers (`Block.text`, `Table.text`,
+  `Table.values`, `TableCell.text`, a run control's text), `TrackedChange.text` (Q6); the
+  python-docx facade's readers (Q5); `outline()`, `describe()`, the text model's text, plain text
+  and Markdown. The text model's `TextBlock.runs` split differently at a branch's edge, its text
+  the same (16.5).
+
+### 16.3 The edit rule as built
+
+- **The rule** (`text_model.touches_branch_text`): an edit is refused when its span holds any text
+  a kept element gives the paragraph, or, for an insertion, when its offset lies strictly inside
+  one element's text. The offsets are first snapped outwards to grapheme boundaries, as an edit
+  snaps them. The refusal is `AddressError` `address.read_only`, its message naming the verb and
+  the span, its hint the two ways on: an edit beside the element, or
+  `LoadOptions(mce_preprocess=True)`, which takes Word's branch in place of the element.
+- **Every verb asks before it changes anything.**
+  - The primitives: `Paragraph.splice`, so `insert_text` on a paragraph, a range and a run
+    control, `Range.delete` and a tracked replace; the tracked deletion (`_delete_text`, so
+    `delete_text_tracked` and a deleted row's cells) and insertion; `insert_items_at`, so a
+    one-paragraph `insert_xml`, `insert_markdown`, `insert_ooxml` and a picture at a paragraph's
+    `Start` or `End`.
+  - Through a range: `font` writes (`Font`'s new `guard`, called before the runs are split or a
+    report opened), `style`, `style_id` and `style_built_in`, `insert_content_control`,
+    `insert_comment`, `hyperlink` (over the span and every link it takes in) and `insert_ooxml`
+    (before the fragment's parts are added).
+  - Over a whole paragraph whose text holds a branch's: `Paragraph.font` writes,
+    `insert_comment`, `insert_text("Replace")` and, with change tracking on, `Paragraph.text = ...`,
+    `delete`, and `insert_xml` and `insert_ooxml` at `Replace`.
+  - `replace_text` on a body, a paragraph and a range checks every match before it replaces the
+    first, so a refusal in a later paragraph leaves nothing replaced. core-ts's
+    `Body.replaceText` refuses paragraph by paragraph (its CR-012 section 12.4).
+  - With change tracking on, `Body.clear()`, `Body.insert_text("Replace")` and a table's or a
+    row's deletion refuse through `kept_content_under`, as they refuse a block-level element.
+- **What still works.**
+  - Untracked, `Paragraph.text = ...`, `Paragraph.delete()`, `Body.clear()`, a cell's `value`
+    and a control's `delete` replace or remove the content, the element with it, every branch
+    gone together.
+  - An edit anywhere else in the paragraph works as before, its offsets counting the branch's
+    text.
+  - A paragraph's own properties (`style`, `alignment`, a list), `insert_paragraph`,
+    `insert_break`, and `Paragraph.insert_content_control`, which wraps the paragraph whole.
+- **Beside the element.** An insertion at either end of the element's text goes outside it.
+  - The new run, or the `w:ins` with change tracking on, is placed next to the item outside every
+    branch that holds the text (`Segment.site()`). That is the `w:r` a run-level element is in, or
+    the paragraph-level element itself.
+  - It never extends a branch's `w:t` (a branch's segment is not editable) or joins a branch's
+    `w:ins`.
+  - It copies the neighbouring run's `w:rPr`, as before, and that may be a branch's run: case
+    8's `^` at `Start` is bold like `bold ying`.
+  - Parents are linked to the element's own holder.
+- **The tracked `Paragraph.text = ...`: refused.** Its tracked form would mark the element's
+  text deleted. At run level that is the `w:r` in a `w:del`, with every branch's `w:t` turned
+  into `w:delText`. At paragraph level it is a `w:del` around the `mc:AlternateContent`, which
+  `CT_RunTrackChange`'s content (`EG_ContentRunContent`) doesn't admit in this schema copy (CR-012
+  admitted the element in fifteen block, row and cell lists only), or a `w:del` inside each
+  branch. Neither form has been measured in Word. core-ts's ED-009 edits Word's branch in place,
+  which section 15 item 3 leaves for later. With no clean, Word-consistent form, it is refused, as
+  is every other tracked deletion of such text. Untracked, it replaces the content as before.
+
+### 16.4 The probe, before and after
+
+Check 49's probe, `tests/fixtures/mc-branches.docx`. The before column is at `73c41ed`
+(`out/cr011-f/probe-before.txt`), the after column at `e71874d` (`probe-after.txt`).
+
+| case | paragraph | Word 365 | before | after |
+|---|---|---|---|---|
+| 1 | `body/2` | `The Earth is flat` | `''` | `The Earth is flat` |
+| 2 | `body/4` | `Before\tafter the tab\u000bafter the break` | `''` | `Before\tafter the tab\nafter the break` (item 2, pinned) |
+| 3 | `body/6` | `unknown choice` | `''` | `unknown choice` |
+| 4 | `body/8` | `nothing to select` | `''` | `nothing to select` |
+| 5 | `body/10` | `A picture:  after it` | `''` | `A picture:  after it` |
+| 6 | `body/12` | `I prefer w14` | `I prefer ` | `I prefer w14` |
+| 7 | `body/14` | `I prefer w16du` | `I prefer ` | `I prefer w16du` |
+| 8 | `body/16` | `bold ying plain ying` | `''` | `bold ying plain ying` |
+| 9 | `body/18` | `I prefer w16sdtdh` | `I prefer ` | `I prefer w16sdtdh` |
+| 10 | `body/20` | `I prefer w16sdtfl` | `I prefer ` | `I prefer w16sdtfl` |
+
+- **Word 365's answers.** Cases 1 to 8 are the report in Jason's save,
+  `mc-branches-check49-word365.docx` (editor `3189640`), over the eight-case probe. That probe is
+  `4e02089`'s without cases 9 and 10: only `word/document.xml` differs, by the two cases inserted
+  before the last paragraph. Cases 9 and 10 are Jason's reading (ED-009 section 9.2 item 5). The
+  save is not copied; the test writes the answers out.
+- **The rest of the readers.** `get_text(view="original")` is the same as `get_text()` in each
+  case. Every paragraph's `text` equals `text_of`'s, and `Body.text` equals the text model's plain
+  text.
+- **Search.**
+  - Before: `search("ying")` and `search("flat")` found nothing. Of the report's thirteen
+    `search` counts, 4 were equal under `match_case=True`.
+  - After: `ying` hits twice in `body/16` (5:9 and 16:20), `flat` once (`body/2` 13:17), and
+    `yang` and `round` not at all. All 13 counts are equal.
+  - The report's counts are case-sensitive ones. Under the default, case-insensitive search,
+    `unknown choice` also hits the labels' `unknown Choice`, three in all. The snippet itself is on
+    the share, not in a repository.
+- **Edits.**
+  - Check 49's `insertText("YY", "After")` through the first `flat` hit leaves the paragraph
+    reading `The Earth is flatYY`, Word's text. Here the `YY` goes beside the element (16.8 item
+    1).
+  - Every edit through a hit is refused, and every edit beside the element works (16.6's tests).
+- **Before Phase F, an edit beside the element was misplaced** (at `73c41ed`).
+  `insert_text("!", "End")` on case 6 put the text before the element, so Word would show
+  `I prefer !w14`. Case 8's `End` went before the element too (`$bold ying plain ying`), and case
+  1's `End` gave `YYThe Earth is flat`. A font write over case 8 changed none of the branch's
+  runs, so nothing Word shows. The insertions now go after the element, and the font write is
+  refused.
+- **docx4j's `mc-fun` probes.** Each of the 14 with a Word 365 save now reads paragraph for
+  paragraph as Word's save does, against 11 of 14 before. The three that moved are `mc-run`,
+  `mc-mixed` and `mc-sdt-run-newest-first`, whose run-level branches read as nothing.
+
+### 16.5 The readers' audit
+
+`scripts/mce_branches.py readers --holding either` was run over `out/cr012-b-corpus/`, Phase B
+and C's corpus, unchanged. Its `COMMITS.txt` names this repository at `f1bb1d9`, docx4j-core-ts at
+`df5b4af` and docx4j at `901a922a3`.
+- **The runs.** At `73c41ed` with `4ea4977`'s two readers (`out/cr011-f/readers-before.json`),
+  and at `e71874d` (`readers-after.json`). Both cover 384 documents, with 4 reader errors each:
+  the four Strict documents that fail to load, as in CR-012 12.8. `compare-readers` is in
+  `out/cr011-f/compare.txt`.
+- **The check.** For every document that moved, every moved paragraph was checked to hold
+  branch text. Its text before was checked to be its own runs' text, the branch's left out, and
+  its text after to be `Paragraph.text`'s.
+  - The same holds for `get_text` in both views (joined paragraphs) and `element_at`.
+  - Every `find` hit that moved is in such a paragraph.
+  - No problem was found.
+
+**What moved: 13 documents, 19 paragraphs, each gaining exactly the text of Word's branch.**
+
+| document | paragraphs: before → after |
+|---|---|
+| docx4j's `mc-fun/mc-run.docx`, `mc-text.docx` | `I prefer ` → `I prefer w14` |
+| `mc-run-newest-first.docx`, `mc-text-newest-first.docx`, `mc-sdt-run-newest-first.docx` | `I prefer ` → `I prefer w16sdtfl` |
+| `mc-mixed.docx` | `sdt run: ` → `sdt run: SDTRUN_W14`; `hyperlink: ` → `hyperlink: HLINK_W14`; `in p: ` → `in p: INP_W14` |
+| docx4j's `text-extraction/extraction-probe.docx`, `phase0/extraction-probe.docx`, `phase0/evidence/checked-52/extraction-probe.docx`, `phase0/evidence/extraction-probe-v1-rejected.docx` (four by content) | `body/7` `The runs: ` → `The runs: SUPPORTED_DELTA `; `body/11` `The runs: ` → `The runs: MCE5_FIRST_SUPPORTED ` |
+| `extraction-probe-inspect.docx`, this repository's and docx4j's (two by content) | `body/66` `MCE67_HERE ` → `MCE67_HERE MCE67_CHOICE ` |
+| docx4j-core-ts's `check50/50-declarations.docx` | `body/10` `Case 5: ` → `Case 5: 5: the Fallback (plain text, no box)`, the Fallback Word 365 shows for its `zz9` Choice (check 50); cases 1 to 4, text boxes, give nothing as before |
+
+- **The readers that moved, by document:**
+  - `body.paragraphs`, `body.get_text`, `body.get_text.original`, `body.element_at` and
+    `text.office_offsets`: 13 each;
+  - `body.find`: 11;
+  - `body.search`: 7 (the audit records each hit's text, not its offsets, so it moves only where a
+    branch's text holds one of its three words, `e`, `the` and `Text`);
+  - `text.extract`: 13.
+- **The hit counts.** `search` hits over the three words went from 58,777 to 58,801 (+24), and
+  `find`'s, at most 20 a word, from 7,611 to 7,613.
+- **The offsets.** Runs with an `office_offset` went from 15,553 to 15,555. Those disagreeing with
+  `get_text()` were 0 before and 0 after.
+- **`text.extract` (the text model's JSON) moved in 13 documents, 22 blocks, its text unchanged.**
+  - In each block, two runs of the same formatting either side of a branch's edge are now one
+    run, for example `["I prefer ", "w14"]` → `["I prefer w14"]`.
+  - The cause is the merge rule: two runs are one only where their texts are contiguous in
+    `Paragraph.text` (core-ts CR-012 4.4). A branch's run had no offset before, so it stayed
+    apart.
+  - docx4j's `Extractor.addText` (at `2853b7280`) merges on kind, hidden, placeholder, revision
+    and format alone, so the new runs are docx4j's.
+  - core-ts merges by the same contiguity over its `Paragraph.text`, which has read the branch
+    since its CR-012 phase 4 (`9307bdb`).
+  - `text.plain_text`, `text.markdown` and `package.to_markdown` did not move in any of the 384.
+- **Nothing else moved:**
+  - tables, inline pictures, `outline()` and `describe()`;
+  - the tracked changes listed, Accept All and Reject All with their text and every part's
+    canonical form;
+  - `fonts_in_use()` and `styles_in_use()`;
+  - the facade's paragraphs, tables and inline shapes.
+
+### 16.6 The gates, before and after
+
+The before runs were made at `73c41ed` in a detached worktree of this repository, with the siblings
+linked beside it. The after runs were made at `e71874d`, in the checkout.
+
+| gate | before | after |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 3,884 passed, 8 skipped, 1,280 deselected, 1 failed | 3,982 passed, 8 skipped, 1,280 deselected, 1 failed |
+| the full suite | 5,164 passed, 8 skipped, 1 failed (3 min 10 s) | 5,262 passed, 8 skipped, 1 failed (3 min 16 s) |
+| `tests/content/test_word_branch_text.py` | --- | 98 passed |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; the report written both times is `conformance.tsv` byte for byte |
+| `tests/text/test_conformance.py`; `tests/text` | 24 passed; 1,188 passed | 24; 1,188 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `tests/revisions` | 68 passed; 550 passed | 68; 550 |
+| the parity goldens (`test_numbering_goldens.py`, `test_properties_goldens.py`, `test_fonts_goldens.py`) | 277 passed, `PINS` empty | 277, `PINS` empty |
+| `codegen/generate.sh --check` | --- | byte identical (294 modules); no generated file changed |
+| `scripts/roundtrip.py` | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings | the same, exit 0 |
+| acceptance (`scripts/compare_acceptance.py`) | `out/acceptance-before-cr011-f/` (copied first) | 13 artefacts, 175 entries, 0 differing beyond the dates; against a regeneration at `73c41ed`, 172 entries the same bytes and 3 in the dates only |
+
+- **The one failure, both times: `tests/content/test_office_js_subset.py::test_the_script_would_write_what_is_committed`**,
+  the known external one. It is not a working-tree edit.
+  `scripts/office_js_subset.py --check --source` over core-ts's committed
+  `test/office-js-subset.ts` (`git show HEAD:`, core-ts `d3b3170`) fails too. core-ts's `ef57729`
+  (CR-014 phase 1) changed that file, adding the cross-paragraph `Range` members (`paragraphs`,
+  `isEmpty`, `expandTo`, `getRange` locations and others). Reported, not fixed: re-deriving
+  `tests/office_js_subset.json` is CR-003's.
+- **The new tests are the whole difference** in the suites (98 and 98).
+
+### 16.7 The Word check (staged 2026-10-22)
+
+**A write path's output changes.** An insertion at either end of a kept element's text now goes
+beside the element, where before it could land before it (16.4). That is new placement, so it is
+checked. Refusals write nothing.
+- **Where.** Two saves of the probe are in `out/cr011-f-word-check/` with a `README.txt`, and are
+  copied to `~/vbShares/Office 2016/__tmp/python-cr011f/`. The probe is beside them unchanged as
+  `cr011f-SOURCE-mc-branches.docx`.
+- **The edits:**
+  - check 49's `insertText("YY", "After")` on the `flat` hit;
+  - text at the end of case 2;
+  - text before and after case 6's element;
+  - italic on `prefer` beside case 7's element;
+  - text at the start and end of case 8's paragraph-level element;
+  - a comment whose reference follows case 10's element.
+- **The two files.** `cr011f-1-beside-untracked.docx` is made with change tracking off,
+  `cr011f-2-beside-tracked.docx` with it on.
+- **Checked here before staging:**
+  - each reads back with `LoadOptions(strict=True)` with nothing skipped, and the paragraphs read
+    as the README says;
+  - in `document.xml` only the six edited paragraphs differ from the source, canonically, and in
+    file 2 the root's `mc:Ignorable` gains `w16du`;
+  - every other difference is what the comment adds, and in file 2 `w:trackRevisions`.
+- **Expected:** both open without a repair prompt and show the README's text. The README names
+  All Markup for file 2. Not yet run.
+
+### 16.8 Departures, with why
+
+1. **An insertion at a branch's edge goes beside the element, not into the branch.** Check 49's
+   `insertText("YY", "After")` put `YY` in Word's branch, and Word's save resolved the element
+   with it there. Here the branches stay as they were and `YY` follows the element. The paragraph
+   reads `The Earth is flatYY` either way. A reader taking the Fallback sees
+   `The Earth is roundYY`. Editing in place is ED-009's, not this phase's (section 15 item 3).
+2. **One rule for every mutator.** Some refused verbs could place their markup around a whole
+   element without changing a branch:
+   - a comment, a content control or a link over a span holding the element whole;
+   - a range's `style`;
+   - a paragraph's `font` or `insert_comment`.
+
+   They are refused all the same: one rule, stated once and tested over each verb, and refusing
+   is the conservative side of an unmeasured question.
+3. **Tracked writes over a branch's text are refused** (16.3): `Paragraph.text = ...`, `delete`,
+   `clear`, a row's and a table's deletion, and `insert_xml` and `insert_ooxml` at `Replace`.
+4. **The characters stay this package's** (section 15 item 2): `\n` for a `w:br` in a branch,
+   where Office JS gives U+000B. Pinned by
+   `test_case_2s_break_is_a_newline_where_office_js_gives_u000b`.
+5. **`Range.get_xml`** keeps whole an element whose text its span holds, even in part, and drops
+   one wholly outside it. Cutting an element's text would change Word's branch alone, and a read
+   should not refuse.
+6. **The text model's run segmentation at a branch's edge** is now docx4j's (16.5). REQ-706's
+   JSON changes; its text does not.
+7. **Wildcard content in a branch**, a `w:moveFrom` or `w:moveTo` typed nowhere, is read by name
+   as `text_of` reads it. A text model run read from its typed copy has no `office_offset`,
+   because the copy is not the item. No corpus document has one.
+
+### 16.9 Behaviour changes for a caller
+
+- **A stored offset in a paragraph holding a branch's text moves.** A `Range` or a
+  `SearchHit`'s `start` and `end` after the element shift by the length of its text, so a hit
+  stored before upgrading points elsewhere after. Addresses (a paraId or an ordinal) don't move.
+- **Text inserted at a paragraph's end after such an element now follows it.** Before, it went in
+  front (16.4).
+- **Edits that changed a run's text or format beside a branch, or a font over a paragraph holding
+  one, are refused** where they were made, partly or misplaced.
+- **The python-docx facade's `add_comment`** on a run whose only text is a branch's is refused
+  (`address.read_only`). Before, that run held no text and the comment was anchored at the
+  paragraph's start. The facade's readers are python-docx's and unchanged.
+- **Who is affected.** Every change is confined to paragraphs whose text holds a run- or
+  paragraph-level branch's. Over the corpus those are the 19 paragraphs of 16.5, all in hand-built
+  probes. Word writes such elements for text boxes and drawings, whose branches give no text.
+
+### 16.10 Pre-existing tests whose expectation changed, and why
+
+- `tests/openpackaging/test_mce_typed.py::test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level`
+  (CR-012 section 11.4's pin).
+  - **Then:** `Paragraph.text` and `get_text` read neither branch, `["a", "b"]` and `"a\nb"`,
+    while the cells' `text_of` read `a-PARA_CHOICE` and `b-RUN_CHOICE`.
+  - **Now:** they agree, `["a-PARA_CHOICE", "b-RUN_CHOICE"]`.
+  - This is the split CR-012 11.4 left to CR-011 Q4, closed by Q4's revision. The docstring says
+    so.
+- **Nothing else moved:** the fast and the full suite otherwise pass unchanged.
+
+### 16.11 Found, and not done
+
+- **Office JS's characters** (section 15 item 2) and **edits in place inside a branch** (item 3).
+- **Readers that still pass a paragraph-level branch by.** `Paragraph.runs` and the reads of
+  `Paragraph.font`, which read the first own run, don't see such a branch's runs. Office JS's
+  `paragraph.font` there is unmeasured.
+- **A comment marker inside a paragraph-level branch** is one branch's and is not listed, as
+  before.
+- **A picture in a branch** (case 5) is not in `inline_pictures` (CR-012). Office JS's
+  `inlinePictures` for one is unmeasured: check 42 measured text boxes only.
+- **Section 15's unmeasured three:** `body.text` over a paragraph-level element, `range.text`
+  over such a paragraph, and `tableCell.value` for a cell holding one. They follow from
+  `Paragraph.text` by construction.
+- **README.md's "Markup compatibility" paragraph** still says a branch is wildcard content, which
+  has been out of date since CR-012 Phase B. It is not edited here.
+- **For the coordinator: the fixture's licence.** `tests/fixtures/mc-branches.docx` comes from
+  docx4j-ts-editor, whose repository is GPL-3.0-or-later. It is Jason's own probe, built from his
+  `mc-simple.docx`, and copied at his direction. This repository's sdist ships `tests/` under
+  Apache-2.0, as it will in 0.2.0. Every other fixture in `tests/README.md`'s table names docx4j
+  or docx4j-core-ts as its source, under Apache-2.0, except one file written here. Word's save
+  with the report was not copied, for the same reason.
+- **`tests/README.md`'s Word acceptance record** gains Phase F's entry when the check of 16.7 has
+  been run.
