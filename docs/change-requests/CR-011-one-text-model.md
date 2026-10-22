@@ -30,7 +30,8 @@ the fork release, which came out as docx4j-xsdata 26.2.2 on 2026-10-22. **Q4 rev
 shows"): Office JS's own text reads a kept `mc:AlternateContent`'s selected branch (core-ts check
 49), so the Office JS readers, kept on it, read Word's branch too; section 15 proposes the change as
 Phase F, as core-ts CR-012 phase 4 made it there and as docx4j's readers of text select
-(`McSelection`'s TEXT purpose). Its implementation waits on the user's go.
+(`McSelection`'s TEXT purpose). **Phase F started 2026-10-22** at the user's go ("go for phase F,
+now please").
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
@@ -1575,7 +1576,7 @@ of that difference. No CR-010 `xfail` is left.
 - Lint: the new modules pass `ruff check`; the files they touch keep their earlier findings
   (`extractor.py`'s `S110`, the import order of `paragraph.py` and `range.py`).
 
-## 15. Phase F: the Office JS readers read Word's branch (Q4 revised 2026-10-22; proposed)
+## 15. Phase F: the Office JS readers read Word's branch (Q4 revised 2026-10-22; started 2026-10-22)
 
 **Why.** Q4 kept `text`, `get_text` and `search` on Office JS's text. This package's readers took
 that to be the paragraph's own runs, a kept `mc:AlternateContent`'s branches passed by, and so did
