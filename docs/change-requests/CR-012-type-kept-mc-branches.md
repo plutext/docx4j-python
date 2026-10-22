@@ -17,7 +17,7 @@ section 16, which changes the same `XmlPart._unmarshal`, has landed. B follows A
 its own go (Q4). **Phase A implemented the same day** (section 9), the port of docx4j CR-051 phase
 1: the schema copy refreshed to docx4j `2853b7280`; the fork's stage 11 (a branch's child typed by
 its container, and a generator fix that makes the output independent of the bytecode cache);
-`LoadOptions(mc_block_level=)`, `preserve` by default; the readers reading Word's branch at block
+`LoadOptions(mc_load_mode=)`, `preserve` by default; the readers reading Word's branch at block
 level, an edit inside a kept branch refused; the revisions twins; and docx4j's 19 probes with Word
 365's 14 saves. In `preserve` mode all 19 probes save canonically identical; in `word` mode all 14
 read as Word's save. The acceptance artefacts are unchanged and CR-011's ratchet does not move.
@@ -338,14 +338,14 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
      `docs/UPSTREAM.md`.
    - Phase B's root table extends the same mechanism.
 3. **The load-time mode** (CR-051 section 3.2 and its D5):
-   `LoadOptions(mc_block_level="word" | "preserve")`, default `"preserve"` (Q7, revised from
+   `LoadOptions(mc_load_mode="word" | "preserve")`, default `"preserve"` (Q7, revised from
    `"word"` with docx4j's D5). A package-level setting,
-   `pkg.mc_block_level`, is read when each part is first unmarshalled, for packages made
+   `pkg.mc_load_mode`, is read when each part is first unmarshalled, for packages made
    otherwise.
    - **`word`:** each element whose parent is a block, row or cell container is replaced by the
      content of the branch Word reads. The rule is ISO's: the first Choice whose `Requires` are
      understood, else the Fallback. It runs over docx4j's published understood list, matched by
-     namespace URI, as docx4j's `McBlockLevel` and `McSplice` do (CR-051 section 3.2).
+     namespace URI, as docx4j's `McLoadMode` and `McSplice` do (CR-051 section 3.2).
      - The outermost element goes first, and an element inside a discarded branch goes with it.
      - It is done on the lxml tree before the fork's parser runs, as `mce.py`'s preprocessor is.
        The selected content is then parsed typed by the ordinary path.
@@ -389,7 +389,7 @@ under `mce_preprocess=True`. The Word 365 column is the branch Word kept in Jaso
      port).
    - Ported here, held to docx4j's test.
 7. **The probes:** docx4j's 16 with Word 365's 14 saves (the oracle of its
-   `McBlockLevelProbesTest` and `McBlockLevelLoadTest`), copied into `tests/fixtures/mc-fun/`.
+   `McLoadModeProbesTest` and `McLoadModeLoadTest`), copied into `tests/fixtures/mc-fun/`.
 
 ### 4.2 Phase B: the 61 WordprocessingML roots
 
@@ -594,12 +594,12 @@ listed. This phase closes both.
    template fill has no OpenDoPE conditions or repeats and removes no control (CR-003 section 17;
    `model/customxml/template.py`). Recorded.
 6. **The tests**, docx4j's at `9db1a3cbd`, against the 19 probes:
-   - `McBlockLevelLoadTest.preserveModeKeepsBlockLevelElements`, every container;
-   - `McBlockLevelProbesTest.preserveModeKeepsEveryBranch` without its row and cell exception, and
+   - `McLoadModeLoadTest.preserveModeKeepsBlockLevelElements`, every container;
+   - `McLoadModeProbesTest.preserveModeKeepsEveryBranch` without its row and cell exception, and
      `preserveModeReadsAsWordsSave`: each probe with a Word 365 save reads as Word's save, in
      `preserve` mode and after a `preserve` save;
    - `McBranchSdtTest`'s row and cell controls typed in both branches;
-   - `McBlockLevelReadersTest`'s row- and cell-level element (`body/3/1`, `body/3/2/1`), the
+   - `McLoadModeReadersTest`'s row- and cell-level element (`body/3/1`, `body/3/2/1`), the
      warnings equal across the modes;
    - `TrackedChangesAlternateContentTest`'s row and cell cases and its two row-removal cases.
 7. **The gate.**
@@ -756,7 +756,7 @@ Word 365's 14 saves are in `tests/fixtures/mc-fun/`.
 | the schema | `schemas/` (seven files), `schemas/PATCHES.md` | refreshed to docx4j `2853b7280` (9.2); fifteen content lists admit `AlternateContent` |
 | the fork | `docx4j_xsdata/models/xsd.py`, `parsers/`, `serializers/` | stage 11 (9.3): a compositor's identity never reused; `ParserConfig(wildcard_class=, wildcard_class_for=)`; `SerializerConfig(element_names=)` |
 | the hooks | `docx4j_py/runtime.py` | `branch_child_class` (a branch's `w:sdt` bound as its container binds it), `BRANCH_CHILD_NAMES`, the serialiser's `element_names` for the four `w:sdt` classes |
-| the mode | `docx4j_py/openpackaging/mc_block_level.py` (new, under `openpackaging/` in `KEEP`), `load.py`, `packages/opc_package.py`, `parts/xml_part.py` | `LoadOptions(mc_block_level=)`, `pkg.mc_block_level`, `_ParseSettings.mc_block_level`, `splice_word`, `ResolvedAlternateContent`, `part.resolved_alternate_content` (9.4) |
+| the mode | `docx4j_py/openpackaging/mc_load_mode.py` (new, under `openpackaging/` in `KEEP`), `load.py`, `packages/opc_package.py`, `parts/xml_part.py` | `LoadOptions(mc_load_mode=)`, `pkg.mc_load_mode`, `_ParseSettings.mc_load_mode`, `splice_word`, `ResolvedAlternateContent`, `part.resolved_alternate_content` (9.4) |
 | `mce_preprocess` | `openpackaging/mce.py`, `child.py` | selects over docx4j's published list (9.5) |
 | the content API | `model/content/text_model.py`, `body.py`, `paragraph.py`, `table.py`, `controls.py`, `reports.py` | block lists answer a block-level element with Word's branch; a read-only body for views in a kept branch; `recording` refuses it (9.6); `Body.view_for(element, container)`, so a loop of inserts no longer scans the body (9.10) |
 | the text model | `model/text/extractor.py` | `mce.branches_differ` from a `word`-mode load's record; row and cell walks pass the element by (9.6) |
@@ -853,11 +853,11 @@ identical.
 ### 9.4 The mode
 
 - **The API.**
-  - `LoadOptions(mc_block_level="preserve" | "word")` defaults to `"preserve"`. Any other value
+  - `LoadOptions(mc_load_mode="preserve" | "word")` defaults to `"preserve"`. Any other value
     raises `ValueError`.
-  - `pkg.mc_block_level` is this package's own setting, over the load options'. Setting it does not
-    change a shared `LoadOptions`. docx4j has it as `OpcPackage.setMcBlockLevel` over
-    `McBlockLevel.of`.
+  - `pkg.mc_load_mode` is this package's own setting, over the load options'. Setting it does not
+    change a shared `LoadOptions`. docx4j has it as `OpcPackage.setMcLoadMode` over
+    `McLoadMode.of`.
   - The mode is read when each part is first parsed. A part already parsed keeps its tree.
 - **The parse settings.** The mode is the third field of `_ParseSettings` (CR-002 section 16.2).
   So a private tree parsed under one mode is never adopted under the other, and is parsed again.
@@ -1159,7 +1159,7 @@ its readers' probe is built here as docx4j builds it.
 | piece | where | what |
 |---|---|---|
 | typed rows and cells | `docx4j_py/runtime.py` | `BRANCH_CHILD_NAMES` adds `w:tr` and `w:tc`, so `branch_child_class` binds a branch's row as the table binds it (`Tr`) and a branch's cell as the row binds it (`Tc`), in a row- or cell-level control's content and custom XML too; `element_names` writes them `w:tr` and `w:tc` (`Tc`'s own name is its type's, `CT_Tc`) |
-| the record's parse | `openpackaging/mc_block_level.py` | `_record_hook` binds a `w:sdt`, `w:tr` or `w:tc` straight in a recorded element's branch as a container of the record's level binds it (`Body1`, `Tbl`, `Tr`), so a `word`-mode record of a cell-level element holds `Tc`s |
+| the record's parse | `openpackaging/mc_load_mode.py` | `_record_hook` binds a `w:sdt`, `w:tr` or `w:tc` straight in a recorded element's branch as a container of the record's level binds it (`Body1`, `Tbl`, `Tr`), so a `word`-mode record of a cell-level element holds `Tc`s |
 | the text model | `model/text/extractor.py` | `_rows` and `_cells`: the element compared with its other branches (`mce.branches_differ` at its address) and Word's branch walked in its place; a `word`-mode record read for the container (10.3) |
 | the revisions engine | `model/revisions/lister.py`, `tables.py`, `resolver.py`, `texts.py` | `_row_items`, `_row_tokens`, `_cell_items`, `_cell_tokens`; `_alternate_level` takes its level's walk; `tables.rows_of` and `cells_of` read Word's branch; `tables.has_rows`; `Resolver.row` over it; `row_text` through `cells_of` and `rows_of` |
 | the content API | `model/content/text_model.py`, `table.py`, `reports.py`, `body.py`, `controls.py` | `block_list_of` answers a row- or cell-level element with Word's branch; `rows_of` and `cells_of` through it; read-only row and cell views; `refuse_read_only` (factored out of `recording`); `kept_content_under` and the tracked deletions' refusal; `outline()`'s cells through any wrapper; `ContentControl.form` through a kept element |
@@ -1233,11 +1233,11 @@ Ported against the probes, as section 4.4 item 6 lists them.
 
 | docx4j | here |
 |---|---|
-| `McBlockLevelLoadTest.preserveModeKeepsBlockLevelElements`, every container | `test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_branch` (17): kept whole, nothing recorded, every branch, its content and the prefixes written, whole after a round trip, the text the same in both modes and Word's branch's |
-| `McBlockLevelProbesTest.preserveModeKeepsEveryBranch` without its exception | already held for all 19 by Phase A's `test_preserve_saves_each_probe_canonically_identical` |
-| `McBlockLevelProbesTest.preserveModeReadsAsWordsSave` | `test_preserve_mode_reads_as_word_365s_save` (14): before and after a `preserve` save |
+| `McLoadModeLoadTest.preserveModeKeepsBlockLevelElements`, every container | `test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_branch` (17): kept whole, nothing recorded, every branch, its content and the prefixes written, whole after a round trip, the text the same in both modes and Word's branch's |
+| `McLoadModeProbesTest.preserveModeKeepsEveryBranch` without its exception | already held for all 19 by Phase A's `test_preserve_saves_each_probe_canonically_identical` |
+| `McLoadModeProbesTest.preserveModeReadsAsWordsSave` | `test_preserve_mode_reads_as_word_365s_save` (14): before and after a `preserve` save |
 | `McBranchSdtTest` (`staxPath`'s `check`, `xmlUtilsUnmarshalString`) | `test_a_sdt_in_either_branch_is_its_containers_kind_at_every_level` (both modes) and `test_a_fragment_types_a_sdt_in_either_branch_at_every_level`: `SdtBlock` ×4, `SdtRun` ×2, `CTSdtRow` ×2, `CTSdtCell` ×2 in `preserve`; the binder and preprocessor paths are JAXB's and have no counterpart |
-| `McBlockLevelReadersTest.textModelWarnsFromTheRecord`, its probe | `_readers_probe()` built as docx4j builds it; `test_the_text_model_warns_from_the_record_at_row_and_cell_level_too`: `body/3/1` and `body/3/2/1` among nine or more, the same in both modes |
+| `McLoadModeReadersTest.textModelWarnsFromTheRecord`, its probe | `_readers_probe()` built as docx4j builds it; `test_the_text_model_warns_from_the_record_at_row_and_cell_level_too`: `body/3/1` and `body/3/2/1` among nine or more, the same in both modes |
 | `TrackedChangesAlternateContentTest`'s row and cell cases and two row-removal cases | `tests/revisions/test_alternate_content.py`: six for the cases, two for the removal |
 
 Beyond docx4j's tests, the new ones cover:
@@ -1949,7 +1949,7 @@ as they read the same element elsewhere.
 | the derivation | `codegen/derive_names.py`, `codegen/names/root_elements.json`, `codegen/names/README.md` | docx4j's WordprocessingML roots not global here, each with the `el` table's class; the cross-check against the schema copy's annotations, which stops the run on a disagreement (11.2) |
 | the generated table | `codegen/generate_el.py`, `docx4j_py/el_index.py` | `ROOT_ELEMENTS` (61 names to their root classes' paths) and `ROOT_ELEMENT_BINDINGS` (22 names to the 47 other classes a container binds them to), held to the model at generation |
 | the hook | `docx4j_py/runtime.py` | `branch_child_class`: (a) `container_binding`, (b) `root_element_class`, (c) None; `wildcard_names()`, the parser's default `wildcard_class_for`; `element_names_table`, which refuses a class claimed by two names; `_branch_element_names` gains 107 classes, 113 in all |
-| the record | `docx4j_py/openpackaging/mc_block_level.py` | `_record_hook` takes (a), then (a) with the level's container, then (b) |
+| the record | `docx4j_py/openpackaging/mc_load_mode.py` | `_record_hook` takes (a), then (a) with the level's container, then (b) |
 | the walks | `docx4j_py/child.py` | `iter_children` names a wildcard field's typed child by `wildcard_child_name`, the serialiser's name for it, where it gave the field's name, `any_element` |
 | the readers | `docx4j_py/model/text/extractor.py`, `model/content/body.py`, `docx/shape.py`, `model/revisions/islands.py` | `_graphic_kind` by element name; `Body.tables` through a block-level branch; the facade's `inline_shapes` without a branch's drawing; the docstrings say where each wildcard reader is still reached (11.4) |
 | tests | `tests/openpackaging/test_mce_typed.py` (260); `tests/test_builders_phase_a.py` (2 changed) | 11.6, 11.8 |
@@ -2257,7 +2257,7 @@ Fallbacks hold the 3 `Pict` and 28 wildcard VML nodes.
    asks the hook in, and names the hook's class in, the lax wildcard of a plain `x:branch` element.
    Item 27 pins a typed child holding a branch of its own. Both of section 4.2 item 5's candidates
    are pinned, so nothing was added; the fork's suite was not run, since the fork did not change.
-9. **The record's hook** (`mc_block_level._record_hook`) tries (a) with the parse's own ancestors,
+9. **The record's hook** (`mc_load_mode._record_hook`) tries (a) with the parse's own ancestors,
    then (a) with the record level's container, then (b), where it took `branch_child_class` and
    the container. With (b) inside `branch_child_class`, the old order would have given a root class
    before the level's container could bind the name.
@@ -3207,3 +3207,28 @@ the fix leaves the same bytes, all four of Phase C's Word-check files pass: **Ph
   they are not staged.
   - The method is Phase C's own: run at `80e7a12`, it reproduces all four of Phase C's saves byte for
     byte.
+
+### 12.17 The load mode renamed (2026-10-22), after docx4j `850b5b016`
+
+docx4j renamed CR-051's load-time mode before 17.3.4 ships. Its commit `850b5b016` ("CR-051: the
+load-time mode renamed before release: McLoadMode, docx4j.jaxb.mc.onLoad", on `VERSION_17_3_4`,
+local) makes these changes:
+- the enum `McBlockLevel` becomes `McLoadMode`;
+- the property `docx4j.jaxb.mc.blockLevel` becomes `docx4j.jaxb.mc.onLoad`;
+- `set/getMcBlockLevel` become `set/getMcLoadMode`;
+- the four `McBlockLevel*Test` classes become `McLoadMode*Test`.
+
+The values, defaults and behaviour are unchanged. The old name described phase 1's scope, block
+level, not what the setting decides: block, row and cell level since phase 2.
+
+This package mirrored the old name, and the user agreed to follow docx4j's before 0.2.0, which
+first ships the mode ("yes"):
+- `LoadOptions(mc_block_level=)` becomes **`LoadOptions(mc_load_mode=)`**, with the values
+  `preserve` (the default) and `word` unchanged;
+- the module `openpackaging/mc_block_level.py` becomes `openpackaging/mc_load_mode.py`;
+- docx4j's names in docstrings and tests become `McLoadMode` and `docx4j.jaxb.mc.onLoad`.
+
+Nothing released carried the old names, so no alias is kept: `LoadOptions(mc_block_level=...)`
+raises `TypeError`. The rename was made through every file that named them, these notes
+included. Text above written before 2026-10-22 therefore reads with the new names; docx4j's own
+test method names, such as `blockLevelProbe`, are unchanged there and here.

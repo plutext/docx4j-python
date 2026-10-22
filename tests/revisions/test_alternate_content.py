@@ -538,7 +538,7 @@ def test_known_gap_pinned_a_lone_twin_beside_a_read_branch_of_two_cells_leaves_i
 
 def test_word_mode_has_no_twin_to_resolve() -> None:
     """In ``word`` mode the element is replaced on load by Word's branch, so there is no twin: one change, one widening."""
-    pkg = load(with_body(twin_beside(deleted_cell)).save(), options=LoadOptions(mc_block_level="word"))
+    pkg = load(with_body(twin_beside(deleted_cell)).save(), options=LoadOptions(mc_load_mode="word"))
     (change,) = revisions.tracked_changes(pkg)
     assert change.twins == []
     assert len(pkg.main_document_part.resolved_alternate_content) == 1, "recorded when the part was read"
@@ -967,7 +967,7 @@ def test_a_whole_tables_change_text_reads_the_branch_word_reads() -> None:
 def test_word_mode_lists_and_resolves_a_table_property_record_as_before() -> None:
     """In ``word`` mode the element is replaced on load by Word's branch: one cell, one record, resolved as before."""
     for accept in (True, False):
-        pkg = load(with_body(cell_record_in_each_branch()).save(), options=LoadOptions(mc_block_level="word"))
+        pkg = load(with_body(cell_record_in_each_branch()).save(), options=LoadOptions(mc_load_mode="word"))
         (change,) = revisions.tracked_changes(pkg)
         assert change.twins == []
         assert len(pkg.main_document_part.resolved_alternate_content) == 1, "recorded when the part was read"

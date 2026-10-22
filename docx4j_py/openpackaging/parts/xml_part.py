@@ -65,7 +65,7 @@ class _ParseSettings:
     :meth:`XmlPart._unmarshal` reads the package's load options through this
     and nothing else, and a private tree keeps the settings it was parsed
     under, so that :attr:`XmlPart.contents` adopts it only where a live parse
-    now would read the same. CR-012's ``mc_block_level``, on the load options
+    now would read the same. CR-012's ``mc_load_mode``, on the load options
     or on the package, is the third field (CR-012 Phase A): a tree parsed in
     one mode is never adopted in the other.
     """
@@ -74,8 +74,8 @@ class _ParseSettings:
     strict: bool = False
     #: ``LoadOptions.mce_preprocess``: ``mc:AlternateContent`` resolved first.
     mce_preprocess: bool = False
-    #: ``pkg.mc_block_level`` (CR-012 Phase A): ``"preserve"`` or ``"word"``.
-    mc_block_level: str = "preserve"
+    #: ``pkg.mc_load_mode`` (CR-012 Phase A): ``"preserve"`` or ``"word"``.
+    mc_load_mode: str = "preserve"
 
     @classmethod
     def of(cls, package: Any) -> _ParseSettings:
@@ -83,11 +83,11 @@ class _ParseSettings:
         options = getattr(package, "load_options", None) if package is not None else None
         if options is None:
             return _DEFAULT_SETTINGS
-        mode = getattr(package, "mc_block_level", None) or getattr(options, "mc_block_level", "preserve")
+        mode = getattr(package, "mc_load_mode", None) or getattr(options, "mc_load_mode", "preserve")
         return cls(
             strict=bool(options.strict),
             mce_preprocess=bool(options.mce_preprocess),
-            mc_block_level=mode,
+            mc_load_mode=mode,
         )
 
 
@@ -130,7 +130,7 @@ class XmlPart(Part, Generic[T]):
         self.skipped: list[Any] = []
         #: Each ``mc:AlternateContent`` the last parse took out in ``"word"`` mode
         #: (CR-012 Phase A), outermost first: a
-        #: :class:`~docx4j_py.openpackaging.mc_block_level.ResolvedAlternateContent`,
+        #: :class:`~docx4j_py.openpackaging.mc_load_mode.ResolvedAlternateContent`,
         #: the element whole and where it stood. Empty in ``"preserve"`` mode.
         #: docx4j ``JaxbXmlPart.getResolvedAlternateContent()``.
         self.resolved_alternate_content: list[Any] = []
@@ -202,7 +202,7 @@ class XmlPart(Part, Generic[T]):
         parent pointers are wired, and :attr:`skipped` and the source's
         namespace declarations are what that parse of the same bytes found. A
         private tree parsed under other options (``strict``, ``mce_preprocess``,
-        the package's ``mc_block_level``) is dropped and the bytes are parsed
+        the package's ``mc_load_mode``) is dropped and the bytes are parsed
         afresh.
 
         Adoption depends on one rule: **a private reader never writes into the
@@ -305,11 +305,11 @@ class XmlPart(Part, Generic[T]):
 
         settings = self._parse_settings()
         resolved: list[Any] = []
-        if settings.mc_block_level == "word":
+        if settings.mc_load_mode == "word":
             # CR-012 Phase A: block-, row- and cell-level mc:AlternateContent
             # replaced by the branch Word reads; a part without the element
             # pays one substring test
-            from docx4j_py.openpackaging.mc_block_level import splice_word
+            from docx4j_py.openpackaging.mc_load_mode import splice_word
 
             data, resolved = splice_word(data)
         if settings.mce_preprocess:

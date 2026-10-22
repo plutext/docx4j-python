@@ -1489,7 +1489,7 @@ and `set_xml` still clear both slots.
 
 A private tree is adopted only if it was parsed under the load options the live parse would use
 (`strict`, `mce_preprocess`, and any later package-level setting read at parse time, such as
-CR-012's `mc_block_level`). Otherwise `contents` parses afresh, as today.
+CR-012's `mc_load_mode`). Otherwise `contents` parses afresh, as today.
 
 ### 16.3 The rule the change depends on, and its tests
 
@@ -1550,7 +1550,7 @@ Three commits: `30f131f` (test 1, first, so that it audits the readers as they w
   `registry`, is read at load, to choose part classes, not at parse. `_unmarshal` now reads the
   options through `_ParseSettings` and nowhere else, and a private parse keeps its settings in a
   new slot, `_private_settings`. `_ParseSettings.of` takes the **package**, not its options:
-  CR-012 section 4.1 item 3 puts `mc_block_level` on `LoadOptions` and on the package, so either
+  CR-012 section 4.1 item 3 puts `mc_load_mode` on `LoadOptions` and on the package, so either
   way the mode is one field and one line. `_load_options()`, whose one reader this was, is gone.
 - **A live parse also clears the private slot.** Where the options changed and `contents` parses
   afresh, the stale private tree goes then, not at the next `read_contents`. Nothing reads it in

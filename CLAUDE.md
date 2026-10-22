@@ -250,7 +250,7 @@ section 12.3.
 - An unmarshalled part saved unchanged must be **canonically identical** to the source
   (`scripts/canon.py`'s prefix-insensitive normal form). The one tolerated category is
   `boolean-spelling` (`1` against `true`). Every other difference category must be zero. The one
-  exception is a load in `LoadOptions(mc_block_level="word")` (CR-012 section 4.1 item 3): a part
+  exception is a load in `LoadOptions(mc_load_mode="word")` (CR-012 section 4.1 item 3): a part
   holding a block-, row- or cell-level `mc:AlternateContent` is saved as Word's own save writes it,
   the branches Word does not read gone. The default, `preserve`, keeps the rule.
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
@@ -274,11 +274,11 @@ section 12.3.
   `settings.xml`'s shape defaults. A vmlDrawing part (`VMLPart`) stays an lxml tree.
   `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. Since
   CR-012 Phase A (Q8),
-  it and `mc_block_level="word"` select over docx4j's published understood list
+  it and `mc_load_mode="word"` select over docx4j's published understood list
   (`resources/understood-namespaces.txt`), matched by namespace URI, so they take the branch Word
   365 takes. `UNDERSTOOD` is generated, deliberately narrower than the prefix table, and stays
   the prefix table's own list.
-- Block-, row- and cell-level `mc:AlternateContent` (CR-012 Phase A): `LoadOptions(mc_block_level=
+- Block-, row- and cell-level `mc:AlternateContent` (CR-012 Phase A): `LoadOptions(mc_load_mode=
   "preserve")`, the default, keeps the element whole. The readers read Word's branch at block
   level, and an edit inside a kept branch is refused (`address.read_only`). `"word"` replaces it
   on load with Word's branch and keeps what it took out in `part.resolved_alternate_content`.

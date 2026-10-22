@@ -263,7 +263,7 @@ class Body(Sequence):
         the tree keeps whole (:func:`~.text_model.in_kept_branch`) is read as
         any other, and its view refuses an edit (``address.read_only``), which
         would change one branch alone. A caller who must edit there loads with
-        ``LoadOptions(mc_block_level="word")``, where a block-level element is
+        ``LoadOptions(mc_load_mode="word")``, where a block-level element is
         replaced by Word's branch on load.
         """
         if self.read_only is not None or not in_kept_branch(element):

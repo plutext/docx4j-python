@@ -130,8 +130,8 @@ save. It needs docx4j-xsdata 26.2.2.
   the port of docx4j's CR-051 phase 1): the schema copy, refreshed to docx4j `2853b7280`, admits the
   element in every block container (the body, a header or footer, a cell, a note, a comment, a
   text box, a block-level content control or custom XML element), among a table's rows and among a
-  row's cells, as Word 365 reads it there. `LoadOptions(mc_block_level=...)`, and
-  `pkg.mc_block_level` over it for one package, read when each part is first parsed:
+  row's cells, as Word 365 reads it there. `LoadOptions(mc_load_mode=...)`, and
+  `pkg.mc_load_mode` over it for one package, read when each part is first parsed:
   `"preserve"` (the default) keeps each such element whole with every branch, as at run and
   paragraph level, so a part saved unchanged is canonically identical to its source; `"word"`
   replaces each on load by the branch Word reads (the first Choice whose `Requires` namespaces are
@@ -361,7 +361,7 @@ save. It needs docx4j-xsdata 26.2.2.
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section 4.1 item 5): an edit there,
   at any level, would change one branch alone, so the content API raises `AddressError`
   (`address.read_only`), as for a text box's address (CR-011 Q9). Load with
-  `LoadOptions(mc_block_level="word")` to edit Word's branch of a block-level element in place.
+  `LoadOptions(mc_load_mode="word")` to edit Word's branch of a block-level element in place.
 - **A row- or cell-level `mc:AlternateContent` is read as Word reads it, in `preserve` mode too**
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) Phase A2, section
   [10](docs/change-requests/CR-012-type-kept-mc-branches.md#10-phase-a2-implementation-notes-2026-10-21),

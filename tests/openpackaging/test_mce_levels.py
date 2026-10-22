@@ -6,7 +6,7 @@ The probes are docx4j's ``mc-fun`` fixtures at ``2853b7280`` (Jason's, with
 Word 365's saves of them), copied byte for byte into ``tests/fixtures/mc-fun/``
 (``tests/README.md`` has the provenance). Most carry ten Choices, newest first
 (``w16sdtfl`` to ``w14``), and a Fallback; Word 365 reads the first it
-understands. The built cases are docx4j's ``McBlockLevelLoadTest``'s: an element
+understands. The built cases are docx4j's ``McLoadModeLoadTest``'s: an element
 of three branches (a Choice requiring ``wpi``, which docx4j's list does not
 understand, one requiring ``w14``, which it does, and a Fallback) in each
 container the schema admits it in since the refresh.
@@ -30,9 +30,9 @@ What is held (CR-012 section 5, Phase A):
 Phase A2 (CR-012 section 4.4, docx4j CR-051 phase 2 at ``9db1a3cbd``), the last
 section: a row- or cell-level branch's rows and cells typed; the readers at row
 and cell level in ``preserve`` mode, Word's branch read and an edit refused; and
-docx4j's tests of that commit (``McBlockLevelLoadTest``,
-``McBlockLevelProbesTest.preserveModeReadsAsWordsSave``, ``McBranchSdtTest``,
-``McBlockLevelReadersTest``'s probe, built here as docx4j builds it).
+docx4j's tests of that commit (``McLoadModeLoadTest``,
+``McLoadModeProbesTest.preserveModeReadsAsWordsSave``, ``McBranchSdtTest``,
+``McLoadModeReadersTest``'s probe, built here as docx4j builds it).
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ from docx4j_py.model.content.errors import AddressError
 from docx4j_py.model.text import extract, plain_text
 from docx4j_py.openpackaging import LoadOptions
 from docx4j_py.openpackaging.exceptions import Docx4JException
-from docx4j_py.openpackaging.mc_block_level import (
+from docx4j_py.openpackaging.mc_load_mode import (
     ResolvedAlternateContent,
     splice_word,
 )
@@ -113,7 +113,7 @@ NS = (
 
 def probe(stem: str, mode: str = "preserve") -> Any:
     """A probe, loaded in a mode, its main part unmarshalled."""
-    pkg = load(PROBES_DIR / f"{stem}.docx", options=LoadOptions(mc_block_level=mode))
+    pkg = load(PROBES_DIR / f"{stem}.docx", options=LoadOptions(mc_load_mode=mode))
     assert pkg.main_document_part.contents is not None
     return pkg
 
@@ -195,7 +195,7 @@ class Probe:
         return out.getvalue()
 
     def load(self, mode: str = "preserve", **options: Any) -> Any:
-        return load(self.save(), options=LoadOptions(mc_block_level=mode, **options))
+        return load(self.save(), options=LoadOptions(mc_load_mode=mode, **options))
 
 
 def p(text_: str) -> str:
@@ -257,7 +257,7 @@ def _txbx(pkg: Any) -> list:
     return _first(pkg.main_document_part.contents, CTTxbxContent).content
 
 
-#: docx4j McBlockLevelLoadTest.cases(): each container, the element at index 1 of its content.
+#: docx4j McLoadModeLoadTest.cases(): each container, the element at index 1 of its content.
 CASES: dict[str, tuple[str, Any, Any, Any]] = {
     # name: (kind, the probe, the part, the content list)
     "w:body": (
@@ -503,7 +503,7 @@ def test_no_probe_skips_anything(stem: str, mode: str) -> None:
 def test_strict_loads_every_probe(stem: str, mode: str) -> None:
     pkg = load(
         PROBES_DIR / f"{stem}.docx",
-        options=LoadOptions(strict=True, mc_block_level=mode),
+        options=LoadOptions(strict=True, mc_load_mode=mode),
     )
     for part in wml_parts(pkg):
         assert part.contents is not None
@@ -521,13 +521,13 @@ def test_preserve_saves_each_probe_canonically_identical(stem: str) -> None:
 
 
 def test_preserve_is_the_default():
-    assert LoadOptions().mc_block_level == "preserve"
+    assert LoadOptions().mc_load_mode == "preserve"
     pkg = load(PROBES_DIR / "mc-block-newest-first.docx")
-    assert pkg.mc_block_level == "preserve"
+    assert pkg.mc_load_mode == "preserve"
     assert isinstance(pkg.main_document_part.contents.body.content[2], AlternateContent)
 
 
-#: docx4j McBlockLevelProbesTest.paperSection78: Word 365's branch, original order and newest first.
+#: docx4j McLoadModeProbesTest.paperSection78: Word 365's branch, original order and newest first.
 PAPER_78 = {
     "mc-text": "w14",
     "mc-run": "w14",
@@ -595,7 +595,7 @@ def test_a_word_mode_save_describes_as_word_365s_save(stem: str) -> None:
 
 @pytest.mark.parametrize("stem", WITH_WORD_SAVE)
 def test_a_word_mode_save_reads_as_word_365s_save(stem: str) -> None:
-    """docx4j McBlockLevelProbesTest.wordModeSaveReadsAsWordsSave: the text model, before and after the save."""
+    """docx4j McLoadModeProbesTest.wordModeSaveReadsAsWordsSave: the text model, before and after the save."""
     pkg = probe(stem, "word")
     words = text(load(PROBES_DIR / f"{stem}-word365.docx"))
     assert text(load(io.BytesIO(pkg.save()))) == words
@@ -603,7 +603,7 @@ def test_a_word_mode_save_reads_as_word_365s_save(stem: str) -> None:
 
 
 def test_the_block_level_probe():
-    """docx4j McBlockLevelProbesTest.blockLevelProbe: Word's branch at the element's index, the record, mc:Ignorable."""
+    """docx4j McLoadModeProbesTest.blockLevelProbe: Word's branch at the element's index, the record, mc:Ignorable."""
     pkg = probe("mc-block-newest-first", "word")
     part = pkg.main_document_part
     content = part.contents.body.content
@@ -635,7 +635,7 @@ def test_the_block_level_probe():
 
 
 def test_the_no_fallback_probe_takes_its_first_understood_choice():
-    """docx4j McBlockLevelProbesTest.noFallbackProbe: ten Choices and no Fallback, the first understood, as Word 365.
+    """docx4j McLoadModeProbesTest.noFallbackProbe: ten Choices and no Fallback, the first understood, as Word 365.
 
     CR-012 section 5 lists it as REQ-305's kept-whole case; it is not, since its first Choice
     (``w16sdtfl``) is understood (CR-012 section 9). REQ-305's case is the next test.
@@ -646,7 +646,7 @@ def test_the_no_fallback_probe_takes_its_first_understood_choice():
 
 
 def test_the_mixed_probe_resolves_the_bodys_element_only():
-    """docx4j McBlockLevelProbesTest.mixedProbeResolvesTheBodysElementOnly."""
+    """docx4j McLoadModeProbesTest.mixedProbeResolvesTheBodysElementOnly."""
     pkg = probe("mc-mixed", "word")
     assert len(pkg.main_document_part.resolved_alternate_content) == 1
     assert count(main_xml(pkg.save()), "<mc:AlternateContent") == 3
@@ -668,7 +668,7 @@ def test_mce_preprocess_takes_w16sdtfl_on_the_newest_first_probes(stem: str) -> 
 
 
 # ---------------------------------------------------------------------------
-# word mode: the splice, in every container (docx4j McBlockLevelLoadTest)
+# word mode: the splice, in every container (docx4j McLoadModeLoadTest)
 # ---------------------------------------------------------------------------
 
 
@@ -697,7 +697,7 @@ def test_word_mode_splices_every_container(name: str) -> None:
     assert len(record.element.choice) == 2 and record.element.fallback is not None
     assert f"{tag}_FB" in to_xml(record.element)
     assert "w14" in (part.contents.ignorable or "").split()
-    saved = load(pkg.save(), options=LoadOptions(mc_block_level="word"))
+    saved = load(pkg.save(), options=LoadOptions(mc_load_mode="word"))
     again = part_of(saved)
     assert f"{tag}_W14" in text_of(content_of(saved)[1])
     assert find(again.contents, AlternateContent, mce="all") == []
@@ -761,7 +761,7 @@ def test_an_element_with_no_branch_is_removed_in_word_mode_and_kept_in_preserve(
 
 
 def test_nested_elements_resolve_outermost_first():
-    """docx4j McBlockLevelLoadTest: an element in a cell inside the outer element's selected branch, and one in its discarded branch."""
+    """docx4j McLoadModeLoadTest: an element in a cell inside the outer element's selected branch, and one in its discarded branch."""
     inner = (
         f'<mc:AlternateContent><mc:Choice Requires="w14">{p("INNER_W14")}</mc:Choice>'
         f"<mc:Fallback>{p('INNER_FB')}</mc:Fallback></mc:AlternateContent>"
@@ -804,7 +804,7 @@ def test_an_element_kept_whole_keeps_the_elements_inside_it_whole():
 
 
 def test_the_selected_choices_prefixes_join_mc_ignorable():
-    """docx4j McBlockLevelLoadTest.selectedPrefixesJoinIgnorable: added to a list, set where the root had none, never twice."""
+    """docx4j McLoadModeLoadTest.selectedPrefixesJoinIgnorable: added to a list, set where the root had none, never twice."""
     element = f'<mc:AlternateContent><mc:Choice Requires="w15">{p("W15")}</mc:Choice><mc:Fallback>{p("FB")}</mc:Fallback></mc:AlternateContent>'
     listed = Probe(p("x") + element, ' mc:Ignorable="w14"').load("word")
     assert listed.main_document_part.contents.ignorable == "w14 w15"
@@ -839,21 +839,21 @@ def test_a_part_with_only_run_level_elements_is_parsed_from_its_own_bytes():
 
 
 def test_the_mode_is_checked():
-    with pytest.raises(ValueError, match="mc_block_level"):
-        LoadOptions(mc_block_level="Word")
+    with pytest.raises(ValueError, match="mc_load_mode"):
+        LoadOptions(mc_load_mode="Word")
     pkg = load(PROBES_DIR / "mc-block.docx")
-    with pytest.raises(ValueError, match="mc_block_level"):
-        pkg.mc_block_level = "resolve"
+    with pytest.raises(ValueError, match="mc_load_mode"):
+        pkg.mc_load_mode = "resolve"
 
 
 def test_the_package_setting_overrides_the_load_option_for_a_part_not_yet_parsed():
     pkg = load(
         PROBES_DIR / "mc-block-newest-first.docx",
-        options=LoadOptions(mc_block_level="preserve"),
+        options=LoadOptions(mc_load_mode="preserve"),
     )
-    pkg.mc_block_level = "word"
-    assert pkg.mc_block_level == "word"
-    assert pkg.load_options.mc_block_level == "preserve", "the options are not changed"
+    pkg.mc_load_mode = "word"
+    assert pkg.mc_load_mode == "word"
+    assert pkg.load_options.mc_load_mode == "preserve", "the options are not changed"
     assert len(pkg.main_document_part.contents.body.content) == 3
     assert isinstance(pkg.main_document_part.contents.body.content[2], P)
 
@@ -861,7 +861,7 @@ def test_the_package_setting_overrides_the_load_option_for_a_part_not_yet_parsed
 def test_a_part_parsed_before_the_setting_keeps_its_tree():
     pkg = load(PROBES_DIR / "mc-block-newest-first.docx")
     tree = pkg.main_document_part.contents
-    pkg.mc_block_level = "word"
+    pkg.mc_load_mode = "word"
     assert pkg.main_document_part.contents is tree
     assert isinstance(tree.body.content[2], AlternateContent)
 
@@ -882,7 +882,7 @@ def test_set_bytes_clears_the_record():
 def test_word_mode_and_mce_preprocess_together():
     pkg = load(
         PROBES_DIR / "mc-mixed.docx",
-        options=LoadOptions(mc_block_level="word", mce_preprocess=True),
+        options=LoadOptions(mc_load_mode="word", mce_preprocess=True),
     )
     part = pkg.main_document_part
     assert part.contents is not None
@@ -1129,7 +1129,7 @@ def test_a_part_that_never_held_the_element_is_byte_for_byte_in_either_mode():
     for mode in MODES:
         pkg = load(
             PROBES_DIR / "mc-block-newest-first.docx",
-            options=LoadOptions(mc_block_level=mode),
+            options=LoadOptions(mc_load_mode=mode),
         )
         saved = zipfile.ZipFile(io.BytesIO(pkg.save()))
         source = zipfile.ZipFile(PROBES_DIR / "mc-block-newest-first.docx")
@@ -1179,7 +1179,7 @@ def _branch_warnings(pkg: Any) -> list[tuple[str | None, str | None]]:
 def test_the_text_models_warnings_are_the_same_in_both_modes_on_the_probes(
     stem: str,
 ) -> None:
-    """docx4j McBlockLevelReadersTest: in word mode the warning is raised from the record, where preserve mode raises it.
+    """docx4j McLoadModeReadersTest: in word mode the warning is raised from the record, where preserve mode raises it.
 
     At row and cell level too since Phase A2 (docx4j CR-051 phase 2), which Phase A left out.
     """
@@ -1201,7 +1201,7 @@ def test_the_text_models_warnings_are_the_same_in_both_modes_in_every_container(
 
 
 def test_a_custom_xml_element_straight_in_a_branch():
-    """docx4j McBlockLevelLoadTest's custom XML in a branch: typed once word mode promotes it; whole in preserve."""
+    """docx4j McLoadModeLoadTest's custom XML in a branch: typed once word mode promotes it; whole in preserve."""
     element = (
         '<mc:AlternateContent><mc:Choice Requires="w14"><w:customXml w:element="x">'
         f"{p('CX_W14')}</w:customXml></mc:Choice><mc:Fallback>{p('CX_FB')}</mc:Fallback></mc:AlternateContent>"
@@ -1262,7 +1262,7 @@ def test_the_records_own_parse_types_a_cell_level_branchs_cell():
 def test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_branch(
     name: str,
 ) -> None:
-    """docx4j McBlockLevelLoadTest.preserveModeKeepsBlockLevelElements at 9db1a3cbd: every container to one expectation.
+    """docx4j McLoadModeLoadTest.preserveModeKeepsBlockLevelElements at 9db1a3cbd: every container to one expectation.
 
     Kept whole, nothing recorded, every branch and its content written, the Choices' prefixes
     declared on the root, whole after a round trip, and the text model reading Word's branch,
@@ -1282,7 +1282,7 @@ def test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_bran
         assert tag + suffix in saved
     root = re.search(r"<w:[A-Za-z]+ [^>]*>", saved).group(0)
     assert "xmlns:wpi=" in root and "xmlns:w14=" in root, root
-    again = load(pkg.save(), options=LoadOptions(mc_block_level="preserve"))
+    again = load(pkg.save(), options=LoadOptions(mc_load_mode="preserve"))
     assert isinstance(content_of(again)[1], AlternateContent)
     options = _all_stories()
     shown = plain_text(extract(pkg, options))
@@ -1299,7 +1299,7 @@ def _all_stories() -> Any:
 
 @pytest.mark.parametrize("stem", WITH_WORD_SAVE)
 def test_preserve_mode_reads_as_word_365s_save(stem: str) -> None:
-    """docx4j McBlockLevelProbesTest.preserveModeReadsAsWordsSave: in preserve mode, and after a preserve save."""
+    """docx4j McLoadModeProbesTest.preserveModeReadsAsWordsSave: in preserve mode, and after a preserve save."""
     pkg = probe(stem, "preserve")
     words = text(load(PROBES_DIR / f"{stem}-word365.docx"))
     assert text(pkg) == words
@@ -1364,7 +1364,7 @@ def test_a_sdt_in_either_branch_is_its_containers_kind_at_every_level(mode: str)
     assert not any(tag in shown for tag in _FALLBACK), shown
     saved = main_xml(pkg.save()).decode()
     assert "<w:sdt>" in saved and "CT_Sdt" not in saved
-    again = load(pkg.save(), options=LoadOptions(mc_block_level=mode))
+    again = load(pkg.save(), options=LoadOptions(mc_load_mode=mode))
     assert all(tag in to_xml(again.main_document_part.contents) for tag in _CHOICE)
 
 
@@ -1378,7 +1378,7 @@ def test_a_fragment_types_a_sdt_in_either_branch_at_every_level():
     )
 
 
-# docx4j McBlockLevelReadersTest at 9db1a3cbd: its probe, built here the same way
+# docx4j McLoadModeReadersTest at 9db1a3cbd: its probe, built here the same way
 
 
 def _readers_ac(tag: str) -> str:
@@ -1442,7 +1442,7 @@ def _readers_warnings(pkg: Any) -> set[str]:
 
 
 def test_the_text_model_warns_from_the_record_at_row_and_cell_level_too():
-    """docx4j McBlockLevelReadersTest.textModelWarnsFromTheRecord: the same warnings in both modes, body/3/1 and body/3/2/1 among them."""
+    """docx4j McLoadModeReadersTest.textModelWarnsFromTheRecord: the same warnings in both modes, body/3/1 and body/3/2/1 among them."""
     word = _readers_warnings(_readers_probe().load("word"))
     preserve = _readers_warnings(_readers_probe().load("preserve"))
     assert 'body/1 mc:Choice Requires="w14"' in word

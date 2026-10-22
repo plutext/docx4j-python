@@ -508,7 +508,7 @@ def test_the_facade_still_lists_a_drawing_in_a_run():
 
 def test_a_word_mode_records_parse_types_the_roots():
     """_record_hook: (a) with the level's container, then (b); a block-level record's w:tbl is a Tbl."""
-    from docx4j_py.openpackaging.mc_block_level import (
+    from docx4j_py.openpackaging.mc_load_mode import (
         BLOCK,
         CELL,
         _record_hook,

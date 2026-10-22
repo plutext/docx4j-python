@@ -75,7 +75,7 @@ class OpcPackage:
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
-        "_mc_block_level",
+        "_mc_load_mode",
         "_numbering_emulator",
         "_para_ids_taken",
         "_split_runs",
@@ -107,9 +107,9 @@ class OpcPackage:
         self._custom_xml_parts: Any = None
         self.source_part_store: PartStore | None = None
         self.load_options = LoadOptions()
-        # CR-012 Phase A: this package's own mc_block_level, over the load
+        # CR-012 Phase A: this package's own mc_load_mode, over the load
         # options' (None: theirs)
-        self._mc_block_level: str | None = None
+        self._mc_load_mode: str | None = None
         self.was_strict = False
         self.doc_props_core_part: Any = None
         self.doc_props_extended_part: Any = None
@@ -180,24 +180,24 @@ class OpcPackage:
     # -- markup compatibility at block level (CR-012 Phase A) -------------
 
     @property
-    def mc_block_level(self) -> str:
+    def mc_load_mode(self) -> str:
         """What a parse of this package's parts does with block-, row- and cell-level ``mc:AlternateContent``.
 
         ``"preserve"`` (the default) or ``"word"``: this package's own setting
-        where one was made, else :attr:`load_options`' (``LoadOptions.mc_block_level``).
-        docx4j ``OpcPackage.getMcBlockLevel`` over ``McBlockLevel.of``. It is
+        where one was made, else :attr:`load_options`' (``LoadOptions.mc_load_mode``).
+        docx4j ``OpcPackage.getMcLoadMode`` over ``McLoadMode.of``. It is
         read when each part is **first parsed**, so set it before reading a
         part: a part already parsed keeps its tree, and a tree a private reader
         parsed under the other mode is not adopted by ``contents`` (CR-002
         section 16) but parsed again.
         """
-        return self._mc_block_level or self.load_options.mc_block_level
+        return self._mc_load_mode or self.load_options.mc_load_mode
 
-    @mc_block_level.setter
-    def mc_block_level(self, value: str) -> None:
-        from docx4j_py.openpackaging.mc_block_level import check_mode
+    @mc_load_mode.setter
+    def mc_load_mode(self, value: str) -> None:
+        from docx4j_py.openpackaging.mc_load_mode import check_mode
 
-        self._mc_block_level = check_mode(value)
+        self._mc_load_mode = check_mode(value)
 
     # -- the agent surface's state (CR-003 section 3.4) --------------------
 

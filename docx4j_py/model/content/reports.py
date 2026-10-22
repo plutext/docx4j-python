@@ -1142,7 +1142,7 @@ def refuse_read_only(body: Body, operation: str) -> None:
             f"{operation} refused: the content is {reason}",
             code="address.read_only",
             hint="read it with outline(), to_markdown() or the views' readers; to edit the branch Word "
-            'shows, load with LoadOptions(mc_block_level="word"), which takes it in place of the element',
+            'shows, load with LoadOptions(mc_load_mode="word"), which takes it in place of the element',
         )
 
 

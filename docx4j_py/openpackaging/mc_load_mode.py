@@ -1,4 +1,4 @@
-"""``mc:AlternateContent`` at block, row and cell level, on load. docx4j ``McBlockLevel`` and ``McSplice``.
+"""``mc:AlternateContent`` at block, row and cell level, on load. docx4j ``McLoadMode`` and ``McSplice``.
 
 CR-012 Phase A (section 4.1 item 3), the port of docx4j CR-051 phase 1. Since
 the schema refresh to docx4j ``2853b7280`` every block, row and cell container
@@ -136,7 +136,7 @@ _PARSER = etree.XMLParser(
 def check_mode(value: Any) -> str:
     """`value` if it names a mode; ``ValueError`` otherwise."""
     if value not in MODES:
-        raise ValueError(f"mc_block_level must be one of {MODES!r}, not {value!r}")
+        raise ValueError(f"mc_load_mode must be one of {MODES!r}, not {value!r}")
     return value
 
 
