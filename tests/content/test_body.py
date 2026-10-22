@@ -31,7 +31,8 @@ def test_insert_paragraph_text_and_the_docx4j_aliases(new_package):
     body.add_paragraph_of_text("Tab\there")
 
     assert [p.text for p in body.paragraphs] == ["Title", "Hello World", "Sub", "Tab\there"]
-    assert body.text == "Title\nHello World\nSub\nTab\there"
+    # Office JS's body.text: a mark \r per paragraph, the last one's left out (CR-013 Phase A)
+    assert body.text == "Title\rHello World\rSub\rTab\there"
     # the tab became a w:tab: three items in the run
     assert len(body.paragraphs[3].element.content[0].content) == 3
 
@@ -84,7 +85,7 @@ def test_insert_text_and_insert_break(new_package):
     assert body.text == "start first more"
 
     body.insert_break("Page")
-    assert body.paragraphs[-1].text == "\n"
+    assert body.paragraphs[-1].text == "\x0c", "a page break is U+000C (CR-013 Phase A)"
     assert len(body.paragraphs) == 2
 
     body.insert_text("everything", location="Replace")
@@ -99,7 +100,9 @@ def test_clear_and_get_range(new_package):
     body.insert_paragraph("one")
     body.insert_paragraph("two")
 
-    assert body.get_range().text == "one"
+    # the first paragraph's 'Whole' range, with its mark (CR-013 Phase A); a body's own range
+    # across its paragraphs is CR-013 Phase B's
+    assert body.get_range().text == "one\r"
     assert body.get_range("End").text == ""
     body.clear()
     assert len(body) == 0

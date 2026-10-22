@@ -254,13 +254,13 @@ def test_a_group_control_wraps_the_whole_body(new_package):
     assert len(body) == 1
     assert control.type == "Group"
     assert control.form == "block"
-    assert control.text == "The quick brown fox\nSecond"
+    assert control.text == "The quick brown fox\rSecond", "a mark \\r per paragraph (CR-013 Phase A)"
     assert "<w:group/>" in control.get_xml()
 
     saved = reloaded(new_package)
     assert len(saved.body) == 1
     assert saved.body.content_controls[0].type == "Group"
-    assert saved.body.content_controls[0].text == "The quick brown fox\nSecond"
+    assert saved.body.content_controls[0].text == "The quick brown fox\rSecond"
 
 
 def test_a_checkbox_this_engine_builds_ticks_and_untick(new_package):

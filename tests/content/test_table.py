@@ -257,10 +257,11 @@ def test_a_cells_body_carries_the_address_prefix(new_package, table):
     assert new_package.element_at("body/0/1/1/0") == paragraph
 
     cell.insert_paragraph("more")
-    assert cell.text == "Q1\nmore"
+    # a cell's text is its body's, a mark \r per paragraph (CR-013 Phase A, check 51)
+    assert cell.text == "Q1\rmore"
     cell.insert_text(" and more")
-    assert cell.text == "Q1\nmore and more"
-    assert reloaded(new_package).body.tables[0].cell(1, 1).text == "Q1\nmore and more"
+    assert cell.text == "Q1\rmore and more"
+    assert reloaded(new_package).body.tables[0].cell(1, 1).text == "Q1\rmore and more"
 
 
 def test_cell_width_is_points(new_package, table):

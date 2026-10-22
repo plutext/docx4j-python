@@ -577,4 +577,5 @@ def test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level
     assert table.text == "a-PARA_CHOICE\nb-RUN_CHOICE"
     assert [cell.text for cell in table.rows[0].cells] == ["a-PARA_CHOICE", "b-RUN_CHOICE"]
     assert [p.text for p in body.paragraphs] == ["a-PARA_CHOICE", "b-RUN_CHOICE"]
-    assert body.get_text() == "a-PARA_CHOICE\nb-RUN_CHOICE"
+    # Office JS's body.text: a row's cells a tab apart, the row ended \r\n (CR-013 Phase A)
+    assert body.get_text() == "a-PARA_CHOICE\tb-RUN_CHOICE\r\n"

@@ -8,13 +8,47 @@ text to the item that carries it and to the lists that hold that item and its
 run --- which is everything an edit needs to change the text in place, split a
 run at an offset, or apply formatting to exactly one span.
 
-What counts as text (docx4j ``TextUtils``, and the same rules as
-:func:`docx4j_py.traversal.text_of`): ``w:t``, ``w:tab`` (a tab), ``w:br`` and
-``w:cr`` (a newline), ``w:noBreakHyphen`` (U+2011), ``w:softHyphen`` (U+00AD)
-and ``w:sym`` (the character its ``w:char`` names). ``w:delText``,
-``w:instrText`` and ``w:delInstrText`` are not text --- except that a
-``w:delText`` *is* the text of the original view, inside the ``w:del`` or
-``w:moveFrom`` that removed it, which is the only place it is read.
+**Office JS's characters** (CR-013 Phase A, decided 2026-10-23, Q1; docx4j-core-ts
+CR-012 phase 4 at ``9307bdb``, held to Word 365 by its checks 48, 48b and 51). A
+segment's text is Word's own character stream, as Office JS's ``paragraph.text``
+gives it in Word's default view (Simple Markup, hidden text not shown):
+
+=============================================  ============================
+item                                           Office JS's text
+=============================================  ============================
+``w:t``                                        its value
+``w:tab``                                      ``\\t``
+``w:br`` (a line break)                        U+000B
+``w:br w:type="page"``, ``"column"``           U+000C, U+000E
+``w:cr``                                       U+000D
+``w:ptab``                                     ``0``
+``w:noBreakHyphen``, ``w:softHyphen``          U+001E, U+001F
+``w:sym`` (any font, any code)                 ``(``
+a note reference, a note's own mark            U+0002
+an equation (``m:oMath``, ``m:oMathPara``)     Word's text of it, one segment
+                                               (:mod:`.math_text`)
+a hidden run (its own ``w:vanish``, else its   nothing (:func:`hidden_runs_of`)
+styles')
+a comment reference, a field code, a picture   nothing
+=============================================  ============================
+
+:data:`OFFICE_CHARACTERS` is that table. The 0.1.0 characters --- docx4j's
+``TextUtils``, :func:`docx4j_py.traversal.text_of`'s, a break ``\\n``, the hyphens
+U+2011 and U+00AD, a symbol its code point, a note reference nothing, hidden text
+read --- are :func:`item_text`'s, which the python-docx facade reads (CR-011 Q5),
+and ``characters="docx4j"``'s, which a bound content control writes back into its
+custom XML (CR-013 section 4.1). ``w:delText``, ``w:instrText`` and
+``w:delInstrText`` are not text --- except that a ``w:delText`` *is* the text of
+the original view, inside the ``w:del`` or ``w:moveFrom`` that removed it, which
+is the only place it is read.
+
+**The writers** (Q2). Six of those characters are not XML 1.0 characters, so a
+text read and written back maps each one to the element it reads from
+(:func:`text_items`): U+000B a ``w:br``, U+000C a page break, U+000E a column
+break, U+000D a ``w:cr``, U+001E a ``w:noBreakHyphen``, U+001F a
+``w:softHyphen``; ``\\t`` a ``w:tab`` and ``\\n`` a ``w:br``. U+0002 and the
+other characters XML 1.0 excludes are refused before anything changes
+(:func:`check_writable`, ``text.not_writable``): no text makes a note.
 
 What is descended into: ``w:hyperlink``, ``w:smartTag``, ``w:customXml``, a
 run-level ``w:sdt``, ``w:fldSimple``, ``w:dir``, ``w:bdo``, and the revision
@@ -50,6 +84,7 @@ import dataclasses
 import re
 import sys
 import unicodedata
+from collections.abc import Callable
 from typing import Any
 
 from docx4j_py.child import (
@@ -63,9 +98,13 @@ from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
 
 __all__ = [
+    "FIND_CODES",
+    "OBJECT_REPLACEMENT",
+    "OFFICE_CHARACTERS",
     "RUN_HOLDER_NAMES",
     "TEXT_ITEM_NAMES",
     "VIEWS",
+    "WRITTEN_AS",
     "Reading",
     "Segment",
     "block_children_of",
@@ -74,14 +113,21 @@ __all__ = [
     "branch_text",
     "canonical_view",
     "cells_of",
+    "check_writable",
     "find_all",
     "grapheme_clusters",
+    "hidden_runs_of",
     "is_grapheme_boundary",
     "item_text",
     "kept_content_under",
     "markup_text",
+    "office_as_model",
+    "office_item_text",
+    "office_matches",
     "reading_of",
     "refuse_branch_text",
+    "refuse_equation",
+    "refuse_tracked_equation",
     "require_view",
     "rows_of",
     "runs_of",
@@ -91,8 +137,11 @@ __all__ = [
     "snap_back",
     "snap_forward",
     "split_at",
+    "text_items",
     "text_of_view",
+    "text_run",
     "touches_branch_text",
+    "unwritable",
 ]
 
 
@@ -104,6 +153,7 @@ W_P = _w("p")
 W_R = _w("r")
 W_T = _w("t")
 W_SYM = _w("sym")
+W_BR = _w("br")
 W_SDT = _w("sdt")
 W_DEL_TEXT = _w("delText")
 W_TBL = _w("tbl")
@@ -130,6 +180,43 @@ _CONSTANT_TEXT: dict[str, str] = {
 #: instructions are not document text.
 TEXT_ITEM_NAMES: frozenset[str] = frozenset({W_T, W_SYM, *_CONSTANT_TEXT})
 
+#: Office JS's character for each run child that adds one (CR-013 Phase A, Q1;
+#: core-ts ``officeItemText`` at ``9307bdb``, Word 365 check 48): the run child's
+#: element name to its character, a ``w:br`` by its ``w:type``. ``w:t`` gives its
+#: value and an equation Word's text of it; everything else gives nothing.
+OFFICE_CHARACTERS: dict[str, str] = {
+    _w("tab"): "\t",
+    W_BR: "\x0b",
+    f"{W_BR}@page": "\x0c",
+    f"{W_BR}@column": "\x0e",
+    _w("cr"): "\r",
+    _w("ptab"): "0",
+    _w("noBreakHyphen"): "\x1e",
+    _w("softHyphen"): "\x1f",
+    W_SYM: "(",
+    _w("footnoteReference"): "\x02",
+    _w("endnoteReference"): "\x02",
+    _w("footnoteRef"): "\x02",
+    _w("endnoteRef"): "\x02",
+}
+
+#: The run children an Office JS reader lists as a place of no text (core-ts
+#: ``OBJECT_ITEMS``): a picture's place, which ``search`` reads as U+FFFC.
+_OBJECT_NAMES = frozenset({_w("drawing"), _w("pict"), _w("object")})
+
+#: What the text model writes for each item whose Office JS character differs
+#: (``model/text/extractor.py``'s ``_CONSTANT``, and a ``w:sym``'s code point):
+#: Q11's character map, under which a text model run's ``office_offset`` agrees
+#: with ``Paragraph.text`` (:func:`office_as_model`).
+_MODEL_CHARACTERS: dict[str, str] = {
+    _w("tab"): "\t",
+    _w("ptab"): "\t",
+    W_BR: "\n",
+    _w("cr"): "\n",
+    _w("noBreakHyphen"): "\u2011",
+    _w("softHyphen"): "\u00ad",
+}
+
 #: Run-level containers whose items are read as part of the paragraph's text.
 RUN_HOLDER_NAMES: frozenset[str] = frozenset(
     {
@@ -141,6 +228,14 @@ RUN_HOLDER_NAMES: frozenset[str] = frozenset(
         _w("bdo"),
         W_SDT,
         _w("sdtContent"),
+    }
+)
+
+#: An equation at run-holder level (CR-013 Phase A, :mod:`.math_text`).
+_MATH_NAMES = frozenset(
+    {
+        "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath",
+        "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMathPara",
     }
 )
 
@@ -172,11 +267,17 @@ def _qname(node: Any) -> str | None:
     return element_name(node)
 
 
-def _wildcard_text(qname: str | None, node: Any) -> str | None:
-    """The text a wildcard run child contributes (a kept branch's ``AnyElement``), as :func:`item_text`."""
+def _wildcard_text(qname: str | None, node: Any, office: bool = True) -> str | None:
+    """The text a wildcard run child contributes (a kept branch's ``AnyElement``).
+
+    In Office JS's characters (:func:`office_item_text`), or with `office`
+    false in docx4j's (:func:`item_text`).
+    """
     if qname in (W_T, W_DEL_TEXT):
         value = getattr(node, "text", None)
         return value if isinstance(value, str) else ""
+    if office:
+        return office_item_text(qname, node)
     if qname == W_SYM:
         attributes = getattr(node, "attributes", None) or {}
         value = attributes.get(_w("char")) or attributes.get("char")
@@ -211,7 +312,14 @@ def _wildcard_items(node: Any) -> list | None:
 
 
 def item_text(qname: str | None, item: Any) -> str | None:
-    """The text a run child contributes, or None when it contributes none."""
+    """The text a run child contributes in docx4j's characters, or None when it contributes none.
+
+    docx4j's ``TextUtils``, :func:`docx4j_py.traversal.text_of`'s: a ``w:br``
+    and a ``w:cr`` ``\\n``, the hyphens U+2011 and U+00AD, a ``w:sym`` the
+    character its ``w:char`` names. Not Office JS's (:func:`office_item_text`):
+    the python-docx facade's ``run_text`` reads these (CR-011 Q5, CR-013 section
+    2.5 item 4).
+    """
     if qname == W_T:
         value = getattr(item, "value", None)
         return value if isinstance(value, str) else ""
@@ -220,6 +328,39 @@ def item_text(qname: str | None, item: Any) -> str | None:
     if qname is None:
         return None
     return _CONSTANT_TEXT.get(qname)
+
+
+def _break_type(item: Any) -> str | None:
+    """A ``w:br``'s ``w:type``, typed or wildcard."""
+    kind = getattr(item, "type_value", None)
+    if kind is None:
+        attributes = getattr(item, "attributes", None)
+        if isinstance(attributes, dict):
+            kind = attributes.get(_w("type")) or attributes.get("type")
+    return getattr(kind, "value", kind)
+
+
+def office_item_text(qname: str | None, item: Any) -> str | None:
+    """The text a run child contributes in Office JS's characters, or None when it contributes none.
+
+    :data:`OFFICE_CHARACTERS` (CR-013 Phase A): a ``w:t`` its value, a
+    ``w:br`` U+000B (U+000C a page break, U+000E a column break), a ``w:cr``
+    U+000D, a ``w:ptab`` ``0``, the hyphens U+001E and U+001F, any ``w:sym``
+    ``(``, a note reference and a note's own mark U+0002.
+    """
+    if qname == W_T:
+        value = getattr(item, "value", None)
+        if value is None and is_any_element(item):
+            value = getattr(item, "text", None)
+        return value if isinstance(value, str) else ""
+    if qname == W_BR:
+        kind = _break_type(item)
+        if kind in ("page", "column"):
+            return OFFICE_CHARACTERS[f"{W_BR}@{kind}"]
+        return OFFICE_CHARACTERS[W_BR]
+    if qname is None:
+        return None
+    return OFFICE_CHARACTERS.get(qname)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -264,6 +405,19 @@ class Segment:
     """The list holding :attr:`outer`."""
     outer_index: int = -1
     """:attr:`outer`'s index in :attr:`outer_owner`."""
+    math: bool = False
+    """An equation (``m:oMath``, ``m:oMathPara``): one segment of Word's text of
+    it (:mod:`.math_text`). :attr:`item` and :attr:`run` are the equation and
+    :attr:`owner` the list holding it; an edit may take it whole, untracked, and
+    never part of it (:func:`refuse_equation`). CR-013 Phase A."""
+    hidden: bool = False
+    """An item of a hidden run --- its text, or a drawing in it --- listed only by
+    ``segments_of(objects=True)``: no text and no offset of its own, so that a
+    deletion of a span takes the hidden run strictly inside it. CR-013 Phase A."""
+    object: bool = False
+    """A place of no text listed only by ``segments_of(objects=True)``: a drawn
+    object (``w:drawing``, ``w:pict``, ``w:object``), which ``search`` reads as
+    U+FFFC, or a hidden run's item (:attr:`hidden`)."""
 
     def site(self) -> tuple[Any, list, int]:
         """``(item, list, index)``: what an insertion beside this segment goes next to.
@@ -290,24 +444,54 @@ class Segment:
         }
 
 
-def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
-    """The text segments of a paragraph (or any run holder), in order.
+def segments_of(
+    container: Any,
+    *,
+    view: str = "accepted",
+    hidden: Callable[[Any], bool] | None = None,
+    objects: bool = False,
+    characters: str = "office",
+    visit: Callable[..., None] | None = None,
+) -> list[Segment]:
+    """The text segments of a paragraph (or any run holder), in order, in Office JS's characters.
 
     A run- or paragraph-level ``mc:AlternateContent`` is read as the branch
     Word shows (:func:`docx4j_py.child.mce_branch`; CR-011 Phase F): its
     segments carry the element as :attr:`Segment.branch` and are not editable.
+    An equation is one segment of Word's text of it (:attr:`Segment.math`).
 
     Args:
         container: a ``w:p``, or anything :func:`run_items_of` knows.
         view: ``"accepted"`` (the default: ``w:ins`` and ``w:moveTo`` count,
             ``w:del`` and ``w:moveFrom`` do not) or ``"original"``, the other
             way round.
+        hidden: which runs are hidden (:func:`hidden_runs_of`): their text has
+            no offset, as Office JS leaves hidden text out (core-ts check 48b).
+            None: no run is hidden.
+        objects: also list each drawn object and each hidden run's text item as
+            a segment of no text where it stands (:attr:`Segment.object`,
+            :attr:`Segment.hidden`), for a deletion of a span and for
+            ``search``'s U+FFFC.
+        characters: ``"office"`` (the default, :data:`OFFICE_CHARACTERS`) or
+            ``"docx4j"``, the 0.1.0 characters (:func:`item_text`: a break
+            ``\\n``, the hyphens U+2011 and U+00AD, a symbol its code point, a
+            note reference and an equation nothing), which a bound content
+            control writes back into its custom XML (CR-013 section 4.1).
+        visit: called ``visit(item, offset, owner, run, run_owner, branch)``
+            for every element the walk passes that adds no text --- each element
+            of a run holder's list before it is entered (``run`` and
+            ``run_owner`` None), and each run child that adds none (a comment
+            reference, a field character, a drawing, a hidden run's text) ---
+            with the offset it stands at: what gives a comment marker or a
+            revision its offset in the same text (core-ts's
+            ``SegmentOptions.visit``). `branch` is the kept
+            ``mc:AlternateContent`` it is read from, or None.
 
     Returns:
         One :class:`Segment` per text-bearing run child, in document order,
         with ``start``/``end`` running over the whole text.
     """
-    walker = _Walker(view)
+    walker = _Walker(view, hidden=hidden, objects=objects, office=characters != "docx4j", callback=visit)
     walker.visit(run_items_of(container), None, None, None)
     return walker.out
 
@@ -315,20 +499,35 @@ def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
 class _Walker:
     """:func:`segments_of`'s walk: run-level items, runs, and Word's branch of a kept element."""
 
-    __slots__ = ("out", "position", "view")
+    __slots__ = ("callback", "hidden", "objects", "office", "out", "position", "view")
 
-    def __init__(self, view: str) -> None:
+    def __init__(
+        self,
+        view: str,
+        *,
+        hidden: Callable[[Any], bool] | None = None,
+        objects: bool = False,
+        office: bool = True,
+        callback: Callable[..., None] | None = None,
+    ) -> None:
         self.view = view
+        self.hidden = hidden
+        self.objects = objects
+        self.office = office
+        self.callback = callback
         self.out: list[Segment] = []
         self.position = 0
 
     def visit(self, items: list | None, revision: str | None, kept: Any, outer: Any) -> None:
-        """A run-level list: runs, revision holders, run holders, kept elements."""
+        """A run-level list: runs, revision holders, run holders, kept elements, equations."""
         if not items:
             return
+        callback = self.callback
         for run_index, element in enumerate(items):
             if isinstance(element, str):
                 continue
+            if callback is not None:
+                callback(element, self.position, items, None, None, kept)
             name = element_name(element) if kept is None else _qname(element)
             if name == W_R:
                 content = getattr(element, "content", None)
@@ -336,7 +535,8 @@ class _Walker:
                     content = _wildcard_items(element) if kept is not None else None
                     if content is None:
                         continue
-                self.run(content, element, items, run_index, revision, kept, outer)
+                hidden = self.hidden is not None and not is_any_element(element) and self.hidden(element)
+                self.run(content, element, items, run_index, revision, kept, outer, hidden)
                 continue
             if is_alternate_content(element):
                 # a paragraph-level element kept whole: its runs, as the branch Word shows
@@ -346,6 +546,9 @@ class _Walker:
                     element if kept is None else kept,
                     (element, items, run_index) if outer is None else outer,
                 )
+                continue
+            if self.office and name in _MATH_NAMES:
+                self.math(element, items, run_index, revision, kept, outer)
                 continue
             shown = _REVISIONS.get(name or "")
             if shown is not None:
@@ -363,6 +566,36 @@ class _Walker:
             found = _wildcard_items(element)
         return found
 
+    def math(self, element: Any, items: list, index: int, revision: str | None, kept: Any, outer: Any) -> None:
+        """An equation: one segment of Word's text of it (:mod:`.math_text`; CR-013 Phase A)."""
+        from docx4j_py.model.content.math_text import math_text_of
+
+        text = math_text_of(element, self.view)
+        if not text:
+            return
+        position = self.position
+        self.out.append(
+            Segment(
+                item=element,
+                owner=items,
+                index=index,
+                run=element,
+                run_owner=items,
+                run_index=index,
+                text=text,
+                start=position,
+                end=position + len(text),
+                editable=False,
+                revision=revision,
+                branch=kept,
+                outer=None if outer is None else outer[0],
+                outer_owner=None if outer is None else outer[1],
+                outer_index=-1 if outer is None else outer[2],
+                math=True,
+            )
+        )
+        self.position = position + len(text)
+
     def run(
         self,
         content: list,
@@ -372,8 +605,11 @@ class _Walker:
         revision: str | None,
         kept: Any,
         outer: Any,
+        hidden: bool = False,
     ) -> None:
         """A run's children, or a run-level element's branch read as them."""
+        callback = self.callback
+        office = self.office
         for index, item in enumerate(content):
             if isinstance(item, str):
                 continue
@@ -389,6 +625,7 @@ class _Walker:
                         revision,
                         item if kept is None else kept,
                         (run, items, run_index) if outer is None else outer,
+                        hidden,
                     )
                 continue
             if kept is None:
@@ -397,17 +634,47 @@ class _Walker:
                     value = getattr(item, "value", None)
                     text: str | None = value if isinstance(value, str) else ""
                 else:
-                    text = item_text(qname, item)
+                    text = office_item_text(qname, item) if office else item_text(qname, item)
             else:
                 qname = _qname(item)
-                text = _wildcard_text(qname, item) if is_any_element(item) else (
-                    _typed_text(qname, item)
+                text = _wildcard_text(qname, item, office) if is_any_element(item) else (
+                    _typed_text(qname, item, office)
                 )
             if qname == W_DEL_TEXT and revision not in ("del", "moveFrom"):
                 # deleted text is text in the original view only, and only inside
                 # the revision that deleted it
+                if callback is not None:
+                    callback(item, self.position, content, run, items, kept)
                 continue
-            if text is None:
+            if text is None or hidden:
+                # no text of its own, or a hidden run's: no offset (CR-013 Phase A)
+                if callback is not None:
+                    callback(item, self.position, content, run, items, kept)
+                if self.objects and ((hidden and bool(text)) or qname in _OBJECT_NAMES):
+                    position = self.position
+                    self.out.append(
+                        Segment(
+                            item=item,
+                            owner=content,
+                            index=index,
+                            run=run,
+                            run_owner=items,
+                            run_index=run_index,
+                            text="",
+                            start=position,
+                            end=position,
+                            editable=False,
+                            revision=revision,
+                            branch=kept,
+                            outer=None if outer is None else outer[0],
+                            outer_owner=None if outer is None else outer[1],
+                            outer_index=-1 if outer is None else outer[2],
+                            # a hidden run's item, a drawing in it too: Word's default
+                            # view does not show it, so search's ^g passes it by
+                            hidden=hidden,
+                            object=True,
+                        )
+                    )
                 continue
             position = self.position
             self.out.append(
@@ -432,12 +699,12 @@ class _Walker:
             self.position = position + len(text)
 
 
-def _typed_text(qname: str | None, item: Any) -> str | None:
+def _typed_text(qname: str | None, item: Any, office: bool = True) -> str | None:
     """A typed run child's text, ``w:delText`` included (its view is the caller's)."""
     if qname == W_DEL_TEXT:
         value = getattr(item, "value", None)
         return value if isinstance(value, str) else ""
-    return item_text(qname, item)
+    return office_item_text(qname, item) if office else item_text(qname, item)
 
 
 def branch_text(element: Any, *, view: str = "accepted", run_level: bool = False) -> str:
@@ -493,7 +760,15 @@ def touches_branch_text(segments: list[Segment], start: int, end: int) -> bool:
     return any(a < start < b for a, b, _ in extents)
 
 
-def refuse_branch_text(container: Any, start: int, end: int, operation: str = "this edit", *, segments: list[Segment] | None = None) -> None:
+def refuse_branch_text(
+    container: Any,
+    start: int,
+    end: int,
+    operation: str = "this edit",
+    *,
+    segments: list[Segment] | None = None,
+    hidden: Callable[[Any], bool] | None = None,
+) -> None:
     """Refuse an edit of ``[start, end)`` that would change text read from a kept branch.
 
     CR-011 Phase F (section 15 item 3), CR-012 Phase A's rule: text a run- or
@@ -504,7 +779,7 @@ def refuse_branch_text(container: Any, start: int, end: int, operation: str = "t
     Raises:
         AddressError: ``address.read_only``.
     """
-    found = segments if segments is not None else segments_of(container)
+    found = segments if segments is not None else segments_of(container, hidden=hidden)
     if not touches_branch_text(found, start, end):
         return
     from docx4j_py.model.content.errors import AddressError
@@ -521,9 +796,137 @@ def refuse_branch_text(container: Any, start: int, end: int, operation: str = "t
     )
 
 
-def text_of_view(container: Any, *, view: str = "accepted") -> str:
-    """The text of one run holder in one of the two views."""
-    return "".join(segment.text for segment in segments_of(container, view=view))
+def text_of_view(
+    container: Any,
+    *,
+    view: str = "accepted",
+    hidden: Callable[[Any], bool] | None = None,
+    characters: str = "office",
+) -> str:
+    """The text of one run holder in one of the two views, in Office JS's characters.
+
+    `hidden` and `characters` are :func:`segments_of`'s.
+    """
+    return "".join(
+        segment.text
+        for segment in segments_of(container, view=view, hidden=hidden, characters=characters)
+    )
+
+
+def _on(flag: Any) -> bool:
+    """An on/off property: present, and not ``w:val="0"`` (the text model's ``_on``)."""
+    return flag is not None and getattr(flag, "val", None) is not False
+
+
+def hidden_runs_of(resolver: Any, paragraph: Any) -> Callable[[Any], bool]:
+    """Which of a paragraph's runs are hidden, as the text model's rule has it (CR-013 Phase A).
+
+    WD REQ-507, ``model/text/extractor.py``'s ``_run``: a run's own
+    ``w:vanish``, else its paragraph style's and character style's
+    (:meth:`~docx4j_py.model.property_resolver.PropertyResolver.is_vanished_by_styles`).
+    Office JS's text leaves such a run out in every view (docx4j-core-ts check
+    48b, ``hiddenRunsOf`` at ``9307bdb``). Without a resolver only a run's own
+    ``w:vanish`` counts.
+    """
+    p_pr = getattr(paragraph, "p_pr", None)
+    style = getattr(p_pr, "p_style", None) if p_pr is not None else None
+    value = getattr(style, "val", None) if style is not None else None
+    p_style = getattr(value, "value", value)
+
+    def hidden(run: Any) -> bool:
+        r_pr = getattr(run, "r_pr", None)
+        own = getattr(r_pr, "vanish", None) if r_pr is not None else None
+        if own is not None:
+            return _on(own)
+        if resolver is None:
+            return False
+        r_style = getattr(getattr(r_pr, "r_style", None), "val", None) if r_pr is not None else None
+        return resolver.is_vanished_by_styles(p_style, getattr(r_style, "value", r_style))
+
+    return hidden
+
+
+def _model_character(segment: Segment) -> str:
+    """The text model's character for a segment's item, where its Office JS character differs (Q11)."""
+    name = element_name(segment.item) if not is_any_element(segment.item) else segment.item.qname
+    if name == W_SYM:
+        code = None
+        for attribute in ("char_value", "char", "char_attribute"):
+            code = getattr(segment.item, attribute, None)
+            if isinstance(code, str):
+                break
+        if code is None and is_any_element(segment.item):
+            attributes = getattr(segment.item, "attributes", None) or {}
+            code = attributes.get(_w("char")) or attributes.get("char")
+        if isinstance(code, str) and re.fullmatch(r"[0-9A-Fa-f]{1,6}", code):
+            point = int(code, 16)
+            if point <= 0x10FFFF and not 0xD800 <= point <= 0xDFFF:
+                return chr(point)
+        return segment.text
+    return _MODEL_CHARACTERS.get(name or "", segment.text)
+
+
+def office_as_model(segments: list[Segment]) -> str:
+    """``Paragraph.text`` with Office JS's characters read as the text model's: Q11's character map.
+
+    CR-013 Q11, decided 2026-10-23: a text model run keeps the
+    ``office_offset`` the extractor gives it (where the item's length agrees,
+    as core-ts's ``Extractor.mts`` assigns it), and the invariant of CR-011
+    section 12.6 is restated as agreement **under the character map**: each
+    run with an offset equals this string at its offset, character for
+    character, a break's U+000B read as the model's ``\\n``, a ``w:ptab``'s
+    ``0`` as ``\\t``, the hyphens U+001E and U+001F as U+2011 and U+00AD and
+    a ``w:sym``'s ``(`` as the character its ``w:char`` names. The same length
+    as the segments' text, offset for offset.
+    """
+    out: list[str] = []
+    for segment in segments:
+        if segment.math or len(segment.text) != 1 or segment.text == "\t":
+            out.append(segment.text)
+            continue
+        mapped = _model_character(segment)
+        out.append(mapped if len(mapped) == 1 else segment.text)
+    return "".join(out)
+
+
+def refuse_equation(segments: list[Segment], start: int, end: int, *, tracked: bool = False) -> None:
+    """Refuse an edit that would cut an equation, or take one under change tracking (CR-013 Phase A).
+
+    An equation's text is one segment, Word's drawing of its math runs
+    (:mod:`.math_text`), so an edit may take it whole but not part of it, nor
+    insert into it, nor, under change tracking, take it at all: a tracked
+    change inside an equation is its math runs' own, which nothing here
+    writes. docx4j-core-ts's ``assertPlaceable`` at ``9307bdb``.
+
+    Raises:
+        SpanError: ``range.cuts_equation``, an edit or an insertion strictly
+            inside the equation's text.
+        TrackedChangeError: ``tracking.equation``, a tracked edit taking one.
+    """
+    for segment in segments:
+        if not segment.math:
+            continue
+        cuts = segment.start < start < segment.end or segment.start < end < segment.end
+        takes = start < segment.end and segment.start < end
+        if cuts:
+            from docx4j_py.model.content.errors import SpanError
+
+            raise SpanError(
+                f"{start}:{end} cuts the equation at {segment.start}:{segment.end}: an edit takes an "
+                "equation whole, or not at all (CR-013 Phase A)",
+                code="range.cuts_equation",
+                hint=f"widen the span to {min(start, segment.start)}:{max(end, segment.end)}, or edit beside the equation",
+            )
+        if tracked and takes:
+            from docx4j_py.model.content.errors import TrackedChangeError
+
+            raise TrackedChangeError(
+                f"{start}:{end} takes the equation at {segment.start}:{segment.end} under change tracking, "
+                "and a tracked change inside an equation is its math runs' own, which this package does not "
+                "write (CR-013 Phase A)",
+                code="tracking.equation",
+                hint="turn change tracking off to take the equation whole, or edit beside it",
+            )
 
 
 #: The views ``get_text`` and ``text_budget`` read (CR-003 section 3.8), and
@@ -837,6 +1240,41 @@ def kept_content_under(element: Any) -> Any | None:
     return None
 
 
+def refuse_tracked_equation(element: Any, operation: str) -> None:
+    """Refuse a tracked deletion of `element` --- a body, a table, a row --- that would take an equation.
+
+    CR-013 Phase A (:func:`refuse_equation`): a tracked change inside an
+    equation is its math runs' own, which nothing here writes, so a tracked
+    ``Body.clear()``, a tracked deletion of a table or a row, and a tracked
+    ``Paragraph.delete()`` refuse where a paragraph they take holds one, before
+    anything changes, as core-ts's ``assertPlaceable`` does. Untracked, the
+    equation goes whole.
+
+    Raises:
+        TrackedChangeError: ``tracking.equation``.
+    """
+    stack = [element]
+    while stack:
+        node = stack.pop()
+        if element_name(node) == W_P:
+            for segment in segments_of(node):
+                if segment.math:
+                    from docx4j_py.model.content.errors import TrackedChangeError
+
+                    raise TrackedChangeError(
+                        f"{operation} refused under change tracking: a paragraph it would delete holds "
+                        "an equation, and a tracked change inside an equation is its math runs' own, "
+                        "which this package does not write (CR-013 Phase A)",
+                        code="tracking.equation",
+                        hint="turn change tracking off to delete the equation whole, or leave its "
+                        "paragraph out of the deletion",
+                    )
+            continue
+        children = block_children_of(node)
+        if children is not None:
+            stack.extend(reversed(children))
+
+
 def block_list_of(value: Any) -> tuple[Any, str] | None:
     """The object and field name that hold a container's block-level list.
 
@@ -1060,7 +1498,12 @@ def grapheme_clusters(text: str) -> list[str]:
 
 
 def split_at(
-    paragraph_element: Any, offset: int, *, prefer: str = "back", made: list | None = None
+    paragraph_element: Any,
+    offset: int,
+    *,
+    prefer: str = "back",
+    made: list | None = None,
+    hidden: Callable[[Any], bool] | None = None,
 ) -> int:
     """Split the run at a text offset so that ``[offset, ...)`` begins a run.
 
@@ -1076,18 +1519,26 @@ def split_at(
             caller that has to know which two runs a split made and whether the
             split is what put ``xml:space`` on the head's ``w:t``
             (CR-003 section 16.12); `item` is None when the document had it.
+        hidden: which runs are hidden (:func:`segments_of`'s), so that the
+            offset is the paragraph's ``text``'s.
 
     Returns:
         The offset actually used, which is the one a caller must go on with.
+
+    Raises:
+        SpanError: ``range.cuts_equation``, the offset is inside an equation's
+            text (:func:`refuse_equation`).
     """
     from docx4j_py.child import ChildList, deep_copy, link_parents
     from docx4j_py.wml import R, el
 
-    text = text_of_view(paragraph_element)
+    segments = segments_of(paragraph_element, hidden=hidden)
+    text = "".join(segment.text for segment in segments)
     offset = snap_back(text, offset) if prefer == "back" else snap_forward(text, offset)
+    refuse_equation(segments, offset, offset)
 
     segment = next(
-        (s for s in segments_of(paragraph_element) if s.editable and s.start < offset < s.end),
+        (s for s in segments if s.editable and s.start < offset < s.end),
         None,
     )
     if segment is None:
@@ -1131,6 +1582,187 @@ def set_text(item: Any, value: str) -> None:
     item.value = value
     if value != value.strip() or "  " in value:
         item.space = "preserve"
+
+
+# ---------------------------------------------------------------------------
+# writing Office JS's characters back (CR-013 Phase A, Q2)
+# ---------------------------------------------------------------------------
+
+#: What a text writer makes of each character that is not written as text
+#: (CR-013 Q2, decided 2026-10-23): the element it reads from, so that a text
+#: read and written back reads as the items it read. ``\\t`` and ``\\n`` keep
+#: 0.1.0's ``w:tab`` and ``w:br``. A ``w:sym``'s ``(`` and a ``w:ptab``'s ``0``
+#: are ordinary text, so writing their read text back is lossy, as it is in Word.
+WRITTEN_AS: dict[str, tuple[str, str | None]] = {
+    "\t": ("tab", None),
+    "\n": ("br", None),
+    "\x0b": ("br", None),
+    "\x0c": ("br", "page"),
+    "\x0e": ("br", "column"),
+    "\r": ("cr", None),
+    "\x1e": ("noBreakHyphen", None),
+    "\x1f": ("softHyphen", None),
+}
+
+_MAPPED = re.compile("[\t\n\x0b\x0c\x0e\r\x1e\x1f]")
+
+#: The characters a text writer refuses: U+0002 (a note's character: no text
+#: makes a note), and every other character XML 1.0 excludes that the map does
+#: not take --- U+0000 to U+0008, U+000F to U+001D, a lone surrogate, U+FFFE and
+#: U+FFFF (CR-013 section 4.1).
+_UNWRITABLE = re.compile("[\x00-\x08\x0f-\x1d\ud800-\udfff\ufffe\uffff]")
+
+
+def unwritable(text: str) -> tuple[int, str] | None:
+    """The first character a text writer refuses, with its offset, or None (:func:`check_writable`)."""
+    if not text:
+        return None
+    found = _UNWRITABLE.search(text)
+    return None if found is None else (found.start(), found.group())
+
+
+def check_writable(text: str | None, operation: str = "this write") -> None:
+    """Refuse a text no element can carry, before anything changes (CR-013 Phase A, Q2).
+
+    U+0002 is a note reference's character in Office JS's text, and no text
+    makes a note; the other characters XML 1.0 excludes have no element.
+    lxml's own refusal at save stays as the guard behind this one.
+
+    Raises:
+        ContentError: ``text.not_writable``, naming the character and its offset.
+    """
+    if not text:
+        return
+    found = unwritable(text)
+    if found is None:
+        return
+    at, char = found
+    if char == "\x02":
+        raise ContentError(
+            f"{operation} refused: the text holds U+0002 at offset {at}, Office JS's character for a "
+            "footnote or endnote reference, and no text makes a note (CR-013 Q2)",
+            code="text.not_writable",
+            hint="leave the reference's character out of the text: the reference stays where it is "
+            "when the text around it is edited",
+        )
+    raise ContentError(
+        f"{operation} refused: the text holds U+{ord(char):04X} at offset {at}, which XML 1.0 does not "
+        "allow and no element of WordprocessingML stands for (CR-013 section 4.1)",
+        code="text.not_writable",
+        hint="remove the character; a line break is U+000B or \\n, a page break U+000C, a tab \\t",
+    )
+
+
+def _written_item(char: str) -> Any:
+    from docx4j_py.wml import el
+
+    name, kind = WRITTEN_AS[char]
+    if name == "br":
+        return el.br() if kind is None else el.br(type_value=kind)
+    return getattr(el, name)()
+
+
+def text_items(text: str) -> list[Any]:
+    """The run items a text writer makes of `text`: ``w:t`` pieces and each mapped character's element.
+
+    :data:`WRITTEN_AS` (CR-013 Q2): U+000B and ``\\n`` a ``w:br``, U+000C and
+    U+000E a page and a column break, U+000D a ``w:cr``, U+001E and U+001F the
+    hyphens, ``\\t`` a ``w:tab``. A text with none of them is one ``w:t``, as
+    before. The caller has checked it (:func:`check_writable`).
+    """
+    from docx4j_py.wml import el
+
+    if not text:
+        return []
+    if _MAPPED.search(text) is None:
+        return [el.t(text)]
+    out: list[Any] = []
+    buffer: list[str] = []
+    for char in text:
+        if char in WRITTEN_AS:
+            if buffer:
+                out.append(el.t("".join(buffer)))
+                buffer = []
+            out.append(_written_item(char))
+        else:
+            buffer.append(char)
+    if buffer:
+        out.append(el.t("".join(buffer)))
+    return out
+
+
+def text_run(text: str, r_pr: Any = None) -> Any:
+    """A ``w:r`` of `text` through the writers' map (:func:`text_items`), with `r_pr` if given."""
+    from docx4j_py.child import ChildList
+    from docx4j_py.wml import R
+
+    run = R(content=ChildList(text_items(text)))
+    if r_pr is not None:
+        run.r_pr = r_pr
+        r_pr.parent = run
+    return run
+
+
+def explode_mapped(segments: list[Segment], start: int, end: int) -> int:
+    """Turn the mapped characters a writer put into ``w:t``\\ s at ``[start, end)`` into their elements.
+
+    A write puts its text into a ``w:t`` first, where the edit primitives place
+    and format it as Word does; this then replaces each character of
+    :data:`WRITTEN_AS` in that span with the element it reads from, splitting
+    the ``w:t`` around it inside the same run. Each element reads as one
+    character, so no offset moves. Text outside the span is left alone, a
+    document's own raw tab in a ``w:t`` among it. Returns how many were made.
+    """
+    from docx4j_py.child import link_parents
+    from docx4j_py.wml import el
+
+    made = 0
+    targets = [
+        segment
+        for segment in segments
+        if segment.editable and segment.end > start and segment.start < end and _MAPPED.search(segment.text)
+    ]
+    # last first, so that the indices of what is still to do hold
+    for segment in reversed(targets):
+        value = segment.text
+        low = max(0, start - segment.start)
+        high = min(len(value), end - segment.start)
+        if _MAPPED.search(value, low, high) is None:
+            continue
+        pieces: list[Any] = []
+        buffer = value[:low]
+        for char in value[low:high]:
+            if char in WRITTEN_AS:
+                pieces.append(buffer)
+                pieces.append(_written_item(char))
+                buffer = ""
+                made += 1
+            else:
+                buffer += char
+        pieces.append(buffer + value[high:])
+        # the first piece of text stays in the w:t the document had, its attributes kept
+        items: list[Any] = []
+        head = pieces[0]
+        for piece in pieces:
+            if isinstance(piece, str):
+                if not piece:
+                    continue
+                if piece is head and not items:
+                    set_text(segment.item, piece)
+                    items.append(segment.item)
+                else:
+                    items.append(el.t(piece))
+            else:
+                items.append(piece)
+        position = next((i for i, item in enumerate(segment.owner) if item is segment.item), -1)
+        if position < 0:
+            continue
+        segment.owner[position : position + 1] = items
+        owner = getattr(segment.item, "parent", None) or segment.run
+        for item in items:
+            link_parents(item)
+            item.parent = owner
+    return made
 
 
 # ---------------------------------------------------------------------------
@@ -1217,4 +1849,152 @@ def find_all(text: str, pattern: re.Pattern[str]) -> list[tuple[int, int]]:
             continue
         out.append((match.start(), match.end()))
         position = match.end()
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Office JS's search over a paragraph (CR-013 Phase A, Q1; core-ts officeMatches)
+# ---------------------------------------------------------------------------
+
+#: The object replacement character: a picture's place in the text ``search``
+#: reads, which ``^g`` matches and a plain query does not match across.
+OBJECT_REPLACEMENT = "￼"
+
+#: Word's Find codes a plain query may hold (core-ts check 48: each matched its
+#: character in Office JS's text): ``^f`` a footnote reference, ``^e`` an endnote
+#: reference, ``^l`` a line break, ``^m`` a page break, ``^t`` a tab, ``^~`` a
+#: non-breaking hyphen, ``^-`` an optional hyphen, ``^g`` a picture, ``^^`` a caret.
+FIND_CODES: dict[str, str] = {
+    "f": "\x02",
+    "e": "\x02",
+    "l": "\x0b",
+    "m": "\x0c",
+    "t": "\t",
+    "~": "\x1e",
+    "-": "\x1f",
+    "g": OBJECT_REPLACEMENT,
+    "^": "^",
+}
+
+_NOTE_KINDS = {
+    _w("footnoteReference"): "footnote",
+    _w("footnoteRef"): "footnote",
+    _w("endnoteReference"): "endnote",
+    _w("endnoteRef"): "endnote",
+}
+
+
+def _plain_query(query: str) -> tuple[str, list[str | None]]:
+    """A plain query as an expression over :func:`office_matches`' text, and which of its characters are ``^f`` or ``^e``."""
+    source: list[str] = []
+    tokens: list[str | None] = []
+    index = 0
+    while index < len(query):
+        char = query[index]
+        code = query[index + 1] if char == "^" and index + 1 < len(query) else None
+        if code is not None and code in FIND_CODES:
+            source.append(re.escape(FIND_CODES[code]))
+            tokens.append("footnote" if code == "f" else "endnote" if code == "e" else None)
+            index += 2
+            continue
+        if char == "-":
+            source.append("[-\\x1e]")  # a non-breaking hyphen is a hyphen to a plain query
+        else:
+            source.append(re.escape(char))
+        tokens.append(None)
+        index += 1
+    return "".join(source), tokens
+
+
+def office_matches(
+    segments: list[Segment],
+    query: str,
+    *,
+    match_case: bool = False,
+    match_whole_word: bool = False,
+    match_wildcards: bool = False,
+    start: int = 0,
+    end: int | None = None,
+) -> list[tuple[int, int]]:
+    """Every ``[start, end)`` match of a query in a paragraph's text by Office JS's rules.
+
+    CR-013 Phase A (Q1), the port of docx4j-core-ts's ``officeMatches`` at
+    ``9307bdb``, held to Word 365 by checks 48 and 48b (Word's default view).
+    The text is ``Paragraph.text`` --- hidden text left out, so a query matches
+    across it and never in it --- where a picture is a place of no text that a
+    plain query does not match across and ``^g`` matches (U+FFFC), and an
+    optional hyphen is passed over unless the query names it (``^-``). A plain
+    query takes Word's Find codes (:data:`FIND_CODES`; ``^f`` and ``^e`` each
+    match only their own kind of reference), and its ``-`` matches a
+    non-breaking hyphen too. Wildcards read the same text, the codes not
+    translated. Only text in ``[start, end)`` is read: a range's search.
+
+    Args:
+        segments: the paragraph's, with its objects and hidden items
+            (``segments_of(objects=True)``).
+        query: what to look for.
+        match_case, match_whole_word, match_wildcards: Office JS's
+            ``SearchOptions``, as :func:`search_pattern`.
+        start, end: the span searched; None for the paragraph's end.
+
+    Returns:
+        The matches, as offsets in ``Paragraph.text``. An empty match is skipped.
+    """
+    plain = not match_wildcards
+    keep_soft_hyphens = not plain or "^-" in query.replace("^^", "")
+    tokens: list[str | None] = []
+    if plain:
+        source, tokens = _plain_query(query)
+        if match_whole_word:
+            source = rf"(?<!\w){source}(?!\w)"
+        pattern = re.compile(source, 0 if match_case else re.IGNORECASE)
+    else:
+        pattern = search_pattern(
+            query, match_case=match_case, match_whole_word=match_whole_word, match_wildcards=True
+        )
+    limit = float("inf") if end is None else end
+    # the usual paragraph: nothing but text, no optional hyphen to pass over, no
+    # reference a code must tell apart: the text searched is Paragraph.text's own
+    if all(not s.object for s in segments) and all(kind is None for kind in tokens):
+        whole = "".join(s.text for s in segments)
+        low = max(0, start)
+        high = len(whole) if end is None else min(len(whole), end)
+        span = whole[low:high]
+        if keep_soft_hyphens or "\x1f" not in span:
+            return [(low + a, low + b) for a, b in find_all(span, pattern)]
+    text: list[str] = []
+    starts: list[int] = []
+    ends: list[int] = []
+    notes: list[str | None] = []
+    for segment in segments:
+        if segment.hidden:
+            continue
+        if segment.object:
+            if start < segment.start < limit:
+                text.append(OBJECT_REPLACEMENT)
+                starts.append(segment.start)
+                ends.append(segment.start)
+                notes.append(None)
+            continue
+        kind = _NOTE_KINDS.get(element_name(segment.item) or "") if not segment.math else None
+        for offset, char in enumerate(segment.text):
+            at = segment.start + offset
+            if at < start or at >= limit:
+                continue
+            if char == "\x1f" and not keep_soft_hyphens:
+                continue
+            text.append(char)
+            starts.append(at)
+            ends.append(at + 1)
+            notes.append(kind if char == "\x02" else None)
+    joined = "".join(text)
+    out: list[tuple[int, int]] = []
+    for a, b in find_all(joined, pattern):
+        # ^f and ^e both read U+0002: each matches only its own kind of reference
+        if any(
+            kind is not None and (a + i >= len(notes) or notes[a + i] != kind)
+            for i, kind in enumerate(tokens)
+        ):
+            continue
+        out.append((starts[a], ends[b - 1]))
     return out

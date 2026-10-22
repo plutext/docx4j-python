@@ -333,11 +333,12 @@ def test_insert_break_in_and_around_the_paragraph(new_package):
     paragraph = body.insert_paragraph("text")
 
     paragraph.insert_break("Line", location="End")
-    assert paragraph.text == "text\n"
+    # Office JS's characters (CR-013 Phase A, check 48): a line break U+000B, a page break U+000C
+    assert paragraph.text == "text\x0b"
 
     paragraph.insert_break("Page", location="After")
     assert len(body) == 2
-    assert body.paragraphs[1].text == "\n"
+    assert body.paragraphs[1].text == "\x0c"
 
     with pytest.raises(ContentError) as raised:
         paragraph.insert_break("Page", location="Replace")

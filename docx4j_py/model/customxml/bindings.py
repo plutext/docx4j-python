@@ -419,7 +419,10 @@ def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
     if control.is_showing_placeholder:
         return False, "", "a control showing its placeholder holds no value", "placeholder"
 
-    value = control.text
+    # docx4j's characters, as 0.1.0's text read it: a break \n, a block control's
+    # paragraphs a \n apart, never Office JS's U+000B, which XML cannot hold
+    # (CR-013 section 4.1; core-ts's D4)
+    value = control.docx4j_text
     if control.type == "CheckBox":
         checkbox = control.checkbox_content_control
         if checkbox is None:

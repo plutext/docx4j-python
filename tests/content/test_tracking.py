@@ -1295,7 +1295,7 @@ def test_rejecting_both_mark_forms_of_a_loaded_document_leaves_the_source():
     assert [p.text for p in accepted.body.paragraphs] == [
         "My first 2010 document.",
         "mid",
-        "",
+        source[1],  # the equation, as Word draws it since CR-013 Phase A (it read "" before)
         "",
         "",
         "end",
@@ -1495,7 +1495,10 @@ def every_tracked_verb(package, word: str = "the", *, at_end: bool = True) -> No
     else:
         body.paragraphs[1].insert_paragraph("Appended at the end.", location="After")
         body.paragraphs[2].insert_markdown("## Heading\n\npara one\n\npara two\n")
-    body.paragraphs[2].delete()
+    # the first paragraph from the third on that holds no equation: a tracked deletion
+    # refuses to take one (CR-013 Phase A, tracking.equation); 2010-sample1.docx's third
+    # is its equation, the others' third is as before
+    next(p for p in body.paragraphs[2:] if not any(s.math for s in p.segments())).delete()
     body.paragraphs[0].font.bold = True
     body.paragraphs[0].alignment = "Centered"
     body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])

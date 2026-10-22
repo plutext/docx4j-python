@@ -142,12 +142,15 @@ class BlockItemContainer:
         """A paragraph at the end of this container, with `text` in one run.
 
         A tab in `text` becomes ``w:tab`` and a newline or carriage return a
-        ``w:br``, as python-docx writes them. `style` may be a display name, a
-        style id or a style object; a built-in style the document does not
-        define is **defined** rather than left dangling (CR-003 section 14.9).
+        ``w:br``, as python-docx writes them; any other control character is
+        refused with ``ValueError``, as python-docx 1.2.0 refuses it (CR-013
+        Phase A). `style` may be a display name, a style id or a style object;
+        a built-in style the document does not define is **defined** rather
+        than left dangling (CR-003 section 14.9).
         """
-        from docx4j_py.docx.text import Paragraph
+        from docx4j_py.docx.text import Paragraph, check_python_docx_text
 
+        check_python_docx_text(text)
         body = self._content_body
         with recording(body, "docx.add_paragraph"):
             view = body.insert_paragraph(text.replace("\r", "\n") if text else "")

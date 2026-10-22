@@ -34,7 +34,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import link_parents
+from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.addresses import ordinal_of
 from docx4j_py.model.content.enums import BodyLocation, ParagraphLocation, TextLocation
 from docx4j_py.model.content.errors import ContentError, InvalidTargetError
@@ -50,10 +50,13 @@ from docx4j_py.model.content.text_model import (
     W_TBL,
     W_TC,
     W_TR,
+    WRITTEN_AS,
     block_children_of,
     cells_of,
+    check_writable,
     kept_content_under,
     rows_of,
+    text_run,
 )
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, text_of
@@ -132,10 +135,27 @@ def _owner_of(container: list, fallback: Any) -> Any:
     return owner if owner is not None else fallback
 
 
+def _cell_content(value: str) -> Any:
+    """What a new cell holds for its text: the text, or a paragraph of it where the writers' map has work to do.
+
+    The tree builders write a tab and a newline as ``w:tab`` and ``w:br``; each
+    other character of Office JS's that is not written as text goes through the
+    writers' map (CR-013 Q2), so that a cell's text reads back as written.
+    """
+    if not any(char in WRITTEN_AS and char not in "\t\n" for char in value):
+        return value
+    paragraph = P(content=ChildList([text_run(value)]))
+    link_parents(paragraph)
+    return paragraph
+
+
 def _row_element(widths: list[int], values: list[str] | None = None) -> Tr:
     """A ``w:tr`` of cells of these widths, one paragraph each."""
     return tr(
-        [values[i] if values is not None and i < len(values) else "" for i in range(len(widths))],
+        [
+            _cell_content(values[i]) if values is not None and i < len(values) else ""
+            for i in range(len(widths))
+        ],
         widths=widths,
     )
 
@@ -197,6 +217,11 @@ def _refuse_tracked_into_branch(body: Body, elements: list[Any], operation: str)
         found = kept_content_under(element)
         if found is not None:
             refuse_read_only(body.body_for(found), operation)
+    # nor an equation, whose tracked deletion is its math runs' own (CR-013 Phase A)
+    from docx4j_py.model.content.text_model import refuse_tracked_equation
+
+    for element in elements:
+        refuse_tracked_equation(element, operation)
 
 
 # ---------------------------------------------------------------------------
@@ -294,11 +319,20 @@ class Table:
 
     @property
     def values(self) -> list[list[str]]:
-        """The text of every cell, row by row (Office JS ``Table.values``)."""
+        """The text of every cell, row by row (Office JS ``Table.values``).
+
+        Each cell's :attr:`TableCell.value`: its content's ``Body.text``, its
+        paragraphs a mark ``\\r`` apart (CR-013 Phase A, core-ts check 51). So
+        ``values`` and :attr:`text` (docx4j's, a line per paragraph) part
+        company, as in core-ts.
+        """
         return [row.values for row in self.rows]
 
     @values.setter
     def values(self, values: list[list[str]]) -> None:
+        for row in values:
+            for value in row:
+                check_writable(value, "set_values")
         rows = self.rows
         _refuse_in_branch(
             [
@@ -318,12 +352,14 @@ class Table:
 
     @property
     def text(self) -> str:
-        """The table's text, as docx4j's ``TextUtils`` reads it. Extension.
+        """The table's text, as docx4j's ``TextUtils`` reads it, a line per paragraph. Extension.
 
-        Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
-        emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
-        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
+        Not Office JS's (CR-013 section 4.1): docx4j's characters, a break
+        ``\\n``, a line per paragraph, as core-ts's ``Table.text`` is a line per
+        paragraph; :attr:`values` is Office JS's. Not the text model's either
+        (CR-011 Q4): :func:`docx4j_py.model.text.extract` is the text model. Like
+        :func:`~docx4j_py.traversal.text_of`, it reads Word's branch of a kept
+        ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         return text_of(self.element)
 
@@ -535,6 +571,9 @@ class Table:
                 code="table.no_rows",
                 hint="pass row_count=1 or more",
             )
+        for row in values or ():
+            for value in row:
+                check_writable(value, "add_rows")
         with recording(self.parent_body, "add_rows") as change:
             widths = self.column_widths_twips()
             added = [
@@ -748,6 +787,8 @@ class TableRow:
 
     @values.setter
     def values(self, values: list[str]) -> None:
+        for value in values:
+            check_writable(value, "set_values")
         cells = self.cells
         _refuse_in_branch(cells[: len(values)], "set_values")
         with recording(self.parent_body, "set_values") as change:
@@ -889,7 +930,7 @@ class TableCell:
 
     def __repr__(self) -> str:
         """``<TableCell body/4/0/1 'Total'>``."""
-        text = self.text.replace("\n", " ")
+        text = self.text.replace("\r", " ").replace("\n", " ")
         preview = text[:_PREVIEW] + "…" if len(text) > _PREVIEW else text
         return f"<TableCell {self.address} {preview!r}>"
 
@@ -949,22 +990,32 @@ class TableCell:
 
     @property
     def text(self) -> str:
-        """The cell's text, a line per paragraph.
+        """The cell's text as Office JS's ``tableCell.value`` gives it: its body's ``Body.text``.
+
+        CR-013 Phase A (core-ts check 51: ``value``, ``values`` and
+        ``body.text`` alike): its paragraphs' ``Paragraph.text`` a mark ``\\r``
+        apart, in Office JS's characters, a nested table in Word's form.
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
-        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
+        records its ``office_offset`` in this text. It reads Word's branch of a kept
+        ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
-        return text_of(self.element)
+        return self.body.text
 
     @property
     def value(self) -> str:
-        """Office JS ``TableCell.value``: the text; setting replaces the content."""
+        """Office JS ``TableCell.value``: the text; setting replaces the content.
+
+        Written as one paragraph, each of Office JS's characters the element it
+        reads from (CR-013 Q2): a ``\\r`` in it is a ``w:cr``, not a paragraph
+        mark.
+        """
         return self.text
 
     @value.setter
     def value(self, text: str) -> None:
+        check_writable(text, "set_value")
         with recording(self._parent_body, "set_value") as change:
             change.text(before=self.text)
             body = self.body
@@ -1092,6 +1143,9 @@ def insert_table_into(
             code="table.empty",
             hint="pass insert_table(rows, columns) with both at least 1",
         )
+    for row in values or ():
+        for value in row:
+            check_writable(value, "insert_table")
     with recording(body, "insert_table") as change:
         rows = [
             [
@@ -1100,7 +1154,7 @@ def insert_table_into(
             ]
             for r in range(row_count)
         ]
-        element = tbl(rows, width=writable_width(body))
+        element = tbl([[_cell_content(value) for value in row] for row in rows], width=writable_width(body))
         if style is not None:
             resolved = style_id_of(body.package, style, define=True)
             tbl_pr = element.tbl_pr

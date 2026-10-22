@@ -129,7 +129,9 @@ def test_current_is_the_accepted_view():
     assert package.body.get_text(view="current") == package.body.get_text(view="accepted")
     paragraph = package.body.paragraphs[0]
     assert paragraph.get_text(view="current") == paragraph.text
-    assert paragraph.get_range().get_text(view="current") == paragraph.text
+    # a 'Whole' range ends with the paragraph's mark since CR-013 Phase A; 'Content' does not
+    assert paragraph.get_range("Content").get_text(view="current") == paragraph.text
+    assert paragraph.get_range().get_text(view="current") == paragraph.text + "\r"
 
 
 def test_a_session_error_says_how_to_recover():

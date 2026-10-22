@@ -904,13 +904,16 @@ def find_in(
     limit: int = 20,
     **options: Any,
 ) -> list[SearchHit]:
-    """``body.find()``: hits with addresses and context, under a budget."""
-    from docx4j_py.model.content.text_model import find_all, search_pattern
+    """``body.find()``: hits with addresses and context, under a budget.
 
-    pattern = search_pattern(text, **options)
+    Office JS's search rules, as ``body.search`` (CR-013 Phase A,
+    :func:`~docx4j_py.model.content.text_model.office_matches`).
+    """
+    from docx4j_py.model.content.text_model import office_matches
+
     out: list[SearchHit] = []
     for paragraph in body.iter_paragraphs():
-        for start, end in find_all(paragraph.text, pattern):
+        for start, end in office_matches(paragraph.segments(objects=True), text, **options):
             out.append(hit_for(paragraph, start, end, context=context))
             if limit is not None and len(out) >= limit:
                 return out

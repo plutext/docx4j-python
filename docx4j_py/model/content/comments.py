@@ -49,18 +49,20 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import re
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import ChildList, is_alternate_content, link_parents
+from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.styles import ensure_style, style_ids_of
 from docx4j_py.model.content.text_model import (
     _REVISIONS,
-    RUN_HOLDER_NAMES,
     block_children_of,
-    branch_text,
-    item_text,
+    check_writable,
+    hidden_runs_of,
+    segments_of,
+    text_run,
 )
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.openpackaging.parts.wml.comments import (
@@ -245,106 +247,86 @@ def _marker_id(item: Any) -> int | None:
     return int(value) if isinstance(value, int) else None
 
 
-def _visit_runs(
-    out: list[CommentMarker], items: Any, paragraph: Any, container: Any, base: int = 0
-) -> int:
-    """Collect the markers of one run list; returns the text length it covered.
+def _markers_in_paragraph(
+    out: list[CommentMarker], paragraph: Any, container: Any, hidden: Any = None
+) -> None:
+    """Collect one paragraph's markers, each with its offset in the paragraph's ``text``.
 
-    `base` is the paragraph offset the list starts at, so that a marker inside a
-    ``w:ins`` or a hyperlink gets its offset in the **paragraph**, not in the
-    holder (a start inside a ``w:ins`` is Word's form, CR-010 section 12.8).
+    The offsets are :func:`~.text_model.segments_of`'s, through its ``visit``
+    hook, so that one reader counts (CR-013 Phase A, section 4.1): a note
+    reference, a ``w:ptab``, an equation and hidden text count as
+    ``Paragraph.text`` counts them, and `hidden` is the paragraph's
+    (:func:`~.text_model.hidden_runs_of`). A marker inside a ``w:ins`` gets its
+    offset in the **paragraph** (Word's form, CR-010 section 12.8); one in a
+    ``w:del`` is not read, the offsets being the accepted view's; one in a kept
+    branch is one branch's, and is not listed (CR-011 Phase F).
     """
-    position = 0
-    if not items:
-        return position
-    for element in items:
-        name = element_name(element)
-        if name == W_R:
-            content = getattr(element, "content", None)
-            if not isinstance(content, list):
-                continue
-            for child in content:
-                if is_alternate_content(child):
-                    # a run-level element kept whole: Word's branch's text (CR-011 Phase F)
-                    position += len(branch_text(child, run_level=True))
-                    continue
-                qname = element_name(child)
-                if qname == W_COMMENT_REFERENCE:
-                    identifier = _marker_id(child)
-                    if identifier is not None:
-                        out.append(
-                            CommentMarker(
-                                id=identifier,
-                                kind="reference",
-                                item=child,
-                                owner=content,
-                                run=element,
-                                run_owner=items,
-                                paragraph=paragraph,
-                                paragraph_container=container,
-                                offset=base + position,
-                            )
+
+    def visit(item: Any, at: int, owner: list, run: Any, run_owner: Any, branch: Any) -> None:
+        if branch is not None:
+            return
+        name = element_name(item)
+        if run is None:
+            if name in (W_COMMENT_RANGE_START, W_COMMENT_RANGE_END):
+                identifier = _marker_id(item)
+                if identifier is not None:
+                    out.append(
+                        CommentMarker(
+                            id=identifier,
+                            kind="start" if name == W_COMMENT_RANGE_START else "end",
+                            item=item,
+                            owner=owner,
+                            paragraph=paragraph,
+                            paragraph_container=container,
+                            offset=at,
                         )
-                    continue
-                text = item_text(qname, child)
-                if text:
-                    position += len(text)
-            continue
-        if name in (W_COMMENT_RANGE_START, W_COMMENT_RANGE_END):
-            identifier = _marker_id(element)
+                    )
+            return
+        if name == W_COMMENT_REFERENCE:
+            identifier = _marker_id(item)
             if identifier is not None:
                 out.append(
                     CommentMarker(
                         id=identifier,
-                        kind="start" if name == W_COMMENT_RANGE_START else "end",
-                        item=element,
-                        owner=items,
+                        kind="reference",
+                        item=item,
+                        owner=owner,
+                        run=run,
+                        run_owner=run_owner,
                         paragraph=paragraph,
                         paragraph_container=container,
-                        offset=base + position,
+                        offset=at,
                     )
                 )
-            continue
-        if is_alternate_content(element):
-            # a paragraph-level element kept whole: its branch's text counts, and a
-            # marker in a branch is one branch's, not listed (CR-011 Phase F)
-            position += len(branch_text(element))
-            continue
-        shown = _REVISIONS.get(name or "")
-        if shown is not None:
-            # the accepted view, which is what the offsets are in: a w:ins and a
-            # w:moveTo hold text and markers, a w:del and a w:moveFrom do not
-            if shown == "accepted":
-                position += _visit_runs(
-                    out, run_items_of(element), paragraph, container, base + position
-                )
-        elif name in RUN_HOLDER_NAMES:
-            position += _visit_runs(
-                out, run_items_of(element), paragraph, container, base + position
-            )
-    return position
+
+    segments_of(paragraph, hidden=hidden, visit=visit)
 
 
-def markers_of_paragraph(element: P, container: list) -> list[CommentMarker]:
-    """Every comment marker in one paragraph, with its offset in the text."""
+def markers_of_paragraph(element: P, container: list, resolver: Any = None) -> list[CommentMarker]:
+    """Every comment marker in one paragraph, with its offset in the text.
+
+    `resolver` is the package's property resolver, for the hidden runs the
+    offsets leave out (CR-013 Phase A); without one, a run's own ``w:vanish``.
+    """
     out: list[CommentMarker] = []
-    _visit_runs(out, run_items_of(element), element, container)
+    _markers_in_paragraph(out, element, container, hidden_runs_of(resolver, element))
     return out
 
 
-def markers_of(container: Any) -> list[CommentMarker]:
+def markers_of(container: Any, resolver: Any = None) -> list[CommentMarker]:
     """Every comment marker under a container, in document order.
 
     A table, a row, a cell and a content control are all one
     :func:`~docx4j_py.model.content.text_model.block_children_of` step, so the
-    walk has no special case for any of them.
+    walk has no special case for any of them. `resolver` is
+    :func:`markers_of_paragraph`'s.
     """
     out: list[CommentMarker] = []
 
     def visit(items: list) -> None:
         for item in items:
             if isinstance(item, P):
-                _visit_runs(out, run_items_of(item), item, items)
+                _markers_in_paragraph(out, item, items, hidden_runs_of(resolver, item))
                 continue
             name = element_name(item)
             if name in (W_COMMENT_RANGE_START, W_COMMENT_RANGE_END):
@@ -525,10 +507,21 @@ def _annotation_ref_run() -> R:
     return _reference_style_run([el.annotationRef()])
 
 
+def _resolver_of(body: Any) -> Any:
+    """A body's package's property resolver, for the hidden runs a marker's offset leaves out (CR-013)."""
+    from docx4j_py.model.property_resolver import resolver_of
+
+    package = getattr(body, "package", None)
+    return resolver_of(package) if package is not None else None
+
+
 def _comment_paragraph(text: str, first: bool) -> P:
-    """A paragraph of a comment: ``CommentText``, opened by the annotation reference."""
+    """A paragraph of a comment: ``CommentText``, opened by the annotation reference.
+
+    The text through the writers' map (CR-013 Q2): a line break U+000B a
+    ``w:br``, and the rest of Office JS's characters their elements.
+    """
     from docx4j_py.wml import el
-    from docx4j_py.wml import r as text_run
 
     content: list[Any] = []
     if first:
@@ -540,9 +533,20 @@ def _comment_paragraph(text: str, first: bool) -> P:
     return paragraph
 
 
-def _comment_paragraphs(text: str) -> list[P]:
-    """One paragraph per line, the first opened by the annotation reference run."""
-    return [_comment_paragraph(line, index == 0) for index, line in enumerate(text.split("\n"))]
+#: A comment's paragraph marks in its text: ``\r`` as ``content`` reads them, ``\n``
+#: as 0.1.0 wrote them, and ``\r\n`` as one (CR-013 section 4.1; core-ts's D5).
+_COMMENT_MARKS = re.compile("\r\n|\r|\n")
+
+
+def _comment_paragraphs(text: str, *, marks: Any = None) -> list[P]:
+    """One paragraph per line, the first opened by the annotation reference run.
+
+    Both ``\\r`` and ``\\n`` are paragraph marks, so that ``Comment.content``
+    written back makes the paragraphs it read (CR-013 section 4.1); `marks`, a
+    compiled pattern, splits otherwise (the python-docx facade's ``\\n``).
+    """
+    lines = (marks or _COMMENT_MARKS).split(text)
+    return [_comment_paragraph(line, index == 0) for index, line in enumerate(lines)]
 
 
 def _append(owner: Any, field: str, item: Any) -> None:
@@ -870,7 +874,13 @@ class Comment:
 
     @property
     def content(self) -> str:
-        """The comment's text, a paragraph per line. Setting it replaces them.
+        """The comment's text as Office JS's ``comment.content`` gives it. Setting it replaces the paragraphs.
+
+        Its body's ``Body.text``: the paragraphs a mark ``\\r`` apart, in Office
+        JS's characters (CR-013 Phase A; core-ts check 51). Written, both
+        ``\\r`` and ``\\n`` are paragraph marks, so that the content read and
+        written back makes the paragraphs it read (CR-013 section 4.1), and each
+        other character of Office JS's is the element it reads from (Q2).
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
@@ -881,6 +891,7 @@ class Comment:
 
     @content.setter
     def content(self, text: str) -> None:
+        check_writable(text, "Comment.content")
         with recording(self.body, "set_comment_content") as change:
             change.text(before=self.content, after=text)
             para_id = self.para_id
@@ -966,7 +977,9 @@ class Comment:
         from docx4j_py.model.content.range import Range
 
         markers = [
-            m for m in markers_of(self.body.container) if m.id == self.id and m.paragraph is not None
+            m
+            for m in markers_of(self.body.container, _resolver_of(self.body))
+            if m.id == self.id and m.paragraph is not None
         ]
         if not markers:
             return []
@@ -1039,8 +1052,10 @@ class Comment:
 
         Raises:
             ContentError: this comment is no longer in the document, or it has
-                no markers in this body to nest a reply inside.
+                no markers in this body to nest a reply inside; or
+                ``text.not_writable``, as :meth:`content`'s setter.
         """
+        check_writable(text, "reply")
         with recording(self.body, "reply_to_comment") as change:
             self._require_present()
             parts = self._writable()
@@ -1251,8 +1266,12 @@ def _add_comment(
     identifier: int,
     text: str,
     parent: Comment | None,
+    marks: Any = None,
 ) -> Comment:
-    """The ``w:comment`` and every side entry of a new comment; the markers are written."""
+    """The ``w:comment`` and every side entry of a new comment; the markers are written.
+
+    `marks` is :func:`_comment_paragraphs`'.
+    """
     from docx4j_py.model.content.tracking import now_to_the_minute, xml_date
     from docx4j_py.w15 import el as w15el
     from docx4j_py.wml import el
@@ -1261,7 +1280,7 @@ def _add_comment(
     # one instant for w:date (the local wall clock, as Word writes it) and
     # w16cex:dateUtc (UTC), to the minute as Word stamps it (CR-010 section 12.9)
     now = now_to_the_minute()
-    paragraphs = _comment_paragraphs(text)
+    paragraphs = _comment_paragraphs(text, marks=marks)
     taken = _para_ids_taken(parts, body)
     para_id = _hex_id(body.package, taken)
     paragraphs[0].para_id = para_id
@@ -1293,8 +1312,16 @@ def _add_comment(
     return Comment(comment, parts, body)
 
 
-def insert_comment_into(span: Range, text: str) -> Comment:
-    """``Range.insert_comment`` and ``Paragraph.insert_comment``. See their docstrings."""
+def insert_comment_into(span: Range, text: str, *, marks: Any = None) -> Comment:
+    """``Range.insert_comment`` and ``Paragraph.insert_comment``. See their docstrings.
+
+    The comment's text is a paragraph per line, ``\\r`` and ``\\n`` both
+    marks (CR-013 section 4.1), each of Office JS's characters its element
+    (Q2); U+0002 and the other characters XML 1.0 excludes are refused
+    (``text.not_writable``) before any part is made. `marks`, a compiled
+    pattern, splits the lines otherwise (the python-docx facade's ``\\n``).
+    """
+    check_writable(text, "insert_comment")
     body = span.paragraph.parent_body
     with recording(body, "insert_comment") as change:
         span.refuse_branch_text("insert_comment")
@@ -1308,7 +1335,7 @@ def insert_comment_into(span: Range, text: str) -> Comment:
                 names.append(name)
         identifier = next_comment_id(parts.comments, body.container)
         _place_around(span, identifier)
-        comment = _add_comment(parts, body, identifier, text, None)
+        comment = _add_comment(parts, body, identifier, text, None, marks)
         change.touched(span.paragraph)
         change.text(after=text)
         _record_parts(change, parts)
@@ -1330,7 +1357,10 @@ def comments_of(scope: Any) -> list[Comment]:
         ids = _ids_in_range(scope)
     elif isinstance(scope, Paragraph):
         body = scope.parent_body
-        ids = _unique(m.id for m in markers_of_paragraph(scope.element, scope.container))
+        ids = _unique(
+            m.id
+            for m in markers_of_paragraph(scope.element, scope.container, _resolver_of(scope.parent_body))
+        )
     elif isinstance(scope, Body):
         body = scope
         ids = comment_ids_of(scope.container)
@@ -1370,7 +1400,9 @@ def _ids_in_range(span: Range) -> list[int]:
     """The comments a span touches: those whose markers overlap ``[start, end]``."""
     spans: dict[int, list[int]] = {}
     order: list[int] = []
-    for marker in markers_of_paragraph(span.paragraph.element, span.paragraph.container):
+    for marker in markers_of_paragraph(
+        span.paragraph.element, span.paragraph.container, _resolver_of(span.paragraph.parent_body)
+    ):
         at = marker.offset or 0
         found = spans.get(marker.id)
         if found is None:

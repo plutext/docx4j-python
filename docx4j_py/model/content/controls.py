@@ -40,7 +40,10 @@ from docx4j_py.model.content.text_model import (
     W_TC,
     W_TR,
     block_children_of,
-    segments_of,
+    check_writable,
+    explode_mapped,
+    text_of_view,
+    text_run,
 )
 from docx4j_py.traversal import element_name, run_items_of, text_of
 from docx4j_py.wml import (
@@ -281,22 +284,50 @@ class ContentControl:
 
     @property
     def text(self) -> str:
-        """The control's text, a line per paragraph (docx4j ``TextUtils``).
+        """The control's text as Office JS's ``contentControl.text`` gives it.
+
+        CR-013 Phase A (core-ts check 51): a block control's is its content's
+        ``Body.text``, its paragraphs a mark ``\\r`` apart; a run-level
+        control's is the span of its paragraph's ``Paragraph.text`` it covers,
+        in Office JS's characters, hidden text left out. A row- or cell-level
+        control's is its content's ``Body.text`` too, in Word's table form
+        (its own rule, check 53's, is CR-013 Phase B's).
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
-        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
+        records its ``office_offset`` in this text. It reads Word's branch of a kept
+        ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
-        A run-level control holds run content, which is one line;
-        :func:`~docx4j_py.traversal.text_of` reads a ``w:sdtContent`` as a run
-        holder and would join a block control's paragraphs into one, so the
-        other three forms answer through their :meth:`body`.
+        A bound control's write-back into its custom XML reads :attr:`docx4j_text`.
+        """
+        if self.form == "run":
+            span = self._run_span()
+            if span is not None:
+                paragraph, start, end = span
+                return paragraph.text[start:end]
+            inner = getattr(self.element, "sdt_content", None)
+            return text_of_view(inner) if inner is not None else ""
+        return self.body().text
+
+    @property
+    def docx4j_text(self) -> str:
+        """The control's text in docx4j's characters, as 0.1.0's :attr:`text` read it. Extension.
+
+        CR-013 section 4.1: what a bound control writes back into its custom XML
+        node (:func:`~docx4j_py.model.customxml.bindings.update_from_control`),
+        so that the node holds docx4j's text, as core-ts's D4 has it --- a break
+        ``\\n``, the hyphens U+2011 and U+00AD, a block control's paragraphs a
+        ``\\n`` apart --- and never one of Office JS's characters, U+000B
+        among them, which XML cannot hold. A run-level control's is
+        :func:`~docx4j_py.traversal.text_of`'s.
         """
         if self.form == "run":
             inner = getattr(self.element, "sdt_content", None)
             return text_of(inner) if inner is not None else ""
-        return self.body().text
+        return "\n".join(
+            text_of_view(paragraph.element, characters="docx4j")
+            for paragraph in self.body().iter_paragraphs()
+        )
 
     # -- addresses ---------------------------------------------------------
 
@@ -438,6 +469,7 @@ class ContentControl:
             raise self._holds(
                 f"a {form}-level content control", "replace the text of its cells instead"
             )
+        check_writable(text, "insert_text")
         if form != "run":
             return self.body().insert_text(text, location=location)
         span = self._run_span()
@@ -472,15 +504,14 @@ class ContentControl:
         """Put text at the start or the end of a run control's **own** content."""
         from docx4j_py.model.content.range import Range
         from docx4j_py.model.content.text_model import set_text
-        from docx4j_py.wml import R, t
 
-        inside = [segment for segment in segments_of(paragraph.element) if self._inside(segment.run)]
+        inside = [segment for segment in paragraph.segments() if self._inside(segment.run)]
         edge = (inside[0] if at_start else inside[-1]) if inside else None
         if edge is not None and edge.branch is not None:
             # the control's text begins or ends in a kept branch's (CR-011 Phase F): the
             # text goes beside the element, inside the control, into no branch
             item, owner, index = edge.site()
-            run = R(content=ChildList([t(text)]))
+            run = text_run(text)
             owner.insert(index if at_start else index + 1, run)
             link_parents(run)
             run.parent = getattr(item, "parent", None)
@@ -492,10 +523,12 @@ class ContentControl:
             at = 0 if at_start else len(target.text)
             set_text(target.item, target.text[:at] + text + target.text[at:])
             offset = target.start + at
+            # each of Office JS's characters the element it reads from (CR-013 Q2)
+            explode_mapped(paragraph.segments(), offset, offset + len(text))
             return Range(paragraph, offset, offset + len(text))
         # an empty control: the text becomes its first run
         items = self.content
-        run = R(content=ChildList([t(text)]))
+        run = text_run(text)
         items.insert(0, run)
         link_parents(run)
         span = self._run_span()
@@ -531,16 +564,15 @@ class ContentControl:
                 f"a {form}-level content control holds {holds}, not paragraphs",
                 "insert into a cell's body",
             )
+        check_writable(text, "insert_paragraph")
         if form == "run" or location in ("Before", "After"):
             where = "Before" if location == "Before" else "After"
             paragraph = self.parent_paragraph()
             if paragraph is not None:
                 return paragraph.insert_paragraph(text, location=where, **options)
-            from docx4j_py.wml import p as paragraph_builder
-
-            view = self.parent_body.insert_element(
-                paragraph_builder(text), location=where, target=self
-            )
+            element = P(content=ChildList([text_run(text)]))
+            link_parents(element)
+            view = self.parent_body.insert_element(element, location=where, target=self)
             if options.get("style"):
                 view.style = options["style"]
             return view
@@ -1029,7 +1061,7 @@ class ContentControl:
 
         start: int | None = None
         end = 0
-        for segment in segments_of(paragraph.element):
+        for segment in paragraph.segments():
             if not self._inside(segment.run):
                 continue
             if start is None:

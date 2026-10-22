@@ -121,10 +121,11 @@ def test_get_text_keeps_office_jss_filtered_text():
     """CR-011 Q4: ``get_text(view="accepted")`` is Office JS's text, a filter, not the text model's.
 
     A deleted paragraph mark is not joined, and a paragraph whose content and
-    mark are deleted is an empty line (:data:`DIFFERS`), where the model and
-    Accept All give ``Four.Five eight.`` and no line for ``Two.``.
+    mark are deleted is an empty one (:data:`DIFFERS`), where the model and
+    Accept All give ``Four.Five eight.`` and no line for ``Two.``. Since CR-013
+    Phase A each paragraph's mark is Office JS's ``\\r``.
     """
     package = fixture("core-ts/check22/22-deleted.docx")
-    assert package.body.get_text(view="accepted") == "One.\n\nThree.\nFour.\nFive \neight.\nNine.\n"
-    assert _accepted("core-ts/check22/22-deleted.docx").body.get_text() == "One.\nThree.\nFour.Five eight.\nNine.\n"
+    assert package.body.get_text(view="accepted") == "One.\r\rThree.\rFour.\rFive \reight.\rNine.\r"
+    assert _accepted("core-ts/check22/22-deleted.docx").body.get_text() == "One.\rThree.\rFour.Five eight.\rNine.\r"
     assert plain_text(extract(package)) == "One.\nThree.\nFour.Five eight.\nNine.\n\n"

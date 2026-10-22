@@ -60,14 +60,16 @@ from docx4j_py.model.content.text_model import (
     block_children_of,
     block_list_of,
     canonical_view,
+    check_writable,
     in_kept_branch,
     markup_text,
     require_view,
+    text_run,
 )
 from docx4j_py.namespaces import PREFIXES
 from docx4j_py.runtime import context
 from docx4j_py.traversal import element_name
-from docx4j_py.wml import P, R, Tbl, br, r, to_xml, wml
+from docx4j_py.wml import P, R, Tbl, br, to_xml, wml
 from docx4j_py.wml.sdt import SDT_FORMS
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -436,7 +438,16 @@ class Body(Sequence):
 
     @property
     def text(self) -> str:
-        """The text, a paragraph per line: Word's main story, the accepted view.
+        """The text as Office JS's ``body.text`` gives it in Word's default view: the accepted view.
+
+        CR-013 Phase A (decided 2026-10-23; core-ts checks 30, 31, 48 and 51):
+        each paragraph's :attr:`Paragraph.text` followed by its mark, ``\\r``,
+        the last paragraph's left out; in a table a row's cells a ``\\t`` apart,
+        each cell's paragraphs a mark apart (its last mark not written), and the
+        row ended by ``\\r\\n``. A content control is transparent. Split it
+        into paragraphs with ``split("\\r")``, not ``splitlines()``, which also
+        splits at a line break's U+000B and more (CR-013 section 4.1). The
+        layout is :func:`~docx4j_py.model.content.story.story_layout`'s.
 
         No text boxes (CR-003 decided question 8): a text box lives in a
         ``w:drawing``, which this reader does not descend into. Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
@@ -444,17 +455,28 @@ class Body(Sequence):
         records its ``office_offset`` in this text. It reads Word's branch of a run- or
         paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
-        return "\n".join(paragraph.text for paragraph in self.iter_paragraphs())
+        return self._layout_text("accepted")
+
+    def _layout_text(self, view: str) -> str:
+        """:attr:`text` in a view: the story layout, its last mark dropped."""
+        from docx4j_py.model.content.story import MARK, story_layout
+
+        def text_of(element: Any, container: list) -> str:
+            return Paragraph(element, container, self).get_text(view=view)  # type: ignore[arg-type]
+
+        text = story_layout(self.content, text_of).text
+        return text.removesuffix(MARK)
 
     def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
         """The text, with a budget and a choice of view (CR-003 section 3.4).
 
-        In ``accepted`` and ``original``, Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        In ``accepted`` and ``original``, Office JS's text in :attr:`text`'s form (CR-013 Phase A: a
+        mark ``\\r`` per paragraph, Word's table form, Office JS's characters), not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
         records its ``office_offset`` in this text, which reads Word's branch of a run- or
         paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15). A view here is a filter of
         the revision holders: a deleted paragraph mark is not joined, and a
-        paragraph whose content and mark are deleted is an empty line.
+        paragraph whose content and mark are deleted is an empty one.
 
         Args:
             view: ``"accepted"`` (the default) or ``"original"``, the document
@@ -475,15 +497,7 @@ class Body(Sequence):
         if view == "markup":
             text = markup_text(self)
             return text if max_chars is None else text[:max_chars]
-        out: list[str] = []
-        total = 0
-        for paragraph in self.iter_paragraphs():
-            line = paragraph.get_text(view=view)
-            out.append(line)
-            total += len(line) + 1
-            if max_chars is not None and total > max_chars:
-                return "\n".join(out)[:max_chars]
-        text = "\n".join(out)
+        text = self._layout_text(view)
         return text if max_chars is None else text[:max_chars]
 
     def get_xml(self) -> str:
@@ -504,16 +518,23 @@ class Body(Sequence):
         """Append or prepend a paragraph of the text (Office JS ``insertParagraph``).
 
         Args:
-            text: the paragraph's text; tabs and newlines become ``w:tab`` and
-                ``w:br``, as the ``r`` builder writes them.
+            text: the paragraph's text; each of Office JS's characters becomes
+                the element it reads from (CR-013 Q2: a tab ``w:tab``, ``\\n``
+                and U+000B a ``w:br``, U+000C a page break, U+000E a column
+                break, U+000D a ``w:cr``, U+001E and U+001F the hyphens).
             location: ``"End"`` (the default) or ``"Start"``.
             style: a style display name, stored name or id.
 
         Returns:
             The new paragraph's view.
+
+        Raises:
+            ContentError: ``text.not_writable``, the text holds U+0002 or
+                another character XML 1.0 excludes; nothing has changed.
         """
+        check_writable(text, "insert_paragraph")
         with recording(self, "insert_paragraph") as change:
-            element = P(content=ChildList([r(text)] if text else []))
+            element = P(content=ChildList([text_run(text)] if text else []))
             view = self.insert_element(element, location=location)
             if style is not None:
                 view.style = style
@@ -526,6 +547,7 @@ class Body(Sequence):
         Returns:
             The :class:`~docx4j_py.model.content.Range` of the inserted text.
         """
+        check_writable(text, "insert_text")
         with recording(self, "insert_text") as change:
             paragraphs = self.paragraphs
             if location == "Replace" or not paragraphs:
@@ -1141,12 +1163,14 @@ class Body(Sequence):
         Returns:
             How many were replaced.
         """
+        check_writable(replace, "replace_text")
         with recording(self, "replace_text") as change:
             change.text(before=find)
             # every match checked before the first is replaced (CR-011 Phase F)
             for paragraph in self.paragraphs:
                 for match in paragraph.search(find, **options):
                     match.refuse_branch_text("replace_text")
+                    paragraph.refuse_equation(match.start, match.end)
             count = 0
             for paragraph in self.paragraphs:
                 count += paragraph.replace_text(find, replace, **options)
@@ -1170,6 +1194,10 @@ class Body(Sequence):
             found = kept_content_under(self.container)
             if found is not None:
                 refuse_read_only(self.body_for(found), "clear")
+            # nor an equation's (CR-013 Phase A)
+            from docx4j_py.model.content.text_model import refuse_tracked_equation
+
+            refuse_tracked_equation(self.container, "clear")
         with recording(self, "clear") as change:
             change.text(before=self.text, after="")
             change.touched(self.prefix)

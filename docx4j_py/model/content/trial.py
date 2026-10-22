@@ -19,11 +19,14 @@ What it copies and what it does not:
 
 * a part's tree is copied the **first time the trial asks for its body**, and
   only that part's; a document whose header is never touched costs nothing.
-* the copy is of the *unmarshalled* tree, so a part the real package has not
-  read is read (and therefore marked for re-marshalling on the real package)
-  by the trial's first look at it. A dry run over ``pkg.body`` after
-  ``pkg.body`` has been read costs a ``deepcopy`` of ``w:document`` and nothing
-  else.
+* the copy is of the live tree where the real package has unmarshalled the
+  part, and otherwise of its private reading (``read_contents``, CR-002
+  section 16), so a trial's first look at a part the real package has not
+  read leaves that part unread and saved byte for byte. Since CR-013 Phase A
+  every ``Paragraph.text`` asks the styles which runs they hide, so a trial
+  copies ``styles.xml`` the first time it reads a paragraph. A dry run over
+  ``pkg.body`` after ``pkg.body`` has been read costs a ``deepcopy`` of
+  ``w:document`` and nothing else.
 * **a part added during the trial is un-added on the way out.** Phase D added
   none; Phase C's ``insert_inline_picture`` and ``insert_ooxml`` add image
   parts to the real package's part map, which the trial shares, so they report
@@ -80,7 +83,12 @@ class TrialPart:
         if hasattr(part, "set_tree"):
             self._tree = copy.deepcopy(part.tree)
         else:
-            self._contents = deep_copy(part.contents)
+            # the real part's private reading where it is not unmarshalled, so that
+            # the trial's look leaves it unread (a reader never writes into it, and
+            # this is a copy of it); the live tree where it is
+            read = getattr(part, "read_contents", None)
+            unread = not getattr(part, "is_unmarshalled", True) and callable(read)
+            self._contents = deep_copy(read() if unread else part.contents)
             link_parents(self._contents)
         #: The trial package.
         self.package = package

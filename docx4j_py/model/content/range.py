@@ -42,10 +42,10 @@ from docx4j_py.model.content.font import Font
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.text_model import (
     RUN_HOLDER_NAMES,
-    find_all,
     canonical_view,
+    check_writable,
+    office_matches,
     require_view,
-    search_pattern,
 )
 from docx4j_py.model.content.tracking import REVISION_NAMES
 from docx4j_py.traversal import element_name
@@ -63,16 +63,23 @@ _PREVIEW = 30
 class Range:
     """A subset of Office JS ``Word.Range``: ``[start, end)`` in one paragraph."""
 
-    __slots__ = ("end", "paragraph", "start")
+    __slots__ = ("end", "mark", "paragraph", "start")
 
-    def __init__(self, paragraph: Paragraph, start: int, end: int) -> None:
-        """Build the span over a paragraph, from `start` to `end` in code points."""
+    def __init__(self, paragraph: Paragraph, start: int, end: int, *, mark: bool = False) -> None:
+        """Build the span over a paragraph, from `start` to `end` in code points.
+
+        `mark` is a paragraph's ``'Whole'`` range's (core-ts's ``mark`` at
+        ``9307bdb``; CR-013 Phase A): its :attr:`text` ends with the
+        paragraph's mark, as Office JS's does. The mark is no offset.
+        """
         #: The paragraph the span is in.
         self.paragraph = paragraph
         #: The offset of the first character.
         self.start = start
         #: One past the last character.
         self.end = end
+        #: A ``'Whole'`` range: its text ends with the paragraph's mark (``\\r``, ``\\t`` for a cell's last).
+        self.mark = mark
 
     # -- identity ----------------------------------------------------------
 
@@ -81,12 +88,12 @@ class Range:
         return (
             isinstance(other, Range)
             and other.paragraph == self.paragraph
-            and (other.start, other.end) == (self.start, self.end)
+            and (other.start, other.end, other.mark) == (self.start, self.end, self.mark)
         )
 
     def __hash__(self) -> int:
-        """Hashes by the paragraph's element and the two offsets."""
-        return hash((id(self.paragraph.element), self.start, self.end))
+        """Hashes by the paragraph's element, the two offsets and :attr:`mark`."""
+        return hash((id(self.paragraph.element), self.start, self.end, self.mark))
 
     def __str__(self) -> str:
         """The span's text."""
@@ -106,14 +113,22 @@ class Range:
 
     @property
     def text(self) -> str:
-        """The span's text: a slice of its paragraph's :attr:`text`.
+        """The span's text: a slice of its paragraph's :attr:`text`, in Office JS's characters.
+
+        A paragraph's ``'Whole'`` range (:attr:`mark`) ends with the
+        paragraph's mark, ``\\r``, or ``\\t`` for a cell's last paragraph, as
+        Office JS's does (core-ts check 48; CR-013 Phase A).
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
         records its ``office_offset`` in this text. It reads Word's branch of a run- or
         paragraph-level ``mc:AlternateContent`` (Q4 revised, section 15).
         """
-        return self.paragraph.text[self.start : self.end]
+        text = self.paragraph.text
+        span = text[self.start : self.end]
+        if self.mark and self.end >= len(text):
+            return span + self.paragraph.mark_text
+        return span
 
     @text.setter
     def text(self, value: str) -> None:
@@ -149,7 +164,8 @@ class Range:
         out: list[Any] = []
         seen: set[int] = set()
         for segment in self.paragraph.segments():
-            if segment.end <= self.start or segment.start >= self.end:
+            # an equation is in no run, and its math runs' formatting is their own (CR-013 Phase A)
+            if segment.end <= self.start or segment.start >= self.end or segment.math:
                 continue
             if id(segment.run) in seen:
                 continue
@@ -376,6 +392,7 @@ class Range:
             text after it leaves it where it was.
         """
         if location in ("Replace", "Before", "Start", "After", "End"):
+            check_writable(text, "insert_text")
             with recording(self.paragraph.parent_body, "insert_text") as change:
                 change.touched(self.paragraph)
                 change.text(before=self.text)
@@ -437,12 +454,13 @@ class Range:
         records its ``office_offset`` in this text, which reads Word's branch of a run- or
         paragraph-level ``mc:AlternateContent`` (Q4 revised, section 15).
         """
-        base = self.start
         limit = options.pop("limit", None)
-        hits = find_all(self.text, search_pattern(text, **options))
+        hits = office_matches(
+            self.paragraph.segments(objects=True), text, start=self.start, end=self.end, **options
+        )
         if limit is not None:
             hits = hits[:limit]
-        return [Range(self.paragraph, base + start, base + end) for start, end in hits]
+        return [Range(self.paragraph, start, end) for start, end in hits]
 
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
         """Replace every match within the span, last first; returns the count.
@@ -451,11 +469,13 @@ class Range:
         case each replacement is a ``w:del`` and a ``w:ins``. The report names
         the pair, as :meth:`Body.replace_text`'s does.
         """
+        check_writable(replace, "replace_text")
         with recording(self.paragraph.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
             for match in matches:  # every match checked before the first is replaced (CR-011 Phase F)
                 match.refuse_branch_text("replace_text")
+                match.paragraph.refuse_equation(match.start, match.end)
             for match in reversed(matches):
                 match.insert_text(replace, location="Replace")
             if matches:
@@ -473,12 +493,10 @@ class Range:
         """
         from docx4j_py.model.content.reports import hit_for
 
-        base = self.start
-        hits = find_all(self.text, search_pattern(text, **options))
-        return [
-            hit_for(self.paragraph, base + start, base + end, context=context)
-            for start, end in hits[:limit]
-        ]
+        hits = office_matches(
+            self.paragraph.segments(objects=True), text, start=self.start, end=self.end, **options
+        )
+        return [hit_for(self.paragraph, start, end, context=context) for start, end in hits[:limit]]
 
     # -- change tracking (CR-003 section 3.8, Phase F) ----------------------
 
@@ -560,12 +578,16 @@ class Range:
             self.end = self.start
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
-        """A range over the whole span, or the empty one at either end."""
+        """A range over the whole span, or the empty one at either end.
+
+        ``"Whole"`` keeps a paragraph's mark where this range holds it
+        (:attr:`mark`); ``"Content"`` is the same span without it.
+        """
         if location == "Start":
             return Range(self.paragraph, self.start, self.start)
         if location == "End":
             return Range(self.paragraph, self.end, self.end)
-        return Range(self.paragraph, self.start, self.end)
+        return Range(self.paragraph, self.start, self.end, mark=self.mark and location == "Whole")
 
     def get_xml(self) -> str:
         """The span as a ``w:p``: a copy of the paragraph trimmed to the span.
@@ -589,7 +611,7 @@ class Range:
         )
         view = Paragraph(copy, holder.content, body)
         segments = view.segments()
-        if any(segment.branch is not None for segment in segments):
+        if any(segment.branch is not None or segment.math for segment in segments):
             _trim_around_branches(view, self.start, self.end)
             return to_xml(copy)
         length = len(view.text)
@@ -628,13 +650,19 @@ def _trim_around_branches(view: Any, start: int, end: int) -> None:
     spliced out, as elsewhere; a run- or paragraph-level ``mc:AlternateContent``
     whose text lies wholly outside the span goes, every branch with it; one
     whose text the span holds, in part or whole, is kept whole, since cutting
-    it would change Word's branch alone.
+    it would change Word's branch alone. An equation is kept whole the same way,
+    since an edit never cuts one (CR-013 Phase A).
     """
     from docx4j_py.model.content.text_model import branch_extents
 
     segments = view.segments()
     length = segments[-1].end if segments else 0
-    extents = branch_extents(segments)
+    extents = branch_extents(segments) + [
+        (segment.start, segment.end, segment.item)
+        for segment in segments
+        if segment.math and segment.branch is None
+    ]
+    extents.sort(key=lambda extent: extent[0])
     cuts: list[tuple[int, int]] = []
     for a, b in ((0, start), (end, length)):
         if b <= a:
@@ -658,6 +686,7 @@ def _trim_around_branches(view: Any, start: int, end: int) -> None:
         if high <= start or low >= end
     ]
     by_id = {id(segment.branch): segment for segment in segments if segment.branch is not None}
+    by_id.update({id(segment.item): segment for segment in segments if segment.math and segment.branch is None})
     # last first, so that the offsets of what is still to cut hold
     for x, y in sorted(cuts, reverse=True):
         view.splice(x, y, "")

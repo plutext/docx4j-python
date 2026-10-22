@@ -17,6 +17,7 @@ from docx4j_py.model.content.text_model import (
     snap_forward,
     text_of_view,
 )
+from docx4j_py.traversal import text_of
 from docx4j_py.wml import wml
 
 #: A paragraph whose text is spread over three runs, so that a match spanning
@@ -98,15 +99,18 @@ def test_the_segments_of_a_paragraph(body):
         "<w:delText>gone</w:delText><w:instrText>PAGE</w:instrText></w:r></w:p>"
     )[0]
 
-    assert paragraph.text == "a\t\n‑­A"
+    # Office JS's characters (CR-013 Phase A, core-ts check 48): a break U+000B, the hyphens
+    # U+001E and U+001F, any w:sym "("; docx4j's are text_of's, unchanged
+    assert paragraph.text == "a\t\x0b\x1e\x1f("
     assert [segment.text for segment in paragraph.segments()] == [
         "a",
         "\t",
-        "\n",
-        "‑",
-        "­",
-        "A",
+        "\x0b",
+        "\x1e",
+        "\x1f",
+        "(",
     ]
+    assert text_of(paragraph.element) == "a\t\n‑­A"
     assert [segment.editable for segment in paragraph.segments()] == [
         True,
         False,

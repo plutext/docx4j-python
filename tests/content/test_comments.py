@@ -114,7 +114,7 @@ def test_get_comments_on_a_paragraph_and_on_a_range():
     assert [c.id for c in first.get_comments()] == [0]
     assert [c.id for c in second.get_comments()] == [2]
     # "Alpha " is in front of the markers, "beta" is inside them
-    assert first.get_range().text == "Alpha beta gamma"
+    assert first.get_range().text == "Alpha beta gamma\r", "a 'Whole' range ends with its mark (CR-013)"
     assert [c.id for c in first.search("beta")[0].get_comments()] == [0]
     assert first.search("gamma")[0].get_comments() == []
 
@@ -447,10 +447,11 @@ def test_setting_the_content_replaces_the_paragraphs_and_keeps_the_para_id():
     package, comment = commented()
     para_id = comment.para_id
     comment.content = "Two\nlines."
-    assert comment.content == "Two\nlines."
+    # Office JS's comment.content: the paragraphs a mark \r apart (CR-013 Phase A, check 51)
+    assert comment.content == "Two\rlines."
     assert comment.para_id == para_id
     assert len(comment.paragraphs) == 2
-    assert reloaded(package).body.get_comments()[0].content == "Two\nlines."
+    assert reloaded(package).body.get_comments()[0].content == "Two\rlines."
 
 
 def test_deleting_a_comment_removes_its_replies_and_every_entry():

@@ -34,12 +34,8 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import is_alternate_content, mce_branch, mce_branch_content
 from docx4j_py.model.content.enums import TrackedChangeTypeValue
-from docx4j_py.model.content.text_model import branch_text, item_text
-from docx4j_py.model.content.tracking import REVISION_NAMES
-from docx4j_py.traversal import element_name, run_items_of
-from docx4j_py.wml import R
+from docx4j_py.model.content.text_model import segments_of
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
@@ -420,7 +416,7 @@ def _span_of(paragraph: Paragraph, element: Any) -> tuple[int, int]:
     ]
     if inside:
         return inside[0].start, inside[-1].end
-    at = _accepted_offset_of(paragraph.element, element)
+    at = _accepted_offset_of(paragraph.element, element, paragraph.hidden_runs())
     return at, at
 
 
@@ -436,46 +432,24 @@ def _within(run: Any, element: Any) -> bool:
     return False
 
 
-def _accepted_offset_of(paragraph: Any, target: Any) -> int:
-    """How much accepted text comes before `target` in the paragraph."""
-    position = 0
-    found = -1
+def _accepted_offset_of(paragraph: Any, target: Any, hidden: Any = None) -> int:
+    """How much accepted text comes before `target` in the paragraph.
 
-    def visit(items: list | None) -> None:
-        nonlocal position, found
-        if not items or found >= 0:
-            return
-        for item in items:
-            if found >= 0:
-                return
-            if item is target:
-                found = position
-                return
-            if isinstance(item, R):
-                position += len(_accepted_run_text(item))
-                continue
-            if is_alternate_content(item):
-                # a paragraph-level element kept whole: Word's branch (CR-011 Phase F)
-                visit(mce_branch_content(mce_branch(item)))
-                continue
-            name = element_name(item)
-            if name in REVISION_NAMES and (name or "").rpartition("}")[2] in ("del", "moveFrom"):
-                continue
-            visit(run_items_of(item))
+    :func:`~.text_model.segments_of`'s offsets, through its ``visit`` hook, so
+    that one reader counts (CR-013 Phase A): `target` is met where the walk
+    passes it, in a run holder's list or among a run's items, and an item it
+    does not read --- a ``w:del`` in the accepted view --- is met at the offset
+    it stands at. `hidden` is the paragraph's hidden runs
+    (:func:`~.text_model.hidden_runs_of`). The paragraph's accepted length when
+    `target` is not in it.
+    """
+    found: list[int] = []
 
-    visit(run_items_of(paragraph))
-    return found if found >= 0 else position
+    def visit(item: Any, at: int, owner: list, run: Any, run_owner: Any, branch: Any) -> None:
+        if not found and item is target:
+            found.append(at)
 
-
-def _accepted_run_text(run: R) -> str:
-    """One run's contribution to the accepted view (its ``w:delText`` left out)."""
-    out: list[str] = []
-    for child in getattr(run, "content", None) or ():
-        if is_alternate_content(child):
-            # a run-level element kept whole: Word's branch's text (CR-011 Phase F)
-            out.append(branch_text(child, run_level=True))
-            continue
-        text = item_text(element_name(child), child)
-        if text is not None:
-            out.append(text)
-    return "".join(out)
+    segments = segments_of(paragraph, hidden=hidden, visit=visit)
+    if found:
+        return found[0]
+    return segments[-1].end if segments else 0

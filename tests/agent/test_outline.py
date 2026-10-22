@@ -191,7 +191,9 @@ def test_the_entries_text_is_the_text_models():
     )
     entry = package.body.outline().entries[0]
     assert (entry.text, entry.chars) == ("shown ", 6)
-    assert package.body.paragraphs[0].text == "shown hidden", "Office JS's text keeps it (CR-011 Q4)"
+    # CR-013 Phase A: Office JS's text leaves hidden text out too (core-ts check 48b), where
+    # CR-011 Q4 had it read; the two readers now agree on it
+    assert package.body.paragraphs[0].text == "shown ", "Office JS's text leaves it out (CR-013 Q1)"
 
     joined = load(ROOT / "tests" / "fixtures" / "revisions" / "core-ts" / "check22" / "22-deleted.docx").body.outline()
     texts = [(entry.ordinal, entry.text) for entry in joined.entries]

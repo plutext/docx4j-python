@@ -51,17 +51,21 @@ from docx4j_py.model.content.styles import (
     style_name_of,
 )
 from docx4j_py.model.content.text_model import (
-    find_all,
     canonical_view,
+    check_writable,
+    explode_mapped,
+    hidden_runs_of,
     markup_text,
+    office_matches,
     refuse_branch_text,
+    refuse_equation,
     require_view,
     runs_of,
-    search_pattern,
     segments_of,
     set_text,
     split_at,
-    text_of_view,
+    text_items,
+    text_run,
 )
 from docx4j_py.model.property_resolver import resolver_of
 from docx4j_py.wml import P, R, br, el, t, to_xml, wml
@@ -154,37 +158,54 @@ class Paragraph:
 
     @property
     def text(self) -> str:
-        """The text: runs joined, tabs as ``\\t``, breaks as ``\\n``, deletions out.
+        """The text as Office JS's ``paragraph.text`` gives it in Word's default view.
+
+        CR-013 Phase A (Q1; docx4j-core-ts CR-012 phase 4, held to Word 365 by
+        checks 48, 48b and 51): the accepted text, hidden text left out (a run's
+        own ``w:vanish``, else its styles'), in Word's characters --- a tab
+        ``\\t``, a line break U+000B, a page break U+000C, a column break U+000E,
+        a ``w:cr`` U+000D, a ``w:ptab`` ``0``, the hyphens U+001E and U+001F, any
+        ``w:sym`` ``(``, a note reference U+0002 and an equation as Word draws
+        it (:mod:`~docx4j_py.model.content.text_model`'s table). Split it into
+        lines with care: ``str.splitlines()`` also splits at U+000B, U+000C and
+        U+001E. Every offset a ``Range`` or ``search`` takes counts in it.
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text. A run- or paragraph-level
+        records its ``office_offset`` in this text, agreeing under CR-013 Q11's character map
+        (:func:`~.text_model.office_as_model`). A run- or paragraph-level
         ``mc:AlternateContent`` reads as the branch Word shows, as Office JS reads
         it (Q4 revised, CR-011 section 15; core-ts check 49); an edit through that
         text is refused (``address.read_only``), and an edit beside it works.
 
-        Setting it replaces the content, every such element with it; with change
-        tracking on, a paragraph whose text holds a branch's is refused
-        (``address.read_only``), since its deletion would be marked in Word's
-        branch alone.
+        Setting it replaces the content, every such element with it, hidden runs
+        too: ``paragraph.text = paragraph.text`` drops hidden text, as core-ts's
+        does. Each of Office JS's characters is written as the element it reads
+        from (CR-013 Q2; :func:`~.text_model.text_items`), and U+0002 and the
+        other characters XML 1.0 excludes are refused (``text.not_writable``).
+        With change tracking on, a paragraph whose text holds a branch's is
+        refused (``address.read_only``), since its deletion would be marked in
+        Word's branch alone.
         """
-        return text_of_view(self.element)
+        return "".join(segment.text for segment in self.segments())
 
     @text.setter
     def text(self, value: str) -> None:
+        check_writable(value, "Paragraph.text")
         with recording(self.parent_body, "set_text") as change:
             change.text(before=self.text, after=value)
             if self.change_tracker is not None:
                 # tracked, replacing the text is a deletion and an insertion,
-                # not a new run: the splice writes both (CR-003 section 3.8)
-                self.splice(0, len(self.text), value)
+                # not a new run: the splice writes both (CR-003 section 3.8); the
+                # hidden runs go too, as the untracked setter takes them (CR-013)
+                self.splice(0, len(self.text), value, whole=True)
                 change.touched(self)
                 return
             r_pr = None
             runs = runs_of(self.element)
             if runs and getattr(runs[0], "r_pr", None) is not None:
                 r_pr = deep_copy(runs[0].r_pr)
-            run = R(content=ChildList([t(value)] if value else []))
+            run = R(content=ChildList(text_items(value)))
             if r_pr is not None:
                 run.r_pr = r_pr
                 r_pr.parent = run
@@ -195,9 +216,10 @@ class Paragraph:
     def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
         """The text in one of the views of a tracked document.
 
-        In ``accepted`` and ``original``, Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
+        In ``accepted`` and ``original``, Office JS's text in Office JS's characters (CR-013 Phase A;
+        :attr:`text`), not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text. A run- or paragraph-level
+        records its ``office_offset`` in this text. Hidden text is left out in both views. A run- or paragraph-level
         ``mc:AlternateContent`` reads as the branch Word shows, its deletions out in
         ``accepted`` and its insertions out in ``original`` (Q4 revised, section 15).
 
@@ -222,7 +244,7 @@ class Paragraph:
     def _text_in(self, view: str) -> str:
         if view == "markup":
             return markup_text(self, text_boxes=False)
-        return text_of_view(self.element, view=view)
+        return "".join(segment.text for segment in self.segments(view=view))
 
     def text_budget(
         self, max_chars: int | None = None, *, view: TextView = "accepted"
@@ -240,9 +262,35 @@ class Paragraph:
         """Every ``w:r``, direct and nested in hyperlinks, controls and insertions."""
         return runs_of(self.element)
 
-    def segments(self, *, view: TextView = "accepted") -> list[Any]:
-        """The text segments with their offsets. Extension; see :mod:`.text_model`."""
-        return segments_of(self.element, view=view)
+    def segments(self, *, view: TextView = "accepted", objects: bool = False) -> list[Any]:
+        """The text segments with their offsets in :attr:`text`. Extension; see :mod:`.text_model`.
+
+        Hidden runs are left out (:meth:`hidden_runs`); `objects` lists each
+        drawn object and each hidden run's item as a segment of no text where it
+        stands (:func:`~.text_model.segments_of`).
+        """
+        return segments_of(self.element, view=view, hidden=self.hidden_runs(), objects=objects)
+
+    def hidden_runs(self) -> Any:
+        """Which of this paragraph's runs are hidden: a run's own ``w:vanish``, else its styles'. Extension.
+
+        CR-013 Phase A (:func:`~.text_model.hidden_runs_of`): the text model's
+        rule, over the package's property resolver; a paragraph with no package
+        reads a run's own ``w:vanish`` only.
+        """
+        package = getattr(self.parent_body, "package", None)
+        return hidden_runs_of(resolver_of(package) if package is not None else None, self.element)
+
+    @property
+    def mark_text(self) -> str:
+        """The character Office JS gives this paragraph's mark at the end of its ``'Whole'`` range. Extension.
+
+        ``\\t`` for the last paragraph of a table cell, the cell's end, and
+        ``\\r`` for any other (core-ts check 48; CR-013 Phase A).
+        """
+        from docx4j_py.model.content.story import mark_text_of
+
+        return mark_text_of(self.element)
 
     def refuse_branch_text(self, start: int, end: int, operation: str = "this edit") -> None:
         """Refuse an edit of ``[start, end)`` that would change text read from a kept branch. Extension.
@@ -258,7 +306,16 @@ class Paragraph:
         from docx4j_py.model.content.reports import current_recorder
 
         verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None)
-        refuse_branch_text(self.element, start, end, verb or operation)
+        refuse_branch_text(self.element, start, end, verb or operation, segments=self.segments())
+
+    def refuse_equation(self, start: int, end: int) -> None:
+        """Refuse an edit of ``[start, end)`` that would cut an equation, or take one tracked (CR-013 Phase A). Extension.
+
+        Raises:
+            SpanError: ``range.cuts_equation``.
+            TrackedChangeError: ``tracking.equation``.
+        """
+        refuse_equation(self.segments(), start, end, tracked=self.change_tracker is not None)
 
     def holds_branch_text(self) -> bool:
         """Whether this paragraph's text holds text read from a kept branch (CR-011 Phase F). Extension."""
@@ -893,6 +950,7 @@ class Paragraph:
             location: ``"Before"`` or ``"After"`` (the default).
             style: a style name or id for the new paragraph.
         """
+        check_writable(text, "insert_paragraph")
         with recording(self.parent_body, "insert_paragraph") as change:
             new = P(content=ChildList([_text_run(text)] if text else []))
             if self.element.p_pr is not None:
@@ -1062,7 +1120,12 @@ class Paragraph:
         paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
         Matches are found on the paragraph's whole text, so one **spans runs**
-        freely; only formatting a match splits them.
+        freely; only formatting a match splits them. Office JS's rules (CR-013
+        Phase A; :func:`~.text_model.office_matches`): hidden text is not there,
+        so a query matches across it; a picture is U+FFFC, which ``^g`` matches;
+        an optional hyphen is passed over unless the query names it (``^-``);
+        Word's Find codes ``^f ^e ^l ^m ^t ^~ ^- ^g ^^``; a plain ``-`` matches
+        a non-breaking hyphen too.
 
         Args:
             text: what to look for.
@@ -1072,7 +1135,7 @@ class Paragraph:
         from docx4j_py.model.content.range import Range
 
         limit = options.pop("limit", None)
-        hits = find_all(self.text, search_pattern(text, **options))
+        hits = office_matches(self.segments(objects=True), text, **options)
         if limit is not None:
             hits = hits[:limit]
         return [Range(self, start, end) for start, end in hits]
@@ -1096,13 +1159,16 @@ class Paragraph:
         Returns:
             How many were replaced.
         """
+        check_writable(replace, "replace_text")
         with recording(self.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
             # every match checked before the first is replaced (CR-011 Phase F)
             segments = self.segments()
+            tracked = self.change_tracker is not None
             for match in matches:
                 refuse_branch_text(self.element, match.start, match.end, "replace_text", segments=segments)
+                refuse_equation(segments, match.start, match.end, tracked=tracked)
             for match in reversed(matches):
                 match.insert_text(replace, location="Replace")
             if matches:
@@ -1124,7 +1190,7 @@ class Paragraph:
         """
         from docx4j_py.model.content.reports import hit_for
 
-        hits = find_all(self.text, search_pattern(text, **options))
+        hits = office_matches(self.segments(objects=True), text, **options)
         return [hit_for(self, start, end, context=context) for start, end in hits[:limit]]
 
     # -- comments (CR-003 section 3.9, Phase G) -----------------------------
@@ -1159,7 +1225,14 @@ class Paragraph:
         return tracked_changes_of_paragraph(self)
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
-        """A :class:`~docx4j_py.model.content.Range` over this paragraph."""
+        """A :class:`~docx4j_py.model.content.Range` over this paragraph.
+
+        ``"Whole"`` holds the paragraph's mark too, so its ``text`` ends with
+        :attr:`mark_text` (``\\r``, or ``\\t`` for a cell's last paragraph), as
+        Office JS's does (core-ts check 48; CR-013 Phase A); ``"Content"`` ends
+        with the paragraph's text. The mark is no offset: every edit and search
+        works on the text before it.
+        """
         from docx4j_py.model.content.range import Range
 
         length = len(self.text)
@@ -1167,7 +1240,7 @@ class Paragraph:
             return Range(self, 0, 0)
         if location == "End":
             return Range(self, length, length)
-        return Range(self, 0, length)
+        return Range(self, 0, length, mark=location == "Whole")
 
     def delete(self) -> None:
         """Remove the paragraph from its container.
@@ -1216,8 +1289,8 @@ class Paragraph:
         from docx4j_py.model.content.tracking import insertion_mark_of
 
         length = len(self.text)
-        if length:
-            self._delete_text(tracker, 0, length)
+        if length or self.holds_hidden_text():
+            self._delete_text(tracker, 0, length, whole=True)
         mark = insertion_mark_of(self.element, self.container)
         ours = (
             mark is not None
@@ -1295,7 +1368,7 @@ class Paragraph:
         3.12); the offset actually used is returned.
         """
         made: list = []
-        used = split_at(self.element, offset, prefer=prefer, made=made)
+        used = split_at(self.element, offset, prefer=prefer, made=made, hidden=self.hidden_runs())
         self.remember_split(made)
         return used
 
@@ -1333,7 +1406,7 @@ class Paragraph:
 
         return insert_content_control_in_paragraph(self, kind)
 
-    def splice(self, start: int, end: int, text: str) -> Range:
+    def splice(self, start: int, end: int, text: str, *, whole: bool = False) -> Range:
         """Replace the text in ``[start, end)`` and return the range of the new text.
 
         Runs are edited in place: a ``w:t`` loses or gains characters, a tab or
@@ -1342,29 +1415,52 @@ class Paragraph:
         Word does; where there is nothing to replace it extends the ``w:t`` at
         the offset, and failing that becomes a new run with the neighbouring
         run's formatting.
+
+        Office JS's characters in `text` are written as the elements they read
+        from (CR-013 Q2; :func:`~.text_model.text_items`), each in the run the
+        text went into; U+0002 and the other characters XML 1.0 excludes are
+        refused (``text.not_writable``) before anything changes. Hidden text
+        strictly inside the span goes with it, as Word takes it (core-ts's rule;
+        CR-013 Phase A); at the span's edges only when `whole`, or when the span
+        is the paragraph's whole text. An equation is taken whole and untracked,
+        or not at all (:func:`~.text_model.refuse_equation`).
         """
         from docx4j_py.model.content.range import Range
+        from docx4j_py.model.content.reports import current_recorder
 
-        segments = self.segments()
+        verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None)
+        check_writable(text, verb or "this edit")
+        listed = self.segments(objects=True)
+        segments = [segment for segment in listed if not segment.object]
         length = segments[-1].end if segments else 0
         start = max(0, min(start, length))
         end = max(start, min(end, length))
+        whole = whole or (start == 0 and end == length and end > start)
         if segments and any(segment.branch is not None for segment in segments):
             self.refuse_branch_text(start, end)
 
         tracker = self.change_tracker
+        refuse_equation(segments, start, end, tracked=tracker is not None)
+        hidden = [
+            segment
+            for segment in listed
+            if segment.hidden and _in_span(segment.start, start, end, whole)
+        ]
         if tracker is not None:
             # a replacement is the w:del first and the w:ins after it, as Word
             # writes one (CR-003 section 4)
-            deletions = self._delete_text(tracker, start, end) if end > start else []
+            deletions = (
+                self._delete_text(tracker, start, end, whole=whole) if end > start or hidden else []
+            )
             if text:
                 self._insert_tracked(tracker, start, text, deletions[-1] if deletions else None)
+                explode_mapped(self.segments(), start, start + len(text))
             return Range(self, start, start + len(text))
 
         inserted = False
-        if end > start:
+        if end > start or hidden:
             first = next((s for s in segments if s.start <= start < s.end), None)
-            to_remove = []
+            to_remove = list(hidden)
             for segment in segments:
                 if segment.end <= start or segment.start >= end:
                     continue
@@ -1388,6 +1484,7 @@ class Paragraph:
                         break
             self._remove_empty_runs()
             if inserted and text:
+                explode_mapped(self.segments(), start, start + len(text))
                 return Range(self, start, start + len(text))
             segments = self.segments()
 
@@ -1405,7 +1502,7 @@ class Paragraph:
                 after = next((s for s in segments if s.start >= start), None)
                 neighbour = before or after
                 r_pr = None
-                source = neighbour.run if neighbour is not None else None
+                source = neighbour.run if neighbour is not None and not neighbour.math else None
                 if source is None:
                     runs = runs_of(self.element)
                     source = runs[0] if runs else None
@@ -1430,6 +1527,7 @@ class Paragraph:
                 else:
                     self.element.content.append(run)
                 link_parents(run)
+            explode_mapped(self.segments(), start, start + len(text))
         return Range(self, start, start + len(text))
 
     def insert_items_at(self, offset: int, items: list) -> None:
@@ -1441,6 +1539,7 @@ class Paragraph:
         if not items:
             return
         self.refuse_branch_text(offset, offset, "this insertion")
+        refuse_equation(self.segments(), offset, offset)
         offset = self.split_at(offset)
         segments = self.segments()
         after = next((s for s in segments if s.start >= offset), None)
@@ -1462,27 +1561,35 @@ class Paragraph:
 
     # -- tracked editing (CR-003 section 3.8, Phase F) ----------------------
 
-    def delete_text_tracked(self, tracker: Any, start: int, end: int) -> list[Any]:
+    def delete_text_tracked(self, tracker: Any, start: int, end: int, *, whole: bool = False) -> list[Any]:
         """Turn the text in ``[start, end)`` into a ``w:del``. Extension.
 
         The tracked half of :meth:`splice`, reachable on its own because a
         **deleted table row** deletes the content of every cell through exactly
-        this primitive (CR-003 section 16.10).
+        this primitive (CR-003 section 16.10). `whole` takes the hidden text at
+        the span's edges too (CR-013 Phase A).
         """
-        return self._delete_text(tracker, start, end)
+        return self._delete_text(tracker, start, end, whole=whole)
 
-    def _delete_text(self, tracker: Any, start: int, end: int) -> list[_Anchor]:
+    def holds_hidden_text(self) -> bool:
+        """Whether a hidden run of this paragraph holds text (CR-013 Phase A). Extension."""
+        return any(segment.hidden for segment in self.segments(objects=True))
+
+    def _delete_text(self, tracker: Any, start: int, end: int, *, whole: bool = False) -> list[_Anchor]:
         """The text in ``[start, end)`` becomes a deletion; returns the ``w:del``\\ s.
 
         The runs holding it are isolated, their ``w:t`` turned into
         ``w:delText``, and each run of consecutive ones moved into one
         ``w:del``. Text **this author** had inserted is simply removed, as Word
-        does, rather than nested in a ``w:del``.
+        does, rather than nested in a ``w:del``. A hidden run strictly inside
+        the span is deleted with it (at its edges too when `whole`), as Word
+        puts it inside the ``w:del`` (CR-013 Phase A).
         """
         from docx4j_py.model.content.tracking import revision_of, to_deleted_text
 
         self.refuse_branch_text(start, end, "a tracked deletion")
-        targets = self._isolate(start, end)
+        refuse_equation(self.segments(), start, end, tracked=True)
+        targets = self._isolate(start, end, whole=whole)
         for segment in targets:
             tracker.assert_editable(revision_of(segment.run))
 
@@ -1570,6 +1677,7 @@ class Paragraph:
             return
 
         self.refuse_branch_text(at, at, "a tracked insertion")
+        refuse_equation(self.segments(), at, at)
         at = self.split_at(at)
         segments = self.segments()
         before = next((s for s in reversed(segments) if s.end <= at), None)
@@ -1622,20 +1730,22 @@ class Paragraph:
         owner.insert(index + (1 if neighbour is before else 0), wrapper)
         wrapper.parent = parent
 
-    def _isolate(self, start: int, end: int) -> list[Any]:
+    def _isolate(self, start: int, end: int, *, whole: bool = False) -> list[Any]:
         """Split runs so that each one holding text in ``[start, end)`` holds nothing else.
 
         :meth:`split_at` does the ``w:t`` boundaries; this also moves the items
         of a run that straddles a boundary --- a tab, a break, a drawing --- out
         into runs of their own, so that a partly deleted run is not wholly
-        deleted.
+        deleted. A hidden run's items strictly inside the span (at its edges
+        too when `whole`) are among what is returned (CR-013 Phase A).
         """
 
         def inside() -> list[Any]:
             return [
                 segment
-                for segment in self.segments()
-                if segment.start >= start and segment.end <= end and segment.text
+                for segment in self.segments(objects=True)
+                if (segment.hidden and _in_span(segment.start, start, end, whole))
+                or (not segment.object and segment.start >= start and segment.end <= end and segment.text)
             ]
 
         self.split_at(start)
@@ -1712,11 +1822,21 @@ class Paragraph:
         prune(self.element.content)
 
 
-def _text_run(text: str) -> R:
-    """A run of the text, with tabs and newlines as ``w:tab`` and ``w:br``."""
-    from docx4j_py.wml import r as run_builder
+def _in_span(at: int, start: int, end: int, whole: bool) -> bool:
+    """Whether a place of no text at `at` is in the span: strictly inside it, or at an edge of a whole one.
 
-    return run_builder(text)
+    A hidden run stands between two characters, so one at a span's start or end
+    offset may be inside it or outside it, and offsets alone cannot say which.
+    A paragraph's whole text holds the hidden runs at both of its edges; a span
+    of text, such as a search found, holds only those strictly inside it
+    (core-ts ``objectInSpan`` and ``WHOLE`` at ``9307bdb``).
+    """
+    return start < at < end or (whole and start <= at <= end)
+
+
+def _text_run(text: str) -> R:
+    """A run of the text, each of Office JS's characters its element (CR-013 Q2, :func:`~.text_model.text_items`)."""
+    return text_run(text)
 
 
 # ---------------------------------------------------------------------------

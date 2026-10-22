@@ -211,12 +211,23 @@ def _is_monospace(font: str | None) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _office_spans(p: Any, view: str) -> dict[int, tuple[int, int]]:
-    """Each run item's place in the content API's ``Paragraph.get_text(view=)``: ``id`` -> (offset, length)."""
-    from docx4j_py.model.content.text_model import segments_of
+def _office_spans(p: Any, view: str, resolver: Any = None) -> dict[int, tuple[int, int]]:
+    """Each run item's place in the content API's ``Paragraph.get_text(view=)``: ``id`` -> (offset, length).
+
+    In Office JS's characters, hidden runs left out by the same rule and the
+    same resolver as ``Paragraph.text`` (CR-013 Phase A). A run keeps the
+    offset where the item's length agrees (``_add_text``), so the model's
+    segmentation is docx4j's, and its text agrees with ``Paragraph.text`` under
+    Q11's character map (:func:`~docx4j_py.model.content.text_model.office_as_model`).
+    """
+    from docx4j_py.model.content.text_model import hidden_runs_of, segments_of
 
     try:
-        segments = segments_of(p, view="original" if view == "original" else "accepted")
+        segments = segments_of(
+            p,
+            view="original" if view == "original" else "accepted",
+            hidden=hidden_runs_of(resolver, p),
+        )
     except Exception:  # noqa: BLE001 - no offsets, not no text
         return {}
     return {id(s.item): (s.start, s.end - s.start) for s in segments}
@@ -390,9 +401,9 @@ class _Paragraph:
         self.merge_floor = 0
         self._office: dict[int, tuple[int, int]] | None = None
 
-    def office_span(self, item: Any) -> tuple[int, int] | None:
+    def office_span(self, item: Any, resolver: Any = None) -> tuple[int, int] | None:
         if self._office is None:
-            self._office = _office_spans(self.p, self.view)
+            self._office = _office_spans(self.p, self.view, resolver)
         return self._office.get(id(item))
 
 
@@ -1446,7 +1457,7 @@ class Extractor:
             run.display_math = para.display_math
             if source is not None:
                 run.source = TextRunSource(source[0], para.p)
-                span = para.office_span(source[1])
+                span = para.office_span(source[1], self.resolver)
                 if span is not None and span[1] == len(value):
                     run.office_offset = span[0]
         runs = para.block.runs

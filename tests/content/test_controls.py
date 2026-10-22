@@ -186,14 +186,15 @@ def test_insert_into_a_block_control(new_package):
     control = new_package.body.content_controls[0]
 
     control.insert_paragraph("two")
-    assert control.text == "one\ntwo"
+    # a block control's text is its body's, a mark \r per paragraph (CR-013 Phase A, check 51)
+    assert control.text == "one\rtwo"
     control.insert_paragraph("zero", location="Start")
-    assert control.text == "zero\none\ntwo"
+    assert control.text == "zero\rone\rtwo"
     control.insert_paragraph("beside", location="After")
     assert new_package.body.paragraphs[-1].text == "beside"
-    assert control.text == "zero\none\ntwo"
+    assert control.text == "zero\rone\rtwo"
 
-    assert reloaded(new_package).body.content_controls[0].text == "zero\none\ntwo"
+    assert reloaded(new_package).body.content_controls[0].text == "zero\rone\rtwo"
 
 
 def test_a_row_control_refuses_what_it_cannot_hold(invoice):

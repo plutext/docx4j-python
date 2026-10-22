@@ -144,7 +144,7 @@ def test_the_original_view_is_not_offered_on_a_span(new_package):
     paragraph = new_package.body.insert_paragraph("text")
     span = paragraph.get_range()
 
-    assert span.get_text() == "text"
+    assert span.get_text() == "text\r", "a 'Whole' range ends with its mark (CR-013 Phase A)"
     with pytest.raises(SpanError) as raised:
         span.get_text(view="original")
     assert raised.value.code == "range.no_original_view"

@@ -118,11 +118,16 @@ class TextRun:
     #: Where the run's text starts in its paragraph's Office JS ``Paragraph.text``
     #: (``Paragraph.text`` and ``get_text()`` of the content API, CR-011 Q4), where
     #: it contributes there; within the run the two texts agree character for
-    #: character, a run read from a kept ``mc:AlternateContent``'s branch
-    #: included (CR-011 Phase F). None for a run only the model writes: a note reference or
-    #: mark, a list label, a field code, a bound value, text ``Paragraph.text``
-    #: does not hold. Text that ``Paragraph.text`` holds and the model leaves
-    #: out (hidden text) is the gap between two runs' offsets.
+    #: character **under CR-013 Q11's character map** (Office JS's U+000B for a
+    #: break read as the model's ``\n``, and the rest of
+    #: :func:`~docx4j_py.model.content.text_model.office_as_model`'s table), a
+    #: run read from a kept ``mc:AlternateContent``'s branch included (CR-011
+    #: Phase F). None for a run only the model writes: a note reference or
+    #: mark, a list label, a field code, a bound value, an equation's runs, text
+    #: ``Paragraph.text`` does not hold (hidden text, since CR-013 Phase A).
+    #: Text that ``Paragraph.text`` holds and the model writes no run of (a
+    #: note reference's U+0002, an equation's drawn text) is the gap between
+    #: two runs' offsets.
     office_offset: int | None = None
 
     def same_format(self, other: TextRun) -> bool:

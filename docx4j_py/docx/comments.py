@@ -120,8 +120,15 @@ class Comment(BlockItemContainer):
 
     @property
     def text(self) -> str:
-        """The comment's text, a line per paragraph: python-docx's, not the text model's (CR-011 Q5)."""
-        return self._view.content
+        """The comment's text, a line per paragraph: python-docx's, not the text model's (CR-011 Q5).
+
+        python-docx 1.2.0's ``Comment.text``: each paragraph's text (its runs and
+        hyperlinks) a ``\\n`` apart. Not the content API's ``content``, whose
+        paragraphs are Office JS's ``\\r`` apart since CR-013 Phase A.
+        """
+        from docx4j_py.docx.text import holder_text
+
+        return "\n".join(holder_text(paragraph.element) for paragraph in self._view.paragraphs)
 
     # -- content -----------------------------------------------------------
 
@@ -206,11 +213,17 @@ def add_comment(
     initials: str | None = "",
 ) -> Comment:
     """What ``Document.add_comment`` is. See its docstring."""
+    import re
+
     from docx4j_py.docx.text import Run as FacadeRun
+    from docx4j_py.docx.text import check_python_docx_text
     from docx4j_py.model.content.comments import insert_comment_into
     from docx4j_py.model.content.errors import ContentError
     from docx4j_py.model.content.range import Range
-    from docx4j_py.model.content.text_model import segments_of
+
+    # python-docx 1.2.0's: a newline starts a paragraph, a carriage return is a
+    # w:br in it, any other control character refused (CR-013 Phase A)
+    check_python_docx_text(text)
 
     items = [runs] if isinstance(runs, FacadeRun) else list(runs)
     if not items:
@@ -230,7 +243,7 @@ def add_comment(
                 "paragraph.view.insert_comment(text)"
             ),
         )
-    segments = segments_of(paragraph.element)
+    segments = paragraph.segments()
     starts = [s.start for s in segments if s.run is first]
     ends = [s.end for s in segments if s.run is last]
     start = min(starts) if starts else 0
@@ -240,7 +253,9 @@ def add_comment(
     if author or initials:
         package.author = Author(author, initials=initials)
     try:
-        view = insert_comment_into(Range(paragraph, start, end), text or "")
+        view = insert_comment_into(
+            Range(paragraph, start, end), (text or "").replace("\r", "\x0b"), marks=re.compile("\n")
+        )
     finally:
         package.author = previous
     return Comment(view)

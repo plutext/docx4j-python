@@ -240,21 +240,38 @@ def test_the_plain_text_goldens_are_exact(fixture, view):
 
 @pytest.mark.parametrize("view", ["accepted", "original"])
 def test_a_runs_office_offset_is_where_its_text_is_in_get_text(probe, view):
-    from docx4j_py.model.content.text_model import text_of_view
+    """CR-011 12.6's invariant, restated by CR-013 Q11: agreement under the character map.
 
+    Office JS's characters read as the text model's (a break's U+000B as
+    ``\\n``, a ``w:sym``'s ``(`` as its code point, ...), every run with an
+    offset equals ``Paragraph.text`` at it; hidden runs left out of both by the
+    same rule and resolver.
+    """
+    from docx4j_py.model.content.text_model import (
+        hidden_runs_of,
+        office_as_model,
+        segments_of,
+    )
+
+    resolver = probe.get_property_resolver()
     checked = 0
     for block in extract(probe, view=view).blocks:
         for run in block.runs:
             if run.office_offset is None:
                 continue
-            office = text_of_view(run.source.paragraph, view=view)
+            p = run.source.paragraph
+            office = office_as_model(segments_of(p, view=view, hidden=hidden_runs_of(resolver, p)))
             assert office[run.office_offset : run.office_offset + len(run.text)] == run.text, block.address
             checked += 1
     assert checked > 100
 
 
-def test_hidden_text_is_the_gap_between_offsets():
-    """Text Paragraph.text holds and the model leaves out lies between two runs' offsets."""
+def test_hidden_text_is_in_neither_text():
+    """Since CR-013 Phase A, Office JS's text leaves hidden text out as the model does (core-ts check 48b).
+
+    Before it, ``Paragraph.text`` held it and it was the gap between two runs'
+    offsets; now the offsets run on, and the hidden run has none.
+    """
     from docx4j_py.model.content.text_model import text_of_view
     from docx4j_py.wml import wml
 
@@ -263,9 +280,10 @@ def test_hidden_text_is_the_gap_between_offsets():
         "<w:r><w:t>again</w:t></w:r></w:p>"
     )
     runs = extract(p).blocks[0].runs
-    assert [(r.text, r.office_offset) for r in runs] == [("shown ", 0), ("again", 11)]
-    office = text_of_view(p)
-    assert office[runs[0].office_offset + len(runs[0].text) : runs[1].office_offset] == "gone "
+    assert [(r.text, r.office_offset) for r in runs] == [("shown ", 0), ("again", 6)]
+    from docx4j_py.model.content.text_model import hidden_runs_of
+
+    assert text_of_view(p, hidden=hidden_runs_of(None, p)) == "shown again"
 
 
 # ---------------------------------------------------------------------------

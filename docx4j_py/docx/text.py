@@ -151,6 +151,33 @@ def run_text(run: Any) -> str:
     return "".join(out)
 
 
+def check_python_docx_text(text: str | None) -> None:
+    """Refuse a text python-docx 1.2.0 refuses: one holding a character XML 1.0 excludes.
+
+    Measured on 2026-10-23 (CR-013 Phase A, section 4.1): python-docx's
+    ``add_paragraph``, ``add_run``, ``Run.text = ...``, ``Paragraph.text =
+    ...``, ``cell.text = ...`` and ``add_comment`` raise ``ValueError`` (lxml's
+    "All strings must be XML compatible") at the write for any control
+    character but a tab, a newline and a carriage return --- Office JS's
+    U+000B, U+000C, U+000E, U+001E, U+001F and U+0002 among them. The facade
+    is python-docx's names and semantics (CR-003 Phase J), so it refuses them
+    there too, before anything changes, where the content API's writers map
+    them (CR-013 Q2).
+
+    Raises:
+        ValueError: the text holds such a character.
+    """
+    if not text:
+        return
+    for index, char in enumerate(text):
+        code = ord(char)
+        if (code < 0x20 and char not in "\t\n\r") or 0xD800 <= code <= 0xDFFF or code in (0xFFFE, 0xFFFF):
+            raise ValueError(
+                "All strings must be XML compatible: Unicode or ASCII, no NULL bytes or control "
+                f"characters (U+{code:04X} at offset {index}, as python-docx 1.2.0 refuses it)"
+            )
+
+
 def holder_text(holder: Any) -> str:
     """The text of a ``w:p`` or ``w:hyperlink``: its runs and its links.
 
@@ -1469,14 +1496,18 @@ class Run:
 
     @text.setter
     def text(self, text: str) -> None:
+        # python-docx 1.2.0's: a tab w:tab, a newline and a carriage return each a
+        # w:br (\r\n two), any other control character refused (CR-013 Phase A)
+        check_python_docx_text(text)
         with recording(self._story.body, "docx.run.text"):
             content = self._r.content
             content.clear()
-            for item in r_builder(text or "").content:
+            for item in r_builder((text or "").replace("\r", "\n")).content:
                 content.append(item)
 
     def add_text(self, text: str) -> _Text:
         """Append a ``w:t`` holding `text`, and return it."""
+        check_python_docx_text(text)
         with recording(self._story.body, "docx.run.add_text"):
             item = el.t(text)
             self._r.content.append(item)

@@ -19,8 +19,9 @@ as :data:`WORD_365`, :data:`WORD_365_SEARCH` and :data:`WORD_365_AFTER_YY`.
 
 What is held:
 
-* each case's ``Paragraph.text`` is Word 365's, but for case 2's break, a
-  U+000B in Office JS and ``\\n`` here (section 15 item 2, pinned);
+* each case's ``Paragraph.text`` is Word 365's, case 2's break U+000B among
+  them since CR-013 Phase A (section 15 item 2, superseded 2026-10-23; until
+  then pinned as ``\\n``);
 * ``get_text`` in both views, ``Body.text``, ``search``, ``find`` and a range's
   text read the branch; a branch's insertions and deletions are filtered as
   the paragraph's own; a text box in a branch gives nothing (core-ts check
@@ -42,7 +43,11 @@ from docx4j_py import create_package, load
 from docx4j_py.child import link_parents
 from docx4j_py.model.content.errors import AddressError
 from docx4j_py.model.content.range import Range
-from docx4j_py.model.content.text_model import text_of_view
+from docx4j_py.model.content.text_model import (
+    office_as_model,
+    segments_of,
+    text_of_view,
+)
 from docx4j_py.model.text import extract, plain_text
 from docx4j_py.traversal import text_of
 from docx4j_py.wml import to_xml, wml
@@ -52,11 +57,11 @@ MC_FUN = FIXTURES / "mc-fun"
 
 #: Word 365's ``paragraph.text`` for each case's paragraph, by its index in the
 #: probe's body (check 49's report, lines ``2:`` to ``16:``; cases 9 and 10,
-#: ED-009 section 9.2 item 5). Case 2's break is ``\n`` here, U+000B in Word:
-#: :data:`WORD_365_BREAK`.
+#: ED-009 section 9.2 item 5). Case 2's break is U+000B, here as in Word since
+#: CR-013 Phase A: :data:`WORD_365_BREAK`.
 WORD_365 = {
     2: "The Earth is flat",
-    4: "Before\tafter the tab\nafter the break",
+    4: "Before\tafter the tab\u000bafter the break",
     6: "unknown choice",
     8: "nothing to select",
     10: "A picture:  after it",
@@ -139,11 +144,16 @@ def test_each_cases_paragraph_text_is_word_365s(index: int, word: str) -> None:
     assert paragraph.get_text(view="original") == word, "no tracked change: the two views agree"
 
 
-def test_case_2s_break_is_a_newline_where_office_js_gives_u000b() -> None:
-    """Section 15 item 2: the characters stay this package's; Word's U+000B is a known difference."""
-    text = probe().body.paragraphs[4].text
-    assert text == WORD_365_BREAK.replace("\u000b", "\n")
-    assert "\u000b" not in text
+def test_case_2s_break_is_u000b_as_office_js_gives_it() -> None:
+    """Section 15 item 2, superseded 2026-10-23: CR-013 Phase A takes Office JS's characters.
+
+    Until then this test was ``test_case_2s_break_is_a_newline_where_office_js_gives_u000b``,
+    pinning the difference; now the break reads as Word 365's check 49 gave it,
+    and docx4j's ``text_of`` keeps its ``\\n``.
+    """
+    paragraph = probe().body.paragraphs[4]
+    assert paragraph.text == WORD_365_BREAK
+    assert text_of(paragraph.element) == WORD_365_BREAK.replace("\u000b", "\n")
 
 
 def test_the_case_labels_and_the_last_paragraph_are_as_before() -> None:
@@ -158,9 +168,15 @@ def test_paragraph_text_agrees_with_text_of_and_the_text_model() -> None:
     """Section 15: every reader of text takes the branch docx4j and core-ts take."""
     pkg = probe()
     paragraphs = pkg.body.paragraphs
-    assert [p.text for p in paragraphs] == [text_of(p.element) for p in paragraphs]
-    assert pkg.body.text == "\n".join(p.text for p in paragraphs)
-    assert plain_text(extract(pkg)).rstrip("\n") == pkg.body.text.rstrip("\n")
+    # the same branch; the characters differ only at case 2's break (CR-013 Phase A)
+    assert [text_of_view(p.element, characters="docx4j") for p in paragraphs] == [
+        text_of(p.element) for p in paragraphs
+    ]
+    assert [p.text.replace("\u000b", "\n") for p in paragraphs] == [text_of(p.element) for p in paragraphs]
+    assert pkg.body.text == "\r".join(p.text for p in paragraphs)
+    assert plain_text(extract(pkg)).rstrip("\n") == pkg.body.text.replace("\r", "\n").replace(
+        "\u000b", "\n"
+    ).rstrip("\n")
 
 
 def test_search_finds_a_word_only_a_choice_holds_and_none_only_a_fallback_holds() -> None:
@@ -249,7 +265,8 @@ def test_each_runs_office_offset_is_where_its_text_is_in_get_text(view: str) -> 
                 if not run.text:
                     continue
                 assert run.office_offset is not None, (block.address, run.text)
-                office = text_of_view(run.source.paragraph, view=view)
+                # agreement under CR-013 Q11's character map: Office JS's U+000B read as the model's \n
+                office = office_as_model(segments_of(run.source.paragraph, view=view))
                 assert office[run.office_offset : run.office_offset + len(run.text)] == run.text
                 checked += 1
     assert checked == 25, "every run with text has its offset: the probe's 23 and the built two"
