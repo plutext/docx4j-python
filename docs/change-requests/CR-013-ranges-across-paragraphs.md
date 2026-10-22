@@ -594,3 +594,185 @@ CLAUDE.md asks for a Word check after any change to the content API's inserts, a
 | **total** | **8½ to 9½** with the two characters alone; **10½ to 11½** with Q1's full set |
 
 The larger part is not the members. It is the characters, and the oracles: a Python port of two Office JS snippets, held to Word's JSON case for case, where core-ts ran its snippets through its own shim. core-ts's own estimates for its phases 1 and 2 were 1½ to 2 and 2 to 3 days.
+
+## 10. Phase A implementation notes (2026-10-23)
+
+Section 4.1 as built, at the user's go ("start Phase A"), Q1's whole set and Q2's writers, with section 4.1's additions of 2026-10-23. The Office JS readers read Word's own character stream, as docx4j-core-ts CR-012 phase 4 (`9307bdb`) built it and Word 365 measured it (checks 48, 48b, 51); every text writer of the content API takes those characters back as the elements they read from; U+0002 and the other characters XML 1.0 excludes are refused at the write. On the files Word read, every paragraph of checks 48 (Word's default view), 48b and 51 now reads as Word 365's (13 of 23, 13 of 25 and 16 of 25 before). Nothing of Phases B and C is built: no `Range` across paragraphs, no new subset member, no `Comment.get_ranges()`, no check 52 or 53.
+
+**Commits.**
+- `da7aa12`: the audit first (section 6.2): `scripts/mce_branches.py readers --holding all`, and two readers Phase A moves (a block control's `text`, a comment's `content`).
+- `e7e54e6`: the fixtures (Q8) in `tests/office_js/` with `SHA1SUMS`, and `tests/README.md`'s provenance rows.
+- `316f427`: the pieces, none read yet: `model/content/math_text.py`, `model/content/story.py`, `PropertyResolver.is_vanished_by_styles`.
+- `7369c63`: the readers and the writers, the new tests and the pre-existing expectations that move (10.12).
+- `1bc9b7d`: the audit's `office_offset` agreement read under Q11's map; `README.md`, `docs/pypi-readme.md`, the CHANGELOG.
+- The commit adding this section.
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the characters | `model/content/text_model.py` | `OFFICE_CHARACTERS` and `office_item_text` (core-ts's `officeItemText`); `item_text` unchanged, docx4j's, which the facade's `run_text` reads (section 2.5 item 4) |
+| the walk | `text_model.segments_of` | `hidden=` (a predicate, `hidden_runs_of`), `objects=` (pictures and hidden items as zero-width segments, `Segment.object` and `Segment.hidden`), `characters="docx4j"` (0.1.0's walker exactly), `visit=` (core-ts's hook: every element passed that adds no text, with its offset); an equation is one segment (`Segment.math`, its `item` and `run` the `m:oMath`) |
+| hidden text | `text_model.hidden_runs_of`, `PropertyResolver.is_vanished_by_styles` | the text model's rule (REQ-507, `extractor._run`): a run's own `w:vanish`, else its paragraph style's and character style's; cached per pair, a pair naming a missing style not cached, and answered False at once where no style nor the defaults state `w:vanish` |
+| equations | `model/content/math_text.py` (new, KEEP covers `model/`) | the port of `mathText.mts` at `9307bdb`: `math_text_of`, `math_letter`, `is_math` |
+| the story layout | `model/content/story.py` (new) | `story_layout(items, text_of)` with each paragraph's `Place`; `mark_text_of`, core-ts's `lastInCell`; `story_of` is Phase B's |
+| search | `text_model.office_matches`, `FIND_CODES`, `OBJECT_REPLACEMENT` | the port of `officeMatches` at `9307bdb`; every search site uses it (`Paragraph`, `Range`, `Body` through its paragraphs, `find_in`, a control's) |
+| the writers | `text_model.WRITTEN_AS`, `text_items`, `text_run`, `explode_mapped`, `check_writable`, `unwritable` | Q2's map; a text written into a `w:t` by the edit primitives is then split around each mapped character, inside the same run, so the placing and the formatting are the primitives' own |
+| equations in edits | `text_model.refuse_equation`, `refuse_tracked_equation`, `Paragraph.refuse_equation` | core-ts's `assertPlaceable`; pre-checks for a tracked `Body.clear()`, row and table deletions and `replace_text` |
+| Q11 | `text_model.office_as_model` | Office JS's characters read as the text model's, offset for offset |
+| readers moved | `paragraph.py`, `body.py`, `range.py`, `table.py`, `controls.py`, `comments.py`, `tracked_change.py`, `reports.py`, `model/text/extractor.py` | 10.3 |
+| writers moved | `paragraph.py` (`text` setter, `splice`, `insert_paragraph`, the tracked deletion and insertion), `body.py`, `table.py` (`value`, `values`, `insert_table`, `add_rows`), `comments.py`, `controls.py`, `tracking.py` (a deleted row's cells) | 10.4 |
+| the write-back | `controls.ContentControl.docx4j_text` (extension), `customxml/bindings.update_from_control` | 10.4 |
+| the facade | `docx/text.py` (`check_python_docx_text`, `Run.text`, `add_text`), `docx/_base.py` (`add_paragraph`), `docx/comments.py` (`Comment.text`, `add_comment`) | 10.4 |
+| the trial | `model/content/trial.py` | 10.5 |
+| docstrings | every reader and writer above; `model/text/result.py`'s `office_offset` | the Q4 boilerplate kept, Office JS's characters added |
+| tests | `tests/content/test_office_js_characters.py` (127, new); 26 pre-existing tests in 17 files (10.12) | 10.6 to 10.9 |
+| fixtures | `tests/office_js/` | 10.6 |
+
+### 10.2 The characters as built
+
+Section 3.8's table, every row: a `w:br` U+000B (U+000C `w:type="page"`, U+000E `"column"`), a `w:cr` U+000D, a `w:ptab` `0`, the hyphens U+001E and U+001F, any `w:sym` `(`, a footnote or endnote reference and a note's own mark U+0002, an equation one segment of Word's text of it, hidden text nothing, a comment reference, a field code and a picture nothing. A kept branch's wildcard items read the same table.
+- **Hidden runs** have no offset. With `objects=True` their text items, and a drawing in them, are listed as zero-width segments marked `hidden`, so that a deletion can find them; every other reader passes them by.
+- **An equation** at run-holder level (`m:oMath`, `m:oMathPara`, in a paragraph or in a run holder) is one segment, not editable, its `item` and `run` the element. `Range.runs` and so a `font` write skip it, as core-ts's do.
+- **`characters="docx4j"`** is the 0.1.0 walker exactly (`item_text`, no hidden filter, no equation), which a bound control's write-back reads (10.4). The audit's check (10.7) uses it as "the old map".
+
+### 10.3 The readers
+
+**Moved:**
+- `Paragraph.text`, `get_text` in `accepted` and `original`, `text_budget`, `segments()` (now with `hidden_runs()`), `to_dict()`, `repr`;
+- `Body.text`, `get_text` (the budget now cut from the whole layout) and `text_budget`: `story_layout` over the body's content, its last `\r` dropped;
+- `Range.text`: a slice, and for a paragraph's `'Whole'` range (`Range.mark`, 10.11 item 1) the paragraph's `mark_text`;
+- `TableCell.text` and `value`: the cell's `Body.text`; so `TableRow.values` and `Table.values`;
+- `ContentControl.text`: a block, row or cell control's content's `Body.text`; a run control's span of `Paragraph.text`;
+- `Comment.content`: its body's `Body.text`, unchanged in code;
+- `search`, `find`, `replace_text`'s matches, `SearchHit`'s context, `paragraph_at(contains=)`, a `ChangeReport`'s `text_before` and `text_after`;
+- the offsets' own walkers: the comment markers (`comments._markers_in_paragraph`, through `segments_of`'s `visit`, with the package's resolver passed where the offsets are read) and a revision's collapsed place (`tracked_change._accepted_offset_of`, the same way);
+- the text model's `office_offset`: `extractor._office_spans` reads the same segments with the same hidden rule and resolver; a run keeps its offset where the item's length agrees (Q11), and the merge rule is unchanged.
+
+**Not moved, each documented as not Office JS's:** `traversal.text_of`; `Block.text` and `Table.text` (a line per paragraph, docx4j's characters); the facade's `run_text`, `holder_text` and, since this phase, its `Comment.text` (10.4); `TrackedChange.text`; the text model, its plain text and Markdown, `outline()` and `describe()`.
+
+### 10.4 The writers
+
+- **The map** (Q2): U+000B and `\n` a `w:br`, U+000C a page break, U+000E a column break, U+000D a `w:cr`, U+001E a `w:noBreakHyphen`, U+001F a `w:softHyphen`, `\t` a `w:tab`. Each character is one element, so `\r\n` in a paragraph's text is a `w:cr` and a `w:br`; in a comment it is one mark.
+- **Every text writer**: `Paragraph.text = ...` (untracked a run of `text_items`; tracked the splice), `splice` and so `insert_text` on a paragraph, a range, a body and a run control's span, `replace_text` on all three, `insert_paragraph` on a body, a paragraph, a range, a control and a list, `Body.insert_text`, `TableCell.value = ...`, `TableRow.values` and `Table.values`, `insert_table`'s and `add_rows`' values, `insert_comment`, `Comment.content = ...`, `reply`, a control's `insert_text` and `insert_paragraph`. Untracked and tracked: the tracked insertion's `w:t` is split the same way inside its `w:ins`.
+- **Measured before** (a read-only probe at `da7aa12`): the splice-based writers (`Paragraph.text = ...`, `insert_text`, `replace_text`) wrote `\t` and `\n` raw into a `w:t`; only the paragraph, cell, table and comment writers mapped them, through the `r` builder. So "as now" in section 4.1 was true of those; the others now map them too.
+- **The refusals**: `check_writable`, at the top of each writer and again in `splice`, refuses U+0002 ("no text makes a note"), U+0000 to U+0008, U+000F to U+001D, a lone surrogate, U+FFFE and U+FFFF with `ContentError` `text.not_writable`, naming the character and its offset, before anything changes. A table's `values` and `insert_table` check every value first. lxml's refusal at save stays behind it.
+- **A comment** splits on `\r\n`, `\r` and `\n` (`_comment_paragraphs`); `"one\rtwo\nthree"` now makes three paragraphs where 0.1.0 saved `one&#13;two` and `three`.
+- **A bound control's write-back** reads `ContentControl.docx4j_text`: a run control `text_of`'s, any other its paragraphs' 0.1.0 text a `\n` apart. Measured at `e7e54e6` in a scratch worktree and again after: a run control holding a break writes `line one\nline two`, a block control of two paragraphs (the second holding a break) `first\nsecond\nthird`, the same both times; the tests pin both.
+- **The python-docx facade, measured in python-docx 1.2.0** (a throwaway venv in the session's scratch directory, as `scripts/python_docx_subset.py` says; never a dependency):
+
+  | write | python-docx 1.2.0 | 0.1.0 here | Phase A here |
+  |---|---|---|---|
+  | `add_paragraph`, `add_run`, `Run.text =`, `Paragraph.text =`, `cell.text =` with `\t` | `w:tab` | `w:tab` | `w:tab` |
+  | the same with `\n` | `w:br` | `w:br` | `w:br` |
+  | the same with `\r` | `w:br` (`\r\n` two) | `w:br` in `add_paragraph`, `&#13;` in a `w:t` in the rest | `w:br` (`\r\n` two) |
+  | any other control character (U+000B, U+000C, U+000E, U+001E, U+001F, U+0002, U+0000) | `ValueError` at the write | accepted, failing at save | `ValueError` at the write |
+  | `add_comment(text=)` | `\n` a paragraph, `\r` a `w:br` | `\n` a paragraph, `\r` `&#13;` | `\n` a paragraph, `\r` a `w:br` |
+  | `Comment.text` | paragraphs `\n` apart | the content API's `content` | `holder_text` of each paragraph, `\n` apart |
+
+  `Comment.text` had to move off the content API's `content`, which is `\r`-joined now; for a comment of plain runs the answer is 0.1.0's.
+
+### 10.5 Edits over hidden text and equations
+
+- **Hidden text** (core-ts's rule, and Word's per check 52's HID, which Phase C holds): a hidden run strictly inside a deleted span goes with it; tracked, it is inside the `w:del`. At the span's edges it goes only when the span is the paragraph's whole text or the caller says `whole` (`Paragraph.text = ...` tracked, a tracked `Paragraph.delete()`, a deleted row's cells), core-ts's `WHOLE`. So `paragraph.text = paragraph.text` drops the hidden runs, tracked or not (risk 7, the setter's docstring). An insertion beside hidden text goes beside it, never into it.
+- **An equation**: an edit may take one whole, untracked; cutting one or inserting inside one is refused (`SpanError` `range.cuts_equation`), and so is `split_at` inside one, so a `font`, comment, control or link whose span edge falls inside one refuses; under change tracking any edit taking one is refused (`TrackedChangeError` `tracking.equation`). A tracked `Body.clear()`, a tracked row or table deletion and `replace_text` check first, so nothing changes before the refusal. `Range.get_xml` keeps an equation whole where its span holds part of it, as it keeps a kept branch.
+- **The dry run.** Every `Paragraph.text` now asks the styles which runs they hide, so a trial's first paragraph read made a `TrialPart` of `styles.xml`, which copied `part.contents` and so unmarshalled the real part: `tests/agent/test_dry_run.py::test_the_real_package_is_byte_for_byte_what_it_was` failed (`word/styles.xml` re-marshalled). A trial now copies a part the real package has not unmarshalled from its private reading (`read_contents`, CR-002 section 16) and leaves it unread. The module's docstring says so.
+
+### 10.6 The oracles: checks 48, 48b and 51
+
+**The fixtures** (Q8): `48-text.docx`, `48b-text.docx` and `51-text.docx` from the user's share, `__tmp/48/` and `__tmp/51/` (SHA-1 `8dec79fdd0dffa36051d572c6093e6515321ac01`, `ca98e9c0bd6062233383ae9181cbd1893190f7dd`, `7a6a0102051387e17d04e2eed87c46373c955005`, each checked against the brief's); `48-text-word365.json` (`30b559e`), `48-text-views-word365.txt` and `48b-text-word365.json` (`5c6cb5c`), `51-text-word365.json` (`9307bdb`), each by `git show` and checked against its git blob. `SHA1SUMS` holds all seven, and the first test checks it.
+
+| oracle | before (`e7e54e6`) | after |
+|---|---|---|
+| check 48, view A (`48-text-views-word365.txt`), paragraphs | 13 of 23 | 23 of 23 |
+| check 48b take 2, paragraphs | 13 of 25 | 25 of 25 |
+| check 51, paragraphs | 16 of 25 | 25 of 25 |
+| 48b run A's searches | 9 of 12 | 12 of 12 |
+| 48b take 2's searches | 6 of 12 | 12 of 12 |
+| check 48's own searches (All Markup) | 22 of 41 | 35 of 41: the six view-dependent queries core-ts asserts as they stand |
+
+Also held, as core-ts holds them: check 48's every paragraph's `'Whole'` range (case 11's All Markup text read in Simple Markup) and `Body.text` (its table's row end `\t\t` read as Word's default view's `\r\n`); check 51's every `'Whole'` range, `Body.text`, `Table.values`, each cell's `value`, body text and paragraphs, a cell's last paragraph's `'Whole'` ending `\t`, the block control's and the inline control's text, the inline control's `'Whole'` and `'Content'`, the comment's content, and the footnote's and the endnote's paragraphs, body text and last paragraph's `'Whole'`. **Pinned as Phase B's:** the block control's `get_range("Whole")`, `CCP1\r` here (its first paragraph's) where Word gives `CCP1\rCCP2\rCCP3\r`. Ported from `readers.test.mjs` too: the hidden-text edit test, the search test (`^f` and `^e` apart, a range's own span), and the equation test (`math_letter`, a cut refused, a format leaving the math runs alone, taken whole, tracked refused). Its text-box, `paragraphAt` and `outline()` tests are core-ts's D3 to D5 and not this phase's.
+
+### 10.7 The readers' audit, before and after
+
+`scripts/mce_branches.py readers --holding all` over `out/cr012-b-corpus/`, its `COMMITS.txt` unchanged (this repository `f1bb1d9`, core-ts `df5b4af`, docx4j `901a922a3`): before at `da7aa12` (`out/cr013-a/readers-before.json`), after at `1bc9b7d` (`readers-after.json`), `compare-readers` in `compare.txt`. **422 distinct documents**, not section 6.2's 419: 419 `.docx`, 2 `.docm` and a `.dotm`; 418 load, the four Strict documents failing both times (4 reader errors each).
+
+| reader | documents moved |
+|---|---|
+| `body.get_text`, `body.get_text.original` | 356 each |
+| `body.paragraphs`, `body.element_at` | 105 each |
+| `text.office_offsets` | 89 |
+| `body.tables` | 20 |
+| `body.find` | 18 |
+| `body.content_controls` | 16 |
+| `body.search` | 10 |
+| `body.comments` | 4 |
+
+**Not moved in any document:** `text.extract` (the text model's JSON, its run segmentation included: Q11 moved no run), `text.plain_text`, `text.markdown`, `package.to_markdown`, `body.outline`, `package.describe`, `revisions.tracked_changes`, both resolutions' text and canonical forms, `docx.paragraphs`, `docx.tables`, `docx.inline_shapes`, `body.inline_pictures`, `main.fonts_in_use`, `main.styles_in_use`.
+
+**The mechanical check** (`out/cr013-a/check_audit.py`, its output `check-audit.txt`), over each of the 357 documents with a moved answer, loaded again at the after commit: **0 problems.**
+- Each paragraph's before text is the old map's (`text_of_view(characters="docx4j")`), its after text `Paragraph.text`, and each of the **250 paragraphs that moved** holds an item of the table: a note reference 54, a break 45, both 58, an equation 40, hidden text 30, a `w:sym` 12, both hyphens 8, an optional hyphen 3.
+- Each document's `get_text` in both views is, before, the old `\n` join of the old texts, and after, Office JS's layout of the after texts by the check's own walk (not `story.py`'s).
+- Each cell's value is, before, `text_of`'s and, after, its content's layout; each control's and comment's text likewise.
+- Each `find` hit lies in its paragraph's after text. `search`'s hits went from 61,146 to 61,122: the 24 lost are all `e`s in hidden text (10 documents, 2 or 4 each, every one counted); `find`'s, at most 20 a word, stayed 8,475, their contexts and offsets moving.
+
+### 10.8 The `office_offset` invariant (Q11)
+
+Runs with an offset: **16,224 before and 16,224 after**; disagreements with `get_text()`: **0 before** (character for character) and **0 after** (under the character map, `office_as_model`, with the package's hidden rule). 214 paragraph views' offsets moved, each explained: a note's own mark at the start of a note's paragraph (181), a note reference (27), an equation (6). No run gained or lost an offset, and no block's run segmentation moved (`text.extract` unchanged).
+
+### 10.9 The gates
+
+| gate | before | after |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 3,982 passed, 8 skipped, 1,280 deselected, 1 failed | 4,109 passed, 8 skipped, 1,280 deselected, 1 failed |
+| the full suite | 5,262 passed, 8 skipped, 1 failed (3 min 03 s) | 5,389 passed, 8 skipped, 1 failed (3 min 15 s) |
+| `tests/content/test_office_js_characters.py` | --- | 127 passed |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text/test_conformance.py`; `tests/text` | 24; 1,188 | 24; 1,188 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `tests/revisions` | 68; 550 | 68; 550 |
+| the parity goldens (numbering, properties, fonts) | 277, `PINS` empty | 277, `PINS` empty |
+| `scripts/roundtrip.py` | --- | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings; exit 0 |
+| `codegen/generate.sh --check` | --- | byte identical (296 modules); no generated file changed |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr013a/`) | copied first; equal canonically to a regeneration at `da7aa12` | 13 artefacts, 175 entries, 0 differing beyond the dates; against the regeneration at `da7aa12`, 167 entries the same bytes and 8 in the dates only |
+
+- **The one failure, both times:** `tests/content/test_office_js_subset.py::test_the_script_would_write_what_is_committed`, core-ts's subset having moved (section 1); Phase B re-derives the subset.
+- **The new tests are the whole difference** in the suites (127 and 127).
+- **Acceptance did not move**, since no artefact writes one of the mapped characters through a splice. So the Word check (10.10) is the writers' own.
+
+### 10.10 The Word check (staged 2026-10-23; not yet run)
+
+The writers' map changes what the content API's inserts write, so CLAUDE.md asks for one. In `~/vbShares/Office 2016/__tmp/python-cr013a/`, built by `out/cr013-a-word-check/build.py` and each read back here with `LoadOptions(strict=True)`, nothing skipped:
+- `cr013a-SOURCE-writers.docx`, a created document of nine labelled cases, and its two saves: `cr013a-1-writers-untracked.docx` and `cr013a-2-writers-tracked.docx` (author `CR-013 check`). Through `Body.insert_paragraph`, `Paragraph.text = ...`, `Range.insert_text` at an end and in place of a span, `replace_text`, `TableCell.value = ...`, `insert_table`'s values, `insert_comment` and `Comment.content = ...`, and a run control's `insert_text`: U+000B, U+000C, U+000E, U+000D, U+001E, U+001F, `\t` and `\n`, and comments holding `\r`, `\n` and U+000B.
+- `cr013a-SOURCE-bound-control.docx` and `cr013a-3-bound-control.docx`: a multi-line plain-text control and a block control bound to a custom XML part, written back after the first holds a break and the second two paragraphs.
+- `README.txt` says what to look at in each file and tells the user to view file 2 in **All Markup**.
+- Expected: each opens without a repair prompt and shows the README's text. File 3's question is what Word shows in each bound control after refreshing it from the XML's `\n`.
+
+### 10.11 Departures, with why
+
+1. **`Range.mark` lands in Phase A**, keyword-only (section 4.8), within one paragraph: the `'Whole'` range ending with its mark is Q1's and section 6.1's Phase A gate, and core-ts's phase 4 added the same flag before its CR-014. Section 4.2's other flags (`whole`, `end_mark`) and the second end are Phase B's. `__eq__` and `__hash__` take `mark`; `__len__` stays `end - start`.
+2. **The edge rule for hidden text** is computed, not flagged: a span that is the paragraph's whole text takes the hidden runs at its edges, whatever made the range, where core-ts's `WHOLE` comes only from a paragraph's `'Whole'` or `'Content'` range. A search hit covering a whole paragraph's text takes them here and not in core-ts. Phase B's `whole` flag can replace it.
+3. **The equation refusals' codes** are new and not in section 4.7: `SpanError` `range.cuts_equation` and `TrackedChangeError` `tracking.equation` (core-ts's `NotSupportedError`).
+4. **A tracked deletion that takes an equation is refused**, core-ts's rule as section 3.8 records it, though section 4.1's list of what moves for callers names only "an edit that cuts an equation". It reaches a tracked `Paragraph.delete()`, `Body.clear()`, a row's or table's deletion and a replacement, where 0.1.0's tracked deletion skipped the equation (it was no text) and left it undeleted. `tests/content/test_tracking.py`'s `every_tracked_verb` now deletes the first paragraph from the third on holding no equation, since `samples/2010-sample1.docx`'s third is its equation (10.12).
+5. **A picture in a deleted span stays**, this package's rule (core-ts's CR-002 section 48 is not ported); a drawing in a hidden run goes with the run, and `search`'s `^g` passes it by.
+6. **A dry run copies an unread part privately** (10.5): needed to keep the trial's promise once `Paragraph.text` reads the styles.
+7. **The facade's `Comment.text`** is python-docx's `holder_text` join, not 0.1.0's content API text; the same for a comment of plain runs (10.4).
+8. **`story_layout` lays out a list of rows in Word's row form**, so a row-level control's `text` is its cells `\t` apart with each row ended `\r\n`. Check 53's rule for a row control (cells `\t` apart, `'Whole'` ending `\t\t`) is Phase B's.
+9. **The audit gained two readers** (`body.content_controls`, `body.comments`) in its first commit, so that the before run has them.
+
+### 10.12 Pre-existing tests whose expectation changed, and why
+
+Each moves with the characters, the layout or the `'Whole'` range's mark; each carries a comment naming CR-013 Phase A.
+- **The paragraph mark, `\r`:** `test_body.py::test_insert_paragraph_text_and_the_docx4j_aliases`, `test_comments.py::test_setting_the_content_replaces_the_paragraphs_and_keeps_the_para_id`, `test_controls.py::test_insert_into_a_block_control`, `test_controls_typed.py::test_a_group_control_wraps_the_whole_body`, `test_table.py::test_a_cells_body_carries_the_address_prefix`, `revisions/test_content_api.py::test_get_text_keeps_office_jss_filtered_text`, `openpackaging/test_mce_typed.py::test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level` (a table's row form).
+- **The breaks:** `test_body.py::test_insert_text_and_insert_break` (U+000C), `test_paragraph.py::test_insert_break_in_and_around_the_paragraph` (U+000B, U+000C), `test_text_model.py::test_the_segments_of_a_paragraph` (U+000B, the hyphens, `(`; `text_of` keeps docx4j's), and `test_word_branch_text.py`: case 2's break is U+000B, the pin `test_case_2s_break_is_a_newline_where_office_js_gives_u000b` renamed `test_case_2s_break_is_u000b_as_office_js_gives_it` (CR-011 section 15 item 2, superseded), and `text_of`'s agreement and the offsets read under the map.
+- **The `'Whole'` range's mark:** `test_body.py::test_clear_and_get_range`, `test_comments.py::test_get_comments_on_a_paragraph_and_on_a_range`, `test_range.py::test_the_original_view_is_not_offered_on_a_span`, `agent/test_errors.py::test_current_is_the_accepted_view`.
+- **Hidden text left out:** `agent/test_outline.py::test_the_entries_text_is_the_text_models` (`Paragraph.text` no longer keeps it, so the two readers agree); `text/test_texts.py::test_hidden_text_is_the_gap_between_offsets` became `test_hidden_text_is_in_neither_text`, and `test_a_runs_office_offset_is_where_its_text_is_in_get_text` reads under the map.
+- **Equations:** `test_tracking.py::test_rejecting_both_mark_forms_of_a_loaded_document_leaves_the_source` (the equation paragraph reads its text, not `""`), and `every_tracked_verb` (10.11 item 4), which `test_rejecting_what_was_appended_at_the_end_follows_word` and `test_accepting_every_tracked_verb_gives_what_the_untracked_run_gives` run over `2010-sample1.docx`.
+- **The dry run:** `agent/test_dry_run.py::test_the_real_package_is_byte_for_byte_what_it_was` failed until 10.5's fix; its expectation is unchanged.
+
+### 10.13 Found, and not done
+
+- **`to_api_script`'s note on a `w:tab` or `w:br` outside the leading run** (CR-003 section 19.3) is now stale: `insert_text` writes both as elements, so such a script is exact. The note and the `exact` flag are left as they were (conservative).
+- **Two writers that ignore change tracking**, before this phase too: `TableCell.value = ...` clears the cell's old content untracked, and a run control's `insert_text` at its `Start` or `End` edits the control's items directly. The tracked Word-check file shows both (its README says so).
+- **Phase B's:** a block control's, a comment's, a tracked change's and the body's ranges across paragraphs; `Range.is_empty`; check 53's row-control text; `story_of`.
+- **The Word check** of 10.10 is staged and not run; its result goes into `tests/README.md`'s record when the user has run it.
+- **The scratch worktree** of `e7e54e6` used for the before measurements was removed after use; the measurements are in this section.
