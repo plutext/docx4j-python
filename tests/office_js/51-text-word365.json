@@ -1,0 +1,188 @@
+{
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "paragraphs": [
+  {
+   "text": "Check 51. Each case is a paragraph, then its item.",
+   "whole": "Check 51. Each case is a paragraph, then its item.\\u000d"
+  },
+  {
+   "text": "Case 1: a table: its first cell holds three paragraphs, CELLP1 to CELLP3, its second one, OTHER.",
+   "whole": "Case 1: a table: its first cell holds three paragraphs, CELLP1 to CELLP3, its second one, OTHER.\\u000d"
+  },
+  {
+   "text": "CELLP1",
+   "whole": "CELLP1\\u000d"
+  },
+  {
+   "text": "CELLP2",
+   "whole": "CELLP2\\u000d"
+  },
+  {
+   "text": "CELLP3",
+   "whole": "CELLP3\\u0009"
+  },
+  {
+   "text": "OTHER",
+   "whole": "OTHER\\u0009"
+  },
+  {
+   "text": "AFTERTABLE",
+   "whole": "AFTERTABLE\\u000d"
+  },
+  {
+   "text": "Case 2: a block content control (rich text, titled Check 51 block) of three paragraphs, CCP1 to CCP3.",
+   "whole": "Case 2: a block content control (rich text, titled Check 51 block) of three paragraphs, CCP1 to CCP3.\\u000d"
+  },
+  {
+   "text": "CCP1",
+   "whole": "CCP1\\u000d"
+  },
+  {
+   "text": "CCP2",
+   "whole": "CCP2\\u000d"
+  },
+  {
+   "text": "CCP3",
+   "whole": "CCP3\\u000d"
+  },
+  {
+   "text": "AFTERCONTROL",
+   "whole": "AFTERCONTROL\\u000d"
+  },
+  {
+   "text": "Case 3: an inline content control (titled Check 51 inline). INLA INLINECC INLB",
+   "whole": "Case 3: an inline content control (titled Check 51 inline). INLA INLINECC INLB\\u000d"
+  },
+  {
+   "text": "Case 4: a comment of three paragraphs, COMP1 to COMP3, on the middle word. COMA COMMENTED COMB",
+   "whole": "Case 4: a comment of three paragraphs, COMP1 to COMP3, on the middle word. COMA COMMENTED COMB\\u000d"
+  },
+  {
+   "text": "Case 5: a footnote of two paragraphs (NOTEP1, NOTEP2), then an endnote of one (ENDP1). FOOTA\\u0002 FOOTB ENDA\\u0002 ENDB",
+   "whole": "Case 5: a footnote of two paragraphs (NOTEP1, NOTEP2), then an endnote of one (ENDP1). FOOTA\\u0002 FOOTB ENDA\\u0002 ENDB\\u000d"
+  },
+  {
+   "text": "Case 6: equations in the default style: Latin letters; digits and operators.  M6A \\ud835\\udc4e\\ud835\\udc4f\\u210e\\ud835\\udc65\\ud835\\udc66\\ud835\\udc67\\ud835\\udc34\\ud835\\udc35\\ud835\\udc3b\\ud835\\udc4b\\ud835\\udc4c\\ud835\\udc4d M6B N6A 0123+\\u2212=<>() N6B",
+   "whole": "Case 6: equations in the default style: Latin letters; digits and operators.  M6A \\ud835\\udc4e\\ud835\\udc4f\\u210e\\ud835\\udc65\\ud835\\udc66\\ud835\\udc67\\ud835\\udc34\\ud835\\udc35\\ud835\\udc3b\\ud835\\udc4b\\ud835\\udc4c\\ud835\\udc4d M6B N6A 0123+\\u2212=<>() N6B\\u000d"
+  },
+  {
+   "text": "Case 7: equations in the default style: small Greek, capital Greek, the Greek variants and nabla.  M7A \\ud835\\udefc\\ud835\\udefd\\ud835\\udefe\\ud835\\udeff\\ud835\\udf00\\ud835\\udf03\\ud835\\udf06\\ud835\\udf07\\ud835\\udf0b\\ud835\\udf0e\\ud835\\udf0d\\ud835\\udf11\\ud835\\udf14 M7B N7A \\ud835\\udee4\\ud835\\udee5\\ud835\\udee9\\ud835\\udeec\\ud835\\udef1\\ud835\\udef4\\ud835\\udef7\\ud835\\udef9\\ud835\\udefa N7B P7A \\ud835\\udf17\\ud835\\udf19\\ud835\\udf1b\\ud835\\udf16\\ud835\\udf1a\\ud835\\udf18\\ud835\\udf15\\ud835\\udefb P7B",
+   "whole": "Case 7: equations in the default style: small Greek, capital Greek, the Greek variants and nabla.  M7A \\ud835\\udefc\\ud835\\udefd\\ud835\\udefe\\ud835\\udeff\\ud835\\udf00\\ud835\\udf03\\ud835\\udf06\\ud835\\udf07\\ud835\\udf0b\\ud835\\udf0e\\ud835\\udf0d\\ud835\\udf11\\ud835\\udf14 M7B N7A \\ud835\\udee4\\ud835\\udee5\\ud835\\udee9\\ud835\\udeec\\ud835\\udef1\\ud835\\udef4\\ud835\\udef7\\ud835\\udef9\\ud835\\udefa N7B P7A \\ud835\\udf17\\ud835\\udf19\\ud835\\udf1b\\ud835\\udf16\\ud835\\udf1a\\ud835\\udf18\\ud835\\udf15\\ud835\\udefb P7B\\u000d"
+  },
+  {
+   "text": "Case 8: equations with m:sty: plain, bold, italic, bold italic.  M8A sinx2\\u0393 M8B N8A \\ud835\\udc1b\\ud835\\udc31\\ud835\\udfd0\\ud835\\udeaa N8B P8A \\ud835\\udc56\\ud835\\udc652\\ud835\\udee4 P8B Q8A \\ud835\\udc83\\ud835\\udc8a\\ud835\\udc99\\ud835\\udfd0\\ud835\\udf1e Q8B",
+   "whole": "Case 8: equations with m:sty: plain, bold, italic, bold italic.  M8A sinx2\\u0393 M8B N8A \\ud835\\udc1b\\ud835\\udc31\\ud835\\udfd0\\ud835\\udeaa N8B P8A \\ud835\\udc56\\ud835\\udc652\\ud835\\udee4 P8B Q8A \\ud835\\udc83\\ud835\\udc8a\\ud835\\udc99\\ud835\\udfd0\\ud835\\udf1e Q8B\\u000d"
+  },
+  {
+   "text": "Case 9: equations with m:scr: script, fraktur, double-struck, sans-serif, monospace.  M9A \\u212c\\u2130\\u2112\\u212f\\ud835\\udcb6\\u210a\\ud835\\udccf1 M9B N9A \\u212d\\u210c\\u2111\\u211c\\u2128\\ud835\\udd24\\ud835\\udd371 N9B P9A \\u2102\\u2115\\u211d\\u2124\\ud835\\udd6b\\ud835\\udfd9 P9B Q9A \\ud835\\ude22\\ud835\\ude23\\ud835\\udfe3\\u03b1 Q9B R9A \\ud835\\ude8a\\ud835\\udea3\\ud835\\udff7 R9B",
+   "whole": "Case 9: equations with m:scr: script, fraktur, double-struck, sans-serif, monospace.  M9A \\u212c\\u2130\\u2112\\u212f\\ud835\\udcb6\\u210a\\ud835\\udccf1 M9B N9A \\u212d\\u210c\\u2111\\u211c\\u2128\\ud835\\udd24\\ud835\\udd371 N9B P9A \\u2102\\u2115\\u211d\\u2124\\ud835\\udd6b\\ud835\\udfd9 P9B Q9A \\ud835\\ude22\\ud835\\ude23\\ud835\\udfe3\\u03b1 Q9B R9A \\ud835\\ude8a\\ud835\\udea3\\ud835\\udff7 R9B\\u000d"
+  },
+  {
+   "text": "Case 10: equations with a bold script: bold script, bold fraktur, bold sans-serif, bold italic sans-serif.  M10A \\ud835\\udcd1\\ud835\\udcea M10B N10A \\ud835\\udd6e\\ud835\\udd86 N10B P10A \\ud835\\uddee\\ud835\\udfed\\ud835\\udf70 P10B Q10A \\ud835\\ude56\\ud835\\udfaa Q10B",
+   "whole": "Case 10: equations with a bold script: bold script, bold fraktur, bold sans-serif, bold italic sans-serif.  M10A \\ud835\\udcd1\\ud835\\udcea M10B N10A \\ud835\\udd6e\\ud835\\udd86 N10B P10A \\ud835\\uddee\\ud835\\udfed\\ud835\\udf70 P10B Q10A \\ud835\\ude56\\ud835\\udfaa Q10B\\u000d"
+  },
+  {
+   "text": "Case 11: an equation with m:nor (normal text), then one mixing a normal run and a math run.  M11A nx M11B N11A nx\\ud835\\udc66 N11B",
+   "whole": "Case 11: an equation with m:nor (normal text), then one mixing a normal run and a math run.  M11A nx M11B N11A nx\\ud835\\udc66 N11B\\u000d"
+  },
+  {
+   "text": "Case 12: equation structures: a fraction a over b, x squared, the square root of x, a sum, x in parentheses, sin x.  F12A ,\\ud835\\udc4e-\\ud835\\udc4f. F12B S12A ,\\ud835\\udc65-2. S12B R12A ,\\ud835\\udc65. R12B N12A ,\\ud835\\udc56=1-\\ud835\\udc5b-\\ud835\\udc65. N12B D12A ,\\ud835\\udc65. D12B U12A ,sin-\\ud835\\udc65. U12B",
+   "whole": "Case 12: equation structures: a fraction a over b, x squared, the square root of x, a sum, x in parentheses, sin x.  F12A ,\\ud835\\udc4e-\\ud835\\udc4f. F12B S12A ,\\ud835\\udc65-2. S12B R12A ,\\ud835\\udc65. R12B N12A ,\\ud835\\udc56=1-\\ud835\\udc5b-\\ud835\\udc65. N12B D12A ,\\ud835\\udc65. D12B U12A ,sin-\\ud835\\udc65. U12B\\u000d"
+  },
+  {
+   "text": "Case 13: the next paragraph is a display equation (m:oMathPara) of two equations, x=1 and y=2.",
+   "whole": "Case 13: the next paragraph is a display equation (m:oMathPara) of two equations, x=1 and y=2.\\u000d"
+  },
+  {
+   "text": "\\ud835\\udc65=1\\ud835\\udc66=2",
+   "whole": "\\ud835\\udc65=1\\ud835\\udc66=2\\u000d"
+  },
+  {
+   "text": "End of check 51.",
+   "whole": "End of check 51.\\u000d"
+  }
+ ],
+ "bodyText": "Check 51. Each case is a paragraph, then its item.\\u000dCase 1: a table: its first cell holds three paragraphs, CELLP1 to CELLP3, its second one, OTHER.\\u000dCELLP1\\u000dCELLP2\\u000dCELLP3\\u0009OTHER\\u000d\\u000aAFTERTABLE\\u000dCase 2: a block content control (rich text, titled Check 51 block) of three paragraphs, CCP1 to CCP3.\\u000dCCP1\\u000dCCP2\\u000dCCP3\\u000dAFTERCONTROL\\u000dCase 3: an inline content control (titled Check 51 inline). INLA INLINECC INLB\\u000dCase 4: a comment of three paragraphs, COMP1 to COMP3, on the middle word. COMA COMMENTED COMB\\u000dCase 5: a footnote of two paragraphs (NOTEP1, NOTEP2), then an endnote of one (ENDP1). FOOTA\\u0002 FOOTB ENDA\\u0002 ENDB\\u000dCase 6: equations in the default style: Latin letters; digits and operators.  M6A \\ud835\\udc4e\\ud835\\udc4f\\u210e\\ud835\\udc65\\ud835\\udc66\\ud835\\udc67\\ud835\\udc34\\ud835\\udc35\\ud835\\udc3b\\ud835\\udc4b\\ud835\\udc4c\\ud835\\udc4d M6B N6A 0123+\\u2212=<>() N6B\\u000dCase 7: equations in the default style: small Greek, capital Greek, the Greek variants and nabla.  M7A \\ud835\\udefc\\ud835\\udefd\\ud835\\udefe\\ud835\\udeff\\ud835\\udf00\\ud835\\udf03\\ud835\\udf06\\ud835\\udf07\\ud835\\udf0b\\ud835\\udf0e\\ud835\\udf0d\\ud835\\udf11\\ud835\\udf14 M7B N7A \\ud835\\udee4\\ud835\\udee5\\ud835\\udee9\\ud835\\udeec\\ud835\\udef1\\ud835\\udef4\\ud835\\udef7\\ud835\\udef9\\ud835\\udefa N7B P7A \\ud835\\udf17\\ud835\\udf19\\ud835\\udf1b\\ud835\\udf16\\ud835\\udf1a\\ud835\\udf18\\ud835\\udf15\\ud835\\udefb P7B\\u000dCase 8: equations with m:sty: plain, bold, italic, bold italic.  M8A sinx2\\u0393 M8B N8A \\ud835\\udc1b\\ud835\\udc31\\ud835\\udfd0\\ud835\\udeaa N8B P8A \\ud835\\udc56\\ud835\\udc652\\ud835\\udee4 P8B Q8A \\ud835\\udc83\\ud835\\udc8a\\ud835\\udc99\\ud835\\udfd0\\ud835\\udf1e Q8B\\u000dCase 9: equations with m:scr: script, fraktur, double-struck, sans-serif, monospace.  M9A \\u212c\\u2130\\u2112\\u212f\\ud835\\udcb6\\u210a\\ud835\\udccf1 M9B N9A \\u212d\\u210c\\u2111\\u211c\\u2128\\ud835\\udd24\\ud835\\udd371 N9B P9A \\u2102\\u2115\\u211d\\u2124\\ud835\\udd6b\\ud835\\udfd9 P9B Q9A \\ud835\\ude22\\ud835\\ude23\\ud835\\udfe3\\u03b1 Q9B R9A \\ud835\\ude8a\\ud835\\udea3\\ud835\\udff7 R9B\\u000dCase 10: equations with a bold script: bold script, bold fraktur, bold sans-serif, bold italic sans-serif.  M10A \\ud835\\udcd1\\ud835\\udcea M10B N10A \\ud835\\udd6e\\ud835\\udd86 N10B P10A \\ud835\\uddee\\ud835\\udfed\\ud835\\udf70 P10B Q10A \\ud835\\ude56\\ud835\\udfaa Q10B\\u000dCase 11: an equation with m:nor (normal text), then one mixing a normal run and a math run.  M11A nx M11B N11A nx\\ud835\\udc66 N11B\\u000dCase 12: equation structures: a fraction a over b, x squared, the square root of x, a sum, x in parentheses, sin x.  F12A ,\\ud835\\udc4e-\\ud835\\udc4f. F12B S12A ,\\ud835\\udc65-2. S12B R12A ,\\ud835\\udc65. R12B N12A ,\\ud835\\udc56=1-\\ud835\\udc5b-\\ud835\\udc65. N12B D12A ,\\ud835\\udc65. D12B U12A ,sin-\\ud835\\udc65. U12B\\u000dCase 13: the next paragraph is a display equation (m:oMathPara) of two equations, x=1 and y=2.\\u000d\\ud835\\udc65=1\\ud835\\udc66=2\\u000dEnd of check 51.",
+ "tables": [
+  {
+   "values": [
+    [
+     "CELLP1\\u000dCELLP2\\u000dCELLP3",
+     "OTHER"
+    ]
+   ],
+   "cells": [
+    {
+     "value": "CELLP1\\u000dCELLP2\\u000dCELLP3",
+     "bodyText": "CELLP1\\u000dCELLP2\\u000dCELLP3",
+     "bodyWhole": "CELLP1\\u000dCELLP2\\u000dCELLP3\\u0009",
+     "paragraphs": [
+      "CELLP1",
+      "CELLP2",
+      "CELLP3"
+     ]
+    },
+    {
+     "value": "OTHER",
+     "bodyText": "OTHER",
+     "bodyWhole": "OTHER\\u0009",
+     "paragraphs": [
+      "OTHER"
+     ]
+    }
+   ]
+  }
+ ],
+ "contentControls": [
+  {
+   "title": "Check 51 block",
+   "text": "CCP1\\u000dCCP2\\u000dCCP3",
+   "whole": "CCP1\\u000dCCP2\\u000dCCP3\\u000d",
+   "content": "CCP1\\u000dCCP2\\u000dCCP3",
+   "paragraphs": [
+    "CCP1",
+    "CCP2",
+    "CCP3"
+   ]
+  },
+  {
+   "title": "Check 51 inline",
+   "text": "INLINECC",
+   "whole": "INLINECC",
+   "content": "INLINECC",
+   "paragraphs": [
+    "Case 3: an inline content control (titled Check 51 inline). INLA INLINECC INLB"
+   ]
+  }
+ ],
+ "comments": [
+  {
+   "content": "COMP1\\u000dCOMP2\\u000dCOMP3"
+  }
+ ],
+ "footnotes": [
+  {
+   "bodyText": "\\u0002 NOTEP1\\u000dNOTEP2",
+   "bodyWhole": "\\u0002 NOTEP1\\u000dNOTEP2\\u000d",
+   "paragraphs": [
+    "\\u0002 NOTEP1",
+    "NOTEP2"
+   ],
+   "reference": "\\u0002"
+  }
+ ],
+ "endnotes": [
+  {
+   "bodyText": "\\u0002 ENDP1",
+   "bodyWhole": "\\u0002 ENDP1\\u000d",
+   "paragraphs": [
+    "\\u0002 ENDP1"
+   ],
+   "reference": "\\u0002"
+  }
+ ]
+}

@@ -1,0 +1,208 @@
+{
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "paragraphs": [
+  {
+   "text": "Check 48. Each case is one paragraph: two upper-case markers with the item between them.",
+   "whole": "Check 48. Each case is one paragraph: two upper-case markers with the item between them.\\u000d"
+  },
+  {
+   "text": "Case 1: a footnote reference, then an endnote reference. FOOTA\\u0002FOOTB and ENDA\\u0002ENDB",
+   "whole": "Case 1: a footnote reference, then an endnote reference. FOOTA\\u0002FOOTB and ENDA\\u0002ENDB\\u000d"
+  },
+  {
+   "text": "Case 2: a comment on the middle word, its reference after it. COMA COMMENTEDCOMB",
+   "whole": "Case 2: a comment on the middle word, its reference after it. COMA COMMENTEDCOMB\\u000d"
+  },
+  {
+   "text": "Case 3: a line break (w:br). LINEA\\u000bLINEB",
+   "whole": "Case 3: a line break (w:br). LINEA\\u000bLINEB\\u000d"
+  },
+  {
+   "text": "Case 4: a page break (w:br type page). PAGEA\\u000cPAGEB",
+   "whole": "Case 4: a page break (w:br type page). PAGEA\\u000cPAGEB\\u000d"
+  },
+  {
+   "text": "Case 5: a column break (w:br type column). COLA\\u000eCOLB",
+   "whole": "Case 5: a column break (w:br type column). COLA\\u000eCOLB\\u000d"
+  },
+  {
+   "text": "Case 6: a carriage return (w:cr). CRA\\u000dCRB",
+   "whole": "Case 6: a carriage return (w:cr). CRA\\u000dCRB\\u000d"
+  },
+  {
+   "text": "Case 7: a tab, then a right-aligned positional tab (w:ptab). TABA\\u0009TABB0RIGHTB",
+   "whole": "Case 7: a tab, then a right-aligned positional tab (w:ptab). TABA\\u0009TABB0RIGHTB\\u000d"
+  },
+  {
+   "text": "Case 8: a non-breaking hyphen, then an optional hyphen. HYPHA\\u001eHYPHB\\u001fHYPHC",
+   "whole": "Case 8: a non-breaking hyphen, then an optional hyphen. HYPHA\\u001eHYPHB\\u001fHYPHC\\u000d"
+  },
+  {
+   "text": "Case 9: a Wingdings symbol (w:sym, F04A, a smiling face). SYMA(SYMB",
+   "whole": "Case 9: a Wingdings symbol (w:sym, F04A, a smiling face). SYMA(SYMB\\u000d"
+  },
+  {
+   "text": "Case 10: hidden text (w:vanish) between the markers. HIDAHIDB",
+   "whole": "Case 10: hidden text (w:vanish) between the markers. HIDAHIDB\\u000d"
+  },
+  {
+   "text": "Case 11: a tracked deletion, then a tracked insertion. REVADELETEDTEXTINSERTEDTEXTREVB",
+   "whole": "Case 11: a tracked deletion, then a tracked insertion. REVADELETEDTEXTINSERTEDTEXTREVB\\u000d"
+  },
+  {
+   "text": "Case 12: a field (begin, code, separate, result, end) whose result is not its code's. FLDA RESULTTWELVE FLDB",
+   "whole": "Case 12: a field (begin, code, separate, result, end) whose result is not its code's. FLDA RESULTTWELVE FLDB\\u000d"
+  },
+  {
+   "text": "Case 13: a simple field (w:fldSimple) whose result is not its code's. SIMA RESULTTHIRTEEN SIMB",
+   "whole": "Case 13: a simple field (w:fldSimple) whose result is not its code's. SIMA RESULTTHIRTEEN SIMB\\u000d"
+  },
+  {
+   "text": "Case 14: a hyperlink to the bookmark at the end. LINKA LINKTEXT LINKB",
+   "whole": "Case 14: a hyperlink to the bookmark at the end. LINKA LINKTEXT LINKB\\u000d"
+  },
+  {
+   "text": "Case 15: an inline content control. SDTA SDTTEXT SDTB",
+   "whole": "Case 15: an inline content control. SDTA SDTTEXT SDTB\\u000d"
+  },
+  {
+   "text": "Case 16: an inline picture. PICAPICB",
+   "whole": "Case 16: an inline picture. PICAPICB\\u000d"
+  },
+  {
+   "text": "Case 17: an equation (m:oMath), one variable equal to one. MATHA \\ud835\\udc65=1 MATHB",
+   "whole": "Case 17: an equation (m:oMath), one variable equal to one. MATHA \\ud835\\udc65=1 MATHB\\u000d"
+  },
+  {
+   "text": "Case 18: a table of one row and two cells, then a paragraph.",
+   "whole": "Case 18: a table of one row and two cells, then a paragraph.\\u000d"
+  },
+  {
+   "text": "CELLA",
+   "whole": "CELLA\\u0009"
+  },
+  {
+   "text": "CELLB",
+   "whole": "CELLB\\u0009"
+  },
+  {
+   "text": "AFTERTABLE",
+   "whole": "AFTERTABLE\\u000d"
+  },
+  {
+   "text": "End of check 48.",
+   "whole": "End of check 48.\\u000d"
+  }
+ ],
+ "bodyText": "Check 48. Each case is one paragraph: two upper-case markers with the item between them.\\u000dCase 1: a footnote reference, then an endnote reference. FOOTA\\u0002FOOTB and ENDA\\u0002ENDB\\u000dCase 2: a comment on the middle word, its reference after it. COMA COMMENTEDCOMB\\u000dCase 3: a line break (w:br). LINEA\\u000bLINEB\\u000dCase 4: a page break (w:br type page). PAGEA\\u000cPAGEB\\u000dCase 5: a column break (w:br type column). COLA\\u000eCOLB\\u000dCase 6: a carriage return (w:cr). CRA\\u000dCRB\\u000dCase 7: a tab, then a right-aligned positional tab (w:ptab). TABA\\u0009TABB0RIGHTB\\u000dCase 8: a non-breaking hyphen, then an optional hyphen. HYPHA\\u001eHYPHB\\u001fHYPHC\\u000dCase 9: a Wingdings symbol (w:sym, F04A, a smiling face). SYMA(SYMB\\u000dCase 10: hidden text (w:vanish) between the markers. HIDAHIDB\\u000dCase 11: a tracked deletion, then a tracked insertion. REVADELETEDTEXTINSERTEDTEXTREVB\\u000dCase 12: a field (begin, code, separate, result, end) whose result is not its code's. FLDA RESULTTWELVE FLDB\\u000dCase 13: a simple field (w:fldSimple) whose result is not its code's. SIMA RESULTTHIRTEEN SIMB\\u000dCase 14: a hyperlink to the bookmark at the end. LINKA LINKTEXT LINKB\\u000dCase 15: an inline content control. SDTA SDTTEXT SDTB\\u000dCase 16: an inline picture. PICAPICB\\u000dCase 17: an equation (m:oMath), one variable equal to one. MATHA \\ud835\\udc65=1 MATHB\\u000dCase 18: a table of one row and two cells, then a paragraph.\\u000dCELLA\\u0009CELLB\\u0009\\u0009AFTERTABLE\\u000dEnd of check 48.",
+ "searches": {
+  "FOOTAFOOTB": [],
+  "FOOTA^fFOOTB": [
+   "FOOTA\\u0002FOOTB"
+  ],
+  "ENDAENDB": [],
+  "ENDA^eENDB": [
+   "ENDA\\u0002ENDB"
+  ],
+  "COMMENTEDCOMB": [
+   "COMMENTEDCOMB"
+  ],
+  "LINEALINEB": [],
+  "LINEA^lLINEB": [
+   "LINEA\\u000bLINEB"
+  ],
+  "PAGEAPAGEB": [],
+  "PAGEA^mPAGEB": [
+   "PAGEA\\u000cPAGEB"
+  ],
+  "COLACOLB": [],
+  "CRACRB": [],
+  "CRA^lCRB": [],
+  "TABATABB": [],
+  "TABA^tTABB": [
+   "TABA\\u0009TABB"
+  ],
+  "TABBRIGHTB": [],
+  "HYPHAHYPHB": [],
+  "HYPHA-HYPHB": [
+   "HYPHA\\u001eHYPHB"
+  ],
+  "HYPHA^~HYPHB": [
+   "HYPHA\\u001eHYPHB"
+  ],
+  "HYPHBHYPHC": [
+   "HYPHB\\u001fHYPHC"
+  ],
+  "HYPHB^-HYPHC": [
+   "HYPHB\\u001fHYPHC"
+  ],
+  "SYMASYMB": [],
+  "HIDAHIDB": [],
+  "HIDDENTEXT": [
+   ""
+  ],
+  "HIDAHIDDENTEXTHIDB": [
+   "HIDAHIDB"
+  ],
+  "REVAREVB": [],
+  "DELETEDTEXT": [
+   "DELETEDTEXT"
+  ],
+  "INSERTEDTEXT": [
+   "INSERTEDTEXT"
+  ],
+  "REVAINSERTEDTEXTREVB": [],
+  "REVADELETEDTEXTINSERTEDTEXTREVB": [
+   "REVADELETEDTEXTINSERTEDTEXTREVB"
+  ],
+  "RESULTTWELVE": [
+   "RESULTTWELVE"
+  ],
+  "CODETWELVE": [],
+  "RESULTTHIRTEEN": [
+   "RESULTTHIRTEEN"
+  ],
+  "CODETHIRTEEN": [],
+  "LINKTEXT": [
+   "LINKTEXT"
+  ],
+  "SDTTEXT": [
+   "SDTTEXT"
+  ],
+  "PICAPICB": [],
+  "PICA^gPICB": [
+   "PICAPICB"
+  ],
+  "x=1": [],
+  "MATHAx=1": [],
+  "CELLA": [
+   "CELLA"
+  ],
+  "CELLACELLB": []
+ },
+ "spans": {
+  "FOOTA..FOOTB": "FOOTA\\u0002FOOTB",
+  "ENDA..ENDB": "ENDA\\u0002ENDB",
+  "COMA..COMB": "COMA COMMENTEDCOMB",
+  "LINEA..LINEB": "LINEA\\u000bLINEB",
+  "PAGEA..PAGEB": "PAGEA\\u000cPAGEB",
+  "COLA..COLB": "COLA\\u000eCOLB",
+  "CRA..CRB": "CRA\\u000dCRB",
+  "TABA..RIGHTB": "TABA\\u0009TABB0RIGHTB",
+  "HYPHA..HYPHC": "HYPHA\\u001eHYPHB\\u001fHYPHC",
+  "SYMA..SYMB": "SYMA(SYMB",
+  "HIDA..HIDB": "HIDAHIDB",
+  "REVA..REVB": "REVADELETEDTEXTINSERTEDTEXTREVB",
+  "FLDA..FLDB": "FLDA RESULTTWELVE FLDB",
+  "SIMA..SIMB": "SIMA RESULTTHIRTEEN SIMB",
+  "LINKA..LINKB": "LINKA LINKTEXT LINKB",
+  "SDTA..SDTB": "SDTA SDTTEXT SDTB",
+  "PICA..PICB": "PICAPICB",
+  "MATHA..MATHB": "MATHA \\ud835\\udc65=1 MATHB",
+  "CELLA..CELLB": "CELLA\\u0009CELLB"
+ }
+}
