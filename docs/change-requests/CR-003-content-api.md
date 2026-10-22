@@ -21,6 +21,11 @@ eight refused with a reason each. What the CR leaves open is section 20.8.
 re-derived `tests/office_js_subset.json` has 231 members, 229 implemented and the two null-object
 members omitted as before. The Word check of acceptance artefact 6 passed on 2026-10-12 (section 21.7); the rest of
 `docs/user/hyperlinks.md`'s proposal stays open (21.8).
+**Section 23, 2026-10-23: Office JS parity with docx4j-core-ts is kept** (the user: "for now let's
+aim to maintain parity with core-ts and see how that goes"), after the question of how useful Office
+JS's vocabulary is in Python, which section 23 answers. core-ts's CR-014 phase 1 (`ef57729`) added
+ten members to the subset (231 to 241), six of which this package lacks; their port, ranges across
+paragraphs, is owed and is proposed as its own change request.
 **Depends on:** CR-001 Phases A to C (the model, `el`, the builders, `wml(...)`, `text_of`,
 `walk`, `find`) and CR-002 Phase A (packages, parts, load and save), both implemented. Effective
 formatting needs CR-002 Phase B (`PropertyResolver`); until it lands the views read direct
@@ -4879,3 +4884,105 @@ do).
 
 docx4j-core-ts follows the same rules and is closer to them (its differences are its known scope
 and C23), so its engine is the nearer model for the port's code, as for the rest of CR-003.
+
+## 23. Office JS parity with docx4j-core-ts (decided 2026-10-23)
+
+**The question.** On 2026-10-22 docx4j-core-ts's CR-014 phase 1 (`ef57729`, ranges across
+paragraphs) changed its `test/office-js-subset.ts`. That made `tests/office_js_subset.json`
+stale, and `tests/content/test_office_js_subset.py::test_the_script_would_write_what_is_committed`
+failed, holding up 0.2.0's release gate. The user asked: "remind me, office js compatible methods
+was a design goal of ours? how useful is this really in python land?"
+
+### 23.1 What this CR decided, and why
+
+**Yes, it was a design goal.** The title of this CR says it, and the shape was decided on
+2026-09-16 (section 9). It gave three reasons (sections 1 and 2):
+1. **The verbs.**
+   - Every Word library converges on the same operations, and Office JS's insert locations
+     (`Start`, `End`, `Before`, `After`, `Replace`) are the cleanest spelling of them.
+   - `search` returns ranges.
+   - The API takes "Office JS's verbs, python-docx's habits", and gives agents addresses that
+     survive edits.
+2. **Agents and MCP.** The API is built for code an LLM writes, and for an MCP server whose tools
+   take JSON arguments. Office JS's values stay its strings (section 3.1) because they are data
+   that cross into tool arguments. The MCP tools (CR-006) are written over this vocabulary.
+3. **One design in two languages.** docx4j-core-ts has Office JS's shapes over the docx4j tree.
+   Sharing them means the documentation, the MCP tool surface and the agents' training material
+   read across, and a fix in one engine is a fix for both. Where Python has a convention, it wins
+   over the TypeScript spelling.
+
+**This CR conceded the Python point itself.** Section 3.6 says: "The Python analogue is not Office
+JS, it is **python-docx**: the API in every tutorial, in every model's memory". That is why the
+python-docx facade exists (`docx4j_py.docx`, Phase J: 305 of python-docx 1.2.0's 312 members).
+Section 3.6 also keeps Office JS primary: "The Office JS vocabulary remains the primary API and
+the one the MCP tools are written over; the facade exists so that code already written, by people
+or by models, runs."
+
+**The mechanism of parity.**
+- `tests/office_js_subset.json` is derived from core-ts's `test/office-js-subset.ts` by
+  `scripts/office_js_subset.py` (section 11.4).
+- `test_the_script_would_write_what_is_committed` compares it with the sibling checkout's file. It
+  skips when that checkout is absent, as in CI.
+- So a member core-ts adds becomes a member this package owes: `Range.hyperlink` came that way
+  (section 21).
+
+### 23.2 How useful it is in Python (the coordinator's assessment, 2026-10-23)
+
+- **As a familiar API: low.** Few Python developers know Office JS. People and models write
+  python-docx, and the facade serves them.
+- **As a specification Word itself defines: high.** Office JS is the one Word API whose behaviour
+  Word implements and that can be measured, in Script Lab, over a probe. So this package's readers
+  and edits can be held to what Word does rather than to opinion.
+  - CR-011 Phase F is the example: core-ts check 49 measured `paragraph.text` over a kept
+    `mc:AlternateContent` in Word 365, and the readers followed.
+  - Many of core-ts's checks are of this kind.
+- **For agents and MCP: useful.** Office JS is well documented and in models' training. Its
+  location strings and options are natural JSON tool arguments.
+- **Parity with core-ts: useful, and the expensive part.**
+  - The use is one design: documentation, a tool surface and Word-measured rules shared, and fixes
+    carried across.
+  - The cost is that member-for-member tracking turns every member core-ts adds into work here,
+    whether or not a Python or agent use needs it. CR-014's ranges across paragraphs are the first
+    large case. python-docx has no equivalent of them.
+- **The coordinator's recommendation** was the middle way:
+  - keep the vocabulary and the Word-measured semantics;
+  - pin the subset to the core-ts commit it was derived from (`96f735b`), so the test checks the
+    pin rather than core-ts's working tree;
+  - adopt each later member by a change request of its own when a Python or agent use appears.
+
+### 23.3 The decision (2026-10-23)
+
+The user: **"for now let's aim to maintain parity with core-ts and see how that goes"**. So:
+- **No pin.** The subset stays derived from core-ts's, and the test keeps comparing with the sibling
+  checkout, as before.
+- **The gap is owed.** core-ts `ef57729` (CR-014 phase 1) takes the subset from 231 members to 241.
+  Measured here at `7b7e416` by name:
+
+  | member | here |
+  |---|---|
+  | `Body.getRange` | `get_range` exists |
+  | `Comment.getRange` | `get_range` exists; CR-014 makes it one range across the paragraphs a comment spans |
+  | `Range.paragraphs` | exists; CR-014 makes it the paragraphs a range across paragraphs covers |
+  | `Range.styleBuiltIn` | exists |
+  | `Paragraph.tableNestingLevel` | missing |
+  | `Range.contentControls` | missing |
+  | `Range.expandTo` | missing |
+  | `Range.isEmpty` | missing |
+  | `Range.tables` | missing |
+  | `Table.getRange` | missing |
+
+  - A member that exists by name may still differ in behaviour. This package's `Range` is a span
+    of one paragraph's text (section 3), and core-ts's CR-014 makes a range that crosses
+    paragraphs.
+  - CR-014 phase 2 (core-ts `53db5bc`, its writes, held to Word 365 by check 52) changes no member
+    list, but its behaviour is part of parity too.
+- **The port is its own change request here.** It is ranges across paragraphs, the port of core-ts
+  CR-014 phases 1 and 2. It is proposed, not started, and waits on the user's go.
+- **Until it lands,** the full suite fails that one test wherever core-ts is checked out beside this
+  repository. CI skips it. Whether 0.2.0 waits for the port, or is gated without that one test, is
+  the user's decision.
+- **"See how that goes": the review points.**
+  - When the port lands, record here what it cost and what it gave Python or agent callers.
+  - Revisit this decision if core-ts adds members that have no Python or agent use.
+  - Revisit it, too, if keeping up holds up a release of this package.
+  - The middle way of 23.2 stays the fallback.
