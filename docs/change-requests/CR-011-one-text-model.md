@@ -31,7 +31,13 @@ shows"): Office JS's own text reads a kept `mc:AlternateContent`'s selected bran
 49), so the Office JS readers, kept on it, read Word's branch too; section 15 proposes the change as
 Phase F, as core-ts CR-012 phase 4 made it there and as docx4j's readers of text select
 (`McSelection`'s TEXT purpose). **Phase F started 2026-10-22** at the user's go ("go for phase F,
-now please").
+now please"), and was **implemented the same day** (section 16): on check 49's probe every case's
+`Paragraph.text` is Word 365's but case 2's break (`\n` for U+000B, pinned), and the report's 13
+search counts are Word's; an edit through a branch's text is refused with `address.read_only`
+before anything changes, an insertion at the element's edge goes beside it, and tracked
+`Paragraph.text = ...` over one is refused; over 384 corpus documents 19 paragraphs in 13 moved,
+each gaining exactly Word's branch's text, and nothing else; the ratchet, CR-010's comparisons, the
+parity goldens and acceptance unchanged. **Its Word check is not yet checked** (16.7).
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification

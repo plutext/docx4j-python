@@ -18,8 +18,9 @@ listed, accepted and rejected as Word 365 resolves them (`docx4j_py.model.revisi
 [CR-011](docs/change-requests/CR-011-one-text-model.md), one text model under every reader of
 text, with Markdown, charts, equations and field switches as docx4j reads them
 (`docx4j_py.model.text`); and [CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md),
-`mc:AlternateContent` kept at every level with its branches typed, VML among them. With them,
-CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
+`mc:AlternateContent` kept at every level with its branches typed, VML among them; and the
+Office JS readers (`Paragraph.text`, `get_text`, `search`) read the branch Word shows, as Office
+JS does (CR-011 Phase F). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
 of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
 save. It needs docx4j-xsdata 26.2.2.
 
