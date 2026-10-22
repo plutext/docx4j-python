@@ -279,7 +279,7 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   `walk`, `find` and the content API read through it. `mce_preprocess` keeps what the model can
   type (`UNDERSTOOD`). Each Choice's `Requires`, `mc:Ignorable` and `mc:MustUnderstand` carry the
   bindings they were parsed with (`child.source_bindings`); the fork's parser gives them
-  (`docx4j-xsdata` stage 10, unreleased).
+  (`docx4j-xsdata` stage 10, in 26.2.2).
 - **`get_text(view="markup")` is the text model's markup view**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md) section
   [12.6](docs/change-requests/CR-011-one-text-model.md#126-the-readers-q4-q10)): on a body or a
@@ -531,7 +531,7 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   `w:sdt` there was typed as a block-level control, so a run-level one's runs were skipped and lost
   on save, and `wml(...)` refused it. It is now bound as its container binds it (`SdtBlock`,
   `SdtRun`, `CTSdtRow`, `CTSdtCell`) and written back as `w:sdt`, through the fork's stage 11
-  (`docx4j-xsdata` after `26.2.1`; this package is never released against an unreleased fork).
+  (`docx4j-xsdata` 26.2.2).
 - **An embedded object opens again after a save**
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section
   [12.16](docs/change-requests/CR-012-type-kept-mc-branches.md#1216-the-wobject-order-fix-implementation-notes-2026-10-22)).
@@ -545,6 +545,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   patch 6). A `w:pict` mixing VML and `o:` children was reordered the same way and is kept as
   read too. Over 2,746 parts of 422 documents, the 17 main parts whose `w:object`s were reordered
   are canonically identical to their sources now.
+
+### Dependencies
+
+- `docx4j-xsdata[lxml] >=26.2.2,<26.3` (was `>=26.2.1`): the fork's release 2,
+  [docx4j-xsdata 26.2.2](https://pypi.org/project/docx4j-xsdata/26.2.2/), published 2026-10-22
+  (its `docs/fork/CHANGES.md` stages 9 to 12, items 22 to 28). This release needs all four: stage 9's
+  unknown attribute on a simple-typed element in the skipped report, stage 10's namespaces in
+  scope for the text model (CR-011), stage 11's branch typing hooks (CR-012 Phases A to B) and
+  stage 12's `lexical_types` (CR-012 Phase C). The `dev` extra's floor moves with it.
 
 ## [0.1.0] --- 2026-09-20
 

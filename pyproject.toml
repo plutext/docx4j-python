@@ -39,7 +39,7 @@ dependencies = [
     # is additive by its REBASING.md rule, and the upper bound is where the
     # base moves and the bindings are regenerated. Never against an unreleased
     # fork (RELEASING.md).
-    "docx4j-xsdata[lxml]>=26.2.1,<26.3",
+    "docx4j-xsdata[lxml]>=26.2.2,<26.3",
     # CR-003 section 3.5 and decided question 6: the one dependency the content
     # API adds, for `insert_markdown` only, imported lazily inside the call.
     # `to_markdown` needs nothing. A lower bound, not a pin: markdown-it-py is
@@ -56,7 +56,7 @@ docx4j = "https://www.docx4java.org"
 
 [project.optional-dependencies]
 dev = [
-    "docx4j-xsdata[cli,lxml]>=26.2.1,<26.3",
+    "docx4j-xsdata[cli,lxml]>=26.2.2,<26.3",
     "pytest",
 ]
 # baseline/docx4j_py/generated is the pre-Phase-B baseline: the output of
