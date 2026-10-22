@@ -4979,8 +4979,9 @@ The user: **"for now let's aim to maintain parity with core-ts and see how that 
 - **The port is its own change request here.** It is ranges across paragraphs, the port of core-ts
   CR-014 phases 1 and 2. It is proposed, not started, and waits on the user's go.
 - **Until it lands,** the full suite fails that one test wherever core-ts is checked out beside this
-  repository. CI skips it. Whether 0.2.0 waits for the port, or is gated without that one test, is
-  the user's decision.
+  repository. CI skips it. **0.2.0 waits for the port** (the user, 2026-10-23: "0.2.0 waits for
+  the port, which needs a go for a new CR (CR-013, ranges across paragraphs)"). The port is
+  CR-013, drafted next.
 - **"See how that goes": the review points.**
   - When the port lands, record here what it cost and what it gave Python or agent callers.
   - Revisit this decision if core-ts adds members that have no Python or agent use.
