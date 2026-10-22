@@ -2008,7 +2008,9 @@ checked. Refusals write nothing.
 - **The fixture's licence, settled 2026-10-22.** `tests/fixtures/mc-branches.docx` comes from
   docx4j-ts-editor, whose repository is GPL-3.0-or-later. It is Jason's own probe, built from his
   `mc-simple.docx`. This repository's sdist ships `tests/` under Apache-2.0, so the coordinator
-  asked, and the user confirmed: "i confirm it may be used here under Apache-2.0". The
+  asked, and the user, its author, confirmed and licensed it: "i confirm it may be used here under
+  Apache-2.0" (2026-10-22) and "tests/fixtures/mc-branches.docx i make Apache-2.0 here"
+  (2026-10-23). The
   provenance row in `tests/README.md` records it. Word's save with the report was not copied; its
   answers are written out in the test.
 - **`tests/README.md`'s Word acceptance record** gains Phase F's entry when the check of 16.7 has
