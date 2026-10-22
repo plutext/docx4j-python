@@ -6,6 +6,13 @@ are recomputed from the tree on every use, so a range stays valid across the
 edits made through it; an edit made elsewhere in the same paragraph may shift
 it, as it does in Word.
 
+**Word's branch** (CR-011 section 15, Phase F). A run- or paragraph-level
+``mc:AlternateContent`` gives its paragraph the text of the branch Word shows,
+so a range may lie over it: it reads, but every edit through a span holding
+that text, or at an offset strictly inside it, is refused (``address.read_only``),
+before anything changes. An insertion at either end of it goes beside the
+element.
+
 Two rules of section 4 land here: a ``Range``'s original view is not offered
 (``get_text(view="original")`` raises --- a range's offsets are accepted-view
 offsets, and the original view has different ones), and :attr:`Range.font`
@@ -103,7 +110,8 @@ class Range:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. It reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, section 15).
         """
         return self.paragraph.text[self.start : self.end]
 
@@ -158,6 +166,7 @@ class Range:
 
     @style.setter
     def style(self, value: str) -> None:
+        self.refuse_branch_text("style")
         self.paragraph.style = value
 
     @property
@@ -167,6 +176,7 @@ class Range:
 
     @style_id.setter
     def style_id(self, value: str) -> None:
+        self.refuse_branch_text("style_id")
         self.paragraph.style_id = value
 
     @property
@@ -176,7 +186,19 @@ class Range:
 
     @style_built_in.setter
     def style_built_in(self, value: str) -> None:
+        self.refuse_branch_text("style_built_in")
         self.paragraph.style_built_in = value
+
+    def refuse_branch_text(self, operation: str = "this edit") -> None:
+        """Refuse an edit through this span when it touches text read from a kept branch. Extension.
+
+        CR-011 Phase F: the span holds such text, or, empty, lies strictly
+        inside it (:meth:`Paragraph.refuse_branch_text`).
+
+        Raises:
+            AddressError: ``address.read_only``.
+        """
+        self.paragraph.refuse_branch_text(self.start, self.end, operation)
 
     @property
     def font(self) -> Font:
@@ -211,6 +233,7 @@ class Range:
             tracking=self.paragraph.font_tracking,
             context=self.paragraph.resolution_context,
             direct=direct,
+            guard=lambda: self.refuse_branch_text("a font write"),
         )
 
     # -- spans that cross a run holder (CR-003 section 3.4) ----------------
@@ -411,7 +434,8 @@ class Range:
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, section 15).
         """
         base = self.start
         limit = options.pop("limit", None)
@@ -430,6 +454,8 @@ class Range:
         with recording(self.paragraph.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
+            for match in matches:  # every match checked before the first is replaced (CR-011 Phase F)
+                match.refuse_branch_text("replace_text")
             for match in reversed(matches):
                 match.insert_text(replace, location="Replace")
             if matches:
@@ -442,7 +468,8 @@ class Range:
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, section 15).
         """
         from docx4j_py.model.content.reports import hit_for
 
@@ -561,6 +588,10 @@ class Range:
             package=self.paragraph.parent_body.package,
         )
         view = Paragraph(copy, holder.content, body)
+        segments = view.segments()
+        if any(segment.branch is not None for segment in segments):
+            _trim_around_branches(view, self.start, self.end)
+            return to_xml(copy)
         length = len(view.text)
         if self.end < length:
             view.splice(self.end, length, "")
@@ -588,3 +619,59 @@ class Range:
             "start": self.start,
             "end": self.end,
         }
+
+
+def _trim_around_branches(view: Any, start: int, end: int) -> None:
+    """Trim a copy of a paragraph to ``[start, end)`` where its text holds a kept branch's (CR-011 Phase F).
+
+    :meth:`Range.get_xml`'s copy: the paragraph's own text outside the span is
+    spliced out, as elsewhere; a run- or paragraph-level ``mc:AlternateContent``
+    whose text lies wholly outside the span goes, every branch with it; one
+    whose text the span holds, in part or whole, is kept whole, since cutting
+    it would change Word's branch alone.
+    """
+    from docx4j_py.model.content.text_model import branch_extents
+
+    segments = view.segments()
+    length = segments[-1].end if segments else 0
+    extents = branch_extents(segments)
+    cuts: list[tuple[int, int]] = []
+    for a, b in ((0, start), (end, length)):
+        if b <= a:
+            continue
+        pieces = [(a, b)]
+        for low, high, _element in extents:
+            next_pieces = []
+            for x, y in pieces:
+                if high <= x or low >= y:
+                    next_pieces.append((x, y))
+                    continue
+                if x < low:
+                    next_pieces.append((x, low))
+                if high < y:
+                    next_pieces.append((high, y))
+            pieces = next_pieces
+        cuts.extend(pieces)
+    gone = [
+        (low, element)
+        for low, high, element in extents
+        if high <= start or low >= end
+    ]
+    by_id = {id(segment.branch): segment for segment in segments if segment.branch is not None}
+    # last first, so that the offsets of what is still to cut hold
+    for x, y in sorted(cuts, reverse=True):
+        view.splice(x, y, "")
+    for _low, element in sorted(gone, key=lambda pair: pair[0], reverse=True):
+        _remove_element(by_id[id(element)], element)
+    view._remove_empty_runs()
+
+
+def _remove_element(segment: Any, element: Any) -> None:
+    """Take a kept ``mc:AlternateContent`` out of the list holding it (a run's, or a run-level list)."""
+    parent = getattr(element, "parent", None)
+    for owner in (getattr(parent, "content", None), segment.outer_owner):
+        if isinstance(owner, list):
+            for index, item in enumerate(owner):
+                if item is element:
+                    del owner[index]
+                    return

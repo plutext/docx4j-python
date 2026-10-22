@@ -322,7 +322,8 @@ class Table:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
+        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         return text_of(self.element)
 
@@ -952,7 +953,8 @@ class TableCell:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
+        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         return text_of(self.element)
 

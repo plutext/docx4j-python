@@ -443,6 +443,10 @@ def insert_ooxml_into_paragraph(
 
     body = paragraph.parent_body
     with recording(body, "insert_ooxml") as change:
+        if location == "Replace" and paragraph.change_tracker is not None:
+            # a tracked deletion of text read from a kept branch, refused before any part is
+            # added (CR-011 Phase F)
+            paragraph.refuse_whole_text("insert_ooxml")
         part = getattr(body, "part", None)
         elements = content_of(
             ooxml, target=getattr(part, "_wrapped", part), package=body.package
@@ -480,6 +484,12 @@ def insert_ooxml_into_range(
     paragraph = span.paragraph
     body = paragraph.parent_body
     with recording(body, "insert_ooxml") as change:
+        # through text read from a kept branch: refused before any part is added (CR-011 Phase F)
+        if location == "Replace":
+            span.refuse_branch_text("insert_ooxml")
+        else:
+            at = span.start if location == "Before" else span.end
+            paragraph.refuse_branch_text(at, at, "insert_ooxml")
         part = getattr(body, "part", None)
         elements = content_of(
             ooxml, target=getattr(part, "_wrapped", part), package=body.package

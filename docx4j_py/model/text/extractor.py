@@ -207,7 +207,7 @@ def _is_monospace(font: str | None) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Office JS's paragraph text, for each run's office_offset (CR-011 Q4)
+# Office JS's paragraph text, for each run's office_offset (CR-011 Q4; Word's branch since Phase F)
 # ---------------------------------------------------------------------------
 
 

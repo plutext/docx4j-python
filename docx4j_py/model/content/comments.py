@@ -51,7 +51,7 @@ import dataclasses
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.child import ChildList, link_parents
+from docx4j_py.child import ChildList, is_alternate_content, link_parents
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.styles import ensure_style, style_ids_of
@@ -59,6 +59,7 @@ from docx4j_py.model.content.text_model import (
     _REVISIONS,
     RUN_HOLDER_NAMES,
     block_children_of,
+    branch_text,
     item_text,
 )
 from docx4j_py.namespaces import WML_NS
@@ -263,6 +264,10 @@ def _visit_runs(
             if not isinstance(content, list):
                 continue
             for child in content:
+                if is_alternate_content(child):
+                    # a run-level element kept whole: Word's branch's text (CR-011 Phase F)
+                    position += len(branch_text(child, run_level=True))
+                    continue
                 qname = element_name(child)
                 if qname == W_COMMENT_REFERENCE:
                     identifier = _marker_id(child)
@@ -299,6 +304,11 @@ def _visit_runs(
                         offset=base + position,
                     )
                 )
+            continue
+        if is_alternate_content(element):
+            # a paragraph-level element kept whole: its branch's text counts, and a
+            # marker in a branch is one branch's, not listed (CR-011 Phase F)
+            position += len(branch_text(element))
             continue
         shown = _REVISIONS.get(name or "")
         if shown is not None:
@@ -567,7 +577,9 @@ def _marker_site(paragraph: Paragraph, segment: Any, *, after: bool) -> tuple[li
     form is not measured and a move's halves are not to be split, so those keep
     this hoist (docx4j-core-ts CR-002 section 38 item 1).
     """
-    holder = getattr(segment.run, "parent", None)
+    # beside the run, or beside the kept element its text is read from (CR-011 Phase F)
+    site, owner, site_index = segment.site()
+    holder = getattr(site, "parent", None)
     if element_name(holder) in _REVISION_NAMES:
         outer = getattr(holder, "parent", None)
         items = run_items_of(outer) if outer is not None else None
@@ -575,9 +587,8 @@ def _marker_site(paragraph: Paragraph, segment: Any, *, after: bool) -> tuple[li
             index = _index_of(items, holder)
             if index >= 0:
                 return items, index + (1 if after else 0), outer
-    owner = segment.run_owner
-    parent = getattr(segment.run, "parent", None) or paragraph.element
-    return owner, segment.run_index + (1 if after else 0), parent
+    parent = holder or paragraph.element
+    return owner, site_index + (1 if after else 0), parent
 
 
 def _insertion_of(segment: Any) -> Any:
@@ -863,7 +874,8 @@ class Comment:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. It reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         return self.comment_body.text
 
@@ -1285,6 +1297,7 @@ def insert_comment_into(span: Range, text: str) -> Comment:
     """``Range.insert_comment`` and ``Paragraph.insert_comment``. See their docstrings."""
     body = span.paragraph.parent_body
     with recording(body, "insert_comment") as change:
+        span.refuse_branch_text("insert_comment")
         span.require_one_holder("insert_comment")
         main = _main_part_of(body)
         parts = create_comment_parts(main)

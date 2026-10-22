@@ -54,6 +54,7 @@ from docx4j_py.model.content.text_model import (
     find_all,
     canonical_view,
     markup_text,
+    refuse_branch_text,
     require_view,
     runs_of,
     search_pattern,
@@ -157,7 +158,15 @@ class Paragraph:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. A run- or paragraph-level
+        ``mc:AlternateContent`` reads as the branch Word shows, as Office JS reads
+        it (Q4 revised, CR-011 section 15; core-ts check 49); an edit through that
+        text is refused (``address.read_only``), and an edit beside it works.
+
+        Setting it replaces the content, every such element with it; with change
+        tracking on, a paragraph whose text holds a branch's is refused
+        (``address.read_only``), since its deletion would be marked in Word's
+        branch alone.
         """
         return text_of_view(self.element)
 
@@ -188,7 +197,9 @@ class Paragraph:
 
         In ``accepted`` and ``original``, Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. A run- or paragraph-level
+        ``mc:AlternateContent`` reads as the branch Word shows, its deletions out in
+        ``accepted`` and its insertions out in ``original`` (Q4 revised, section 15).
 
         ``"accepted"`` (the default) is :attr:`text`; ``"original"`` reads the
         document as it was before the tracked changes (CR-003 section 3.8).
@@ -232,6 +243,31 @@ class Paragraph:
     def segments(self, *, view: TextView = "accepted") -> list[Any]:
         """The text segments with their offsets. Extension; see :mod:`.text_model`."""
         return segments_of(self.element, view=view)
+
+    def refuse_branch_text(self, start: int, end: int, operation: str = "this edit") -> None:
+        """Refuse an edit of ``[start, end)`` that would change text read from a kept branch. Extension.
+
+        CR-011 Phase F: a span holding text a run- or paragraph-level
+        ``mc:AlternateContent`` gives this paragraph (the branch Word shows), or
+        an insertion point strictly inside it, is refused; an insertion at either
+        end of it goes beside the element.
+
+        Raises:
+            AddressError: ``address.read_only``.
+        """
+        from docx4j_py.model.content.reports import current_recorder
+
+        verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None)
+        refuse_branch_text(self.element, start, end, verb or operation)
+
+    def holds_branch_text(self) -> bool:
+        """Whether this paragraph's text holds text read from a kept branch (CR-011 Phase F). Extension."""
+        return any(segment.branch is not None and segment.text for segment in self.segments())
+
+    def refuse_whole_text(self, operation: str) -> None:
+        """Refuse a write to all of this paragraph's text when it holds a kept branch's (CR-011 Phase F)."""
+        if self.holds_branch_text():
+            self.refuse_branch_text(0, len(self.text), operation)
 
     # -- recording a format change (CR-003 section 3.4) --------------------
 
@@ -615,6 +651,7 @@ class Paragraph:
             tracking=self.font_tracking,
             context=self.resolution_context,
             direct=direct,
+            guard=lambda: self.refuse_whole_text("a font write over the paragraph"),
         )
 
     def resolution_context(self) -> tuple[Any, Any]:
@@ -948,6 +985,8 @@ class Paragraph:
                 change.text(before=before, after=self.text)
                 return [self]
             if location == "Replace":
+                if self.change_tracker is not None:
+                    self.refuse_whole_text("insert_xml")
                 self.parent_body.insert_element(elements, location="Before", target=self)
                 views = [self.parent_body.view_for(e) for e in elements]
                 self.delete()
@@ -1019,7 +1058,8 @@ class Paragraph:
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
         Matches are found on the paragraph's whole text, so one **spans runs**
         freely; only formatting a match splits them.
@@ -1059,6 +1099,10 @@ class Paragraph:
         with recording(self.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
+            # every match checked before the first is replaced (CR-011 Phase F)
+            segments = self.segments()
+            for match in matches:
+                refuse_branch_text(self.element, match.start, match.end, "replace_text", segments=segments)
             for match in reversed(matches):
                 match.insert_text(replace, location="Replace")
             if matches:
@@ -1071,7 +1115,8 @@ class Paragraph:
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
         :class:`~docx4j_py.model.content.reports.SearchHit`\\ s for a tool
         result, where :meth:`search` gives
@@ -1159,6 +1204,7 @@ class Paragraph:
             prune_paragraph_properties,
         )
 
+        self.refuse_whole_text("delete")
         if mark_deleted(self.element):
             from docx4j_py.model.content.errors import TrackedChangeError
 
@@ -1299,9 +1345,12 @@ class Paragraph:
         """
         from docx4j_py.model.content.range import Range
 
-        length = len(self.text)
+        segments = self.segments()
+        length = segments[-1].end if segments else 0
         start = max(0, min(start, length))
         end = max(start, min(end, length))
+        if segments and any(segment.branch is not None for segment in segments):
+            self.refuse_branch_text(start, end)
 
         tracker = self.change_tracker
         if tracker is not None:
@@ -1312,7 +1361,6 @@ class Paragraph:
                 self._insert_tracked(tracker, start, text, deletions[-1] if deletions else None)
             return Range(self, start, start + len(text))
 
-        segments = self.segments()
         inserted = False
         if end > start:
             first = next((s for s in segments if s.start <= start < s.end), None)
@@ -1367,12 +1415,16 @@ class Paragraph:
                 if r_pr is not None:
                     run.r_pr = r_pr
                     r_pr.parent = run
+                # beside the neighbour's run, or beside the kept element its text
+                # is read from, never into a branch (CR-011 Phase F)
                 if before is not None:
-                    before.run_owner.insert(before.run_index + 1, run)
-                    run.parent = getattr(before.run, "parent", None) or self.element
+                    item, owner, index = before.site()
+                    owner.insert(index + 1, run)
+                    run.parent = getattr(item, "parent", None) or self.element
                 elif after is not None:
-                    after.run_owner.insert(after.run_index, run)
-                    run.parent = getattr(after.run, "parent", None) or self.element
+                    item, owner, index = after.site()
+                    owner.insert(index, run)
+                    run.parent = getattr(item, "parent", None) or self.element
                 elif start == 0:
                     self.element.content.insert(0, run)
                 else:
@@ -1388,6 +1440,7 @@ class Paragraph:
         """
         if not items:
             return
+        self.refuse_branch_text(offset, offset, "this insertion")
         offset = self.split_at(offset)
         segments = self.segments()
         after = next((s for s in segments if s.start >= offset), None)
@@ -1398,9 +1451,10 @@ class Paragraph:
             at = 0 if offset == 0 else len(target)
             owner: Any = self.element
         else:
-            target = neighbour.run_owner
-            at = neighbour.run_index if after is not None else neighbour.run_index + 1
-            owner = getattr(neighbour.run, "parent", None) or self.element
+            # beside the run, or beside the kept element its text is read from (CR-011 Phase F)
+            item, target, index = neighbour.site()
+            at = index if after is not None else index + 1
+            owner = getattr(item, "parent", None) or self.element
         for offset_in_items, item in enumerate(items):
             target.insert(at + offset_in_items, item)
             link_parents(item)
@@ -1427,6 +1481,7 @@ class Paragraph:
         """
         from docx4j_py.model.content.tracking import revision_of, to_deleted_text
 
+        self.refuse_branch_text(start, end, "a tracked deletion")
         targets = self._isolate(start, end)
         for segment in targets:
             tracker.assert_editable(revision_of(segment.run))
@@ -1514,12 +1569,14 @@ class Paragraph:
             wrapper.parent = anchor.parent
             return
 
+        self.refuse_branch_text(at, at, "a tracked insertion")
         at = self.split_at(at)
         segments = self.segments()
         before = next((s for s in reversed(segments) if s.end <= at), None)
         after = next((s for s in segments if s.start >= at), None)
         for segment, side in ((before, "after"), (after, "before")):
-            if segment is None:
+            if segment is None or segment.branch is not None:
+                # text read from a kept branch is never extended (CR-011 Phase F)
                 continue
             revision = revision_of(segment.run)
             if not tracker.own_insertion(revision):
@@ -1538,7 +1595,9 @@ class Paragraph:
             return
 
         neighbour = before or after
-        revision = revision_of(neighbour.run) if neighbour is not None else None
+        # beside the run, or beside the kept element its text is read from (CR-011 Phase F)
+        site, site_owner, _site_index = neighbour.site() if neighbour is not None else (None, None, -1)
+        revision = revision_of(site) if site is not None else None
         tracker.assert_editable(revision)
         source = neighbour.run if neighbour is not None else None
         if source is None:
@@ -1552,12 +1611,12 @@ class Paragraph:
                 self.element.content.append(wrapper)
             wrapper.parent = self.element
             return
-        owner = revision.owner if revision is not None else neighbour.run_owner
-        item = revision.element if revision is not None else neighbour.run
+        owner = revision.owner if revision is not None else site_owner
+        item = revision.element if revision is not None else site
         parent = (
             getattr(revision.element, "parent", None)
             if revision is not None
-            else getattr(neighbour.run, "parent", None)
+            else getattr(site, "parent", None)
         ) or self.element
         index = _index_of(owner, item)
         owner.insert(index + (1 if neighbour is before else 0), wrapper)

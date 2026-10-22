@@ -41,7 +41,7 @@ __all__ = ["Font"]
 class Font:
     """A subset of Office JS ``Word.Font``, over the ``w:rPr`` of a scope."""
 
-    __slots__ = ("_context", "_direct", "_holders", "_record", "_scope", "_tracking")
+    __slots__ = ("_context", "_direct", "_guard", "_holders", "_record", "_scope", "_tracking")
 
     def __init__(
         self,
@@ -52,6 +52,7 @@ class Font:
         tracking: Callable[[], Any] | None = None,
         context: Callable[[], tuple[Any, Any]] | None = None,
         direct: bool = False,
+        guard: Callable[[], None] | None = None,
     ) -> None:
         """Build the view.
 
@@ -77,6 +78,10 @@ class Font:
                 are in --- or ``(None, None)`` where there is no package to
                 resolve against. None for a font that never resolves.
             direct: read the run's own ``w:rPr`` and not the effective one.
+            guard: called before every write, before anything is split or
+                recorded; it raises to refuse the write. A range's and a
+                paragraph's refuse one over text read from a kept
+                ``mc:AlternateContent`` branch (CR-011 Phase F).
         """
         self._holders = holders
         self._scope = scope
@@ -84,6 +89,7 @@ class Font:
         self._tracking = tracking
         self._context = context
         self._direct = direct
+        self._guard = guard
 
     # -- the mapping -------------------------------------------------------
 
@@ -124,6 +130,8 @@ class Font:
         return read_run_options(self._direct_r_pr())
 
     def _apply(self, **options: Any) -> None:
+        if self._guard is not None:
+            self._guard()
         if self._record is None:
             self._write(**options)
             return

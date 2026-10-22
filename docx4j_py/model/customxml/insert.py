@@ -155,6 +155,7 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
             code="binding.form_mismatch",
             hint="call insert_content_control on a paragraph or on the body",
         )
+    span.refuse_branch_text("insert_content_control")
     span.require_one_holder("insert_content_control")
     _require_no_revision_between(span)
 
@@ -250,8 +251,10 @@ def _offset_index(items: list, paragraph: Any, offset: int) -> int:
     for segment in paragraph.segments():
         if segment.end > offset:
             break
+        # the run, or the kept element its text is read from (CR-011 Phase F)
+        site = segment.site()[0]
         for position, item in enumerate(items):
-            if item is segment.run:
+            if item is site:
                 index = position + 1
                 break
     while index < len(items) and not text_of(items[index]):

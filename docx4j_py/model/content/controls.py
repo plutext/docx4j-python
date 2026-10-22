@@ -285,7 +285,8 @@ class ContentControl:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
+        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
         A run-level control holds run content, which is one line;
         :func:`~docx4j_py.traversal.text_of` reads a ``w:sdtContent`` as a run
@@ -410,7 +411,8 @@ class ContentControl:
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         if self.form != "run":
             return self.body().search(text, **options)
@@ -472,11 +474,19 @@ class ContentControl:
         from docx4j_py.model.content.text_model import set_text
         from docx4j_py.wml import R, t
 
-        segments = [
-            segment
-            for segment in segments_of(paragraph.element)
-            if segment.editable and self._inside(segment.run)
-        ]
+        inside = [segment for segment in segments_of(paragraph.element) if self._inside(segment.run)]
+        edge = (inside[0] if at_start else inside[-1]) if inside else None
+        if edge is not None and edge.branch is not None:
+            # the control's text begins or ends in a kept branch's (CR-011 Phase F): the
+            # text goes beside the element, inside the control, into no branch
+            item, owner, index = edge.site()
+            run = R(content=ChildList([t(text)]))
+            owner.insert(index if at_start else index + 1, run)
+            link_parents(run)
+            run.parent = getattr(item, "parent", None)
+            offset = edge.start if at_start else edge.end
+            return Range(paragraph, offset, offset + len(text))
+        segments = [segment for segment in inside if segment.editable]
         if segments:
             target = segments[0] if at_start else segments[-1]
             at = 0 if at_start else len(target.text)

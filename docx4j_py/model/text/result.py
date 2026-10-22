@@ -118,7 +118,8 @@ class TextRun:
     #: Where the run's text starts in its paragraph's Office JS ``Paragraph.text``
     #: (``Paragraph.text`` and ``get_text()`` of the content API, CR-011 Q4), where
     #: it contributes there; within the run the two texts agree character for
-    #: character. None for a run only the model writes: a note reference or
+    #: character, a run read from a kept ``mc:AlternateContent``'s branch
+    #: included (CR-011 Phase F). None for a run only the model writes: a note reference or
     #: mark, a list label, a field code, a bound value, text ``Paragraph.text``
     #: does not hold. Text that ``Paragraph.text`` holds and the model leaves
     #: out (hidden text) is the gap between two runs' offsets.

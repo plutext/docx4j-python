@@ -552,18 +552,18 @@ _CELLS = (
 
 
 def test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level():
-    """The text_of readers now read Word's branch at paragraph level, as at run level; Paragraph.text reads neither.
+    """The text_of readers read Word's branch at paragraph level, as at run level; since CR-011 Phase F so does Paragraph.text.
 
     Before Phase B, ``text_of`` (``Block.text``, ``Table.text``, ``TableCell.text``,
     a run control's text, ``TrackedChange.text``) read a run-level branch's
     wildcard ``w:t`` but not a paragraph-level branch's typed ``w:r``, which the
     walks named ``any_element``: this cell read ``a``. Now it reads ``a-PARA_CHOICE``,
     as ``text_of``'s own contract says (the resolved branch contributes) and as
-    Word shows. ``Paragraph.text`` and ``get_text``, Office JS's text by CR-011
-    Q4, read neither branch, before and after. Kept, as the coordinator decided
-    (CR-012 section 11.4): the run-level reading is older than Phase B, and
-    whether the readers that claim Office JS's text should descend at all is
-    CR-011 Q4's question.
+    Word shows. Kept, as the coordinator decided (CR-012 section 11.4).
+    ``Paragraph.text`` and ``get_text`` read neither branch until CR-011 Q4 was
+    revised (2026-10-22): Office JS's text reads Word's branch (core-ts check 49),
+    and since Phase F (CR-011 section 15) the cell's text and its paragraph's
+    agree. Until then they read ``a`` and ``b``.
     """
     from docx4j_py import create_package
     from docx4j_py.child import link_parents
@@ -576,5 +576,5 @@ def test_the_text_of_readers_read_a_paragraph_level_branchs_runs_as_at_run_level
     assert table.values == [["a-PARA_CHOICE", "b-RUN_CHOICE"]]
     assert table.text == "a-PARA_CHOICE\nb-RUN_CHOICE"
     assert [cell.text for cell in table.rows[0].cells] == ["a-PARA_CHOICE", "b-RUN_CHOICE"]
-    assert [p.text for p in body.paragraphs] == ["a", "b"]
-    assert body.get_text() == "a\nb"
+    assert [p.text for p in body.paragraphs] == ["a-PARA_CHOICE", "b-RUN_CHOICE"]
+    assert body.get_text() == "a-PARA_CHOICE\nb-RUN_CHOICE"

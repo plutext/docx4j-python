@@ -19,9 +19,22 @@ and ``w:sym`` (the character its ``w:char`` names). ``w:delText``,
 What is descended into: ``w:hyperlink``, ``w:smartTag``, ``w:customXml``, a
 run-level ``w:sdt``, ``w:fldSimple``, ``w:dir``, ``w:bdo``, and the revision
 holder the view shows --- ``w:ins`` and ``w:moveTo`` in the accepted view,
-``w:del`` and ``w:moveFrom`` in the original one. What is **not**:
-``mc:AlternateContent``, a ``w:drawing`` and therefore a text box.
-``Body.text`` is Word's main story (CR-003 sections 3.13 and decided question 8).
+``w:del`` and ``w:moveFrom`` in the original one. What is **not**: a
+``w:drawing``, and therefore a text box. ``Body.text`` is Word's main story
+(CR-003 sections 3.13 and decided question 8).
+
+**Word's branch** (CR-011 section 15, Phase F; Q4 revised 2026-10-22). A run- or
+paragraph-level ``mc:AlternateContent``, which the tree keeps whole, is read as
+the branch Word shows, :func:`docx4j_py.child.mce_branch` (docx4j's TEXT rule
+over its published understood list, as :func:`~docx4j_py.traversal.text_of`
+and the text model read it): a run-level element's branch as the run's own
+items, a paragraph-level one's runs as the paragraph's own runs, with the same
+characters and the same revision filter. Office JS reads the same (core-ts
+check 49). Such a segment carries the element as :attr:`Segment.branch` and is
+**not editable**: an edit whose span holds its text, or an insertion strictly
+inside its text, is refused (``address.read_only``, :func:`refuse_branch_text`),
+since it would change one branch alone. An insertion at either end of the
+element's text goes beside the element (:meth:`Segment.site`).
 
 Offsets are **code points** (CR-003 decided question 3), and a split never falls
 inside a grapheme cluster (section 3.12): :func:`is_grapheme_boundary` is
@@ -57,6 +70,8 @@ __all__ = [
     "Segment",
     "block_children_of",
     "block_list_of",
+    "branch_extents",
+    "branch_text",
     "canonical_view",
     "cells_of",
     "find_all",
@@ -66,6 +81,7 @@ __all__ = [
     "kept_content_under",
     "markup_text",
     "reading_of",
+    "refuse_branch_text",
     "require_view",
     "rows_of",
     "runs_of",
@@ -76,6 +92,7 @@ __all__ = [
     "snap_forward",
     "split_at",
     "text_of_view",
+    "touches_branch_text",
 ]
 
 
@@ -148,6 +165,51 @@ def _sym_text(node: Any) -> str:
     return ""
 
 
+def _qname(node: Any) -> str | None:
+    """A node's element name: a wildcard's own ``qname``, else :func:`element_name`'s."""
+    if is_any_element(node):
+        return node.qname
+    return element_name(node)
+
+
+def _wildcard_text(qname: str | None, node: Any) -> str | None:
+    """The text a wildcard run child contributes (a kept branch's ``AnyElement``), as :func:`item_text`."""
+    if qname in (W_T, W_DEL_TEXT):
+        value = getattr(node, "text", None)
+        return value if isinstance(value, str) else ""
+    if qname == W_SYM:
+        attributes = getattr(node, "attributes", None) or {}
+        value = attributes.get(_w("char")) or attributes.get("char")
+        if isinstance(value, str) and len(value) == 4:
+            try:
+                return chr(int(value, 16))
+            except ValueError:
+                return ""
+        return ""
+    if qname is None:
+        return None
+    return _CONSTANT_TEXT.get(qname)
+
+
+def _branch_items(branch: Any) -> list | None:
+    """The live list a branch holds: a typed one's ``any_element``, a wildcard one's children."""
+    if branch is None:
+        return None
+    if is_any_element(branch):
+        children = getattr(branch, "children", None)
+        return children if isinstance(children, list) else None
+    items = getattr(branch, "any_element", None)
+    return items if isinstance(items, list) else None
+
+
+def _wildcard_items(node: Any) -> list | None:
+    """A wildcard holder's or run's children, the list a kept branch's untyped content keeps."""
+    if is_any_element(node):
+        children = getattr(node, "children", None)
+        return children if isinstance(children, list) else None
+    return None
+
+
 def item_text(qname: str | None, item: Any) -> str | None:
     """The text a run child contributes, or None when it contributes none."""
     if qname == W_T:
@@ -188,9 +250,32 @@ class Segment:
     end: int
     """One past the last: ``start + len(text)``."""
     editable: bool
-    """True for a ``w:t``: text that can be changed in place."""
+    """True for a ``w:t``: text that can be changed in place. False in a kept branch."""
     revision: str | None = None
     """``"ins"``, ``"del"``, ``"moveFrom"``, ``"moveTo"`` when the run is in one."""
+    branch: Any = None
+    """The outermost run- or paragraph-level ``mc:AlternateContent`` this text is
+    read from, as the branch Word shows (CR-011 Phase F); None for the
+    paragraph's own text. Such text reads, and is not edited in place."""
+    outer: Any = None
+    """For text read from a branch, the item outside every branch that holds it:
+    the ``w:r`` a run-level element is in, or a paragraph-level element itself."""
+    outer_owner: list | None = None
+    """The list holding :attr:`outer`."""
+    outer_index: int = -1
+    """:attr:`outer`'s index in :attr:`outer_owner`."""
+
+    def site(self) -> tuple[Any, list, int]:
+        """``(item, list, index)``: what an insertion beside this segment goes next to.
+
+        The run and the list holding it; for text read from a kept branch, the
+        item outside every branch that holds it (:attr:`outer`), so that what is
+        inserted beside the element's text goes beside the element and into no
+        branch (CR-011 Phase F).
+        """
+        if self.branch is None or self.outer_owner is None:
+            return self.run, self.run_owner, self.run_index
+        return self.outer, self.outer_owner, self.outer_index
 
     def to_dict(self) -> dict[str, Any]:
         """The JSON-ready view: the text, the offsets and the item's name."""
@@ -201,11 +286,16 @@ class Segment:
             "item": element_name(self.item),
             "editable": self.editable,
             "revision": self.revision,
+            "branch": self.branch is not None,
         }
 
 
 def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
     """The text segments of a paragraph (or any run holder), in order.
+
+    A run- or paragraph-level ``mc:AlternateContent`` is read as the branch
+    Word shows (:func:`docx4j_py.child.mce_branch`; CR-011 Phase F): its
+    segments carry the element as :attr:`Segment.branch` and are not editable.
 
     Args:
         container: a ``w:p``, or anything :func:`run_items_of` knows.
@@ -217,60 +307,218 @@ def segments_of(container: Any, *, view: str = "accepted") -> list[Segment]:
         One :class:`Segment` per text-bearing run child, in document order,
         with ``start``/``end`` running over the whole text.
     """
-    out: list[Segment] = []
-    position = 0
+    walker = _Walker(view)
+    walker.visit(run_items_of(container), None, None, None)
+    return walker.out
 
-    def visit(items: list | None, revision: str | None) -> None:
-        nonlocal position
+
+class _Walker:
+    """:func:`segments_of`'s walk: run-level items, runs, and Word's branch of a kept element."""
+
+    __slots__ = ("out", "position", "view")
+
+    def __init__(self, view: str) -> None:
+        self.view = view
+        self.out: list[Segment] = []
+        self.position = 0
+
+    def visit(self, items: list | None, revision: str | None, kept: Any, outer: Any) -> None:
+        """A run-level list: runs, revision holders, run holders, kept elements."""
         if not items:
             return
         for run_index, element in enumerate(items):
-            name = element_name(element)
+            if isinstance(element, str):
+                continue
+            name = element_name(element) if kept is None else _qname(element)
             if name == W_R:
                 content = getattr(element, "content", None)
                 if not isinstance(content, list):
-                    continue
-                for index, item in enumerate(content):
-                    qname = element_name(item)
-                    if qname == W_DEL_TEXT:
-                        # deleted text is text in the original view only, and
-                        # only inside the revision that deleted it
-                        if revision not in ("del", "moveFrom"):
-                            continue
-                        value = getattr(item, "value", None)
-                        text: str | None = value if isinstance(value, str) else ""
-                    else:
-                        text = item_text(qname, item)
-                    if text is None:
+                    content = _wildcard_items(element) if kept is not None else None
+                    if content is None:
                         continue
-                    out.append(
-                        Segment(
-                            item=item,
-                            owner=content,
-                            index=index,
-                            run=element,
-                            run_owner=items,
-                            run_index=run_index,
-                            text=text,
-                            start=position,
-                            end=position + len(text),
-                            editable=qname in (W_T, W_DEL_TEXT),
-                            revision=revision,
-                        )
-                    )
-                    position += len(text)
+                self.run(content, element, items, run_index, revision, kept, outer)
+                continue
+            if is_alternate_content(element):
+                # a paragraph-level element kept whole: its runs, as the branch Word shows
+                self.visit(
+                    _branch_items(mce_branch(element)),
+                    revision,
+                    element if kept is None else kept,
+                    (element, items, run_index) if outer is None else outer,
+                )
                 continue
             shown = _REVISIONS.get(name or "")
             if shown is not None:
-                if shown != view:
+                if shown != self.view:
                     continue
                 kind = (name or "").rpartition("}")[2]
-                visit(run_items_of(element), kind)
+                self.visit(self._holder_items(element, kept), kind, kept, outer)
             elif name in RUN_HOLDER_NAMES:
-                visit(run_items_of(element), revision)
+                self.visit(self._holder_items(element, kept), revision, kept, outer)
 
-    visit(run_items_of(container), None)
-    return out
+    @staticmethod
+    def _holder_items(element: Any, kept: Any) -> list | None:
+        found = run_items_of(element)
+        if found is None and kept is not None:
+            found = _wildcard_items(element)
+        return found
+
+    def run(
+        self,
+        content: list,
+        run: Any,
+        items: list,
+        run_index: int,
+        revision: str | None,
+        kept: Any,
+        outer: Any,
+    ) -> None:
+        """A run's children, or a run-level element's branch read as them."""
+        for index, item in enumerate(content):
+            if isinstance(item, str):
+                continue
+            if is_alternate_content(item):
+                # a run-level element kept whole: the branch Word shows, as the run's own items
+                inner = _branch_items(mce_branch(item))
+                if inner:
+                    self.run(
+                        inner,
+                        run,
+                        items,
+                        run_index,
+                        revision,
+                        item if kept is None else kept,
+                        (run, items, run_index) if outer is None else outer,
+                    )
+                continue
+            if kept is None:
+                qname = element_name(item)
+                if qname == W_DEL_TEXT:
+                    value = getattr(item, "value", None)
+                    text: str | None = value if isinstance(value, str) else ""
+                else:
+                    text = item_text(qname, item)
+            else:
+                qname = _qname(item)
+                text = _wildcard_text(qname, item) if is_any_element(item) else (
+                    _typed_text(qname, item)
+                )
+            if qname == W_DEL_TEXT and revision not in ("del", "moveFrom"):
+                # deleted text is text in the original view only, and only inside
+                # the revision that deleted it
+                continue
+            if text is None:
+                continue
+            position = self.position
+            self.out.append(
+                Segment(
+                    item=item,
+                    owner=content,
+                    index=index,
+                    run=run,
+                    run_owner=items,
+                    run_index=run_index,
+                    text=text,
+                    start=position,
+                    end=position + len(text),
+                    editable=kept is None and qname in (W_T, W_DEL_TEXT),
+                    revision=revision,
+                    branch=kept,
+                    outer=None if outer is None else outer[0],
+                    outer_owner=None if outer is None else outer[1],
+                    outer_index=-1 if outer is None else outer[2],
+                )
+            )
+            self.position = position + len(text)
+
+
+def _typed_text(qname: str | None, item: Any) -> str | None:
+    """A typed run child's text, ``w:delText`` included (its view is the caller's)."""
+    if qname == W_DEL_TEXT:
+        value = getattr(item, "value", None)
+        return value if isinstance(value, str) else ""
+    return item_text(qname, item)
+
+
+def branch_text(element: Any, *, view: str = "accepted", run_level: bool = False) -> str:
+    """The text a kept ``mc:AlternateContent`` gives its paragraph: the branch Word shows (CR-011 Phase F).
+
+    `run_level` for an element inside a ``w:r``, whose branch holds run
+    children; otherwise its branch holds runs. What :func:`segments_of` reads
+    for it, for a walker that counts offsets on its own (the comment markers',
+    a revision's collapsed place).
+    """
+    walker = _Walker(view)
+    if run_level:
+        walker.run([element], None, [], -1, None, None, None)
+    else:
+        walker.visit([element], None, None, None)
+    return "".join(segment.text for segment in walker.out)
+
+
+def branch_extents(segments: list[Segment]) -> list[tuple[int, int, Any]]:
+    """``(start, end, element)`` for each kept element whose branch gives the paragraph text, in order."""
+    found: dict[int, list[Any]] = {}
+    order: list[list[Any]] = []
+    for segment in segments:
+        if segment.branch is None or not segment.text:
+            continue
+        entry = found.get(id(segment.branch))
+        if entry is None:
+            entry = [segment.start, segment.end, segment.branch]
+            found[id(segment.branch)] = entry
+            order.append(entry)
+        else:
+            entry[1] = segment.end
+    return [(entry[0], entry[1], entry[2]) for entry in order]
+
+
+def touches_branch_text(segments: list[Segment], start: int, end: int) -> bool:
+    """Whether an edit of ``[start, end)`` would change text read from a kept branch (CR-011 Phase F).
+
+    A span touches it when it holds any of that text; an insertion point
+    (``start == end``) when it lies strictly inside one element's text. An
+    insertion at either end of the element's text goes beside the element. The
+    offsets are snapped to grapheme boundaries first, outwards, as an edit
+    snaps them (CR-003 section 3.12).
+    """
+    extents = branch_extents(segments)
+    if not extents:
+        return False
+    text = "".join(segment.text for segment in segments)
+    start = snap_back(text, start)
+    if end > start:
+        end = snap_forward(text, end)
+        return any(a < end and b > start for a, b, _ in extents)
+    return any(a < start < b for a, b, _ in extents)
+
+
+def refuse_branch_text(container: Any, start: int, end: int, operation: str = "this edit", *, segments: list[Segment] | None = None) -> None:
+    """Refuse an edit of ``[start, end)`` that would change text read from a kept branch.
+
+    CR-011 Phase F (section 15 item 3), CR-012 Phase A's rule: text a run- or
+    paragraph-level ``mc:AlternateContent`` gives its paragraph is read as the
+    branch Word shows, and an edit there would change that branch alone. Called
+    by every verb before it changes anything.
+
+    Raises:
+        AddressError: ``address.read_only``.
+    """
+    found = segments if segments is not None else segments_of(container)
+    if not touches_branch_text(found, start, end):
+        return
+    from docx4j_py.model.content.errors import AddressError
+
+    where = f"offset {start}" if end <= start else f"{start}:{end}"
+    raise AddressError(
+        f"{operation} refused: {where} is in text read from a branch of an mc:AlternateContent "
+        "the document keeps whole (the branch Word shows): an edit there would change that "
+        "branch alone (CR-011 section 15, CR-012)",
+        code="address.read_only",
+        hint="edit beside the element (an insertion at either end of its text goes outside it), "
+        "or load with LoadOptions(mce_preprocess=True), which replaces each element with the "
+        "branch Word takes",
+    )
 
 
 def text_of_view(container: Any, *, view: str = "accepted") -> str:
@@ -564,8 +812,10 @@ def kept_content_under(element: Any) -> Any | None:
     mark deleted is walked through :func:`block_children_of`, which reads such
     an element by the branch Word reads, so the marks would land in that
     branch alone; the verb asks here first and refuses (``address.read_only``)
-    on what this returns. None when there is no such element, or Word's branch
-    of each is empty.
+    on what this returns. Since CR-011 Phase F also the first text item a
+    paragraph's run- or paragraph-level element gives its paragraph's text,
+    which a tracked deletion of that text would mark in Word's branch alone.
+    None when there is no such element, or Word's branch of each is empty.
     """
     stack = [element]
     while stack:
@@ -575,7 +825,12 @@ def kept_content_under(element: Any) -> Any | None:
             if items:
                 return items[0]
         if element_name(node) == W_P:
-            continue  # what a paragraph holds is run level: no such element there
+            # a paragraph's run- and paragraph-level elements: a tracked deletion of
+            # its text would mark Word's branch alone deleted (CR-011 Phase F)
+            kept = next((s for s in segments_of(node) if s.branch is not None and s.text), None)
+            if kept is not None:
+                return kept.item
+            continue
         children = block_children_of(node)
         if children is not None:
             stack.extend(reversed(children))

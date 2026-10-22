@@ -183,6 +183,8 @@ def set_hyperlink(span: Range, value: str | None) -> None:
             start = min(start, link_start)
             end = max(end, link_end)
         unwrapped = [link for link, _s, _e in touched]
+        # the span and every link it takes in, before anything changes (CR-011 Phase F)
+        paragraph.refuse_branch_text(start, end, "Range.hyperlink")
         if value:
             _check_wrappable(paragraph, start, end, unwrapped)
         for link in unwrapped:

@@ -55,9 +55,12 @@ text from it::
 **Not the Office JS readers' text.** ``Paragraph.text``, ``Body.text``,
 ``get_text`` (in ``accepted`` and ``original``) and the other content API
 readers keep Office JS's text (CR-011 Q4, core-ts CR-012's D2, WD REQ-202's
-exemption for a reader of an emulated API). Each :class:`TextRun` records
-where its text lies in its paragraph's ``get_text()`` (``office_offset``), so
-the two map onto each other. ``get_text(view="markup")`` is this model's.
+exemption for a reader of an emulated API), which since Q4's revision reads
+Word's branch of a run- or paragraph-level ``mc:AlternateContent`` as this
+model does (CR-011 section 15, Phase F; core-ts check 49). Each
+:class:`TextRun` records where its text lies in its paragraph's ``get_text()``
+(``office_offset``), a run read from a branch included, so the two map onto
+each other. ``get_text(view="markup")`` is this model's.
 
 Under ``fields: update`` (REQ-506) the fields that need neither layout nor
 fetching are computed (:mod:`docx4j_py.model.fields`), and a FORMTEXT is as

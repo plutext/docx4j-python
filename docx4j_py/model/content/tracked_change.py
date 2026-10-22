@@ -34,8 +34,9 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING, Any
 
+from docx4j_py.child import is_alternate_content, mce_branch, mce_branch_content
 from docx4j_py.model.content.enums import TrackedChangeTypeValue
-from docx4j_py.model.content.text_model import item_text
+from docx4j_py.model.content.text_model import branch_text, item_text
 from docx4j_py.model.content.tracking import REVISION_NAMES
 from docx4j_py.traversal import element_name, run_items_of
 from docx4j_py.wml import R
@@ -453,6 +454,10 @@ def _accepted_offset_of(paragraph: Any, target: Any) -> int:
             if isinstance(item, R):
                 position += len(_accepted_run_text(item))
                 continue
+            if is_alternate_content(item):
+                # a paragraph-level element kept whole: Word's branch (CR-011 Phase F)
+                visit(mce_branch_content(mce_branch(item)))
+                continue
             name = element_name(item)
             if name in REVISION_NAMES and (name or "").rpartition("}")[2] in ("del", "moveFrom"):
                 continue
@@ -466,6 +471,10 @@ def _accepted_run_text(run: R) -> str:
     """One run's contribution to the accepted view (its ``w:delText`` left out)."""
     out: list[str] = []
     for child in getattr(run, "content", None) or ():
+        if is_alternate_content(child):
+            # a run-level element kept whole: Word's branch's text (CR-011 Phase F)
+            out.append(branch_text(child, run_level=True))
+            continue
         text = item_text(element_name(child), child)
         if text is not None:
             out.append(text)

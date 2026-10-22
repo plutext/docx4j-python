@@ -131,7 +131,8 @@ class Block:
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. Like :func:`~docx4j_py.traversal.text_of`, it reads
+        Word's branch of a kept ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         from docx4j_py.traversal import text_of
 
@@ -440,7 +441,8 @@ class Body(Sequence):
         No text boxes (CR-003 decided question 8): a text box lives in a
         ``w:drawing``, which this reader does not descend into. Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text. It reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         return "\n".join(paragraph.text for paragraph in self.iter_paragraphs())
 
@@ -449,7 +451,8 @@ class Body(Sequence):
 
         In ``accepted`` and ``original``, Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text. A view here is a filter of
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15). A view here is a filter of
         the revision holders: a deleted paragraph mark is not joined, and a
         paragraph whose content and mark are deleted is an empty line.
 
@@ -1026,7 +1029,8 @@ class Body(Sequence):
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
         ``search()`` returns :class:`~docx4j_py.model.content.range.Range`\\ s
         for code; this returns
@@ -1095,7 +1099,8 @@ class Body(Sequence):
 
         Matches are found in Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
-        records its ``office_offset`` in this text.
+        records its ``office_offset`` in this text, which reads Word's branch of a run- or
+        paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
 
         A match is found on each paragraph's whole text, so it **spans runs**
         freely; only formatting one splits them (CR-003 section 8).
@@ -1138,6 +1143,10 @@ class Body(Sequence):
         """
         with recording(self, "replace_text") as change:
             change.text(before=find)
+            # every match checked before the first is replaced (CR-011 Phase F)
+            for paragraph in self.paragraphs:
+                for match in paragraph.search(find, **options):
+                    match.refuse_branch_text("replace_text")
             count = 0
             for paragraph in self.paragraphs:
                 count += paragraph.replace_text(find, replace, **options)
