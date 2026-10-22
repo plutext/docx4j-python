@@ -25,7 +25,12 @@ readers kept on Office JS's text (Q4); a read leaves every part's bytes as they 
 pins closed. 1,291 pass, 0 fail, 293 pending (docx4j's 19, the inspector's 214, Q7's 60), goldens
 12 of 12: section 3.6's gate is met and **the four phases are done**. Open: Q7's content (after
 CR-001 D), the HTML reader as its own phase (Q12, Q13), the `dry_run` comment defect (12.3), and
-the fork release.
+the fork release, which came out as docx4j-xsdata 26.2.2 on 2026-10-22. **Q4 revised 2026-10-22**
+(the user: "revise CR-011 Q4 so that Paragraph.text, get_text and search read the branch Word
+shows"): Office JS's own text reads a kept `mc:AlternateContent`'s selected branch (core-ts check
+49), so the Office JS readers, kept on it, read Word's branch too; section 15 proposes the change as
+Phase F, as core-ts CR-012 phase 4 made it there and as docx4j's readers of text select
+(`McSelection`'s TEXT purpose). Its implementation waits on the user's go.
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
@@ -471,6 +476,7 @@ No phase changes saved output, so none needs a Word check; the save fix of Q11 d
 | B | the model in plain text: resolve, the views, scope, serialise; REQ-510 | 4 days |
 | C | the other content: fields, bindings, charts, SmartArt, embedded, `w:altChunk`, images, metadata, math, tables | 6 days |
 | D | every reader on the model; Markdown on the blocks; the gate; the documentation | 3 days |
+| F | the Office JS readers read Word's branch of a kept `mc:AlternateContent` (Q4 revised, section 15) | 2 days |
 
 docx4j built it in four phases with its own engine underneath; this port has its code, its suite
 and its goldens from the start. C is most of the work: docx4j's `FormattingSwitchHelper` alone is
@@ -519,6 +525,13 @@ and its goldens from the start. C is most of the work: docx4j's `FormattingSwitc
      which the user accepted on 2026-10-17. So it is the user's call. D2 is decided for core-ts
      only (its section 6.1): until Q4 is decided alike here, the two ports' paragraph text differs
      for the same document. Taking the first answer here would leave it differing for good.
+   - **Revised 2026-10-22 (the user: "revise CR-011 Q4 so that Paragraph.text, get_text and
+     search read the branch Word shows").** Office JS's text, measured, reads a kept
+     `mc:AlternateContent`'s selected branch: core-ts check 49 (Word 365, Script Lab, 2026-10-20)
+     gives `paragraph.text` the selected branch's words at run and paragraph level, never a
+     Fallback's, and `body.search` finds a word that is only in a Choice and none that is only in
+     a Fallback. So the Office JS readers keep Office JS's text, as decided, and that text now
+     includes Word's branch. A text box stays out (check 42). Section 15 is the change, Phase F.
 5. **Q5: the python-docx facade**: keeps python-docx's semantics as a declared emulation outside
    REQ-202, with a note proposed for the WD. *Recommended.* WD 0.27's exemption (Q4) covers it, so
    the note is no longer needed. Its mapping condition is met by each run's source: python-docx's
@@ -1561,3 +1574,88 @@ of that difference. No CR-010 `xfail` is left.
   defect of 12.3, and a fork release before this package releases on stage 10.
 - Lint: the new modules pass `ruff check`; the files they touch keep their earlier findings
   (`extractor.py`'s `S110`, the import order of `paragraph.py` and `range.py`).
+
+## 15. Phase F: the Office JS readers read Word's branch (Q4 revised 2026-10-22; proposed)
+
+**Why.** Q4 kept `text`, `get_text` and `search` on Office JS's text. This package's readers took
+that to be the paragraph's own runs, a kept `mc:AlternateContent`'s branches passed by, and so did
+core-ts until its CR-012 phase 4. Word 365 measures otherwise.
+- **core-ts check 49** (2026-10-20, the user, Word 365, Script Lab), over the editor's
+  `packages/editor-model/test/fixtures/mc/mc-branches.docx` (docx4j-ts-editor `4e02089`; Word's
+  save with its report is `mc-branches-check49-word365.docx`, editor `3189640`, ED-009 section 9.2
+  item 4). In all ten cases, `paragraph.text` gives the selected branch's words, never a Fallback's
+  and never nothing. That covers run level and paragraph level: case 8's paragraph-level element,
+  Choice "ying" and Fallback "yang", reads `bold ying plain ying`. A Choice requiring `x14ac`
+  counts as understood. `body.search` finds a word that is only in a Choice, and finds none that is
+  only in a Fallback.
+- **core-ts check 42** (2026-10-18): a run-level text box, a wps Choice with its VML Fallback,
+  gives `paragraph.text` nothing. `body.text`, `body.paragraphs` and `inlinePictures` leave the box
+  out.
+- **This package, on check 49's probe, at `05fdc74`:**
+  - `Paragraph.text` is `''` for cases 1 to 5 and 8, and `"I prefer "` for 6, 7, 9 and 10. Word's
+    `paragraph.text` is the branch's words.
+  - `body.search("ying")` and `search("flat")` find nothing.
+  - `text_of`, behind `Block.text`, cell text and `Table.values`, already reads Word's branch
+    (`bold ying plain ying`). So a cell's text and its paragraph's text disagree today.
+
+**The two other engines.**
+- **core-ts** reads the selected branch at run and paragraph level since its CR-012 phase 4
+  (`9307bdb`, 2026-10-21, held to check 49): in `Paragraph.text`, its offsets, `Range` and
+  `search`.
+- **docx4j** has no Office JS readers. Its readers of text select by `McSelection`'s TEXT purpose,
+  the ISO rule over the published understood list (at `2853b7280`: `TraversalUtil`'s READ mode
+  since 17.3.4, docx4j CR-046). This package's `child.mce_branch` over
+  `understood_namespaces()` is the port of that rule, already used by `text_of` and the text model
+  (REQ-302 to 306).
+- So after this phase, every reader of text here takes the same branch as docx4j's and core-ts's.
+
+**The change.**
+1. **Readers:** `Paragraph.text` (so `Body.text`, `Range.text` as a slice, and a block control's
+   text), `get_text` in `accepted` and `original`, `search` and `find`.
+   - They read a run-level or paragraph-level `mc:AlternateContent` in a paragraph as the branch
+     `mce_branch` selects. Its runs are read as the paragraph's own runs are read: the same
+     characters, the same deletions out in `accepted` and insertions out in `original`.
+   - A text box in a branch contributes nothing, as one outside a branch does (check 42).
+   - Block level is unchanged: Phase A's `Body.paragraphs` already reaches the selected branch's
+     paragraphs.
+2. **The characters stay this package's.** A break is `\n` and a tab `\t`, inside a branch as
+   outside it. Word gives U+000B for a `w:br` (check 49, case 2). core-ts's phase 4 moved to
+   Word's characters throughout, along with hidden text and note references. That is a separate
+   question, not this phase.
+3. **Edits.** An offset or a `Range` over a branch's text reads, but an edit through it is refused
+   with `address.read_only` (CR-012 Phase A's rule for an edit inside a kept branch). That covers
+   `insert_text`, `font` writes, `splice`, `delete`, `insert_content_control` and tracked replace.
+   - An edit elsewhere in the same paragraph works as before. Its offsets count the branch's text.
+   - `Paragraph.text = ...` replaces the paragraph's content, as now, and takes the element with
+     it. What Word does there is unmeasured.
+   - core-ts edits a selected branch in place (its ED-009 section 12.2). Porting that is not this
+     phase.
+4. **The map** (WD 0.27's REQ-202 condition, 12.6). Each text model `TextRun` read from a branch's
+   run gets its `office_offset` in the new text, and the offsets after it move.
+5. **Unchanged:**
+   - the text model and Markdown, which read the branch already;
+   - `text_of`, which reads it already;
+   - `TrackedChange.text` (Q6);
+   - the python-docx facade (Q5): python-docx's `Paragraph.text` is its `w:r` and `w:hyperlink`
+     children only;
+   - `outline()`, which is the text model's.
+
+**The gates.**
+- Tests over check 49's probe, taken from the editor's history at `4e02089`. Each case's
+  `Paragraph.text` is Word 365's, except case 2's U+000B, which is pinned as item 2's difference.
+  `search("ying")` and `search("flat")` hit; `search("yang")` does not. An edit through a hit is
+  refused, and an edit beside the element works.
+- `samples/` and the CR-012 corpus: Phase B's readers' audit (`scripts/mce_branches.py readers
+  --holding either`), before and after. Every answer that moves must be Word's branch's text.
+  Nothing outside a branch may move.
+- The suite, CR-011's ratchet and goldens, CR-010's Word-save comparisons, the parity goldens, and
+  `office_offset`'s agreement with `get_text()` character for character (12.6).
+- Acceptance is unchanged: none of its artefacts has a branch. A Word check only if a write path
+  changes.
+
+**Not in this phase:**
+- Office JS's characters (item 2);
+- edits in place inside a branch (item 3);
+- `body.text` over a paragraph-level element, `range.text` over such a paragraph and
+  `tableCell.value` for a cell holding one, which check 49 did not measure. They follow from
+  `Paragraph.text` here by construction, and are recorded as unmeasured.
