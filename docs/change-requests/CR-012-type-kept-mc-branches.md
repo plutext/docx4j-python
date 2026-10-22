@@ -65,7 +65,13 @@ unchanged; docx4j's agreement run 0 of 24 (12.13). **Its Word check (12.14): fil
 passed; file 3, an OLE object, failed** (the user: double-clicking "does not open the embedded
 document"): the save writes `w:object`'s `o:OLEObject` before the `v:shape` it names, an order
 older than this phase that `v0.1.0` writes too, and two order-only variants confirmed it as the
-cause (the user: both "correct").
+cause (the user: both "correct"). **The fix** (12.15, 12.16) was implemented the same day at the
+user's go ("implement Proposed fix (CR-012 §12.15, 80e7a12)"): a marked schema patch makes
+`CT_PictureBase` one lax wildcard over both namespaces, `any_and_any` as docx4j names it, and
+another makes inkml's `traceGroup.type` one repeating choice, each accepting the same documents;
+the 17 corpus main parts whose `w:object`s were reordered are canonically identical to their
+sources now and no part gained a difference; file 3 saved again is, entry for entry, the
+order-restored variant that opened. **Its Word check is not yet checked** (12.16).
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
