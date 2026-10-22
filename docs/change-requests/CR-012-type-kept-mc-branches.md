@@ -71,7 +71,8 @@ user's go ("implement Proposed fix (CR-012 §12.15, 80e7a12)"): a marked schema 
 another makes inkml's `traceGroup.type` one repeating choice, each accepting the same documents;
 the 17 corpus main parts whose `w:object`s were reordered are canonically identical to their
 sources now and no part gained a difference; file 3 saved again is, entry for entry, the
-order-restored variant that opened. **Its Word check is not yet checked** (12.16).
+order-restored variant that opened. **Its Word check passed on 2026-10-22** (the user: "Double-clicking
+the icon does open the embedded document"; 12.16): **Phase C done**.
 **Depends on:**
 - **Phase A:**
   - docx4j CR-051 phase 1 (`6687cc4b8`, `1cff2cd5c` on `VERSION_17_3_4`, pushed), whose
@@ -2841,7 +2842,7 @@ mend them (12.8).
   coordinator's check found each row once, not twice as first reported, and moved rows 19 to 25
   into the table.)
 
-### 12.14 The Word check (2026-10-22: files 1, 2 and 4 passed; file 3 failed, on `w:object`'s order)
+### 12.14 The Word check (2026-10-22: files 1, 2 and 4 passed; file 3 failed, on `w:object`'s order, and passed after the fix, 12.16)
 
 Four files are in `out/cr012-c-word-check/`, with a `README.txt` saying, for each, the source, what
 was done and what Word should show. They are also copied to
@@ -3179,7 +3180,9 @@ Phase C's after run, `out/cr012-c-survey/readers-either-after.json`):
   keys, and nothing outside generated code names them, so no reader would move.
 - **The record of the Word check** in `tests/README.md` waits for its result.
 
-**The Word check (not yet checked).**
+**The Word check (passed 2026-10-22).** The user: "confirmed that in cr012c-order-3-ole-object.docx
+Double-clicking the icon does open the embedded document". With files 1, 2 and 4 of 12.14, which
+the fix leaves the same bytes, all four of Phase C's Word-check files pass: **Phase C is done**.
 - **Staged** in `out/cr012-c-order-word-check/` and copied to
   `~/vbShares/Office 2016/__tmp/python-cr012c-order/`, with a `README.txt`:
   - `cr012c-order-3-ole-object.docx`: `OLE/inserted doc.docx` saved again, as Phase C's file 3 was,

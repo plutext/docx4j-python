@@ -456,6 +456,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 >   shape put first opens the object, and Word's source with `o:OLEObject` put first does not.
 > - **The eleven artefacts are canonically unchanged by Phase C.**
 
+> **2026-10-22, Word check of CR-012 Phase C's `w:object` order fix passed** (the user: "confirmed
+> that in cr012c-order-3-ole-object.docx Double-clicking the icon does open the embedded
+> document"). `OLE/inserted doc.docx` saved again by the fixed engine (CR-012 section 12.16), staged
+> in `out/cr012-c-order-word-check/` with its source, opens and its embedded document opens on a
+> double-click. Files 1, 2 and 4 re-save as the same bytes, so with them all four of Phase C's
+> files pass. The eleven artefacts are canonically unchanged by the fix.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
