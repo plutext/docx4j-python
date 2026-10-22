@@ -510,10 +510,17 @@ def reader_answers(path: Path) -> dict[str, Any]:
 
 
 def _office_offsets(package: Any) -> dict[str, Any]:
-    """Each text model run's ``office_offset`` in both views, and how many disagree with ``get_text()`` (CR-011 12.6)."""
-    from docx4j_py.model.content.text_model import text_of_view
+    """Each text model run's ``office_offset`` in both views, and how many disagree with ``get_text()`` (CR-011 12.6).
+
+    Since CR-013 Phase A the agreement is read under Q11's character map
+    (``office_as_model``): Office JS's characters read as the model's, a
+    break's U+000B as ``\\n``, and hidden runs left out of ``Paragraph.text``
+    by the package's resolver, as the content API leaves them out.
+    """
+    from docx4j_py.model.content.text_model import hidden_runs_of, office_as_model, segments_of
     from docx4j_py.model.text import extract
 
+    resolver = package.get_property_resolver()
     runs: list[list[Any]] = []
     disagree = 0
     for view in ("accepted", "original"):
@@ -522,7 +529,8 @@ def _office_offsets(package: Any) -> dict[str, Any]:
                 if run.office_offset is None:
                     continue
                 runs.append([view, block.address, run.text, run.office_offset])
-                office = text_of_view(run.source.paragraph, view=view)
+                p = run.source.paragraph
+                office = office_as_model(segments_of(p, view=view, hidden=hidden_runs_of(resolver, p)))
                 if office[run.office_offset : run.office_offset + len(run.text)] != run.text:
                     disagree += 1
     return {"runs": runs, "disagree": disagree}

@@ -24,7 +24,8 @@ from docx4j_py import load
 pkg = load("in.docx")                                # a WordprocessingMLPackage
 body = pkg.body                                      # Word.Body over word/document.xml
 
-print(body.text)                                     # a paragraph per line
+text = body.text                                     # Office JS's body.text: a mark \r per paragraph
+print(text.replace("\r", "\n"))                      # split paragraphs with split("\r"), not splitlines()
 for paragraph in body.paragraphs:                    # tables and content controls descended into
     print(paragraph.style, paragraph.text)
 
@@ -37,6 +38,11 @@ body.paragraphs[-1].insert_paragraph("The end.")     # After is a Paragraph's
 
 pkg.save("out.docx")                                 # only the parts you touched are re-marshalled
 ```
+
+The text is Office JS's, in Word's own characters: `body.text` ends each paragraph with `\r` and
+writes a table's rows as Word does (cells a `\t` apart, each row ended `\r\n`); in a paragraph a
+line break is U+000B and a page break U+000C, and hidden text is left out. Every text writer takes
+those characters back as the elements they read from.
 
 A part that is never touched is written back byte for byte; reading a part's `contents` --- which
 `pkg.body` does for `word/document.xml` --- marks it for re-marshalling, and a re-marshalled part

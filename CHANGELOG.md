@@ -20,7 +20,9 @@ text, with Markdown, charts, equations and field switches as docx4j reads them
 (`docx4j_py.model.text`); and [CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md),
 `mc:AlternateContent` kept at every level with its branches typed, VML among them; and the
 Office JS readers (`Paragraph.text`, `get_text`, `search`) read the branch Word shows, as Office
-JS does (CR-011 Phase F). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
+JS does (CR-011 Phase F), in Office JS's own characters, which every text writer takes back
+([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md) Phase A; its ranges across
+paragraphs, Phases B and C, are to come before the release). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
 of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
 save. It needs docx4j-xsdata 26.2.2.
 
@@ -188,7 +190,8 @@ save. It needs docx4j-xsdata 26.2.2.
   `Body.text`, `Range.text`, a block control's text, `get_text` in `accepted` and `original`,
   `search`, `find` and `replace_text`'s matches now agree with a cell's text and with the text
   model; a branch's insertions and deletions are filtered as the paragraph's own, and a text box
-  in a branch still gives nothing (check 42). A break stays `\n` where Office JS gives U+000B.
+  in a branch still gives nothing (check 42). A break reads U+000B, as Office JS gives it, since
+  CR-013 Phase A (below); until then it read `\n`.
   **An edit through that text is refused** with `address.read_only` before anything changes (an
   edit there would change Word's branch alone): an insertion strictly inside it, and any span
   holding it --- `insert_text`, `delete`, `font` and `style` writes through a `Range`, a
@@ -203,6 +206,65 @@ save. It needs docx4j-xsdata 26.2.2.
   writes them; their text is unchanged. The python-docx facade's readers are unchanged, and its
   `add_comment` on a run whose only text is a branch's is refused, where 0.1.0 anchored the
   comment at the paragraph's start.
+- **The Office JS readers read Office JS's characters, and every text writer takes them back**
+  ([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md) Phase A, section
+  [10](docs/change-requests/CR-013-ranges-across-paragraphs.md#10-phase-a-implementation-notes-2026-10-23);
+  decided 2026-10-23, Q1 and Q2). The text is Word's own character stream, as docx4j-core-ts
+  measured it in Word 365 (its checks 48, 48b and 51) and as `tests/office_js/` holds it to Word's
+  answers paragraph for paragraph:
+  - **`Body.text`** (and `get_text`, `text_budget`) ends each paragraph with `\r`, the last one's
+    left out, and writes a table as Word does: a row's cells a `\t` apart, a cell's last mark not
+    written, each row ended `\r\n`. 0.1.0 wrote a paragraph per line. `body.text.split("\n")` now
+    gives one string; split paragraphs with `split("\r")`, not `splitlines()`, which also splits
+    at U+000B, U+000C and U+001E.
+  - **A cell's `value`** (so `TableRow.values` and `Table.values`), **a block control's `text`** and
+    **a comment's `content`** are their content's `Body.text`, paragraphs `\r` apart; a run-level
+    control's `text` is its span of `Paragraph.text`. `Table.text` and `Block.text` stay docx4j's,
+    a line per paragraph, so `Table.text` and `Table.values` part company, as in core-ts.
+  - **In a paragraph** (`Paragraph.text`, `get_text`, `Range.text`, `search`, `find`, `SearchHit`'s
+    context, `paragraph_at(contains=)`, `to_dict`, a `ChangeReport`'s texts): a line break is
+    U+000B, a page break U+000C, a column break U+000E, a `w:cr` U+000D, a `w:ptab` `0`, the
+    non-breaking and optional hyphens U+001E and U+001F, any `w:sym` `(`, a footnote or endnote
+    reference and a note's own mark U+0002, and an equation Word's text of it (Unicode's
+    mathematical alphabets, U+2212 for a minus, each structure `,`-args-`.`). **Hidden text is left
+    out**, a run's own `w:vanish` or its styles', so a hidden word is not found and
+    `paragraph.text = paragraph.text` drops the hidden runs. `paragraph.text == "a\nb"` is false
+    where it was true for a break.
+  - **A paragraph's `'Whole'` range** (`get_range()`'s default) ends with its mark, `\r`, or `\t`
+    for a cell's last paragraph; `'Content'` does not.
+  - **`search`** takes Word's Find codes (`^f ^e ^l ^m ^t ^~ ^- ^g ^^`, so a literal `^` is `^^`),
+    matches a picture's place with `^g` and not across it otherwise, passes over an optional hyphen
+    unless the query names it, and lets a plain `-` match a non-breaking hyphen.
+  - **Stored offsets move** in a paragraph holding a note reference, a `w:ptab`, hidden text or an
+    equation; addresses do not. The text model's `office_offset` agrees with `Paragraph.text` under
+    the character map (Q11), its segmentation unchanged.
+  - **The writers** (`Paragraph.text = ...`, `insert_text`, `replace_text`, `insert_paragraph`,
+    `Body.insert_text`, `TableCell.value = ...`, `values`, `insert_table` and `add_rows` values,
+    `insert_comment`, `Comment.content = ...`, `reply`, a content control's `insert_text` and
+    `insert_paragraph`) write U+000B and `\n` as a `w:br`, U+000C and U+000E as a page and a
+    column break, U+000D as a `w:cr`, U+001E and U+001F as the hyphens and `\t` as a `w:tab`, so a
+    text read and written back reads as it did. 0.1.0's `Paragraph.text = ...`, `insert_text` and
+    `replace_text` wrote `\t` and `\n` raw into the `w:t` (the paragraph, cell, table and comment
+    writers mapped them), and the six that are not XML characters failed only at the save. **U+0002 and the other characters XML 1.0 excludes are refused**, before
+    anything changes, with `ContentError` `text.not_writable`. In a comment both `\r` and `\n`
+    are paragraph marks, where 0.1.0 split on `\n` and saved a `\r` as `&#13;`.
+  - **Equations in an edit**: an edit takes an equation whole, untracked, and never part of it
+    (`SpanError` `range.cuts_equation`); with change tracking on, a deletion that would take one ---
+    `Paragraph.delete()`, `Body.clear()`, a row's or a table's deletion, a replacement --- is
+    refused with `TrackedChangeError` `tracking.equation`, as core-ts refuses it. 0.1.0's tracked
+    deletion left the equation undeleted.
+  - **Unchanged**: `traversal.text_of`, `TrackedChange.text` (docx4j's characters, as the
+    revisions goldens hold them), the text model with its plain text and Markdown, `outline()` and
+    `describe()`; and a bound content control's write-back into its custom XML, which keeps
+    docx4j's characters (a break `\n`, paragraphs a `\n` apart). **The python-docx facade's
+    readers are python-docx's, unchanged**, and its writers follow python-docx 1.2.0 as measured:
+    a carriage return in `add_run`, `Run.text = ...`, `Paragraph.text = ...` and `cell.text = ...`
+    is a `w:br` (0.1.0 wrote it raw), a comment's `\n` starts a paragraph and its `\r` is a `w:br`,
+    any other control character is refused with `ValueError`, and `Comment.text` stays
+    python-docx's, paragraphs a `\n` apart.
+  - **`dry_run`** copies a part the real package has not read from its private reading, so a
+    trial's first look at it leaves it unread: every `Paragraph.text` now asks the styles which
+    runs they hide.
 - **A read leaves every part as it was**: `pkg.to_markdown()` and `pkg.markdown_budget()` read the
   package with nothing unmarshalled, so a save afterwards writes `word/document.xml`, and
   `word/footnotes.xml` in a document with a footnote reference, from the source bytes, where
