@@ -465,6 +465,14 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > double-click. Files 1, 2 and 4 re-save as the same bytes, so with them all four of Phase C's
 > files pass. The eleven artefacts are canonically unchanged by the fix.
 
+> **2026-10-22, Word check of CR-011 Phase F passed** (the user: "Word-check __tmp/python-cr011f/
+> passes"). Phase F reads a kept run- or paragraph-level `mc:AlternateContent`'s selected branch
+> into `Paragraph.text`, `get_text` and `search`, and puts an insertion at the element's edge beside
+> it. Two saves of check 49's probe (`fixtures/mc-branches.docx`), its six edits made untracked and
+> tracked, are staged in `out/cr011-f-word-check/` with the source and a README naming All Markup
+> for the tracked file (CR-011 section 16.7). Both open with no repair prompt and read as the
+> README says. The eleven artefacts are canonically unchanged by Phase F.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

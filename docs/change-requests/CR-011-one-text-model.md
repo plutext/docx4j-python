@@ -37,7 +37,8 @@ search counts are Word's; an edit through a branch's text is refused with `addre
 before anything changes, an insertion at the element's edge goes beside it, and tracked
 `Paragraph.text = ...` over one is refused; over 384 corpus documents 19 paragraphs in 13 moved,
 each gaining exactly Word's branch's text, and nothing else; the ratchet, CR-010's comparisons, the
-parity goldens and acceptance unchanged. **Its Word check is not yet checked** (16.7).
+parity goldens and acceptance unchanged. **Its Word check of two saves passed on 2026-10-22** (the
+user: "Word-check __tmp/python-cr011f/ passes"; 16.7): **Phase F done**.
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
@@ -1906,7 +1907,7 @@ linked beside it. The after runs were made at `e71874d`, in the checkout.
   `tests/office_js_subset.json` is CR-003's.
 - **The new tests are the whole difference** in the suites (98 and 98).
 
-### 16.7 The Word check (staged 2026-10-22)
+### 16.7 The Word check (passed 2026-10-22)
 
 **A write path's output changes.** An insertion at either end of a kept element's text now goes
 beside the element, where before it could land before it (16.4). That is new placement, so it is
@@ -1930,7 +1931,8 @@ checked. Refusals write nothing.
     file 2 the root's `mc:Ignorable` gains `w16du`;
   - every other difference is what the comment adds, and in file 2 `w:trackRevisions`.
 - **Expected:** both open without a repair prompt and show the README's text. The README names
-  All Markup for file 2. Not yet run.
+  All Markup for file 2.
+- **Passed 2026-10-22** (the user: "Word-check __tmp/python-cr011f/ passes"): **Phase F done**.
 
 ### 16.8 Departures, with why
 
