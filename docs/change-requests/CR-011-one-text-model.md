@@ -38,7 +38,10 @@ before anything changes, an insertion at the element's edge goes beside it, and 
 `Paragraph.text = ...` over one is refused; over 384 corpus documents 19 paragraphs in 13 moved,
 each gaining exactly Word's branch's text, and nothing else; the ratchet, CR-010's comparisons, the
 parity goldens and acceptance unchanged. **Its Word check of two saves passed on 2026-10-22** (the
-user: "Word-check __tmp/python-cr011f/ passes"; 16.7): **Phase F done**.
+user: "Word-check __tmp/python-cr011f/ passes"; 16.7): **Phase F done**. Its section 15 item 2
+(the characters stay this package's) was **superseded on 2026-10-23** (the user: "...we should do
+that here too"): Office JS's characters, a paragraph mark `\r` and a `w:br` U+000B, as core-ts
+measured them, are adopted as a phase of CR-013.
 **Depends on:** docx4j CR-046 phases 0 to 3, done 2026-10-18 (`c0c72ecef`, `65a527d47`,
 `f71cdd299`, `8da15bb8c`, `608e40023`, `187e5a367`, `f59828e62`, `d9acdf5e2` on `VERSION_17_3_4`;
 from `608e40023` on unpushed, so the local clone is the oracle); the specification
@@ -1626,10 +1629,16 @@ core-ts until its CR-012 phase 4. Word 365 measures otherwise.
    - A text box in a branch contributes nothing, as one outside a branch does (check 42).
    - Block level is unchanged: Phase A's `Body.paragraphs` already reaches the selected branch's
      paragraphs.
-2. **The characters stay this package's.** A break is `\n` and a tab `\t`, inside a branch as
-   outside it. Word gives U+000B for a `w:br` (check 49, case 2). core-ts's phase 4 moved to
-   Word's characters throughout, along with hidden text and note references. That is a separate
-   question, not this phase.
+2. **The characters stay this package's** (superseded 2026-10-23, below). A break is `\n` and a tab
+   `\t`, inside a branch as outside it. Word gives U+000B for a `w:br` (check 49, case 2).
+   core-ts's phase 4 moved to Word's characters throughout, along with hidden text and note
+   references. That is a separate question, not this phase.
+   - **Superseded 2026-10-23** (the user: "core-ts's ranges across paragraphs rely on Word's own
+     characters: \r at the end of each paragraph, and U+000B for a line break - we should do that
+     here too"). This package adopts Office JS's characters as core-ts measured them: a paragraph
+     mark `\r` in `Body.text` and in multi-paragraph text, a `w:br` U+000B. It is done as a phase
+     of CR-013 (ranges across paragraphs), before its range work. How much of core-ts CR-012
+     phase 4's character set goes with it is CR-013's question.
 3. **Edits.** An offset or a `Range` over a branch's text reads, but an edit through it is refused
    with `address.read_only` (CR-012 Phase A's rule for an edit inside a kept branch). That covers
    `insert_text`, `font` writes, `splice`, `delete`, `insert_content_control` and tracked replace.
