@@ -2005,11 +2005,11 @@ checked. Refusals write nothing.
   `Paragraph.text` by construction.
 - **README.md's "Markup compatibility" paragraph** still says a branch is wildcard content, which
   has been out of date since CR-012 Phase B. It is not edited here.
-- **For the coordinator: the fixture's licence.** `tests/fixtures/mc-branches.docx` comes from
+- **The fixture's licence, settled 2026-10-22.** `tests/fixtures/mc-branches.docx` comes from
   docx4j-ts-editor, whose repository is GPL-3.0-or-later. It is Jason's own probe, built from his
-  `mc-simple.docx`, and copied at his direction. This repository's sdist ships `tests/` under
-  Apache-2.0, as it will in 0.2.0. Every other fixture in `tests/README.md`'s table names docx4j
-  or docx4j-core-ts as its source, under Apache-2.0, except one file written here. Word's save
-  with the report was not copied, for the same reason.
+  `mc-simple.docx`. This repository's sdist ships `tests/` under Apache-2.0, so the coordinator
+  asked, and the user confirmed: "i confirm it may be used here under Apache-2.0". The
+  provenance row in `tests/README.md` records it. Word's save with the report was not copied; its
+  answers are written out in the test.
 - **`tests/README.md`'s Word acceptance record** gains Phase F's entry when the check of 16.7 has
   been run.
