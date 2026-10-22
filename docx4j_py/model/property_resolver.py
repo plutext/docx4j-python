@@ -102,6 +102,8 @@ class PropertyResolver:
     """
 
     __slots__ = (
+        "_any_vanish",
+        "_any_vanish_count",
         "_chain_ppr",
         "_chain_rpr",
         "_default_character_style_id",
@@ -117,6 +119,7 @@ class PropertyResolver:
         "_scanned_style_count",
         "_styles",
         "_styles_are_private",
+        "_vanish",
         "default_paragraph_style_id",
     )
 
@@ -133,6 +136,11 @@ class PropertyResolver:
         self._missing_logged: set[str] = set()
         self._numbering_indents: Any = None
         self._scanned_style_count = -1
+        #: ``is_vanished_by_styles``'s answers, by paragraph style then character style.
+        self._vanish: dict[tuple[str | None, str | None], bool] = {}
+        #: Whether any style or the document defaults state ``w:vanish``; None: not known yet.
+        self._any_vanish: bool | None = None
+        self._any_vanish_count = -1
         self.default_paragraph_style_id: str | None = None
         self._default_character_style_id: str | None = None
         self._default_table_style_id: str | None = None
@@ -231,6 +239,8 @@ class PropertyResolver:
         self._effective_ppr_by_style.clear()
         self._effective_rpr_by_style.clear()
         self._missing_logged.clear()
+        self._vanish.clear()
+        self._any_vanish = None
         self._read_source()
         self._init()
         return self
@@ -506,6 +516,59 @@ class PropertyResolver:
         self._apply_character_style_and_direct(r_pr_or_style_id, effective)
         return effective
 
+    def is_vanished_by_styles(self, paragraph_style_id: str | None, run_style_id: str | None) -> bool:
+        """Whether a run with no ``w:vanish`` of its own is hidden by its styles.
+
+        The effective ``w:vanish`` of its paragraph style (None: the default
+        paragraph style) and its character style, the table style left out, as
+        the text model's hidden rule has it (WD REQ-507;
+        ``model/text/extractor.py``'s ``_run``). What ``Paragraph.text`` leaves
+        out, as Office JS does (CR-013 Phase A; docx4j-core-ts
+        ``PropertyResolver.isVanishedByStyles`` at ``9307bdb``, check 48b case
+        20). Cached per pair; a pair naming a style the part lacks is not
+        cached, so that adding the style is seen. A document none of whose
+        styles states ``w:vanish``, nor its defaults, answers False at once.
+        """
+        if self._any_vanish is None or self._any_vanish_count != self._style_count():
+            self._any_vanish = self._states_vanish()
+            self._any_vanish_count = self._style_count()
+        if not self._any_vanish:
+            return False
+        key = (paragraph_style_id, run_style_id)
+        found = self._vanish.get(key)
+        if found is not None:
+            return found
+        from docx4j_py.wml import PPr, RPr, RStyle
+
+        r_pr = RPr(r_style=RStyle(val=run_style_id)) if run_style_id is not None else None
+        p_pr = None
+        if paragraph_style_id is not None:
+            from docx4j_py.wml import CtPprBasePStyle
+
+            p_pr = PPr(p_style=CtPprBasePStyle(val=paragraph_style_id))
+        try:
+            vanish = getattr(self.get_effective_rpr(r_pr, p_pr), "vanish", None)
+        except Exception:  # noqa: BLE001 - not resolved: not hidden
+            return False
+        hidden = vanish is not None and getattr(vanish, "val", None) is not False
+        if (paragraph_style_id is None or self._live_style(paragraph_style_id) is not None) and (
+            run_style_id is None or self._live_style(run_style_id) is not None
+        ):
+            self._vanish[key] = hidden
+        return hidden
+
+    def _style_count(self) -> int:
+        return 0 if self._styles is None else len(self._styles.style or ())
+
+    def _states_vanish(self) -> bool:
+        """Whether the document defaults or any style's run properties state ``w:vanish``."""
+        if getattr(self._document_default_rpr, "vanish", None) is not None:
+            return True
+        for style in () if self._styles is None else (self._styles.style or ()):
+            if getattr(getattr(style, "r_pr", None), "vanish", None) is not None:
+                return True
+        return False
+
     def _effective_rpr_of_style(self, style_id: str) -> Any:
         from docx4j_py.child import deep_copy
         from docx4j_py.wml import RPr
@@ -714,6 +777,8 @@ class PropertyResolver:
         self._chain_rpr.clear()
         self._effective_ppr_by_style.clear()
         self._effective_rpr_by_style.clear()
+        self._vanish.clear()
+        self._any_vanish = None
 
         ok = True
         based_on = getattr(style.based_on, "val", None)
