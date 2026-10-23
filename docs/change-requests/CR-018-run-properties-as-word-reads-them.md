@@ -1,6 +1,6 @@
 # CR-018: Run properties read as Word 365 reads them --- on/off values, the enumerations and `w:color`, one reader for each, and `effective()` for a value the file leaves out
 
-**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed:
+**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new.
 - **(a)** one ST_OnOff reader, used by every reader of an on/off value here, with the value kept as written so that Word's rule can be applied to it;
 - **(b)** the enumerations `u`, `highlight`, `vertAlign` and `em` read as unset when the value is outside the enumeration, in the resolver's merge as well as in the readers;
 - **(c)** one `w:color` reader: hex, the classic HTML colour names, and automatic;
@@ -20,7 +20,7 @@ Four phases are proposed (section 5), in the order A, C, B, D: A, on/off and the
 - **docx4j-core-ts:**
   - its counterpart, `docs/change-requests/CR-015-run-properties-as-word-reads-them.md`, which was **uncommitted** in its working tree when this was drafted. It is cited by name and by its registry entry only. Nothing here is read from a working tree.
   - `05fcf39`, where jsonix 3.4.1 reads `"on"` and `"off"` as booleans, and its fixture `test/fixtures/onoff/pandoc-code.docx`.
-- **The xsdata fork, read only, and no change to it.** The recommended design (section 4.1) uses the fork's public `converter.register_converter`. The fork session answered the question of the bool converter's trim on 2026-10-24, and its probe is `/tmp/claude-1001/-home-jharrop-git-docx4j-xsdata/43b7a91a-08cd-4dec-ae85-2406e681cfe1/scratchpad/onoff/probe_onoff.py`. Only the alternative (Q2) would need a fork change and a fork release (26.2.3) before CI could use it, since CI installs the fork from PyPI.
+- **The xsdata fork's stage 13, released as 26.2.3** (section 4.1a; revised 2026-10-24, the user: "assume we will do a fork release"). Three items, all off by default: `ParserConfig(exact_types=...)` for `bool` and `Enum` (item 29), `SkippedReport.kept` (item 30) and `XmlVar.schema_default_value` (item 31), sketched by the fork session on 2026-10-24 (its probes in `/tmp/claude-1001/-home-jharrop-git-docx4j-xsdata/43b7a91a-08cd-4dec-ae85-2406e681cfe1/scratchpad/onoff/`). Phase A needs the release on PyPI before CI, which installs the fork from PyPI, can run it; `pyproject.toml`'s floor becomes `>=26.2.3,<26.3`.
 - **This repository:**
   - CR-016 Phase B (`Font` reading every run in scope), which Phase B's readers sit under (section 4.9 item 1).
   - CR-002 Phase B's catalogue, `StyleUtil` and `PropertyResolver`, whose merge and toggle rules Phase A and B change.
@@ -309,6 +309,8 @@ Known here only from its registry entry. jsonix fails the whole part on an on/of
 
 ### 3.3 The xsdata fork session's answer (2026-10-24)
 
+*Its first answer, below, recommended a registered converter with no fork change. With the user taking a fork release as given, its later sketch is section 4.1a's, which supersedes items 3, 5 and 6 below.*
+
 1. **The trim** is upstream's `BoolConverter.deserialize` (`value.strip()`). That is right by XSD, since `xs:boolean`'s whiteSpace is collapse, but Word doesn't follow XSD here. The parser passes attribute values and element text unmodified, so element text trims too (`<ep:ScaleCrop> false</ep:ScaleCrop>` binds false and is saved `0`).
 2. **No lexical bool is possible.** `bool` can't be subclassed, an `int` subclass breaks `is False`, and stage 12's `lexical_types` refuses `bool`. The only lossless form is the source `str`, which the conversion-failure path already binds.
 3. **The fix needs no fork change.** `converter.register_converter(bool, WordBool())`, upstream's public API, where `WordBool` matches exactly `true`/`1` and `false`/`0` and raises for anything else, so the value is bound as its `str` and saved as read.
@@ -360,17 +362,51 @@ def xsd_boolean(value, default) -> bool:
 
 | option | what | fork change | `" false"` kept and read on | cost |
 |---|---|---|---|---|
-| **1. A non-trimming bool converter, registered by `docx4j_py`** (recommended) | `runtime.py` registers `ExactBoolConverter` (the fork session's `WordBool`) on import: the four literals exactly, anything else kept as its `str` with a `ConverterWarning`, as `"off"` is today | none, and no release | yes | process-wide over `docx4j_xsdata`'s `bool` fields (Q3) |
-| 2. A fork `ParserConfig` option, off by default | about ten lines and a test in the fork (`tests/fork/`), recorded in `docs/fork/CHANGES.md`; `runtime.parser_config()` turns it on | yes: **a 26.2.3 release** before CI (which installs the fork from PyPI) or a docx4j-python release can use it | yes | per parser, so narrower in reach; the same fields |
+| 1. A non-trimming bool converter, registered by `docx4j_py` (the first draft's recommendation; superseded) | `runtime.py` registers `ExactBoolConverter` (the fork session's `WordBool`) on import: the four literals exactly, anything else kept as its `str` with a `ConverterWarning`, as `"off"` is today | none, and no release | yes | process-wide over `docx4j_xsdata`'s `bool` fields (Q3) |
+| **2. A fork `ParserConfig` option, off by default** (recommended, section 4.1a) | about ten lines and a test in the fork (`tests/fork/`), recorded in `docs/fork/CHANGES.md`; `runtime.parser_config()` turns it on | yes: **a 26.2.3 release** before CI (which installs the fork from PyPI) or a docx4j-python release can use it | yes | per parser, so narrower in reach; the same fields |
 | 3. A lexical `bool`, as stage 12's floats and bytes | impossible: `bool` can't be subclassed, and an `int` subclass breaks `is False` | --- | --- | --- |
 | 4. A schema patch typing the ST_OnOff attributes `xsd:string` | 66 `wml` fields become `str`, and `BooleanDefaultTrue.val` with them | none; a regeneration | yes | the model's types and every writer change; numeric booleans lost; not recommended by the fork session either |
 | 5. The converter accepts `on`/`off` | binds them as bools | --- | no: `"off"` would be saved `0`, which breaks canonical identity | --- |
 | 6. Recover the source spelling at read time (lxml beside the tree) | --- | no | read on, but **still saved `0`** | a second parse, and the save still changes meaning |
 
-Option 1 is recommended (Q2). It needs nothing from the fork and keeps CI on PyPI's 26.2.2. Section 2.7 measured it: the probes' saves are canonically identical to their sources. With it:
+**Revised 2026-10-24: option 2 is recommended (Q2), as section 4.1a has it**, since the user takes a fork release as given. Option 1 was the first draft's, because it needed nothing from the fork; its measurement stands for both, since the two bind the same values (section 2.7: the probes' saves canonically identical to their sources). Option 1's notes, kept for the record:
 - **The registration** is at `docx4j_py.runtime`'s import, before any parser exists, and is idempotent. Every engine parse goes through `runtime.parser()`. A caller who builds an `XmlParser` on `docx4j_xsdata` without importing `runtime` gets upstream's trim, and the docstring says so. `scripts/roundtrip.py`, `scripts/parents.py` and the tests that build a `ParserConfig` of their own (`test_skipped_report.py`, `test_performance.py`, `test_child.py`) import `runtime`, so that the harness measures what the engine does.
 - **Other `xsd:boolean` fields** (DrawingML, docProps' element text, every namespace) keep a padded or re-cased value as a `str` instead of trimming it. That is lossless, and saved as read. Their one reader here, the chart's `_bool`, reads it by `xsd_boolean`, with the same answer as today. There are 0 such values in 441 documents (section 2.10).
 - **A value set in code** is a `bool` and is written numeric, as now.
+
+### 4.1a The fork's stage 13 (26.2.3), and why each item is the fork's
+
+Revised 2026-10-24, the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there." The fork session sketched each item (design only). docx4j-python's rule for the split: **the fork keeps what was written, exactly and explicitly; `docx4j_py` decides what it means.**
+
+1. **Item 29, `ParserConfig(exact_types: frozenset[type] = frozenset())`**, accepting `bool` and `Enum` (`ValueError` for anything else), beside `skipped_report` and `lexical_types`.
+   - **What it does.** For a type in the set, the converter matches its lexical forms exactly, with no XSD whitespace collapse. `bool` takes exactly `true`, `false`, `1` and `0`. An enumeration's member matches only if its value equals the text, case and spacing and all. Anything else binds the raw text by the failure path, and is saved as read.
+   - **Why the fork:** the trim happens there (`BoolConverter.deserialize`'s `strip()`, converter.py:296; `EnumConverter.deserialize` strips and re-joins tokens, converter.py:642). An explicit per-parse option replaces option 1's global registration: no mutation at import, no import-order trap for the scripts, and no global to swap and restore in tests.
+   - **How.** `ParserUtils.parse_var`, through which every XML conversion passes, passes the set to the converter. Stage 6's per-var plan isn't keyed by it: stage 12's `plan[3]` widens to a kind code (none, LEXICAL, BOOL, ENUM), so a value pays only the check it pays today.
+   - **Scope: every field of the two types, in every namespace** (311 bool vars, wml's 70 among them). The mode is lossless everywhere: an exact spelling binds as before, and anything else is kept. A narrower scope would need a schema patch and three generator pieces, so the fork session advises against it, and so does this CR.
+   - **Enumerations, measured by the fork session:** today `w:highlight " yellow"`, `"yellow "` and `"\tyellow\n"` bind `YELLOW` and are saved `"yellow"`, as do `w:u " single"` and `w:vertAlign "superscript "`. Under the option they are kept and saved as read. That is lossless whatever Word's whitespace rule turns out to be. Word's rule is unmeasured, and only decides what the reader does with a kept `" yellow"`. Until a probe settles it, this CR reads such a value as **outside the enumeration, unset** (Word is case-exact, and untrimmed for on/off), a pinned case (Q15).
+   - **Unions:** only the member type in the set becomes exact. A `bool|int` given `" 1"` still gives `int` 1, pinned in the fork's tests.
+   - **ints** normalise too (`" 12"`, `"007"`) and stay outside the set, unmeasured (section 4.12).
+2. **Item 30, `SkippedReport.kept`**: when the skipped report is on, a list of `KeptValue(qname, parent_class, path, text, type, reason)`.
+   - `reason` is `"exact"` for a value kept on purpose (it would have converted under XSD's collapse: `" false"`, `" yellow"`), or `"invalid"` for a genuine failure (`"off"` for `xs:boolean`, `"Yellow"`, `"bogus"`).
+   - **No `ConverterWarning` for `"exact"`**, since it's what the caller asked for, and it isn't a failure under `fail_on_converter_warnings`. `"invalid"` keeps its warning and its strictness.
+   - It is separate from the report's items, so `len(report)`, iteration and `roundtrip.py`'s "nothing skipped" bar are unchanged: a kept value isn't skipped content.
+   - It is per config, so it keeps this package's one-config-per-thread rule. Collecting warnings instead needs `catch_warnings`, which is process-global.
+   - **Why the fork:** only the parser can tell the two kinds apart. `docx4j_py` surfaces them as `part.kept` and `package.kept` beside `part.skipped` (CR-002 section 12.3 item 7's "value" entries), and Q16 asks whether `describe()` lists them.
+3. **Item 31, `XmlVar.schema_default_value`**: the schema default typed once when the var is built, cached on the meta. `schema_default` stays lexical, so its documented contract stands.
+   - **Rules:** an enumeration default is the member; no default is None; a lexical default that doesn't convert keeps its string (only hand-written metadata can do that, since the generator checks its defaults).
+   - **Why the fork:** it is generic, the analogue of Jsonix's typed `defaultValue`. `effective()` then reads one slot instead of keeping its own per-class cache (section 4.4).
+   - **The policy stays here:** which namespaces are audited, and `LookupError` elsewhere (Q10).
+
+**Size:** about 100 lines and 25 fork tests, all off by default, one commit per item, recorded in the fork's `docs/fork/CHANGES.md` as stage 13. The fork session builds it on the user's go. **The gate before the release:** this package's suite with `exact_types={bool, Enum}`, `roundtrip.py`, and `bench_marshal` plus `Symbols.docx` with the option on and off, interleaved, since `w:b`, `w:u` and `w:highlight` are hot.
+
+**Then, here:**
+- `runtime.parser_config()` sets `exact_types={bool, Enum}` and `skipped_report=True`, as it does the rest.
+- **A test asserts that every `ParserConfig` in the tree comes from `parser_config()`**, so that a script that builds its own can't read `" false"` as `False` (the fork session's warning).
+- The floor goes to `>=26.2.3,<26.3`, and `.venv-fork`'s editable install is refreshed.
+
+**What stays here, and why:**
+- **The reading rules**: on/off, the enumerations, colour, the facade and the style merge. They are Word's reading of WordprocessingML, not a binding. The fork serves every namespace, and only keeps what was written.
+- **What a save writes** (Q5) needs nothing from the fork. A bool can't keep its spelling (it can't be subclassed), so `true`/`false` still become `1`/`0`, the tolerated `boolean-spelling` difference.
 
 ### 4.2 (b) The enumerations: unset when outside, in the merge as well as the readers
 
@@ -387,7 +423,7 @@ Two places use it, because an invalid direct value must not override a style's v
    - The facade's `underline`, `highlight_color`, `superscript` and `subscript` read through it. They already answer `None` and not-superscript here.
    - Nothing reads `em`, and the merge is all it needs.
 
-The kept `str` is never rewritten: a save writes what was read (section 4.7, Q6).
+The kept `str` is never rewritten: a save writes what was read (section 4.7, Q6). Under section 4.1a's `exact_types`, a padded member (`" yellow"`) is kept too, and reads as outside the enumeration until Word's whitespace is measured (Q15).
 
 ### 4.3 (c) The colour reader
 
@@ -418,7 +454,7 @@ def effective(obj, name):
     else None. Never the field's own reading: the field stays None when absent."""
 ```
 
-- **Built per class**, once and lazily, from `runtime.context().build(type(obj)).get_attribute_vars()`. Each `var.schema_default` that is a `str` is typed by `converter.deserialize(sd, var.types, format=var.format)`; the 116 enumeration defaults are members already. A default that can't be typed stays the schema's `str`, and a test lists every such one.
+- **Read from the fork's `XmlVar.schema_default_value`** (section 4.1a item 3), typed once when the meta is built, through `runtime.context().build(type(obj)).get_attribute_vars()`, a name-to-var dict built once per class. (The first draft typed each default here with `converter.deserialize`; that moves into the fork.)
 - **The stated value wins**, an unconverted `str` included (`" false"`, `"red"`). The lexical readers above it decide what that means.
 - **Attribute vars only.** All 546 defaults are attributes.
 - **The hazards, answered as the schema has them:** `""` defaults are `""`, `"NaN"` is `float("nan")`, and both are listed in the tests.
@@ -442,12 +478,14 @@ Nothing reads the defaults until Phase C, so the refresh changes no answer.
 
 | piece | where | why |
 |---|---|---|
-| keeping `" false"` as written | `runtime.py` (hand-written), registering on the fork's converter | the fork's public API; no fork change, no release (Q2); the converter is the only place the trim happens |
-| `on_off`, `is_on`, `xsd_boolean`, `in_enumeration`, `colour`, the table, `effective` | `docx4j_py/model/values.py`, new, hand-written | the rules are Word's reading, not a binding: the parse keeps the value, and a reader applies the rule, which is the fork session's advice (keep the reader in `docx4j_py`, leave the fork untouched); one module that every layer can import, the builders included |
+| keeping `" false"` (and `" yellow"`) as written | the fork, `ParserConfig(exact_types={bool, Enum})` (stage 13 item 29), set by `runtime.parser_config()` | the trim happens in the converter; an explicit per-parse option, not a global registration (Q2, section 4.1a) |
+| recording what was kept | the fork, `SkippedReport.kept` (item 30); `part.kept` and `package.kept` here | only the parser can tell kept-on-purpose from invalid (Q16) |
+| a default typed | the fork, `XmlVar.schema_default_value` (item 31) | generic, and typed once with the meta; the audit policy stays here (Q10) |
+| `on_off`, `is_on`, `xsd_boolean`, `in_enumeration`, `colour`, the table, `effective` | `docx4j_py/model/values.py`, new, hand-written | the rules are Word's reading, not a binding: the parse keeps the value, and a reader applies the rule, which is the fork session's advice (keep the reader in `docx4j_py`; the fork keeps what was written, section 4.1a); one module that every layer can import, the builders included |
 | an invalid enumeration not overriding a style | `model/property_catalogue.py` (`merge_u`, `is_empty_val`) | the merge is where a stated value wins |
 | each reader of section 2.8 | where it is, switched to the module | one rule, and one test of each reader against Word's saves |
 | the defaults | `schemas/wml/wml.xsd`, by the refresh | the schema copy is where a change to the model belongs (CLAUDE.md) |
-| not in the fork | --- | `on`/`off` in the converter would change saves (section 3.3 item 4); the rules are WordprocessingML's, and the fork serves every namespace |
+| not in the fork | --- | `on`/`off` in the converter would change saves (section 3.3 item 4); the rules are Word's reading of WordprocessingML, and the fork serves every namespace: the fork keeps what was written, `docx4j_py` decides what it means |
 
 ### 4.7 What a save writes
 
@@ -500,7 +538,7 @@ So **following Word contradicts python-docx's answer only where python-docx misp
 
 ### 4.11 Errors
 
-No new error. A value Word reads is never refused: loading stays lenient, and `LoadOptions(strict=True)` raises on skipped content, not on a converter's warning, as now. The `ConverterWarning` for a kept value stays: `" false"` now warns as `"off"` does. A `kind="value"` entry in the skipped report is CR-002 section 12.3 item 7's later item, not this CR's.
+No new error. A value Word reads is never refused: loading stays lenient, and `LoadOptions(strict=True)` raises on skipped content, not on a kept value, as now. Under the fork's exact mode (section 4.1a) a value kept on purpose (`" false"`, `" yellow"`) raises no `ConverterWarning`, while a genuine failure (`"off"` for `xs:boolean`, `"Yellow"`) keeps its warning. Both are recorded in the fork's `SkippedReport.kept` and surfaced as `part.kept` (Q16), CR-002 section 12.3 item 7's "value" entries.
 
 ### 4.12 Not in this CR
 
@@ -513,13 +551,14 @@ No new error. A value Word reads is never refused: loading stays lenient, and `L
 
 | phase | what | size |
 |---|---|---|
-| A | **On/off and the refresh.** Section 4.5's refresh, `PATCHES.md` and the regeneration. Section 4.1: `ExactBoolConverter` registered in `runtime.py`; `model/values.py` with `on_off`, `is_on` and `xsd_boolean`; every reader of section 2.8 switched, the facade's six and the chart's `_bool` with them; the scripts and tests that build their own parser import `runtime`. The fixtures (Q11) and the on/off tests (section 6.1). Section 6.2's gates | 1 to 1½ days |
+| A | **On/off and the refresh.** Section 4.5's refresh, `PATCHES.md` and the regeneration. Section 4.1a: on the fork's 26.2.3, `runtime.parser_config()` sets `exact_types={bool, Enum}`, `part.kept` and `package.kept` surface the record, and a test holds every `ParserConfig` in the tree to `parser_config()`; the floor `>=26.2.3`. Section 4.1: `model/values.py` with `on_off`, `is_on` and `xsd_boolean`; every reader of section 2.8 switched, the facade's six and the chart's `_bool` with them. The fixtures (Q11) and the on/off tests (section 6.1). Section 6.2's gates | 1 to 1½ days |
 | B | **The enumerations and colour**, on CR-016 Phase B's `Font`. Sections 4.2 and 4.3: `in_enumeration` in the merge and the readers; `colour()` and `NETSCAPE_COLOURS`; `Font.underline`, `highlight_color` and `color`; the facade's `ColorFormat`. The tests over rounds 2 to 4 | 1 to 1½ days |
 | C | **`effective()`.** Section 4.4: the per-class table, the scope (Q10), its tests over the `w` namespace's defaults (and `w14`'s and `w15`'s, once checked) and the hazards; `w14:checked`, `w:fldLock` and `w:enforcement` read through it | ½ day |
 | D | **Round five, the Word check and the records.** Round five's answers folded in (Q12): the pins of Q7 and Q8 confirmed or turned. The Word check (section 6.3). The records: `tests/README.md`'s map and the fixtures' provenance, the CHANGELOG, CR-003 section 20.3's new departure (Q9), and the index row | ½ to 1 day |
 
 **Order: A, C, B, D**, each committed and verified on its own.
-- **A first.** It closes the one save that changes meaning, and the `"off"` readings, with nothing from the fork and nothing from CR-016. Q1 proposes it for 0.2.0.
+- **The fork's stage 13 before A** (section 4.1a), built by the fork session and released as 26.2.3 by the user.
+- **A first here.** It closes the one save that changes meaning, and the `"off"` readings, with nothing from CR-016. Q1 proposes it for 0.2.0, which then waits for 26.2.3 too.
 - **C next.** It needs only A's refresh.
 - **B after CR-016 Phase B**, whose `Font` it changes underneath.
 - **D last.** Its Word check covers A's and B's saves together. Round five can run as soon as it is built, and its answers are needed before B's pins are final.
@@ -539,7 +578,7 @@ No new error. A value Word reads is never refused: loading stays lenient, and `L
    - `in_enumeration` over round 2's values;
    - `colour` over every colour marker, and over the 140 names against CSS 3 less the seven.
 3. **The saves.** Each probe's main part read and saved is canonically identical to its source, `boolean-spelling` aside (section 2.7's second row). `" false"` and `"false "` are written as read.
-4. **The converter.** The four literals bind bools, and anything else is kept as its `str`. A test that swaps it restores it with `register_converter` (section 3.3 item 6). The registration happens at `runtime`'s import, in a fresh interpreter (`subprocess`), and upstream `xsdata`, where installed, is untouched.
+4. **The parse** (on the fork's `exact_types`): the four literals bind bools, an exact member binds it, and anything else is kept as its `str` and recorded in `part.kept` with its reason; every `ParserConfig` in the tree comes from `runtime.parser_config()` (a test that walks the tree). The fork's own 25 tests cover the option itself.
 5. **The facade against python-docx 1.2.0** where it is installed (the `parity` extra), as the facade's parity test is: python-docx's answer wherever it answers and agrees with Word, Word's where it raises, and the three colour misparses listed.
 6. **`effective()`** (Phase C): each `w` default against docx4j's XSD at `46c727bf8`; the hazards; the `LookupError` outside the scope; `w14:checked` bare.
 
@@ -583,7 +622,7 @@ CLAUDE.md asks for a Word check after any change to marshalling. Phase A changes
 
 ## 7. Risks
 
-1. **The converter is process-wide** (Q3). Another user of `docx4j_xsdata` in the same process gets padded and re-cased booleans kept as strings. It is lossless and saved as read. Upstream `xsdata` is unaffected, and the fork exists for this package. The docstring and the CHANGELOG say so. If that is unacceptable, Q2's fork option narrows it to this package's parsers, at the price of a fork release.
+1. **A parser built without `parser_config()`** reads `" false"` as `False` and `" yellow"` as `YELLOW`, as today. The test of section 6.1 item 4 holds every `ParserConfig` in this tree to `parser_config()`; a caller's own parser is the caller's choice. (The first draft's risk, a process-wide registration, is gone with option 1.)
 2. **A caller's own reader meets a kept `str`.** Code outside this package that tests `b.val is not False` now meets `" false"` as a `str`. That reads on, which is Word's answer, as `"off"` read on before. `on_off` is public (Q13), and the CHANGELOG names it.
 3. **Readers move for other producers' files.** POI's `"off"` (docx4j #585) now reads off everywhere, and pandoc's `w:wordWrap w:val="off"` too, though nothing reads `w:wordWrap`. That is the point, but a caller comparing output across versions sees it. The census found no move in the corpus.
 4. **Unmeasured extensions.** These are taken by extension and are round five's:
@@ -598,9 +637,9 @@ CLAUDE.md asks for a Word check after any change to marshalling. Phase A changes
 
 ## 8. Questions (open; each with a recommendation)
 
-1. **Q1. Does 0.2.0 wait for CR-018?** *Recommended: yes for Phase A only (the refresh and the on/off reader), as this repository's session recommended to the user on 2026-10-24; B to D in the next release.* Phase A closes a save that changes meaning (`" false"` written `"0"`, finding 1), which 0.1.0 has too. It needs no fork release and nothing from CR-016, and it is a day or a day and a half. The refresh changes metadata only.
-2. **Q2. How does `" false"` survive the parse?** *Recommended: option 1, a non-trimming bool converter registered by `docx4j_py.runtime` through the fork's public `register_converter`* (section 4.1). It needs no fork change and no release, and it is measured: the probes' saves are canonically identical to their sources. The alternative is a fork `ParserConfig` option, off by default: about ten lines and a test, narrower in reach, but a 26.2.3 release before CI can use it.
-3. **Q3. Is a process-wide registration acceptable in a library?** *Recommended: yes, at `runtime`'s import, documented.* It reaches every `docx4j_xsdata` `bool` field in the process and nothing of upstream `xsdata`'s. The fork has no per-parser converter and exists for this package. Upstream documents global registration as the way to change a built-in type. Revisit as Q2's fork option only if a second consumer of the fork appears.
+1. **Q1. Does 0.2.0 wait for CR-018?** *Recommended: yes for Phase A only (the refresh and the on/off reader), as this repository's session recommended to the user on 2026-10-24; B to D in the next release.* Phase A closes a save that changes meaning (`" false"` written `"0"`, finding 1), which 0.1.0 has too. It needs the fork's 26.2.3 (section 4.1a) and nothing from CR-016, and it is a day or a day and a half here. The refresh changes metadata only.
+2. **Q2. How does `" false"` survive the parse?** *Recommended (revised 2026-10-24, the user assuming a fork release): the fork's `ParserConfig(exact_types={bool, Enum})`, stage 13 item 29, set by `runtime.parser_config()`* (section 4.1a). It is explicit per parse, with no global mutation, no import-order trap and no test swapping, and it covers the enumerations' padding too. The first draft's option 1, a converter registered through `register_converter`, needs no release, binds the same values, and stays the fallback if 26.2.3 is delayed.
+3. **Q3. The fork's stage 13: all three items in 26.2.3?** *Recommended: yes*, items 29 (`exact_types`), 30 (`SkippedReport.kept`) and 31 (`XmlVar.schema_default_value`), about 100 lines and 25 tests, all off by default, built by the fork session on the user's go and gated by this package's suite with the option on, `roundtrip.py` and the interleaved benchmark (section 4.1a). Item 31 alone could wait, since only Phase C uses it, but it is small and independent. (The first draft's Q3, whether a process-wide registration is acceptable, falls away with option 1.)
 4. **Q4. The readers' scope: run properties, or every on/off reader?** *Recommended: every reader of section 2.8, through the one function.* The rule is ST_OnOff's, the cost is the same, and a narrower fix would leave `w:trackRevisions w:val="off"` and `w:tblHeader` reading as they do. The readers outside `w:rPr` are by extension until round five.
 5. **Q5. What does a save write?** This is the portfolio's D-question. *Recommended: the source's spelling* (section 4.7). It is this package's round-trip rule, canonical identity with `boolean-spelling` the one tolerated difference; it never changes meaning; and it needs no change to `canon.py`. Word's form can be a later explicit operation.
 6. **Q6. Invalid or missing `highlight`, `vertAlign`, `em` on save.** *Recommended: keep them as read, departing from docx4j's accepted D3.* Nothing is dropped silently here, the meaning is the same either way, and a save keeps the prompt the source already had. core-ts's D2 keeps them until round five. Revisit with round five if Word turns out to read any of them otherwise.
@@ -619,16 +658,20 @@ CLAUDE.md asks for a Word check after any change to marshalling. Phase A changes
 
     Phase B's pins wait for it, and nothing else does.
 13. **Q13. Are the readers public?** *Recommended: yes, `docx4j_py.model.values` (`on_off`, `is_on`, `in_enumeration`, `colour`, `effective`), documented in the CHANGELOG.* A caller reading the typed tree meets the kept strings (risk 2) and needs Word's rule as much as this package does.
+14. **Q14. Q11's source, after docx4j CR-060.** *Recommended: copy the 40 files from docx4j's `runprops/word365/` at `868a1797b`* (section 3.1a), byte for byte with their SHA-1s, as `samples/` holds docx4j's fixtures under Apache-2.0. The share then serves only round five's files and any later ones, which still need Q11's confirmation.
+15. **Q15. A padded enumeration value (`" yellow"`), kept by the fork's exact mode.** *Recommended: read it as outside the enumeration, unset, pinned until a probe measures Word's whitespace for `u`, `highlight`, `vertAlign` and `em`.* Word is case-exact there and untrimmed for on/off, so untrimmed is the likelier rule; the save keeps it as read either way, so the reading is the only thing at stake. A sixth probe round can take it with the on/off words over a style (section 3.1b).
+16. **Q16. Surfacing the fork's `SkippedReport.kept`.** *Recommended: `part.kept` and `package.kept` beside `part.skipped`, each a list of the fork's `KeptValue`, and `describe()` counting them by reason (`"exact"`, `"invalid"`), not listing them.* An agent learns that a document holds values Word reads by its own rule (POI's `"off"`, padded booleans) without a warning per value; `LoadOptions(strict=True)` still raises on skipped content only. That is CR-002 section 12.3 item 7's "value" entries, here at last.
 
 ## 9. Effort
 
 | phase | days |
 |---|---|
+| the fork's stage 13 (section 4.1a), in the fork session, and the 26.2.3 release (the user's) | ½ to 1 |
 | A, on/off and the refresh | 1 to 1½ |
 | B, the enumerations and colour | 1 to 1½ |
 | C, `effective()` | ½ |
 | D, round five, the Word check and the records | ½ to 1 |
-| **total** | **3 to 4½** |
+| **total** | **3½ to 5½**, the fork's included |
 
 docx4j's own estimate was a day and a half for the same ground (CR-060 section 5). The larger part here is the readers: section 2.8's twenty rows, in some twenty modules, where docx4j's adapter reaches them all by type, and each is tested against Word's saves. Phase A's audit and the corpus round trip are the other part. As in CR-016, these are the CRs' usual unit, not a forecast of the calendar.
 
