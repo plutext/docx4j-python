@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from docx4j_py.child import is_any_element
+from docx4j_py.child import deep_copy, is_alternate_content, is_any_element
 from docx4j_py.model.revisions import props, tables, trees
 from docx4j_py.model.revisions.change import (
     CellT,
@@ -510,9 +510,11 @@ def join_with_next(
     for markup Word did not write as well (checks 18, 22, 33; C10, C10b).
     Range markers between the two (a bookmark's end, a comment's) go into
     the joined paragraph where they stood. With no paragraph next in the
-    same list --- a story's, a cell's, a control's last, or a table next ---
-    the mark is only dropped: a join never crosses a container's boundary
-    (U1).
+    same list --- a story's, a cell's, a control's last, or a table or a
+    control next --- a join never crosses a container's boundary (U1) but
+    for one into a table's first cell, and Word 365's Accept All does one of
+    four things instead (:func:`_no_paragraph_next`; docx4j CR-043 section
+    17, CR-010 sections 13 and 13.3a). Otherwise the mark is only dropped.
 
     A module function since CR-013 Phase C, so that a ``Range``'s untracked
     deletion across paragraphs joins as Accept All joins, as docx4j-core-ts's
@@ -520,8 +522,8 @@ def join_with_next(
     resolution's own lookup of the list an item is in now; `story` is what
     `removals` records the first paragraph's properties against (a section
     break's header and footer references, C06). Returns the paragraph that
-    holds the join (the next one), or `para`'s own ``w:p`` where nothing was
-    joined.
+    holds the join (the next one, or a table's first cell's), `para`'s own
+    ``w:p`` where nothing was joined, or None where the paragraph went.
     """
     container = current_owner(para.container, para.p) if current_owner is not None else para.container
     index = trees.index_of(container, para.p)
@@ -532,12 +534,7 @@ def join_with_next(
         j += 1
     following = container[j] if j < len(container) else None
     if not isinstance(following, trees.cls("P")):
-        r_pr = para.p.p_pr.r_pr if para.p.p_pr is not None else None
-        if r_pr is not None:
-            r_pr.ins = None
-            r_pr.del_value = None
-        props.prune_paragraph(para.p)
-        return para.p
+        return _no_paragraph_next(para.p, container, index, j, following, removals, story)
     # the properties the first paragraph loses: a section break's header and
     # footer references among them (C06), whose parts may now be unreferenced (D7)
     if para.p.p_pr is not None:
@@ -551,6 +548,134 @@ def join_with_next(
     trees.splice(following.content, 0, 0, moved)
     del container[index]
     return following
+
+
+def _no_paragraph_next(
+    p: Any, container: list, index: int, j: int, following: Any, removals: Removals, story: Any
+) -> Any:
+    """A mark taken away with no paragraph next in its list: Word 365's Accept All, else the mark dropped.
+
+    docx4j ``Resolver.joinWithNext``'s branch with no paragraph next, as its
+    CR-043 section 17 has it (``29dbf5964``, revised by ``e55a83b8e``; CR-010
+    sections 13 and 13.3a), in docx4j's order, from Word 365's Accept All of
+    docx4j-core-ts's check 54 and of docx4j's text-left probe:
+
+    1. emptied --- nothing but range markers left --- with a table or a block
+       content control (or custom XML element) next: the paragraph goes, and
+       what is next follows what came before (check 54 case 9, the probe's
+       case 3);
+    2. text left, with a table next: the content joins the table's first
+       cell's first paragraph, at its front, which keeps its own properties,
+       the range markers between going with it, and the paragraph goes (the
+       probe's case 1);
+    3. text left, with a block control next: the paragraph takes a copy of
+       the properties of the control's first paragraph, as a join would have
+       given it, and nothing joins (check 54 case 19, the probe's case 5);
+    4. the last in a control's content, text left or not: a bare mark, its
+       properties gone (check 54 case 13, the probe's case 2).
+
+    Whichever resolution took the mark away, a deletion accepted or an
+    insertion rejected, as docx4j's code has it; Word's Reject All of check 54
+    and of the probe left nothing these rules reach. A kept block-level
+    ``mc:AlternateContent`` next is read as the branch Word takes reads
+    (:func:`_as_word_reads`; CR-012 Phase A), so the first block in that
+    branch decides rules 1 and 3; no content joins into a kept branch, so rule
+    2 does not reach one. docx4j reads no further than the element.
+
+    Otherwise, as before (docx4j's U1), the mark is only dropped: a story's or
+    a cell's last paragraph (the probe's case 4, where Word collapsed a
+    one-cell table, is not followed, as docx4j does not follow it), and a
+    paragraph before a table or control that holds no paragraph first.
+    Returns the paragraph left holding the place: `p`, the cell's paragraph
+    `p` joined, or None where `p` went.
+    """
+    emptied = not any(not _is_marker(item) for item in p.content)
+    block = _as_word_reads(following)
+    tbl_class = trees.cls("Tbl")
+    if emptied and (isinstance(block, tbl_class) or (block is not None and trees.is_holder(block))):
+        # check 54 case 9, the probe's case 3: gone, the table or control follows what came before
+        if p.p_pr is not None:
+            removals.discard(story, p.p_pr)
+        del container[index]
+        return None
+    if isinstance(following, tbl_class):
+        first = _first_cell_paragraph(following)
+        if first is not None:
+            # the probe's case 1: its content joins the first cell's first paragraph, which keeps its properties
+            if p.p_pr is not None:
+                removals.discard(story, p.p_pr)
+            moved = list(p.content)
+            p.content.clear()
+            markers = [container[k] for k in range(index + 1, j)]
+            for _ in markers:
+                del container[index + 1]
+            moved.extend(markers)
+            trees.splice(first.content, 0, 0, moved)
+            del container[index]
+            return first
+    if block is not None and trees.is_holder(block):
+        first = _first_paragraph(trees.children(block))
+        if first is not None:
+            # check 54 case 19, the probe's case 5: the properties a join would have given it, the control's first paragraph's
+            if p.p_pr is not None:
+                removals.discard(story, p.p_pr)
+            p.p_pr = deep_copy(first.p_pr, p) if first.p_pr is not None else None
+            return p
+    if following is None and isinstance(getattr(p, "parent", None), trees.cls("SdtContentBlock")):
+        # check 54 case 13, the probe's case 2: a control's last paragraph keeps a bare mark, its text with it
+        if p.p_pr is not None:
+            removals.discard(story, p.p_pr)
+        p.p_pr = None
+        return p
+    r_pr = p.p_pr.r_pr if p.p_pr is not None else None
+    if r_pr is not None:
+        r_pr.ins = None
+        r_pr.del_value = None
+    props.prune_paragraph(p)
+    return p
+
+
+def _as_word_reads(item: Any) -> Any:
+    """A block as Word reads it: a kept block-level ``mc:AlternateContent`` as the first block of the branch it takes.
+
+    Past range markers; None for an empty branch, and at the end of a list
+    (CR-012 Phase A: the readers read Word's branch at block level). Any
+    other block is itself.
+    """
+    if item is None or not is_alternate_content(item):
+        return item
+    for entry in trees.branch_items(item) or ():
+        if not _is_marker(entry):
+            return entry
+    return None
+
+
+def _first_cell_paragraph(tbl: Any) -> Any:
+    """The first paragraph of a table's first cell, where a paragraph joining the table lands; None where it has none.
+
+    docx4j ``Resolver.firstCellParagraph`` (``e55a83b8e``): the first row's
+    first cell, and in it the first paragraph before any table.
+    """
+    tr_class, tc_class = trees.cls("Tr"), trees.cls("Tc")
+    for row in tbl.content:
+        if not isinstance(row, tr_class):
+            continue
+        for cell in row.content:
+            if isinstance(cell, tc_class):
+                return _first_paragraph(cell.content)
+        return None
+    return None
+
+
+def _first_paragraph(items: list | None) -> Any:
+    """The first paragraph of a list, before any table; None where a table comes first (docx4j ``Resolver.firstParagraph``)."""
+    p_class, tbl_class = trees.cls("P"), trees.cls("Tbl")
+    for item in items or ():
+        if isinstance(item, p_class):
+            return item
+        if isinstance(item, tbl_class):
+            return None
+    return None
 
 
 def _is_marker(item: Any) -> bool:

@@ -583,8 +583,8 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
         # body.text in Simple Markup joins paragraphs at a deleted mark, drops a deleted paragraph and
         # reads a control showing its placeholder as empty (CR-011's readers, core-ts's CR-012)
         33: sorted(["text.length", "Whole.length", "Content.length"]),
-        # a control showing its placeholder reads as empty in Word, and showingPlaceholderText is not
-        # implemented (core-ts's too)
+        # a control showing its placeholder reads as empty in Word, and Word's showingPlaceholderText came
+        # back undefined, where this package reads True (CR-003 section 24)
         34: sorted(placeholder),
         35: sorted(placeholder),
     }
@@ -1315,20 +1315,17 @@ def test_cr_014_phase_3_accept_all_after_check_54s_writes_through_the_port_is_wo
     marked = [n for n in words if mine.get(n) != words.get(n)]
     # every case's result is Word's, untracked or accepted, the tracked deletions of a whole control among them (15,
     # 17), but for: a style's resets (32, 33) and a hyperlink across paragraphs (34), not followed; the reference
-    # run's size (29); Word's 'Other' for an emptied list item in a cell (10, 11, its report alone); and three rules
-    # of Word's Accept All that this package's, docx4j's, doesn't have (9, 13, 19; CR-013 section 13.3)
-    assert reported == [9, 10, 11, 13, 19, 32, 33, 34]
-    assert marked == [9, 13, 19, 29, 32, 33, 34]
-    # Word's Accept All: an emptied paragraph whose deleted mark had a table after it goes (9); a control's emptied
-    # last paragraph keeps a bare mark (13); a paragraph whose deleted mark had a control after it takes the
-    # control's first paragraph's properties, its content not joined (19). This package keeps the first, keeps the
-    # second's properties, and the third's own, as docx4j's resolution does
-    assert words[9][0] == "TR "
-    assert mine[9][0] == "P[center|] "
-    assert words[13][3] == "  P[|] "
-    assert mine[13][3] == "  P[ListParagraph/num|] "
-    assert words[19][0] == 'P[center|] "HEAD19A "'
-    assert mine[19][0] == 'P[Heading1|] "HEAD19A "'
+    # run's size (29); and Word's 'Other' for an emptied list item in a cell (10, 11, its report alone)
+    assert reported == [10, 11, 32, 33, 34]
+    assert marked == [29, 32, 33, 34]
+    # Word's three Accept All rules, the resolution's since CR-010 section 13 (docx4j CR-043 section 17,
+    # 29dbf5964 and e55a83b8e): an emptied paragraph whose deleted mark had a table after it goes (9); a control's emptied last
+    # paragraph keeps a bare mark (13); a paragraph whose deleted mark had a control after it takes the control's
+    # first paragraph's properties, its content not joined (19). Until then this package kept the first, kept the
+    # second's properties, and the third's own (CR-013 section 13.3)
+    assert words[9][0] == mine[9][0] == "TR "
+    assert words[13][3] == mine[13][3] == "  P[|] "
+    assert words[19][0] == mine[19][0] == 'P[center|] "HEAD19A "'
 
 
 def test_cr_014_phase_3_the_markup_check_54s_writes_leave_through_the_port_is_word_365s_in_its_save_after_the_run_region_for_region():

@@ -532,7 +532,12 @@ DELETED_MARK = '<w:pPr><w:rPr><w:del w:id="{0}" w:author="A"/></w:rPr></w:pPr>'
 
 
 def test_u1_no_join_across_a_container_boundary():
-    """A deleted mark with no paragraph after it in its list is dropped, with no join; nor across a table."""
+    """U1, revised by docx4j's text-left probe (``e55a83b8e``, CR-010 section 13.3a): docx4j ``noJoinAcrossAContainerBoundary``.
+
+    A deleted mark with a table next joins its paragraph's content into the
+    table's first cell's first paragraph; a cell's last mark and a story's
+    last mark are dropped, with no join.
+    """
     package = with_body(
         "<w:p>" + DELETED_MARK.format(1) + run("before a table") + "</w:p>"
         '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid><w:tr><w:tc><w:p>'
@@ -542,10 +547,14 @@ def test_u1_no_join_across_a_container_boundary():
         "<w:p>" + DELETED_MARK.format(3) + run("the story's last") + "</w:p><w:sectPr/>"
     )
     assert revisions.accept_all(package) == 3
-    assert len(paragraphs(package)) == 2
+    assert len(paragraphs(package)) == 1, '"before a table" went into the cell'
     assert revisions.tracked_changes(package) == []
     assert "w:del " not in body_xml(package)
-    assert package.main_document_part.contents.body.sect_pr is not None
+    body = package.main_document_part.contents.body
+    assert body.sect_pr is not None
+    cell = body.content[0].content[0].content[0]
+    assert len(cell.content) == 1
+    assert text_of(cell.content[0]) == "before a tablea cell's last"
 
 
 def test_a_join_keeps_the_next_paragraph():
@@ -565,6 +574,332 @@ def test_a_join_keeps_the_next_paragraph():
     assert text_of(ps[0]) == "first second"
     assert len(package.main_document_part.contents.body.content) == 1
     assert any(type(item).__name__ == "CTMarkupRange" for item in ps[0].content), "the marker went into the paragraph"
+
+
+# ---------------------------------------------------------------------------
+# check 54's three Accept All rules: a mark taken away with no paragraph next
+# (CR-010 section 13; docx4j 29dbf5964, its CR-043 section 17)
+# ---------------------------------------------------------------------------
+
+
+def marked(revision: str, identifier: int, properties: str = "") -> str:
+    """A ``w:pPr`` holding `properties`, its mark inserted (``ins``) or deleted (``del``)."""
+    return f'<w:pPr>{properties}<w:rPr><w:{revision} w:id="{identifier}" w:author="A"/></w:rPr></w:pPr>'
+
+
+CENTRED = '<w:jc w:val="center"/>'
+HEADING = '<w:pStyle w:val="Heading1"/>'
+LISTED = '<w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>'
+A_TABLE = '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid><w:tr><w:tc><w:p>' + run("cell") + "</w:p></w:tc></w:tr></w:tbl>"
+AFTER = "<w:p>" + run("after") + "</w:p>"
+
+
+def control(*blocks: str) -> str:
+    return '<w:sdt><w:sdtPr><w:id w:val="7"/></w:sdtPr><w:sdtContent>' + "".join(blocks) + "</w:sdtContent></w:sdt>"
+
+
+def alternate(*blocks: str) -> str:
+    """A kept block-level ``mc:AlternateContent``, `blocks` in the Choice Word takes and a paragraph in its Fallback."""
+    return (
+        '<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">'
+        '<mc:Choice Requires="w14">' + "".join(blocks) + "</mc:Choice>"
+        "<mc:Fallback><w:p>" + run("fallback") + "</w:p></mc:Fallback></mc:AlternateContent>"
+    )
+
+
+def whole(accept: bool, properties: str, mark_id: int = 1) -> str:
+    """A paragraph its resolution takes away whole: its text and mark deleted (to accept) or inserted (to reject)."""
+    if accept:
+        return "<w:p>" + marked("del", mark_id, properties) + dele(2, "A", "gone") + "</w:p>"
+    return "<w:p>" + marked("ins", mark_id, properties) + ins(2, "A", "new") + "</w:p>"
+
+
+def tail(accept: bool, properties: str) -> str:
+    """A paragraph its resolution takes the mark and the end of the text away from, ``HEAD `` left."""
+    if accept:
+        return "<w:p>" + marked("del", 1, properties) + run("HEAD ") + dele(2, "A", "gone") + "</w:p>"
+    return "<w:p>" + marked("ins", 1, properties) + run("HEAD ") + ins(2, "A", "new") + "</w:p>"
+
+
+def resolved(body: str, accept: bool):
+    package = with_body(body)
+    (revisions.accept_all if accept else revisions.reject_all)(package)
+    assert unresolved(package) == []
+    return package
+
+
+def assert_view_agrees(body: str, accept: bool) -> None:
+    """The text model's view (CR-011, ``view.py``) reads as the copy the resolver resolved, in text and in Markdown."""
+    from docx4j_py.model.text import extract, extract_resolved, markdown, plain_text
+
+    view = "accepted" if accept else "original"
+    for render in (plain_text, markdown):
+        walk = render(extract(with_body(body), view=view))
+        copy = render(extract_resolved(resolved(body, accept), view=view))
+        assert walk == copy, f"{render.__name__}, {view}: walk {walk!r}, copy {copy!r}"
+
+
+def blocks_of(package) -> list:
+    return list(package.main_document_part.contents.body.content)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["deletion-accepted", "insertion-rejected"])
+@pytest.mark.parametrize("following", ["table", "control"])
+def test_an_emptied_paragraph_with_a_table_or_a_control_next_goes(following, accept):
+    """Check 54 case 9 and the text-left probe's case 3: the paragraph and its mark taken away, a table or control next.
+
+    The paragraph goes, its ``w:jc`` with it, and what is next follows what
+    came before. Both ways, as docx4j's ``joinWithNext`` takes the mark away
+    whichever resolution took it; Word's Reject All of both probes reached
+    none of these.
+    """
+    block = A_TABLE if following == "table" else control("<w:p>" + run("BODY") + "</w:p>")
+    body = "<w:p>" + run("before") + "</w:p>" + whole(accept, CENTRED) + block + AFTER
+    package = resolved(body, accept)
+    assert [type(item).__name__ for item in blocks_of(package)] == ["P", {"table": "Tbl"}.get(following, "SdtBlock"), "P"]
+    assert "center" not in body_xml(package)
+    assert_view_agrees(body, accept)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["deletion-accepted", "insertion-rejected"])
+def test_text_left_before_a_table_joins_the_first_cells_first_paragraph(accept):
+    """The text-left probe's case 1: the content goes to the front of the first cell's first paragraph, which keeps its properties.
+
+    The paragraph goes, and a range marker between it and the table goes
+    into the cell's paragraph with its content, as a join carries one.
+    """
+    table = (
+        '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/><w:gridCol w:w="1000"/></w:tblGrid><w:tr>'
+        '<w:tc><w:p><w:pPr><w:jc w:val="right"/></w:pPr>' + run("cell") + "</w:p><w:p>" + run("second") + "</w:p></w:tc>"
+        "<w:tc><w:p>" + run("next cell") + "</w:p></w:tc></w:tr></w:tbl>"
+    )
+    body = tail(accept, HEADING) + '<w:bookmarkEnd w:id="9"/>' + table + AFTER
+    package = resolved(body, accept)
+    items = blocks_of(package)
+    assert [type(item).__name__ for item in items] == ["Tbl", "P"]
+    first, second = items[0].content[0].content[0].content
+    assert text_of(first) == "HEAD cell"
+    assert first.p_pr.p_style is None and first.p_pr.jc.val.value == "right"
+    assert text_of(second) == "second"
+    assert any(type(item).__name__ == "CTMarkupRange" for item in first.content), "the marker went with the content"
+    assert_view_agrees(body, accept)
+
+
+def test_paragraphs_joining_one_another_then_a_table_join_its_first_cell_in_order():
+    """Two marks taken away before a table, text left in each: both paragraphs' text, in order, then the cell's own."""
+    first = "<w:p>" + marked("del", 1) + run("one ") + "</w:p>"
+    body = first + tail(True, HEADING).replace('w:id="1"', 'w:id="3"', 1) + A_TABLE + AFTER
+    package = resolved(body, True)
+    items = blocks_of(package)
+    assert [type(item).__name__ for item in items] == ["Tbl", "P"]
+    assert text_of(items[0].content[0].content[0].content[0]) == "one HEAD cell"
+    assert_view_agrees(body, True)
+
+
+def test_a_paragraph_left_holding_range_markers_only_is_emptied():
+    """docx4j's ``hasTextOrContent``: range markers are not content, so the paragraph goes, its empty bookmark with it.
+
+    The view reads it so too, where docx4j's, asking ``remainsIn``, keeps the
+    paragraph and reads an empty line the resolved copy does not have (CR-010
+    section 14.4).
+    """
+    body = (
+        "<w:p>" + marked("del", 1, CENTRED) + '<w:bookmarkStart w:id="5" w:name="_GoBack"/><w:bookmarkEnd w:id="5"/>'
+        + dele(2, "A", "gone") + "</w:p>" + A_TABLE + AFTER
+    )
+    package = resolved(body, True)
+    assert [type(item).__name__ for item in blocks_of(package)] == ["Tbl", "P"]
+    assert_view_agrees(body, True)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["deletion-accepted", "insertion-rejected"])
+@pytest.mark.parametrize("emptied", [True, False], ids=["emptied", "text-left"])
+def test_a_controls_last_paragraph_keeps_a_bare_mark_text_left_or_not(emptied, accept):
+    """Check 54 case 13 and the text-left probe's case 2: the last paragraph of a control's content, its mark taken away.
+
+    Its properties go, its style and number among them, its text left with
+    it: a bare mark (``e55a83b8e`` widened ``29dbf5964``'s rule to text left).
+    """
+    body = control("<w:p>" + run("first") + "</w:p>", (whole if emptied else tail)(accept, LISTED)) + AFTER
+    package = resolved(body, accept)
+    sdt = blocks_of(package)[0]
+    first, last = sdt.sdt_content.content
+    assert text_of(first) == "first"
+    assert last.p_pr is None
+    assert text_of(last) == ("" if emptied else "HEAD ")
+    assert_view_agrees(body, accept)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["deletion-accepted", "insertion-rejected"])
+def test_text_left_before_a_control_takes_its_first_paragraphs_properties(accept):
+    """Check 54 case 19 and the text-left probe's case 5: nothing joins; the paragraph in the control's first paragraph's properties, a copy."""
+    body = tail(accept, HEADING) + control(
+        "<w:p><w:pPr>" + CENTRED + "</w:pPr>" + run("BODY") + "</w:p>", "<w:p>" + run("second") + "</w:p>"
+    )
+    package = resolved(body, accept)
+    head, sdt = blocks_of(package)
+    first = sdt.sdt_content.content[0]
+    assert text_of(head) == "HEAD "
+    assert head.p_pr.p_style is None and head.p_pr.jc.val.value == "center" and head.p_pr.r_pr is None
+    assert head.p_pr is not first.p_pr and head.p_pr.parent is head
+    assert text_of(first) == "BODY" and first.p_pr.jc.val.value == "center"
+    assert_view_agrees(body, accept)
+
+
+def test_a_custom_xml_element_is_a_control_and_a_table_first_gives_nothing():
+    """docx4j's ``isHolder`` takes a block ``w:customXml`` as a control; a control or cell whose first block is a table gives nothing.
+
+    Text left before a control whose content starts with a table, or before a
+    table whose first cell does, keeps its own properties, the mark only
+    dropped.
+    """
+    nested = (
+        '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid><w:tr><w:tc>' + A_TABLE + "<w:p>" + run("after nested")
+        + "</w:p></w:tc></w:tr></w:tbl>"
+    )
+    tabled = control(A_TABLE, "<w:p><w:pPr>" + CENTRED + "</w:pPr>" + run("BODY") + "</w:p>")
+    custom = '<w:customXml w:element="e"><w:p><w:pPr>' + CENTRED + "</w:pPr>" + run("X") + "</w:p></w:customXml>"
+    body = tail(True, HEADING) + tabled + tail(True, HEADING) + custom + tail(True, HEADING) + nested + AFTER
+    package = resolved(body, True)
+    first, _sdt, second, _xml, third, _tbl, _after = blocks_of(package)
+    assert first.p_pr.p_style.val == "Heading1" and first.p_pr.jc is None, "past a table: the mark only dropped"
+    assert second.p_pr.p_style is None and second.p_pr.jc.val.value == "center"
+    assert text_of(third) == "HEAD " and third.p_pr.p_style.val == "Heading1"
+    assert_view_agrees(body, True)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["deletion-accepted", "insertion-rejected"])
+def test_a_cells_a_stories_and_a_custom_xml_elements_last_paragraphs_keep_their_marks_dropped(accept):
+    """U1 as it stands: a cell's, a story's and a custom XML element's last paragraph keep their properties, the mark only dropped.
+
+    The text-left probe's case 4, a cell's last mark deleted, made Word
+    collapse a one-cell table: not followed, as docx4j does not follow it.
+    """
+    cell = (
+        '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid><w:tr><w:tc><w:p>' + run("first") + "</w:p>"
+        + whole(accept, LISTED) + "</w:tc></w:tr></w:tbl>"
+    )
+    custom = '<w:customXml w:element="e"><w:p>' + run("first") + "</w:p>" + whole(accept, LISTED) + "</w:customXml>"
+    body = cell + custom + tail(accept, LISTED)
+    package = resolved(body, accept)
+    tbl, xml, last = blocks_of(package)
+    for paragraph in (tbl.content[0].content[0].content[-1], xml.content[-1]):
+        assert text_of(paragraph) == "" and paragraph.p_pr.p_style.val == "ListParagraph"
+    assert text_of(last) == "HEAD " and last.p_pr.p_style.val == "ListParagraph"
+    assert_view_agrees(body, accept)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["deletion-accepted", "insertion-rejected"])
+def test_a_kept_block_level_branch_next_reads_as_words_branch(accept):
+    """CR-010 section 13.2: a kept ``mc:AlternateContent`` next is read as the first block of the branch Word takes.
+
+    A table or a control there takes an emptied paragraph away, and a control
+    gives one with text left its first paragraph's properties. No content
+    joins into a kept branch: text left before a table there, or a paragraph
+    there, and the mark is only dropped (docx4j reads no further than the
+    element).
+    """
+    in_control = control("<w:p><w:pPr>" + CENTRED + "</w:pPr>" + run("BODY") + "</w:p>")
+    body = (
+        whole(accept, CENTRED) + alternate(A_TABLE)
+        + whole(accept, CENTRED) + alternate(in_control)
+        + tail(accept, HEADING) + alternate(in_control)
+        + tail(accept, HEADING) + alternate(A_TABLE)
+        + whole(accept, CENTRED) + alternate("<w:p>" + run("branch") + "</w:p>")
+        + AFTER
+    )
+    package = resolved(body, accept)
+    items = blocks_of(package)
+    names = [type(item).__name__ for item in items]
+    assert names == ["AlternateContent", "AlternateContent", "P", "AlternateContent", "P", "AlternateContent", "P",
+                     "AlternateContent", "P"]
+    assert text_of(items[2]) == "HEAD " and items[2].p_pr.jc.val.value == "center" and items[2].p_pr.p_style is None
+    assert text_of(items[4]) == "HEAD " and items[4].p_pr.p_style.val == "Heading1"
+    assert text_of(items[6]) == "" and items[6].p_pr.jc.val.value == "center"
+    assert_view_agrees(body, accept)
+
+
+def _plan(body: str, accepted: bool):
+    """The text model's plan (``ResolvedView``) over a body, with the body's blocks."""
+    from docx4j_py.model.text.view import ResolvedView
+
+    package = with_body(body)
+    return ResolvedView(Lister(package, False).list(), accepted), blocks_of(package)
+
+
+#: Check 54 case 15's markup, as Word saved it: a deleted mark before a control deleted whole in Word's
+#: ``w:customXmlDelRange*`` form, its paragraph deleted whole inside it.
+DELETED_CONTROL = (
+    "<w:p>" + marked("del", 1, HEADING) + run("HEAD ") + dele(2, "A", "tail") + "</w:p>"
+    '<w:customXmlDelRangeStart w:id="3" w:author="A"/>'
+    '<w:sdt><w:sdtPr><w:id w:val="7"/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd w:id="3"/>'
+    "<w:p>" + marked("del", 4) + dele(5, "A", "inside") + "</w:p>"
+    '<w:customXmlDelRangeStart w:id="6" w:author="A"/></w:sdtContent></w:sdt>'
+    '<w:customXmlDelRangeEnd w:id="6"/>'
+    "<w:p><w:pPr>" + CENTRED + "</w:pPr>" + run("BODY") + "</w:p>"
+)
+
+
+def test_the_view_reads_a_control_deleted_whole_as_absent_accepted_and_present_rejected():
+    """CR-010 section 13.1: ``CONTENT_CONTROL_DELETION`` (CR-013 ``e7f18a7``) in the text model's view, docx4j's ``ResolvedView``.
+
+    Accepted, the control is gone with what it holds, and the mark before it
+    joins the paragraph after (check 54 cases 15 and 17); rejected, the control
+    stays, its content in it, not unwrapped as an inserted one rejected is.
+    """
+    accepted, blocks = _plan(DELETED_CONTROL, True)
+    sdt = next(item for item in blocks if type(item).__name__ == "SdtBlock")
+    assert accepted.removes(sdt) and not accepted.unwraps(sdt)
+    original, blocks = _plan(DELETED_CONTROL, False)
+    sdt = next(item for item in blocks if type(item).__name__ == "SdtBlock")
+    assert not original.removes(sdt) and not original.unwraps(sdt)
+    for accept in (True, False):
+        assert_view_agrees(DELETED_CONTROL, accept)
+    package = resolved(DELETED_CONTROL, True)
+    assert [text_of(p) for p in blocks_of(package)] == ["HEAD BODY"]
+
+
+def test_a_filter_takes_a_control_deleted_whole_by_its_kind():
+    """``TrackedChangeFilter`` over ``Kind.CONTENT_CONTROL_DELETION``, as core-ts's filter takes it since its ``222cc20``.
+
+    The filter here takes any kind by name, so the kind CR-013 ``e7f18a7``
+    added needed no entry; this holds it: only the control goes, the
+    deletions around it still listed.
+    """
+    package = with_body(DELETED_CONTROL)
+    taken = revisions.accept_all(package, TrackedChangeFilter(kinds=[Kind.CONTENT_CONTROL_DELETION]))
+    assert taken == 1
+    assert [type(item).__name__ for item in blocks_of(package)] == ["P", "P"]
+    assert {str(change.kind) for change in revisions.tracked_changes(package)} == {"deletion"}
+
+
+def test_the_view_removes_a_table_whose_every_row_it_removes():
+    """Check 54 case 6, a gap docx4j found in its view: the rows deleted, the table goes, and the heading joins the paragraph after it."""
+    rows = "".join(
+        f'<w:tr><w:trPr><w:del w:id="{10 + k}" w:author="A"/></w:trPr><w:tc><w:p>'
+        + marked("del", 20 + k) + dele(30 + k, "A", f"cell {k}") + "</w:p></w:tc></w:tr>"
+        for k in range(2)
+    )
+    body = (
+        "<w:p>" + marked("del", 1, HEADING) + run("HEAD ") + dele(2, "A", "tail") + "</w:p>"
+        '<w:tbl><w:tblGrid><w:gridCol w:w="1000"/></w:tblGrid>' + rows + "</w:tbl>" + AFTER
+    )
+    accepted, blocks = _plan(body, True)
+    assert accepted.removes(blocks[1])
+    original, blocks = _plan(body, False)
+    assert not original.removes(blocks[1])
+    for accept in (True, False):
+        assert_view_agrees(body, accept)
+    assert [text_of(p) for p in blocks_of(resolved(body, True))] == ["HEAD after"]
+
+
+def test_the_view_decides_a_long_run_of_emptied_paragraphs_before_a_table_without_recursing():
+    """Rule 1 over 2,000 paragraphs deleted whole, one after another, before a table: each goes, in the view as in the copy."""
+    body = "".join(whole(True, CENTRED, mark_id=k) for k in range(100, 2100)) + A_TABLE + AFTER
+    plan, blocks = _plan(body, True)
+    assert all(plan.removes(block) for block in blocks[:2000])
+    assert not plan.removes(blocks[2000])
+    assert [type(item).__name__ for item in blocks_of(resolved(body, True))] == ["Tbl", "P"]
 
 
 def test_u2_a_field_straddling_an_edge_resolves_as_runs():

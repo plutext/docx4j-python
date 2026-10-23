@@ -19,6 +19,15 @@ CR-043's U21 to U23 (docx4j ``a8bc6cda9``, Word 365's saves of 21 October
 ``u23RejectAll``: a comment on a deletion whose markers lie outside it, the
 only comment removed by one rejected insertion, and a comment on two inserted
 paragraphs, its start in the first and its end in the second.
+
+docx4j-core-ts's check 54 (CR-010 section 13; docx4j ``29dbf5964``, its CR-043
+section 17) is ``check54AcceptAll``: Word 365's save after 43 tracked writes,
+accepted all, against Word's own Accept All, the whole document; and since
+docx4j ``e55a83b8e`` (CR-010 section 13.3a) ``check54RejectAll``, against Word's
+Reject All. Its files are CR-013 Phase C's, in ``tests/office_js/``, with Word's
+Reject All beside them. docx4j's text-left probe (``e55a83b8e``,
+``fixtures/revisions/cr043/s17/``) is ``textLeftProbeAcceptAll`` and
+``textLeftProbeRejectAll``.
 """
 
 from __future__ import annotations
@@ -26,6 +35,7 @@ from __future__ import annotations
 import pytest
 from description import differing
 from revision_helpers import (
+    FIXTURES,
     assert_like_word,
     describe,
     fixture,
@@ -35,6 +45,10 @@ from revision_helpers import (
 )
 
 from docx4j_py import load
+from docx4j_py.model.revisions.trees import View
+
+#: Office JS's checks' files and Word's saves of them (CR-013 Phase C's fixtures, with ``SHA1SUMS``).
+OFFICE_JS = FIXTURES.parent.parent / "office_js"
 
 #: (tracked, Word's save, accept)
 CASES = [
@@ -226,3 +240,120 @@ def test_u23_reject_all_removes_the_comment_across_two_paragraphs_and_keeps_the_
     revisions.reject_all(package)
     comments = round_trip(package).main_document_part.comments_part.contents.comment
     assert [text_of(comment) for comment in comments] == ["C43_U23_CONTROL"]
+
+
+@pytest.mark.parametrize("verb", ["package", "body"])
+def test_check_54_accept_all_gives_words_accept_all(verb):
+    """docx4j ``check54AcceptAll`` (``29dbf5964``): Word 365's Accept All of 43 tracked writes, the whole document.
+
+    Among them the three rules of CR-010 section 13: an emptied paragraph
+    before a table goes (case 9); a control's last paragraph deleted whole
+    keeps a bare mark (13); a deleted mark before a block control joins
+    nothing and takes the control's first paragraph's properties (19). And a
+    control deleted whole in Word's ``w:customXmlDelRange*`` form goes with its
+    markers, the mark before it then joining what follows (15, 17; CR-013
+    ``e7f18a7``). Lists are named by first appearance, so the numbering ids
+    Word's save renumbers compare once rule 2 drops the orphaned ``w:numPr``,
+    as docx4j found. Word's Reject All was not saved.
+    """
+    package = load(OFFICE_JS / "54-writes-word365.docx")
+    if verb == "package":
+        assert revisions.accept_all(package) > 0
+    else:
+        assert package.body.accept_all() > 0
+    assert unresolved(package) == []
+    assert_like_word(package, load(OFFICE_JS / "54-writes-word365-accepted.docx"), records=True, label="check 54")
+
+
+@pytest.mark.parametrize("verb", ["package", "body"])
+def test_check_54_reject_all_gives_words_reject_all(verb):
+    """docx4j ``check54RejectAll`` (``e55a83b8e``): Word 365's Reject All of check 54 is the original everywhere, as the engine's."""
+    package = load(OFFICE_JS / "54-writes-word365.docx")
+    if verb == "package":
+        assert revisions.reject_all(package) > 0
+    else:
+        assert package.body.reject_all() > 0
+    assert unresolved(package) == []
+    assert_like_word(package, load(OFFICE_JS / "54-writes-word365-rejected.docx"), records=True, label="check 54")
+
+
+#: docx4j's text-left probe (``e55a83b8e``, its CR-043 section 17), with its builder and ``SHA1SUMS``.
+S17 = "cr043/s17/"
+
+
+def _table_props_aside(description: str) -> str:
+    """docx4j's ``tablePropsAside``: the table properties out, and the probe's region 4 out.
+
+    Word's save adds ``w:tblInd`` and ``w:tblCellMar`` to a table that lacks
+    them. Region 4, a deleted mark on a cell's last paragraph, is not an edit
+    Word makes; on it Word's Accept All dropped the one-cell table and kept its
+    paragraph as text, which docx4j does not follow, and neither does this
+    package (U1 keeps the cell's paragraph).
+    """
+    import re
+
+    description = re.sub(r"tblPr\[.*?\] grid", "tblPr[] grid", description)
+    return re.sub(r"(?s)P \| «BEGIN4 .*?P \| «END4»\n", "", description)
+
+
+@pytest.mark.parametrize("accept", [True, False], ids=["accept", "reject"])
+def test_the_text_left_probe_resolved_gives_words_save(accept):
+    """docx4j ``textLeftProbeAcceptAll`` and ``textLeftProbeRejectAll`` (``e55a83b8e``), table properties and region 4 aside.
+
+    Word 365's Accept All: text left before a table joins the table's first
+    cell's first paragraph (case 1); a control's last paragraph with text left
+    keeps a bare mark (2); an emptied paragraph before a control goes (3); text
+    left before a control takes its first paragraph's properties, a number
+    among them (5). Its Reject All: the original.
+    """
+    package = fixture(S17 + "17-text-left.docx")
+    (revisions.accept_all if accept else revisions.reject_all)(package)
+    assert unresolved(package) == []
+    golden = fixture(S17 + ("17-text-left-accepted.docx" if accept else "17-text-left-rejected.docx"))
+    ours, word = describe(round_trip(package)), describe(golden)
+    assert "«BEGIN4 " in word and "«BEGIN5 " in word
+    assert _table_props_aside(ours) == _table_props_aside(word)
+
+
+def test_the_text_left_probe_is_docx4js_as_copied():
+    """The four files of docx4j's ``revisions/cr043/s17/`` at ``e55a83b8e``, byte for byte, as ``SHA1SUMS`` lists them."""
+    import hashlib
+
+    lines = (FIXTURES / S17 / "SHA1SUMS").read_text(encoding="utf-8").splitlines()
+    manifest = {name: digest for digest, name in (line.split("  ", 1) for line in lines if line)}
+    assert sorted(manifest) == [
+        "17-text-left-accepted.docx",
+        "17-text-left-rejected.docx",
+        "17-text-left.docx",
+        "build-17-text-left.py",
+    ]
+    for name, digest in manifest.items():
+        assert hashlib.sha1((FIXTURES / S17 / name).read_bytes()).hexdigest() == digest, name
+
+
+def _accepted_text(item):
+    """A block's text in the accepted view: a paragraph's, else None."""
+    from docx4j_py.model.revisions import trees
+
+    return trees.paragraph_text(item, View.ACCEPTED) if isinstance(item, trees.cls("P")) else None
+
+
+def test_check_54s_three_regions_after_accept_all_are_words():
+    """Cases 9, 13 and 19 as Word's Accept All left them, where the engine left them otherwise before section 13."""
+    package = load(OFFICE_JS / "54-writes-word365.docx")
+    revisions.accept_all(package)
+    body = round_trip(package).main_document_part.contents.body.content
+    texts = [_accepted_text(item) for item in body]
+    # case 9: the emptied paragraph gone, the table straight after the case's label (an empty w:jc paragraph was left)
+    nine = texts.index("BEGIN9 WT delete tracked whole body9a")
+    assert type(body[nine + 1]).__name__ == "Tbl"
+    # case 13: the control's emptied last paragraph a bare mark (its ListParagraph and w:numPr were left)
+    thirteen = body[texts.index("BEGIN13 WC delete tracked whole list13a") + 1]
+    last = thirteen.sdt_content.content[-1]
+    assert last.p_pr is None and last.content == []
+    # case 19: the head in the control's first paragraph's properties, nothing joined (it kept Heading1)
+    nineteen = texts.index("BEGIN19 CCI delete tracked from head19b to body19a")
+    head, control = body[nineteen + 1], body[nineteen + 2]
+    assert texts[nineteen + 1] == "HEAD19A "
+    assert head.p_pr.p_style is None and head.p_pr.jc.val.value == "center"
+    assert type(control).__name__ == "SdtBlock"

@@ -595,6 +595,9 @@ class Extractor:
         self.warnings: list[TextWarning] = []
         self._warned: set[tuple[Any, ...]] = set()
         self._style_rpr: dict[tuple[Any, Any], Any] = {}
+        #: Paragraphs whose content the plan joins into a table's first cell, by ``id`` of the cell's paragraph that
+        #: takes them: the table, the chain and its addresses (docx4j's ``pendingTableJoin``, CR-010 section 13.3a).
+        self._table_joins: dict[int, tuple[Any, list[Any], list[str]]] = {}
         self._typed: dict[int, Any] = {}
         #: CR-012 Phase A: by part, the elements a ``word``-mode load took out, by the
         #: ``id`` of the content list they stood in and their index there.
@@ -871,15 +874,31 @@ class Extractor:
                 while self._joins_next(chain[-1]):
                     k = self._next_paragraph(items, j)
                     if k < 0:
-                        break  # no paragraph next: only the mark goes
+                        break  # no paragraph next: only the mark goes, or what the plan says (CR-010 section 13)
                     chain.append(items[k])
                     addresses.append(f"{prefix}/{k}")
                     j = k
+                joined = self._table_joins.pop(id(item), None)
+                if joined is not None:
+                    # the paragraphs before the table whose content joins this one, its first cell's first
+                    chain[:0] = joined[1]
+                    addresses[:0] = joined[2]
+                into = self.plan.joins_into_table(chain[-1]) if self.plan is not None else None
+                if into is not None:
+                    # a mark gone with text left and a table next: into the table's first cell (CR-010 section 13.3a)
+                    self._table_joins[id(into[1])] = (into[0], chain, addresses)
+                    i = j + 1
+                    continue
                 self._paragraph(chain, addresses, story, sink, state)
                 i = j + 1
                 continue
             if isinstance(item, tbl_class):
                 self._table(item, address, story, sink, state)
+                for key, (tbl, chain, addresses) in list(self._table_joins.items()):
+                    if tbl is item:
+                        # the table had no paragraph to take it after all: on its own
+                        del self._table_joins[key]
+                        self._paragraph(chain, addresses, story, sink, state)
             elif is_alternate_content(item):
                 self._compare_branches(item, address)
                 self.blocks(mce_branch_content(mce_branch(item)), address, story, sink, state)
@@ -929,8 +948,9 @@ class Extractor:
         block = TextBlock("PARAGRAPH", story.kind, addresses[0])  # type: ignore[arg-type]
         block.para_id = getattr(first, "para_id", None)
         block.source = first
-        # a joined paragraph keeps the last one's properties (CR-043's join)
-        p_pr = getattr(last, "p_pr", None)
+        # a joined paragraph keeps the last one's properties (CR-043's join); in a view, a paragraph whose
+        # mark is gone with no paragraph next takes what Word gives it (CR-010 section 13)
+        p_pr = self._p_pr_of(last)
         block.style = _v(getattr(getattr(p_pr, "p_style", None), "val", None))
         block.note_type = story.note_type
         block.note_number = story.note_number
@@ -980,7 +1000,7 @@ class Extractor:
         self._end_section(last, story)
 
     def _end_section(self, last: Any, story: _Story) -> None:
-        p_pr = getattr(last, "p_pr", None)
+        p_pr = self._p_pr_of(last)
         if story.sections is not None and story.table_depth == 0 and p_pr is not None and p_pr.sect_pr is not None:
             story.sections.append(p_pr.sect_pr)
 
@@ -999,7 +1019,7 @@ class Extractor:
             sink.extend(blocks)
 
     def _properties(self, block: TextBlock, p: Any) -> None:
-        own = getattr(p, "p_pr", None)
+        own = self._p_pr_of(p)
         block.bottom_border = own is not None and own.p_bdr is not None and own.p_bdr.bottom is not None
         effective = own
         if self.resolver is not None:
@@ -1072,7 +1092,7 @@ class Extractor:
 
     def _count(self, p: Any, story: _Story) -> Any:
         try:
-            return self.trees.emulator.number(getattr(p, "p_pr", None), story.state)
+            return self.trees.emulator.number(self._p_pr_of(p), story.state)
         except Exception:  # noqa: BLE001 - not counted
             return None
 
@@ -2120,6 +2140,19 @@ class Extractor:
 
     def _joins_next(self, p: Any) -> bool:
         return self.plan is not None and self.plan.removes_mark(p)
+
+    def _p_pr_of(self, p: Any) -> Any:
+        """A paragraph's properties in the view: its own, or what the plan gives one whose mark is gone with no paragraph next.
+
+        docx4j ``Extractor.viewPPr`` (``29dbf5964``; CR-010 section 13), read
+        here wherever the walk reads the last paragraph's properties: its
+        style and paragraph properties, as docx4j's, and its mark's hidden
+        flag, its list count and its section break, so that each is the
+        resolved copy's.
+        """
+        if self.plan is not None:
+            return self.plan.paragraph_properties_of(p)
+        return getattr(p, "p_pr", None)
 
     # -- hidden text (REQ-507) and formatting ----------------------------------------
 

@@ -8,11 +8,17 @@ islands shared with the walk so that both see one typed tree) and records,
 change by change, what the engine's ``Resolver`` would do to the text: a
 revision taken away; a move's halves, and the text typed into a rejected
 move's destination; an inserted field rejected whole; a row or a cell taken
-away; an equation's run-level revision or structure; a paragraph mark taken
-away; an inserted content control rejected, its content left in its place;
+away, and a table left with no row; an equation's run-level revision or
+structure; a paragraph mark taken away; an inserted content control rejected,
+its content left in its place, and one deleted whole accepted, gone with it;
 and a comment a resolution takes whole (docx4j ``a8bc6cda9``, CR-010 section
-12.9). What a resolution does to properties, range markers and parts is not
-recorded: it changes no text.
+12.9). What a resolution does to range markers and parts is not recorded: it
+changes no text. Nor is what it does to properties, but for Word 365's Accept
+All rules where a mark taken away has no paragraph to join (docx4j CR-043
+section 17, ``29dbf5964`` and ``e55a83b8e``; CR-010 sections 13 and 13.3a),
+which :meth:`ResolvedView.removes`, :meth:`ResolvedView.joins_into_table` and
+:meth:`ResolvedView.paragraph_properties_of` answer as the resolver's
+``_no_paragraph_next`` decides them.
 
 The walk (:mod:`.extractor`) asks this view what is there, so the text it
 reads in a view is the text of the resolved document (REQ-402) and the
@@ -27,6 +33,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from docx4j_py.child import is_alternate_content
 from docx4j_py.model.revisions import trees
 from docx4j_py.model.revisions.change import (
     CellT,
@@ -70,6 +77,7 @@ class ResolvedView:
     __slots__ = (
         "_candidates",
         "_comments_gone",
+        "_decided",
         "_marks_gone",
         "_moved_marks_gone",
         "_removed",
@@ -92,6 +100,8 @@ class ResolvedView:
         self._candidates: list[_CommentCandidate] = []
         self._spans: list[_SpanCandidate] = []
         self._comments_gone: set[int] = set()
+        #: What :meth:`removes` decided for a table or a paragraph with no paragraph next, by ``id``: a snapshot's.
+        self._decided: dict[int, bool] = {}
         # moves first, story by story, in the resolution's order: their outcome depends on it
         moves: dict[int, tuple[Any, list[TrackedChange]]] = {}
         for change in changes:
@@ -115,20 +125,226 @@ class ResolvedView:
         """Whether a list member is gone in this view.
 
         A run-level revision taken away with its content, a run, a row, a cell,
-        a paragraph, an equation's run-level revision or structure. A revision
-        that is not gone is kept: its content is read as if it were not there.
+        a paragraph, an equation's run-level revision or structure, a content
+        control deleted whole. A revision that is not gone is kept: its content
+        is read as if it were not there.
+
+        A table whose every row the view removes goes with them, as the
+        resolver removes a table left with no row (check 54 case 6: a deletion
+        from a heading across a whole table joins the heading with the paragraph
+        after it). And an emptied paragraph whose mark is gone goes when a table
+        or a block control is next in its list (check 54 case 9, the text-left
+        probe's case 3; docx4j ``ResolvedView.removes`` at ``e55a83b8e``, CR-010
+        section 13.3a). One with text left and a table next is not removed but
+        moved: :meth:`joins_into_table`, which the walk applies.
         """
         if id(item) in self._removed:
             return True
-        return (
-            id(item) in self._moved_marks_gone
-            and isinstance(item, trees.cls("P"))
-            and not self._remains_in(item)
-        )
+        tbl_class, p_class = trees.cls("Tbl"), trees.cls("P")
+        if isinstance(item, tbl_class):
+            return self._decide(item, self._emptied_table)
+        if not isinstance(item, p_class):
+            return False
+        if id(item) in self._moved_marks_gone and not self._remains_in(item):
+            return True
+        return self.removes_mark(item) and self._decide(item, self._goes_before_a_block)
+
+    def joins_into_table(self, p: Any) -> tuple[Any, Any] | None:
+        """The table a paragraph's content joins, and the paragraph in it that takes it; None where it joins none.
+
+        Where its mark is gone, text is left and a table is the next block in
+        its list: Word 365's Accept All put the content at the front of the
+        first cell's first paragraph, which kept its own properties (the
+        text-left probe's case 1; docx4j ``ResolvedView.joinsIntoTable``,
+        ``e55a83b8e``; CR-010 section 13.3a). That paragraph is the one the
+        resolver finds once the table is resolved, last first: past the rows,
+        cells and paragraphs this view removes. A kept ``mc:AlternateContent``
+        next takes no content, as the resolver's doesn't.
+        """
+        if not self.removes_mark(p) or self._emptied(p):
+            return None
+        container = trees.list_of(getattr(p, "parent", None))
+        k = trees.index_of(container, p)
+        if k < 0:
+            return None
+        tbl = self._next_block(container, k)
+        if not isinstance(tbl, trees.cls("Tbl")):
+            return None
+        target = self._first_cell_paragraph(tbl)
+        return (tbl, target) if target is not None else None
+
+    def paragraph_properties_of(self, p: Any) -> Any:
+        """A paragraph's properties in this view: its own, but where its mark is gone with no paragraph next.
+
+        Word 365's Accept All (check 54; docx4j
+        ``ResolvedView.paragraphPropertiesOf`` at ``29dbf5964``, CR-010 section
+        13), as the resolver's ``_no_paragraph_next`` decides it: with a block
+        content control next (a kept block-level ``mc:AlternateContent`` read
+        as the branch Word takes), the properties of the control's first
+        paragraph, as a join would have given them (check 54 case 19, the
+        text-left probe's case 5); the last paragraph of a control's content,
+        text left or not, none: a bare mark (check 54 case 13, the probe's
+        case 2; ``e55a83b8e``). A paragraph that joins the next, or a table's
+        first cell, keeps its own: the walk takes the last of the paragraphs
+        joined.
+        """
+        own = getattr(p, "p_pr", None)
+        if not self.removes_mark(p):
+            return own
+        container = trees.list_of(getattr(p, "parent", None))
+        k = trees.index_of(container, p)
+        if k < 0:
+            return own
+        following = self._next_block(container, k)
+        if isinstance(following, trees.cls("P")):
+            return own  # a join: the walk takes the chain's last
+        block = self._as_word_reads(following)
+        if block is not None and trees.is_holder(block):
+            first = self._first_paragraph(trees.children(block))
+            if first is not None:
+                return self.paragraph_properties_of(first)
+        if following is None and isinstance(getattr(p, "parent", None), trees.cls("SdtContentBlock")):
+            return None  # a bare mark, text or not
+        return own
 
     def unwraps(self, item: Any) -> bool:
         """Whether a content control or custom XML element is gone with its content left in its place (one inserted, rejected)."""
         return id(item) in self._unwrapped
+
+    def _decide(self, item: Any, rule: Any) -> bool:
+        """`rule` over `item`, decided once: the view is a snapshot, and a paragraph's answer reads the blocks after it."""
+        found = self._decided.get(id(item))
+        if found is None:
+            found = self._decided[id(item)] = rule(item)
+        return found
+
+    def _emptied_table(self, tbl: Any) -> bool:
+        """Whether the view removes every row of a table, which has some, and nothing else is in it but range markers."""
+        rows = False
+        tr_class = trees.cls("Tr")
+        for item in tbl.content:
+            if isinstance(item, tr_class):
+                rows = True
+                if id(item) not in self._removed:
+                    return False
+            elif not _is_marker(item):
+                return False
+        return rows
+
+    def _goes_before_a_block(self, p: Any) -> bool:
+        """An emptied paragraph, its mark gone, with a table or a block control next (a kept branch read as Word reads it).
+
+        Emptied paragraphs whose marks are gone, one after another, are decided
+        together, as the resolver, last first, removes each in turn: all go
+        when the block after the last of them is a table or a control. A loop,
+        not a recursion through :meth:`removes`, so that a long deletion is no
+        deeper a call than a short one.
+        """
+        container = trees.list_of(getattr(p, "parent", None))
+        k = trees.index_of(container, p)
+        if k < 0 or not self._emptied(p):
+            return False
+        p_class, tbl_class = trees.cls("P"), trees.cls("Tbl")
+        run = [p]
+        following = None
+        for item in container[k + 1 :]:
+            if _is_marker(item) or id(item) in self._removed:
+                continue
+            if isinstance(item, p_class):
+                if id(item) in self._moved_marks_gone and not self._remains_in(item):
+                    continue
+                decided = self._decided.get(id(item))
+                if decided is None and self.removes_mark(item) and self._emptied(item):
+                    run.append(item)
+                    continue
+                if decided:
+                    continue
+            elif isinstance(item, tbl_class) and self._decide(item, self._emptied_table):
+                continue
+            following = item
+            break
+        block = self._as_word_reads(following)
+        goes = isinstance(block, tbl_class) or (block is not None and trees.is_holder(block))
+        for q in run:
+            self._decided[id(q)] = goes
+        return goes
+
+    def _first_paragraph(self, items: list | None) -> Any:
+        """A control's first paragraph as the resolved copy has it when the mark before the control is resolved.
+
+        The resolver's ``_first_paragraph``, before any table, over the control
+        as resolved already, last first: past what this view removes, and
+        through the paragraphs it joins to the last of them, whose properties
+        the joined paragraph keeps. docx4j's view reads the first ``w:p`` as it
+        stands; the two differ only where the control's own content changes.
+        """
+        p_class, tbl_class = trees.cls("P"), trees.cls("Tbl")
+        items = items or []
+        for index, item in enumerate(items):
+            if isinstance(item, tbl_class) and not self.removes(item):
+                return None
+            if not isinstance(item, p_class) or self.removes(item):
+                continue
+            while self.removes_mark(item):
+                following = self._next_block(items, index)
+                if not isinstance(following, p_class):
+                    break
+                item = following
+                index = trees.index_of(items, item)
+            return item
+        return None
+
+    def _first_cell_paragraph(self, tbl: Any) -> Any:
+        """The resolver's ``_first_cell_paragraph`` over the table as resolved already: past what this view removes."""
+        tr_class, tc_class, p_class, tbl_class = trees.cls("Tr"), trees.cls("Tc"), trees.cls("P"), trees.cls("Tbl")
+        for row in tbl.content:
+            if not isinstance(row, tr_class) or self.removes(row):
+                continue
+            for cell in row.content:
+                if not isinstance(cell, tc_class) or self.removes(cell):
+                    continue
+                for item in cell.content:
+                    if isinstance(item, tbl_class) and not self.removes(item):
+                        return None
+                    if isinstance(item, p_class) and not self.removes(item):
+                        return item
+                return None
+            return None
+        return None
+
+    def _emptied(self, p: Any) -> bool:
+        """Whether nothing but range markers is left in a paragraph once the view's removals are made.
+
+        The resolver's test (``_no_paragraph_next``, docx4j's
+        ``hasTextOrContent``), where docx4j's view asks ``remainsIn``, which
+        counts a range marker as content: a comment's markers kept from a
+        deletion, a bookmark. So a paragraph left holding only those goes here
+        as it goes from the resolved copy (CR-010 section 14.4).
+        """
+        for item in p.content:
+            if _is_marker(item) or id(item) in self._removed:
+                continue
+            return False
+        return True
+
+    def _next_block(self, container: list, k: int) -> Any:
+        """The block after `container[k]`, past range markers and what this view removes; None at the end."""
+        for index in range(k + 1, len(container)):
+            item = container[index]
+            if _is_marker(item) or self.removes(item):
+                continue
+            return item
+        return None
+
+    def _as_word_reads(self, item: Any) -> Any:
+        """A kept block-level ``mc:AlternateContent`` as the first block of the branch Word takes; any other block itself.
+
+        The resolver's ``_as_word_reads``, past what this view removes too.
+        """
+        if item is None or not is_alternate_content(item):
+            return item
+        items = trees.branch_items(item) or []
+        return self._next_block(items, -1)
 
     def removes_mark(self, p: Any) -> bool:
         """Whether a paragraph's mark is gone in this view: it joins the next paragraph in its list, if there is one."""
@@ -195,9 +411,13 @@ class ResolvedView:
             if t.ins != self.accepted:
                 self._removed.add(id(t.tc))
         elif isinstance(t, HolderT):
-            # an inserted content control keeps its content either way; rejected, the control itself goes
-            if not self.accepted:
-                self._unwrapped.add(id(t.holder))
+            if t.ins:
+                # an inserted content control keeps its content either way; rejected, the control itself goes
+                if not self.accepted:
+                    self._unwrapped.add(id(t.holder))
+            elif self.accepted:
+                # one deleted whole goes with everything in it (check 54 cases 15 and 17; docx4j 29dbf5964)
+                self._removed.add(id(t.holder))
         # property records change no text
 
     def remove_revision(self, item: Any, owner: list | None) -> None:

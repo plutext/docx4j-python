@@ -22,7 +22,9 @@ hidden text and field codes (``include: headers, footers``, ``comments``,
 Over two sets:
 
 * CR-010's eleven agreement fixtures and the probe, which are in this
-  repository;
+  repository, and since CR-010 section 13 check 54's three Word saves and
+  docx4j's text-left probe with Word's two (docx4j ``29dbf5964`` and
+  ``e55a83b8e``, whose ``ViewAgreementTest`` walks them);
 * docx4j's 147 revisions and text-extraction fixtures at ``198d015a3``,
   where the sibling checkout has them (``slow``), as listed in
   ``agreement-docx4j.tsv`` with their outcomes. A file docx4j adds later is not
@@ -48,6 +50,8 @@ SIBLING = ROOT.parent / "docx4j" / "docx4j-core-tests" / "src" / "test" / "resou
 
 #: The agreement run's eleven Word-made fixtures (CR-010 section 3.6).
 REVISIONS = ROOT / "tests" / "fixtures" / "revisions"
+#: Office JS's checks' files and Word's saves of them (CR-013 Phase C).
+OFFICE_JS = ROOT / "tests" / "office_js"
 COPIED = [
     *(
         REVISIONS / name
@@ -66,6 +70,13 @@ COPIED = [
         )
     ),
     PHASE0 / "extraction-probe.docx",
+    # check 54 (CR-010 section 13): Word's save after the writes, and Word's own Accept All of it, as docx4j's
+    # ViewAgreementTest walks them since 29dbf5964
+    OFFICE_JS / "54-writes-word365.docx",
+    OFFICE_JS / "54-writes-word365-accepted.docx",
+    # Word's Reject All of it, and docx4j's text-left probe with Word's two saves (e55a83b8e, CR-010 section 13.3a)
+    OFFICE_JS / "54-writes-word365-rejected.docx",
+    *(REVISIONS / "cr043" / "s17" / name for name in ("17-text-left.docx", "17-text-left-accepted.docx", "17-text-left-rejected.docx")),
 ]
 
 VIEWS = {"accepted": revisions.accept_all, "original": revisions.reject_all}

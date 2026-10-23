@@ -172,6 +172,7 @@ def _tables() -> dict[str, Any]:
         "CTTxbxContent": w.CTTxbxContent,
         "Body": w.Body1,
         "SectPr": w.SectPr,
+        "SdtContentBlock": w.SdtContentBlock,
     }
 
 
