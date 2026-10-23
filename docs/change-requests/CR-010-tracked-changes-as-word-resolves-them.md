@@ -30,7 +30,7 @@ passed the user's Word check the same day: CR-010 is complete.** The port of doc
 **Section 13, decided 2026-10-23** (the user: "draft the amendment to CR-010's resolver porting rules 1 to
 3, then implement"): check 54's three Accept All rules, the port of docx4j CR-043 section 17 (`29dbf5964`),
 in the resolver and the text model's view, closing CR-013 Phase C's 64 sweep differences, with docx4j's follow-up `e55a83b8e`
-(section 13.3a: three accept rules revised by a second Word probe; the reject side measured, as it is). Being implemented.
+(section 13.3a: three accept rules revised by a second Word probe; the reject side measured, as it is). **Implemented 2026-10-23** (section 14; `c131dcd`, `3864d77`): the resolver's four rules in docx4j's order, the view and the walk with them; check 54's Accept All and Reject All and the text-left probe's both ways at 0 lines against Word's saves (the probe's region 4 aside, as docx4j); the view agreeing with the resolved copy over every new file; CR-013's sweep from 64 Accept All differences to 1 (a kept branch beginning with a paragraph, section 14.9); every gate passed and no acceptance artefact moved, so no Word check was staged.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1598,3 +1598,117 @@ The view and the text walk follow: docx4j's `ResolvedView.joinsIntoTable` and `E
 ### 13.4 Effort
 
 About ½ day, as docx4j's plan has it. Most of it is the view's half and the re-run sweep.
+
+## 14. Section 13's implementation notes (2026-10-23)
+
+Sections 13 and 13.3a as decided: the port of docx4j CR-043 section 17 as docx4j now has it, `29dbf5964` revised by `e55a83b8e` (both on `VERSION_17_3_5`, unpushed, read with `git show`). docx4j's Java is the oracle; docx4j-core-ts `222cc20` was a second reading for the first rule and the view only, since it ports `29dbf5964` alone. Built, tested and verified by the gates (14.5). No acceptance artefact moved, so no Word check was staged (14.8).
+
+### 14.1 What landed
+
+| commit | what |
+|---|---|
+| `c131dcd` | the fixtures of section 13.3a, byte for byte from docx4j's tree at `e55a83b8e`: `tests/fixtures/revisions/cr043/s17/` (`17-text-left.docx`, Word's `-accepted` and `-rejected` saves, `build-17-text-left.py`, with a new `SHA1SUMS`) and `tests/office_js/54-writes-word365-rejected.docx` in `office_js/SHA1SUMS` (26 files), each compared with docx4j's tree; Apache-2.0, docx4j's |
+| `3864d77` | the resolver, the view and the walk (14.2), and the tests (14.3) |
+| the records commit | this section, the Status line, the index row, CR-013 section 14.13, `CHANGELOG.md` and `tests/README.md` |
+
+| piece | where | what |
+|---|---|---|
+| the resolver | `model/revisions/resolver.py` | `join_with_next`'s branch with no paragraph next is `_no_paragraph_next(p, container, index, j, following, removals, story)`, docx4j `joinWithNext`'s branch in its order (14.2); `_as_word_reads` (a kept block-level `mc:AlternateContent` as its branch's first block), `_first_cell_paragraph` (docx4j `firstCellParagraph`) and `_first_paragraph` (docx4j `firstParagraph`); `join_with_next` returns the cell's paragraph after a table join, None where the paragraph went |
+| the tree | `model/revisions/trees.py` | `cls("SdtContentBlock")` |
+| the view | `model/text/view.py` | `ResolvedView.removes` takes a control deleted whole (`HolderT.ins` false, accepted), a table whose every row it removes (`_emptied_table`) and an emptied paragraph with a table or control next (`_goes_before_a_block`, a run of them decided in one loop); `joins_into_table(p)` (docx4j `joinsIntoTable`) gives the table and the cell paragraph a paragraph's content joins; `paragraph_properties_of(p)` (docx4j `paragraphPropertiesOf`) the properties rule 3 and the bare mark give; `_first_paragraph`, `_first_cell_paragraph`, `_emptied`, `_next_block`, `_as_word_reads` and a snapshot cache, `_decided` |
+| the walk | `model/text/extractor.py` | `_p_pr_of(p)` (docx4j `viewPPr`) wherever the walk reads the last paragraph's properties; `_table_joins`, docx4j's `pendingTableJoin`: a chain whose content joins a table is held until the walk reaches the cell paragraph that takes it, keyed by that paragraph, and read on its own after the table if the walk never reaches it |
+
+No generated file changed, and no hand-written file was added under `docx4j_py/` (`KEEP` holds `model` whole). `generate.sh --check` writes 298 modules, as before.
+
+### 14.2 The rules as built
+
+`_no_paragraph_next` runs when a paragraph's mark is taken away (a deletion accepted, an insertion rejected, a moved mark not kept) and the next item in its list past range markers is not a `w:p`. **Emptied** is docx4j's `hasTextOrContent`: nothing left in the paragraph's content but range markers (a bookmark's, a comment's, a permission's, a proofing mark). **A block control** is docx4j's `isHolder`: a `w:sdt` or a block `w:customXml`. In docx4j's order:
+
+1. **Emptied, with a table or a block control next**: the paragraph goes, its `w:pPr` recorded for the side effects, and what is next follows what came before (check 54 case 9, the text-left probe's case 3).
+2. **A table next, text left**: the paragraph's content, and the range markers between it and the table, go to the front of the table's first cell's first paragraph, which keeps its own `w:pPr`; the paragraph goes (the probe's case 1). The first cell is the first row's first cell; its first paragraph is the first `w:p` before any table. A table whose first cell starts with a table takes nothing, and the mark is dropped.
+3. **A block control next, text left**: the paragraph takes a copy of the control's first paragraph's `w:pPr` (the first `w:p` of its content before any table), its own `w:pPr` recorded for the side effects; nothing joins (check 54 case 19, the probe's case 5, where the copy carries a `w:numPr`).
+4. **The last paragraph of a control's content** (its parent a `w:sdtContent`), text left or not: a bare mark, its `w:pPr` gone (check 54 case 13, the probe's case 2).
+5. Otherwise, as before (U1): the mark's `w:ins` or `w:del` dropped and the properties pruned. That is a story's last paragraph, a cell's last (the probe's case 4, where Word collapsed a one-cell table, is not followed, as docx4j does not follow it), a custom XML element's last (rule 4 is a content control's, `w:sdtContent`, as docx4j's), and a paragraph before a table or control whose first block is a table.
+
+**A kept block-level `mc:AlternateContent` next** (section 13.2) is read as the first block of the branch Word takes, past range markers (`_as_word_reads`, `trees.branch_items`). A table or a control there takes rule 1, and a control there rule 3. Rule 2 does not reach one: it would put content into one branch of a kept element, which no edit here does (CR-012 Phase A, `address.read_only`), so text left before such a table keeps its paragraph, the mark dropped. A branch beginning with a paragraph joins nothing (14.9).
+
+**The view** takes the same decisions without the joins. `removes(p)` is rule 1, `joins_into_table(p)` rule 2, `paragraph_properties_of(p)` rules 3 and 4, read over what the view removes (as the resolver, last first, finds the document once what follows is resolved). The walk prepends a rule-2 chain to the chain of the cell paragraph that takes it, so the joined block keeps that chain's last paragraph's properties. `_emptied_table` removes a table whose every row the view removes, and nothing else is in it but range markers (check 54 case 6: a deletion from a heading across a whole table into the paragraph after it, which the resolved copy joined and the walk stopped at). An accepted control deleted whole is removed; a rejected one stays, its content read in it, where before it was read as unwrapped like an inserted control rejected (the text was the same either way; a bound control's would not have been).
+
+### 14.3 The oracles
+
+| oracle | where | result |
+|---|---|---|
+| docx4j `check54AcceptAll`: the engine's Accept All of `54-writes-word365.docx` against Word's `-accepted`, the whole document, records shown | `test_word_saves.py`, through `revisions.accept_all` and `Body.accept_all()` | **0 lines** (11 at `cfbf26a`: 5 in cases 9, 13 and 19, and 6 lists named one later in cases 18, 19 and 25). The naming drift went with rule 4's orphaned `w:numPr`, as docx4j found, so no comparison of `w:num` by content was needed |
+| docx4j `check54RejectAll`, against Word's `-rejected` | the same, both routes | **0 lines** (0 at `cfbf26a` too) |
+| docx4j `textLeftProbeAcceptAll` and `textLeftProbeRejectAll`, docx4j's `tablePropsAside` (table properties and region 4 aside) | `test_word_saves.py` | **0** and **0**; region 4 is 6 lines with records off (Word's table collapse, not followed), and the table properties 2 and 4 more with records on (Word's `w:tblInd` and `w:tblCellMar`); at `cfbf26a` the Accept All differed by 14 lines with records off, 8 outside region 4, and the Reject All by 0 |
+| the regions, one change at a time: each change of check 54's cases 9, 13 and 19 and of the probe's 1, 2, 3 and 5 accepted (rejected) on its own, the region against Word's Accept All (its Reject All for the probe, the file Word read for check 54) | `test_one_change.py` (15) | all Word's; case 19 in either order |
+| each shape both ways on handwritten markup, the view held to the resolved copy in text and Markdown (`assert_view_agrees`) | `test_tracked_changes.py` (23) | rules 1 to 4 accepted and rejected, the markers-only paragraph, a run of 2,000 emptied paragraphs before a table, the cases kept (a cell's, a story's and a custom XML element's last, a control or cell whose first block is a table), a block `w:customXml` as a control, the kept-branch cases, a control deleted whole in the view (absent accepted, present rejected) and by `TrackedChangeFilter(kinds=[Kind.CONTENT_CONTROL_DELETION])`, a table whose rows the view removes |
+| docx4j `ViewAgreementTest` over the new files | `test_agreement.py` | check 54's three saves and the probe's three files, both views, both scopes: **0 differences** (24 tests). At `cfbf26a` the walk differed from the resolved copy on `54-writes-word365.docx` accepted by 11 lines of plain text, in cases 6 (the table the copy removed and the walk stopped at) and 15 and 17 (the control deleted whole, read as present); with `29dbf5964`'s resolver and the view unchanged, in cases 6, 9, 15 and 17, and in Markdown 13 and 19 too |
+| CR-013's check 54 Accept All assertions | `test_ranges.py` | moved to Word's answer: the report differs from Word's at 10, 11, 32, 33 and 34, the markup at 29, 32, 33 and 34 (was 9, 10, 11, 13, 19, 32, 33, 34 and 9, 13, 19, 29, 32, 33, 34); cases 9, 13 and 19 now equal Word's line for line. Nothing else moved |
+
+The plain and Markdown agreement, outside the tests, over every fixture `test_agreement.py` and `test_private_readers.py` read (1,592 readings): the plain differences went from 2 to 0 (check 54's), the Markdown ones from 182 to 180 (check 54's two; the other 180, property records the views do not resolve, CR-011's, unchanged).
+
+### 14.4 Departures and choices
+
+1. **The reject side takes the rules.** docx4j's `joinWithNext` runs whichever resolution took the mark away, so a paragraph whose text and mark are inserted and rejected before a table goes, and so on. Section 13.1 called the reject side unmeasured and kept; docx4j's code and this port apply the rules both ways, so the ports agree. Word's Reject All of check 54 and of the probe left nothing these rules reach (section 13.3a); `test_tracked_changes.py` holds the reject side of each shape. *A choice for the user, docx4j's taken.*
+2. **A kept block-level `mc:AlternateContent` next** is read as its branch's first block for rules 1 and 3 (section 13.2), not for rule 2 (14.2). docx4j reads no further than the element and drops the mark. *Section 13.2's decision, with rule 2 left out by this port.*
+3. **The view's "emptied" is the resolver's** (`_emptied`, range markers not counted), where docx4j's view and core-ts's ask `remainsIn`, which counts a range marker as content. A paragraph left holding only an empty bookmark before a table goes from the resolved copy, and docx4j's view keeps it and reads an empty line (`test_a_paragraph_left_holding_range_markers_only_is_emptied` fails with `remainsIn`). A finding for docx4j and core-ts.
+4. **The view follows a moved paragraph's mark too** (`removes_mark`, where docx4j's asks `marksGone`): the resolver's moved mark not kept, with content left, goes through `join_with_next` and takes the same rules.
+5. **The view reads a control's first paragraph and a table's first cell paragraph as the resolver finds them**, last first: past the rows, cells and paragraphs the view removes, and for rule 3 through the paragraphs that paragraph joins, to the last. docx4j's view reads the first `w:p` as it stands. They differ only where the control's or the table's own content changes.
+6. **The walk reads every property of the last paragraph through the view** (`_p_pr_of`): its style and paragraph properties as docx4j's `viewPPr`, and also its mark's hidden flag, its list count and its section break, so that each is the resolved copy's (docx4j reads those from the paragraph's own `w:pPr`). The table join's pending chain is keyed by the cell paragraph that takes it, where docx4j's applies to the next paragraph the walk meets.
+7. **`TrackedChangeFilter` needed nothing** for `CONTENT_CONTROL_DELETION` (core-ts `222cc20` added it to its list of kinds): the filter here takes any kind by name. A test holds it.
+8. **Rule 1 removes the paragraph with whatever range markers are in it**, its `w:pPr` alone recorded, as docx4j does; a bookmark or comment marker left there goes unrecorded (14.9).
+
+### 14.5 The gates
+
+| gate | before (`cfbf26a`) | after (`3864d77`) |
+|---|---|---|
+| the fast suite | 4,540 passed, 8 skipped, 1,280 deselected, 0 failed (2 min 23 s) | 4,619 passed, 8 skipped, 1,307 deselected, **0 failed** (2 min 26 s) |
+| the full suite | 5,820 passed, 8 skipped, 0 failed (3 min 43 s) | 5,926 passed, 8 skipped, **0 failed** (3 min 47 s) |
+| `tests/revisions` | 560 | 614 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `scripts/compare_word_resolution.py` | 68, every one 0 lines; 0 and 0 | 76, every one 0 lines; 0 and 0 |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text`; `test_conformance.py` with `test_agreement.py` | 1,188; 662 | 1,212; 686 |
+| the parity goldens (numbering, properties, fonts) | 277, `PINS` empty | 277, `PINS` empty |
+| `scripts/roundtrip.py` | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings | the same; exit 0 |
+| `codegen/generate.sh --check` | byte identical, 298 modules | byte identical, 298 modules; no generated file changed |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr010-13/`) | copied first; 0 differ against a regeneration at `cfbf26a` (17 artefacts, 243 entries) | **17 artefacts, 243 entries, 0 differ** beyond the wall-clock dates |
+
+- **The suites' differences, test by test** (per-file collection at `cfbf26a` against `3864d77`): 70 new tests here (`test_tracked_changes.py` 60 to 83, `test_one_change.py` 30 to 45, `test_word_saves.py` 45 to 53, `test_agreement.py` 638 to 662); 27 in `test_private_readers.py` (slow), its nine readers over the probe's three files; 8 in `test_every_fixture.py`, which sweeps docx4j's tree, from the four files `e55a83b8e` added there; and 1 in `test_controls_typed.py`, the coordinating session's `15dde99`. That is the full suite's 106 and the fast suite's 79 (27 of the 106 slow). No test was removed.
+- **`cfbf26a` re-run against today's sibling trees** (a worktree, docx4j at `e55a83b8e`'s tree, core-ts at `222cc20`): 5,826 passed, 9 skipped, 1 failed. The failure is the Office JS subset, which core-ts `222cc20` moved and `15dde99` re-derived; the extra skip is the worktree's (`ruff` not on its path).
+- **The 96 revisions goldens** did not move: no Word save in `tests/fixtures/revisions/` changed, and every pre-existing comparison against one passes unchanged.
+
+### 14.6 The sweep
+
+CR-013's write sweep (`out/cr013-c/sweep.py`, unchanged, over `out/cr012-b-corpus/`'s 422 documents), re-run at `3864d77`; its output, and `out/cr010-13/remaining.py`'s classification of what still differs, are in `out/cr010-13/`.
+
+| | CR-013 Phase C (`a54d7e8`) | `29dbf5964`'s rules | now (`e55a83b8e`'s) |
+|---|---|---|---|
+| Accept All of the tracked write equals the untracked write | 1,790 of 1,854 | 1,836 | **1,853** |
+| `'Whole'` deletion of an emptied paragraph before a table | 42 differ | 0 | 0 |
+| ... before a block control | 17 differ | 17 (rule 3 kept the paragraph, in the control's properties) | **0** |
+| ... before a kept block-level `mc:AlternateContent` whose branch begins with a paragraph | 1 differs | 1 | **1** (`mc-txbx-block.docx`) |
+| a deletion across a control's edge | 4 differ | 0 | 0 |
+| Reject All equals the original rejected | 1,851, the 3 pre-existing (`cr043-tracked.docx`'s field) | the same | **the same** |
+
+The one left is section 13.2's limit: the untracked write removes the emptied paragraph before the kept element, and Accept All keeps it, since the branch Word reads begins with a paragraph and no rule reaches into a kept branch (14.9). The comments, `^p` and comment-reference parts of the sweep are as Phase C left them (325 and 16, 418 and 7,370, 99).
+
+### 14.7 Pre-existing tests whose expectation changed, and why
+
+- `revisions/test_tracked_changes.py::test_u1_no_join_across_a_container_boundary` (docx4j's `noJoinAcrossAContainerBoundary`, revised in `e55a83b8e`): "before a table" now joins the table's first cell's first paragraph, which reads `before a tablea cell's last`; one top-level paragraph is left, not two. A cell's last and a story's last mark are still dropped.
+- `content/test_ranges.py::test_cr_014_phase_3_accept_all_after_check_54s_writes_...`: cases 9, 13 and 19 left the report's and the markup's differences (14.3).
+- `content/test_office_js_characters.py::test_every_fixture_is_the_manifests_and_the_files_word_read`: `SHA1SUMS` lists 26 files, Word's Reject All of check 54 the new one.
+- docx4j's `AcceptTrackedChangesTest`, revised in `e55a83b8e`, has no counterpart here: this package has no conversion preprocess; `Body.accept_all()` resolves through the same code, and the table join is held by the tests above.
+- `content/test_ranges.py`, check 53's cases 34 and 35: the comment now says Word's `showingPlaceholderText` came back undefined where this package reads True (CR-003 section 24); the assertion is unchanged (the coordinating session's request).
+
+### 14.8 The acceptance artefacts and the Word check
+
+`scripts/acceptance.py` regenerated `out/acceptance/`, and `compare_acceptance.py` against the copy made at `cfbf26a` printed 17 artefacts, 243 entries, **0 differ** beyond the wall-clock dates. Artefacts 8 and 12 hold the engine's Accept All. Artefact 12 has three marks taken away with no paragraph next, and none comes out differently: case 2's text left before a table and case 10's before a control deleted whole resolve as before, since the table's rows and the control go first (last first) and the paragraph then joins the one after; case 11's head (a range into a control) takes the control's first paragraph's properties, which are none, as its own were once its mark's `w:del` was dropped. No saved artefact moved, so no Word check was staged. The rules' output is Word's own, by the oracles above: Word wrote each of these shapes in its Accept All of check 54 and of the probe.
+
+### 14.9 Found, and not done
+
+- **A kept block-level `mc:AlternateContent` whose branch begins with a paragraph**, after an emptied paragraph (`mc-txbx-block.docx`, the sweep's one): Word would join, and an emptied paragraph joined is a paragraph gone. Taking rule 1 for such a branch would close the sweep with nothing written into the branch. Unmeasured; not in section 13.2's decision, so left for the user.
+- **Rule 1 drops the range markers in the paragraph it removes** (docx4j's, 14.4 item 8): a bookmark start or a comment marker standing alone in an emptied paragraph before a table or control goes with it, its partner left. A resolution's own empty bookmarks around removed content go first (C11b), so this needs a marker the resolution did not empty. docx4j's to settle.
+- **Rule 2 on one change**: accepting a mark's deletion on its own, before a deletion of the table's first row is accepted, joins the text into that row's cell, and accepting the row then takes the text. Accept All resolves the row first (last first). docx4j's behaviour; unmeasured in Word.
+- **Findings for docx4j and core-ts**: 14.4 items 3, 5 and 6, each where their view and their resolver disagree in an edge case; core-ts `222cc20` is behind docx4j on `e55a83b8e`'s rules.
+- The Markdown views' 180 property differences over the fixtures are CR-011's, unchanged.

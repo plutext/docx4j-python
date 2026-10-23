@@ -1513,6 +1513,14 @@ Staged in `~/vbShares/Office 2016/__tmp/python-cr013c/` by `out/cr013-c-word-che
 - **docx4j's `0ef214e1e`** queues four Accept All rules from check 54 in its CR-043 section 17, after its CR-058 phase 1: cases 9, 13 and 19's, and a control deleted whole going with its markers, the mark before it then joining what follows (this package's resolution already takes the control and its markers, `e7f18a7`, and the deleted mark before it then joins what follows, as artefact 12's case 10 shows). When they land, CR-010's port can follow them, and the oracles' named differences 9, 13 and 19 and the sweep's 64 would close.
 - `CLAUDE.md` and `README.md` said "the eleven" acceptance documents after the records commit; the coordinating session made them twelve (`3687063`), as `RELEASING.md`, `tests/README.md` and the scripts say.
 
+### 14.13 Check 54's three Accept All rules, closed by CR-010 section 14 (2026-10-23)
+
+CR-010 sections 13 and 13.3a ported docx4j CR-043 section 17 (`29dbf5964`, revised by `e55a83b8e`) into the resolution and the text model's view, in `3864d77` (CR-010 section 14). With it, this section's named differences close:
+- **Check 54's Accept All** (14.4): cases 9, 13 and 19 are Word's in the report and the markup, line for line. `test_ranges.py`'s assertion is now the report at 10, 11, 32, 33 and 34 and the markup at 29, 32, 33 and 34, each with its reason as before. Word's own Accept All of Word's save, `54-writes-word365.docx`, against the engine's is 0 lines, the whole document (`test_word_saves.py`).
+- **The sweep's 64** (14.9): re-run unchanged at `3864d77`, 1,853 of 1,854 Accept All writes equal the untracked write. The 42 before a table and the 4 across a control's edge close by `29dbf5964`'s rules, and the 17 before a block control by `e55a83b8e`'s (an emptied paragraph goes before a control as before a table). The one left, `mc-txbx-block.docx`, is a kept block-level `mc:AlternateContent` whose branch begins with a paragraph, which no rule reaches (CR-010 section 14.9). Reject All is as before: 1,851, and the 3 pre-existing.
+
+14.12's "Not done" items on Word's three rules and on docx4j's `0ef214e1e` are done by this.
+
 ## 15. Phase D: the records (2026-10-23)
 
 Phase D started and was done on 2026-10-23, at the user's go ("start phase D"). Its Word check (section 6.4, widened by sections 13.5 and 13.7) is Phase C's, which passed the same day (section 14.11), so Phase D is the records:

@@ -478,6 +478,20 @@ save. It needs docx4j-xsdata 26.2.2.
   whole removes it: such a comment is judged once the resolution has joined the paragraphs whose
   marks it took away, and goes whole when its start and end then stand in one paragraph with
   nothing with text between. One whose range still crosses a paragraph mark stays.
+- **Accept All where a paragraph mark taken away has no paragraph to join is Word 365's**
+  ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) sections 13 and
+  [14](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#14-section-13s-implementation-notes-2026-10-23),
+  the port of docx4j `29dbf5964` and `e55a83b8e`, its CR-043 section 17, from docx4j-core-ts's
+  check 54 and docx4j's text-left probe): an emptied paragraph before a table or a block content
+  control goes; with text left, before a table its content joins the front of the table's first
+  cell's first paragraph, which keeps its own properties, and before a control it takes the
+  control's first paragraph's properties; a control's last paragraph keeps a bare mark, text left or
+  not. 0.1.0 dropped the mark and kept the paragraph as it was in each. A kept block-level
+  `mc:AlternateContent` next is read as the branch Word takes, but takes no content. Whichever
+  resolution takes the mark away, Accept All or Reject All, as docx4j's. The text model's
+  `accepted` and `original` views follow, and also read a content control deleted whole (Word's
+  `w:customXmlDelRange*` form) as gone when accepted and kept when rejected, and a table whose
+  every row is deleted as gone.
 - **A comment on tracked-inserted text is written as Word writes it**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md) section
   [12.8](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md#128-the-word-check-2026-10-21)):
