@@ -402,12 +402,13 @@ def colour(value) -> str | None:
 **The table.** `NETSCAPE_COLOURS`, the 140 names with their hex, written into `values.py` and tested against CSS 3's 147 less the seven (Q7).
 
 **Its readers:**
+- **The scope, widened by round five:** `w:color/@w:val`, `w:u/@w:color`, `w:shd/@w:fill` and `w:shd/@w:color`, and every border's `w:color` (`w:pBdr`, `w:tblBorders`, `w:tcBorders`, `w:bdr`, `w:pgBorders`), each by the same rule. An invalid `w:fill` reads as no shading.
 - `read_run_options`'s `color` (so `Font.color`): `#RRGGBB` for a colour. Every automatic spelling reads as `auto` reads: `"auto"` today, and `"#000000"` if CR-016's proposal lands.
 - The facade's `ColorFormat.rgb`: an `RGBColor`, or `None`. Its `type` is `AUTO` for every automatic spelling and `RGB` for a colour (Q9).
 
 **Order.** A stated `w:themeColor` is CR-009 Phase B's and wins over `w:val`, as Word reads it; `colour()` reads `w:val` only.
 
-**Over a style** (Q8). Rule 3 says an invalid value is automatic. The probes don't say whether that is a stated automatic, which overrides a style's colour, or unset, as if absent. Word's save drops it either way, as it drops `auto`, because no style states a colour there. The recommendation is to read it as a stated automatic, as docx4j's normaliser does (JAXB keeps the `String`, so the merge takes it over the style). The merge is unchanged, and round five measures it.
+**Over a style** (Q8, answered by round five, section 3.1b). An invalid value is as if absent, so the style's colour shows: the merge skips a value `colour()` reads as `None` unless it is a stated `auto`, which does override. The merge therefore gains a colour emptiness test beside the enumerations' (section 4.2).
 
 ### 4.4 (d) `effective(obj, "field")`, the reader of a value the file leaves out
 
@@ -503,7 +504,6 @@ No new error. A value Word reads is never refused: loading stays lenient, and `L
 
 ### 4.12 Not in this CR
 
-- **The other `ST_HexColor` attributes** (`w:shd`'s `w:fill` and `w:color`, borders, `w:u/@w:color`). Word's reading of them is unmeasured, and only CR-009's merge reads them here.
 - **Underline styles and emphasis marks in rendering** (docx4j's D6). Nothing here renders.
 - **An operation that writes Word's form** (section 4.7).
 - **The other converters' trims**, for example `w:sz w:val=" 24"`. Unmeasured.
