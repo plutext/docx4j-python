@@ -52,6 +52,7 @@ __all__ = [
     "BindingResult",
     "apply_bindings",
     "bound_bodies",
+    "bound_value_of",
     "controls_of",
     "runs_for_value",
     "update_from_content_controls",
@@ -394,6 +395,18 @@ def apply_bindings(package: Any) -> BindingResult:
 # ---------------------------------------------------------------------------
 
 
+def bound_value_of(control: ContentControl) -> str:
+    """A control's text as its custom XML node takes it (core-ts's ``boundValueOf``, ``6285dfa``).
+
+    :attr:`ContentControl.docx4j_text`: docx4j's characters, a break and a
+    block control's paragraphs a ``\\n`` each (CR-013 section 4.1; core-ts's D4
+    and F1). A non-breaking hyphen is ``-``, as Word writes it (F2, CR-013
+    section 11; core-ts check 55b case 5); an optional hyphen stays U+00AD, and a
+    note reference gives nothing.
+    """
+    return control.docx4j_text.replace("\u2011", "-")
+
+
 def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
     """Write one control's value back into its node.
 
@@ -421,8 +434,8 @@ def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
 
     # docx4j's characters, as 0.1.0's text read it: a break \n, a block control's
     # paragraphs a \n apart, never Office JS's U+000B, which XML cannot hold
-    # (CR-013 section 4.1; core-ts's D4)
-    value = control.docx4j_text
+    # (CR-013 section 4.1; core-ts's D4, F1), and a non-breaking hyphen - (F2)
+    value = bound_value_of(control)
     if control.type == "CheckBox":
         checkbox = control.checkbox_content_control
         if checkbox is None:

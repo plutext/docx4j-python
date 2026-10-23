@@ -973,8 +973,8 @@ def _delete_blocks(tracker: ChangeTracker, blocks: list, body: Any) -> None:
         if isinstance(block, P):
             view = Paragraph(block, blocks, body)
             length = len(view.text)
-            if length or view.holds_hidden_text():
-                # its hidden runs too, at its edges as well (CR-013 Phase A)
+            if length or view.holds_objects():
+                # its hidden runs and pictures too, at its edges as well (CR-013 Phase A; section 11)
                 view.delete_text_tracked(tracker, 0, length, whole=True)
             if not mark_deleted(block):
                 tracker.mark_paragraph_deleted(block)

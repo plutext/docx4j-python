@@ -407,15 +407,19 @@ class Range:
                 paragraph = self.paragraph
                 container = paragraph.container
                 index = next((i for i, item in enumerate(container) if item is paragraph.element), -1)
+                length = len(paragraph.text)
                 if location == "Replace":
-                    out = paragraph.splice(self.start, self.end, text)
+                    # a paragraph's 'Whole' range holds its hidden runs and pictures at its edges
+                    out = paragraph.splice(self.start, self.end, text, whole=self.mark)
                     self.start, self.end = out.start, out.end
                 elif location in ("Before", "Start"):
-                    out = paragraph.splice(self.start, self.start, text)
+                    # at the paragraph's start, before its leading hidden runs (CR-013 section 11)
+                    out = paragraph.splice(self.start, self.start, text, edge="start" if self.start == 0 else None)
                     # the span now follows the text, in the paragraph keeping the mark
                     self.start, self.end = out.end, out.end + (self.end - self.start)
                 else:
-                    out = paragraph.splice(self.end, self.end, text)
+                    # at the paragraph's end, after its trailing hidden runs (CR-013 section 11)
+                    out = paragraph.splice(self.end, self.end, text, edge="end" if self.end == length else None)
                     if 0 <= index < len(container) and container[index] is not paragraph.element:
                         # the span is before the text: in the first paragraph the split made
                         from docx4j_py.model.content.paragraph import Paragraph
@@ -517,6 +521,33 @@ class Range:
         )
         return [hit_for(self.paragraph, start, end, context=context) for start, end in hits[:limit]]
 
+    # -- content controls (CR-013 section 11, G1) ---------------------------
+
+    def get_content_controls(self, *, types: Collection[str] | None = None) -> list[Any]:
+        """Office JS ``getContentControls`` (WordApi 1.5): the controls this range overlaps, those of `types` where given.
+
+        core-ts's rule for ``Range.contentControls`` (``6285dfa``, its check 53)
+        within one paragraph: each run-level control whose text overlaps the
+        span, not one holding the whole span. A block control holding the
+        paragraph holds the span whole, so it is not listed. `types` are
+        ``Word.ContentControlType`` values. Word's ``contentControls`` lists
+        rich-text controls only, where this lists every kind, a recorded
+        departure (G1). ``Range.content_controls`` itself is CR-013 Phase B's.
+        """
+        from docx4j_py.model.content.controls import controls_of_types
+
+        overlapping = []
+        for control in self.paragraph.content_controls:
+            span = control._run_span()
+            if span is None or span[0].element is not self.paragraph.element:
+                continue
+            _paragraph, start, end = span
+            overlaps = (start < self.end and end > self.start) or (start == end and self.start <= start <= self.end)
+            holds = start <= self.start and self.end <= end
+            if overlaps and not holds:
+                overlapping.append(control)
+        return controls_of_types(overlapping, types)
+
     # -- change tracking (CR-003 section 3.8, Phase F) ----------------------
 
     def get_tracked_changes(self) -> list[Any]:
@@ -589,11 +620,17 @@ class Range:
         return insert_comment_into(self, text)
 
     def delete(self) -> None:
-        """Remove the span's text, leaving an empty range where it was."""
+        """Remove the span's text, leaving an empty range where it was.
+
+        The pictures strictly inside the span go with it, and a paragraph's
+        whole range (``'Whole'``, or a span of all its text) takes those at its
+        edges too, as core-ts's CR-002 section 48 has it; under change tracking
+        a picture's run goes into the ``w:del`` (CR-013 section 11).
+        """
         with recording(self.paragraph.parent_body, "delete") as change:
             change.touched(self.paragraph)
             change.text(before=self.text, after="")
-            self.paragraph.splice(self.start, self.end, "")
+            self.paragraph.splice(self.start, self.end, "", whole=self.mark)
             self.end = self.start
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:

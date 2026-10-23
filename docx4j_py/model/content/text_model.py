@@ -121,6 +121,7 @@ __all__ = [
     "cells_of",
     "drop_unwritable",
     "find_all",
+    "for_writer",
     "grapheme_clusters",
     "hidden_runs_of",
     "is_grapheme_boundary",
@@ -1620,6 +1621,34 @@ _MAPPED = re.compile("[\t\n\x0b\x0c\x0e\r\x1e\x1f]")
 #: (docx4j-core-ts check 55, cases 2 to 4 and 48 to 49, at ``a923aeb``; CR-013
 #: section 11, E1).
 PARAGRAPH_BREAKS = re.compile("\r\n|\r|\n")
+
+#: What makes a line in a plain-text content control's text: the paragraph breaks
+#: and the three ``w:br`` characters, U+000B, U+000C and U+000E (CR-013 section 11,
+#: F3; core-ts's ``forWriter`` at ``6285dfa``).
+LINE_CHARACTERS = re.compile("[\r\n\x0b\x0c\x0e]")
+
+
+def for_writer(text: str, lines: str) -> str:
+    """`text` as a writer of one kind writes its line feeds and carriage returns (core-ts's ``forWriter``, ``6285dfa``).
+
+    * ``"one-paragraph"``: ``\\r\\n`` and ``\\n`` a ``w:br``, ``\\r`` a ``w:cr``
+      (CR-013 section 11, E2: ``insert_paragraph``, ``Paragraph.text = ...``);
+    * ``"multi-line"``: ``\\r\\n``, ``\\r`` and ``\\n`` each a ``w:br`` (a multi-line
+      ``w:text`` control, section 11's item 2);
+    * ``"single-line"``: none of them, nor a line, page or column break (U+000B,
+      U+000C, U+000E): a single-line ``w:text`` control, or a bound block control
+      Word reads as one (F3; core-ts check 55b case 8, check 56 cases 3, 11, 15).
+
+    A ``w:br`` is written from ``\\n`` or U+000B by :data:`WRITTEN_AS`.
+    """
+    if lines == "one-paragraph":
+        return text.replace("\r\n", "\n")
+    if lines == "multi-line":
+        return PARAGRAPH_BREAKS.sub("\n", text)
+    if lines == "single-line":
+        return LINE_CHARACTERS.sub("", text)
+    return text
+
 
 #: The characters a text writer drops: U+0002 (a note's character: no text
 #: makes a note), and every other character XML 1.0 excludes that the map does

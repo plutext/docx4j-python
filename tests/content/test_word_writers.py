@@ -312,12 +312,11 @@ def node_text(part, n: int) -> str:
 CHECK_55B = [
     (1, True, "U+0041", "xAy", '"xAy"', "xAy", None),
     (2, True, "U+000B", "x\x0by", '"x" <br/> "y"', "x\r\ny", ("x\x0by", '"x" <br/> "y"', "x\ny", "F1: a node's break \\n")),
-    (5, True, "U+001E", "x\x1ey", '"x" <noBreakHyphen/> "y"', "x-y",
-     ("x\x1ey", '"x" <noBreakHyphen/> "y"', "x‑y", "F2 proposed, not built: docx4j's U+2011")),
+    (5, True, "U+001E", "x\x1ey", '"x" <noBreakHyphen/> "y"', "x-y", None),  # F2 since the review: the node's -
     (6, True, "U+0002", "x\x02y", '"xy"', "x y", ("xy", '"xy"', "xy", "E3: dropped at the write, so the node has no space")),
     (7, False, "U+0041", "xAy", '"xAy"', "xAy", None),
-    (8, False, "U+000B", "xy", '"xy"', "x\r\ny",
-     ("x\x0by", '"x" <br/> "y"', "x\ny", "F3 proposed, not built: a single-line control keeps the break")),
+    # F3 since the review: the break dropped from the control, as Word drops it; the node follows the control
+    (8, False, "U+000B", "xy", '"xy"', "x\r\ny", ("xy", '"xy"', "xy", "F3: the node follows the control")),
 ]
 
 
@@ -757,3 +756,271 @@ def test_the_facade_keeps_python_docxs_refusal():
         document.add_paragraph("a\x02b")
     paragraph = document.add_paragraph("a\r\nb")
     assert to_xml(paragraph._p).count("<w:br/>") == 2, "python-docx's \\r\\n two w:br"
+
+
+# ---------------------------------------------------------------------------
+# CR-013 section 11, decided after core-ts's consistency review (6285dfa): 1, text into a hidden paragraph
+# ---------------------------------------------------------------------------
+
+HIDDEN = '<w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN</w:t></w:r>'
+
+
+def _new_run_order(p) -> list[str]:
+    """Each run's text, in order, marked ``(hidden)`` where its own ``w:vanish`` hides it."""
+    out = []
+    for run in p.runs:
+        text = "".join(str(getattr(item, "value", "") or "") for item in run.content)
+        hidden = getattr(getattr(run, "r_pr", None), "vanish", None) is not None
+        out.append(f"{text}(hidden)" if hidden else text)
+    return out
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_text_into_an_all_hidden_paragraph_is_seen_mapped_and_at_the_end(tracked):
+    """Measured at e79a8e8: it landed before the hidden run, took its w:vanish and escaped the map."""
+    package, p = one(HIDDEN, tracked=tracked)
+    assert p.text == ""
+    out = p.insert_text("VIS\x0bIBLE", location="End")
+    assert p.text == "VIS\x0bIBLE", "seen: no w:vanish copied"
+    assert _new_run_order(p) == ["HIDDEN(hidden)", "VISIBLE"], "after the hidden run"
+    assert "<w:br/>" in to_xml(p.element), "the map: U+000B a w:br"
+    assert out.text == "VIS\x0bIBLE"
+    assert strict_reload(package).body.paragraphs[0].text == "VIS\x0bIBLE"
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_the_other_writers_into_a_hidden_paragraph(tracked):
+    package, p = one(HIDDEN, tracked=tracked)
+    p.insert_text("S", location="Start")
+    assert _new_run_order(p) == ["S", "HIDDEN(hidden)"], "Start: before the hidden run"
+    package, p = one(HIDDEN, tracked=tracked)
+    p.get_range("End").insert_text("R")
+    assert _new_run_order(p) == ["HIDDEN(hidden)", "R"], "a collapsed range in a paragraph of no visible text: at the end"
+    package, p = one(HIDDEN, tracked=tracked)
+    p.get_range("Start").insert_text("B", location="Before")
+    assert _new_run_order(p) == ["B", "HIDDEN(hidden)"]
+    package, p = one(HIDDEN, tracked=tracked)
+    p.insert_text("NEW", location="Replace")
+    assert p.text == "NEW"
+    if not tracked:
+        assert _new_run_order(p) == ["NEW"], "Replace takes the hidden run with the whole content"
+    package, p = one(HIDDEN, tracked=tracked)
+    p.text = "SET"
+    assert p.text == "SET"
+    package, p = one(HIDDEN, tracked=tracked)
+    package.body.insert_text("BODY", location="End")
+    assert package.body.paragraphs[-1].text == "BODY"
+    assert p.replace_text("HIDDEN", "x") == 0, "hidden text is not found"
+    strict_reload(package)
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_at_the_hidden_edge_of_a_partly_hidden_paragraph(tracked):
+    package, p = one('<w:r><w:rPr><w:b/></w:rPr><w:t>AB</w:t></w:r>' + HIDDEN, tracked=tracked)
+    p.insert_text("X", location="End")
+    assert p.text == "ABX"
+    order = _new_run_order(p)
+    assert order.index("X") > order.index("HIDDEN(hidden)"), "End is after the trailing hidden run"
+    added = next(run for run in p.runs if any(getattr(i, "value", None) == "X" for i in run.content))
+    assert added.r_pr is not None and added.r_pr.b is not None and added.r_pr.vanish is None, "the visible text's look"
+    package, p = one(HIDDEN + '<w:r><w:t>CD</w:t></w:r>', tracked=tracked)
+    p.insert_text("Y", location="Start")
+    assert p.text == "YCD"
+    assert _new_run_order(p)[0] == "Y", "Start is before the leading hidden run"
+    strict_reload(package)
+
+
+# ---------------------------------------------------------------------------
+# 2, the break rule in every w:text control, bound or not; 3, F3
+# ---------------------------------------------------------------------------
+
+UNBOUND_TEXT_CONTROLS = [
+    ("w:text multi-line", '<w:text w:multiLine="1"/>', "Notex\x0by\x0bz"),
+    ("w:text single-line", "<w:text/>", "Notexyz"),
+]
+
+
+@pytest.mark.parametrize(("label", "kind", "text"), UNBOUND_TEXT_CONTROLS, ids=[c[0] for c in UNBOUND_TEXT_CONTROLS])
+def test_an_unbound_w_text_block_control_takes_a_break_as_its_kind_does(label, kind, text):
+    package, control = block_control(kind, bound=False)
+    control.insert_text("x\ny\u000bz", location="End")
+    assert [p.text for p in control.paragraphs] == [text]
+    p = control.paragraphs[0]
+    p.text = "a\rb\r\nc"
+    assert p.text == ("a\x0bb\x0bc" if "multiLine" in kind else "abc"), "Paragraph.text = too; \\r a w:br in a control"
+    strict_reload(package)
+
+
+def run_control(kind: str):
+    package = create_package()
+    package.body.insert_xml(
+        f'<w:p xmlns:w="{W}"><w:r><w:t xml:space="preserve">at </w:t></w:r><w:sdt><w:sdtPr><w:id w:val="7"/>{kind}'
+        "</w:sdtPr><w:sdtContent><w:r><w:t>in</w:t></w:r></w:sdtContent></w:sdt></w:p>"
+    )
+    return package, package.body.content_controls[0]
+
+
+@pytest.mark.parametrize(("kind", "text"), [('<w:text w:multiLine="1"/>', "inx\x0by"), ("<w:text/>", "inxy"), ("", "inx\x0by")])
+def test_a_run_level_control_drops_a_line_break_where_single_line(kind, text):
+    """F3, unbound too: a single-line plain-text control takes no line break, through the control and through a range."""
+    package, control = run_control(kind)
+    control.insert_text("x\x0by", location="End")
+    assert control.text == text
+    package, control = run_control(kind)
+    package.body.paragraphs[0].search("in")[0].insert_text("x\x0by", location="Replace")
+    assert control.text == text[2:]
+    with pytest.raises(SpanError) as raised:
+        control.insert_text("p\nq", location="End")
+    assert raised.value.code == "range.splits_control"
+    strict_reload(package)
+
+
+def test_f3_a_bound_single_line_block_control_drops_a_line_break_and_its_node_follows():
+    package, control = block_control("<w:text/>", bound=True)
+    control.insert_text("x\u000by", location="End")
+    package.custom_xml_parts.update_from_content_controls()
+    assert (control.text, control.xml_mapping.custom_xml_node.text) == ("Notexy", "Notexy")
+
+
+def test_f2_a_non_breaking_hyphen_goes_to_the_node_as_a_hyphen_and_an_optional_one_stays():
+    package, control, part = bound_run_control(5, multi_line=True)
+    control.insert_text("x\u001ey\u001fz", location="Replace")
+    assert node_text(part, 5) == "x-y­z"
+    strict_reload(package)
+
+
+# ---------------------------------------------------------------------------
+# 3, G1: get_content_controls(types=...)
+# ---------------------------------------------------------------------------
+
+
+def test_get_content_controls_filters_by_type_as_word_does():
+    package = create_package()
+    package.body.insert_xml(
+        f'<w:p xmlns:w="{W}"><w:r><w:t xml:space="preserve">a </w:t></w:r>'
+        '<w:sdt><w:sdtPr><w:id w:val="1"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>PLAIN</w:t></w:r></w:sdtContent></w:sdt>'
+        '<w:r><w:t xml:space="preserve"> b </w:t></w:r>'
+        '<w:sdt><w:sdtPr><w:id w:val="2"/></w:sdtPr><w:sdtContent><w:r><w:t>RICH</w:t></w:r></w:sdtContent></w:sdt></w:p>'
+    )
+    package.body.insert_xml(
+        f'<w:sdt xmlns:w="{W}"><w:sdtPr><w:id w:val="3"/></w:sdtPr><w:sdtContent>'
+        '<w:p><w:sdt><w:sdtPr><w:id w:val="4"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>INNER</w:t></w:r></w:sdtContent></w:sdt></w:p>'
+        "</w:sdtContent></w:sdt>"
+    )
+    body = package.body
+    ids = lambda controls: [c.id for c in controls]
+    assert ids(body.get_content_controls()) == ids(body.content_controls) == [1, 2, 3, 4]
+    assert ids(body.get_content_controls(types=["PlainText"])) == [1, 4]
+    assert ids(body.get_content_controls(types=["RichText"])) == [2, 3]
+    assert ids(body.get_content_controls(types=[])) == [1, 2, 3, 4], "no types: every one, as Office JS's"
+    paragraph = body.paragraphs[0]
+    assert ids(paragraph.get_content_controls(types=["PlainText"])) == [1]
+    block = body.content_controls[2]
+    assert ids(block.get_content_controls(types=["PlainText"])) == [4]
+    # a range: the controls it overlaps, not one holding it whole (core-ts's rule, check 53)
+    assert ids(paragraph.search("a PLA")[0].get_content_controls()) == [1]
+    assert ids(paragraph.search("LAI")[0].get_content_controls()) == [], "held whole by control 1"
+    assert ids(paragraph.get_range().get_content_controls(types=["RichText"])) == [2]
+
+
+# ---------------------------------------------------------------------------
+# 4, a deletion takes the pictures in its span (core-ts CR-002 section 48)
+# ---------------------------------------------------------------------------
+
+
+def _png() -> bytes:
+    """The PNG out of ``samples/Images.docx``."""
+    import zipfile
+    from pathlib import Path
+
+    samples = Path(__file__).resolve().parents[2] / "samples"
+    with zipfile.ZipFile(samples / "Images.docx") as archive:
+        return archive.read(next(n for n in archive.namelist() if n.lower().endswith(".png")))
+
+
+def picture_paragraph(*, tracked: bool = False):
+    """``a``, a picture, ``b``: the picture between the two letters, each in a run of its own."""
+    from docx4j_py.child import link_parents
+    from docx4j_py.wml import R, t
+
+    package = create_package()
+    p = package.body.insert_paragraph("a")
+    p.insert_inline_picture(_png(), width=20, location="End")
+    p.element.content.append(R(content=[t("b")]))
+    link_parents(p.element)
+    assert p.text == "ab" and len(p.inline_pictures) == 1
+    if tracked:
+        package.change_tracking_mode = "TrackAll"
+    return package, p
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_a_deletion_takes_the_pictures_in_its_span(tracked):
+    for write in (
+        lambda p: p.get_range("Whole").delete(),
+        lambda p: p.get_range("Content").delete(),
+        lambda p: p.insert_text("NEW", location="Replace"),
+        lambda p: p.search("a^gb")[0].insert_text("NEW", location="Replace"),
+        lambda p: setattr(p, "text", "NEW"),
+    ):
+        package, p = picture_paragraph(tracked=tracked)
+        write(p)
+        xml = to_xml(p.element)
+        if tracked:
+            assert re.search(r"<w:del [^>]*>(?:(?!</w:del>).)*<w:drawing>", xml), "the picture's run inside the w:del"
+            accepted = strict_reload(package)
+            accept_all(accepted)
+            assert accepted.body.paragraphs[0].inline_pictures == []
+            rejected = strict_reload(package)
+            reject_all(rejected)
+            assert len(rejected.body.paragraphs[0].inline_pictures) == 1 and rejected.body.paragraphs[0].text == "ab"
+        else:
+            assert "<w:drawing>" not in xml
+        strict_reload(package)
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_a_span_beside_a_picture_leaves_it(tracked):
+    """Only a paragraph's whole range holds the pictures at its edges; any other range, those strictly inside it."""
+    for find in ("a", "b"):
+        _package, p = picture_paragraph(tracked=tracked)
+        p.search(find)[0].delete()
+        assert "<w:drawing>" in to_xml(p.element)
+        if tracked:
+            assert not re.search(r"<w:del [^>]*>(?:(?!</w:del>).)*<w:drawing>", to_xml(p.element))
+
+
+def test_a_tracked_deletion_of_a_paragraph_holding_only_a_picture_takes_it():
+    package = create_package()
+    p = package.body.insert_paragraph("")
+    p.insert_inline_picture(_png(), width=20)
+    package.body.insert_paragraph("after")
+    package.change_tracking_mode = "TrackAll"
+    p.delete()
+    xml = to_xml(p.element)
+    assert re.search(r"<w:del [^>]*>(?:(?!</w:del>).)*<w:drawing>", xml) and "<w:rPr><w:del " in xml
+    accepted = strict_reload(package)
+    accept_all(accepted)
+    assert [q.text for q in accepted.body.paragraphs] == ["after"]
+
+
+def test_a_ranges_xml_trims_the_pictures_outside_it():
+    """``Range.get_xml`` trims the copy with the same splice: a picture outside the span goes, one at its edge stays.
+
+    core-ts's section 48 says nothing of ``getOoxml``; this is the deletion's
+    rule applied to the copy, and the document is not touched.
+    """
+    from docx4j_py.child import link_parents
+    from docx4j_py.wml import R, t
+
+    package = create_package()
+    p = package.body.insert_paragraph("ax")
+    p.insert_inline_picture(_png(), width=20, location="End")
+    p.element.content.append(R(content=[t("b")]))
+    link_parents(p.element)
+    assert p.text == "axb"
+    assert "drawing" not in p.search("a")[0].get_xml(), "the picture after x is outside a's span"
+    assert "drawing" in p.search("x")[0].get_xml(), "at x's end edge: kept"
+    assert "drawing" in p.search("b")[0].get_xml(), "at b's start edge: kept"
+    assert "drawing" in p.get_range().get_xml()
+    assert len(p.inline_pictures) == 1, "the document is not touched"

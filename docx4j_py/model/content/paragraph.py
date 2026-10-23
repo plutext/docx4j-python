@@ -36,7 +36,7 @@ from docx4j_py.model.content.enums import (
     TextLocation,
     TextView,
 )
-from docx4j_py.model.content.errors import ContentError
+from docx4j_py.model.content.errors import ContentError, SpanError
 from docx4j_py.model.content.font import Font
 from docx4j_py.model.content.reports import (
     TextExcerpt,
@@ -51,10 +51,12 @@ from docx4j_py.model.content.styles import (
     style_name_of,
 )
 from docx4j_py.model.content.text_model import (
+    LINE_CHARACTERS,
     PARAGRAPH_BREAKS,
     canonical_view,
     drop_unwritable,
     explode_mapped,
+    for_writer,
     hidden_runs_of,
     markup_text,
     office_matches,
@@ -69,6 +71,7 @@ from docx4j_py.model.content.text_model import (
     text_run,
 )
 from docx4j_py.model.property_resolver import resolver_of
+from docx4j_py.traversal import run_items_of
 from docx4j_py.wml import P, R, br, el, t, to_xml, wml
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -206,11 +209,17 @@ class Paragraph:
                 self.splice(0, len(self.text), value, whole=True, breaks="line")
                 change.touched(self)
                 return
+            from docx4j_py.model.content.controls import paragraph_lines_of
+
+            # one paragraph (E2), or as a plain-text control takes lines (section 11's item 2, F3)
+            lines = paragraph_lines_of(self)
+            mode = {"multi": "multi-line", "single": "single-line"}.get(lines or "", "one-paragraph")
             r_pr = None
-            runs = runs_of(self.element)
-            if runs and getattr(runs[0], "r_pr", None) is not None:
-                r_pr = deep_copy(runs[0].r_pr)
-            run = R(content=ChildList(text_items(value)))
+            first = self._visible_first_run()
+            if first is not None and getattr(first, "r_pr", None) is not None:
+                # the first visible run's look: a hidden one's would hide the text (CR-013 section 11)
+                r_pr = deep_copy(first.r_pr)
+            run = R(content=ChildList(text_items(for_writer(value, mode))))
             if r_pr is not None:
                 run.r_pr = r_pr
                 r_pr.parent = run
@@ -839,6 +848,18 @@ class Paragraph:
 
         return controls_in_paragraph(self)
 
+    def get_content_controls(self, *, types: Any = None) -> list[Any]:
+        """Office JS ``getContentControls`` (WordApi 1.5): :attr:`content_controls`, those of `types` where given.
+
+        `types` are ``Word.ContentControlType`` values (``"PlainText"``,
+        ``"RichText"``, ...), as a control's ``type`` reports them. Word's
+        ``contentControls`` lists rich-text controls only, where this package's
+        lists every kind, a recorded departure (CR-013 section 11, G1).
+        """
+        from docx4j_py.model.content.controls import controls_of_types
+
+        return controls_of_types(self.content_controls, types)
+
     @property
     def inline_pictures(self) -> list[Any]:
         """The inline pictures in this paragraph, in order (Office JS ``inlinePictures``)."""
@@ -947,7 +968,12 @@ class Paragraph:
                     "Replace": (0, length),
                 }[location]
                 index = _index_of(self.container, self.element)
-                out = self.splice(start, end, text)
+                if location == "Replace":
+                    # the whole content: its hidden runs and pictures with it (core-ts's WHOLE)
+                    out = self.splice(start, end, text, whole=True)
+                else:
+                    # the paragraph's own edge: before its leading hidden runs, after its trailing ones
+                    out = self.splice(start, end, text, edge="start" if location == "Start" else "end")
                 change.touched(self)
                 change.text(before=before, after=self.text_since(index))
                 return out
@@ -1322,7 +1348,7 @@ class Paragraph:
         from docx4j_py.model.content.tracking import insertion_mark_of
 
         length = len(self.text)
-        if length or self.holds_hidden_text():
+        if length or self.holds_objects():
             self._delete_text(tracker, 0, length, whole=True)
         mark = insertion_mark_of(self.element, self.container)
         ours = (
@@ -1440,7 +1466,14 @@ class Paragraph:
         return insert_content_control_in_paragraph(self, kind)
 
     def splice(
-        self, start: int, end: int, text: str, *, whole: bool = False, breaks: str = "paragraph"
+        self,
+        start: int,
+        end: int,
+        text: str,
+        *,
+        whole: bool = False,
+        breaks: str = "paragraph",
+        edge: str | None = None,
     ) -> Range:
         """Replace the text in ``[start, end)`` and return the range of the new text.
 
@@ -1486,23 +1519,54 @@ class Paragraph:
             Phase B's (section 11.1).
         """
         text = drop_unwritable(text)
+        if LINE_CHARACTERS.search(text):
+            lines = self._lines_at(start, end, edge)
+            if lines is not None:
+                where, kind = lines
+                if where == "run" and PARAGRAPH_BREAKS.search(text):
+                    _refuse_run_control_break()
+                if kind == "single":
+                    # a single-line plain-text control takes no line at all (F3)
+                    text = for_writer(text, "single-line")
+                elif kind == "multi" and where == "block":
+                    # a multi-line w:text control, bound or not: each break a w:br (section 11's item 2)
+                    text = for_writer(text, "multi-line")
+                return self._splice_text(start, end, text, whole=whole, edge=edge)
         if breaks == "line":
-            text = text.replace("\r\n", "\n")
+            text = for_writer(text, "one-paragraph")
         elif PARAGRAPH_BREAKS.search(text):
-            from docx4j_py.model.content.controls import (
-                bound_control_is_multi_line,
-                bound_plain_text_control,
-            )
+            return self._splice_paragraphs(start, end, text, whole=whole, edge=edge)
+        return self._splice_text(start, end, text, whole=whole, edge=edge)
 
-            control = bound_plain_text_control(self)
-            if control is None:
-                return self._splice_paragraphs(start, end, text, whole=whole)
-            # no paragraph in a bound block control: a w:br in a multi-line w:text one, else
-            # nothing (core-ts section 61 and its check 56, 38dcae9)
-            text = PARAGRAPH_BREAKS.sub("\n" if bound_control_is_multi_line(control) else "", text)
-        return self._splice_text(start, end, text, whole=whole)
+    def _lines_at(self, start: int, end: int, edge: str | None = None) -> tuple[str, str | None] | None:
+        """The content control that decides how a text's lines go where :meth:`splice` puts it: ``(where, kind)``.
 
-    def _splice_paragraphs(self, start: int, end: int, text: str, *, whole: bool) -> Range:
+        ``("run", kind)`` where the text lands inside a run-level control, `kind`
+        its :func:`~.controls.plain_text_lines_of` (None for a rich-text one); else
+        ``("block", kind)`` for the block control holding this paragraph directly
+        where it takes lines (:func:`~.controls.paragraph_lines_of`); else None.
+        core-ts's ``runControlOf`` and ``blockControl`` (``6285dfa``).
+        """
+        from docx4j_py.model.content.controls import (
+            ContentControl,
+            paragraph_lines_of,
+            plain_text_lines_of,
+        )
+        from docx4j_py.model.content.split import holders_above
+        from docx4j_py.wml import SdtRun
+
+        anchor, _how = self._landing(start, end, edge)
+        if anchor is not None:
+            for holder in holders_above(anchor, self.element):
+                if isinstance(holder, SdtRun):
+                    owner = getattr(holder, "parent", None)
+                    container = run_items_of(owner) if owner is not None else None
+                    control = ContentControl(holder, container or [holder], self.parent_body)
+                    return "run", plain_text_lines_of(control)
+        kind = paragraph_lines_of(self)
+        return ("block", kind) if kind is not None else None
+
+    def _splice_paragraphs(self, start: int, end: int, text: str, *, whole: bool, edge: str | None = None) -> Range:
         """:meth:`splice` of a text holding paragraph breaks: the text without them, then a split after each piece."""
         from docx4j_py.model.content.range import Range
         from docx4j_py.model.content.reports import current_recorder
@@ -1514,8 +1578,8 @@ class Paragraph:
         length = len(self.text)
         start = max(0, min(start, length))
         end = max(start, min(end, length))
-        self.refuse_paragraph_breaks(start, end, text, verb)
-        out = self._splice_text(start, end, joined, whole=whole)
+        self.refuse_paragraph_breaks(start, end, text, verb, edge=edge)
+        out = self._splice_text(start, end, joined, whole=whole, edge=edge)
         start = out.start
         edge = start + len(joined)
         consumed = 0
@@ -1528,14 +1592,17 @@ class Paragraph:
             consumed = position
         return Range(self, 0, len(pieces[-1]))
 
-    def refuse_paragraph_breaks(self, start: int, end: int, text: str, operation: str = "this edit") -> None:
+    def refuse_paragraph_breaks(
+        self, start: int, end: int, text: str, operation: str = "this edit", *, edge: str | None = None
+    ) -> None:
         """Refuse, before anything changes, a splice of `text` whose paragraph breaks can't be made there. Extension.
 
         CR-013 section 11, E1: where :meth:`splice` would put the text --- its
-        landing --- must not be inside a run-level content control or a field;
-        a text of breaks alone is checked as a split at the place. Nothing to
-        check for a text with no break, or in a bound block control, where a
-        break makes no paragraph (:func:`~.controls.bound_plain_text_control`).
+        landing --- must not be inside a run-level content control (core-ts's
+        F4) or a field; a text of breaks alone is checked as a split at the
+        place. Nothing to check for a text with no break, or in a block control
+        that takes lines (a ``w:text`` one, or a bound one Word reads as plain
+        text), where a break makes no paragraph (:meth:`_lines_at`).
 
         Raises:
             SpanError: ``range.splits_control``, ``range.splits_field``,
@@ -1547,21 +1614,22 @@ class Paragraph:
         text = drop_unwritable(text)
         if not PARAGRAPH_BREAKS.search(text):
             return
-        from docx4j_py.model.content.controls import bound_plain_text_control
-
-        if bound_plain_text_control(self) is not None:
-            return
         segments = self.segments()
         if any(segment.branch is not None for segment in segments):
             self.refuse_branch_text(start, end, operation)
         refuse_equation(segments, start, end, tracked=self.change_tracker is not None)
+        lines = self._lines_at(start, end, edge)
+        if lines is not None:
+            if lines[0] == "run":
+                _refuse_run_control_break(operation)
+            return
         if PARAGRAPH_BREAKS.sub("", text):
-            anchor, how = self._landing(start, end)
+            anchor, how = self._landing(start, end, edge)
             refuse_place(self.element, anchor, how, operation)
         else:
             refuse_split(self, end, keep="head", operation=operation)
 
-    def _landing(self, start: int, end: int) -> tuple[Any, str]:
+    def _landing(self, start: int, end: int, edge: str | None = None) -> tuple[Any, str]:
         """Where :meth:`_splice_text` puts a text, read without changing anything: ``(anchor, how)``.
 
         `how` is ``"into"`` (the text extends `anchor`, a ``w:t``), ``"after"``
@@ -1578,8 +1646,15 @@ class Paragraph:
         start = max(0, min(start, length))
         end = max(start, min(end, length))
         whole = start == 0 and end == length and end > start
-        hidden = [segment for segment in listed if segment.hidden and _in_span(segment.start, start, end, whole)]
+        hidden = [segment for segment in listed if segment.object and _in_span(segment.start, start, end, whole)]
         tracker = self.change_tracker
+        beside = _hidden_edge(listed, start, end, edge)
+        if beside is not None:
+            # the paragraph's edge beside its hidden runs (:meth:`_place_at_hidden_edge`)
+            segment, how = beside
+            site = segment.site()[0]
+            revision = revision_of(site)
+            return (revision.element if revision is not None else site), how
         if tracker is None:
             if end > start or hidden:
                 first = next((s for s in segments if s.start <= start < s.end), None)
@@ -1591,7 +1666,7 @@ class Paragraph:
             deleted = [
                 s
                 for s in listed
-                if (s.hidden and _in_span(s.start, start, end, whole))
+                if (s.object and _in_span(s.start, start, end, whole))
                 or (not s.object and s.end > start and s.start < end and s.text)
             ]
             others = [s for s in deleted if not tracker.own_insertion(revision_of(s.run))]
@@ -1601,8 +1676,17 @@ class Paragraph:
             segments = _after_deletion(segments, start, end)
         return _tracked_landing(tracker, segments, start)
 
-    def _splice_text(self, start: int, end: int, text: str, *, whole: bool = False) -> Range:
-        """:meth:`splice` of a text the paragraph breaks have been taken out of."""
+    def _splice_text(
+        self, start: int, end: int, text: str, *, whole: bool = False, edge: str | None = None
+    ) -> Range:
+        """:meth:`splice` of a text the paragraph breaks have been taken out of.
+
+        `edge` ``"start"`` or ``"end"`` is the paragraph's own edge (its
+        ``insert_text`` at ``"Start"`` or ``"End"``): text put there goes before
+        the hidden runs at the start, or after those at the end, not into them
+        (CR-013 section 11, the review's item 1). A drawn object in the span goes
+        with it, as a hidden run does (core-ts CR-002 section 48).
+        """
         from docx4j_py.model.content.range import Range
 
         listed = self.segments(objects=True)
@@ -1616,10 +1700,12 @@ class Paragraph:
 
         tracker = self.change_tracker
         refuse_equation(segments, start, end, tracked=tracker is not None)
+        # the places of no text in the span: hidden runs' items (CR-013 Phase A) and
+        # drawn objects (core-ts CR-002 section 48; CR-013 section 11), which go with it
         hidden = [
             segment
             for segment in listed
-            if segment.hidden and _in_span(segment.start, start, end, whole)
+            if segment.object and _in_span(segment.start, start, end, whole)
         ]
         if tracker is not None:
             # a replacement is the w:del first and the w:ins after it, as Word
@@ -1628,7 +1714,7 @@ class Paragraph:
                 self._delete_text(tracker, start, end, whole=whole) if end > start or hidden else []
             )
             if text:
-                self._insert_tracked(tracker, start, text, deletions[-1] if deletions else None)
+                self._insert_tracked(tracker, start, text, deletions[-1] if deletions else None, edge=edge)
                 explode_mapped(self.segments(), start, start + len(text))
             return Range(self, start, start + len(text))
 
@@ -1663,6 +1749,9 @@ class Paragraph:
                 return Range(self, start, start + len(text))
             segments = self.segments()
 
+        if text and self._place_at_hidden_edge(start, end, text, edge):
+            explode_mapped(self.segments(), start, start + len(text))
+            return Range(self, start, start + len(text))
         if text:
             target = (
                 next((s for s in segments if s.editable and s.start < start < s.end), None)
@@ -1679,8 +1768,9 @@ class Paragraph:
                 r_pr = None
                 source = neighbour.run if neighbour is not None and not neighbour.math else None
                 if source is None:
-                    runs = runs_of(self.element)
-                    source = runs[0] if runs else None
+                    # no run beside it: the first run's look, unless that run is hidden
+                    # (core-ts's visibleFirstRunRPr, 6285dfa; CR-013 section 11)
+                    source = self._visible_first_run()
                 if source is not None and getattr(source, "r_pr", None) is not None:
                     r_pr = deep_copy(source.r_pr)
                 run = R(content=ChildList([t(text)]))
@@ -1749,6 +1839,61 @@ class Paragraph:
     def holds_hidden_text(self) -> bool:
         """Whether a hidden run of this paragraph holds text (CR-013 Phase A). Extension."""
         return any(segment.hidden for segment in self.segments(objects=True))
+
+    def holds_objects(self) -> bool:
+        """Whether this paragraph holds a place of no text: a hidden run's item or a drawn object. Extension.
+
+        What a deletion of the whole paragraph takes even where it has no text
+        (CR-013 Phase A's hidden runs; core-ts CR-002 section 48's pictures).
+        """
+        return any(segment.object for segment in self.segments(objects=True))
+
+    def _visible_first_run(self) -> Any:
+        """The first run that is not hidden, or None: whose look new text with no run beside it takes.
+
+        core-ts's ``visibleFirstRunRPr`` (``6285dfa``): text put into a paragraph
+        whose every run is hidden took the first run's look, ``w:vanish`` with
+        it, so it read as nothing and escaped the writers' map (CR-013 section
+        11, measured at ``e79a8e8``).
+        """
+        hidden = self.hidden_runs()
+        return next((run for run in runs_of(self.element) if not hidden(run)), None)
+
+    def _place_at_hidden_edge(
+        self, start: int, end: int, text: str, edge: str | None, *, tracker: Any = None
+    ) -> bool:
+        """Text put at an edge where hidden runs stand: after those at the end, before those at the start.
+
+        CR-013 section 11 (the review's item 1): the paragraph's ``"End"`` is
+        after everything in it, hidden text too, and its ``"Start"`` before; in a
+        paragraph with no visible text an insertion goes at the end. The new run
+        takes the look of the visible text beside it, or none, never a hidden
+        run's. Beside a revision the run goes beside the revision, as typed text
+        does. Returns whether it placed the text.
+        """
+        from docx4j_py.model.content.tracking import copy_r_pr, revision_of
+
+        listed = self.segments(objects=True)
+        found = _hidden_edge(listed, start, end, edge)
+        if found is None:
+            return False
+        segment, how = found
+        visible = [s for s in listed if not s.object and not s.math and s.text]
+        neighbour = (visible[-1] if how == "after" else visible[0]) if visible else None
+        r_pr = copy_r_pr(getattr(neighbour.run, "r_pr", None)) if neighbour is not None else None
+        item: Any = _run_of(text, r_pr)
+        if tracker is not None:
+            item = tracker.ins([item])
+        site, owner, index = segment.site()
+        revision = revision_of(site)
+        if revision is not None:
+            site, owner = revision.element, revision.owner
+            index = _index_of(owner, site)
+        parent = getattr(site, "parent", None) or self.element
+        owner.insert(index + 1 if how == "after" else index, item)
+        link_parents(item)
+        item.parent = parent
+        return True
 
     def _delete_text(self, tracker: Any, start: int, end: int, *, whole: bool = False) -> list[_Anchor]:
         """The text in ``[start, end)`` becomes a deletion; returns the ``w:del``\\ s.
@@ -1832,7 +1977,7 @@ class Paragraph:
         return made
 
     def _insert_tracked(
-        self, tracker: Any, at: int, text: str, anchor: _Anchor | None = None
+        self, tracker: Any, at: int, text: str, anchor: _Anchor | None = None, *, edge: str | None = None
     ) -> None:
         """Text inserted at `at` as a ``w:ins``, extending one of ours where it can.
 
@@ -1844,7 +1989,10 @@ class Paragraph:
 
         if anchor is not None:
             source = runs_of(anchor.element, view="original")
-            r_pr = copy_r_pr(getattr(source[0], "r_pr", None) if source else None)
+            # the first deleted run's look, unless it was hidden: a hidden one's would hide
+            # the new text (CR-013 section 11, the review's item 1)
+            first = source[0] if source and not self.hidden_runs()(source[0]) else None
+            r_pr = copy_r_pr(getattr(first, "r_pr", None))
             wrapper = tracker.ins([_run_of(text, r_pr)])
             index = _index_of(anchor.owner, anchor.element)
             anchor.owner.insert(index + 1 if index >= 0 else len(anchor.owner), wrapper)
@@ -1853,6 +2001,8 @@ class Paragraph:
 
         self.refuse_branch_text(at, at, "a tracked insertion")
         refuse_equation(self.segments(), at, at)
+        if self._place_at_hidden_edge(at, at, text, edge, tracker=tracker):
+            return
         at = self.split_at(at)
         segments = self.segments()
         before = next((s for s in reversed(segments) if s.end <= at), None)
@@ -1884,8 +2034,8 @@ class Paragraph:
         tracker.assert_editable(revision)
         source = neighbour.run if neighbour is not None else None
         if source is None:
-            runs = runs_of(self.element)
-            source = runs[0] if runs else None
+            # the first run's look, unless it is hidden (core-ts's visibleFirstRunRPr)
+            source = self._visible_first_run()
         wrapper = tracker.ins([_run_of(text, copy_r_pr(getattr(source, "r_pr", None)))])
         if neighbour is None:
             if at == 0:
@@ -1919,7 +2069,7 @@ class Paragraph:
             return [
                 segment
                 for segment in self.segments(objects=True)
-                if (segment.hidden and _in_span(segment.start, start, end, whole))
+                if (segment.object and _in_span(segment.start, start, end, whole))
                 or (not segment.object and segment.start >= start and segment.end <= end and segment.text)
             ]
 
@@ -1995,6 +2145,40 @@ class Paragraph:
                         del items[position]
 
         prune(self.element.content)
+
+
+def _hidden_edge(listed: list[Any], start: int, end: int, edge: str | None) -> tuple[Any, str] | None:
+    """The hidden segment text at a paragraph's edge goes beside, and which side: for :meth:`Paragraph._place_at_hidden_edge`.
+
+    ``"end"`` at the text's end: after the last hidden run there; ``"start"`` at
+    0: before the first. With no visible text at all, any insertion is at the
+    end. None where no hidden run stands at that edge.
+    """
+    if start != end:
+        return None
+    length = max((s.end for s in listed if not s.object), default=0)
+    hidden = [s for s in listed if s.hidden]
+    if not hidden:
+        return None
+    if edge is None and length == 0:
+        edge = "end"
+    if edge == "end" and start == length:
+        trailing = [s for s in hidden if s.start == length]
+        return (trailing[-1], "after") if trailing else None
+    if edge == "start" and start == 0:
+        leading = [s for s in hidden if s.start == 0]
+        return (leading[0], "before") if leading else None
+    return None
+
+
+def _refuse_run_control_break(operation: str = "this write") -> None:
+    """Refuse a ``\\n`` or ``\\r`` written into a run-level content control (core-ts's F4)."""
+    raise SpanError(
+        f"{operation} refused: a paragraph break (\\n or \\r) written into a run-level content control "
+        "would cut the control in two (CR-013 section 11, E1; docx4j-core-ts F4)",
+        code="range.splits_control",
+        hint="write a line break (U+000B) instead, or write the paragraph outside the control",
+    )
 
 
 def _after_deletion(segments: list[Any], start: int, end: int) -> list[Any]:

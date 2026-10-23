@@ -593,6 +593,20 @@ class Body(Sequence):
 
                 wrap_new_runs(tracker, paragraph.element)
 
+    def get_content_controls(self, *, types: Any = None) -> list[Any]:
+        """Office JS ``getContentControls`` (WordApi 1.5): :attr:`content_controls`, those of `types` where given.
+
+        `types` are ``Word.ContentControlType`` values (``"PlainText"``,
+        ``"RichText"``, ``"CheckBox"``, ...), as a control's ``type`` reports
+        them. Word's ``contentControls`` lists rich-text controls only, where
+        this package's lists every kind, a recorded departure; this is how code
+        that asks for plain-text controls finds them, as Word's does (CR-013
+        section 11, G1; docx4j-core-ts check 55b).
+        """
+        from docx4j_py.model.content.controls import controls_of_types
+
+        return controls_of_types(self.content_controls, types)
+
     def insert_xml(
         self,
         xml: str,
