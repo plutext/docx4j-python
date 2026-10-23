@@ -36,7 +36,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.model.content.enums import Location
-from docx4j_py.model.content.errors import ContentError
+from docx4j_py.model.content.errors import ContentError, SpanError
 from docx4j_py.model.content.picture import note_added_part
 from docx4j_py.model.content.reports import current_recorder, recording
 from docx4j_py.openpackaging.part_name import PartName
@@ -478,19 +478,44 @@ def insert_ooxml_into_range(
     *,
     location: str = "Replace",
 ) -> list[Any]:
-    """What :meth:`Range.insert_ooxml` is. See its docstring."""
+    """What :meth:`Range.insert_ooxml` is. See its docstring.
+
+    Across paragraphs (CR-013 Phase C; docx4j-core-ts check 54 case 35, its
+    ``Range.insertOoxml`` at ``87bbb38``): one paragraph's runs in place of the
+    range where the paragraphs join, as a replacement puts its text; at the
+    range's start in its first paragraph or at its end in its last; several
+    blocks before the first paragraph or after the last, and in place of the
+    range refused (unmeasured).
+    """
+    from docx4j_py.model.content.span_edits import assert_trackable, refuse_tracked_content
     from docx4j_py.wml import P
 
-    span.require_one_paragraph("insert_ooxml")  # one paragraph's runs (CR-013 Phase B)
     paragraph = span.paragraph
     body = paragraph.parent_body
-    with recording(body, "insert_ooxml") as change:
-        # through text read from a kept branch: refused before any part is added (CR-011 Phase F)
-        if location == "Replace":
-            span.refuse_branch_text("insert_ooxml")
+    if location not in ("Replace", "Before", "After"):
+        raise ContentError(
+            f"insert_ooxml on a range takes Replace, Before or After, not {location!r}",
+            code="location.invalid",
+            hint="Replace is the default; Before and After put the content around the span",
+        )
+    # every refusal before any part is added: through text read from a kept branch (CR-011
+    # Phase F), and a replacement's extent (Word's refusals inside a table, CR-013 Phase C)
+    keeps_mark = location == "Replace" and (span.spans_paragraphs or span.holds_end_mark)
+    extent = None
+    if location == "Replace":
+        if keeps_mark:
+            extent = span._replaceable_extent("insert_ooxml")
+            span._refuse_edge_pieces("insert_ooxml")
+            if paragraph.change_tracker is not None:
+                assert_trackable(extent, "insert_ooxml")
+                refuse_tracked_content(extent, "insert_ooxml", body)
         else:
-            at = span.start if location == "Before" else span.end
-            paragraph.refuse_branch_text(at, at, "insert_ooxml")
+            span.refuse_branch_text("insert_ooxml")
+    else:
+        target = paragraph if location == "Before" else span.end_paragraph
+        at = span.start if location == "Before" else span.end
+        target.refuse_branch_text(at, at, "insert_ooxml")
+    with recording(body, "insert_ooxml") as change:
         part = getattr(body, "part", None)
         elements = content_of(
             ooxml, target=getattr(part, "_wrapped", part), package=body.package
@@ -499,17 +524,42 @@ def insert_ooxml_into_range(
             return []
         only = elements[0] if len(elements) == 1 and isinstance(elements[0], P) else None
         if only is not None:
-            before = paragraph.text
+            before = span.text
             if location == "Replace":
-                paragraph.splice(span.start, span.end, "")
-                span.end = span.start
-            offset = span.start if location in ("Before", "Replace") else span.end
-            paragraph.insert_items_at(offset, list(only.content))
-            change.touched(paragraph)
-            change.text(before=before, after=paragraph.text)
-            return [paragraph]
+                into, offset = _remove_keeping_mark(span, extent)
+            elif location == "Before":
+                into, offset = paragraph, span.start
+            else:
+                into, offset = span.end_paragraph, span.end
+            into.insert_items_at(offset, list(only.content))
+            change.touched(into)
+            change.text(before=before, after=into.text)
+            return [into]
+        if location == "Replace" and span.spans_paragraphs:
+            raise SpanError(
+                "insert_ooxml refused: several blocks in place of a range across paragraphs, which Word "
+                "wasn't measured doing (CR-013 Phase C; core-ts check 54)",
+                code="range.spans_paragraphs",
+                hint="delete the range, then insert the blocks before or after the paragraph it leaves",
+            )
         where = "Before" if location in ("Before", "Replace") else "After"
+        target = paragraph if where == "Before" else span.end_paragraph
         if location == "Replace":
-            span.delete()
-        body.insert_element(elements, location=where, target=paragraph)
+            _remove_keeping_mark(span, extent)
+            target = span.paragraph
+        body.insert_element(elements, location=where, target=target)
         return [body.view_for(element) for element in elements]
+
+
+def _remove_keeping_mark(span: Range, extent: Any) -> tuple[Any, int]:
+    """The range's content removed as a replacement removes it, keeping a last mark it holds (core-ts's ``removeKeepingMark``)."""
+    from docx4j_py.model.content.span_edits import delete_span
+
+    if extent is None:
+        span.paragraph.splice(span.start, span.end, "", whole=span.mark)
+        span.end = span.start
+        return span.paragraph, span.start
+    landing = delete_span(span, extent, True)
+    assert landing is not None  # a replaceable extent has a head and a tail
+    span._land_at(landing.paragraph, landing.offset)
+    return landing.paragraph, landing.offset

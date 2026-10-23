@@ -27,6 +27,14 @@ writes no ``w:ins``, exactly as ``ContentControl.delete()`` writes no ``w:del``
 (CR-003 section 4). Paragraphs *inserted* while the mode is on are inserted
 content in the ordinary way, and a control put around them holds them; the
 control itself is invisible to ``get_tracked_changes()``.
+
+**Across paragraphs** (CR-013 Phase C; docx4j-core-ts check 54 cases 36 to
+43): :func:`wrap_paragraphs` puts one block-level control around the
+paragraphs a range holds whole, as Word does, and refuses any other range, as
+Word refuses it. Under tracking that control is an insertion in Word's own form,
+the ``w:customXmlInsRangeStart`` and ``End`` pairs of check 30 around it (case
+43), as Word's save after the run has it and core-ts writes it; the
+paragraph's, the body's and a run-level control keep CR-003's rule above.
 """
 
 from __future__ import annotations
@@ -35,6 +43,7 @@ from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import link_parents
 from docx4j_py.model.content.errors import BindingError, ContentError
+from docx4j_py.traversal import element_name
 from docx4j_py.model.content.reports import recording
 from docx4j_py.wml.sdt import next_sdt_id, sdt
 
@@ -45,6 +54,7 @@ __all__ = [
     "insert_content_control_in_body",
     "insert_content_control_in_paragraph",
     "insert_content_control_in_range",
+    "wrap_paragraphs",
 ]
 
 
@@ -155,7 +165,6 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
             code="binding.form_mismatch",
             hint="call insert_content_control on a paragraph or on the body",
         )
-    span.require_one_paragraph("insert_content_control")  # a range across paragraphs (CR-013 Phase B)
     span.refuse_branch_text("insert_content_control")
     span.require_one_holder("insert_content_control")
     _require_no_revision_between(span)
@@ -194,6 +203,70 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
         change.touched(paragraph)
         change.text(after=view.text)
         return view
+
+
+def wrap_paragraphs(span: Any, kind: str = "RichText") -> ContentControl:
+    """A block content control around the paragraphs of a range across paragraphs, as Word puts one.
+
+    docx4j-core-ts's ``wrapParagraphs`` (``Range.mts`` at ``87bbb38``; Word's
+    check 54 cases 38 and 43, untracked and tracked): only a range holding its
+    paragraphs whole, from the first's start to the last's end, its mark or
+    not, in one list of blocks. Tracked, the control is an insertion in Word's
+    form (:func:`~docx4j_py.model.content.tracking.mark_holder_inserted`).
+
+    Raises:
+        SpanError: ``range.partial_paragraph``, a range starting or ending
+            inside a paragraph, across a table, into one or out of one, as Word
+            refused it (``GeneralException``, cases 36, 37 and 39 to 42);
+            nothing has changed.
+    """
+    from docx4j_py.model.content.errors import SpanError
+    from docx4j_py.model.content.reports import refuse_read_only
+    from docx4j_py.model.content.span_edits import extent_of
+    from docx4j_py.model.content.tracking import mark_holder_inserted
+
+    def refuse(why: str) -> SpanError:
+        return SpanError(
+            f"insert_content_control refused: a range across paragraphs takes a control only where it "
+            f"holds its paragraphs whole, and this one {why}, which Word refuses too (core-ts check 54)",
+            code="range.partial_paragraph",
+            hint="take the paragraphs' whole range (from the first's get_range('Start') to the last's "
+            "get_range('Whole')), or wrap each paragraph (paragraph.insert_content_control())",
+        )
+
+    if span.start != 0 or span.end < len(span.end_paragraph.text):
+        raise refuse("starts or ends inside a paragraph")
+    try:
+        extent = extent_of(span, "insert_content_control")
+    except SpanError as error:
+        raise refuse("starts or ends inside a table or a content control") from error
+    items, first, last = extent.items, extent.first, extent.last
+    if extent.head is None or extent.tail is None or any(
+        element_name(items[index]) == _W_TBL for index in range(first, last + 1)
+    ):
+        raise refuse("holds a table")
+    for paragraph in span.paragraphs:
+        refuse_read_only(paragraph.parent_body, "insert_content_control")
+    body = span.paragraph.parent_body
+    with recording(body, "insert_content_control") as change:
+        _warn_if_w15(body, kind, change)
+        identifier = next_sdt_id(_root_of(body))
+        parent = getattr(items[first], "parent", None)
+        control = sdt(list(items[first : last + 1]), kind=kind, id=identifier, form="block")
+        items[first : last + 1] = [control]
+        link_parents(control)
+        control.parent = parent
+        tracker = span.paragraph.change_tracker
+        if tracker is not None:
+            mark_holder_inserted(tracker, control, items)
+        view = _control(body, control, items)
+        change.touched(view.address)
+        change.text(after=view.text)
+        return view
+
+
+#: A table, ``w:tbl``.
+_W_TBL = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tbl"
 
 
 def _require_no_revision_between(span: Any) -> None:

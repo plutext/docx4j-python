@@ -60,8 +60,10 @@ from docx4j_py.model.content.text_model import (
     hidden_runs_of,
     markup_text,
     office_matches,
+    paragraph_mark_pieces,
     refuse_branch_text,
     refuse_equation,
+    refuse_mark_replacement,
     require_view,
     runs_of,
     segments_of,
@@ -71,7 +73,8 @@ from docx4j_py.model.content.text_model import (
     text_run,
 )
 from docx4j_py.model.property_resolver import resolver_of
-from docx4j_py.traversal import run_items_of
+from docx4j_py.namespaces import WML_NS
+from docx4j_py.traversal import element_name, run_items_of
 from docx4j_py.wml import P, R, br, el, t, to_xml, wml
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -966,6 +969,8 @@ class Paragraph:
         ``\\n``, ``\\r`` and ``\\r\\n`` each make a new paragraph, as
         Word's ``insertText`` does (CR-013 section 11, E1; :meth:`splice`): this
         view goes on viewing the paragraph that keeps the mark, the last.
+        Tracked, a ``"Replace"`` writes the ``w:ins`` first and the ``w:del``
+        after it, as Word does (CR-013 Phase C; :meth:`Range.insert_text`).
 
         Args:
             text: what to insert.
@@ -986,7 +991,11 @@ class Paragraph:
                     "Replace": (0, length),
                 }[location]
                 index = _index_of(self.container, self.element)
-                if location == "Replace":
+                if location == "Replace" and self.change_tracker is not None:
+                    # tracked, the w:ins first and the w:del after it, as Word writes a
+                    # replacement (CR-013 Phase C; docx4j-core-ts check 54 case 4)
+                    out = self.get_range("Content").insert_text(text, location="Replace")
+                elif location == "Replace":
                     # the whole content: its hidden runs and pictures with it (core-ts's WHOLE)
                     out = self.splice(start, end, text, whole=True)
                 else:
@@ -1207,6 +1216,10 @@ class Paragraph:
         """
         from docx4j_py.model.content.range import Range
 
+        if not options.get("match_wildcards") and paragraph_mark_pieces(text) is not None:
+            # Word's paragraph mark, ^p, is searched in the paragraph's whole range, which
+            # holds its mark (CR-013 Phase C; core-ts CR-014 phase 3)
+            return self.get_range("Whole").search(text, **options)
         limit = options.pop("limit", None)
         hits = office_matches(self.segments(objects=True), text, **options)
         if limit is not None:
@@ -1234,7 +1247,12 @@ class Paragraph:
 
         Returns:
             How many were replaced.
+
+        Raises:
+            SpanError: ``range.replaces_mark``, a query holding ``^p``, Word's
+                paragraph mark, whose replacement is unmeasured (CR-013 Phase C).
         """
+        refuse_mark_replacement("Paragraph", find, options)
         replace = drop_unwritable(replace)
         with recording(self.parent_body, "replace_text") as change:
             change.text(before=find)
@@ -1493,9 +1511,10 @@ class Paragraph:
         end: int,
         text: str,
         *,
-        whole: bool = False,
+        whole: bool | tuple[bool, bool] = False,
         breaks: str = "paragraph",
         edge: str | None = None,
+        prefer: str = "before",
     ) -> Range:
         """Replace the text in ``[start, end)`` and return the range of the new text.
 
@@ -1535,6 +1554,17 @@ class Paragraph:
         ``"line"`` (the one-paragraph writers, section 11's E2) ``\\n`` and
         ``\\r\\n`` are a ``w:br`` and ``\\r`` a ``w:cr``.
 
+        `whole` may name the span's edges one by one, ``(start, end)``: what a
+        range across paragraphs holds of its first and last paragraph (core-ts's
+        ``SpanEdges``; CR-013 Phase C). A comment's reference in the span goes
+        with the text, and the comment with it once the write is done: untracked
+        the reference run goes, tracked it goes into the ``w:del`` (core-ts
+        CR-014 section 12.6, Word's check 54 cases 27 and 28). `prefer`
+        ``"after"`` puts a tracked insertion before the run at `start`, in its
+        look, where ``"before"`` (the default) puts it after the run ending
+        there: a tracked replacement's ``w:ins`` goes before the text it
+        replaces (CR-013 Phase C).
+
         Returns:
             The range of the new text; where it made paragraphs, a range across
             them, from the first new paragraph to this ``w:p``, as Office JS's
@@ -1553,12 +1583,12 @@ class Paragraph:
                 elif kind == "multi" and where == "block":
                     # a multi-line w:text control, bound or not: each break a w:br (section 11's item 2)
                     text = for_writer(text, "multi-line")
-                return self._splice_text(start, end, text, whole=whole, edge=edge)
+                return self._splice_text(start, end, text, whole=whole, edge=edge, prefer=prefer)
         if breaks == "line":
             text = for_writer(text, "one-paragraph")
         elif PARAGRAPH_BREAKS.search(text):
-            return self._splice_paragraphs(start, end, text, whole=whole, edge=edge)
-        return self._splice_text(start, end, text, whole=whole, edge=edge)
+            return self._splice_paragraphs(start, end, text, whole=whole, edge=edge, prefer=prefer)
+        return self._splice_text(start, end, text, whole=whole, edge=edge, prefer=prefer)
 
     def _lines_at(self, start: int, end: int, edge: str | None = None) -> tuple[str, str | None] | None:
         """The content control that decides how a text's lines go where :meth:`splice` puts it: ``(where, kind)``.
@@ -1588,7 +1618,16 @@ class Paragraph:
         kind = paragraph_lines_of(self)
         return ("block", kind) if kind is not None else None
 
-    def _splice_paragraphs(self, start: int, end: int, text: str, *, whole: bool, edge: str | None = None) -> Range:
+    def _splice_paragraphs(
+        self,
+        start: int,
+        end: int,
+        text: str,
+        *,
+        whole: bool | tuple[bool, bool],
+        edge: str | None = None,
+        prefer: str = "before",
+    ) -> Range:
         """:meth:`splice` of a text holding paragraph breaks: the text without them, then a split after each piece."""
         from docx4j_py.model.content.range import Range
         from docx4j_py.model.content.reports import current_recorder
@@ -1600,8 +1639,8 @@ class Paragraph:
         length = len(self.text)
         start = max(0, min(start, length))
         end = max(start, min(end, length))
-        self.refuse_paragraph_breaks(start, end, text, verb, edge=edge)
-        out = self._splice_text(start, end, joined, whole=whole, edge=edge)
+        self.refuse_paragraph_breaks(start, end, text, verb, edge=edge, prefer=prefer)
+        out = self._splice_text(start, end, joined, whole=whole, edge=edge, prefer=prefer)
         start = out.start
         edge = start + len(joined)
         consumed = 0
@@ -1622,7 +1661,14 @@ class Paragraph:
         return Range(self, 0, len(pieces[-1]))
 
     def refuse_paragraph_breaks(
-        self, start: int, end: int, text: str, operation: str = "this edit", *, edge: str | None = None
+        self,
+        start: int,
+        end: int,
+        text: str,
+        operation: str = "this edit",
+        *,
+        edge: str | None = None,
+        prefer: str = "before",
     ) -> None:
         """Refuse, before anything changes, a splice of `text` whose paragraph breaks can't be made there. Extension.
 
@@ -1653,12 +1699,12 @@ class Paragraph:
                 _refuse_run_control_break(operation)
             return
         if PARAGRAPH_BREAKS.sub("", text):
-            anchor, how = self._landing(start, end, edge)
+            anchor, how = self._landing(start, end, edge, prefer=prefer)
             refuse_place(self.element, anchor, how, operation)
         else:
             refuse_split(self, end, keep="head", operation=operation)
 
-    def _landing(self, start: int, end: int, edge: str | None = None) -> tuple[Any, str]:
+    def _landing(self, start: int, end: int, edge: str | None = None, *, prefer: str = "before") -> tuple[Any, str]:
         """Where :meth:`_splice_text` puts a text, read without changing anything: ``(anchor, how)``.
 
         `how` is ``"into"`` (the text extends `anchor`, a ``w:t``), ``"after"``
@@ -1703,10 +1749,17 @@ class Paragraph:
                 # the w:ins follows the last w:del, which is where that text's run was
                 return others[-1].item, "after"
             segments = _after_deletion(segments, start, end)
-        return _tracked_landing(tracker, segments, start)
+        return _tracked_landing(tracker, segments, start, prefer)
 
     def _splice_text(
-        self, start: int, end: int, text: str, *, whole: bool = False, edge: str | None = None
+        self,
+        start: int,
+        end: int,
+        text: str,
+        *,
+        whole: bool | tuple[bool, bool] = False,
+        edge: str | None = None,
+        prefer: str = "before",
     ) -> Range:
         """:meth:`splice` of a text the paragraph breaks have been taken out of.
 
@@ -1723,7 +1776,7 @@ class Paragraph:
         length = segments[-1].end if segments else 0
         start = max(0, min(start, length))
         end = max(start, min(end, length))
-        whole = whole or (start == 0 and end == length and end > start)
+        whole = _edges_of(whole, start, end, length)
         if segments and any(segment.branch is not None for segment in segments):
             self.refuse_branch_text(start, end)
 
@@ -1736,19 +1789,27 @@ class Paragraph:
             for segment in listed
             if segment.object and _in_span(segment.start, start, end, whole)
         ]
+        # a comment's reference in the span goes with the text, and its comment with it
+        # (core-ts CR-014 section 12.6, Word's check 54 cases 27 and 28)
+        references = self._comment_references_in(start, end, whole) if end > start or whole else []
         if tracker is not None:
-            # a replacement is the w:del first and the w:ins after it, as Word
-            # writes one (CR-003 section 4)
+            # the paragraph primitive's replacement is the w:del first and the w:ins
+            # after it (CR-003 section 4); a Range's tracked Replace puts the w:ins
+            # first, as Word does, through span_edits (CR-013 Phase C)
             deletions = (
-                self._delete_text(tracker, start, end, whole=whole) if end > start or hidden else []
+                self._delete_text(tracker, start, end, whole=whole)
+                if end > start or hidden or references
+                else []
             )
             if text:
-                self._insert_tracked(tracker, start, text, deletions[-1] if deletions else None, edge=edge)
+                self._insert_tracked(
+                    tracker, start, text, deletions[-1] if deletions else None, edge=edge, prefer=prefer
+                )
                 explode_mapped(self.segments(), start, start + len(text))
             return Range(self, start, start + len(text))
 
         inserted = False
-        if end > start or hidden:
+        if end > start or hidden or references:
             first = next((s for s in segments if s.start <= start < s.end), None)
             to_remove = list(hidden)
             for segment in segments:
@@ -1772,6 +1833,14 @@ class Paragraph:
                     if item is segment.item:
                         del segment.owner[position]
                         break
+            if references:
+                from docx4j_py.model.content.span_edits import queue_comment_removal
+
+                for run, owner, identifier in references:
+                    at = _index_of(owner, run)
+                    if at >= 0:
+                        del owner[at]
+                    queue_comment_removal(self.parent_body, identifier)
             self._remove_empty_runs()
             if inserted and text:
                 explode_mapped(self.segments(), start, start + len(text))
@@ -1855,7 +1924,9 @@ class Paragraph:
 
     # -- tracked editing (CR-003 section 3.8, Phase F) ----------------------
 
-    def delete_text_tracked(self, tracker: Any, start: int, end: int, *, whole: bool = False) -> list[Any]:
+    def delete_text_tracked(
+        self, tracker: Any, start: int, end: int, *, whole: bool | tuple[bool, bool] = False
+    ) -> list[Any]:
         """Turn the text in ``[start, end)`` into a ``w:del``. Extension.
 
         The tracked half of :meth:`splice`, reachable on its own because a
@@ -1924,7 +1995,9 @@ class Paragraph:
         item.parent = parent
         return True
 
-    def _delete_text(self, tracker: Any, start: int, end: int, *, whole: bool = False) -> list[_Anchor]:
+    def _delete_text(
+        self, tracker: Any, start: int, end: int, *, whole: bool | tuple[bool, bool] = False
+    ) -> list[_Anchor]:
         """The text in ``[start, end)`` becomes a deletion; returns the ``w:del``\\ s.
 
         The runs holding it are isolated, their ``w:t`` turned into
@@ -1932,7 +2005,12 @@ class Paragraph:
         ``w:del``. Text **this author** had inserted is simply removed, as Word
         does, rather than nested in a ``w:del``. A hidden run strictly inside
         the span is deleted with it (at its edges too when `whole`), as Word
-        puts it inside the ``w:del`` (CR-013 Phase A).
+        puts it inside the ``w:del`` (CR-013 Phase A). A comment's reference
+        run in the span goes into the ``w:del`` where it stands among the runs,
+        as Word puts it (docx4j-core-ts check 54 case 28, its CR-014 section
+        12.6; CR-013 Phase C), so that accepting the deletion takes the comment;
+        taken back with this author's own insertion, it takes the comment at
+        once.
         """
         from docx4j_py.model.content.tracking import revision_of, to_deleted_text
 
@@ -1956,6 +2034,24 @@ class Paragraph:
                     parent=getattr(segment.run, "parent", None),
                 )
             )
+        references = self._comment_references_in(start, end, whole)
+        if references:
+            # each in document order among the runs, so that it joins their w:del
+            order = _run_order(self.element)
+            for run, owner, _identifier in references:
+                if any(target.run is run for target in runs):
+                    continue
+                revision = revision_of(run)
+                target = _Target(
+                    run=run,
+                    owner=owner,
+                    own=tracker.own_insertion(revision),
+                    revision=revision,
+                    parent=getattr(run, "parent", None),
+                )
+                key = order.get(id(run), -1)
+                at = next((i for i, other in enumerate(runs) if order.get(id(other.run), -1) > key), len(runs))
+                runs.insert(at, target)
 
         groups: list[list[_Target]] = []
         for target in runs:
@@ -1983,7 +2079,13 @@ class Paragraph:
             del owner[at : at + len(group)]
             if group[0].own:
                 # taking back our own insertion: the runs go, and an emptied
-                # w:ins with them
+                # w:ins with them; a comment whose reference goes with them goes too
+                taken_references = _comment_reference_ids(taken)
+                if taken_references:
+                    from docx4j_py.model.content.span_edits import queue_comment_removal
+
+                    for identifier in taken_references:
+                        queue_comment_removal(self.parent_body, identifier)
                 revision = group[0].revision
                 if revision is not None and not revision.items:
                     index = _index_of(revision.owner, revision.element)
@@ -2006,13 +2108,23 @@ class Paragraph:
         return made
 
     def _insert_tracked(
-        self, tracker: Any, at: int, text: str, anchor: _Anchor | None = None, *, edge: str | None = None
+        self,
+        tracker: Any,
+        at: int,
+        text: str,
+        anchor: _Anchor | None = None,
+        *,
+        edge: str | None = None,
+        prefer: str = "before",
     ) -> None:
         """Text inserted at `at` as a ``w:ins``, extending one of ours where it can.
 
         A run of this author's own that is already inside a ``w:ins`` is
         extended rather than nested in another one, as Word does. `anchor` is
         the ``w:del`` of a replacement, which the insertion must follow.
+        `prefer` ``"after"`` looks at the run starting at `at` first: the
+        ``w:ins`` goes before it, in its look (core-ts's ``insertTracked``
+        ``prefer``; a tracked replacement's insertion, CR-013 Phase C).
         """
         from docx4j_py.model.content.tracking import copy_r_pr, revision_of
 
@@ -2036,7 +2148,8 @@ class Paragraph:
         segments = self.segments()
         before = next((s for s in reversed(segments) if s.end <= at), None)
         after = next((s for s in segments if s.start >= at), None)
-        for segment, side in ((before, "after"), (after, "before")):
+        sides = ((before, "after"), (after, "before"))
+        for segment, side in sides if prefer != "after" else tuple(reversed(sides)):
             if segment is None or segment.branch is not None:
                 # text read from a kept branch is never extended (CR-011 Phase F)
                 continue
@@ -2056,7 +2169,7 @@ class Paragraph:
                 run.parent = revision.element if revision is not None else self.element
             return
 
-        neighbour = before or after
+        neighbour = (after or before) if prefer == "after" else (before or after)
         # beside the run, or beside the kept element its text is read from (CR-011 Phase F)
         site, site_owner, _site_index = neighbour.site() if neighbour is not None else (None, None, -1)
         revision = revision_of(site) if site is not None else None
@@ -2084,7 +2197,54 @@ class Paragraph:
         owner.insert(index + (1 if neighbour is before else 0), wrapper)
         wrapper.parent = parent
 
-    def _isolate(self, start: int, end: int, *, whole: bool = False) -> list[Any]:
+    def split_runs_around(self, start: int, end: int) -> tuple[int, int]:
+        """Split runs so that every run holding text in ``[start, end)`` holds nothing else. Extension.
+
+        core-ts's ``splitRunsAround`` (``Paragraph.mts`` at its CR-012 phase 4,
+        ``9307bdb``): the offsets snapped to grapheme boundaries as
+        :meth:`split_at` snaps them (the start back, the end forward), the runs
+        cut there, and a tab, a break or a drawing that shares a run with the
+        span's edge moved into a run of its own. What a ``font`` write formats
+        and where a comment's markers go, so that neither reaches a character
+        outside the span (CR-013 Phase C; the comment's markers went a whole
+        run wide until then). Returns the offsets used.
+        """
+        start = self.split_at(start, prefer="back")
+        end = self.split_at(end, prefer="forward") if end > start else start
+        if end > start:
+            self._isolate(start, end)
+        return start, end
+
+    def _comment_references_in(
+        self, start: int, end: int, whole: bool | tuple[bool, bool] = False
+    ) -> list[tuple[Any, list, int]]:
+        """The runs of comments' references in ``[start, end)``: ``(run, owner, comment id)``.
+
+        Each a run holding nothing but a reference, where the walk passes it,
+        strictly inside the span or at an edge `whole` holds (:func:`_in_span`);
+        not in a kept branch, which is read-only. A reference has no text, so a
+        deletion's segments never hold it, and a comment whose reference a
+        deletion took stayed: Word's deletion takes it with the text
+        (docx4j-core-ts check 54 cases 27 and 28, its ``commentReferencesIn``,
+        CR-014 section 12.6; CR-013 Phase C).
+        """
+        out: list[tuple[Any, list, int]] = []
+
+        def visit(item: Any, at: int, owner: Any, run: Any, run_owner: Any, branch: Any) -> None:
+            if run is None or branch is not None or element_name(item) != _W_COMMENT_REFERENCE:
+                return
+            if not _in_span(at, start, end, whole) or any(found is run for found, _owner, _id in out):
+                return
+            if not all(element_name(child) == _W_COMMENT_REFERENCE for child in run.content or ()):
+                return
+            identifier = getattr(item, "id", None)
+            if isinstance(identifier, int) and isinstance(run_owner, list):
+                out.append((run, run_owner, identifier))
+
+        segments_of(self.element, hidden=self.hidden_runs(), visit=visit)
+        return out
+
+    def _isolate(self, start: int, end: int, *, whole: bool | tuple[bool, bool] = False) -> list[Any]:
         """Split runs so that each one holding text in ``[start, end)`` holds nothing else.
 
         :meth:`split_at` does the ``w:t`` boundaries; this also moves the items
@@ -2112,6 +2272,9 @@ class Paragraph:
                 if id(segment.run) in seen:
                     continue
                 seen.add(id(segment.run))
+                if segment.math:
+                    # in no run: taken whole or refused (core-ts's isolate)
+                    continue
                 of_run = [s for s in found if s.run is segment.run]
                 first, last = of_run[0], of_run[-1]
                 if first.index > 0:
@@ -2250,20 +2413,21 @@ def _untracked_landing(segments: list[Any], start: int) -> tuple[Any, str]:
     return None, "start" if start == 0 else "end"
 
 
-def _tracked_landing(tracker: Any, segments: list[Any], at: int) -> tuple[Any, str]:
+def _tracked_landing(tracker: Any, segments: list[Any], at: int, prefer: str = "before") -> tuple[Any, str]:
     """Where :meth:`Paragraph._insert_tracked` puts a ``w:ins`` at `at`: this author's insertion extended, or beside."""
     from docx4j_py.model.content.tracking import revision_of
 
     inside = next((s for s in segments if s.editable and s.start < at < s.end), None)
     before = inside or next((s for s in reversed(segments) if s.end <= at), None)
     after = inside or next((s for s in segments if s.start >= at), None)
-    for segment, side in ((before, "after"), (after, "before")):
+    sides = ((before, "after"), (after, "before"))
+    for segment, side in sides if prefer != "after" else tuple(reversed(sides)):
         if segment is None or segment.branch is not None:
             continue
         if not tracker.own_insertion(revision_of(segment.run)):
             continue
         return (segment.item, "into") if segment.editable else (segment.run, side)
-    neighbour = before or after
+    neighbour = (after or before) if prefer == "after" else (before or after)
     if neighbour is None:
         return None, "start" if at == 0 else "end"
     site = neighbour.site()[0]
@@ -2296,16 +2460,59 @@ def replace_matches(matches: list[Range], replace: str) -> None:
                     earlier.paragraph = first
 
 
-def _in_span(at: int, start: int, end: int, whole: bool) -> bool:
+def _in_span(at: int, start: int, end: int, whole: bool | tuple[bool, bool]) -> bool:
     """Whether a place of no text at `at` is in the span: strictly inside it, or at an edge of a whole one.
 
     A hidden run stands between two characters, so one at a span's start or end
     offset may be inside it or outside it, and offsets alone cannot say which.
     A paragraph's whole text holds the hidden runs at both of its edges; a span
     of text, such as a search found, holds only those strictly inside it
-    (core-ts ``objectInSpan`` and ``WHOLE`` at ``9307bdb``).
+    (core-ts ``objectInSpan`` and ``WHOLE`` at ``9307bdb``). `whole` may say it
+    edge by edge, ``(start, end)``, as core-ts's ``SpanEdges`` does: a range
+    across paragraphs holds its first paragraph's end and its last's start
+    (CR-013 Phase C).
     """
+    if isinstance(whole, tuple):
+        held_start, held_end = whole
+        return start < at < end or (held_start and at == start) or (held_end and at == end)
     return start < at < end or (whole and start <= at <= end)
+
+
+def _edges_of(whole: bool | tuple[bool, bool], start: int, end: int, length: int) -> bool | tuple[bool, bool]:
+    """A span's edges as :func:`_in_span` reads them: both where it is the paragraph's whole text."""
+    if start == 0 and end == length and end > start:
+        return True
+    if isinstance(whole, tuple):
+        return True if all(whole) else whole
+    return whole
+
+
+#: A comment's reference, ``w:commentReference``.
+_W_COMMENT_REFERENCE = f"{{{WML_NS}}}commentReference"
+
+
+def _run_order(element: Any) -> dict[int, int]:
+    """Every element among a paragraph's runs, in document order, by ``id()``: where a deletion puts a reference run."""
+    order: dict[int, int] = {}
+
+    def visit(items: list | None) -> None:
+        for item in items or ():
+            order[id(item)] = len(order)
+            if not isinstance(item, R):
+                visit(run_items_of(item))
+
+    visit(run_items_of(element))
+    return order
+
+
+def _comment_reference_ids(runs: list) -> list[int]:
+    """The ids of the comment references among runs."""
+    out: list[int] = []
+    for run in runs:
+        for child in getattr(run, "content", None) or ():
+            if element_name(child) == _W_COMMENT_REFERENCE and isinstance(getattr(child, "id", None), int):
+                out.append(child.id)
+    return out
 
 
 def _text_run(text: str) -> R:

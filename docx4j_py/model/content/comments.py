@@ -653,9 +653,17 @@ def _place_around(span: Range, identifier: int) -> None:
     it follows. Elsewhere, and in a ``w:del`` or a move, the markers go beside
     the runs, outside any revision (:func:`_marker_site`).
     """
+    if span.spans_paragraphs:
+        _place_across(span, identifier)
+        return
     paragraph = span.paragraph
-    start = paragraph.split_at(span.start, prefer="back")
-    end = paragraph.split_at(span.end, prefer="forward") if span.end > span.start else start
+    # a run holding the span holds nothing else, a tab or a break beside it moved out
+    # too, as a font write splits (core-ts's splitRunsAround, its CR-014 section 11.2;
+    # CR-013 Phase C): until then a marker went beside the whole run, widening the anchor
+    if span.end > span.start:
+        start, end = paragraph.split_runs_around(span.start, span.end)
+    else:
+        start = end = paragraph.split_at(span.start, prefer="back")
     segments = paragraph.segments()
     covered = [s for s in segments if s.end > start and s.start < end] if end > start else []
 
@@ -694,6 +702,67 @@ def _place_around(span: Range, identifier: int) -> None:
     else:
         owner, index, parent = _marker_site(paragraph, first, after=False)
         _insert_at(owner, index, [opening], parent)
+
+
+def _place_across(span: Range, identifier: int) -> None:
+    """The markers of a comment over a range across paragraphs, as Word writes them.
+
+    docx4j-core-ts's ``placeAcross`` (``Comment.mts`` at ``87bbb38``; Word's
+    check 52 cases 79 to 85; CR-013 Phase C): the start before the range's
+    first character, in its first paragraph, and the end and the reference run
+    after its last character, in its last paragraph, before a mark the range
+    holds. A table between, or a cell either end is in, stays as it is: the
+    markers stand in the paragraphs. On a block control's content range Word
+    put the start before the control's first paragraph, in ``w:sdtContent``
+    (case 82); here it is inside that paragraph, which reads the same (core-ts
+    CR-014 section 9.2). An insertion at either end is treated as
+    :func:`_place_around` treats one: the start inside it, before the first
+    commented run; the end after the last, the rest of the insertion split off.
+    The runs are split as a ``font`` write splits them, so a marker never goes
+    beside a run holding text outside the range.
+    """
+    from docx4j_py.wml import el
+
+    first = span.paragraph
+    last = span.end_paragraph
+    opening = el.commentRangeStart(id=identifier)
+    closing = [el.commentRangeEnd(id=identifier), _reference_run(identifier)]
+    # the end first; the two are in different paragraphs, so neither's offsets move with the other's markers
+    end = span.end
+    if end > 0:
+        _start, end = last.split_runs_around(0, end)
+    before = [s for s in last.segments() if s.start < end]
+    last_segment = before[-1] if before else None
+    insertion = _insertion_of(last_segment) if last_segment is not None else None
+    if insertion is None or not _close_insertion(last, insertion, last_segment.run_index + 1, closing):
+        if last_segment is not None:
+            owner, index, parent = _marker_site(last, last_segment, after=True)
+        else:
+            # nothing of the last paragraph in the range: the end at its start
+            segments = last.segments()
+            if segments:
+                owner, index, parent = _marker_site(last, segments[0], after=False)
+            else:
+                owner, index, parent = last.element.content, 0, last.element
+        _insert_at(owner, index, closing, parent)
+    start = span.start
+    length = len(first.text)
+    if start < length:
+        start, _end = first.split_runs_around(start, length)
+    segments = first.segments()
+    first_segment = next((s for s in segments if s.end > start), None)
+    insertion = _insertion_of(first_segment) if first_segment is not None else None
+    if first_segment is not None and insertion is not None:
+        _insert_at(first_segment.run_owner, first_segment.run_index, [opening], insertion)
+        return
+    if first_segment is not None:
+        owner, index, parent = _marker_site(first, first_segment, after=False)
+    elif segments:
+        # nothing of the first paragraph in the range: the start at its end
+        owner, index, parent = _marker_site(first, segments[-1], after=True)
+    else:
+        owner, index, parent = first.element.content, len(first.element.content), first.element
+    _insert_at(owner, index, [opening], parent)
 
 
 def _place_after(body: Body, parent_id: int, identifier: int) -> None:
@@ -1383,12 +1452,22 @@ def insert_comment_into(span: Range, text: str, *, marks: Any = None) -> Comment
     `marks`, a compiled pattern, splits the lines otherwise (the python-docx
     facade's ``\\n``, after its own refusal of those characters).
     """
-    span.require_one_paragraph("insert_comment")  # core-ts's phase 3, not ported (CR-013 Q10)
     text = drop_unwritable(text)
     body = span.paragraph.parent_body
+    if span.spans_paragraphs:
+        # across paragraphs (CR-013 Phase C) the markers go in the first and the last paragraph,
+        # as Word's (core-ts check 52 cases 79 to 85): those two refuse a kept branch's text
+        from docx4j_py.model.content.reports import refuse_read_only
+
+        for paragraph in (span.paragraph, span.end_paragraph):
+            refuse_read_only(paragraph.parent_body, "insert_comment")
+        pieces = span._pieces()
+        for piece in (pieces[0], pieces[-1]):
+            piece.paragraph.refuse_branch_text(piece.start, piece.end, "insert_comment")
     with recording(body, "insert_comment") as change:
-        span.refuse_branch_text("insert_comment")
-        span.require_one_holder("insert_comment")
+        if not span.spans_paragraphs:
+            span.refuse_branch_text("insert_comment")
+            span.require_one_holder("insert_comment")
         main = _main_part_of(body)
         parts = create_comment_parts(main)
         _note_added(body, parts)
@@ -1399,7 +1478,7 @@ def insert_comment_into(span: Range, text: str, *, marks: Any = None) -> Comment
         identifier = next_comment_id(parts.comments, body.container)
         _place_around(span, identifier)
         comment = _add_comment(parts, body, identifier, text, None, marks)
-        change.touched(span.paragraph)
+        change.touched(span.paragraph, span.end_paragraph)
         change.text(after=text)
         _record_parts(change, parts)
         return comment

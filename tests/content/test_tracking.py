@@ -413,12 +413,15 @@ def test_deleted_text_renames_w_t_and_w_instr_text_and_back():
     assert '<w:instrText xml:space="preserve"> PAGE </w:instrText>' in to_xml(run)
 
 
-def test_a_replacement_is_the_del_first_and_the_ins_after_it():
+def test_a_replacement_is_the_ins_first_and_the_del_after_it():
+    # CR-013 Phase C: a tracked Replace puts the w:ins first, within one paragraph too, as Word
+    # 365 writes it (docx4j-core-ts check 54 case 4; the user's decision in core-ts, 2026-10-23,
+    # "follow Word (insertion first)"); 0.1.0 wrote the w:del first
     _package, paragraph = tracked()
     assert paragraph.replace_text("quick", "slow") == 1
 
     xml = paragraph.get_xml()
-    assert xml.index("<w:del ") < xml.index("<w:ins ")
+    assert xml.index("<w:ins ") < xml.index("<w:del ")
     assert paragraph.text == "The slow brown fox jumps over the lazy dog."
     assert paragraph.get_text(view="original") == "The quick brown fox jumps over the lazy dog."
 
@@ -1322,13 +1325,15 @@ def test_get_tracked_changes_on_a_range_covers_the_span_only():
     whole = paragraph.get_tracked_changes()
     assert len(whole) == 3
     span = paragraph.search("slow")[0].get_tracked_changes()
-    assert [c.type for c in span] == ["Deleted", "Added"]
+    # the insertion first since CR-013 Phase C (Word's order, check 54 case 4)
+    assert [c.type for c in span] == ["Added", "Deleted"]
 
 
 def test_a_tracked_change_has_a_range_a_repr_and_a_to_dict():
     package, paragraph = tracked()
     paragraph.replace_text("quick", "slow")
-    deletion, insertion = package.body.get_tracked_changes()
+    # the insertion first since CR-013 Phase C (Word's order, check 54 case 4)
+    insertion, deletion = package.body.get_tracked_changes()
 
     assert insertion.get_range().text == "slow"
     assert len(deletion.get_range()) == 0, "a deletion's range in the accepted view is collapsed"
@@ -1343,8 +1348,8 @@ def test_a_tracked_change_has_a_range_a_repr_and_a_to_dict():
         "address": paragraph.address,
         "part": "/word/document.xml",
     }
-    assert insertion == package.body.get_tracked_changes()[1]
-    assert len({insertion, package.body.get_tracked_changes()[1]}) == 1
+    assert insertion == package.body.get_tracked_changes()[0]
+    assert len({insertion, package.body.get_tracked_changes()[0]}) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -1425,7 +1430,8 @@ def test_replace_text_on_a_paragraph_and_on_a_range_are_tracked_too():
     span = paragraph2.search("two one two")[0]
     assert span.replace_text("one", "1") == 1
     assert paragraph2.text == "one two 1 two one"
-    assert [c.type for c in paragraph2.get_tracked_changes()] == ["Deleted", "Added"]
+    # the insertion first since CR-013 Phase C (Word's order, check 54 case 4)
+    assert [c.type for c in paragraph2.get_tracked_changes()] == ["Added", "Deleted"]
 
 
 # ---------------------------------------------------------------------------

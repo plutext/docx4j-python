@@ -10,9 +10,13 @@ step for step, onto the content API, and give the same JSON shape with the same
 
 * :func:`run_check_52` is ``CHECK52.runCheck`` (``check52-script-lab.js`` at
   ``ef57729``, the run's own at ``8fdccf8`` with the ``reads`` mode added) in
-  its ``reads`` and ``report`` modes; its ``run`` mode, the writes, is Phase C's.
+  its ``reads``, ``report`` and (CR-013 Phase C) ``run`` modes: the run applies
+  each case's write in its region, with change tracking as the case says, then
+  reports the region (``8fdccf8``'s ``apply`` and ``searches``).
 * :func:`run_check_53` is ``CHECK53.runCheck`` (``check53-script-lab.js`` at
   ``ef57729``).
+* :func:`run_check_54` is ``CHECK54.runCheck`` (``check54-script-lab.js`` at
+  ``87bbb38``; CR-013 Phase C) in its ``run`` and ``report`` modes.
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -32,7 +36,17 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-__all__ = ["TABLE_OOXML", "parse_region_52", "parse_region_53", "run_check_52", "run_check_53", "vis"]
+__all__ = [
+    "PARAGRAPH_OOXML",
+    "TABLE_OOXML",
+    "parse_region_52",
+    "parse_region_53",
+    "parse_region_54",
+    "run_check_52",
+    "run_check_53",
+    "run_check_54",
+    "vis",
+]
 
 
 def vis(value: Any) -> Any:
@@ -319,16 +333,78 @@ def report_52(body: Any, region: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _returned(range_: Any) -> dict[str, Any]:
+    """What a write returned, read back: ``{returned: text}`` (the snippets' ``returned``)."""
+    return {"returned": vis(range_.text)}
+
+
+def apply_52(package: Any, body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's operation, on its range made afresh; what the operation returns (the snippet's ``apply``)."""
+    op = region["op"]
+    r = region.get("range", {})
+    # CR-002 section 55's: a cell's body, its paragraph or its control
+    if op == "table-end":
+        table = _cell_of(body, r["cell"]).body.insert_table(1, 1, location="End", values=[["NEWCELL"]])
+        return {"returned": [[vis(value) for value in row] for row in table.values]}
+    if op == "paragraph-delete":
+        find(body, r["paragraph"]).paragraphs[0].delete()
+        return {}
+    if op == "clear":
+        _cell_of(body, r["cell"]).body.clear()
+        return {}
+    if op == "ooxml-replace":
+        views = _cell_of(body, r["cell"]).body.insert_ooxml(TABLE_OOXML, location="Replace")
+        return {"returned": vis(views[0].text) if views else ""}
+    if op == "control-delete":
+        control_by_tag(body, r["control"]).delete(keep_content=False)
+        return {}
+    range_ = range_of_52(body, region)
+    if op == "delete":
+        range_.delete()
+        return {}
+    if op == "replace":
+        return _returned(range_.insert_text("NEWTEXT", location="Replace"))
+    if op == "bold":
+        range_.font.bold = True
+        return {}
+    if op == "paragraph-before":
+        return _returned(range_.insert_paragraph("NEWPARA", location="Before"))
+    if op == "paragraph-after":
+        return _returned(range_.insert_paragraph("NEWPARA", location="After"))
+    if op == "text-start":
+        return _returned(range_.insert_text("NEWSTART", location="Start"))
+    if op == "text-end":
+        return _returned(range_.insert_text("NEWEND", location="End"))
+    if op == "comment":
+        return _returned(range_.insert_comment("NEWCOMMENT").get_range())
+    raise ValueError(f"no operation {op}")
+
+
+def searches_52(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """Each query's hits in the region: their text and the paragraphs each touches (the snippet's ``searches``)."""
+    out: dict[str, Any] = {}
+    for query in region["queries"]:
+
+        def hits(query: str = query) -> list[dict[str, Any]]:
+            found = region_of_52(body, region["n"]).search(query, match_case=True)
+            return [{"text": vis(hit.text), "paragraphs": [vis(p.text) for p in hit.paragraphs]} for hit in found]
+
+        out[query] = attempt(hits)
+    return out
+
+
 def run_check_52(package: Any, mode: str) -> dict[str, Any]:
-    """``CHECK52.runCheck`` in its ``reads`` or ``report`` mode, on a loaded package.
+    """``CHECK52.runCheck`` in its ``reads``, ``report`` or ``run`` mode, on a loaded package.
 
     ``reads``: each kind's reads alone, nothing written and no region reported,
     what core-ts's phase 1 test compares with Word's run's ``reads``.
     ``report``: every region reported, nothing changed (for Word's save after
-    Accept All, or after the run). The ``run`` mode writes, and is Phase C's.
+    Accept All, or after the run). ``run`` (CR-013 Phase C): each case's
+    write, with change tracking on where the case says (``TrackAll``), then
+    its region reported; tracking off at the end.
     """
-    if mode not in ("reads", "report"):
-        raise ValueError(f"check 52's {mode!r} mode is CR-013 Phase C's")
+    if mode not in ("reads", "report", "run"):
+        raise ValueError(f"check 52 has no {mode!r} mode")
     body = package.body
     result: dict[str, Any] = {"check": 52, "mode": mode, "host": None, "reads": {}, "cases": []}
     regions = [region for p in body.paragraphs if (region := parse_region_52(p.text)) is not None]
@@ -339,8 +415,22 @@ def run_check_52(package: Any, mode: str) -> dict[str, Any]:
             if "range" in region and region["kind"] not in result["reads"]:
                 result["reads"][region["kind"]] = attempt(lambda region=region: reads_52(body, region))
             continue
+        try:
+            if mode == "run" and region["op"] != "read":
+                package.change_tracking_mode = "TrackAll" if region["tracked"] else "Off"
+                if "queries" in region:
+                    entry["searches"] = searches_52(body, region)
+                else:
+                    if region["kind"] not in result["reads"]:
+                        result["reads"][region["kind"]] = attempt(lambda region=region: reads_52(body, region))
+                    entry["range"] = attempt(lambda region=region: vis(range_of_52(body, region).text))
+                    entry["result"] = apply_52(package, body, region)
+        except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+            entry["error"] = failed(error)
         entry["region"] = attempt(lambda region=region: report_52(body, region))
         result["cases"].append(entry)
+    if mode == "run":
+        package.change_tracking_mode = "Off"
     return result
 
 
@@ -568,4 +658,207 @@ def run_check_53(package: Any, label: str) -> dict[str, Any]:
         else:
             entry["reads"] = attempt(lambda op=op, region=region: op(body, region["args"], region["n"]))
         result["cases"].append(entry)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# check 54 (core-ts check54-script-lab.js at 87bbb38; CR-013 Phase C)
+# ---------------------------------------------------------------------------
+
+_BEGIN_54 = re.compile(r"^BEGIN(\d+) (\w+) ([\w-]+) (untracked|tracked) (.*)$")
+
+#: What the ``ooxml`` operation puts in place of the range: a flat OPC package whose body is one paragraph, NEWOOXML.
+PARAGRAPH_OOXML = (
+    '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">'
+    '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml"><pkg:xmlData>'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" '
+    'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
+    "</pkg:xmlData></pkg:part>"
+    '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"><pkg:xmlData>'
+    f'<w:document xmlns:w="{_W}"><w:body><w:p><w:r><w:t>NEWOOXML</w:t></w:r></w:p></w:body></w:document>'
+    "</pkg:xmlData></pkg:part></pkg:package>"
+)
+
+
+def parse_region_54(text: str) -> dict[str, Any] | None:
+    """A BEGIN paragraph's text as a case, or None (the snippet's ``parseRegion``)."""
+    match = _BEGIN_54.match(text.strip())
+    if match is None:
+        return None
+    region: dict[str, Any] = {
+        "n": int(match.group(1)),
+        "kind": match.group(2),
+        "op": match.group(3),
+        "tracked": match.group(4) == "tracked",
+        "spec": match.group(5),
+    }
+    spec = region["spec"]
+    patterns = [
+        (r"^from (\S+) to (\S+)$", lambda m: {"from": m.group(1).upper(), "to": m.group(2).upper()}),
+        (r"^from (\S+) to-mark (\S+)$", lambda m: {"from": m.group(1).upper(), "toMark": m.group(2).upper()}),
+        (r"^from (\S+) to-table (\S+)$", lambda m: {"from": m.group(1).upper(), "toTable": m.group(2).upper()}),
+        (r"^start (\S+) to-mark (\S+)$", lambda m: {"start": m.group(1).upper(), "toMark": m.group(2).upper()}),
+        (r"^whole (\S+)$", lambda m: {"whole": m.group(1).upper()}),
+        (r"^word (\S+)$", lambda m: {"word": m.group(1).upper()}),
+    ]
+    for pattern, make in patterns:
+        found = re.match(pattern, spec)
+        if found is not None:
+            region["range"] = make(found)
+            return region
+    raise ValueError(f'BEGIN{region["n"]}: no range in "{spec}"')
+
+
+def _paragraph_of_54(body: Any, token: str) -> Any:
+    """The paragraph holding a token."""
+    return find(body, token).paragraphs[0]
+
+
+def range_of_54(body: Any, region: dict[str, Any]) -> Any:
+    """The case's range, made afresh (the snippet's ``rangeOf``)."""
+    r = region["range"]
+    if "whole" in r:
+        return _paragraph_of_54(body, r["whole"]).get_range("Whole")
+    if "word" in r:
+        return find(body, r["word"])
+    if "toMark" in r:
+        to = _paragraph_of_54(body, r["toMark"]).get_range("Whole")
+    elif "toTable" in r:
+        to = find(body, r["toTable"]).parent_table.get_range("Whole")
+    else:
+        to = find(body, r["to"])
+    start = _paragraph_of_54(body, r["start"]).get_range("Start") if "start" in r else find(body, r["from"])
+    return start.expand_to(to)
+
+
+def region_of_54(body: Any, n: int) -> Any:
+    """The region from its BEGIN paragraph to its END paragraph, both whole."""
+    return _paragraph_of_54(body, f"BEGIN{n}").get_range("Whole").expand_to(
+        _paragraph_of_54(body, f"END{n}").get_range("Whole")
+    )
+
+
+def apply_54(package: Any, body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's operation, on its range made afresh; what the operation returns (the snippet's ``apply``)."""
+    op = region["op"]
+    n = region["n"]
+    if op == "own-delete":
+        # a paragraph inserted under tracking by whoever runs this, then a range from the heading into it deleted
+        _paragraph_of_54(body, f"HEAD{n}A").insert_paragraph(f"OWN{n}A OWN{n}B", location="After")
+        range_of_54(body, region).delete()
+        return {}
+    range_ = range_of_54(body, region)
+    if op == "delete":
+        range_.delete()
+        return {}
+    if op == "replace":
+        return _returned(range_.insert_text("NEWTEXT", location="Replace"))
+    if op == "paragraph-before":
+        return _returned(range_.insert_paragraph("NEWPARA", location="Before"))
+    if op == "paragraph-after":
+        return _returned(range_.insert_paragraph("NEWPARA", location="After"))
+    if op == "italic":
+        range_.font.italic = True
+        return {}
+    if op == "size14":
+        range_.font.size = 14
+        return {}
+    if op == "underline":
+        range_.font.underline = "Single"
+        return {}
+    if op == "style":
+        range_.style_built_in = "Heading2"
+        return {}
+    if op == "hyperlink":
+        range_.hyperlink = "https://example.com/check54"
+        return {}
+    if op == "ooxml":
+        views = range_.insert_ooxml(PARAGRAPH_OOXML, location="Replace")
+        return {"returned": vis(views[0].text) if views else ""}
+    if op == "control":
+        from docx4j_py.wml import el
+
+        control = range_.insert_content_control()
+        # control.tag = ...: this package's tag is read-only and put_property writes it (CR-003 section 17.9 item 3)
+        control.put_property(el.tag(val=f"new54-{n}"))
+        return {"returned": vis(control.text), "type": control.type}
+    raise ValueError(f"no operation {op}")
+
+
+def report_54(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The region as it stands: text, paragraphs, tables, tracked changes, comments, controls, bookmarks, link."""
+    out: dict[str, Any] = {}
+    whole = region_of_54(body, region["n"])
+    out["text"] = attempt(lambda: vis(whole.text))
+
+    def paragraphs() -> list[dict[str, Any]]:
+        entries = []
+        for p in whole.paragraphs:
+            entry: dict[str, Any] = {
+                "text": vis(p.text),
+                "style": p.style,
+                "styleBuiltIn": p.style_built_in,
+                "alignment": p.alignment,
+                "tableNestingLevel": p.table_nesting_level,
+            }
+            listed = _list_of(p)
+            if listed is not None:
+                entry["list"] = listed
+            entries.append(entry)
+        return entries
+
+    out["paragraphs"] = attempt(paragraphs)
+    out["tables"] = attempt(
+        lambda: [
+            {"rowCount": table.row_count, "values": [[vis(value) for value in row] for row in table.values]}
+            for table in whole.tables
+        ]
+    )
+    out["trackedChanges"] = attempt(
+        lambda: [
+            {"type": change.type, "text": vis(change.text), "range": vis(change.get_range().text)}
+            for change in whole.get_tracked_changes()
+        ]
+    )
+    out["comments"] = attempt(
+        lambda: [
+            {"content": vis(comment.content), "range": vis(comment.get_range().text)}
+            for comment in whole.get_comments()
+        ]
+    )
+    out["contentControls"] = attempt(
+        lambda: [{"tag": control.tag, "type": control.type, "text": vis(control.text)} for control in whole.content_controls]
+    )
+    out["bookmarks"] = attempt(lambda: member(whole, "get_bookmarks", "getBookmarks")(True, True))
+    out["hyperlink"] = attempt(lambda: whole.hyperlink)
+    return out
+
+
+def run_check_54(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK54.runCheck`` in its ``run`` or ``report`` mode, on a loaded package.
+
+    ``run``: each case's write, with change tracking on where the case says,
+    then its region reported; ``report``: every region reported, nothing
+    changed (for Word's save after Accept All).
+    """
+    if mode not in ("run", "report"):
+        raise ValueError(f"check 54 has no {mode!r} mode")
+    body = package.body
+    result: dict[str, Any] = {"check": 54, "mode": mode, "host": None, "cases": []}
+    regions = [region for p in body.paragraphs if (region := parse_region_54(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    for region in regions:
+        entry = {key: region[key] for key in ("n", "kind", "op", "tracked", "spec")}
+        try:
+            if mode == "run":
+                package.change_tracking_mode = "TrackAll" if region["tracked"] else "Off"
+                if region["op"] != "own-delete":
+                    entry["range"] = attempt(lambda region=region: vis(range_of_54(body, region).text))
+                entry["result"] = apply_54(package, body, region)
+        except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+            entry["error"] = failed(error)
+        entry["region"] = attempt(lambda region=region: report_54(body, region))
+        result["cases"].append(entry)
+    if mode == "run":
+        package.change_tracking_mode = "Off"
     return result

@@ -1084,8 +1084,10 @@ def _targets(target: Any) -> tuple[list[Any], Any, Any]:
     if isinstance(target, Body):
         return list(target.content), target, None
     if isinstance(target, Range):
-        # one w:p's runs: a range across paragraphs is refused (CR-013 Phase B)
-        target.require_one_paragraph("to_api_script")
+        # within one paragraph, one w:p's runs; across paragraphs (CR-013 Phase C, core-ts
+        # 202a01d) each block it holds, as a body's blocks are written
+        if target.spans_paragraphs:
+            return target.blocks(), target.paragraph.parent_body, None
         return [], target.paragraph.parent_body, target
     if isinstance(target, (Paragraph, Table)):
         return [target.element], target.parent_body, None

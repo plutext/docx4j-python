@@ -23,6 +23,15 @@ tidy.
 
 :attr:`Range.hyperlink` (CR-003 section 21) reads and writes a link in Office
 JS's ``address#location`` shape; :mod:`.hyperlinks` holds the rules.
+
+**Across paragraphs** (CR-013 Phases B and C, the port of docx4j-core-ts's
+CR-014 phases 1 to 3): a range reads in ``Body.text``'s form between its two
+ends, and writes as Word 365 writes through Office JS (core-ts checks 52 and
+54). A deletion, a replacement, a ``font`` write, a paragraph split and a
+style go through :mod:`.span_edits`; a comment's markers go in the first and
+last paragraph; a content control wraps paragraphs held whole; ``^p`` in
+``search`` matches a paragraph's own mark. A hyperlink across paragraphs is
+refused (``range.spans_paragraphs``), where Word writes a ``HYPERLINK`` field.
 """
 
 from __future__ import annotations
@@ -51,13 +60,13 @@ from docx4j_py.model.content.story import (
 )
 from docx4j_py.model.content.styles import built_in_of, style_name_of
 from docx4j_py.model.content.text_model import (
+    PARAGRAPH_BREAKS,
     RUN_HOLDER_NAMES,
-    W_P,
-    W_TBL,
-    block_children_of,
     canonical_view,
     drop_unwritable,
     office_matches,
+    paragraph_mark_pieces,
+    refuse_mark_replacement,
     require_view,
 )
 from docx4j_py.model.content.tracking import REVISION_NAMES
@@ -161,14 +170,15 @@ class Range:
         return self.mark and self.end >= len(self.end_paragraph.text)
 
     def require_one_paragraph(self, operation: str = "this write") -> None:
-        """Refuse, before anything changes, a write that Phase C brings to a range across paragraphs. Extension.
+        """Refuse, before anything changes, a write a range across paragraphs doesn't take. Extension.
 
-        CR-013 Phase B (section 4.3): every write across paragraphs is refused
-        until Phase C, and so are ``get_xml`` and ``to_api_script``, whose one
-        ``w:p`` can't hold several blocks. A range within one paragraph that
-        holds a whole table (a one-cell table's ``'Whole'`` range, its
-        :attr:`end_mark` the row end) is refused too, since its write would
-        take the table.
+        CR-013 Phase C (section 13): what stays refused across paragraphs ---
+        a ``hyperlink``, where Word writes a ``HYPERLINK`` field from the first
+        paragraph into the last (core-ts check 54 case 34), and the members
+        that sit in one run holder (:meth:`holder_boundaries`). A range within
+        one paragraph that holds a whole table (a one-cell table's ``'Whole'``
+        range, its :attr:`end_mark` the row end) is refused too, since its
+        write would take the table.
 
         Raises:
             SpanError: ``range.spans_paragraphs``.
@@ -176,12 +186,59 @@ class Range:
         if self.spans_paragraphs or (self.end_mark is not None and self.holds_end_mark):
             what = "spans paragraphs" if self.spans_paragraphs else "holds a whole table"
             raise SpanError(
-                f"{operation} refused: this range {what}, and a write across paragraphs is "
-                "CR-013 Phase C's (ranges across paragraphs, the writes)",
+                f"{operation} refused: this range {what}, which this write doesn't take "
+                "(CR-013 Phase C: a hyperlink is one paragraph's)",
                 code="range.spans_paragraphs",
                 hint="write each paragraph's range (range.paragraphs[i].get_range()), or the "
                 "content control, comment or table the range came from",
             )
+
+    def _cover(self, other: Range, *, fresh: bool = False) -> None:
+        """This range moved onto another's span; `fresh`, it no longer holds a mark or a paragraph's whole content."""
+        self.paragraph = other.paragraph
+        self.start = other.start
+        self.end = other.end
+        self.end_paragraph = other.end_paragraph
+        if fresh:
+            self.whole = False
+            self.mark = False
+            self.end_mark = None
+
+    def _land_at(self, paragraph: Paragraph, start: int, end: int | None = None) -> None:
+        """This range collapsed (or over `start`..`end`) in one paragraph, where a write closed it up."""
+        self.paragraph = paragraph
+        self._end_paragraph = None
+        self.start = start
+        self.end = start if end is None else end
+        self.whole = False
+        self.mark = False
+        self.end_mark = None
+
+    def _refuse_read_only(self, operation: str, *, ends_only: bool = False) -> None:
+        """Refuse a write through a paragraph of the range that is read-only: one in a kept branch (CR-012 Phase A).
+
+        core-ts's ``assertWritableSpan``. A deletion and the writes at the
+        range's ends ask of its two ends only: a kept block-level element
+        between them goes whole untracked, as ``Body.clear()`` takes one
+        (CR-013 section 4.5).
+        """
+        from docx4j_py.model.content.reports import refuse_read_only
+
+        targets = [self.paragraph, self.end_paragraph] if ends_only else self.paragraphs
+        for paragraph in targets:
+            refuse_read_only(paragraph.parent_body, operation)
+
+    def _refuse_edge_pieces(self, operation: str) -> None:
+        """Refuse, before anything changes, a deletion whose end pieces hold what can't be cut.
+
+        The first paragraph's piece and the last's obey the edit rule over a
+        kept branch's text (CR-011 Phase F) and the equation rule (CR-013
+        Phase A): an equation cut, or taken under tracking, is refused.
+        """
+        pieces = self._pieces()
+        for piece in (pieces[0], pieces[-1]) if len(pieces) > 1 else pieces:
+            piece.paragraph.refuse_branch_text(piece.start, piece.end, operation)
+            piece.paragraph.refuse_equation(piece.start, piece.end)
 
     # -- identity ----------------------------------------------------------
 
@@ -406,8 +463,11 @@ class Range:
         reads its own style, where Office JS reads ``Other`` unless it is
         Normal: core-ts CR-002 section 57's departure, taken here (Q6).
 
-        Setting it sets the paragraph's style; across paragraphs it is
-        refused (``range.spans_paragraphs``) until Phase C.
+        Setting it sets the paragraph's style; across paragraphs each
+        paragraph's (core-ts check 54 cases 32 and 33; CR-013 Phase C), each
+        with its ``w:pPrChange`` under tracking. Word also took away the body
+        paragraph's centring and italic and the list item's numbering, which
+        :attr:`Paragraph.style` doesn't (core-ts CR-014 section 12.1 item 10).
         """
         char, paragraphs = self._style_read()
         if char is None:
@@ -418,9 +478,7 @@ class Range:
 
     @style.setter
     def style(self, value: str) -> None:
-        self.require_one_paragraph("Range.style")
-        self.refuse_branch_text("style")
-        self.paragraph.style = value
+        self._set_style("style", lambda p: setattr(p, "style", value))
 
     @property
     def style_id(self) -> str:
@@ -429,17 +487,15 @@ class Range:
 
     @style_id.setter
     def style_id(self, value: str) -> None:
-        self.require_one_paragraph("Range.style_id")
-        self.refuse_branch_text("style_id")
-        self.paragraph.style_id = value
+        self._set_style("style_id", lambda p: setattr(p, "style_id", value))
 
     @property
     def style_built_in(self) -> str:
         """The built-in name of :attr:`style` (Office JS ``styleBuiltIn``): ``"Other"`` where it is ``""``, ``"Normal"`` where paragraphs differ.
 
-        core-ts's subset declares it read-only; the setter is kept here for a
-        range within one paragraph, and sets the paragraph's style (CR-013
-        section 4.3).
+        core-ts's subset declares it read-only; the setter is kept here, and
+        sets each paragraph's style as :attr:`style` does (CR-013 section 4.3;
+        across paragraphs since Phase C, as core-ts's ``styleBuiltIn`` setter).
         """
         char, paragraphs = self._style_read()
         if char is None:
@@ -450,9 +506,22 @@ class Range:
 
     @style_built_in.setter
     def style_built_in(self, value: str) -> None:
-        self.require_one_paragraph("Range.style_built_in")
-        self.refuse_branch_text("style_built_in")
-        self.paragraph.style_built_in = value
+        self._set_style("style_built_in", lambda p: setattr(p, "style_built_in", value))
+
+    def _set_style(self, name: str, write: Callable[[Paragraph], None]) -> None:
+        """A style written to the range's paragraph, or to each across paragraphs, as one report (core-ts's ``styledParagraphs``)."""
+        self.refuse_branch_text(name)
+        if not self.spans_paragraphs:
+            write(self.paragraph)
+            return
+        self._refuse_read_only(f"Range.{name}")
+        paragraphs = self.paragraphs
+        with recording(self.paragraph.parent_body, "format") as change:
+            change.text(before=f"{name}={getattr(self, name)}")
+            for paragraph in paragraphs:
+                write(paragraph)
+                change.touched(paragraph)
+            change.text(after=f"{name}={getattr(self, name)}")
 
     def _style_read(self) -> tuple[str | None, Callable[[Callable[[Paragraph], str]], str]]:
         """What :attr:`style` reads: the runs' shared character style id, ``""`` where they differ, or None for the paragraph style.
@@ -504,7 +573,11 @@ class Range:
         :class:`~.font.MixedFont`: each run read in its own paragraph, a
         property where they differ ``None``, ``""`` for the name, the colour
         and the highlight, ``"Mixed"`` for the underline, as Office JS reads
-        it (core-ts checks 52 and 53); its writes are Phase C's and refuse.
+        it (core-ts checks 52 and 53). A write (Phase C) goes to every run in
+        the range, a table's cells' too, and to each mark it holds, a property
+        written only where a run or mark doesn't read it already, as Word
+        formats them (core-ts checks 52 and 54; :func:`~.span_edits.format_span`);
+        tracked, a mark's change is its ``w:pPr/w:rPr/w:rPrChange``.
         """
         return self.get_font()
 
@@ -524,13 +597,15 @@ class Range:
                         out.append(font._read())
                 return out
 
-            return MixedFont(readings, lambda: self.require_one_paragraph("a font write"))
+            return MixedFont(readings, self._format_across)
 
         def holders() -> list[Any]:
             if self.start == self.end:
                 return []
-            self.start = self.paragraph.split_at(self.start, prefer="back")
-            self.end = self.paragraph.split_at(self.end, prefer="forward")
+            # a write formats runs holding the span and nothing else: a tab, a break
+            # or text after it in the same run is split off too (core-ts's
+            # splitRunsAround, its CR-012 phase 4; CR-013 Phase C)
+            self.start, self.end = self.paragraph.split_runs_around(self.start, self.end)
             return self.runs
 
         return Font(
@@ -542,6 +617,32 @@ class Range:
             direct=direct,
             guard=lambda: self.refuse_branch_text("a font write"),
         )
+
+    def _format_across(self, options: dict[str, Any]) -> None:
+        """A ``font`` write over a range across paragraphs (:func:`~.span_edits.format_span`), one ``"format"`` report."""
+        from docx4j_py.model.content.span_edits import FontPiece, format_span
+
+        self.refuse_branch_text("a font write")
+        self._refuse_read_only("a font write")
+        name, value = next(iter(options.items()))
+        pieces = self._pieces()
+        with recording(self.paragraph.parent_body, "format") as change:
+            change.text(before=f"{name}={self.get_font(direct=True)._read().get(name)}")
+            format_span(
+                [
+                    FontPiece(
+                        piece.paragraph,
+                        piece.start,
+                        piece.end,
+                        lambda piece=piece: piece.runs,
+                        index < len(pieces) - 1 or self.holds_end_mark,
+                    )
+                    for index, piece in enumerate(pieces)
+                ],
+                options,
+            )
+            change.touched(*(piece.paragraph for piece in pieces))
+            change.text(after=f"{name}={value}")
 
     # -- the tables and controls it covers (CR-013 Phase B) ------------------
 
@@ -785,17 +886,25 @@ class Range:
         are split at the span's boundaries first, on grapheme boundaries, so the
         control holds exactly this span's text.
 
+        **Across paragraphs** (CR-013 Phase C; docx4j-core-ts check 54 cases 36
+        to 43): a range holding its paragraphs whole, from the first's start to
+        the last's end, its mark or not, is wrapped in one block-level control,
+        as Word wraps it; tracked, the control is an insertion in Word's form
+        (``w:customXmlInsRangeStart`` and ``End`` around it, check 30). Any
+        other range is refused, as Word refuses it.
+
         Raises:
             SpanError: the span crosses a run holder; the message names where
-                to split it.
+                to split it. ``range.partial_paragraph``, a range across
+                paragraphs starting or ending inside a paragraph, across a
+                table, into one or out of one (Word's ``GeneralException``).
             BindingError: ``"RepeatingSection"`` was asked for, which Word has
                 no run-level form of.
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs
-                (core-ts's phase 3, not ported: CR-013 Q10).
         """
-        from docx4j_py.model.customxml.insert import insert_content_control_in_range
+        from docx4j_py.model.customxml.insert import insert_content_control_in_range, wrap_paragraphs
 
-        self.require_one_paragraph("insert_content_control")
+        if self.spans_paragraphs:
+            return wrap_paragraphs(self, kind)
         return insert_content_control_in_range(self, kind)
 
     def insert_text(self, text: str, *, location: Location = "Replace") -> Range:
@@ -812,6 +921,18 @@ class Range:
         :meth:`Paragraph.splice`); U+0002 and the other characters XML 1.0
         excludes are dropped (E3).
 
+        **A replacement** across paragraphs, or holding a whole table, or under
+        change tracking within one paragraph too, is Word's (CR-013 Phase C;
+        core-ts checks 52 and 54; :mod:`.span_edits`): untracked, the range
+        is deleted keeping a last mark it holds, the paragraphs joining in the
+        last one's properties, and the text goes where they joined in the first
+        replaced character's look; tracked, the ``w:ins`` goes **first**,
+        before the deletion, in the first replaced run's formatting (check 54
+        case 4, the user's decision in core-ts: "follow Word (insertion
+        first)"). **Across paragraphs** ``"Start"`` and ``"Before"`` put the
+        text at the range's first character, ``"End"`` and ``"After"`` after
+        its last, before a last mark it holds.
+
         Returns:
             The range of the inserted text; where it made paragraphs, a range
             across them, as Office JS's is (core-ts check 55: ``x\\ry``; CR-013
@@ -820,54 +941,170 @@ class Range:
             after it leaves it where it was, in the paragraph that now holds it.
 
         Raises:
-            SpanError: on a range across paragraphs (CR-013 Phase B; the
-                writes are Phase C's): ``range.partial_table`` for a
-                replacement starting or ending inside a table, as Word refuses
-                it (core-ts check 52); ``range.partial_control`` inside a
-                content control; ``range.not_trackable`` under change tracking
-                for one holding a whole block that is neither a paragraph nor a
-                table; ``range.spans_paragraphs`` otherwise.
+            SpanError: on a replacement, ``range.partial_table`` for one
+                starting or ending inside a table, as Word refuses it (core-ts
+                check 52); ``range.partial_control`` inside a content control;
+                ``range.replaces_table`` for one starting or ending with a
+                whole table or control (Word's refusal, check 54 case 7);
+                ``range.not_trackable`` under change tracking for one holding a
+                whole ``w:altChunk`` or kept ``mc:AlternateContent``.
         """
-        if location == "Replace" and (self.spans_paragraphs or self.end_mark is not None):
-            self._refuse_span_edit("insert_text")
-        self.require_one_paragraph("insert_text")
-        if location in ("Replace", "Before", "Start", "After", "End"):
-            text = drop_unwritable(text)
-            with recording(self.paragraph.parent_body, "insert_text") as change:
-                change.touched(self.paragraph)
-                change.text(before=self.text)
-                paragraph = self.paragraph
+        if location not in ("Replace", "Before", "Start", "After", "End"):
+            raise ContentError(
+                f"insert_text on a range takes Replace, Before, After, Start or End, "
+                f"not {location!r}",
+                code="location.invalid",
+                hint="Replace is the default; Before and After put text around the span",
+            )
+        if location == "Replace" and (
+            self.spans_paragraphs or self.end_mark is not None or self.paragraph.change_tracker is not None
+        ):
+            return self._replace(text)
+        text = drop_unwritable(text)
+        if self.spans_paragraphs:
+            return self._insert_at_ends(text, location)
+        with recording(self.paragraph.parent_body, "insert_text") as change:
+            change.touched(self.paragraph)
+            change.text(before=self.text)
+            paragraph = self.paragraph
+            container = paragraph.container
+            index = next((i for i, item in enumerate(container) if item is paragraph.element), -1)
+            length = len(paragraph.text)
+            if location == "Replace":
+                # a paragraph's 'Whole' range holds its hidden runs and pictures at its edges
+                out = paragraph.splice(self.start, self.end, text, whole=self.mark)
+                # the range covers the new text, across the paragraphs it made (Phase B)
+                self.paragraph = out.paragraph
+                self.start, self.end = out.start, out.end
+                self.end_paragraph = out.end_paragraph
+            elif location in ("Before", "Start"):
+                # at the paragraph's start, before its leading hidden runs (CR-013 section 11)
+                out = paragraph.splice(self.start, self.start, text, edge="start" if self.start == 0 else None)
+                # the span now follows the text, in the paragraph keeping the mark
+                self.start, self.end = out.end, out.end + (self.end - self.start)
+            else:
+                # at the paragraph's end, after its trailing hidden runs (CR-013 section 11)
+                out = paragraph.splice(self.end, self.end, text, edge="end" if self.end == length else None)
+                if 0 <= index < len(container) and container[index] is not paragraph.element:
+                    # the span is before the text: in the first paragraph the split made
+                    from docx4j_py.model.content.paragraph import Paragraph
+
+                    self.paragraph = Paragraph(container[index], container, paragraph.parent_body)
+            change.text(after=text)
+            return out
+
+    def _insert_at_ends(self, text: str, location: str) -> Range:
+        """``insert_text`` at a range across paragraphs' start (in its first paragraph) or end (in its last, before a last mark)."""
+        from docx4j_py.model.content.paragraph import Paragraph
+
+        self._refuse_read_only("insert_text", ends_only=True)
+        with recording(self.paragraph.parent_body, "insert_text") as change:
+            change.text(before=self.text)
+            if location in ("End", "After"):
+                paragraph = self.end_paragraph
                 container = paragraph.container
                 index = next((i for i, item in enumerate(container) if item is paragraph.element), -1)
-                length = len(paragraph.text)
-                if location == "Replace":
-                    # a paragraph's 'Whole' range holds its hidden runs and pictures at its edges
-                    out = paragraph.splice(self.start, self.end, text, whole=self.mark)
-                    # the range covers the new text, across the paragraphs it made (Phase B)
-                    self.paragraph = out.paragraph
-                    self.start, self.end = out.start, out.end
-                    self.end_paragraph = out.end_paragraph
-                elif location in ("Before", "Start"):
-                    # at the paragraph's start, before its leading hidden runs (CR-013 section 11)
-                    out = paragraph.splice(self.start, self.start, text, edge="start" if self.start == 0 else None)
-                    # the span now follows the text, in the paragraph keeping the mark
-                    self.start, self.end = out.end, out.end + (self.end - self.start)
-                else:
-                    # at the paragraph's end, after its trailing hidden runs (CR-013 section 11)
-                    out = paragraph.splice(self.end, self.end, text, edge="end" if self.end == length else None)
-                    if 0 <= index < len(container) and container[index] is not paragraph.element:
-                        # the span is before the text: in the first paragraph the split made
-                        from docx4j_py.model.content.paragraph import Paragraph
+                at = self.end
+                out = paragraph.splice(at, at, text, edge="end" if at == len(paragraph.text) else None)
+                if 0 <= index < len(container) and container[index] is not paragraph.element:
+                    # the range's end is before the text: in the first paragraph the split made
+                    self.end_paragraph = Paragraph(container[index], container, paragraph.parent_body)
+                change.touched(paragraph)
+            else:
+                out = self.paragraph.splice(self.start, self.start, text, edge="start" if self.start == 0 else None)
+                # the text may have broken the paragraph (E1): the range follows its text
+                self.paragraph = out.end_paragraph
+                self.start = out.end
+                change.touched(self.paragraph)
+            change.text(after=text)
+            return out
 
-                        self.paragraph = Paragraph(container[index], container, paragraph.parent_body)
-                change.text(after=text)
-                return out
-        raise ContentError(
-            f"insert_text on a range takes Replace, Before, After, Start or End, "
-            f"not {location!r}",
-            code="location.invalid",
-            hint="Replace is the default; Before and After put text around the span",
+    def _replaceable_extent(self, member: str) -> Any:
+        """The extent of a range a replacement may take (core-ts's ``replaceableExtent``).
+
+        Raises:
+            SpanError: ``range.replaces_table``, a range ending with a whole
+                table or control, which Word refuses to replace (check 54 case
+                7), or starting with one (unmeasured, with no paragraph for the
+                text to go in); and :func:`~.span_edits.extent_of`'s.
+        """
+        from docx4j_py.model.content.span_edits import extent_of
+
+        extent = extent_of(self, member)
+        if extent.tail is None or extent.head is None:
+            side = "ends" if extent.tail is None else "starts"
+            raise SpanError(
+                f"Range.{member}: this range {side} with a whole table or content control, which Word "
+                "refuses to replace (core-ts check 54 case 7)",
+                code="range.replaces_table",
+                hint="delete the range, then insert the text where it closed up; or replace a range "
+                "that ends in a paragraph",
+            )
+        self._refuse_read_only(member, ends_only=True)
+        return extent
+
+    def _replace(self, text: str) -> Range:
+        """``insert_text(text, "Replace")`` across paragraphs, holding a whole table, and any under tracking (core-ts's ``replaceAcross``)."""
+        from docx4j_py.model.content.span_edits import (
+            assert_trackable,
+            delete_span,
+            extent_of,
+            first_character_of,
+            place_replacement,
+            refuse_tracked_content,
         )
+        from docx4j_py.model.content.split import refuse_split
+
+        extent = self._replaceable_extent("insert_text")
+        text = drop_unwritable(text)
+        tracker = self.paragraph.change_tracker
+        body = self.paragraph.parent_body
+        self._refuse_edge_pieces("insert_text")
+        if tracker is not None:
+            assert_trackable(extent, "insert_text")
+            refuse_tracked_content(extent, "insert_text", body)
+            # the insertion goes first, before the range's first character: its breaks checked there
+            self.paragraph.refuse_paragraph_breaks(
+                self.start,
+                self.start,
+                text,
+                "insert_text",
+                prefer="after",
+                edge="start" if self.start == 0 and self.whole else None,
+            )
+        elif PARAGRAPH_BREAKS.search(text):
+            # a line break in the text is a paragraph break (E1), refused before anything changes where none can be made
+            refuse_split(self.paragraph, self.start, "head", "insert_text")
+        with recording(body, "insert_text") as change:
+            change.text(before=self.text)
+            change.touched(*self.paragraphs)
+            if tracker is not None:
+                # tracked: the insertion before the deletion (check 52 cases 39 to 48, check 54 case 4),
+                # in the first replaced run's formatting
+                length = None if self.spans_paragraphs else self.end - self.start
+                # a range holding its paragraph's whole content puts the text before the hidden
+                # runs at its start, which the deletion then takes (core-ts's WHOLE)
+                edge = "start" if self.start == 0 and self.whole else None
+                inserted = self.paragraph.splice(self.start, self.start, text, prefer="after", edge=edge)
+                # the range's own text follows what was put in, in the paragraph the insertion ended in (E1)
+                self.paragraph = inserted.end_paragraph
+                self.start = inserted.end
+                if length is not None:
+                    self.end_paragraph = inserted.end_paragraph
+                    self.end = inserted.end + length
+                delete_span(self, extent_of(self, "insert_text"), True)
+                self._cover(inserted, fresh=True)
+                change.text(after=text)
+                return Range(inserted.paragraph, inserted.start, inserted.end, end_paragraph=inserted.end_paragraph)
+            first = first_character_of(self)
+            landing = delete_span(self, extent, True)
+            assert landing is not None  # a replaceable extent has a head and a tail
+            first_paragraph, last_paragraph, start, end = place_replacement(landing, first, text)
+            out = Range(first_paragraph, start, end, end_paragraph=last_paragraph)
+            self._cover(out, fresh=True)
+            change.touched(first_paragraph, last_paragraph)
+            change.text(after=text)
+            return out
 
     def insert_paragraph(
         self,
@@ -876,14 +1113,58 @@ class Range:
         location: ParagraphLocation = "After",
         style: str | None = None,
     ) -> Paragraph:
-        """A new paragraph before or after this span's paragraph.
+        """A new paragraph where the range starts (``"Before"``) or ends (``"After"``), splitting the paragraph there.
+
+        As Word does (CR-013 Phase C; docx4j-core-ts's ``insertParagraphAt``):
+        across paragraphs (check 52 cases 57 to 70) and within one (check 54
+        cases 1 to 3, where 0.1.0 put the new paragraph before or after the
+        whole paragraph). Inside a paragraph, the text before the split becomes
+        a paragraph of its own in front, and the new paragraph goes between the
+        two, its mark and its text in the formatting of the run before the
+        split; a link, a revision or a smart tag there is cut in two. At a
+        paragraph's start or end, or after a range holding its mark, it goes
+        before or after the paragraph, in its properties. Tracked, the new
+        paragraph and the first half's mark are inserted. This range keeps
+        covering its text.
 
         Raises:
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs,
-                whose split is CR-013 Phase C's.
+            SpanError: ``range.splits_control``, ``range.splits_field``,
+                ``range.cuts_equation``: the split falls inside a run-level
+                content control, a field or an equation; nothing has changed.
+            AddressError: ``address.read_only``: inside a kept branch's text.
         """
-        self.require_one_paragraph("insert_paragraph")
-        return self.paragraph.insert_paragraph(text, location=location, style=style)
+        from docx4j_py.model.content.span_edits import insert_paragraph_at
+
+        if location not in ("Before", "After"):
+            raise ContentError(
+                f"insert_paragraph on a range takes Before or After, not {location!r}",
+                code="location.invalid",
+                hint="Before splits the paragraph where the range starts, After where it ends",
+            )
+        self._refuse_read_only("insert_paragraph", ends_only=True)
+        spans = self.spans_paragraphs
+        with recording(self.paragraph.parent_body, "insert_paragraph") as change:
+            if location == "Before":
+                inserted, first_half = insert_paragraph_at(self.paragraph, self.start, text)
+                if first_half is not None:
+                    # the paragraph keeps the text from the split on
+                    if not spans:
+                        self.end -= self.start
+                    self.start = 0
+            else:
+                end_paragraph = self.end_paragraph
+                at = len(end_paragraph.text) if self.holds_end_mark else self.end
+                inserted, first_half = insert_paragraph_at(end_paragraph, at, text)
+                if first_half is not None:
+                    # the text before the split moved into the first half
+                    if not spans:
+                        self.paragraph = first_half
+                    self.end_paragraph = first_half
+            if style is not None:
+                inserted.style = style
+            change.touched(inserted)
+            change.text(after=drop_unwritable(text))
+            return inserted
 
     def insert_ooxml(self, ooxml: str, *, location: str = "Replace") -> list[Any]:
         """Word's ``insertOoxml`` around or in place of this span (CR-003 section 3.2).
@@ -894,22 +1175,29 @@ class Range:
         Word's paste does; anything with a block in it goes before or after the
         paragraph.
 
+        **Across paragraphs** (CR-013 Phase C; core-ts check 54 case 35): one
+        paragraph's runs replace the range as ``insert_text(..., "Replace")``
+        replaces it, where the paragraphs joined (``HEAD35A NEWOOXML BODY35B``);
+        ``"Before"`` puts them at the range's start in its first paragraph,
+        ``"After"`` at its end in its last; several blocks go before the first
+        paragraph or after the last. Within one paragraph a ``"Replace"`` keeps
+        a last mark the range holds, as a replacement does.
+
         Args:
             ooxml: the ``pkg:package`` document, or the fragment.
             location: ``"Replace"`` (the default, as a range's other verbs),
                 ``"Before"`` or ``"After"``.
 
         Returns:
-            The views of what was inserted --- ``[self.paragraph]`` when the
-            runs were merged in.
+            The views of what was inserted --- the paragraph the runs went into
+            when they were merged in.
 
         Raises:
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs
-                (CR-013 Phase B).
+            SpanError: ``range.spans_paragraphs``, several blocks in place of a
+                range across paragraphs, which Word wasn't measured doing.
         """
         from docx4j_py.model.content.ooxml import insert_ooxml_into_range
 
-        self.require_one_paragraph("insert_ooxml")
         return insert_ooxml_into_range(self, ooxml, location=location)
 
     def search(self, text: str, **options: Any) -> list[Range]:
@@ -921,10 +1209,24 @@ class Range:
         paragraph-level ``mc:AlternateContent`` (Q4 revised, section 15).
 
         Across paragraphs (CR-013 Phase B) a paragraph at a time, from
-        :attr:`start` in the first to :attr:`end` in the last, as core-ts's;
-        Word's ``^p`` across marks is core-ts's phase 3, not ported (Q10).
+        :attr:`start` in the first to :attr:`end` in the last, as core-ts's.
+        **``^p``**, Word's paragraph mark (CR-013 Phase C; core-ts check 52
+        case 2), in a plain query matches across paragraphs: a hit runs from
+        its first piece's match ending at a paragraph's end, through each
+        middle piece matching a whole paragraph's text, to its last piece's
+        match from the next paragraph's start; a query ending with ``^p`` ends
+        with that paragraph's mark, which the hit holds (``^p`` alone is a
+        range of ``\\r``). A mark matches only a paragraph's own mark the
+        range holds: never a cell's end or a row's end, and never across a
+        table's edge; ``^p^p`` is an empty paragraph's mark after another
+        mark, and ``^^`` stays a caret. Wildcards read ``^p`` as the two
+        characters, as they did.
         """
         limit = options.pop("limit", None)
+        pieces = None if options.get("match_wildcards") else paragraph_mark_pieces(text)
+        if pieces is not None:
+            out = self._search_marks(pieces, options)
+            return out if limit is None else out[:limit]
         if self.spans_paragraphs:
             out = [hit for piece in self._pieces() for hit in piece.search(text, **options)]
             return out if limit is None else out[:limit]
@@ -935,21 +1237,95 @@ class Range:
             hits = hits[:limit]
         return [Range(self.paragraph, start, end) for start, end in hits]
 
+    def _search_marks(self, pieces: list[str], options: dict[str, Any]) -> list[Range]:
+        """A query's hits where it holds ``^p``, as Word finds them (core-ts's ``searchMarks``, check 52 case 2)."""
+        paragraphs = self.paragraphs
+        last = len(paragraphs) - 1
+        marks = len(pieces) - 1
+        ends_with_mark = pieces[marks] == ""
+
+        def cell(paragraph: Paragraph) -> int | None:
+            found = paragraph.parent_table_cell
+            return None if found is None else id(found.element)
+
+        def mark_in(j: int) -> bool:
+            # a paragraph's mark the search may match: the range holds it, and it is a paragraph's, not a cell's end
+            return (j < last or self.holds_end_mark) and paragraphs[j].mark_text == "\r"
+
+        def matches(paragraph: Paragraph, query: str, start: int, end: int) -> list[tuple[int, int]]:
+            return office_matches(paragraph.segments(objects=True), query, start=start, end=end, **options)
+
+        out: list[Range] = []
+        for i in range(last + 1):
+            end_index = i + marks - (1 if ends_with_mark else 0)  # the paragraph the hit ends in
+            if end_index > last:
+                break
+            scope = cell(paragraphs[i])
+            ok = all(mark_in(j) for j in range(i, i + marks))
+            ok = ok and all(cell(paragraphs[j]) == scope for j in range(i + 1, end_index + 1))
+            # the middle pieces: each a whole paragraph's text (an empty one for an empty piece)
+            for j in range(1, marks):
+                if not ok:
+                    break
+                middle = paragraphs[i + j]
+                length = len(middle.text)
+                if pieces[j] == "":
+                    ok = middle.text == ""
+                else:
+                    ok = any(a == 0 and b == length for a, b in matches(middle, pieces[j], 0, length))
+            if not ok:
+                continue
+            first = paragraphs[i]
+            low = self.start if i == 0 else 0
+            length = len(first.text)
+            if pieces[0] == "":
+                starts = [length]
+            else:
+                starts = [a for a, b in matches(first, pieces[0], low, length) if b == length]
+            if not starts or starts[0] < low:
+                continue
+            end_paragraph = paragraphs[end_index]
+            if ends_with_mark:
+                to = len(end_paragraph.text)
+            else:
+                limit = self.end if end_index == last else len(end_paragraph.text)
+                hit = next(((a, b) for a, b in matches(end_paragraph, pieces[marks], 0, limit) if a == 0), None)
+                if hit is None:
+                    continue
+                to = hit[1]
+            out.append(
+                Range(
+                    first,
+                    starts[0],
+                    to,
+                    end_paragraph=None if end_paragraph.element is first.element else end_paragraph,
+                    mark=ends_with_mark,
+                )
+            )
+        return out
+
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
         """Replace every match within the span, last first; returns the count.
 
         **Tracked** when the package's ``change_tracking_mode`` is on, in which
-        case each replacement is a ``w:del`` and a ``w:ins``. The report names
-        the pair, as :meth:`Body.replace_text`'s does.
+        case each replacement is a ``w:ins`` and then a ``w:del``, as Word
+        writes one (CR-013 Phase C). The report names the pair, as
+        :meth:`Body.replace_text`'s does. Across paragraphs a paragraph at a
+        time (CR-013 Phase C), every match checked before the first is
+        replaced (CR-011 Phase F's rule; core-ts refuses paragraph by
+        paragraph).
 
         Raises:
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs
-                (a paragraph at a time is CR-013 Phase C's).
+            SpanError: ``range.replaces_mark``, a query holding ``^p``, Word's
+                paragraph mark: the hits are found, but what Word's replacement
+                of a mark leaves isn't measured (core-ts CR-014 section 11.3).
         """
         from docx4j_py.model.content.paragraph import replace_matches
 
-        self.require_one_paragraph("replace_text")
+        refuse_mark_replacement("Range", find, options)
         replace = drop_unwritable(replace)
+        if self.spans_paragraphs:
+            self._refuse_read_only("replace_text")
         with recording(self.paragraph.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
@@ -960,7 +1336,7 @@ class Range:
             # a replacement holding a paragraph break splits the paragraph (CR-013 section 11, E1)
             replace_matches(matches, replace)
             if matches:
-                change.touched(self.paragraph)
+                change.touched(*{id(m.paragraph.element): m.paragraph for m in matches}.values())
             change.text(after=replace)
             return len(matches)
 
@@ -1114,19 +1490,27 @@ class Range:
         added to the real package and taken away again when the block ends
         (CR-003 section 14.4).
 
+        **Across paragraphs** (CR-013 Phase C; core-ts check 52 cases 79 to
+        85): the start marker goes before the range's first character, in its
+        first paragraph, and the end marker and the reference run after its
+        last character, in its last paragraph, before a mark the range holds; a
+        table between, or a cell at either end, stays as it is. The comment's
+        :meth:`~.comments.Comment.get_range` is the range commented. Within one
+        paragraph and across, the runs are split as ``font`` splits them, so a
+        marker never goes beside a run holding a tab or a break outside the
+        range (core-ts CR-014 section 11.2).
+
         Raises:
             SpanError: the span crosses a run holder --- a ``w:hyperlink``, a
-                run-level ``w:sdt`` --- and the message says where to split.
+                run-level ``w:sdt`` --- and the message says where to split
+                (within one paragraph).
             ContentError: this body's package has no main document part.
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs
-                (core-ts's phase 3, not ported: CR-013 Q10).
 
         Returns:
             The new :class:`~docx4j_py.model.content.comments.Comment`.
         """
         from docx4j_py.model.content.comments import insert_comment_into
 
-        self.require_one_paragraph("insert_comment")
         return insert_comment_into(self, text)
 
     def delete(self) -> None:
@@ -1137,23 +1521,61 @@ class Range:
         edges too, as core-ts's CR-002 section 48 has it; under change tracking
         a picture's run goes into the ``w:del`` (CR-013 section 11).
 
+        **Across paragraphs, or holding its paragraph's mark** (CR-013 Phase
+        C; core-ts checks 52 and 54; :mod:`.span_edits`), as Word deletes it:
+        the paragraphs join in the last one's properties, the blocks between go
+        whole (a table, a content control), a last mark the range holds goes
+        with it, joining the paragraph after (``paragraph.get_range().delete()``
+        now deletes the paragraph, where 0.1.0 emptied it), and a note or a
+        comment whose reference goes leaves when the write ends. A range into
+        or out of a block content control joins nothing across the control's
+        edge: the start's paragraph takes the end's properties. Tracked,
+        nothing joins: the text is a ``w:del``, every mark the range holds is
+        marked deleted, with no ``w:pPrChange``, a table's rows and cells'
+        marks are deleted, and a whole control is deleted between Word's
+        ``w:customXmlDelRange*`` markers. The range is left collapsed where the
+        text closed up (tracked, where the deletion starts).
+
         Raises:
-            SpanError: on a range across paragraphs (CR-013 Phase B; the
-                deletion is Phase C's): ``range.partial_table`` for one
-                starting or ending inside a table, as Word refuses it (core-ts
-                check 52); ``range.partial_control`` inside a content control;
-                ``range.not_trackable`` under change tracking for one holding a
-                whole block that is neither a paragraph nor a table;
-                ``range.spans_paragraphs`` otherwise.
+            SpanError: ``range.partial_table`` for a range starting or ending
+                inside a table, as Word refuses it (core-ts check 52);
+                ``range.partial_control`` inside a content control, but one
+                level down into or out of one; ``range.not_trackable`` under
+                change tracking for one holding a whole ``w:altChunk`` or kept
+                ``mc:AlternateContent``. Nothing has changed.
         """
-        if self.spans_paragraphs or self.end_mark is not None:
-            self._refuse_span_edit("delete")
-        self.require_one_paragraph("delete")
+        if self.spans_paragraphs or self.holds_end_mark:
+            self._delete_span()
+            return
         with recording(self.paragraph.parent_body, "delete") as change:
             change.touched(self.paragraph)
             change.text(before=self.text, after="")
             self.paragraph.splice(self.start, self.end, "", whole=self.mark)
             self.end = self.start
+
+    def _delete_span(self) -> None:
+        """:meth:`delete` across paragraphs, or of a range holding its mark (:func:`~.span_edits.delete_span`)."""
+        from docx4j_py.model.content.span_edits import (
+            assert_trackable,
+            delete_span,
+            extent_of,
+            refuse_tracked_content,
+        )
+
+        extent = extent_of(self, "delete", cross_controls=True)
+        self._refuse_read_only("delete", ends_only=True)
+        self._refuse_edge_pieces("delete")
+        body = self.paragraph.parent_body
+        if self.paragraph.change_tracker is not None:
+            assert_trackable(extent, "delete")
+            refuse_tracked_content(extent, "delete", body)
+        with recording(body, "delete") as change:
+            change.text(before=self.text, after="")
+            change.touched(self.paragraph, self.end_paragraph)
+            landing = delete_span(self, extent, False)
+            if landing is not None:
+                self._land_at(landing.paragraph, landing.offset)
+                change.touched(landing.paragraph)
 
     def get_range(self, location: RangeLocation = "Whole") -> Range:
         """A range of this one, as Office JS's ``getRange`` (core-ts check 52; CR-013 Phase B).
@@ -1260,42 +1682,58 @@ class Range:
         )
 
     def get_xml(self) -> str:
-        """The span as a ``w:p``: a copy of the paragraph trimmed to the span.
+        """The span as XML: a copy of the paragraph trimmed to the span; across paragraphs, the blocks it holds.
 
         The paragraph is deep-copied (CR-001's ``deep_copy``, which never
         follows the parent pointer), the text outside the span is spliced out
-        of the copy, and the copy is serialised. The document is not touched.
+        of the copy, **untracked** whatever the package's mode (core-ts
+        ``202a01d``: until CR-013 Phase C the trim was a tracked splice under
+        change tracking, so a word's XML held the paragraph's other words as
+        ``w:del``), and the copy is serialised. The document is not touched.
+
+        **Across paragraphs** (CR-013 Phase C; core-ts CR-014 section 13): the
+        blocks :meth:`delete` takes, one after another --- the first paragraph
+        from the range's start, every block between whole (a table, a content
+        control), the last paragraph to the range's end, left out where the
+        range ends at its start --- which :meth:`Body.insert_xml` takes back.
 
         Raises:
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs,
-                whose blocks one ``w:p`` can't hold (CR-013 Phase B).
+            SpanError: ``range.partial_table`` or ``range.partial_control``, a
+                range starting or ending inside a table or content control it
+                doesn't hold whole: a fragment of part of one isn't written.
         """
-        from docx4j_py.model.content.body import Body
+        return "".join(to_xml(block) for block in self.blocks())
 
-        self.require_one_paragraph("get_xml")
-        from docx4j_py.model.content.paragraph import Paragraph
-        from docx4j_py.wml import Body as BodyElement
+    def blocks(self) -> list[Any]:
+        """Detached copies of the blocks this range holds, its paragraphs trimmed to it. Extension.
 
-        copy = deep_copy(self.paragraph.element)
-        holder = BodyElement(content=ChildList([copy]))
-        copy.parent = holder
-        body = Body(
-            self.paragraph.parent_body.part,
-            holder,
-            prefix="fragment",
-            package=self.paragraph.parent_body.package,
-        )
-        view = Paragraph(copy, holder.content, body)
-        segments = view.segments()
-        if any(segment.branch is not None or segment.math for segment in segments):
-            _trim_around_branches(view, self.start, self.end)
-            return to_xml(copy)
-        length = len(view.text)
-        if self.end < length:
-            view.splice(self.end, length, "")
-        if self.start > 0:
-            view.splice(0, self.start, "")
-        return to_xml(copy)
+        core-ts's ``blocksOfRange`` (``fragment.mts`` at ``202a01d``): within
+        one paragraph, that paragraph trimmed to the range; across paragraphs,
+        the blocks :meth:`delete` takes (:func:`~.span_edits.extent_of`), the
+        first and last paragraphs trimmed. What :meth:`get_xml` and
+        :meth:`to_api_script` write.
+
+        Raises:
+            SpanError: ``range.partial_table`` or ``range.partial_control``.
+        """
+        from docx4j_py.model.content.span_edits import extent_of
+
+        if not self.spans_paragraphs:
+            return [_trimmed(self.paragraph, self.start, self.end)]
+        extent = extent_of(self, "get_xml")
+        out: list[Any] = []
+        for index in range(extent.first, extent.last + 1):
+            block = extent.items[index]
+            if index == extent.first and extent.head is not None:
+                out.append(_trimmed(extent.head, self.start, len(extent.head.text)))
+            elif index == extent.last and extent.tail is not None:
+                if self.end > 0:
+                    out.append(_trimmed(extent.tail, 0, self.end))
+            else:
+                copy = deep_copy(block)
+                copy.parent = None
+                out.append(copy)
+        return out
 
     def to_api_script(self, **options: Any) -> str:
         """The content-API calls that would produce this span's runs (CR-003 section 3.11).
@@ -1303,15 +1741,17 @@ class Range:
         Python source against a name ``body``, executable as it stands; see
         :func:`docx4j_py.model.content.api_script.to_api_script` for the
         options (``variable``, ``location``, ``pictures``, ``limit``,
-        ``addresses``).
+        ``addresses``). Within one paragraph `variable` names a paragraph, as
+        a range emits its runs only; **across paragraphs** (CR-013 Phase C;
+        core-ts ``202a01d``) it names a body, and each block the range holds
+        (:meth:`blocks`) is written as a body's block is.
 
         Raises:
-            SpanError: ``range.spans_paragraphs``, a range across paragraphs
-                (CR-013 Phase B).
+            SpanError: ``range.partial_table`` or ``range.partial_control``, as
+                :meth:`get_xml`.
         """
         from docx4j_py.model.content.api_script import to_api_script
 
-        self.require_one_paragraph("to_api_script")
         return to_api_script(self, **options)
 
     def to_dict(self) -> dict[str, Any]:
@@ -1331,23 +1771,40 @@ class Range:
             out["mark"] = self.mark
         return out
 
-    def _refuse_span_edit(self, member: str) -> None:
-        """A deletion or replacement across paragraphs: Word's own refusals first, then Phase C's (CR-013 section 4.7).
 
-        core-ts's ``extentOf`` and ``assertTrackable`` (``spanEdits.mts`` at
-        ``53db5bc``), read only: a range starting or ending inside a table it
-        doesn't hold whole is refused as Word refuses it, and inside a content
-        control as unmeasured; under change tracking, one holding a whole
-        block that is neither a paragraph nor a table. What would be written
-        is Phase C's, refused by :meth:`require_one_paragraph`.
+def _trimmed(paragraph: Paragraph, start: int, end: int) -> Any:
+    """A detached copy of `paragraph` holding only its text from `start` to `end`, with the runs and their formatting.
 
-        Raises:
-            SpanError: ``range.partial_table``, ``range.partial_control`` or
-                ``range.not_trackable``.
-        """
-        extent = _extent_of(self, member)
-        if self.paragraph.change_tracker is not None:
-            _assert_trackable(extent, member)
+    Trimmed through a body that reads as the paragraph's own does (its
+    package's styles decide which runs are hidden, and so the offsets) and
+    writes untracked (core-ts's ``CopyBody``, ``202a01d``): trimming a copy is
+    no edit of the document.
+    """
+    from docx4j_py.model.content.body import CopyBody
+    from docx4j_py.model.content.paragraph import Paragraph as ParagraphView
+    from docx4j_py.wml import Body as BodyElement
+
+    copy = deep_copy(paragraph.element)
+    holder = BodyElement(content=ChildList([copy]))
+    copy.parent = holder
+    body = CopyBody(
+        paragraph.parent_body.part,
+        holder,
+        prefix="fragment",
+        package=paragraph.parent_body.package,
+    )
+    view = ParagraphView(copy, holder.content, body)
+    segments = view.segments()
+    if any(segment.branch is not None or segment.math for segment in segments):
+        _trim_around_branches(view, start, end)
+    else:
+        length = len(view.text)
+        if end < length:
+            view.splice(end, length, "")
+        if start > 0:
+            view.splice(0, start, "")
+    copy.parent = None
+    return copy
 
 
 def _trim_around_branches(view: Any, start: int, end: int) -> None:
@@ -1498,128 +1955,3 @@ def _character_style_of(run: Any) -> str:
     return str(getattr(value, "value", value)) if value else ""
 
 
-#: Not block-level, though a block container's list holds them: a table's rows, a row's cells and their wrappers.
-_ROW_AND_CELL = frozenset({"CTSdtRow", "CTSdtCell", "CTCustomXmlRow", "CTCustomXmlCell", "Tr", "Tc"})
-
-
-def _block_level(node: Any) -> bool:
-    cls = node.__class__
-    return not any(base.__name__ in _ROW_AND_CELL for base in cls.__mro__ if base.__module__ == "docx4j_py.wml")
-
-
-def _blocks_holding(element: Any, story: list) -> list[tuple[list, Any]]:
-    """The blocks holding a paragraph, innermost first: the paragraph in its list, each block above in its, up to the story's.
-
-    core-ts's ``blocksHolding`` (``spanEdits.mts`` at ``53db5bc``).
-    """
-    out: list[tuple[list, Any]] = []
-    node = element
-    for _ in range(256):
-        parent = getattr(node, "parent", None)
-        if parent is None:
-            break
-        items = block_children_of(parent)
-        if isinstance(items, list) and any(item is node for item in items) and _block_level(node):
-            out.append((items, node))
-            if items is story:
-                break
-        node = parent
-    return out
-
-
-def _extent_of(span: Range, member: str) -> tuple[list, int, int, bool, bool]:
-    """Where a range's two ends stand in the innermost block list holding both: ``(list, first, last, head, tail)``.
-
-    core-ts's ``extentOf`` (``53db5bc``), its refusals only: `head` is True
-    where the start's paragraph is the first block itself, `tail` where the
-    end's is the last; a block the range starts or ends inside without
-    holding it whole is refused.
-
-    Raises:
-        SpanError: ``range.partial_table`` inside a table, Word's own refusal
-            (core-ts check 52, cases 9, 10, 22, 23, 34, 35, 44 and 45);
-            ``range.partial_control`` inside a content control or another
-            block, unmeasured.
-    """
-    story, _owner = story_of(span.paragraph.element)
-    up = _blocks_holding(span.paragraph.element, story)
-    down = _blocks_holding(span.end_paragraph.element, story)
-    if not up or not down or up[-1][0] is not story or down[-1][0] is not story:
-        raise ContentError(
-            "this range's paragraphs are not in the document any more: an edit through another view "
-            "removed or joined them",
-            code="range.stale",
-            hint="take the range again",
-        )
-    for i, (items, a) in enumerate(up):
-        j = next((k for k, (other, _b) in enumerate(down) if other is items), -1)
-        if j < 0:
-            continue
-        b = down[j][1]
-        first_index = next(k for k, item in enumerate(items) if item is a)
-        last_index = next(k for k, item in enumerate(items) if item is b)
-        if i > 0:
-            first, _last = first_and_last_paragraph(items, first_index)
-            if not (span.start == 0 and first is not None and first.element is span.paragraph.element):
-                _refuse_partial(a, member, "starts")
-        if j > 0:
-            _first, last = first_and_last_paragraph(items, last_index)
-            if not (span.holds_end_mark and last is not None and last.element is span.end_paragraph.element):
-                _refuse_partial(b, member, "ends")
-        return items, first_index, last_index, i == 0, j == 0
-    raise SpanError(
-        "this range's two ends are not in one story",
-        code="range.other_story",
-        hint="take both ends from the same body, note, comment or text box",
-    )
-
-
-def _refuse_partial(block: Any, member: str, side: str) -> None:
-    if element_name(block) == W_TBL:
-        raise SpanError(
-            f"Range.{member}: this range {side} inside a table, which Word refuses too (core-ts check 52)",
-            code="range.partial_table",
-            hint="delete the table, then the paragraphs; or edit inside one cell",
-        )
-    raise SpanError(
-        f"Range.{member}: this range {side} inside a content control (or another block) it doesn't hold "
-        "whole, and what Word does with that isn't measured",
-        code="range.partial_control",
-        hint="take the whole content control, or edit inside it",
-    )
-
-
-#: The block-level markers a tracked deletion may hold whole (core-ts's ``isRangeMarker``).
-def _is_range_marker(block: Any) -> bool:
-    name = element_name(block) or ""
-    local = name.rsplit("}", 1)[-1]
-    return local.endswith(("RangeStart", "RangeEnd")) or local in (
-        "bookmarkStart",
-        "bookmarkEnd",
-        "permStart",
-        "permEnd",
-        "proofErr",
-    )
-
-
-def _assert_trackable(extent: tuple[list, int, int, bool, bool], member: str) -> None:
-    """Refuse a tracked deletion holding a whole block that is neither a paragraph nor a table (core-ts's ``assertTrackable``).
-
-    Raises:
-        SpanError: ``range.not_trackable``.
-    """
-    items, first, last, head, tail = extent
-    for index in range(first, last + 1):
-        if (index == first and head) or (index == last and tail):
-            continue
-        block = items[index]
-        name = element_name(block)
-        if name in (W_P, W_TBL) or _is_range_marker(block):
-            continue
-        local = (name or type(block).__name__).rsplit("}", 1)[-1]
-        raise SpanError(
-            f"Range.{member}: this range holds a whole {local}, and there is no measured way to delete one "
-            "under change tracking (core-ts CR-014 phase 2)",
-            code="range.not_trackable",
-            hint="turn change tracking off, or write the paragraphs either side of it",
-        )

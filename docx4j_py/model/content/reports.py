@@ -1184,11 +1184,21 @@ class recording:
         return self.recorder
 
     def __exit__(self, *exc_info: object) -> None:
-        """Close the report and put it on the package."""
+        """Close the report and put it on the package.
+
+        What the write's deletions took with them --- a note, a comment, a
+        relationship whose reference went --- is settled first (CR-013 Phase C;
+        :func:`~.span_edits.settle_removals`), and the parts that touches are
+        the report's.
+        """
         package = self.package
         if package is None:
             return
         package._current_change = None
+        if getattr(package, "_pending_removals", None) is not None:
+            from docx4j_py.model.content.span_edits import settle_removals
+
+            settle_removals(package, self.recorder)
         _invalidate_list_labels(package)
         if exc_info[0] is None:
             package.changes.append(self.recorder.finish())

@@ -43,7 +43,7 @@ from docx4j_py.model.content.enums import (
     TextLocation,
     TextView,
 )
-from docx4j_py.model.content.errors import ContentError, InvalidTargetError
+from docx4j_py.model.content.errors import ContentError, InvalidTargetError, SpanError
 from docx4j_py.model.content.paragraph import Paragraph
 from docx4j_py.model.content.reports import (
     DEFAULT_ENTRY_LIMIT,
@@ -77,7 +77,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.picture import InlinePicture
     from docx4j_py.model.content.range import Range
 
-__all__ = ["Block", "Body", "body_of"]
+__all__ = ["Block", "Body", "CopyBody", "body_of"]
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W_P = f"{{{_W}}}p"
@@ -184,6 +184,10 @@ class Body(Sequence):
     #: Phase A, :meth:`body_for`). Every mutating verb opens its report through
     #: :class:`~docx4j_py.model.content.reports.recording`, which refuses here.
     read_only: str | None = None
+
+    #: True for a body over a detached copy (:class:`CopyBody`): its edits are
+    #: untracked and take nothing with them from the document (CR-013 Phase C).
+    copy: bool = False
 
     def __init__(
         self,
@@ -1161,6 +1165,20 @@ class Body(Sequence):
                 boundaries), ``match_wildcards`` (Word's ``?`` and ``*``, and
                 ``[]``, ``<``, ``>``, ``@``, ``{}``), and ``limit``.
         """
+        from docx4j_py.model.content.text_model import paragraph_mark_pieces
+
+        if not options.get("match_wildcards") and paragraph_mark_pieces(text) is not None:
+            # Word's paragraph mark, ^p, is searched across the body's whole range (CR-013
+            # Phase C; core-ts CR-014 phase 3); a body over several stories (a notes part's)
+            # a paragraph at a time, each its own mark
+            first = next(self.iter_paragraphs(), None)
+            if first is not None:
+                try:
+                    whole = self.get_range("Whole")
+                except SpanError:
+                    whole = None
+                if whole is not None:
+                    return whole.search(text, **options)
         limit = options.pop("limit", None)
         out: list[Range] = []
         for paragraph in self.iter_paragraphs():
@@ -1189,7 +1207,14 @@ class Body(Sequence):
 
         Returns:
             How many were replaced.
+
+        Raises:
+            SpanError: ``range.replaces_mark``, a query holding ``^p``, Word's
+                paragraph mark, whose replacement is unmeasured (CR-013 Phase C).
         """
+        from docx4j_py.model.content.text_model import refuse_mark_replacement
+
+        refuse_mark_replacement("Body", find, options)
         replace = drop_unwritable(replace)
         with recording(self, "replace_text") as change:
             change.text(before=find)
@@ -1510,3 +1535,25 @@ class _BranchBody(Body):
         "in a branch of an mc:AlternateContent the document keeps whole: an edit there "
         "would change that branch alone (CR-012)"
     )
+
+
+class CopyBody(Body):
+    """A :class:`Body` over a detached copy of the document's content: it reads as the document's and writes untracked.
+
+    CR-013 Phase C (docx4j-core-ts's ``CopyBody``, ``202a01d``): what
+    :meth:`Range.get_xml` and :meth:`Range.blocks` trim their copies through.
+    The part and the package are the document's, so that the styles decide
+    which runs are hidden, and so the offsets, as they do in the document;
+    under change tracking the trim is no edit of the document, so it writes no
+    revision, and what it cuts (a comment's reference, a note's) takes nothing
+    with it from the document.
+    """
+
+    __slots__ = ()
+
+    copy = True
+
+    @property
+    def change_tracker(self) -> Any:
+        """None: trimming a copy is no tracked edit."""
+        return None

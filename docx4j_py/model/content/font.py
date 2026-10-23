@@ -323,24 +323,27 @@ class MixedFont(Font):
     52 and 53) --- ``None``, ``""`` for the name, the colour and the
     highlight, and ``"Mixed"`` for the underline --- so the getters are typed
     ``bool | None`` and ``float | None``. Where they agree, that value. A
-    write across paragraphs is CR-013 Phase C's: until then every setter
-    refuses (``range.spans_paragraphs``) before anything changes.
+    write (CR-013 Phase C) goes to `write`: every run and mark in the range,
+    as Word formats them (:func:`~docx4j_py.model.content.span_edits.format_span`).
     """
 
-    __slots__ = ("_readings", "_refuse")
+    __slots__ = ("_readings", "_write_across")
 
-    def __init__(self, readings: Callable[[], list[dict[str, Any]]], refuse: Callable[[], None]) -> None:
+    def __init__(
+        self, readings: Callable[[], list[dict[str, Any]]], write: Callable[[dict[str, Any]], None]
+    ) -> None:
         """Build the view.
 
         Args:
             readings: called on every read; each run's
                 :func:`~docx4j_py.wml.builders.read_run_options` dict, effective
                 or direct as the range asked, read in its own paragraph.
-            refuse: called by every setter; it raises.
+            write: called by every setter with the one option written
+                (``{"bold": True}``).
         """
         super().__init__(list)
         self._readings = readings
-        self._refuse = refuse
+        self._write_across = write
 
     def _value(self, key: str, mixed: Any = None) -> Any:
         values = [reading.get(key) for reading in self._readings()]
@@ -378,8 +381,7 @@ class MixedFont(Font):
         return values[0] if all(value == values[0] for value in values) else ""
 
     def _apply(self, **options: Any) -> None:
-        self._refuse()
-        raise AssertionError("unreachable: a MixedFont's refuse() raises")  # pragma: no cover
+        self._write_across(options)
 
     # the getters, typed for a value that may be mixed (Q4)
 

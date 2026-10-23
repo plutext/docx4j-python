@@ -78,6 +78,7 @@ class OpcPackage:
         "_mc_load_mode",
         "_numbering_emulator",
         "_para_ids_taken",
+        "_pending_removals",
         "_split_runs",
         "_split_spaces",
         "_tracked_change_date",
@@ -176,6 +177,11 @@ class OpcPackage:
         # same reason as the four above: the engine holds the state, the content
         # API puts it there, and this layer imports nothing from it.
         self._numbering_emulator: Any = None
+        # CR-013 Phase C: what the content API's deletions took with them (a
+        # note, a comment, a relationship whose reference went), settled when the
+        # write ends through the revisions engine's ``Removals``. A plain
+        # container again: the content API puts it here and settles it.
+        self._pending_removals: Any = None
 
     # -- markup compatibility at block level (CR-012 Phase A) -------------
 

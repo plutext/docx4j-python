@@ -23,7 +23,14 @@ The rules of section 4 that land here:
 * a run already inside a ``w:ins`` **by the same author** is extended rather
   than nested in another one, and deleting text that author inserted takes it
   back rather than nesting a ``w:del``;
-* a replacement is the ``w:del`` first and the ``w:ins`` after it;
+* a replacement through ``Range.insert_text(..., "Replace")`` (and so every
+  ``replace_text``) and ``Paragraph.insert_text(..., "Replace")`` is the
+  ``w:ins`` first and the ``w:del`` after it, as Word 365 writes one, within one
+  paragraph too (docx4j-core-ts check 54 case 4 and check 52 cases 39 to 48;
+  CR-013 Phase C, the user's decision in core-ts, 2026-10-23: "Tracked Replace
+  order within one paragraph: follow Word (insertion first)"). 0.1.0 wrote the
+  ``w:del`` first; the paragraph primitive :meth:`Paragraph.splice` still does,
+  which ``Paragraph.text = ...`` under tracking uses;
 * runs are split at the span's boundaries, so a partly deleted run is not
   wholly deleted;
 * revision ids come from a per-package counter one above the highest ``w:id``
@@ -94,6 +101,8 @@ __all__ = [
     "holds_final_mark",
     "insertion_mark_of",
     "mark_deleted",
+    "mark_holder_deleted",
+    "mark_holder_inserted",
     "mark_inserted",
     "merge_runs",
     "mode_of",
@@ -564,6 +573,27 @@ class ChangeTracker:
         r_pr.del_value = self.track_change()
         r_pr.del_value.parent = r_pr
 
+    def record_mark_r_pr_change(self, r_pr: Any) -> None:
+        """Record a paragraph mark's formatting in its ``w:rPrChange``, once (the first original wins).
+
+        What a tracked ``font`` write over a range holding the mark writes
+        (docx4j-core-ts check 52 case 56: ``<w:rPrChange><w:rPr/></w:rPrChange>``
+        for a mark that had no formatting; core-ts's ``recordMarkRPrChange``;
+        CR-013 Phase C). The mark's own revisions (``w:ins``, ``w:del``,
+        ``w:moveFrom``, ``w:moveTo``) are not its formatting and are not recorded.
+        Not settled when the formatting goes back, as a run's is not (CR-003
+        section 21.3 item 9).
+        """
+        if getattr(r_pr, "r_pr_change", None) is not None:
+            return
+        from docx4j_py.wml import CTParaRPrOriginal, ParaRPrChange, rpr_from_elements
+
+        original = rpr_from_elements(rpr_to_elements(r_pr), cls=CTParaRPrOriginal)
+        change = ParaRPrChange(r_pr=original, **self.markup())
+        r_pr.r_pr_change = change
+        link_parents(change)
+        change.parent = r_pr
+
     def mark_row_inserted(self, row: Tr) -> None:
         """``w:trPr/w:ins``: the table row is an insertion."""
         tr_pr = row_pr_of(row)
@@ -907,6 +937,75 @@ def hand_back_final_mark(tracker: ChangeTracker, leaving: P, previous: P) -> Non
         target.parent = previous
     target.p_pr_change = change
     change.parent = target
+
+
+def holder_items_of(holder: Any) -> list | None:
+    """The live list a content control's or custom XML element's content is in, or None."""
+    content = getattr(holder, "sdt_content", None)
+    if content is not None:
+        found = getattr(content, "content", None)
+        return found if isinstance(found, list) else None
+    found = getattr(holder, "content", None)
+    return found if isinstance(found, list) else None
+
+
+def mark_holder_inserted(tracker: ChangeTracker, holder: Any, owner: list, inside: Any = None) -> None:
+    """A content control or custom XML element inserted under tracking, in Word's form (docx4j-core-ts check 30).
+
+    A ``w:customXmlInsRangeStart`` before the element, its ``End`` first inside
+    the content, a second start last inside, its ``End`` after the element;
+    `inside` is called between the two pairs, so that the ids run in document
+    order as Word's do (core-ts's ``markHolderInserted``). What
+    ``Range.insert_content_control`` across paragraphs writes under tracking
+    (core-ts check 54 case 43; CR-013 Phase C); the revisions lister lists and
+    resolves it (Reject takes the element away, Accept the markers).
+    """
+    _mark_holder(tracker, holder, owner, inside, ins=True)
+
+
+def mark_holder_deleted(tracker: ChangeTracker, holder: Any, owner: list, inside: Any = None) -> None:
+    """A content control or custom XML element deleted under tracking, as Word writes one (docx4j-core-ts check 54).
+
+    :func:`mark_holder_inserted`'s form with ``w:customXmlDelRangeStart`` and
+    ``End``, the content marked deleted between the two pairs (`inside`): what
+    a tracked deletion of a range holding a whole control writes (core-ts check
+    54 cases 15 and 17, its ``markHolderDeleted``; CR-013 Phase C). Accepting
+    takes the element away; rejecting, the markers.
+    """
+    _mark_holder(tracker, holder, owner, inside, ins=False)
+
+
+def _mark_holder(tracker: ChangeTracker, holder: Any, owner: list, inside: Any, *, ins: bool) -> None:
+    at = _index_of(owner, holder)
+    items = holder_items_of(holder)
+    if at < 0 or items is None:
+        if inside is not None:
+            inside()
+        return
+    start, end = (el.customXmlInsRangeStart, el.customXmlInsRangeEnd) if ins else (
+        el.customXmlDelRangeStart,
+        el.customXmlDelRangeEnd,
+    )
+    parent = getattr(holder, "parent", None)
+    content_owner = getattr(holder, "sdt_content", None) or holder
+    first = tracker.markup()
+    outer_start = start(**first)
+    inner_end = end(id=first["id"])
+    owner.insert(at, outer_start)
+    items.insert(0, inner_end)
+    if inside is not None:
+        inside()
+    second = tracker.markup()
+    inner_start = start(**second)
+    outer_end = end(id=second["id"])
+    items.append(inner_start)
+    owner.insert(_index_of(owner, holder) + 1, outer_end)
+    for marker in (outer_start, outer_end):
+        link_parents(marker)
+        marker.parent = parent
+    for marker in (inner_end, inner_start):
+        link_parents(marker)
+        marker.parent = content_owner
 
 
 def track_inserted_paragraph_into(

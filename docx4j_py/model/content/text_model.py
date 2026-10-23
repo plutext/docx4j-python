@@ -133,9 +133,11 @@ __all__ = [
     "office_as_model",
     "office_item_text",
     "office_matches",
+    "paragraph_mark_pieces",
     "reading_of",
     "refuse_branch_text",
     "refuse_equation",
+    "refuse_mark_replacement",
     "refuse_tracked_equation",
     "require_view",
     "rows_of",
@@ -1960,6 +1962,61 @@ def _plain_query(query: str) -> tuple[str, list[str | None]]:
         tokens.append(None)
         index += 1
     return "".join(source), tokens
+
+
+def paragraph_mark_pieces(query: str) -> list[str] | None:
+    """A plain query split at Word's paragraph mark code, ``^p``: its pieces, one more than the marks; None where it holds none.
+
+    docx4j-core-ts's ``paragraphMarkPieces`` (``search.mts`` at ``87bbb38``;
+    its CR-014 phase 3, CR-013 Phase C here): each piece a plain query of its
+    own, ``^^`` staying an escaped caret. What a ``Range``'s search across
+    paragraphs matches piece by piece (Word's check 52 case 2).
+    """
+    pieces: list[str] = []
+    piece: list[str] = []
+    index = 0
+    while index < len(query):
+        char = query[index]
+        following = query[index + 1] if index + 1 < len(query) else None
+        if char == "^" and following == "p":
+            pieces.append("".join(piece))
+            piece = []
+            index += 2
+            continue
+        if char == "^" and following is not None:
+            piece.append(char + following)
+            index += 2
+            continue
+        piece.append(char)
+        index += 1
+    if not pieces:
+        return None
+    pieces.append("".join(piece))
+    return pieces
+
+
+def refuse_mark_replacement(owner: str, find: str, options: dict[str, Any] | None = None) -> None:
+    """Refuse a replacement whose query holds ``^p``, Word's paragraph mark (core-ts's ``refuseMarkReplacement``).
+
+    ``search`` finds such a hit, but what Office JS's replacement of a mark
+    leaves isn't measured, and ``insert_text(..., "Replace")`` keeps a last
+    mark (core-ts check 52; its CR-014 section 11.3). Wildcards and regular
+    expressions read ``^p`` as the two characters, and are not refused.
+
+    Raises:
+        SpanError: ``range.replaces_mark``.
+    """
+    if (options or {}).get("match_wildcards") or paragraph_mark_pieces(find) is None:
+        return
+    from docx4j_py.model.content.errors import SpanError
+
+    raise SpanError(
+        f"{owner}.replace_text refused: the query holds ^p, Word's paragraph mark, and what replacing "
+        "one does isn't measured (CR-013 Phase C; docx4j-core-ts CR-014 section 11.3)",
+        code="range.replaces_mark",
+        hint="search for the hits (search('...^p...')) and edit their ranges: delete() a hit to join "
+        "its paragraphs, or insert_text on each",
+    )
 
 
 def office_matches(
