@@ -579,7 +579,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - **Kept:** `R&D/report.html`, `page.html?a=1&amp;b=2`, `https&#58;//example.org`, `&colon`, `page.html#&#58;`.
    - **Oracle tests:** `docx4j-core-tests`' `LinkTargetsTest.characterReferencesDecodedAsACommonMarkRendererDecodesThem` and `docx4j-markdown`'s `MarkdownHostileLinksTest.noEntityEncodedScriptSchemeDestination`, ported once committed.
 
-   *Recommended: yes, as docx4j's rule*: `link_targets.is_safe` takes the decoded check itself, one rule as docx4j's, rather than a Markdown-only `is_safe`. Section 4.8 item 2's departure goes, and parity with docx4j's bytes holds on these forms too. core-ts's session reported the same hole there (`57b2f98`) and is putting the decoded check to the user.
+   *Recommended: yes, as docx4j's rule*: `link_targets.is_safe` takes the decoded check itself, one rule as docx4j's, rather than a Markdown-only `is_safe`. Section 4.8 item 2's departure goes, and parity with docx4j's bytes holds on these forms too. core-ts had the same hole (`57b2f98`) and took the same check into its `LinkTargets.isSafe` (`f544b8f`, its CR-012 section 21.2).
 
    Escaping `&` in destinations instead would move every link with a query string, away from commonmark-java's bytes.
 4. **Q4. Logging as docx4j's?**

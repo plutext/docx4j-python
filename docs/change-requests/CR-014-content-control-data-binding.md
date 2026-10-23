@@ -93,6 +93,7 @@ A block control with no type holding two paragraphs, its mapping deleted and set
   - H2: `insertParagraph` into one follows Word where Word's file is readable. In a single-line control the text joins its paragraph, and the node follows the control. In a multi-line control it is refused (`NotSupportedError`).
   - H3: Word's error codes where measured (`InvalidArgument` for `insertTable`, `GeneralException` for `insertOoxml` and `insertXml`), `NotSupportedError` for a block write Word wasn't given.
   - H4: a reader reports a bound block control with no type or `w:richText` (its node not flat OPC) as `PlainText`, single-line, as Office JS does. The file is left as it is.
+- **Implemented there** (`6285dfa`, sections 60 and 61), and after the consistency review of 2026-10-23, `a18f53a` (its section 61.6) took this CR's Q4 and Q5: `setMapping` and `setMappingByNode` refuse, before anything changes, to bind a plain-text or bound block control holding more than one paragraph, and `applyBindings` over one holding more writes one paragraph, as `bind.xslt` does. So 3.3 and 3.4 are the two ports' one rule.
 - Check 55b (`1e61bb1`, Word 365) measured Word's own bound controls: a line break goes to the node as `\r\n`; `\n` or `\r` written into a run-level bound plain-text control moves it to block level, in a paragraph of its own; Word's `contentControls` collections list no plain-text control (`getContentControls({ types })` finds them). It did not measure a second paragraph in a bound block control.
 
 ### 2.8 Not measured
