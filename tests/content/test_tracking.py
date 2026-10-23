@@ -375,6 +375,56 @@ def test_another_authors_insertion_gets_a_w_ins_of_its_own():
     ]
 
 
+def test_text_typed_inside_another_authors_insertion_splits_it_the_new_insertion_between_the_halves():
+    # CR-003's rule (docx4j-core-ts checks 20 and 21), which went after the whole insertion until CR-013 Phase C
+    # (its section 11.1.9); a tracked replacement's deletion goes into the half after the new text (13.1 item 7)
+    package, paragraph = tracked("a  b")
+    package.author = Author("Other")
+    from docx4j_py.model.content import Range
+
+    Range(paragraph, 2, 2).insert_text("INSERTED")
+    package.author = Author("Claude")
+    out = Range(paragraph, 6, 6).insert_text("Z")
+    assert (paragraph.text, out.start, out.end, out.text) == ("a INSEZRTED b", 6, 7, "Z")
+    authors = re.findall(r'<w:ins w:id="\d+" w:author="([^"]+)"', paragraph.get_xml())
+    assert authors == ["Other", "Claude", "Other"]
+    assert [(c.author, c.text) for c in package.body.get_tracked_changes()] == [
+        ("Other", "INSE"),
+        ("Claude", "Z"),
+        ("Other", "RTED"),
+    ]
+    out = Range(paragraph, 9, 10).insert_text("Q", location="Replace")
+    assert out.text == "Q"
+    assert re.findall(r'<w:(ins|del) w:id="\d+" w:author="([^"]+)"', paragraph.get_xml()) == [
+        ("ins", "Other"),
+        ("ins", "Claude"),
+        ("ins", "Other"),
+        ("ins", "Claude"),
+        ("ins", "Other"),
+        ("del", "Claude"),
+    ]
+    back = reloaded(package)
+    back.body.accept_all()
+    assert back.body.paragraphs[0].text == "a INSEZRTQD b"
+
+
+def test_a_tracked_insertion_between_a_tab_and_its_runs_text_stands_between_them():
+    # found by Phase A2's landing audit (its probe between a tab and the text after it in one run, skipped as
+    # pre-existing until CR-013 Phase C): the w:ins went after the whole run, the range returned before it
+    package, paragraph = tracked("x")
+    paragraph.element.content.clear()
+    from docx4j_py.wml import wml
+
+    run = wml(f'<w:r xmlns:w="{_W}"><w:t>CD</w:t><w:tab/><w:t>EF</w:t></w:r>')
+    paragraph.element.content.append(run)
+    assert paragraph.text == "CD\tEF"
+    from docx4j_py.model.content import Range
+
+    out = Range(paragraph, 3, 3).insert_text("Z")
+    assert (paragraph.text, out.start, out.text) == ("CD\tZEF", 3, "Z")
+    assert re.search(r"<w:tab/></w:r><w:ins [^>]*><w:r><w:t>Z</w:t></w:r></w:ins><w:r><w:t>EF</w:t>", paragraph.get_xml())
+
+
 def test_a_deletion_moves_the_runs_into_a_w_del_with_del_text():
     package, paragraph = tracked()
     paragraph.search("quick ")[0].delete()

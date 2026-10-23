@@ -115,7 +115,9 @@ class Range:
         its paragraphs' whole content (a paragraph's, a body's, a control's,
         a table's range), kept as core-ts keeps it; a write within one
         paragraph decides what its edges take as Phase A built it (CR-013
-        section 10.11 item 2).
+        section 10.11 item 2), and since Phase C a `whole` range takes them
+        too, so that an empty paragraph's ``'Content'`` range takes the
+        comment reference it holds (core-ts's ``WHOLE``).
 
         Raises:
             SpanError: ``range.other_story``, `end_paragraph` in another story
@@ -973,8 +975,9 @@ class Range:
             index = next((i for i, item in enumerate(container) if item is paragraph.element), -1)
             length = len(paragraph.text)
             if location == "Replace":
-                # a paragraph's 'Whole' range holds its hidden runs and pictures at its edges
-                out = paragraph.splice(self.start, self.end, text, whole=self.mark)
+                # a paragraph's 'Whole' or 'Content' range holds its hidden runs, pictures and comment
+                # references at its edges, an empty one's too (core-ts's WHOLE; CR-013 Phase C)
+                out = paragraph.splice(self.start, self.end, text, whole=self.mark or self.whole)
                 # the range covers the new text, across the paragraphs it made (Phase B)
                 self.paragraph = out.paragraph
                 self.start, self.end = out.start, out.end
@@ -1553,7 +1556,9 @@ class Range:
         with recording(self.paragraph.parent_body, "delete") as change:
             change.touched(self.paragraph)
             change.text(before=self.text, after="")
-            self.paragraph.splice(self.start, self.end, "", whole=self.mark)
+            # a range holding its paragraph's whole content takes what stands at its edges, an empty
+            # paragraph's comment reference among them (core-ts's WHOLE, its CR-014 section 12.6)
+            self.paragraph.splice(self.start, self.end, "", whole=self.mark or self.whole)
             self.end = self.start
 
     def _delete_span(self) -> None:

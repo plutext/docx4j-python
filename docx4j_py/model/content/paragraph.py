@@ -2178,6 +2178,21 @@ class Paragraph:
         segments = self.segments()
         before = next((s for s in reversed(segments) if s.end <= at), None)
         after = next((s for s in segments if s.start >= at), None)
+        if (
+            before is not None
+            and after is not None
+            and before.run is after.run
+            and before.branch is None
+            and not after.math
+            and after.index > 0
+        ):
+            # a tab, a break or a symbol sharing the run with the text after it: the run cut between them, so
+            # that the insertion stands at `at` and not beside the whole run (found by the landing audit's
+            # probe between a tab and its run's text; CR-013 section 14.9)
+            self._split_run_before(after)
+            segments = self.segments()
+            before = next((s for s in reversed(segments) if s.end <= at), None)
+            after = next((s for s in segments if s.start >= at), None)
         sides = ((before, "after"), (after, "before"))
         for segment, side in sides if prefer != "after" else tuple(reversed(sides)):
             if segment is None or segment.branch is not None:
@@ -2200,6 +2215,8 @@ class Paragraph:
             return
 
         neighbour = (after or before) if prefer == "after" else (before or after)
+        if self._insert_between_halves(tracker, text, before, after, neighbour):
+            return
         # beside the run, or beside the kept element its text is read from (CR-011 Phase F)
         site, site_owner, _site_index = neighbour.site() if neighbour is not None else (None, None, -1)
         revision = revision_of(site) if site is not None else None
@@ -2273,6 +2290,38 @@ class Paragraph:
 
         segments_of(self.element, hidden=self.hidden_runs(), visit=visit)
         return out
+
+    def _insert_between_halves(self, tracker: Any, text: str, before: Any, after: Any, neighbour: Any) -> bool:
+        """A tracked insertion strictly inside another author's ``w:ins`` or ``w:moveTo``: the revision split, the text between.
+
+        Word's form for text typed inside someone else's revision (docx4j-core-ts
+        check 20 case 01, check 21; its ``insertBetweenHalves``): the revision's
+        items from the place on go into a second one of the same, under a new
+        ``w:id``, and this author's ``w:ins`` stands between the two. Until CR-013
+        Phase C the ``w:ins`` went after the whole revision (section 11.1.9);
+        with a tracked replacement's insertion first, the text would have gone
+        before it. Only where both sides' runs stand directly in the one
+        revision. Returns whether it placed the text.
+        """
+        from docx4j_py.model.content.comments import _close_insertion
+        from docx4j_py.model.content.tracking import copy_r_pr, revision_of
+
+        if before is None or after is None or before.branch is not None or after.branch is not None:
+            return False
+        first, second = revision_of(before.run), revision_of(after.run)
+        if first is None or second is None or first.element is not second.element:
+            return False
+        if first.kind not in ("ins", "moveTo") or tracker.own_insertion(first):
+            return False
+        items = run_items_of(first.element)
+        if items is None or before.run_owner is not items or after.run_owner is not items:
+            return False
+        index = _index_of(items, after.run)
+        if index <= 0:
+            return False
+        source = neighbour.run if neighbour is not None else None
+        wrapper = tracker.ins([_run_of(text, copy_r_pr(getattr(source, "r_pr", None)))])
+        return _close_insertion(self, first.element, index, [wrapper])
 
     def _isolate(self, start: int, end: int, *, whole: bool | tuple[bool, bool] = False) -> list[Any]:
         """Split runs so that each one holding text in ``[start, end)`` holds nothing else.

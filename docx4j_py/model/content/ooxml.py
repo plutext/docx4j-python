@@ -558,7 +558,7 @@ def _remove_keeping_mark(span: Range, extent: Any) -> tuple[Any, int]:
     from docx4j_py.model.content.span_edits import delete_span
 
     if extent is None:
-        span.paragraph.splice(span.start, span.end, "", whole=span.mark)
+        span.paragraph.splice(span.start, span.end, "", whole=span.mark or span.whole)
         span.end = span.start
         return span.paragraph, span.start
     landing = delete_span(span, extent, True)

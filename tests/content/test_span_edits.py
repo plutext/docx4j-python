@@ -503,3 +503,74 @@ def test_each_write_records_one_change_report_and_a_dry_run_leaves_the_package_a
     if write in ("delete", "replace"):
         assert real.text_before == "HEAD3B\rBODY3A" if write == "delete" else real.text_before == "HEAD29B\rBODY29A"
     reloaded(package)
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_a_range_of_one_table_taken_whole_takes_that_table_only(tracked):
+    # found by the sweep (CR-013 section 14.9): a range holding one block whole removed the block after it too
+    package = create_package()
+    package.body.insert_paragraph("before")
+    package.body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])
+    package.body.insert_paragraph("after")
+    package.body.insert_paragraph("last")
+    if tracked:
+        package.change_tracking_mode = "TrackAll"
+    first, last = (next(p for p in package.body.paragraphs if p.text == text) for text in ("a", "d"))
+    span = first.get_range("Start").expand_to(last.get_range("Whole"))
+    assert span.text == "a\tb\r\nc\td\t"
+    span.delete()
+    if tracked:
+        assert document_xml(package).count("<w:delText>") == 4
+        revisions.accept_all(package)
+    assert [p.text for p in package.body.paragraphs] == ["before", "after", "last"]
+    assert [type(b).__name__ for b in package.main_document_part.contents.body.content] == ["P", "P", "P"]
+
+
+def test_a_tracked_replacement_inside_another_authors_insertion_splits_it_the_new_text_between():
+    # CR-013 section 13.1 item 7: CR-003's rule, the deletion now in the half after the new text
+    package = create_package()
+    package.body.insert_xml(
+        f'<w:p xmlns:w="{W}"><w:r><w:t xml:space="preserve">a </w:t></w:r>'
+        '<w:ins w:id="7" w:author="Other" w:date="2026-01-01T00:00:00Z"><w:r><w:t>INSERTED</w:t></w:r></w:ins>'
+        '<w:r><w:t xml:space="preserve"> b</w:t></w:r></w:p>',
+        location="End",
+    )
+    package.change_tracking_mode = "TrackAll"
+    paragraph = next(p for p in package.body.paragraphs if p.text)
+    out = Range(paragraph, 6, 7).insert_text("X", location="Replace")
+    assert out.text == "X"
+    xml = to_xml_of(paragraph)
+    authors = re.findall(r'<w:(ins|del) w:id="\d+" w:author="([^"]+)"', xml)
+    assert authors == [("ins", "Other"), ("ins", "docx4j-python"), ("ins", "Other"), ("del", "docx4j-python")]
+    assert re.search(r"<w:t>INSE</w:t></w:r></w:ins><w:ins [^>]*><w:r><w:t>X</w:t>", xml)
+    assert re.search(r"<w:ins [^>]*Other[^>]*><w:del [^>]*><w:r><w:delText>R</w:delText></w:r></w:del><w:r><w:t>TED", xml)
+    accepted, rejected = reloaded(package), reloaded(package)
+    revisions.accept_all(accepted)
+    revisions.reject_all(rejected)
+    assert next(p for p in accepted.body.paragraphs if p.text).text == "a INSEXTED b"
+    assert next(p for p in rejected.body.paragraphs if p.text).text == "a  b"
+
+
+def test_a_whole_paragraphs_content_range_takes_an_empty_paragraphs_comment_reference():
+    # core-ts's fix of an empty span's edges (its CR-014 section 12.6), found by the sweep over invoice.docx
+    for write in (lambda r: r.delete(), lambda r: r.insert_text("", location="Replace")):
+        package = create_package()
+        paragraph = package.body.insert_paragraph("x")
+        paragraph.get_range("Whole").insert_comment("on nothing")
+        # the text gone, the comment's markup left: a paragraph holding only a reference, as invoice.docx has one
+        items = paragraph.element.content
+        items[:] = [item for item in items if "w:t>" not in to_xml_of_element(item)]
+        assert paragraph.text == "" and "commentReference" in to_xml_of(paragraph)
+        write(paragraph.get_range("Content"))
+        assert "commentReference" not in to_xml_of(paragraph)
+        assert package.body.get_comments() == []
+
+
+def to_xml_of(paragraph) -> str:
+    return to_xml_of_element(paragraph.element)
+
+
+def to_xml_of_element(element) -> str:
+    from docx4j_py.wml import to_xml
+
+    return to_xml(element)

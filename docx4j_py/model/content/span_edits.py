@@ -553,7 +553,10 @@ def _delete_untracked(span: Range, extent: Extent, keep_last_mark: bool) -> Land
         # the head's mark is in the range: it joins what follows, the tail or the paragraph after a block taken whole
         survivor = _join_forward(head)
         return Landing(survivor, span.start)
-    _remove_block(body, items, first)
+    if tail is not None or first < last:
+        # a range of one block taken whole (a table, a control) removed it as its last above; core-ts's
+        # deleteUntracked removes the block after it too, found here (CR-013 section 14.9)
+        _remove_block(body, items, first)
     return Landing(tail, 0) if tail is not None else None
 
 
@@ -751,7 +754,8 @@ def _delete_tracked(span: Range, extent: Extent, tracker: Any, keep_last_mark: b
         tail.splice(0, span.end, "", whole=(True, span.whole or span.holds_end_mark))
         if takes_mark:
             _delete_mark(tail, tracker)
-    else:
+    elif last_block is not first_block or head is not None:
+        # a range of one block taken whole was marked once, as its first
         _delete_block(body, items, last_block, tracker)
     if head is not None:
         return Landing(head, span.start)
