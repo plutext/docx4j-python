@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-"""Write the eleven artefacts the Word acceptance checklist needs.
+"""Write the twelve artefacts the Word acceptance checklist needs.
 
 CR-002 section 8: Word acceptance is manual. This produces the artefacts and
 prints what to look for; `tests/README.md` is the checklist.
 
     .venv-fork/bin/python scripts/acceptance.py [--out out/acceptance]
 
-Eleven artefacts in thirteen files (8 has an accepted and a rejected copy beside
-it), each testing a different half of the save path:
+Twelve artefacts in seventeen files (8 has an accepted and a rejected copy beside
+it, 12 a tracked copy with those two), each testing a different half of the save path:
 
 ``1-untouched-round-trip.docx``
     loaded and saved with nothing unmarshalled. Every part is the source's
@@ -100,6 +100,25 @@ it), each testing a different half of the save path:
     **parts** created by ``is_linked_to_previous = False``, the cloned
     ``w:sectPr``, the image part, and ``dcterms:created`` written by the facade
     rather than by ``create_package``.
+``12-ranges-across-paragraphs.docx``
+    a **loaded** document (``samples/2010-sample1.docx``, as 8) given sixteen
+    labelled cases of CR-013 Phase C's writes of a ``Range`` across paragraphs
+    (sections 6.4, 13.5 and 13.7), each a ``Case N:`` paragraph and then its
+    blocks: a range from a heading's middle to a body paragraph's deleted, one
+    with a whole table between, two list items joined, a paragraph's
+    ``'Whole'`` range deleted, a bold across two paragraphs, a split
+    (``insert_paragraph`` after a range across two), a comment across
+    paragraphs and one across a table, a block control wrapped around two
+    paragraphs, a whole control deleted, a range into a control deleted, a
+    ``Replace`` within one paragraph, a comment whose reference a deletion
+    takes, a paragraph break in a complex field's result and in a
+    ``w:fldSimple``'s (check 57's D1), and a range taking an equation whole
+    (D2). ``12-ranges-across-paragraphs-tracked.docx`` is the same writes with
+    the mode on (the whole control between Word's ``w:customXmlDelRange*``
+    markers, the equation in Word's deleted form, the replacement's ``w:ins``
+    first), and beside it ``-tracked-accepted.docx`` and
+    ``-tracked-rejected.docx``, resolved by CR-010's engine, each listing
+    nothing.
 """
 
 from __future__ import annotations
@@ -679,8 +698,198 @@ def python_docx_facade(out: Path) -> Path:
     return target
 
 
+#: Artefact 12's two fields and its equation, as check 57's file holds them (docx4j-core-ts ``906d5e3``).
+_COMPLEX_FIELD = (
+    '<w:r><w:t xml:space="preserve">14A </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+    '<w:r><w:instrText xml:space="preserve"> QUOTE "14F field 14G" </w:instrText></w:r>'
+    '<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t xml:space="preserve">14F field 14G</w:t></w:r>'
+    '<w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:t xml:space="preserve"> 14B</w:t></w:r>'
+)
+_SIMPLE_FIELD = (
+    '<w:r><w:t xml:space="preserve">15A </w:t></w:r><w:fldSimple w:instr=" QUOTE &quot;15F field 15G&quot; ">'
+    '<w:r><w:t xml:space="preserve">15F field 15G</w:t></w:r></w:fldSimple><w:r><w:t xml:space="preserve"> 15B</w:t></w:r>'
+)
+_EQUATION = (
+    '<m:oMath><m:r><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr><m:t>E=m</m:t></m:r>'
+    '<m:sSup><m:sSupPr><m:ctrlPr><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/><w:i/></w:rPr>'
+    '</m:ctrlPr></m:sSupPr><m:e><m:r><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr>'
+    '<m:t>c</m:t></m:r></m:e><m:sup><m:r><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr>'
+    '<m:t>2</m:t></m:r></m:sup></m:sSup></m:oMath>'
+)
+_NAMESPACES = (
+    'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+    'xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"'
+)
+
+#: Artefact 12's cases: (label, what is written). The label says what the case's blocks become.
+RANGE_CASES = [
+    "Case 1: from the heading's middle (1B) to the body paragraph's (1C), deleted: one paragraph, '1A heading  body 1D', in the body paragraph's style.",
+    "Case 2: from 2B to 2C, the table between taken whole, deleted: one paragraph, '2A before  after 2D'.",
+    "Case 3: from the first list item's 3B to the second's 3C, deleted: two list items, '3A item  item 3D' and '3E item 3F'.",
+    "Case 4: the next paragraph's 'Whole' range deleted: the paragraph goes, '4C stays' stays.",
+    "Case 5: from 5B to 5C made bold: '5B' and '5C' bold, the first paragraph's mark bold.",
+    "Case 6: insert_paragraph after the range from 6B to 6C: a new paragraph '6X new' after '6C', ' two 6D' after it.",
+    "Case 7: a comment from 7B to 7C, across the two paragraphs.",
+    "Case 8: a comment from 8B to 8C, across the table between.",
+    "Case 9: a block content control wrapped around the two paragraphs '9A first' and '9B second'.",
+    "Case 10: from 10B to 10D, the content control between taken whole, deleted: one paragraph, '10A before  after 10E'.",
+    "Case 11: from 11B into the content control, to 11C, deleted: '11A before ' and, in the control, ' inside 11D'.",
+    "Case 12: 'replace' replaced with 'REPLACED' within one paragraph (tracked, the insertion first).",
+    "Case 13: a comment on 13B, then the range from 13B to 13C deleted: the comment goes with its reference.",
+    "Case 14: a paragraph after 14F, in a complex field's result: the field split, 14F ends one paragraph, NEWPARA14, then 'field 14G' and the field's end.",
+    "Case 15: the same in a w:fldSimple's result: the field made a complex field first, then split.",
+    "Case 16: from 16B to 16C, a display equation's paragraph between, and an inline equation in 16C's paragraph before 16C, deleted.",
+]
+
+
+def ranges_source() -> WordprocessingMLPackage:
+    """Artefact 12's document before its writes: ``samples/2010-sample1.docx`` with the sixteen cases appended."""
+    pkg = WordprocessingMLPackage.load(SAMPLE_SOURCE)
+    pkg.id_seed = 20261023
+    body = pkg.body
+    body.insert_paragraph("Ranges across paragraphs (CR-013 Phase C)", style="Heading 1")
+    labels = iter(RANGE_CASES)
+
+    def label() -> None:
+        body.insert_paragraph(next(labels))
+
+    def xml(inner: str) -> None:
+        body.insert_xml(f"<w:p {_NAMESPACES}>{inner}</w:p>")
+
+    def control(paragraph_xml: str, tag: str) -> None:
+        body.insert_xml(
+            f'<w:sdt {_NAMESPACES}><w:sdtPr><w:alias w:val="{tag}"/><w:tag w:val="{tag}"/></w:sdtPr>'
+            f"<w:sdtContent>{paragraph_xml}</w:sdtContent></w:sdt>"
+        )
+
+    label()
+    body.insert_paragraph("1A heading 1B", style="Heading 2")
+    body.insert_paragraph("1C body 1D")
+    label()
+    body.insert_paragraph("2A before 2B")
+    body.insert_table(2, 2, values=[["2T1", "2T2"], ["2T3", "2T4"]], style="TableGrid")
+    body.insert_paragraph("2C after 2D")
+    label()
+    first = body.insert_paragraph("3A item 3B")
+    numbered = first.start_new_list()
+    body.insert_paragraph("3C item 3D").attach_to_list(numbered.id)
+    body.insert_paragraph("3E item 3F").attach_to_list(numbered.id)
+    label()
+    body.insert_paragraph("4A whole paragraph 4B")
+    body.insert_paragraph("4C stays")
+    label()
+    body.insert_paragraph("5A bold 5B")
+    body.insert_paragraph("5C bold 5D")
+    label()
+    body.insert_paragraph("6A one 6B")
+    body.insert_paragraph("6C two 6D")
+    label()
+    body.insert_paragraph("7A comment 7B")
+    body.insert_paragraph("7C comment 7D")
+    label()
+    body.insert_paragraph("8A before 8B")
+    body.insert_table(2, 2, values=[["8T1", "8T2"], ["8T3", "8T4"]], style="TableGrid")
+    body.insert_paragraph("8C after 8D")
+    label()
+    body.insert_paragraph("9A first")
+    body.insert_paragraph("9B second")
+    label()
+    body.insert_paragraph("10A before 10B")
+    control('<w:p><w:r><w:t>10C inside</w:t></w:r></w:p>', "case10")
+    body.insert_paragraph("10D after 10E")
+    label()
+    body.insert_paragraph("11A before 11B")
+    control('<w:p><w:r><w:t>11C inside 11D</w:t></w:r></w:p>', "case11")
+    label()
+    body.insert_paragraph("12A replace 12B")
+    label()
+    body.insert_paragraph("13A has 13B a comment")
+    body.insert_paragraph("13C next 13D")
+    label()
+    xml(_COMPLEX_FIELD)
+    label()
+    xml(_SIMPLE_FIELD)
+    label()
+    body.insert_paragraph("16A before 16B")
+    xml(f"<m:oMathPara>{_EQUATION}</m:oMathPara>")
+    xml(f'<w:r><w:t xml:space="preserve">16X inline </w:t></w:r>{_EQUATION}<w:r><w:t xml:space="preserve"> 16C after 16D</w:t></w:r>')
+    body.insert_paragraph("End of the cases.")
+    return pkg
+
+
+def ranges_writes(pkg: WordprocessingMLPackage) -> None:
+    """Artefact 12's writes, case by case: the same calls untracked and tracked."""
+
+    def word(token: str):
+        # the labels name the tokens too: a case's own hit is the one outside its label
+        hits = [
+            hit
+            for hit in pkg.body.search(token, match_case=True, match_whole_word=True)
+            if not hit.paragraph.text.startswith("Case ")
+        ]
+        assert len(hits) == 1, f"{token}: {len(hits)} hits"
+        return hits[0]
+
+    def across(start: str, end: str):
+        return word(start).expand_to(word(end))
+
+    def paragraph(text: str):
+        return next(p for p in pkg.body.paragraphs if p.text == text)
+
+    across("1B", "1C").delete()
+    across("2B", "2C").delete()
+    across("3B", "3C").delete()
+    paragraph("4A whole paragraph 4B").get_range("Whole").delete()
+    across("5B", "5C").font.bold = True
+    across("6B", "6C").insert_paragraph("6X new", location="After")
+    across("7B", "7C").insert_comment("A comment across two paragraphs (case 7).")
+    across("8B", "8C").insert_comment("A comment across a table (case 8).")
+    paragraph("9A first").get_range("Start").expand_to(paragraph("9B second").get_range("Whole")).insert_content_control()
+    across("10B", "10D").delete()
+    across("11B", "11C").delete()
+    word("replace").insert_text("REPLACED", location="Replace")
+    word("13B").insert_comment("A comment whose reference the deletion takes (case 13).")
+    across("13B", "13C").delete()
+    word("14F").insert_paragraph("NEWPARA14", location="After")
+    word("15F").insert_paragraph("NEWPARA15", location="After")
+    across("16B", "16C").delete()
+
+
+def ranges_across_paragraphs(out: Path) -> list[Path]:
+    """12. A loaded document given CR-013 Phase C's writes across paragraphs, untracked and tracked.
+
+    Beside the tracked copy, the same resolved by CR-010's engine, as for 8:
+    ``-tracked-accepted.docx`` and ``-tracked-rejected.docx``, each saved and
+    read back listing nothing.
+    """
+    from docx4j_py.model import revisions
+    from docx4j_py.model.content import Author
+
+    written = []
+    for name, mode in (("12-ranges-across-paragraphs.docx", "Off"), ("12-ranges-across-paragraphs-tracked.docx", "TrackAll")):
+        pkg = ranges_source()
+        pkg.author = Author("Claude", initials="C", email="claude@example.com")
+        pkg.tracked_change_date = datetime.datetime(2026, 10, 23, 12, 0, tzinfo=datetime.UTC)
+        pkg.change_tracking_mode = mode
+        ranges_writes(pkg)
+        pkg.change_tracking_mode = "Off"
+        target = out / name
+        pkg.save(target)
+        written.append(target)
+    tracked = written[-1]
+    for suffix, resolve in (("accepted", revisions.accept_all), ("rejected", revisions.reject_all)):
+        copy = WordprocessingMLPackage.load(tracked)
+        resolve(copy)
+        resolved = out / f"12-ranges-across-paragraphs-tracked-{suffix}.docx"
+        copy.save(resolved)
+        left = revisions.tracked_changes(WordprocessingMLPackage.load(resolved))
+        assert left == [], f"{resolved.name} still lists {left}"
+        written.append(resolved)
+    return written
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write the eleven artefacts and print a summary."""
+    """Write the twelve artefacts and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=str(ROOT / "out" / "acceptance"))
     args = parser.parse_args(argv)
@@ -700,6 +909,7 @@ def main(argv: list[str] | None = None) -> int:
         template_filled,
         lists,
         python_docx_facade,
+        ranges_across_paragraphs,
     ):
         built = build(out)
         for target in built if isinstance(built, list) else [built]:
