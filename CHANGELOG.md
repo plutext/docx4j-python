@@ -22,8 +22,8 @@ text, with Markdown, charts, equations and field switches as docx4j reads them
 Office JS readers (`Paragraph.text`, `get_text`, `search`) read the branch Word shows, as Office
 JS does (CR-011 Phase F), in Office JS's own characters, which every text writer takes back
 ([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md) Phase A), and a `Range` reads
-across paragraphs as Office JS's does (CR-013 Phase B; its writes, Phase C, are to come before the
-release). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
+and writes across paragraphs as Office JS's does (CR-013 Phases B and C; Phase C's Word check is
+staged, not yet run). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
 of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
 save. It needs docx4j-xsdata 26.2.2.
 
@@ -362,12 +362,62 @@ save. It needs docx4j-xsdata 26.2.2.
     the row end out too. A content control's level (`form`) is read past the markers its content
     opens with (a comment's, a bookmark's): Word's save of check 52 opens a block control with a
     `w:commentRangeStart`, which 0.1.0 read as a run-level control.
-  - **Every write across paragraphs is refused** until CR-013 Phase C, before anything changes,
-    with `SpanError` `range.spans_paragraphs`, as are `get_xml` and `to_api_script` of such a range;
-    a deletion or replacement starting or ending inside a table with `range.partial_table`, as Word
-    refuses it, inside a content control with `range.partial_control`, and under change tracking
-    one holding a whole control with `range.not_trackable`. A `Range` made across stories, or with
-    its end before its start, is refused (`range.other_story`, `range.order`).
+  - **A deletion or replacement starting or ending inside a table** is refused with `SpanError`
+    `range.partial_table`, as Word refuses it, before anything changes. A `Range` made across
+    stories, or with its end before its start, is refused (`range.other_story`, `range.order`). The
+    writes across paragraphs are Phase C's (below).
+- **Ranges across paragraphs: the writes** ([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md)
+  Phase C, section [14](docs/change-requests/CR-013-ranges-across-paragraphs.md#14-phase-c-implementation-notes-2026-10-23);
+  the port of docx4j-core-ts CR-014 phases 2 and 3, `53db5bc`, `87bbb38` and `202a01d`). Every write
+  of a `Range` works across paragraphs, untracked and tracked, as Word 365 makes it in core-ts's checks
+  52 and 54 (run here through `tests/office_js/checks.py`), with the range a write leaves as Office
+  JS's:
+  - **`delete()` and `insert_text(..., "Replace")`** join the paragraphs in the last one's
+    properties; a paragraph mark the range holds goes, whatever ends the range, its emptied paragraph
+    with it where no paragraph follows (a cell's last and a story's last kept); into or out of a block
+    content control nothing joins, and the start's paragraph takes the end's properties. Tracked, the
+    text is a `w:del` and every mark the range holds is deleted, with no `w:pPrChange`; a whole content
+    control goes between Word's `w:customXmlDelRangeStart` and `End` markers, which the revisions engine
+    lists as `Deleted` and resolves as Word does. An untracked replacement takes the first replaced
+    character's look. Replacing a range that ends with a whole table is refused
+    (`range.replaces_table`), as Word refuses it.
+  - **`font`** writes each property only where a run or a held paragraph mark doesn't read it
+    already, a mark's change tracked as Word's `w:rPrChange`; **`style`**, **`style_id`** and
+    **`style_built_in`** set each paragraph's, tracked with a `w:pPrChange` each.
+  - **`insert_paragraph`** splits the paragraph at the range's start (`"Before"`) or end (`"After"`)
+    for every range, within one paragraph too (see below); `insert_text` at `"Start"` and `"End"`;
+    `replace_text` a paragraph at a time, every match checked first; `insert_ooxml`, one paragraph's
+    runs in place of the range.
+  - **`insert_comment`** across paragraphs and across a table: the start before the range's first
+    character, the end and the reference after its last.
+  - **`insert_content_control`** wraps paragraphs held whole in one block control (tracked, Word's
+    `w:customXmlInsRange*` markers); any other range across paragraphs is refused
+    (`range.partial_paragraph`), as Word refuses it.
+  - **`^p` in `search`** matches a paragraph's mark (never a cell's or a row's end); `replace_text`
+    with `^p` is refused (`range.replaces_mark`).
+  - **`get_xml` and `to_api_script`** of a range across paragraphs give the blocks a deletion would
+    take, trimmed at the ends.
+  - **A deletion takes a comment's reference with it**, within one paragraph too: the comment goes,
+    at once untracked and on Accept All tracked, as Word's does. What a deletion takes (a note, a
+    comment, a relationship nothing references any more) is settled once, when the write ends.
+  - Still refused: a hyperlink across paragraphs (`range.spans_paragraphs`; Word writes a field),
+    several blocks in place of a range, `Replace` across a control's edge, and under tracking a range
+    holding an `w:altChunk` or a kept `mc:AlternateContent` (`range.not_trackable`).
+- **A tracked replacement is the insertion first, then the deletion** (CR-013 section 13.1 item 7,
+  as Word writes it, core-ts check 54 case 4), within one paragraph too; 0.1.0 wrote the `w:del` first.
+  `Range.insert_paragraph` splits its paragraph for every range, within one paragraph too (check 54
+  cases 1 to 3), where 0.1.0 put the new paragraph before or after the whole paragraph;
+  `Paragraph.insert_paragraph` is unchanged.
+- **A paragraph break inside a field's result splits the field** (CR-013 section 13.7, D1; core-ts
+  check 57 cases 1 to 4), its begin, instruction and separator in the first paragraph and its end in
+  the next; a `w:fldSimple` is first written as Word's complex field. Until now any break inside a
+  field was refused (`range.splits_field`), which stays for a field's instruction.
+- **A tracked deletion taking an equation whole is made in Word's form** (D2, check 57 cases 7 to 10):
+  a `w:del` in each `m:r` and each structure's `m:ctrlPr`; it was refused (`tracking.equation`),
+  which stays for a tracked `Paragraph.insert_text(..., "Replace")` taking one. Accept All drops an
+  `m:oMath` it empties and an `m:oMathPara` left with none, docx4j's rule since its `ebb21c990` (F1),
+  Reject All of a whole inserted equation too; the readers leave out a structure whose own revision
+  the view hides (F2).
 - **A read leaves every part as it was**: `pkg.to_markdown()` and `pkg.markdown_budget()` read the
   package with nothing unmarshalled, so a save afterwards writes `word/document.xml`, and
   `word/footnotes.xml` in a document with a footnote reference, from the source bytes, where
@@ -740,6 +790,17 @@ save. It needs docx4j-xsdata 26.2.2.
   on save, and `wml(...)` refused it. It is now bound as its container binds it (`SdtBlock`,
   `SdtRun`, `CTSdtRow`, `CTSdtCell`) and written back as `w:sdt`, through the fork's stage 11
   (`docx4j-xsdata` 26.2.2).
+- **A comment's markers and a `Range.font` write within one paragraph stay inside the range**
+  (CR-013 section 14.6): beside a run holding a tab or a break they took the whole run (a comment on
+  `b\tc` in a run `a\tb\tc` covered all of it; bold on `b` made the whole run bold). The run is split
+  around the range now, as core-ts's `splitRunsAround` splits it.
+- **A tracked document's `Range.get_xml()` no longer gives the range's paragraph's other words as
+  deleted** (CR-013 section 14.6): the copy was trimmed through a tracked splice. It is trimmed
+  untracked now.
+- **Text typed inside another author's tracked insertion splits it** (CR-013 section 14.2), the new
+  `w:ins` between the halves, where it went after the whole insertion and the range returned read the
+  wrong characters; and a tracked insertion between a tab and the text after it in one run stands
+  there, where it went after the run.
 - **An embedded object opens again after a save**
   ([CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md) section
   [12.16](docs/change-requests/CR-012-type-kept-mc-branches.md#1216-the-wobject-order-fix-implementation-notes-2026-10-22)).

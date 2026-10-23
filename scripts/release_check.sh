@@ -31,7 +31,7 @@
 #      it tests the checkout (git ls-files, codegen/clean.py against the tree);
 #   6. regenerates out/acceptance/ from the installed wheel (scripts/acceptance.py
 #      copied beside a copy of samples/, so its own `sys.path.insert(0, ROOT)` finds
-#      no checkout) and compares the eleven artefacts against ones built from the
+#      no checkout) and compares the twelve artefacts against ones built from the
 #      checkout with .venv-fork (scripts/compare_acceptance.py: canonically, dates
 #      scrubbed). The Word check of out/acceptance/ is the user's, recorded in
 #      tests/README.md.
@@ -257,4 +257,4 @@ echo
 echo "== release check passed for $NAME $VERSION"
 echo "   dist/: $(basename "$WHEEL") ($(stat -c %s "$WHEEL") bytes), $(basename "$SDIST") ($(stat -c %s "$SDIST") bytes)"
 echo "   scratch: $SCRATCH"
-echo "   next: open the eleven out/acceptance/*.docx in Word and record the check in tests/README.md"
+echo "   next: open the twelve artefacts in out/acceptance/ in Word and record the check in tests/README.md"

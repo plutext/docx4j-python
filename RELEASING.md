@@ -59,7 +59,7 @@ PyPI**, runs a smoke script from a directory outside the repository (load a corp
 through the content API and the facade, save, reload, `warm_up()`), runs the fast suite from the
 **sdist's** `tests/` against the installed wheel (the sdist unpacked with its `docx4j_py/` removed,
 so the import resolves to site-packages), and regenerates `out/acceptance/` from the installed
-wheel. Then the manual gate: open the eleven artefacts in Word, as `tests/README.md` describes, and
+wheel. Then the manual gate: open the twelve artefacts in Word, as `tests/README.md` describes, and
 record the check there. Packaging is a marshalling input --- a resource missing from the wheel
 changes what is written --- so the Word check is not waived for a release.
 

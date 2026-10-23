@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Compare two sets of acceptance artefacts, canonically, with the dates scrubbed.
 
-CR-007 section 4.5 point 4: the eleven artefacts of ``scripts/acceptance.py`` are
+CR-007 section 4.5 point 4: the artefacts of ``scripts/acceptance.py`` (twelve since CR-013 Phase C) are
 regenerated from the **installed wheel** for a release, and the record in
 ``tests/README.md`` says how they differ from the ones the checkout builds. This
 is that comparison, the one ``tests/README.md``'s entries have been making by
