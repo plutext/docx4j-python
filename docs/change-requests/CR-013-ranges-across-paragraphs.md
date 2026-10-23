@@ -1367,7 +1367,8 @@ Phase C as section 13 decided it, with section 13.7's check 57 answers, which th
 - `8990c9f`: section 6.3's own tests (`test_span_edits.py`); a range ending in a kept branch refused `address.read_only` first; a dry run's report naming the parts a removal reaches.
 - `a54d7e8`: the sweep's finds (14.9): a tracked insertion inside another author's insertion splits it, a range of one block taken whole takes that block only, an empty paragraph's whole range takes its comment reference, a tracked insertion between a tab and its run's text.
 - `5a83ba6`: acceptance artefact 12 (14.11).
-- This section, the Status line, the index, `CHANGELOG.md` and `tests/README.md`: the records commit.
+- `3a521f9`: a lint tidy of the phase's code, no behaviour change (the seventeen acceptance files and the staged Word check's five canonically the same before and after it).
+- `b9e4567`: this section, the Status line and Depends on, the index, `CHANGELOG.md` and `tests/README.md`.
 
 Section 13.7 itself is the coordinating session's (`e046f07`, corrected `9de11a2`).
 
