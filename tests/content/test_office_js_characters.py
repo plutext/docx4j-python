@@ -54,11 +54,16 @@ from docx4j_py.wml import to_xml
 
 OFFICE_JS = ROOT / "tests" / "office_js"
 
-#: The three files Word 365 read, as the brief gives their SHA-1s (the user's share, ``__tmp/``).
+#: The files Word 365 read, as the brief gives their SHA-1s (the user's share, ``__tmp/``): checks 48,
+#: 48b and 51 (Phase A), and 52 and 53 with Word's two saves of check 52 (CR-013 Phase B, section 6.1).
 SHARE_SHA1 = {
     "48-text.docx": "8dec79fdd0dffa36051d572c6093e6515321ac01",
     "48b-text.docx": "ca98e9c0bd6062233383ae9181cbd1893190f7dd",
     "51-text.docx": "7a6a0102051387e17d04e2eed87c46373c955005",
+    "52-ranges.docx": "e014014dec6295b6abcd638f83f19e9b60e28997",
+    "53-reads.docx": "aea48f83fd318b4260a73ac6ad9a99cd7a8f77f8",
+    "52-ranges-word365.docx": "15f505306f8faf95f6946b47789849ccbf34603b",
+    "52-ranges-word365-accepted.docx": "3d2a37367822fc323c0905e30b0931c6a3a4f58d",
 }
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -119,7 +124,8 @@ def xml_of(package) -> str:
 def test_every_fixture_is_the_manifests_and_the_files_word_read():
     lines = (OFFICE_JS / "SHA1SUMS").read_text(encoding="utf-8").splitlines()
     manifest = dict(reversed(line.split("  ", 1)) for line in lines if line.strip())
-    assert len(manifest) == 7
+    # Phase A's seven, and Phase B's eight: checks 52 and 53, Word's saves of 52 and Word's four JSONs
+    assert len(manifest) == 15
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():

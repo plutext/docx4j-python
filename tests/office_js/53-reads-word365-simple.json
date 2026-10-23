@@ -1,0 +1,1618 @@
+{
+ "check": 53,
+ "label": "Simple Markup",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 1,
+   "op": "range",
+   "args": [
+    "HEAD1B",
+    "SUB1A"
+   ],
+   "reads": {
+    "range": {
+     "text": "HEAD1B\\u000dSUB1A",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": true,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos Display",
+     "size": null,
+     "color": "",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "HEAD1B\\u000dSUB1A",
+     "isEmpty": false,
+     "paragraph": "HEAD1A HEAD1B"
+    },
+    "Content": {
+     "text": "HEAD1B\\u000dSUB1A",
+     "isEmpty": false,
+     "paragraph": "HEAD1A HEAD1B"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD1A HEAD1B"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "SUB1A SUB1B"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "SUB1A SUB1B"
+    },
+    "paragraphs": [
+     {
+      "text": "HEAD1A HEAD1B",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1"
+     },
+     {
+      "text": "SUB1A SUB1B",
+      "style": "Heading 2",
+      "styleBuiltIn": "Heading2"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 2,
+   "op": "range",
+   "args": [
+    "BODY2B",
+    "PLAIN2A"
+   ],
+   "reads": {
+    "range": {
+     "text": "BODY2B\\u000dPLAIN2A",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": null,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "BODY2B\\u000dPLAIN2A",
+     "isEmpty": false,
+     "paragraph": "BODY2A BODY2B"
+    },
+    "Content": {
+     "text": "BODY2B\\u000dPLAIN2A",
+     "isEmpty": false,
+     "paragraph": "BODY2A BODY2B"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "BODY2A BODY2B"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN2A PLAIN2B"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN2A PLAIN2B"
+    },
+    "paragraphs": [
+     {
+      "text": "BODY2A BODY2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     },
+     {
+      "text": "PLAIN2A PLAIN2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 3,
+   "op": "range",
+   "args": [
+    "HEAD3B",
+    "HEAD3C"
+   ],
+   "reads": {
+    "range": {
+     "text": "HEAD3B\\u000dHEAD3C",
+     "isEmpty": false,
+     "style": "Heading 1",
+     "styleBuiltIn": "Heading1"
+    },
+    "font": {
+     "bold": true,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos Display",
+     "size": 14,
+     "color": "#0F4761",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "HEAD3B\\u000dHEAD3C",
+     "isEmpty": false,
+     "paragraph": "HEAD3A HEAD3B"
+    },
+    "Content": {
+     "text": "HEAD3B\\u000dHEAD3C",
+     "isEmpty": false,
+     "paragraph": "HEAD3A HEAD3B"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD3A HEAD3B"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD3C HEAD3D"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD3C HEAD3D"
+    },
+    "paragraphs": [
+     {
+      "text": "HEAD3A HEAD3B",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1"
+     },
+     {
+      "text": "HEAD3C HEAD3D",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 4,
+   "op": "range",
+   "args": [
+    "HEAD4A",
+    "HEAD4B"
+   ],
+   "reads": {
+    "range": {
+     "text": "HEAD4A HEAD4B",
+     "isEmpty": false,
+     "style": "Heading 1",
+     "styleBuiltIn": "Heading1"
+    },
+    "font": {
+     "bold": true,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos Display",
+     "size": 14,
+     "color": "#0F4761",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "HEAD4A HEAD4B",
+     "isEmpty": false,
+     "paragraph": "HEAD4A HEAD4B\\u0002 HEAD4C"
+    },
+    "Content": {
+     "text": "HEAD4A HEAD4B",
+     "isEmpty": false,
+     "paragraph": "HEAD4A HEAD4B\\u0002 HEAD4C"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD4A HEAD4B\\u0002 HEAD4C"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD4A HEAD4B\\u0002 HEAD4C"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD4A HEAD4B\\u0002 HEAD4C"
+    },
+    "paragraphs": [
+     {
+      "text": "HEAD4A HEAD4B\\u0002 HEAD4C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 5,
+   "op": "range",
+   "args": [
+    "HEAD5B",
+    "HEAD5C"
+   ],
+   "reads": {
+    "range": {
+     "text": "HEAD5B\\u0002 HEAD5C",
+     "isEmpty": false,
+     "style": "",
+     "styleBuiltIn": "Other"
+    },
+    "font": {
+     "bold": true,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos Display",
+     "size": 14,
+     "color": "#0F4761",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "HEAD5B\\u0002 HEAD5C",
+     "isEmpty": false,
+     "paragraph": "HEAD5A HEAD5B\\u0002 HEAD5C"
+    },
+    "Content": {
+     "text": "HEAD5B\\u0002 HEAD5C",
+     "isEmpty": false,
+     "paragraph": "HEAD5A HEAD5B\\u0002 HEAD5C"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD5A HEAD5B\\u0002 HEAD5C"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD5A HEAD5B\\u0002 HEAD5C"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "HEAD5A HEAD5B\\u0002 HEAD5C"
+    },
+    "paragraphs": [
+     {
+      "text": "HEAD5A HEAD5B\\u0002 HEAD5C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 6,
+   "op": "para",
+   "args": [
+    "HEAD6A"
+   ],
+   "reads": {
+    "paragraph": {
+     "text": "HEAD6A HEAD6B\\u0002 HEAD6C",
+     "style": "Heading 1",
+     "styleBuiltIn": "Heading1"
+    },
+    "whole": {
+     "text": "HEAD6A HEAD6B\\u0002 HEAD6C\\u000d",
+     "style": "Heading 1",
+     "styleBuiltIn": "Heading1"
+    },
+    "trackedChanges": [],
+    "wholeTrackedChanges": []
+   }
+  },
+  {
+   "n": 7,
+   "op": "range",
+   "args": [
+    "EMPH7B",
+    "EMPH7B"
+   ],
+   "reads": {
+    "range": {
+     "text": "EMPH7B",
+     "isEmpty": false,
+     "style": "Emphasis",
+     "styleBuiltIn": "Emphasis"
+    },
+    "font": {
+     "bold": false,
+     "italic": true,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "EMPH7B",
+     "isEmpty": false,
+     "paragraph": "PLAIN7A EMPH7B PLAIN7C"
+    },
+    "Content": {
+     "text": "EMPH7B",
+     "isEmpty": false,
+     "paragraph": "PLAIN7A EMPH7B PLAIN7C"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN7A EMPH7B PLAIN7C"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN7A EMPH7B PLAIN7C"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN7A EMPH7B PLAIN7C"
+    },
+    "paragraphs": [
+     {
+      "text": "PLAIN7A EMPH7B PLAIN7C",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 8,
+   "op": "range",
+   "args": [
+    "PLAIN8A",
+    "EMPH8B"
+   ],
+   "reads": {
+    "range": {
+     "text": "PLAIN8A EMPH8B",
+     "isEmpty": false,
+     "style": "",
+     "styleBuiltIn": "Other"
+    },
+    "font": {
+     "bold": false,
+     "italic": null,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "PLAIN8A EMPH8B",
+     "isEmpty": false,
+     "paragraph": "PLAIN8A EMPH8B PLAIN8C"
+    },
+    "Content": {
+     "text": "PLAIN8A EMPH8B",
+     "isEmpty": false,
+     "paragraph": "PLAIN8A EMPH8B PLAIN8C"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN8A EMPH8B PLAIN8C"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN8A EMPH8B PLAIN8C"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN8A EMPH8B PLAIN8C"
+    },
+    "paragraphs": [
+     {
+      "text": "PLAIN8A EMPH8B PLAIN8C",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 9,
+   "op": "range",
+   "args": [
+    "PLAIN9A",
+    "PLAIN9A"
+   ],
+   "reads": {
+    "range": {
+     "text": "PLAIN9A",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "PLAIN9A",
+     "isEmpty": false,
+     "paragraph": "PLAIN9A EMPH9B PLAIN9C"
+    },
+    "Content": {
+     "text": "PLAIN9A",
+     "isEmpty": false,
+     "paragraph": "PLAIN9A EMPH9B PLAIN9C"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN9A EMPH9B PLAIN9C"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN9A EMPH9B PLAIN9C"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN9A EMPH9B PLAIN9C"
+    },
+    "paragraphs": [
+     {
+      "text": "PLAIN9A EMPH9B PLAIN9C",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 10,
+   "op": "para",
+   "args": [
+    "LIST10A"
+   ],
+   "reads": {
+    "paragraph": {
+     "text": "LIST10A LIST10B",
+     "style": "",
+     "styleBuiltIn": "Other"
+    },
+    "whole": {
+     "text": "LIST10A LIST10B\\u0009",
+     "style": "",
+     "styleBuiltIn": "Other"
+    },
+    "trackedChanges": [],
+    "wholeTrackedChanges": []
+   }
+  },
+  {
+   "n": 11,
+   "op": "para",
+   "args": [
+    "PLAIN11A"
+   ],
+   "reads": {
+    "paragraph": {
+     "text": "PLAIN11A PLAIN11B",
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "whole": {
+     "text": "PLAIN11A PLAIN11B\\u0009",
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "trackedChanges": [],
+    "wholeTrackedChanges": []
+   }
+  },
+  {
+   "n": 12,
+   "op": "para",
+   "args": [
+    "HEAD12A"
+   ],
+   "reads": {
+    "paragraph": {
+     "text": "HEAD12A HEAD12B",
+     "style": "",
+     "styleBuiltIn": "Other"
+    },
+    "whole": {
+     "text": "HEAD12A HEAD12B\\u0009",
+     "style": "",
+     "styleBuiltIn": "Other"
+    },
+    "trackedChanges": [],
+    "wholeTrackedChanges": []
+   }
+  },
+  {
+   "n": 13,
+   "op": "para",
+   "args": [
+    "LIST13A"
+   ],
+   "reads": {
+    "paragraph": {
+     "text": "LIST13A LIST13B",
+     "style": "List Paragraph",
+     "styleBuiltIn": "ListParagraph"
+    },
+    "whole": {
+     "text": "LIST13A LIST13B\\u0009",
+     "style": "List Paragraph",
+     "styleBuiltIn": "ListParagraph"
+    },
+    "trackedChanges": [],
+    "wholeTrackedChanges": []
+   }
+  },
+  {
+   "n": 14,
+   "op": "para",
+   "args": [
+    "PLAIN14A"
+   ],
+   "reads": {
+    "paragraph": {
+     "text": "PLAIN14A PLAIN14B",
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "whole": {
+     "text": "PLAIN14A PLAIN14B\\u000d",
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "trackedChanges": [],
+    "wholeTrackedChanges": []
+   }
+  },
+  {
+   "n": 15,
+   "op": "control",
+   "args": [
+    "c53-15"
+   ],
+   "reads": {
+    "control": {
+     "text": "ROW15A\\u0009ROW15B",
+     "type": "RichText",
+     "paragraphs": [
+      "ROW15A",
+      "ROW15B"
+     ]
+    },
+    "Whole": {
+     "text": "ROW15A\\u0009ROW15B\\u0009\\u0009",
+     "paragraphs": [
+      "ROW15A",
+      "ROW15B"
+     ]
+    },
+    "Content": {
+     "text": "ROW15A\\u0009ROW15B",
+     "paragraphs": [
+      "ROW15A",
+      "ROW15B"
+     ]
+    },
+    "Start": {
+     "text": "",
+     "paragraphs": [
+      "ROW15A"
+     ]
+    },
+    "End": {
+     "text": "",
+     "paragraphs": [
+      "ROW15B"
+     ]
+    }
+   }
+  },
+  {
+   "n": 16,
+   "op": "control",
+   "args": [
+    "c53-16"
+   ],
+   "reads": {
+    "control": {
+     "text": "CTRL16A CTRL16B\\u000dT16R1C1A T16R1C1B\\u0009T16R1C2A T16R1C2B",
+     "type": "RichText",
+     "paragraphs": [
+      "CTRL16A CTRL16B",
+      "T16R1C1A T16R1C1B",
+      "T16R1C2A T16R1C2B"
+     ]
+    },
+    "Whole": {
+     "text": "CTRL16A CTRL16B\\u000dT16R1C1A T16R1C1B\\u0009T16R1C2A T16R1C2B\\u0009\\u0009",
+     "paragraphs": [
+      "CTRL16A CTRL16B",
+      "T16R1C1A T16R1C1B",
+      "T16R1C2A T16R1C2B"
+     ]
+    },
+    "Content": {
+     "text": "CTRL16A CTRL16B\\u000dT16R1C1A T16R1C1B\\u0009T16R1C2A T16R1C2B",
+     "paragraphs": [
+      "CTRL16A CTRL16B",
+      "T16R1C1A T16R1C1B",
+      "T16R1C2A T16R1C2B"
+     ]
+    },
+    "Start": {
+     "text": "",
+     "paragraphs": [
+      "CTRL16A CTRL16B"
+     ]
+    },
+    "End": {
+     "text": "",
+     "paragraphs": [
+      "T16R1C2A T16R1C2B"
+     ]
+    }
+   }
+  },
+  {
+   "n": 17,
+   "op": "control",
+   "args": [
+    "c53-17"
+   ],
+   "reads": {
+    "control": {
+     "text": "T17R1C1A T17R1C1B\\u0009T17R1C2A T17R1C2B",
+     "type": "RichText",
+     "paragraphs": [
+      "T17R1C1A T17R1C1B",
+      "T17R1C2A T17R1C2B"
+     ]
+    },
+    "Whole": {
+     "text": "T17R1C1A T17R1C1B\\u0009T17R1C2A T17R1C2B\\u0009\\u0009",
+     "paragraphs": [
+      "T17R1C1A T17R1C1B",
+      "T17R1C2A T17R1C2B"
+     ]
+    },
+    "Content": {
+     "text": "T17R1C1A T17R1C1B\\u0009T17R1C2A T17R1C2B",
+     "paragraphs": [
+      "T17R1C1A T17R1C1B",
+      "T17R1C2A T17R1C2B"
+     ]
+    },
+    "Start": {
+     "text": "",
+     "paragraphs": [
+      "T17R1C1A T17R1C1B"
+     ]
+    },
+    "End": {
+     "text": "",
+     "paragraphs": [
+      "T17R1C2A T17R1C2B"
+     ]
+    }
+   }
+  },
+  {
+   "n": 18,
+   "op": "control",
+   "args": [
+    "c53-18"
+   ],
+   "reads": {
+    "control": {
+     "text": "CELL18A\\u000dCELL18B",
+     "type": "RichText",
+     "paragraphs": [
+      "CELL18A",
+      "CELL18B"
+     ]
+    },
+    "Whole": {
+     "text": "CELL18A\\u000dCELL18B\\u0009",
+     "paragraphs": [
+      "CELL18A",
+      "CELL18B"
+     ]
+    },
+    "Content": {
+     "text": "CELL18A\\u000dCELL18B",
+     "paragraphs": [
+      "CELL18A",
+      "CELL18B"
+     ]
+    },
+    "Start": {
+     "text": "",
+     "paragraphs": [
+      "CELL18A"
+     ]
+    },
+    "End": {
+     "text": "",
+     "paragraphs": [
+      "CELL18B"
+     ]
+    }
+   }
+  },
+  {
+   "n": 19,
+   "op": "range",
+   "args": [
+    "PLAIN19B",
+    "CTRL19A"
+   ],
+   "reads": {
+    "range": {
+     "text": "PLAIN19B\\u000dCTRL19A",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "PLAIN19B\\u000dCTRL19A",
+     "isEmpty": false,
+     "paragraph": "PLAIN19A PLAIN19B"
+    },
+    "Content": {
+     "text": "PLAIN19B\\u000dCTRL19A",
+     "isEmpty": false,
+     "paragraph": "PLAIN19A PLAIN19B"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN19A PLAIN19B"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "CTRL19A CTRL19B"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "CTRL19A CTRL19B"
+    },
+    "paragraphs": [
+     {
+      "text": "PLAIN19A PLAIN19B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     },
+     {
+      "text": "CTRL19A CTRL19B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": [
+     {
+      "tag": "c53-19",
+      "text": "CTRL19A CTRL19B\\u000dCTRL19C"
+     }
+    ]
+   }
+  },
+  {
+   "n": 20,
+   "op": "range",
+   "args": [
+    "CTRL20A",
+    "CTRL20B"
+   ],
+   "reads": {
+    "range": {
+     "text": "CTRL20A CTRL20B",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "CTRL20A CTRL20B",
+     "isEmpty": false,
+     "paragraph": "CTRL20A CTRL20B"
+    },
+    "Content": {
+     "text": "CTRL20A CTRL20B",
+     "isEmpty": false,
+     "paragraph": "CTRL20A CTRL20B"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "CTRL20A CTRL20B"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "CTRL20A CTRL20B"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "CTRL20A CTRL20B"
+    },
+    "paragraphs": [
+     {
+      "text": "CTRL20A CTRL20B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 21,
+   "op": "range",
+   "args": [
+    "PLAIN21A",
+    "PLAIN21C"
+   ],
+   "reads": {
+    "range": {
+     "text": "PLAIN21A INL21B PLAIN21C",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "PLAIN21A INL21B PLAIN21C",
+     "isEmpty": false,
+     "paragraph": "PLAIN21A INL21B PLAIN21C"
+    },
+    "Content": {
+     "text": "PLAIN21A INL21B PLAIN21C",
+     "isEmpty": false,
+     "paragraph": "PLAIN21A INL21B PLAIN21C"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN21A INL21B PLAIN21C"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN21A INL21B PLAIN21C"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "PLAIN21A INL21B PLAIN21C"
+    },
+    "paragraphs": [
+     {
+      "text": "PLAIN21A INL21B PLAIN21C",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": [
+     {
+      "tag": "c53-21",
+      "text": "INL21B"
+     }
+    ]
+   }
+  },
+  {
+   "n": 22,
+   "op": "table",
+   "args": [
+    "T22R1C1A"
+   ],
+   "reads": {
+    "Whole": {
+     "text": "T22R1C1A T22R1C1B\\u0009T22R1C2A T22R1C2B\\u000d\\u000aT22R2C1A T22R2C1B\\u0009T22R2C2A T22R2C2B\\u000d\\u000a",
+     "isEmpty": false,
+     "paragraph": "T22R1C1A T22R1C1B"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "T22R1C1A T22R1C1B"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "T22R2C2A T22R2C2B"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "AFTER22A"
+    }
+   }
+  },
+  {
+   "n": 23,
+   "op": "cellbody",
+   "args": [
+    "T23A"
+   ],
+   "reads": {
+    "Whole": {
+     "text": "T23A\\u000dN23A\\u000d\\u000aT23B\\u0009",
+     "paragraphs": [
+      {
+       "text": "T23A",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      },
+      {
+       "text": "N23A",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      },
+      {
+       "text": "T23B",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      }
+     ],
+     "tables": [
+      {
+       "rowCount": 1,
+       "values": [
+        [
+         "N23A"
+        ]
+       ]
+      }
+     ],
+     "contentControls": []
+    },
+    "Content": {
+     "text": "T23A\\u000dN23A\\u000d\\u000aT23B",
+     "paragraphs": [
+      {
+       "text": "T23A",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      },
+      {
+       "text": "N23A",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      },
+      {
+       "text": "T23B",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      }
+     ],
+     "tables": [
+      {
+       "rowCount": 1,
+       "values": [
+        [
+         "N23A"
+        ]
+       ]
+      }
+     ],
+     "contentControls": []
+    },
+    "Start": {
+     "text": "",
+     "paragraphs": [
+      {
+       "text": "T23A",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      }
+     ],
+     "tables": [],
+     "contentControls": []
+    },
+    "End": {
+     "text": "",
+     "paragraphs": [
+      {
+       "text": "T23B",
+       "style": "Normal",
+       "styleBuiltIn": "Normal"
+      }
+     ],
+     "tables": [],
+     "contentControls": []
+    }
+   }
+  },
+  {
+   "n": 24,
+   "op": "range",
+   "args": [
+    "N24A",
+    "N24A"
+   ],
+   "reads": {
+    "range": {
+     "text": "N24A",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "#000000",
+     "highlightColor": null
+    },
+    "Whole": {
+     "text": "N24A",
+     "isEmpty": false,
+     "paragraph": "N24A"
+    },
+    "Content": {
+     "text": "N24A",
+     "isEmpty": false,
+     "paragraph": "N24A"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "N24A"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "N24A"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "N24A"
+    },
+    "paragraphs": [
+     {
+      "text": "N24A",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 25,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "",
+      "range": "",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN25 changes",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "HEAD25A ",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "",
+        "range": "",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "",
+        "range": "",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "BODY25B",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "",
+        "range": "",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "",
+        "range": "",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "END25",
+      "changes": [],
+      "wholeChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 26,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Added",
+      "text": " LIST26B\\u000dPLAIN26A ",
+      "range": " LIST26B\\u000dPLAIN26A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN26 changes",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "LIST26A LIST26B",
+      "changes": [
+       {
+        "type": "Added",
+        "text": " LIST26B\\u000d",
+        "range": " LIST26B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Added",
+        "text": " LIST26B\\u000d",
+        "range": " LIST26B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "PLAIN26A PLAIN26B",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "END26",
+      "changes": [],
+      "wholeChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 27,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Added",
+      "text": "\\u000d",
+      "range": "\\u000d",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN27 changes",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "ONE27A",
+      "changes": [
+       {
+        "type": "Added",
+        "text": "\\u000d",
+        "range": "\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Added",
+        "text": "\\u000d",
+        "range": "\\u000d",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "ONE27B",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "END27",
+      "changes": [],
+      "wholeChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 28,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "",
+      "range": "",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN28 changes",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "TWO28A",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "",
+        "range": "",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "",
+        "range": "",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "TWO28B",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "END28",
+      "changes": [],
+      "wholeChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 29,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Added",
+      "text": "NEW29A NEW29B\\u000d",
+      "range": "NEW29A NEW29B\\u000d",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN29 changes",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "PLAIN29A",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "NEW29A NEW29B",
+      "changes": [
+       {
+        "type": "Added",
+        "text": "NEW29A NEW29B\\u000d",
+        "range": "NEW29A NEW29B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Added",
+        "text": "NEW29A NEW29B\\u000d",
+        "range": "NEW29A NEW29B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "PLAIN29C",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "END29",
+      "changes": [],
+      "wholeChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 30,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "",
+      "range": "",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN30 changes",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "PLAIN30A",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "PLAIN30C",
+      "changes": [],
+      "wholeChanges": []
+     },
+     {
+      "text": "END30",
+      "changes": [],
+      "wholeChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 31,
+   "op": "range",
+   "args": [
+    "RED31A",
+    "BLUE31A"
+   ],
+   "reads": {
+    "range": {
+     "text": "RED31A BLUE31A",
+     "isEmpty": false,
+     "style": "Normal",
+     "styleBuiltIn": "Normal"
+    },
+    "font": {
+     "bold": false,
+     "italic": false,
+     "underline": "None",
+     "name": "Aptos",
+     "size": 11,
+     "color": "",
+     "highlightColor": ""
+    },
+    "Whole": {
+     "text": "RED31A BLUE31A",
+     "isEmpty": false,
+     "paragraph": "RED31A BLUE31A"
+    },
+    "Content": {
+     "text": "RED31A BLUE31A",
+     "isEmpty": false,
+     "paragraph": "RED31A BLUE31A"
+    },
+    "Start": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "RED31A BLUE31A"
+    },
+    "End": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "RED31A BLUE31A"
+    },
+    "After": {
+     "text": "",
+     "isEmpty": true,
+     "paragraph": "RED31A BLUE31A"
+    },
+    "paragraphs": [
+     {
+      "text": "RED31A BLUE31A",
+      "style": "Normal",
+      "styleBuiltIn": "Normal"
+     }
+    ],
+    "tables": [],
+    "contentControls": []
+   }
+  },
+  {
+   "n": 32,
+   "op": "stories",
+   "args": [
+    "HEAD32A"
+   ],
+   "reads": "error: ItemNotFound"
+  },
+  {
+   "n": 33,
+   "op": "body",
+   "args": [],
+   "reads": {
+    "text": {
+     "length": 2007,
+     "tail": "End of check 53."
+    },
+    "Whole": {
+     "length": 2008,
+     "tail": "nd of check 53.\\u000d",
+     "firstParagraph": "Check 53. Each case is a region: its BEGIN paragraph, its content, its END paragraph. Read only."
+    },
+    "Content": {
+     "length": 2007,
+     "tail": "End of check 53.",
+     "firstParagraph": "Check 53. Each case is a region: its BEGIN paragraph, its content, its END paragraph. Read only."
+    },
+    "Start": {
+     "length": 0,
+     "tail": "",
+     "firstParagraph": "Check 53. Each case is a region: its BEGIN paragraph, its content, its END paragraph. Read only."
+    },
+    "End": {
+     "length": 0,
+     "tail": "",
+     "firstParagraph": "End of check 53."
+    }
+   }
+  },
+  {
+   "n": 34,
+   "op": "placeholder",
+   "args": [
+    "c53-34"
+   ],
+   "reads": {
+    "control": {
+     "text": "",
+     "placeholderText": null,
+     "paragraph": "",
+     "whole": "\\u000d"
+    }
+   }
+  },
+  {
+   "n": 35,
+   "op": "placeholder",
+   "args": [
+    "c53-35"
+   ],
+   "reads": {
+    "control": {
+     "text": "",
+     "placeholderText": null,
+     "paragraph": "",
+     "whole": "\\u000d"
+    }
+   }
+  }
+ ]
+}
