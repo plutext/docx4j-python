@@ -1,11 +1,11 @@
 # CR-014: Content control data binding --- a bound control Word reads as plain text holds one paragraph (phase 1); rich text, XHTML and picture bindings and the OpenDoPE processor named for later
 
-**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed: such a control keeps one paragraph, so the writes that would give it a second are refused, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. It starts with one Word check that fixes the rule's scope (Q1). Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go.
+**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed: such a control keeps one paragraph, so the writes that would give it a second are refused, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. It takes its scope from Word, through core-ts's check 56, which measures it for both ports (Q1). Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go.
 
 **Depends on:**
 - **This repository:** CR-003 Phase E (`docx4j_py/model/customxml/`, `ContentControl`; sections 3.7, 4 and 17); CR-013 (its writers: Phase A's amendment, section 11, makes `insert_text` split paragraphs, and Phase C writes across them; both must keep this rule); CR-002 Phase C's flat OPC sink, for phase 2 only.
 - **docx4j**, cited at `30fb41024` (`VERSION_17_3_5`): `org.docx4j.model.datastorage` (`bind.xslt`, `BindingTraverserXSLT`, `UpdateXmlFromDocumentSurface`, `OpenDoPEHandler`).
-- **docx4j-core-ts:** its CR-002 phase E (the binding step this package ported), its CR-002 section 61 (the same defect there, being written 2026-10-23; to be cited by commit when committed), check 55b (`1e61bb1`, Word's bound controls), and its CR-005 (`05e1370`, the OpenDoPE processor: phase A done, phase B proposed, sections 8 and 9 released in its 0.4.0).
+- **docx4j-core-ts:** its CR-002 phase E (the binding step this package ported), its CR-002 section 61 (`80a933d`, the same defect there, decided 2026-10-23 as D1 to D4 and not yet implemented; its check 56, to be written there and run by the user, measures the scope), check 55b (`1e61bb1`, Word's bound controls), and its CR-005 (`05e1370`, the OpenDoPE processor: phase A done, phase B proposed, sections 8 and 9 released in its 0.4.0).
 
 **Counterpart:** docx4j `org.docx4j.model.datastorage`; docx4j-core-ts CR-002 phase E and section 61, and CR-005.
 
@@ -74,7 +74,13 @@ A block control with no type holding two paragraphs, its mapping deleted and set
 
 ### 2.7 docx4j-core-ts
 
-- Its session confirmed the same defect there (2026-10-23): `insertParagraph` into a bound block control with no type is not refused, and the save keeps two paragraphs. Its CR-002 section 61 is being written for it, along this CR's phase 1.
+- Its session confirmed the same defect there (2026-10-23): `insertParagraph` into a bound block control with no type is not refused, and the save keeps two paragraphs.
+- **Its CR-002 section 61** (`80a933d`, decided by the user there: "D1 to D6 make sense; record then commit CR-002 section 61"), not yet implemented:
+  - D1: the rule covers bound block-level controls of plain text, a `w:text` element or no type element. That is one step wider than 2.2's measured trigger. `w:richText` and a node holding flat OPC are not covered.
+  - D2: a write that would give one a second block is refused before anything changes, not repaired. A `\n` or `\r` written inside one becomes a `w:br` in a multi-line control and is dropped in a single-line one (check 55b's behaviour; its E1's paragraph doesn't apply there).
+  - D3: the error is Word's own, as check 56 shows it, else `NotSupportedError`.
+  - D4: a file already holding such a control is read and saved unchanged.
+  - **Check 56**, to be written there: core-ts's own two-paragraph files for Word to open (no type, `w:text`, `w:richText`), and a snippet running Office JS's `insertParagraph`, `insertTable`, `insertText` with `\n` and `insertOoxml` with two paragraphs on each kind of bound control.
 - Check 55b (`1e61bb1`, Word 365) measured Word's own bound controls: a line break goes to the node as `\r\n`; `\n` or `\r` written into a run-level bound plain-text control moves it to block level, in a paragraph of its own; Word's `contentControls` collections list no plain-text control (`getContentControls({ types })` finds them). It did not measure a second paragraph in a bound block control.
 
 ### 2.8 Not measured
@@ -83,7 +89,9 @@ A block control with no type holding two paragraphs, its mapping deleted and set
 - an explicitly rich-text (`w:richText`) block control bound to a plain-text node, holding two paragraphs;
 - a bound block control with no type holding a paragraph and a table;
 - a bound date, drop-down or combo-box block control holding two paragraphs;
-- what Word's Office JS `insertParagraph` does in a bound block control (refuses, converts the binding, or writes it);
+- what Word's Office JS `insertParagraph` does in a bound block control (refuses, converts the binding, or writes it).
+
+Check 56 (2.7) covers the first two and the last; the table, the date and list kinds and the cell and row levels stay unmeasured unless Q1 adds them.
 - a cell- or row-level bound control holding more than one paragraph.
 
 ## 3. Phase 1: a bound control Word reads as plain text holds one paragraph
@@ -110,11 +118,12 @@ For a value control holding more than one block (a document made elsewhere: Word
 
 - `update_from_content_controls`: a node holding a newline opens (2.2's 3b), and CR-013 Phase A's characters stand (its F1 to F3 are CR-013 section 11's).
 - Unbound controls: 3d opens.
+- Loading and saving: a file already holding such a control is read and saved unchanged, CLAUDE.md's fidelity rule and core-ts's D4.
 - A row-, cell- or run-level control: Q1 measures the first two; a run-level control holds runs, and CR-013 section 11's E1, as decided, refuses a paragraph mark inside one.
 
 ### 3.6 With CR-013
 
-- **Section 11's E1** makes `insert_text` and `replace_text` split a paragraph at `\n` and `\r`. Inside a value control that split is refused by 3.2's helper; until this phase lands, CR-013 section 11 names it.
+- **Section 11's E1** makes `insert_text` and `replace_text` split a paragraph at `\n` and `\r`. Inside a value control it doesn't: a `\n` or `\r` becomes a `w:br` in a multi-line control and is dropped in a single-line one, as core-ts section 61's D2 has it from check 55b. That exception is built with CR-013's amendment (section 11.1), so E1 never gives a value control a second paragraph.
 - **Phase C**'s writes across paragraphs keep the rule through the same helper.
 
 ### 3.7 The error
@@ -151,12 +160,12 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
 
 ## 7. Questions (for the user's decision; each with a recommendation)
 
-1. **Q1. Measure the rule's scope first?** One Word check of five variants (section 2.8's first five rows), before any code. *Recommended: yes.* Only one kind is measured, and the refusals should be exactly Word's.
-2. **Q2. Which kinds are value controls?** *Recommended: those Q1 shows Word refuses with two paragraphs; until then, a block control with no type.*
+1. **Q1. Measure the rule's scope first?** *Recommended: yes, through core-ts's check 56* (2.7), one Word check for both ports, its files and Word's answers cited by commit here. Add a small check of this package's own only for what check 56 leaves out (a table, the date and list kinds, cell and row level) if Q2's answer needs it. Only one kind is measured, and the refusals should be exactly Word's.
+2. **Q2. Which kinds are value controls?** *Recommended: core-ts's D1, a bound block control with no type or with `w:text`, narrowed or widened by what check 56 shows*, so that the two ports hold one rule.
 3. **Q3. Refuse, or quietly keep one paragraph?** A write that would add a paragraph to a value control could be refused, or the paragraph merged into the one. *Recommended: refuse* (3.2): a caller learns why, and nothing is written they didn't ask for.
 4. **Q4. `set_mapping` on a control already holding more?** *Recommended: refuse*, so a binding is never made that Word cannot open. Office JS's `setMapping` there is unmeasured.
 5. **Q5. `apply_bindings` over a value control holding more?** *Recommended: write one paragraph, as docx4j's `bind.xslt` does* (3.4). The alternative is to skip it with a reason and change nothing, leaving a file Word cannot open.
-6. **Q6. The error.** *Recommended: `BindingError`, code `binding.one_paragraph`*, aligned with core-ts section 61's error once it is committed, where the two conventions allow.
+6. **Q6. The error.** *Recommended: `BindingError` with a stable code, named after Word's own error as check 56 shows it* (core-ts's D3 is Word's error, else `NotSupportedError`); `binding.one_paragraph` until then.
 7. **Q7. Release.** *Recommended: in 0.2.0*, since it fixes files Word cannot open. A 0.1.x fix release is the user's call, with the OLE `w:object` order fix (CR-012 section 12.15) and CR-015.
 8. **Q8. Phases 2 and 3.** *Recommended: leave them named and unproposed* until there is a consumer (a `bind` tool, a template workflow); phase 2 waits on CR-002 Phase C's flat OPC sink in any case.
 
@@ -164,6 +173,6 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
 
 | phase | days |
 |---|---|
-| 1, with Q1's check and its own Word check | 1 to 1½ |
+| 1, with its own Word check (Q1's scope from core-ts's check 56) | 1 |
 | 2 | not estimated |
 | 3 | weeks (core-ts's phase B estimate) |
