@@ -222,11 +222,7 @@ def _refuse_tracked_into_branch(body: Body, elements: list[Any], operation: str)
         found = kept_content_under(element)
         if found is not None:
             refuse_read_only(body.body_for(found), operation)
-    # nor an equation, whose tracked deletion is its math runs' own (CR-013 Phase A)
-    from docx4j_py.model.content.text_model import refuse_tracked_equation
-
-    for element in elements:
-        refuse_tracked_equation(element, operation)
+    # an equation is deleted in Word's form (CR-013 section 13.7, D2), where Phase A refused it
 
 
 # ---------------------------------------------------------------------------

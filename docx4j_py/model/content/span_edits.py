@@ -312,15 +312,14 @@ def refuse_tracked_content(extent: Extent, member: str, body: Any) -> None:
 
     Word's branch of a kept block-, row- or cell-level ``mc:AlternateContent``
     (``address.read_only``: a mark there would change one branch alone, CR-012
-    Phase A2, as a tracked ``Body.clear()`` refuses it) and an equation
-    (``tracking.equation``, CR-013 Phase A).
+    Phase A2, as a tracked ``Body.clear()`` refuses it). An equation is deleted
+    in Word's form (CR-013 section 13.7, D2).
 
     Raises:
         AddressError: ``address.read_only``.
-        TrackedChangeError: ``tracking.equation``.
     """
     from docx4j_py.model.content.reports import refuse_read_only
-    from docx4j_py.model.content.text_model import kept_content_under, refuse_tracked_equation
+    from docx4j_py.model.content.text_model import kept_content_under
 
     for index in range(extent.first, extent.last + 1):
         if (index == extent.first and extent.head is not None) or (index == extent.last and extent.tail is not None):
@@ -331,7 +330,6 @@ def refuse_tracked_content(extent: Extent, member: str, body: Any) -> None:
         found = kept_content_under(block)
         if found is not None:
             refuse_read_only(body.body_for(found), member)
-        refuse_tracked_equation(block, member)
 
 
 # ---------------------------------------------------------------------------

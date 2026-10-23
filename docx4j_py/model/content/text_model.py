@@ -900,14 +900,17 @@ def office_as_model(segments: list[Segment]) -> str:
     return "".join(out)
 
 
-def refuse_equation(segments: list[Segment], start: int, end: int, *, tracked: bool = False) -> None:
-    """Refuse an edit that would cut an equation, or take one under change tracking (CR-013 Phase A).
+def refuse_equation(segments: list[Segment], start: int, end: int, *, tracked: bool | str = False) -> None:
+    """Refuse an edit that would cut an equation, or replace one under change tracking (CR-013 Phase A).
 
     An equation's text is one segment, Word's drawing of its math runs
     (:mod:`.math_text`), so an edit may take it whole but not part of it, nor
-    insert into it, nor, under change tracking, take it at all: a tracked
-    change inside an equation is its math runs' own, which nothing here
-    writes. docx4j-core-ts's ``assertPlaceable`` at ``9307bdb``.
+    insert into it. Under change tracking (`tracked`) a deletion
+    (``"delete"``) takes it whole in Word's form, a ``w:del`` in each math run
+    and structure (CR-013 section 13.7, D2; docx4j-core-ts check 57), and a
+    replacement (``"replace"``, or True) doesn't take it at all: where Word puts
+    the new text beside a deleted equation isn't measured. docx4j-core-ts's
+    ``assertPlaceable`` at ``906d5e3``.
 
     Raises:
         SpanError: ``range.cuts_equation``, an edit or an insertion strictly
@@ -928,15 +931,16 @@ def refuse_equation(segments: list[Segment], start: int, end: int, *, tracked: b
                 code="range.cuts_equation",
                 hint=f"widen the span to {min(start, segment.start)}:{max(end, segment.end)}, or edit beside the equation",
             )
-        if tracked and takes:
+        if tracked and tracked != "delete" and takes:
             from docx4j_py.model.content.errors import TrackedChangeError
 
             raise TrackedChangeError(
                 f"{start}:{end} takes the equation at {segment.start}:{segment.end} under change tracking, "
-                "and a tracked change inside an equation is its math runs' own, which this package does not "
-                "write (CR-013 Phase A)",
+                "with text in its place: a tracked replacement of an equation is not measured (CR-013 "
+                "section 13.7, D2; a tracked deletion takes it whole in Word's form)",
                 code="tracking.equation",
-                hint="turn change tracking off to take the equation whole, or edit beside it",
+                hint="delete the equation first (a tracked deletion takes it), then insert the text; or "
+                "replace a Range, whose insertion goes first",
             )
 
 
@@ -1274,38 +1278,15 @@ def kept_content_under(element: Any) -> Any | None:
 
 
 def refuse_tracked_equation(element: Any, operation: str) -> None:
-    """Refuse a tracked deletion of `element` --- a body, a table, a row --- that would take an equation.
+    """Formerly: refuse a tracked deletion of `element` --- a body, a table, a row --- that would take an equation.
 
-    CR-013 Phase A (:func:`refuse_equation`): a tracked change inside an
-    equation is its math runs' own, which nothing here writes, so a tracked
-    ``Body.clear()``, a tracked deletion of a table or a row, and a tracked
-    ``Paragraph.delete()`` refuse where a paragraph they take holds one, before
-    anything changes, as core-ts's ``assertPlaceable`` does. Untracked, the
-    equation goes whole.
-
-    Raises:
-        TrackedChangeError: ``tracking.equation``.
+    CR-013 Phase A refused it, a tracked change inside an equation being its
+    math runs' own; since CR-013 section 13.7 (D2; docx4j-core-ts check 57) a
+    tracked deletion writes an equation deleted in Word's form
+    (:func:`~.tracking.mark_equation_deleted`), so nothing is refused here and
+    no verb calls this. Kept so that a caller of the Phase A name keeps working.
     """
-    stack = [element]
-    while stack:
-        node = stack.pop()
-        if element_name(node) == W_P:
-            for segment in segments_of(node):
-                if segment.math:
-                    from docx4j_py.model.content.errors import TrackedChangeError
-
-                    raise TrackedChangeError(
-                        f"{operation} refused under change tracking: a paragraph it would delete holds "
-                        "an equation, and a tracked change inside an equation is its math runs' own, "
-                        "which this package does not write (CR-013 Phase A)",
-                        code="tracking.equation",
-                        hint="turn change tracking off to delete the equation whole, or leave its "
-                        "paragraph out of the deletion",
-                    )
-            continue
-        children = block_children_of(node)
-        if children is not None:
-            stack.extend(reversed(children))
+    return None
 
 
 def block_list_of(value: Any) -> tuple[Any, str] | None:

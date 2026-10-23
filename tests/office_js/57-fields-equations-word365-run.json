@@ -1,0 +1,262 @@
+{
+ "check": 57,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 1,
+   "op": "insertText-after",
+   "shape": "complex-field",
+   "result": {
+    "changeTrackingMode": "Off",
+    "returned": "x\\u000dy"
+   },
+   "region": {
+    "text": "BEGIN1 insertText-after complex-field\\u000dkeep1a FA1x\\u000dy FB1 keep1b\\u000dEND1\\u000d",
+    "paragraphs": [
+     "BEGIN1 insertText-after complex-field",
+     "keep1a FA1x",
+     "y FB1 keep1b",
+     "END1"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 insertText-after complex-field</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">keep1a </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> QUOTE \"FA1 FB1\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>FA1x</w:t></w:r></w:p><w:p><w:r><w:t>y FB1</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r><w:r><w:t xml:space=\"preserve\"> keep1b</w:t></w:r></w:p><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [],
+    "fields": [
+     {
+      "code": " QUOTE \"FA1 FB1\" ",
+      "result": "FA1x\\u000dy FB1"
+     }
+    ]
+   }
+  },
+  {
+   "n": 2,
+   "op": "insertText-after",
+   "shape": "simple-field",
+   "result": {
+    "changeTrackingMode": "Off",
+    "returned": "x\\u000dy"
+   },
+   "region": {
+    "text": "BEGIN2 insertText-after simple-field\\u000dkeep2a FA2x\\u000dy FB2 keep2b\\u000dEND2\\u000d",
+    "paragraphs": [
+     "BEGIN2 insertText-after simple-field",
+     "keep2a FA2x",
+     "y FB2 keep2b",
+     "END2"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 insertText-after simple-field</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">keep2a </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> QUOTE \"FA2 FB2\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>FA2x</w:t></w:r></w:p><w:p><w:r><w:t>y FB2</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r><w:r><w:t xml:space=\"preserve\"> keep2b</w:t></w:r></w:p><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [],
+    "fields": [
+     {
+      "code": " QUOTE \"FA2 FB2\" ",
+      "result": "FA2x\\u000dy FB2"
+     }
+    ]
+   }
+  },
+  {
+   "n": 3,
+   "op": "insertParagraph-after",
+   "shape": "complex-field",
+   "result": {
+    "changeTrackingMode": "Off",
+    "returned": "NEWPARA3"
+   },
+   "region": {
+    "text": "BEGIN3 insertParagraph-after complex-field\\u000dkeep3a FA3\\u000dNEWPARA3\\u000d FB3 keep3b\\u000dEND3\\u000d",
+    "paragraphs": [
+     "BEGIN3 insertParagraph-after complex-field",
+     "keep3a FA3",
+     "NEWPARA3",
+     " FB3 keep3b",
+     "END3"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 insertParagraph-after complex-field</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">keep3a </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> QUOTE \"FA3 FB3\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>FA3</w:t></w:r></w:p><w:p><w:r><w:t>NEWPARA3</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\"> FB3</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r><w:r><w:t xml:space=\"preserve\"> keep3b</w:t></w:r></w:p><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [],
+    "fields": [
+     {
+      "code": " QUOTE \"FA3 FB3\" ",
+      "result": "FA3\\u000dNEWPARA3\\u000d FB3"
+     }
+    ]
+   }
+  },
+  {
+   "n": 4,
+   "op": "insertParagraph-after",
+   "shape": "simple-field",
+   "result": {
+    "changeTrackingMode": "Off",
+    "returned": "NEWPARA4"
+   },
+   "region": {
+    "text": "BEGIN4 insertParagraph-after simple-field\\u000dkeep4a FA4\\u000dNEWPARA4\\u000d FB4 keep4b\\u000dEND4\\u000d",
+    "paragraphs": [
+     "BEGIN4 insertParagraph-after simple-field",
+     "keep4a FA4",
+     "NEWPARA4",
+     " FB4 keep4b",
+     "END4"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 insertParagraph-after simple-field</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">keep4a </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> QUOTE \"FA4 FB4\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>FA4</w:t></w:r></w:p><w:p><w:r><w:t>NEWPARA4</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\"> FB4</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r><w:r><w:t xml:space=\"preserve\"> keep4b</w:t></w:r></w:p><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [],
+    "fields": [
+     {
+      "code": " QUOTE \"FA4 FB4\" ",
+      "result": "FA4\\u000dNEWPARA4\\u000d FB4"
+     }
+    ]
+   }
+  },
+  {
+   "n": 5,
+   "op": "open",
+   "shape": "display-equation",
+   "region": {
+    "text": "BEGIN5 open display-equation\\u000d\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.\\u000dEND5\\u000d",
+    "paragraphs": [
+     "BEGIN5 open display-equation",
+     "\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.",
+     "END5"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 open display-equation</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:del w:id=\"0\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:r><w:del w:id=\"1\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>E=m</m:t></w:del></m:r><m:sSup><m:sSupPr><m:ctrlPr><w:del w:id=\"2\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/><w:i/></w:rPr></w:del></m:ctrlPr></m:sSupPr><m:e><m:r><w:del w:id=\"3\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>c</m:t></w:del></m:r></m:e><m:sup><m:r><w:del w:id=\"4\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>2</m:t></w:del></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [
+     {
+      "type": "Deleted",
+      "text": "\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.\\u000d",
+      "author": "docx4j"
+     }
+    ],
+    "fields": []
+   }
+  },
+  {
+   "n": 6,
+   "op": "open",
+   "shape": "inline-equation",
+   "region": {
+    "text": "BEGIN6 open inline-equation\\u000dkeep6a L6 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R6 keep6b\\u000dEND6\\u000d",
+    "paragraphs": [
+     "BEGIN6 open inline-equation",
+     "keep6a L6 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R6 keep6b",
+     "END6"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 open inline-equation</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:del w:id=\"0\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"/></w:rPr></w:pPr><w:del w:id=\"1\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:r><w:delText xml:space=\"preserve\">keep6a L6 </w:delText></w:r></w:del><m:oMath><m:r><w:del w:id=\"2\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>E=m</m:t></w:del></m:r><m:sSup><m:sSupPr><m:ctrlPr><w:del w:id=\"3\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/><w:i/></w:rPr></w:del></m:ctrlPr></m:sSupPr><m:e><m:r><w:del w:id=\"4\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>c</m:t></w:del></m:r></m:e><m:sup><m:r><w:del w:id=\"5\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>2</m:t></w:del></m:r></m:sup></m:sSup></m:oMath><w:del w:id=\"6\" w:author=\"docx4j\" w:date=\"2026-10-23T00:00:00Z\"><w:r><w:delText xml:space=\"preserve\"> R6 keep6b</w:delText></w:r></w:del></w:p><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [
+     {
+      "type": "Deleted",
+      "text": "keep6a L6 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R6 keep6b\\u000d",
+      "author": "docx4j"
+     }
+    ],
+    "fields": []
+   }
+  },
+  {
+   "n": 7,
+   "op": "paragraph-delete",
+   "shape": "display-equation",
+   "result": {
+    "changeTrackingMode": "TrackAll"
+   },
+   "region": {
+    "text": "BEGIN7 paragraph-delete display-equation\\u000d\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.\\u000dEND7\\u000d",
+    "paragraphs": [
+     "BEGIN7 paragraph-delete display-equation",
+     "\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.",
+     "END7"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN7 paragraph-delete display-equation</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:r><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>E=m</m:t></w:del></m:r><m:sSup><m:sSupPr><m:ctrlPr><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/><w:i/></w:rPr></w:del></m:ctrlPr></m:sSupPr><m:e><m:r><w:del w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>c</m:t></w:del></m:r></m:e><m:sup><m:r><w:del w:id=\"4\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>2</m:t></w:del></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [
+     {
+      "type": "Deleted",
+      "text": "\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.\\u000d",
+      "author": "Author A"
+     }
+    ],
+    "fields": []
+   }
+  },
+  {
+   "n": 8,
+   "op": "paragraph-delete",
+   "shape": "inline-equation",
+   "result": {
+    "changeTrackingMode": "TrackAll"
+   },
+   "region": {
+    "text": "BEGIN8 paragraph-delete inline-equation\\u000dkeep8a L8 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R8 keep8b\\u000dEND8\\u000d",
+    "paragraphs": [
+     "BEGIN8 paragraph-delete inline-equation",
+     "keep8a L8 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R8 keep8b",
+     "END8"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN8 paragraph-delete inline-equation</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"/></w:rPr></w:pPr><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:r><w:delText xml:space=\"preserve\">keep8a L8 </w:delText></w:r></w:del><m:oMath><m:r><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>E=m</m:t></w:del></m:r><m:sSup><m:sSupPr><m:ctrlPr><w:del w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/><w:i/></w:rPr></w:del></m:ctrlPr></m:sSupPr><m:e><m:r><w:del w:id=\"4\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>c</m:t></w:del></m:r></m:e><m:sup><m:r><w:del w:id=\"5\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>2</m:t></w:del></m:r></m:sup></m:sSup></m:oMath><w:del w:id=\"6\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:r><w:delText xml:space=\"preserve\"> R8 keep8b</w:delText></w:r></w:del></w:p><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [
+     {
+      "type": "Deleted",
+      "text": "keep8a L8 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R8 keep8b\\u000d",
+      "author": "Author A"
+     }
+    ],
+    "fields": []
+   }
+  },
+  {
+   "n": 9,
+   "op": "range-delete",
+   "shape": "display-equation",
+   "result": {
+    "changeTrackingMode": "TrackAll"
+   },
+   "region": {
+    "text": "BEGIN9 range-delete display-equation\\u000d\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.\\u000dEND9\\u000d",
+    "paragraphs": [
+     "BEGIN9 range-delete display-equation",
+     "\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.",
+     "END9"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 range-delete display-equation</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>E=m</m:t></w:del></m:r><m:sSup><m:sSupPr><m:ctrlPr><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/><w:i/></w:rPr></w:del></m:ctrlPr></m:sSupPr><m:e><m:r><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>c</m:t></w:del></m:r></m:e><m:sup><m:r><w:del w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>2</m:t></w:del></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [
+     {
+      "type": "Deleted",
+      "text": "\\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2.",
+      "author": "Author A"
+     }
+    ],
+    "fields": []
+   }
+  },
+  {
+   "n": 10,
+   "op": "range-delete",
+   "shape": "inline-equation",
+   "result": {
+    "changeTrackingMode": "TrackAll"
+   },
+   "region": {
+    "text": "BEGIN10 range-delete inline-equation\\u000dkeep10a L10 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R10 keep10b\\u000dEND10\\u000d",
+    "paragraphs": [
+     "BEGIN10 range-delete inline-equation",
+     "keep10a L10 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R10 keep10b",
+     "END10"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN10 range-delete inline-equation</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">keep10a </w:t></w:r><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:r><w:delText xml:space=\"preserve\">L10 </w:delText></w:r></w:del><m:oMath><m:r><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>E=m</m:t></w:del></m:r><m:sSup><m:sSupPr><m:ctrlPr><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/><w:i/></w:rPr></w:del></m:ctrlPr></m:sSupPr><m:e><m:r><w:del w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>c</m:t></w:del></m:r></m:e><m:sup><m:r><w:del w:id=\"4\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:rPr><w:rFonts w:ascii=\"Cambria Math\" w:hAnsi=\"Cambria Math\"/></w:rPr><m:t>2</m:t></w:del></m:r></m:sup></m:sSup></m:oMath><w:del w:id=\"5\" w:author=\"Author A\" w:date=\"2026-10-23T16:57:00Z\" w16du:dateUtc=\"2026-10-23T05:57:00Z\"><w:r><w:delText xml:space=\"preserve\"> R10</w:delText></w:r></w:del><w:r><w:t xml:space=\"preserve\"> keep10b</w:t></w:r></w:p><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+    "trackedChanges": [
+     {
+      "type": "Deleted",
+      "text": "L10 \\ud835\\udc38=\\ud835\\udc5a,\\ud835\\udc50-2. R10",
+      "author": "Author A"
+     }
+    ],
+    "fields": []
+   }
+  }
+ ],
+ "caseCount": 10
+}

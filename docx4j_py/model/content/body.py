@@ -1248,10 +1248,7 @@ class Body(Sequence):
             found = kept_content_under(self.container)
             if found is not None:
                 refuse_read_only(self.body_for(found), "clear")
-            # nor an equation's (CR-013 Phase A)
-            from docx4j_py.model.content.text_model import refuse_tracked_equation
-
-            refuse_tracked_equation(self.container, "clear")
+            # an equation is deleted in Word's form (CR-013 section 13.7, D2), where Phase A refused it
         with recording(self, "clear") as change:
             change.text(before=self.text, after="")
             change.touched(self.prefix)

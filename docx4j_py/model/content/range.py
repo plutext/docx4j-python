@@ -238,7 +238,8 @@ class Range:
         pieces = self._pieces()
         for piece in (pieces[0], pieces[-1]) if len(pieces) > 1 else pieces:
             piece.paragraph.refuse_branch_text(piece.start, piece.end, operation)
-            piece.paragraph.refuse_equation(piece.start, piece.end)
+            # a deletion takes an equation whole, under change tracking in Word's form (CR-013 section 13.7, D2)
+            piece.paragraph.refuse_equation(piece.start, piece.end, deleting=True)
 
     # -- identity ----------------------------------------------------------
 

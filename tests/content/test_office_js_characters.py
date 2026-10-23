@@ -68,6 +68,11 @@ SHARE_SHA1 = {
     "54-writes.docx": "98f548e35d47f28e87c38898a92f62e6b602b690",
     "54-writes-word365.docx": "b5e958f9204751488625ca5adafea3d605a89933",
     "54-writes-word365-accepted.docx": "5047a128aec36d2933d044ca6ae9b7ce62510daf",
+    # CR-013 section 13.7: check 57's file and Word's three saves (core-ts 906d5e3)
+    "57-fields-equations.docx": "5c8f4ea4d76685e126e2b58493bb33ead3d39513",
+    "57-fields-equations-word365.docx": "e8ac302be7a8a7551da61c3a1306881ca0bb5fba",
+    "57-fields-equations-word365-accepted.docx": "ee615f9e9a876a4aeddde7924da8c71ea6ec9d65",
+    "57-fields-equations-word365-rejected.docx": "ad0937a076ff013b3e6e51c556899f465ebadef0",
 }
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -129,8 +134,9 @@ def test_every_fixture_is_the_manifests_and_the_files_word_read():
     lines = (OFFICE_JS / "SHA1SUMS").read_text(encoding="utf-8").splitlines()
     manifest = dict(reversed(line.split("  ", 1)) for line in lines if line.strip())
     # Phase A's seven, Phase B's eight (checks 52 and 53, Word's saves of 52 and Word's four JSONs)
-    # and Phase C's five (check 54's file, Word's two saves and its two JSONs)
-    assert len(manifest) == 20
+    # and Phase C's ten (check 54's file, Word's two saves and its two JSONs; check 57's file, Word's
+    # three saves and its run JSON, CR-013 section 13.7)
+    assert len(manifest) == 25
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():
@@ -412,14 +418,25 @@ def test_an_equation_reads_as_word_draws_it_and_an_edit_takes_it_whole_and_untra
     p.search("a \U0001d465+1 ")[0].delete()
     assert p.text == "b"
     assert "oMath" not in xml_of(package), "taken whole"
+    # tracked, a deletion takes the equation whole in Word's form, a w:del in each math run (CR-013 section 13.7,
+    # D2; docx4j-core-ts check 57), where Phase A refused it (tracking.equation)
     tracked = equation_package()
     tracked.change_tracking_mode = "TrackAll"
+    tracked.body.paragraphs[0].get_range("Content").delete()
+    assert re.search(r"<m:oMath><m:r><w:del ", xml_of(tracked))
+    assert tracked.body.paragraphs[0].text == ""
+    cleared = equation_package()
+    cleared.change_tracking_mode = "TrackAll"
+    cleared.body.clear()
+    assert re.search(r"<m:oMath><m:r><w:del ", xml_of(cleared))
+    # a tracked replacement taking one is still refused, before anything changes (unmeasured where Word puts the text)
+    replaced = equation_package()
+    replaced.change_tracking_mode = "TrackAll"
+    before = xml_of(replaced)
     with pytest.raises(TrackedChangeError) as raised:
-        tracked.body.paragraphs[0].get_range("Content").delete()
+        replaced.body.paragraphs[0].insert_text("z", location="Replace")
     assert raised.value.code == "tracking.equation"
-    with pytest.raises(TrackedChangeError):
-        tracked.body.clear()
-    assert "<w:del " not in xml_of(tracked), "refused before anything changed"
+    assert xml_of(replaced) == before, "refused before anything changed"
     # a range's XML keeps the equation whole where the span holds part of it
     assert "oMath" in equation_package().body.paragraphs[0].search("+1 b")[0].get_xml()
 

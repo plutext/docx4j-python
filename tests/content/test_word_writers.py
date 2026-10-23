@@ -535,12 +535,6 @@ REFUSED = [
     ("text written at a control's end, which goes into it",
      '<w:sdt><w:sdtPr><w:id w:val="5"/></w:sdtPr><w:sdtContent><w:r><w:t>CD</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space="preserve"> EF</w:t></w:r>',
      lambda p: p.search(" EF")[0].insert_text("x\n", location="Before"), "range.splits_control"),
-    ("a complex field's result",
-     '<w:r><w:t xml:space="preserve">Page </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>12</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>',
-     lambda p: p.search("1")[0].insert_text("\n", location="After"), "range.splits_field"),
-    ("a w:fldSimple",
-     '<w:r><w:t xml:space="preserve">A </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>34</w:t></w:r></w:fldSimple>',
-     lambda p: p.search("3")[0].insert_text("x\ny", location="After"), "range.splits_field"),
     ("an equation",
      '<w:r><w:t xml:space="preserve">a </w:t></w:r><m:oMath><m:r><m:t>xy</m:t></m:r></m:oMath><w:r><w:t xml:space="preserve"> b</w:t></w:r>',
      lambda p: p.splice(3, 3, "\n"), "range.cuts_equation"),
@@ -572,12 +566,40 @@ def test_beside_a_control_or_a_field_the_split_is_made():
     p.search("A ")[0].insert_text("x\n", location="After")
     first, second = package.body.paragraphs
     assert (first.text, second.text) == ("A x", "34 B")
-    assert "fldSimple" in to_xml(second.element) and "fldSimple" not in to_xml(first.element)
+    # the split at the start of the field's result makes it a complex field, core-ts's unmeasured choice (CR-013
+    # section 13.7, D1), which goes whole to the second paragraph with the places after the text (keep="tail")
+    assert "fldSimple" not in xml_of(package)
+    assert re.findall(r'w:fldCharType="(\w+)"', to_xml(second.element)) == ["begin", "separate", "end"]
+    assert "fldChar" not in to_xml(first.element)
+    strict_reload(package)
+
+
+@pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+def test_a_break_in_a_fields_result_splits_the_field_a_fldsimple_made_a_complex_field_first(tracked):
+    """CR-013 section 13.7, D1 (docx4j-core-ts check 57 cases 1 to 4), where Phase A refused range.splits_field."""
+    complex_field = '<w:r><w:t xml:space="preserve">Page </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>12</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>'
+    package, p = one(complex_field, tracked=tracked)
+    p.search("1")[0].insert_text("\n", location="After")
+    first, second = package.body.paragraphs
+    assert (first.text, second.text) == ("Page 1", "2")
+    assert re.findall(r'w:fldCharType="(\w+)"', to_xml(first.element)) == ["begin", "separate"]
+    assert re.findall(r'w:fldCharType="(\w+)"', to_xml(second.element)) == ["end"]
+    strict_reload(package)
+    simple_field = '<w:r><w:t xml:space="preserve">A </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>34</w:t></w:r></w:fldSimple>'
+    package, p = one(simple_field, tracked=tracked)
+    p.search("3")[0].insert_text("x\ny", location="After")
+    first, second = package.body.paragraphs
+    assert (first.text, second.text) == ("A 3x", "y4")
+    assert "fldSimple" not in xml_of(package)
+    assert "<w:instrText xml:space=\"preserve\"> PAGE </w:instrText>" in to_xml(first.element)
+    assert re.findall(r'w:fldCharType="(\w+)"', to_xml(second.element)) == ["end"]
     strict_reload(package)
 
 
 def test_every_match_is_checked_before_the_first_is_replaced():
-    field = '<w:r><w:t xml:space="preserve">x-y </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>a-b</w:t></w:r></w:fldSimple>'
+    # the second match inside a run-level content control, where a break is refused (a w:fldSimple here until
+    # CR-013 section 13.7, whose result a break now splits)
+    field = '<w:r><w:t xml:space="preserve">x-y </w:t></w:r><w:sdt><w:sdtPr><w:id w:val="5"/></w:sdtPr><w:sdtContent><w:r><w:t>a-b</w:t></w:r></w:sdtContent></w:sdt>'
     package, _p = one(field)
     before = xml_of(package)
     with pytest.raises(SpanError):

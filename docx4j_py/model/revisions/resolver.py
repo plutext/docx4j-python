@@ -293,7 +293,9 @@ class _Op:
                 trees.item_text(entry) is not None or isinstance(entry, track) for entry in content
             )
             if not has_text and t.run_owner is not None:
+                holder = getattr(run, "parent", None)
                 self.remove(t.run_owner, run)
+                self.drop_emptied_equation(holder)
 
     def math_structure(self, t: MathStructT, accept: bool) -> None:
         """An equation structure inserted or deleted (its ``m:ctrlPr``'s ``w:ins`` / ``w:del``).
@@ -315,7 +317,40 @@ class _Op:
                     link_parents(live)
                     live.parent = ctrl_pr
         else:
+            holder = getattr(t.struct_item, "parent", None)
             self.remove(t.struct_owner, t.struct_item)
+            self.drop_emptied_equation(holder)
+
+    def drop_emptied_equation(self, holder: Any) -> None:
+        """An ``m:oMath`` left with nothing in it goes, and an ``m:oMathPara`` left with no ``m:oMath`` with it.
+
+        docx4j ``Resolver.dropEmptiedEquation`` (``ebb21c990``, on
+        ``VERSION_17_3_5``; its CR-043 section 16), after a math run or a
+        structure is removed: Word 365's Accept All of a whole equation deleted
+        in Word's form (a ``w:del`` in each ``m:r`` and each ``m:ctrlPr``) removed
+        both, where docx4j left ``<m:oMathPara><m:oMath/></m:oMathPara>``
+        (docx4j-core-ts check 57, 23 October 2026); by symmetry Reject All of a
+        whole equation inserted (unmeasured). An argument (``m:e``, ``m:sup``)
+        left empty stays: its structure keeps its places. CR-013 section 13.7, F1.
+        """
+        from docx4j_py.math import CTOMath, CTOMathPara
+
+        if not isinstance(holder, CTOMath) or holder.content:
+            return
+        above = getattr(holder, "parent", None)
+        if isinstance(above, CTOMathPara):
+            index = trees.index_of(above.o_math, holder)
+            if index >= 0:
+                self.removals.discard(self.story, holder)
+                del above.o_math[index]
+            if above.o_math:
+                return
+            holder = above
+            above = getattr(above, "parent", None)
+        items = trees.list_of(above) if above is not None else None
+        if items is None or trees.index_of(items, holder) < 0:
+            return
+        self.remove(items, holder)
 
     # -- the operations on lists -------------------------------------------------
 

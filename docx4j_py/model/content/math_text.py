@@ -93,7 +93,10 @@ def math_text_of(math: Any, view: str = "accepted") -> str:
 
     The ``m:t`` of every math run in document order, a revision's runs as the
     view has them, each letter mapped as Word draws it (:func:`math_letter`),
-    each structure ``,`` + its arguments joined by ``-`` + ``.``.
+    each structure ``,`` + its arguments joined by ``-`` + ``.``; a structure
+    the view hides (its own ``m:ctrlPr``'s revision) left out whole, so that
+    Word's form of an equation deleted whole reads ``""`` in the accepted view
+    (CR-013 section 13.7, F2).
     """
     o_math, o_math_para, o_math_arg, math_run = _math_classes()
     containers = (o_math, o_math_para, o_math_arg)
@@ -135,6 +138,10 @@ def math_text_of(math: Any, view: str = "accepted") -> str:
         if _is_properties(value):
             return
         if _is_math_object(value) and not isinstance(value, containers):
+            # a structure the view hides, its own m:ctrlPr holding the revision, goes whole
+            # (CR-013 section 13.7, F2; core-ts's hidesStructure at 906d5e3)
+            if _hides_structure(value, view):
+                return
             # a structure: ",", its arguments joined by "-", "." (check 51 case 12)
             out.append(",")
             for index, argument in enumerate(_arguments_of(value, o_math_arg)):
@@ -148,6 +155,24 @@ def math_text_of(math: Any, view: str = "accepted") -> str:
 
     visit(math, 0)
     return "".join(out)
+
+
+def _hides_structure(structure: Any, view: str) -> bool:
+    """True when a structure is inserted or deleted, in Word's form, and the view hides that revision.
+
+    The revision is a ``w:ins`` or ``w:del`` in the ``m:ctrlPr`` of the
+    structure's own properties (``m:sSupPr``, ``m:fPr``, ...); an argument's own
+    ``m:ctrlPr`` marks no structure (core-ts's ``hidesStructure`` at
+    ``906d5e3``, its CR-002 section 51).
+    """
+    for value in _fields(structure):
+        if not _is_math_object(value) or not type(value).__name__.endswith("Pr"):
+            continue
+        ctrl_pr = getattr(value, "ctrl_pr", None)
+        marker = getattr(ctrl_pr, "r_pr_or_ins_or_del", None) if ctrl_pr is not None else None
+        if marker is not None and _hidden(marker, view):
+            return True
+    return False
 
 
 def _arguments_of(structure: Any, o_math_arg: type) -> list[Any]:
@@ -205,6 +230,16 @@ def _run_properties(run: Any) -> tuple[str | None, str | None, bool]:
     from docx4j_py import math as m
 
     r_pr = getattr(run, "r_pr", None)
+    if r_pr is None:
+        # Word's form of a deleted equation holds the run's m:rPr inside the w:del in it (CR-013 section 13.7, D2)
+        r_pr = next(
+            (
+                getattr(item, "r_pr", None)
+                for item in getattr(run, "content", None) or ()
+                if element_name(item) in _HIDDEN_IN and getattr(item, "r_pr", None) is not None
+            ),
+            None,
+        )
     if r_pr is None:
         return None, None, False
     sty = scr = None

@@ -18,17 +18,27 @@ as Word's ``insertText`` does (core-ts check 55, cases 2 to 4 and 48 to 49, at
 * a hyperlink, a revision (``w:ins``, ``w:del``, ``w:moveFrom``, ``w:moveTo``), a
   smart tag, a ``w:customXml``, a ``w:dir`` or a ``w:bdo`` the split falls inside
   is cut into two of the same, a revision's second half under a new ``w:id``;
-* a run-level content control (``range.splits_control``), a field --- inside a
-  ``w:fldSimple``, or between a ``w:fldChar`` begin and its end in the paragraph
-  (``range.splits_field``) --- an equation (``range.cuts_equation``) or a kept
-  ``mc:AlternateContent`` branch (``address.read_only``) there is refused,
-  before anything changes, since each half would be one of it;
+* **a field's result is split** (CR-013 section 13.7, D1; docx4j-core-ts check 57
+  cases 1 to 4, its ``BREAKABLE`` and ``unfoldSimpleFieldsAround`` at
+  ``906d5e3``): a complex field's begin, instruction and separator stay in the
+  first paragraph and its end goes with the rest of its result to the next, so
+  the field spans the two; a ``w:fldSimple`` the split falls in, or holds the
+  character at the split, is first written as the complex field Word writes for
+  it (:func:`unfold_simple_field`), the innermost first. A split inside a
+  field's instruction, between its ``w:fldChar`` begin and its separator, is
+  refused (``range.splits_field``): no text stands there, so only a place of no
+  text could ask for one;
+* a run-level content control (``range.splits_control``), an equation
+  (``range.cuts_equation``) or a kept ``mc:AlternateContent`` branch
+  (``address.read_only``) there is refused, before anything changes, since each
+  half would be one of it;
 * under change tracking the new mark is marked inserted (``w:pPr/w:rPr/w:ins``),
   as Word marks the first half's (check 55 case 48).
 
 A field that begins in an earlier paragraph and ends in a later one is not seen
 from a paragraph between them: such a paragraph holds no ``w:fldChar``, and a
-split there leaves a field spanning one more paragraph, which is well formed.
+split there leaves a field spanning one more paragraph, which is well formed (and
+is what Word itself writes for a break in a result, check 57).
 """
 
 from __future__ import annotations
@@ -45,11 +55,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.paragraph import Paragraph
 
 __all__ = [
+    "BREAKABLE",
     "SPLITTABLE",
     "field_depths",
     "holders_above",
     "refuse_cut",
     "split_paragraph",
+    "unfold_simple_field",
 ]
 
 
@@ -82,6 +94,11 @@ SPLITTABLE = frozenset(
 
 _REVISIONS = frozenset({_w("ins"), _w("del"), _w("moveFrom"), _w("moveTo")})
 
+#: The run holders a paragraph break may be made inside: those it cuts in two, and a
+#: ``w:fldSimple``, made a complex field first (core-ts's ``BREAKABLE`` at ``906d5e3``;
+#: CR-013 section 13.7, D1).
+BREAKABLE = SPLITTABLE | {_W_FLD_SIMPLE}
+
 
 def holders_above(item: Any, paragraph_element: Any) -> list[Any]:
     """The elements between `item` and the ``w:p``, innermost first, `item` itself left out."""
@@ -98,17 +115,19 @@ def holders_above(item: Any, paragraph_element: Any) -> list[Any]:
 def refuse_cut(holders: list[Any], operation: str = "this write") -> None:
     """Refuse a split that would cut one of `holders` and cannot (core-ts's rule): all but :data:`SPLITTABLE` and runs.
 
+    A ``w:fldSimple`` is not refused: a break there makes it a complex field first
+    (CR-013 section 13.7, D1).
+
     Raises:
         SpanError: ``range.splits_control``, a run-level content control;
-            ``range.splits_field``, a ``w:fldSimple``; ``range.crosses_holder``,
-            any other holder.
+            ``range.crosses_holder``, any other holder.
         AddressError: ``address.read_only``, a kept ``mc:AlternateContent``.
     """
     from docx4j_py.child import is_alternate_content
 
     for holder in holders:
         name = element_name(holder)
-        if name in SPLITTABLE or name in (_W_R, _w("t")):
+        if name in BREAKABLE or name in (_W_R, _w("t")):
             continue
         if name in (_W_SDT, _W_SDT_CONTENT):
             raise SpanError(
@@ -116,13 +135,6 @@ def refuse_cut(holders: list[Any], operation: str = "this write") -> None:
                 "(CR-013 section 11, E1; docx4j-core-ts F4)",
                 code="range.splits_control",
                 hint="write the break outside the control, or write a line break (U+000B) instead",
-            )
-        if name == _W_FLD_SIMPLE:
-            raise SpanError(
-                f"{operation} refused: a paragraph break there would cut a field (w:fldSimple) in two "
-                "(CR-013 section 11, E1)",
-                code="range.splits_field",
-                hint="write the break before or after the field, or write a line break (U+000B) instead",
             )
         if is_alternate_content(holder):
             raise AddressError(
@@ -140,60 +152,144 @@ def refuse_cut(holders: list[Any], operation: str = "this write") -> None:
 
 def _refuse_field(operation: str) -> None:
     raise SpanError(
-        f"{operation} refused: a paragraph break there would fall inside a field, between its "
-        "w:fldChar begin and its end (CR-013 section 11, E1)",
+        f"{operation} refused: a paragraph break there would fall inside a field's instruction, between "
+        "its w:fldChar begin and its separator (CR-013 section 13.7, D1; a field's result is split)",
         code="range.splits_field",
-        hint="write the break before or after the field, or write a line break (U+000B) instead",
+        hint="write the break in the field's result, before or after the field, or write a line break "
+        "(U+000B) instead",
     )
 
 
 @dataclasses.dataclass(slots=True)
 class FieldDepths:
-    """How deep in a complex field each element of a paragraph stands, on entry and on exit.
+    """Where each element of a paragraph stands in its complex fields, on entry and on exit, by ``id()``.
 
-    :attr:`floor` is the lowest depth the walk reached: below zero where the
-    paragraph ends a field an earlier paragraph began, so that ``depth -
-    floor`` is how many fields hold a place.
+    A place is **in a field's instruction** where a field this paragraph begins
+    has had its ``w:fldChar`` begin and not yet its separator (or its end): the
+    values of :attr:`entry` and :attr:`exit` are those flags. A field's result,
+    after its separator, is split (CR-013 section 13.7, D1); a field an earlier
+    paragraph began is read as in its result, its instruction holding no text
+    of this paragraph's.
     """
 
-    entry: dict[int, int]
-    exit: dict[int, int]
-    floor: int
-    closing: int
+    entry: dict[int, bool]
+    exit: dict[int, bool]
+    closing: bool
 
-    def inside(self, depth: int) -> bool:
-        """Whether a place at this raw depth is inside a field."""
-        return depth - self.floor > 0
+    def inside(self, in_code: bool) -> bool:
+        """Whether a place with this flag is inside a field's instruction."""
+        return bool(in_code)
 
 
 def field_depths(paragraph_element: Any) -> FieldDepths:
-    """Every element's field depth in a ``w:p``, by ``id()``: what a ``w:fldChar`` begin opens and its end closes."""
-    entry: dict[int, int] = {}
-    exit_: dict[int, int] = {}
-    state = {"depth": 0, "floor": 0}
+    """Every element's place in a ``w:p``'s complex fields, by ``id()``: in an instruction, or not (:class:`FieldDepths`)."""
+    entry: dict[int, bool] = {}
+    exit_: dict[int, bool] = {}
+    # one entry per field this paragraph begins and hasn't ended: True until its separator
+    stack: list[bool] = []
+
+    def in_code() -> bool:
+        return any(stack)
 
     def walk(items: list) -> None:
         for item in items:
-            entry[id(item)] = state["depth"]
+            entry[id(item)] = in_code()
             if element_name(item) == _W_R:
                 for child in getattr(item, "content", None) or ():
-                    entry[id(child)] = state["depth"]
+                    entry[id(child)] = in_code()
                     if element_name(child) == _W_FLD_CHAR:
                         kind = getattr(getattr(child, "fld_char_type", None), "value", None)
                         if kind == "begin":
-                            state["depth"] += 1
-                        elif kind == "end":
-                            state["depth"] -= 1
-                            state["floor"] = min(state["floor"], state["depth"])
-                    exit_[id(child)] = state["depth"]
+                            stack.append(True)
+                        elif kind == "separate" and stack:
+                            stack[-1] = False
+                        elif kind == "end" and stack:
+                            stack.pop()
+                    exit_[id(child)] = in_code()
             else:
                 nested = run_items_of(item)
                 if nested is not None:
                     walk(nested)
-            exit_[id(item)] = state["depth"]
+            exit_[id(item)] = in_code()
 
     walk(getattr(paragraph_element, "content", None) or [])
-    return FieldDepths(entry, exit_, state["floor"], state["depth"])
+    return FieldDepths(entry, exit_, in_code())
+
+
+def unfold_simple_field(field: Any) -> None:
+    """A ``w:fldSimple`` written in its place as the complex field Word writes for it (docx4j-core-ts's ``unfoldSimpleField``).
+
+    Word's form in check 57 (cases 2 and 4; CR-013 section 13.7, D1): a run
+    holding the begin ``w:fldChar``, the field's ``w:fldLock``, ``w:dirty`` and
+    ``w:fldData`` on it; a run holding its instruction as a ``w:instrText``; a
+    run holding the separator; the field's content; a run holding the end. The
+    field characters' runs take a copy of the result's first run's properties,
+    core-ts's choice: Word's result run had none, and one with some isn't
+    measured.
+    """
+    from docx4j_py.model.content.tracking import copy_r_pr
+    from docx4j_py.wml import R, el
+
+    parent = getattr(field, "parent", None)
+    items = run_items_of(parent) if parent is not None else None
+    index = _index_of(items, field) if items is not None else -1
+    if items is None or index < 0:
+        raise SpanError(
+            "the w:fldSimple could not be found in the list that holds it",
+            code="range.stale",
+            hint="take the range again",
+        )
+    content = list(field.content or ())
+    first_run = next((item for item in content if isinstance(item, R)), None)
+    r_pr = getattr(first_run, "r_pr", None)
+
+    def run_for(item: Any) -> Any:
+        run = R(content=ChildList([item]))
+        copy = copy_r_pr(r_pr)
+        if copy is not None:
+            run.r_pr = copy
+        link_parents(run)
+        return run
+
+    begin = el.fldChar(fld_char_type="begin", fld_lock=field.fld_lock, dirty=field.dirty)
+    if field.fld_data is not None:
+        begin.fld_data_or_ff_data_or_numbering_change = deep_copy(field.fld_data)
+    instr = field.instr or ""
+    instruction = el.instrText(value=instr, space="preserve" if instr != instr.strip() else None)
+    del field.content[:]
+    pieces = [
+        run_for(begin),
+        run_for(instruction),
+        run_for(el.fldChar(fld_char_type="separate")),
+        *content,
+        run_for(el.fldChar(fld_char_type="end")),
+    ]
+    items[index : index + 1] = pieces
+    for piece in pieces:
+        link_parents(piece)
+        piece.parent = parent
+
+
+def _unfold_simple_fields(paragraph: Paragraph, offset: int, keep: str) -> None:
+    """Every ``w:fldSimple`` a split at `offset` falls in, below the paragraph, made a complex field, the innermost first.
+
+    Those the split would cut, and those holding the character at `offset`
+    (core-ts's ``unfoldSimpleFieldsAround(seg.run)``, so that a split at the
+    start of a result unfolds the field too, its unmeasured choice).
+    """
+    for _guard in range(64):
+        segments = paragraph.segments()
+        at = next((s for s in segments if s.start <= offset < s.end), None)
+        found = None
+        if at is not None:
+            found = next((h for h in holders_above(at.run, paragraph.element) if element_name(h) == _W_FLD_SIMPLE), None)
+        if found is None:
+            place = _place(paragraph, offset, keep, field_depths(paragraph.element))
+            holders, _index, _extra = _climb(paragraph.element, place)
+            found = next((h for h in holders if element_name(h) == _W_FLD_SIMPLE), None)
+        if found is None:
+            return
+        unfold_simple_field(found)
 
 
 def refuse_place(paragraph_element: Any, anchor: Any, how: str, operation: str = "this write") -> None:
@@ -212,8 +308,8 @@ def refuse_place(paragraph_element: Any, anchor: Any, how: str, operation: str =
         return
     refuse_cut(holders_above(anchor, paragraph_element), operation)
     depths = field_depths(paragraph_element)
-    depth = depths.exit.get(id(anchor), 0) if how == "after" else depths.entry.get(id(anchor), 0)
-    if depths.inside(depth):
+    in_code = depths.exit.get(id(anchor), False) if how == "after" else depths.entry.get(id(anchor), False)
+    if depths.inside(in_code):
         _refuse_field(operation)
 
 
@@ -225,8 +321,8 @@ class _Place:
     index: int
     run_cut: Any = None
     """The run the split falls inside, which is cut first; None at a run boundary."""
-    depth: int = 0
-    """The raw field depth at the split (:class:`FieldDepths`)."""
+    depth: bool = False
+    """Whether the split is in a field's instruction (:class:`FieldDepths`)."""
     segment: Any = None
     """The text segment the split stands beside, for the run split."""
     run_before: Any = None
@@ -253,20 +349,20 @@ def _place(paragraph: Paragraph, offset: int, keep: str, depths: FieldDepths) ->
     run_before = getattr(before.run, "r_pr", None) if before is not None and not before.math else None
     if after is not None and after.start < offset:
         # strictly inside an item: its run is cut there
-        return _Place(after.run_owner, after.run_index + 1, after.run, depths.entry.get(id(after.item), 0), after, run_before)
+        return _Place(after.run_owner, after.run_index + 1, after.run, depths.entry.get(id(after.item), False), after, run_before)
     if keep == "head":
         if after is None:
             return _Place(content, len(content), depth=depths.closing, run_before=run_before)
         if after.branch is None and not after.math and after.index > 0:
-            return _Place(after.run_owner, after.run_index + 1, after.run, depths.entry.get(id(after.item), 0), after, run_before)
+            return _Place(after.run_owner, after.run_index + 1, after.run, depths.entry.get(id(after.item), False), after, run_before)
         item, owner, _index = _site_of(after)
-        return _Place(owner, _index_of(owner, item), depth=depths.entry.get(id(item), 0), segment=after, run_before=run_before)
+        return _Place(owner, _index_of(owner, item), depth=depths.entry.get(id(item), False), segment=after, run_before=run_before)
     if before is None:
         return _Place(content, 0, run_before=None)
     if before.branch is None and not before.math and before.index < len(before.owner) - 1:
-        return _Place(before.run_owner, before.run_index + 1, before.run, depths.exit.get(id(before.item), 0), before, run_before)
+        return _Place(before.run_owner, before.run_index + 1, before.run, depths.exit.get(id(before.item), False), before, run_before)
     item, owner, _index = _site_of(before)
-    return _Place(owner, _index_of(owner, item) + 1, depth=depths.exit.get(id(item), 0), segment=before, run_before=run_before)
+    return _Place(owner, _index_of(owner, item) + 1, depth=depths.exit.get(id(item), False), segment=before, run_before=run_before)
 
 
 def _holder_of(items: list, paragraph_element: Any) -> Any:
@@ -438,7 +534,8 @@ def split_paragraph(
 ) -> Paragraph:
     """Split `paragraph` at `offset` of its text; the text before it becomes a new paragraph in front, which is returned.
 
-    The module's rules (core-ts's ``splitParagraph`` at ``1e61bb1``). The
+    The module's rules (core-ts's ``splitParagraph`` at ``1e61bb1``, and its
+    ``unfoldSimpleFieldsAround`` at ``906d5e3``). The
     original ``w:p`` keeps the text from `offset` on, its mark, its section
     break and its ``w14:paraId``; the new one, before it in the same list, takes
     a copy of the properties with a mark in the formatting of the run before
@@ -448,8 +545,8 @@ def split_paragraph(
     the new mark is marked inserted.
 
     Raises:
-        SpanError: ``range.splits_control``, ``range.splits_field``,
-            ``range.cuts_equation``; nothing has changed.
+        SpanError: ``range.splits_control``, ``range.splits_field`` (a
+            field's instruction), ``range.cuts_equation``; nothing has changed.
         AddressError: ``address.read_only``; nothing has changed.
     """
     from docx4j_py.model.content.addresses import assign_para_id
@@ -458,6 +555,8 @@ def split_paragraph(
     from docx4j_py.wml import P
 
     refuse_split(paragraph, offset, keep, operation)
+    # a w:fldSimple there is made a complex field first, whose result is then split (CR-013 section 13.7, D1)
+    _unfold_simple_fields(paragraph, offset, keep)
     element = paragraph.element
     body = paragraph.parent_body
     container = paragraph.container

@@ -339,14 +339,19 @@ class Paragraph:
         verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None)
         refuse_branch_text(self.element, start, end, verb or operation, segments=self.segments())
 
-    def refuse_equation(self, start: int, end: int) -> None:
-        """Refuse an edit of ``[start, end)`` that would cut an equation, or take one tracked (CR-013 Phase A). Extension.
+    def refuse_equation(self, start: int, end: int, *, deleting: bool = False) -> None:
+        """Refuse an edit of ``[start, end)`` that would cut an equation, or replace one tracked (CR-013 Phase A). Extension.
+
+        `deleting`: the edit is a deletion, which takes an equation whole under
+        change tracking in Word's form (CR-013 section 13.7, D2); a tracked
+        replacement taking one is refused.
 
         Raises:
             SpanError: ``range.cuts_equation``.
             TrackedChangeError: ``tracking.equation``.
         """
-        refuse_equation(self.segments(), start, end, tracked=self.change_tracker is not None)
+        tracked = self.change_tracker is not None
+        refuse_equation(self.segments(), start, end, tracked=("delete" if deleting else "replace") if tracked else False)
 
     def holds_branch_text(self) -> bool:
         """Whether this paragraph's text holds text read from a kept branch (CR-011 Phase F). Extension."""
@@ -992,6 +997,9 @@ class Paragraph:
                 }[location]
                 index = _index_of(self.container, self.element)
                 if location == "Replace" and self.change_tracker is not None:
+                    # a tracked replacement taking an equation is refused, unmeasured, as
+                    # core-ts's Paragraph.insertText refuses it (CR-013 section 13.7, D2)
+                    self.refuse_equation(start, end)
                     # tracked, the w:ins first and the w:del after it, as Word writes a
                     # replacement (CR-013 Phase C; docx4j-core-ts check 54 case 4)
                     out = self.get_range("Content").insert_text(text, location="Replace")
@@ -1781,7 +1789,9 @@ class Paragraph:
             self.refuse_branch_text(start, end)
 
         tracker = self.change_tracker
-        refuse_equation(segments, start, end, tracked=tracker is not None)
+        # under tracking a deletion takes an equation whole in Word's form, and a replacement
+        # doesn't take one at all (CR-013 section 13.7, D2)
+        refuse_equation(segments, start, end, tracked=False if tracker is None else "replace" if text else "delete")
         # the places of no text in the span: hidden runs' items (CR-013 Phase A) and
         # drawn objects (core-ts CR-002 section 48; CR-013 section 11), which go with it
         hidden = [
@@ -2010,18 +2020,36 @@ class Paragraph:
         as Word puts it (docx4j-core-ts check 54 case 28, its CR-014 section
         12.6; CR-013 Phase C), so that accepting the deletion takes the comment;
         taken back with this author's own insertion, it takes the comment at
-        once.
+        once. An equation in the span is deleted where it stands, in Word's form
+        --- a ``w:del`` in each math run and each structure's ``m:ctrlPr``
+        (:func:`~.tracking.mark_equation_deleted`; CR-013 section 13.7, D2;
+        docx4j-core-ts check 57) --- the runs either side in ``w:del``\\ s of
+        their own; one holding a revision of its own goes into the ``w:del``
+        whole.
         """
-        from docx4j_py.model.content.tracking import revision_of, to_deleted_text
+        from docx4j_py.model.content.tracking import (
+            equation_revision_in,
+            mark_equation_deleted,
+            revision_of,
+            to_deleted_text,
+        )
 
         self.refuse_branch_text(start, end, "a tracked deletion")
-        refuse_equation(self.segments(), start, end, tracked=True)
+        refuse_equation(self.segments(), start, end, tracked="delete")
         targets = self._isolate(start, end, whole=whole)
         for segment in targets:
             tracker.assert_editable(revision_of(segment.run))
 
         runs: list[_Target] = []
+        equations: list[Any] = []
         for segment in targets:
+            if (
+                segment.math
+                and not tracker.own_insertion(revision_of(segment.run))
+                and equation_revision_in(segment.item) is None
+            ):
+                equations.append(segment.item)
+                continue
             if runs and runs[-1].run is segment.run:
                 continue
             revision = revision_of(segment.run)
@@ -2053,6 +2081,8 @@ class Paragraph:
                 at = next((i for i, other in enumerate(runs) if order.get(id(other.run), -1) > key), len(runs))
                 runs.insert(at, target)
 
+        for equation in equations:
+            mark_equation_deleted(tracker, equation)
         groups: list[list[_Target]] = []
         for target in runs:
             group = groups[-1] if groups else None

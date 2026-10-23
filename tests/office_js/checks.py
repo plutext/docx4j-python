@@ -17,6 +17,8 @@ step for step, onto the content API, and give the same JSON shape with the same
   ``ef57729``).
 * :func:`run_check_54` is ``CHECK54.runCheck`` (``check54-script-lab.js`` at
   ``87bbb38``; CR-013 Phase C) in its ``run`` and ``report`` modes.
+* :func:`run_check_57` is ``CHECK57.runCheck`` (``check57-script-lab.js`` at
+  ``906d5e3``; CR-013 section 13.7) in its ``run`` and ``report`` modes.
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -42,9 +44,11 @@ __all__ = [
     "parse_region_52",
     "parse_region_53",
     "parse_region_54",
+    "parse_region_57",
     "run_check_52",
     "run_check_53",
     "run_check_54",
+    "run_check_57",
     "vis",
 ]
 
@@ -861,4 +865,123 @@ def run_check_54(package: Any, mode: str) -> dict[str, Any]:
         result["cases"].append(entry)
     if mode == "run":
         package.change_tracking_mode = "Off"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# check 57 (core-ts check57-script-lab.js at 906d5e3; CR-013 section 13.7)
+# ---------------------------------------------------------------------------
+
+_BEGIN_57 = re.compile(r"^BEGIN(\d+) ([\w-]+) ([\w-]+)$")
+
+
+def failed_57(error: BaseException) -> str:
+    """Check 57's ``failed``: ``'error: ' + (code or 'no code') + (': ' + message)``."""
+    if isinstance(error, NotImplementedMember):
+        return f"error: NotImplemented: {error}"
+    code = getattr(error, "code", None) or "no code"
+    message = str(error)
+    return f"error: {code}" + (f": {message}" if message else "")
+
+
+def attempt_57(read: Callable[[], Any]) -> Any:
+    try:
+        return read()
+    except Exception as error:  # noqa: BLE001 - every failure is the read's answer, as in the snippet
+        return failed_57(error)
+
+
+def parse_region_57(text: str) -> dict[str, Any] | None:
+    """A BEGIN paragraph's text as a case, or None (the snippet's ``parseRegion``)."""
+    match = _BEGIN_57.match(text.strip())
+    return {"n": int(match.group(1)), "op": match.group(2), "shape": match.group(3)} if match else None
+
+
+def region_of_57(body: Any, n: int) -> Any:
+    """The region from its BEGIN paragraph to its END paragraph, both whole."""
+    return find(body, f"BEGIN{n}").paragraphs[0].get_range("Whole").expand_to(
+        find(body, f"END{n}").paragraphs[0].get_range("Whole")
+    )
+
+
+def apply_57(package: Any, body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's write, the equations' under TrackAll; what it returns (the snippet's ``apply``)."""
+    tracked = region["shape"].endswith("-equation")
+    package.change_tracking_mode = "TrackAll" if tracked else "Off"
+    out: dict[str, Any] = {"changeTrackingMode": package.change_tracking_mode}
+    n = region["n"]
+    try:
+        op = region["op"]
+        if op == "insertText-after":
+            out["returned"] = vis(find(body, f"FA{n}").insert_text("x\ny", location="After").text)
+        elif op == "insertParagraph-after":
+            out["returned"] = vis(find(body, f"FA{n}").insert_paragraph(f"NEWPARA{n}", location="After").text)
+        elif op == "paragraph-delete":
+            region_of_57(body, n).paragraphs[1].delete()
+        elif op == "range-delete":
+            if region["shape"] == "inline-equation":
+                find(body, f"L{n}").expand_to(find(body, f"R{n}")).delete()
+            else:
+                region_of_57(body, n).paragraphs[1].get_range("Content").delete()
+        else:
+            raise ValueError(f"no operation {op}")
+        return out
+    finally:
+        package.change_tracking_mode = "Off"
+
+
+def _tidy_57(xml: str) -> str:
+    return re.sub(r' w:rsid\w*="[^"]*"| w14:(?:paraId|textId)="[^"]*"| xmlns:\w+="[^"]*"', "", xml)
+
+
+def body_of_57(xml: str) -> Any:
+    """A range's OOXML: the body's content without its section properties (or the range's own XML, as given)."""
+    if "pkg:package" not in xml:
+        return vis(_tidy_57(xml))
+    at = xml.find('pkg:name="/word/document.xml"')
+    start = xml.find("<pkg:xmlData>", at)
+    end = xml.find("</pkg:xmlData>", start)
+    found = re.search(r"<w:body>([\s\S]*?)</w:body>", "" if at < 0 or start < 0 or end < 0 else xml[start:end])
+    return vis(_tidy_57(re.sub(r"<w:sectPr\b[\s\S]*</w:sectPr>", "", found.group(1)))) if found else None
+
+
+def report_57(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The region as it stands: its text, paragraphs, OOXML, tracked changes and fields."""
+    out: dict[str, Any] = {}
+    whole = region_of_57(body, region["n"])
+    out["text"] = attempt_57(lambda: vis(whole.text))
+    out["paragraphs"] = attempt_57(lambda: [vis(p.text) for p in whole.paragraphs])
+    out["ooxml"] = attempt_57(lambda: body_of_57(whole.get_xml()))
+    out["trackedChanges"] = attempt_57(
+        lambda: [
+            {"type": change.type, "text": vis(change.text), "author": change.author}
+            for change in whole.get_tracked_changes()
+        ]
+    )
+
+    def fields() -> list[dict[str, Any]]:
+        found = member(whole, "fields", "fields")
+        return [{"code": vis(field.code), "result": vis(field.result.text)} for field in found]
+
+    out["fields"] = attempt_57(fields)
+    return out
+
+
+def run_check_57(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK57.runCheck`` in its ``run`` or ``report`` mode, on a loaded package."""
+    if mode not in ("run", "report"):
+        raise ValueError(f"check 57 has no {mode!r} mode")
+    body = package.body
+    result: dict[str, Any] = {"check": 57, "mode": mode, "host": None, "cases": []}
+    regions = [region for p in body.paragraphs if (region := parse_region_57(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    for region in regions:
+        entry: dict[str, Any] = {"n": region["n"], "op": region["op"], "shape": region["shape"]}
+        try:
+            if mode == "run" and region["op"] != "open":
+                entry["result"] = apply_57(package, body, region)
+        except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+            entry["error"] = failed_57(error)
+        entry["region"] = attempt_57(lambda region=region: report_57(body, region))
+        result["cases"].append(entry)
     return result

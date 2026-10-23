@@ -96,11 +96,13 @@ __all__ = [
     "date_of",
     "declare_ignorable",
     "delete_row_content",
+    "equation_revision_in",
     "final_mark_properties",
     "hand_back_final_mark",
     "holds_final_mark",
     "insertion_mark_of",
     "mark_deleted",
+    "mark_equation_deleted",
     "mark_holder_deleted",
     "mark_holder_inserted",
     "mark_inserted",
@@ -1006,6 +1008,151 @@ def _mark_holder(tracker: ChangeTracker, holder: Any, owner: list, inside: Any, 
     for marker in (inner_end, inner_start):
         link_parents(marker)
         marker.parent = content_owner
+
+
+# ---------------------------------------------------------------------------
+# an equation deleted (CR-013 section 13.7, D2; docx4j-core-ts check 57)
+# ---------------------------------------------------------------------------
+
+
+def _math_value(value: Any) -> bool:
+    cls = value.__class__
+    return cls.__module__ == "docx4j_py.math" and dataclasses.is_dataclass(value)
+
+
+def _properties_field(structure: Any) -> str | None:
+    """The field of an equation structure's own properties (``m:sSupPr`` of an ``m:sSup``), whose ``m:ctrlPr`` marks it.
+
+    core-ts's ``MATH_STRUCTURES`` (``tracking.mts`` at ``906d5e3``): a math
+    class ``CT<Name>`` whose properties class ``CT<Name>Pr`` is a field of it.
+    An argument (``m:e``, ``m:sup``) has none; its own ``m:ctrlPr`` marks no
+    structure (core-ts CR-002 section 51).
+    """
+    import docx4j_py.math as math_module
+
+    wanted = getattr(math_module, f"{type(structure).__name__}Pr", None)
+    if wanted is None or type(structure).__name__ in ("CTOMath", "CTOMathPara", "CTOMathArg"):
+        return None
+    for field in dataclasses.fields(structure):
+        if field.name.endswith("_pr") and field.name not in ("r_pr", "r_pr_1", "r_pr_2"):
+            return field.name
+    return None
+
+
+def mark_equation_deleted(tracker: ChangeTracker, equation: Any) -> None:
+    """An equation (``m:oMath``, ``m:oMathPara``) marked deleted where it stands, in Word's form.
+
+    Word 365's tracked ``delete()`` of a paragraph holding an equation, or of a
+    range taking one (docx4j-core-ts check 57 cases 7 to 10, its
+    ``markEquationDeleted`` at ``906d5e3``; CR-013 section 13.7, D2): each math
+    run's content inside a ``w:del`` in its ``m:r``, its ``m:rPr`` and
+    ``w:rPr`` with it and its ``m:t`` kept as ``m:t``; each structure's
+    ``m:ctrlPr`` holding a ``w:del`` around the run properties it had, the
+    structure's properties made where it had none. An argument's own
+    ``m:ctrlPr`` marks no structure and is left as it is. The equation stays
+    where it stands, not wrapped. An equation holding a revision of its own
+    (:func:`equation_revision_in`) is the caller's to put in a ``w:del`` whole.
+    """
+    import docx4j_py.math as math_module
+
+    def visit(value: Any, depth: int) -> None:
+        if depth > 64 or value is None or isinstance(value, (str, bytes, int, float)):
+            return
+        if isinstance(value, list):
+            for item in value:
+                visit(item, depth + 1)
+            return
+        if not _math_value(value) or type(value).__name__.endswith("Pr"):
+            return
+        if isinstance(value, math_module.CTR):
+            _delete_math_run(tracker, value)
+            return
+        key = _properties_field(value)
+        if key is not None:
+            _delete_math_structure(tracker, value, key)
+        for field in dataclasses.fields(value):
+            if field.name != key:
+                visit(getattr(value, field.name, None), depth + 1)
+
+    visit(equation, 0)
+
+
+def _delete_math_run(tracker: ChangeTracker, run: Any) -> None:
+    """A math run's content moved into a ``w:del`` in it (``CT_MathRunTrackChange``), its ``m:t`` kept, as Word writes it."""
+    from docx4j_py.wml import Del1
+
+    deletion = Del1(
+        r_pr=run.r_pr,
+        schemas_openxmlformats_org_wordprocessingml_2006_main_r_pr=run.r_pr_1,
+        content=ChildList(list(run.content or ())),
+        **tracker.markup(),
+    )
+    run.r_pr = None
+    run.r_pr_1 = None
+    del run.content[:]
+    run.content.append(deletion)
+    link_parents(deletion)
+    deletion.parent = run
+
+
+def _delete_math_structure(tracker: ChangeTracker, structure: Any, key: str) -> None:
+    """A structure's ``m:ctrlPr`` holding a ``w:del`` with the run properties it had, its properties made where it had none."""
+    import docx4j_py.math as math_module
+    from docx4j_py.wml import CtRprChangeRPr, Del2, rpr_from_elements
+
+    properties = getattr(structure, key, None)
+    if properties is None:
+        properties = getattr(math_module, f"{type(structure).__name__}Pr")()
+        setattr(structure, key, properties)
+    ctrl_pr = getattr(properties, "ctrl_pr", None)
+    if ctrl_pr is None:
+        ctrl_pr = math_module.CTCtrlPr()
+        properties.ctrl_pr = ctrl_pr
+    current = ctrl_pr.r_pr_or_ins_or_del
+    recorded = rpr_from_elements(rpr_to_elements(current) if isinstance(current, RPr) else [], cls=CtRprChangeRPr)
+    ctrl_pr.r_pr_or_ins_or_del = Del2(r_pr=recorded, **tracker.markup())
+    link_parents(structure)
+
+
+def equation_revision_in(equation: Any) -> str | None:
+    """A revision an equation holds of its own, or None: a math run's, a structure's or an argument's, or one among its runs.
+
+    core-ts's ``equationRevisionIn`` (``906d5e3``): how Word deletes such an
+    equation isn't measured, so a tracked deletion puts it whole in a ``w:del``
+    (CR-013 section 13.7, D2).
+    """
+    import docx4j_py.math as math_module
+    from docx4j_py.wml import CTMathRunTrackChange
+
+    found: list[str] = []
+
+    def visit(value: Any, depth: int) -> None:
+        if found or depth > 64 or value is None or isinstance(value, (str, bytes, int, float)):
+            return
+        if isinstance(value, list):
+            for item in value:
+                visit(item, depth + 1)
+            return
+        if not dataclasses.is_dataclass(value):
+            return
+        if isinstance(value, CTMathRunTrackChange):
+            found.append("a math run's revision")
+            return
+        if element_name(value) in REVISION_NAMES:
+            found.append("a revision among its runs")
+            return
+        if isinstance(value, math_module.CTCtrlPr) and not isinstance(value.r_pr_or_ins_or_del, (RPr, type(None))):
+            if element_name(value.r_pr_or_ins_or_del) in (W_INS, W_DEL) or type(value.r_pr_or_ins_or_del).__name__ in (
+                "Ins2",
+                "Del2",
+            ):
+                found.append("a structure's revision")
+                return
+        for field in dataclasses.fields(value):
+            visit(getattr(value, field.name, None), depth + 1)
+
+    visit(equation, 0)
+    return found[0] if found else None
 
 
 def track_inserted_paragraph_into(
