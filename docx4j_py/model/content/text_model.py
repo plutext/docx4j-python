@@ -1286,7 +1286,6 @@ def refuse_tracked_equation(element: Any, operation: str) -> None:
     (:func:`~.tracking.mark_equation_deleted`), so nothing is refused here and
     no verb calls this. Kept so that a caller of the Phase A name keeps working.
     """
-    return None
 
 
 def block_list_of(value: Any) -> tuple[Any, str] | None:

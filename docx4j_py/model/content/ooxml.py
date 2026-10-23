@@ -487,7 +487,10 @@ def insert_ooxml_into_range(
     blocks before the first paragraph or after the last, and in place of the
     range refused (unmeasured).
     """
-    from docx4j_py.model.content.span_edits import assert_trackable, refuse_tracked_content
+    from docx4j_py.model.content.span_edits import (
+        assert_trackable,
+        refuse_tracked_content,
+    )
     from docx4j_py.wml import P
 
     paragraph = span.paragraph

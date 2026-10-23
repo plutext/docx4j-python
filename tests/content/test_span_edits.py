@@ -169,7 +169,7 @@ def test_a_held_mark_with_no_paragraph_after_it():
     count = len(body.paragraphs)
     word_in(package, "BODY8A").paragraphs[0].get_range("Whole").delete()
     assert len(body.paragraphs) == count - 1
-    assert [p.text for p in region(package, 8)][0] == "T8R1C1A T8R1C1B"
+    assert region(package, 8)[0].text == "T8R1C1A T8R1C1B"
     # a cell's last paragraph (case 10): emptied and kept
     word_in(package, "LIST10A").paragraphs[0].get_range("Whole").delete()
     assert [p.text for p in region(package, 10)] == ["BODY10A BODY10B", "", "T10R1C2A T10R1C2B"]

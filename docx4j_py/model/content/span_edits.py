@@ -212,7 +212,7 @@ def extent_of(span: Range, member: str, cross_controls: bool = False) -> Extent:
         b = down[j][1]
         extent = Extent(items, _index_of(items, a), _index_of(items, b))
 
-        def inside(k: int, block: Any) -> bool:
+        def inside(k: int, block: Any, a: Any = a, b: Any = b) -> bool:
             # a range starting or ending in a block control's own paragraph, the other end outside the control
             return cross_controls and k == 1 and a is not b and is_control(block)
 
@@ -964,7 +964,11 @@ def insert_paragraph_at(paragraph: Paragraph, offset: int, text: str) -> tuple[P
     and the first half's mark are inserted (cases 69 and 70). Returns the new
     paragraph, and the first half where `paragraph` was split.
     """
-    from docx4j_py.model.content.split import _properties_for_head, refuse_split, split_paragraph
+    from docx4j_py.model.content.split import (
+        _properties_for_head,
+        refuse_split,
+        split_paragraph,
+    )
     from docx4j_py.model.content.text_model import for_writer
     from docx4j_py.model.content.tracking import copy_r_pr
     from docx4j_py.wml import P

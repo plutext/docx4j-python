@@ -1141,13 +1141,14 @@ def equation_revision_in(equation: Any) -> str | None:
         if element_name(value) in REVISION_NAMES:
             found.append("a revision among its runs")
             return
-        if isinstance(value, math_module.CTCtrlPr) and not isinstance(value.r_pr_or_ins_or_del, (RPr, type(None))):
-            if element_name(value.r_pr_or_ins_or_del) in (W_INS, W_DEL) or type(value.r_pr_or_ins_or_del).__name__ in (
-                "Ins2",
-                "Del2",
-            ):
-                found.append("a structure's revision")
-                return
+        held = getattr(value, "r_pr_or_ins_or_del", None)
+        if (
+            isinstance(value, math_module.CTCtrlPr)
+            and not isinstance(held, (RPr, type(None)))
+            and (element_name(held) in (W_INS, W_DEL) or type(held).__name__ in ("Ins2", "Del2"))
+        ):
+            found.append("a structure's revision")
+            return
         for field in dataclasses.fields(value):
             visit(getattr(value, field.name, None), depth + 1)
 

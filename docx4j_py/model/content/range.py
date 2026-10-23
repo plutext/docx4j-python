@@ -53,7 +53,6 @@ from docx4j_py.model.content.font import Font, MixedFont
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.story import (
     StoryLayout,
-    first_and_last_paragraph,
     story_layout,
     story_of,
     top_index,
@@ -905,7 +904,10 @@ class Range:
             BindingError: ``"RepeatingSection"`` was asked for, which Word has
                 no run-level form of.
         """
-        from docx4j_py.model.customxml.insert import insert_content_control_in_range, wrap_paragraphs
+        from docx4j_py.model.customxml.insert import (
+            insert_content_control_in_range,
+            wrap_paragraphs,
+        )
 
         if self.spans_paragraphs:
             return wrap_paragraphs(self, kind)

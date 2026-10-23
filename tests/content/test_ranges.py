@@ -1,16 +1,18 @@
-"""Ranges across paragraphs, as Office JS's ``Word.Range`` is: CR-013 Phase B (the reads).
+"""Ranges across paragraphs, as Office JS's ``Word.Range`` is: CR-013 Phases B and C (the reads and the writes).
 
     .venv-fork/bin/python -m pytest tests/content/test_ranges.py
 
-The port of docx4j-core-ts's ``test/ranges.test.mjs`` at ``53db5bc`` (its
+The port of docx4j-core-ts's ``test/ranges.test.mjs`` at ``202a01d`` (its
 CR-014), test for test, its strings kept: the five of phase 0 (check 52's file
 and snippet agreeing, the ``TABLE_OOXML`` package, the two JSONs of this file,
 Word's saves, ``accept_all`` on Word's save after the run against Word's Accept
 All), the five of phase 1 (check 52's ``reads`` and ``report`` modes against
 Word's, the tracked changes a range lists, a range from ``expand_to`` and the
-views across paragraphs), the two of check 53, and the six of phase 2, the
-writes, marked skip until CR-013 Phase C. core-ts runs check 52's and 53's
-Script Lab snippets through its Office JS shim; this package has none, so
+views across paragraphs), the two of check 53, phase 2's writes (check 52's
+``run`` mode against Word's run, its Accept All and its markup) and phase 3's
+(check 54's, the same three ways, with its fixtures' manifest), as CR-013 Phase
+C ported them. core-ts runs checks 52's, 53's and 54's Script Lab snippets
+through its Office JS shim; this package has none, so
 ``tests/office_js/checks.py`` ports them onto the content API, with the same
 JSON shape and ``vis()`` (CR-013 sections 4.9 item 6 and 6.1).
 

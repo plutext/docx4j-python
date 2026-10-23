@@ -43,8 +43,8 @@ from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import link_parents
 from docx4j_py.model.content.errors import BindingError, ContentError
-from docx4j_py.traversal import element_name
 from docx4j_py.model.content.reports import recording
+from docx4j_py.traversal import element_name
 from docx4j_py.wml.sdt import next_sdt_id, sdt
 
 if TYPE_CHECKING:  # pragma: no cover

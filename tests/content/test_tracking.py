@@ -411,7 +411,7 @@ def test_text_typed_inside_another_authors_insertion_splits_it_the_new_insertion
 def test_a_tracked_insertion_between_a_tab_and_its_runs_text_stands_between_them():
     # found by Phase A2's landing audit (its probe between a tab and the text after it in one run, skipped as
     # pre-existing until CR-013 Phase C): the w:ins went after the whole run, the range returned before it
-    package, paragraph = tracked("x")
+    _package, paragraph = tracked("x")
     paragraph.element.content.clear()
     from docx4j_py.wml import wml
 
