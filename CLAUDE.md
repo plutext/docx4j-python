@@ -13,7 +13,7 @@ departure.
 
 The design lives in `docs/change-requests/`, indexed in its `README.md`. Each CR's
 implementation-notes sections record what was actually built, the numbers and every deliberate
-departure; read them before changing the area they cover. Status, 2026-10-21:
+departure; read them before changing the area they cover. Status, 2026-10-23:
 
 - **CR-001** (the object model): Phases A to C implemented; D (PML and SML) proposed.
 - **CR-002** (the engine): Phases A and B implemented. B (section 15) is `PropertyResolver` and
@@ -47,6 +47,14 @@ departure; read them before changing the area they cover. Status, 2026-10-21:
   root elements typed in a branch) and C (VML in the model, typed wherever it stands, with the
   `w:object` order fix) implemented and Word-checked 2026-10-22. Its fork changes (stages 11 and
   12) join CR-011's in needing a fork release.
+- **CR-013** (ranges across paragraphs, the port of docx4j-core-ts CR-014 on Office JS's
+  characters): complete, 2026-10-23. A, Office JS's characters (`\r` marks, U+000B breaks, Word's
+  own writers); B, a `Range` with two ends and the reads; C, the writes (`span_edits.py`,
+  core-ts's phases 2 and 3 and check 57); D, the records and CR-003 section 23.4's review point
+  (keep parity). Each phase that changed output is Word-checked. The Office JS subset is read from
+  core-ts's committed `HEAD` (246 members).
+- **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058) and **CR-015**
+  (Markdown output safety): proposed.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.

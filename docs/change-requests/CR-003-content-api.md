@@ -4987,3 +4987,48 @@ The user: **"for now let's aim to maintain parity with core-ts and see how that 
   - Revisit this decision if core-ts adds members that have no Python or agent use.
   - Revisit it, too, if keeping up holds up a release of this package.
   - The middle way of 23.2 stays the fallback.
+
+### 23.4 The review point, after CR-013 (2026-10-23)
+
+Section 23.3 asked for a record of what the port cost and what it gave Python and agent callers, once it landed. CR-013 is now complete: Phases A to C are implemented and Word-checked, and its Phase D is this record.
+
+**What it cost.**
+- **Scope.** CR-013 had four phases, plus Phase A's amendment (Word's own writers, its section 11). It also took in core-ts's phase 3 (its section 13) and core-ts's check 57 (section 13.7), each folded in when core-ts committed it. The estimate was 10½ to 11½ days, then 12½ to 13½ with phase 3. It was done on one calendar day, 2026-10-23: from the draft (`e87d15d`, 07:36) to Phase C done (`e6f6d31`, 20:22), in 51 commits naming CR-013. Opus agents built each phase, and each was verified by hand here.
+- **Code.** In `docx4j_py/`, 36 files changed, +7,778 and −623 lines. The new modules are `span_edits.py` (1,102 lines), `split.py` (614), `story.py` (288) and `math_text.py`. In the tests, 24 Python files changed (+5,675 lines), and `tests/office_js/` gained 25 fixture files: Word's files, Word's saves and Word's JSON.
+- **The suite.** It went from 5,262 passed with one failure (the stale subset) to 5,820 passed with none.
+- **Word checks.** The user ran three for this package: `python-cr013a` (its file 3 found a 0.1.0 defect, now CR-014's), `python-cr013a2` and `python-cr013c`. The oracles reuse ten Word runs the user made for core-ts (checks 48, 48b, 51, 52, 53, 54, 55, 55b, 56 and 57); no Script Lab run was needed for this package alone.
+- **The release.** 0.2.0 waited for the port, by the user's choice (23.3), for about a day.
+- **What callers of 0.1.0 see change in 0.2.0:**
+  - Office JS's characters: a paragraph mark is `\r`, a break U+000B, and hidden text is left out;
+  - `Comment.get_range()` is one range, and `get_ranges()` is the old list (D2);
+  - a tracked `Replace` writes the insertion first;
+  - a control's, the body's and a table's `get_range()` covers the whole of it;
+  - `insert_text` with `\n` makes paragraphs.
+  Each is in the CHANGELOG's 0.2.0 entry.
+
+**What it gave Python and agent callers.**
+- **A range between any two points, edited as one.** It can be deleted, replaced, made bold, split, commented on, wrapped in a content control, or read as OOXML, whether "from here to there" runs across headings, list items or a table. An agent's edits are usually spans of this kind, and python-docx has nothing like it.
+- **0.1.0 defects fixed.**
+  - A block control's `get_range().delete()` deleted its first paragraph only, and `Body.get_range()` was the first paragraph's range.
+  - `Body.get_range()` on an empty body wrote a paragraph.
+  - Text written into a hidden paragraph was hidden.
+  - A tracked insertion inside another author's insertion landed after it.
+  - A comment beside a tab started a character early, and `Range.font` there formatted the whole run.
+  - A tracked document's `get_xml` gave the other words as deletions.
+  - Office JS's characters, written back, failed at save.
+  - A bound block control was written as a file Word can't open. That one is found, not fixed: it is CR-014.
+- **Reads and offsets in Word's characters.** Text, search hits and offsets agree with what Word reports for the same document: every paragraph of checks 48, 48b and 51.
+- **Word's own rules, measured.** The writes follow what Word 365 did in checks 52, 54 and 57. Where Word refuses, this package refuses before anything changes, with a stable code and a hint, which suits a tool result.
+- **Findings carried across the three engines.**
+  - This package's review items B2 and B11 became core-ts's check 57. It changed core-ts (`906d5e3`), and docx4j fixed its Accept All of a deleted equation from it (`ebb21c990`).
+  - The port found core-ts's `deleteUntracked` removing the block after a range of one block, which core-ts confirmed.
+  - core-ts's own phase 3 fixes (the comment marker beside a tab, tracked `getOoxml`) were found here to be this package's defects too.
+  - docx4j's queued Accept All rules (its CR-043 section 17) close the sweep's 64 known differences when they land (the planned `python/accept-all-check54-rules`).
+- **What it didn't give.** The python-docx facade gained nothing: its `add_comment` still refuses runs in two paragraphs, as python-docx's own does.
+
+**Against the review's three triggers:**
+1. **Members with no Python or agent use: none.** Agents reading a document ask for `expand_to`, `is_empty`, `tables`, `content_controls`, `table_nesting_level` and `get_content_controls(types=)`, and `Table.get_range` makes a table something to delete or comment on.
+2. **Holding up a release: once, for about a day, by the user's choice.** That is not a reason to revisit on its own.
+3. **The cost** fell mostly on Word checks the user ran for core-ts, which this package reused. The port itself took about one agent session per phase.
+
+**Recommendation: keep parity** (23.3 stands). Review it again at the next large core-ts change request, or when a core-ts member arrives with no Python or agent use; the middle way of 23.2 stays the fallback.
