@@ -844,3 +844,157 @@ Check 55 (section 10.14) and check 55b measured what Word's writers do with Offi
 
 **The oracles** are check 55's and 55b's Word JSON at core-ts `a923aeb` and `1e61bb1`. The tests write out the expected values Word gave, citing the commit; the files themselves aren't copied here, since Q8's grant names only checks 48 to 53.
 
+### 11.1 Implementation notes (2026-10-23)
+
+Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j-core-ts's CR-002 section 61 (`80a933d`, decided there the same day, its D1), added to this phase's brief: inside a bound plain-text block control a `\n` or `\r` makes no paragraph. F2, F3 and G1 are not built. Every writer of section 10.4 follows Word's own writers where check 55 or 55b measured them, and each difference left is a recorded departure (below). No reader moved, so Phase A's readers' audit (10.7) was not re-run: `Paragraph.text`, `Body.text` and the rest read as they did, and every reader test passes unchanged.
+
+**Commits.**
+- `b27bdbc`: the writers, `model/content/split.py`, and the tests (`tests/content/test_word_writers.py`, new; `test_office_js_characters.py`, the cases that move).
+- The commit adding this section: this section, the CHANGELOG's 0.2.0 entry, `tests/README.md`'s map.
+
+#### 11.1.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| E3 | `text_model.drop_unwritable` | U+0002, U+0000 to U+0008, U+000F to U+001D, a lone surrogate, U+FFFE and U+FFFF taken out of the text, with no error. `check_writable` and `text.not_writable` are gone; `unwritable` stays, the finder |
+| E2 | `text_model.text_items`; `Paragraph.splice(breaks="line")` | `\r\n` one `w:br` before the map: every one-paragraph writer goes through `text_items`, and the tracked `Paragraph.text = ...` through the splice's `"line"` mode |
+| E1 | `Paragraph.splice`, `_splice_paragraphs`, `_splice_text` | `splice` drops (E3), then for a text holding `PARAGRAPH_BREAKS` (`\r\n`, `\r`, `\n`) checks, writes the text without them through `_splice_text` (the old splice body), and splits after each piece |
+| the split | `model/content/split.py` (new; `KEEP` covers `model/`) | the port of core-ts's `splitParagraph` at `1e61bb1`: `SPLITTABLE`, `refuse_cut`, `field_depths`, `_place`, `_climb`, `refuse_split`, `split_paragraph`. One walk, `_climb`, answers the check (dry) and makes the cut, so the two cannot disagree |
+| the landing | `Paragraph._landing`, `_after_deletion`, `_untracked_landing`, `_tracked_landing`, `refuse_paragraph_breaks`, `split.refuse_place` | where `_splice_text` and `_insert_tracked` will put the text, read before anything changes, rule for rule |
+| section 61 | `controls.bound_plain_text_control`; `splice` | a block control with a `w:dataBinding` (or `w15:`), a `w:text` element or no type element, not a container (`bindings.is_container`): a break a `w:br` where `is_multi_line` (a control of no type is), nothing where not |
+| a run-level control | `ContentControl.insert_text` | `\n` or `\r` refused, `range.splits_control` (core-ts's F4) |
+| the ranges | `Range.insert_text`, `paragraph.replace_matches`, `Paragraph.text_since` | a range follows its text across the split; `replace_text`'s earlier matches move to the first new paragraph; a report's `text_after` is the paragraphs `\r` apart |
+| E3 at every writer | `paragraph.py`, `range.py`, `body.py`, `table.py`, `comments.py`, `controls.py` | section 10.4's list exactly |
+| `to_api_script` | `api_script._text_literal` | a run's line break written as U+000B in an `insert_text` line (E1 would make a paragraph of `\n`); the leading run's `insert_paragraph` keeps `\n` (E2) |
+| tests | `tests/content/test_word_writers.py` (301, new); `test_office_js_characters.py` (127 to 115) | 11.1.5 |
+
+#### 11.1.2 E1 as built
+
+- **The text first, then the splits.** The text without its breaks goes through the splice, so its place and formatting are the splice's own: untracked into the first replaced character's `w:t`, or extending the one at the offset; tracked one `w:ins`, after the `w:del` of a replacement. Then the paragraph is split after each piece, the first split first. A split at the text's end, where the last piece is empty (`"x\n"`), keeps the places of no text after it (a bookmark end, a following field's begin) with what follows (`keep="tail"`); every other split puts them before the break (`keep="head"`, core-ts's rule).
+- **The split** (core-ts's `splitParagraph`, its check 52 cases 57 and 63):
+  - the text before the split becomes a new `w:p` in front, in a copy of the paragraph's properties less the mark's run properties, the section break and any `w:pPrChange`;
+  - its mark takes the formatting of the run before the split (`deep_copy_as` a `ParaRPr`, its `w:rPrChange` dropped);
+  - it gets a `w14:paraId` where the package assigns them, and the report records it, its address and the ordinals it moved;
+  - the original `w:p` keeps the rest, its mark, its section break and its `w14:paraId`, so a `Paragraph` view goes on viewing the last of the paragraphs;
+  - tracked, the new mark is marked inserted (`w:pPr/w:rPr/w:ins`), as Word marks the first half's (check 55 case 48). Reject All joins the halves back and Accept All keeps them, both tested over every splice writer.
+- **What is cut in two:** a `w:hyperlink`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `w:smartTag`, `w:customXml`, `w:dir` or `w:bdo`, the clone keeping the attributes. A revision's clone takes a new `w:id` from the package's tracker, or one made for the call with tracking off (`hyperlinks._id_source`, the precedent).
+- **What is refused,** before anything changes:
+  - a text whose place is inside a run-level content control: `SpanError` `range.splits_control`;
+  - inside a `w:fldSimple`, or between a `w:fldChar` begin and its end in the paragraph: `range.splits_field`;
+  - a break strictly inside an equation: `range.cuts_equation`, Phase A's;
+  - strictly inside text read from a kept `mc:AlternateContent`, or through a run that holds a kept branch and other text: `AddressError` `address.read_only`, CR-011 Phase F's rule.
+- **Why the place is predicted.** Where a text lands is the splice's decision, and a split's refusal must come before the text is written. `_landing` reads the place from the tree as it stands, following `_splice_text`'s target rule, its deletion, and `_insert_tracked`'s own-insertion and beside-the-revision rules. A text with breaks whose place is inside a control or a field is refused wherever its breaks fall, `"x\n"` at a control's end included, since the text is written into the control (core-ts's F4). A text of breaks alone is checked as a split at the place.
+- **The audit** (`out/cr013-a2-word-check/landing_audit.py`, its output beside it). `_landing`'s place against where `_splice_text` really put a one-character text:
+  - over 38,214 probes: every paragraph of `samples/`'s 13 `.docx`, `tests/office_js/`'s three and twelve synthetic paragraphs (run-level controls, a complex field, a field an earlier paragraph began ending in it, a `w:fldSimple`, a hyperlink, another author's and this author's insertions, a smart tag around a hyperlink, a `w:fldSimple` in a hyperlink);
+  - untracked and tracked, collapsed and over one and three characters, at every segment's start, end and middle;
+  - 37,918 agree on the holders above the text and on whether it is inside a field (hyperlinks 437 times, run-level controls 298, insertions 61, `w:fldSimple` 48, smart tags 25, inside a field 232);
+  - 289 are the splice's own refusals (a branch, an equation, deleted text), and 7 the quirk in 11.1.8;
+  - **0 disagree.**
+- **Fields** are found in the paragraph: a `w:fldChar` begin opens one and its end closes it, and an end with no begin before it closes a field an earlier paragraph began. A paragraph between a field's two ends holds no `w:fldChar`, so a split there is not refused. That makes a field span one more paragraph, which is well formed (Word's own table of contents does).
+- **The returned `Range`** is the text's part in the last paragraph (11.1.6 item 1). `Range.insert_text` keeps its promise to go on covering its text:
+  - `Replace` makes it that last part;
+  - `Before` and `Start` leave it after the text, in the last paragraph;
+  - `After` and `End` move it, offsets unchanged, to the first new paragraph, which now holds it.
+- **A bound plain-text block control** (core-ts section 61, D1): a `\n` or `\r` there is a `w:br` in a multi-line control or one of no type, and nothing in a single-line one, as Word wrote them in check 55b (its run-level control's). An unbound control and a bound `w:richText` one split as usual (tests: multi-line, single-line, no type, unbound, rich text; through the control and through its paragraph). The refusal of other block writes in such a control is CR-014 phase 1's, not this section's.
+- **A run-level control's `insert_text`** refuses `\n` and `\r` before anything changes, bound or not (core-ts's F4). Word, given one in a bound plain-text control, moved the control to block level, in a paragraph of its own (check 55b cases 3, 4 and 9); that is recorded, not followed.
+
+#### 11.1.3 E2 and E3 as built
+
+- **E2.** `text_items` reads `\r\n` as `\n` before the map. So `\r\n` is one `w:br` in every one-paragraph writer: `insert_paragraph` on the body, a paragraph, a range, a control and a list; `Paragraph.text = ...`, tracked and not; a cell's `value`; a table's values; `insert_table`'s and `add_rows`' values. `\r` alone stays a `w:cr`. The comment writers split `\r\n`, `\r` and `\n` into paragraphs as Phase A built them, `\r\n` one mark, as Word's (check 55 cases 32 and 45). The python-docx facade is unchanged: it turns `\r` into `\n` before the content API, so its `\r\n` is two `w:br`, python-docx 1.2.0's.
+- **E3.** `drop_unwritable` at the top of every writer of section 10.4's list. The text recorded in a `ChangeReport` and the offsets returned are the text written. `paragraph.text = paragraph.text` on a paragraph holding a note reference loses the reference (tested). The facade keeps python-docx 1.2.0's `ValueError` at its own writers, before the content API sees the text (tested). lxml's refusal at save stays the guard behind it. Not in the list, and unchanged: the Markdown importer and a control's `placeholder_text`.
+
+#### 11.1.4 The oracles: checks 55 and 55b
+
+Word's answers are written into `test_word_writers.py` as data, by case, from core-ts `a923aeb` (check 55: its reopened save's JSON for the paragraphs and their markup, its run's for the ranges `insertText` returned) and `1e61bb1` (check 55b). The files are not copied (Q8). Each case is compared on the region's paragraphs' text and on a shape of their markup: the text merged across runs, each element by name, `w:ins` bracketed, an inserted mark noted. Run boundaries, run properties, ids and dates don't count; Word's U+2011 in a Cambria Math run is its font fallback, and this package sets no font.
+
+| check 55 | cases | held | differing, by a recorded departure |
+|---|---|---|---|
+| `insertText` at the end | 1 to 14 | the paragraphs and the markup, all 14, the U+0002 and U+0001 cases as Word's save reads them | the range returned: 2 to 4, `y`, the last paragraph's part, where Word's is `x\ry`; 10 and 11, `xy`, where Word's session read `x\u0002y` and `x\u0001y` until its save |
+| `insertParagraph` after | 15 to 28 | 11 of 14 | 16 to 18 (E2): one paragraph with `\n` a `w:br`, `\r` a `w:cr` and `\r\n` one `w:br`, where Word writes the escapes as text; 24 and 25's text `xy` at once, Word's after its save |
+| `insertComment`, `comment.content` | 29 to 46 | all 18: the content, and the paragraph count, `\r`, `\n` and `\r\n` (one) a mark each | --- |
+| `insertText` at the end, tracked | 47 to 51 | the paragraphs and the markup, all 5, case 48's and 49's first mark inserted and two `w:ins`, as Word's; the listing one `Added` change each | the range of 48 and 49, `y`; the listing's text of 50 and 51, docx4j's characters (`x\ny`, `x‑y`), where Word's is `x\u000by` and `x\u001ey`: `TrackedChange.text` keeps docx4j's characters (section 4.1, CR-011 Q6) |
+| bound controls | 52 to 58 | not measured: Word found none (core-ts section 60.3) | --- |
+
+| check 55b (bound run-level plain-text controls, `insertText(..., 'Replace')`) | ours |
+|---|---|
+| 1 and 7, `A` | Word's: the control and the node `xAy` |
+| 2, U+000B, multi-line | the control Word's (`x`, `w:br`, `y`); the node `x\ny`, where Word writes `x\r\ny`: F1, decided, `\n` |
+| 3 and 4, `\n` and `\r`, multi-line; 9, `\n`, single-line | refused (`range.splits_control`, F4), nothing changed, where Word moved the control to block level |
+| 5, U+001E | the control Word's (`w:noBreakHyphen`); the node `x‑y` (docx4j's), where Word writes `x-y`: F2, proposed, not built |
+| 6, U+0002 | the control `xy` and the node `xy`: dropped at the write (E3), where Word's session read `x\u0002y` and Word put a space in the node (`x y`) |
+| 8, U+000B, single-line | a `w:br` kept, the node `x\ny`, where Word dropped it from the control and wrote `x\r\ny` to the node: F3, proposed, not built |
+| 10, a node's line feed | Word's: `line1`, a `w:br`, `line2` (`apply_bindings`, docx4j's `runsForValue`) |
+
+#### 11.1.5 The tests
+
+`tests/content/test_word_writers.py`, 301:
+- the oracles: check 55's 33 writer cases, 18 comment cases and one listing test; check 55b's six written cases, its three refusals and its node read;
+- **E1:** 54 over nine splice writers (`Paragraph.insert_text` at the start, the end and in place, `Range.insert_text` in place, before and after, both `replace_text`s, `Body.insert_text`) by `\n`, `\r` and `\r\n`, untracked and tracked. A centred Heading 1 is split, and both halves keep their properties; tracked, the new mark is inserted, and Reject All and Accept All of a strict reload are checked;
+- E1's others: the paragraph's identity and the report, breaks leading, trailing and in a row, a range following its text, `replace_text` at every match, the body's and a block control's `insert_text`; the hyperlink, another author's insertion and a smart tag cut, untracked and tracked; the six refusals, untracked and tracked, nothing changed; beside a control and a field the split made; every match checked first;
+- section 61: ten cases;
+- **E2:** six one-paragraph writers, untracked and tracked;
+- **E3:** 140 over 20 writers by seven characters, a note reference lost, the facade's refusal kept.
+
+Every file a test writes is read back with `LoadOptions(strict=True)` and its document part scanned for raw control characters.
+
+**Pre-existing tests that moved:**
+- `test_office_js_characters.py::test_each_writer_writes_each_character_as_the_element_it_reads_from`: its twelve `\r` and `\n` cases through `Range.insert_text`, `Paragraph.insert_text` Replace and `Body.replace_text` (untracked and tracked) are E1's now, and in the new file; its other 84 are unchanged.
+- `test_the_other_non_xml_characters_are_refused_before_anything_changes` became `test_the_other_non_xml_characters_are_dropped_as_word_drops_them`, its seven characters over the same writers.
+
+No other test changed.
+
+#### 11.1.6 Departures, with why
+
+1. **The range returned** by `insert_text` and `replace_text` across a break is the text's part in the last paragraph. Office JS's spans the paragraphs (Word reads `x\ry`), and core-ts's E1 returns one that does; a `Range` across paragraphs is Phase B's (section 4.2), so this one is collapsed to what one paragraph holds.
+2. **The `Paragraph` view keeps the last paragraph**: the `w:p` keeps the mark, the section break and the paraId, as core-ts's `splitParagraph` keeps them (after its check 52, cases 57 and 63). So after `p.insert_text("x\ny")`, `p.text` is `y`. Whether Office JS's paragraph object follows the first or the last is unmeasured.
+3. **A text landing in a run-level control or a field is refused wherever its breaks fall**, the edges included. That is core-ts's F4 for a control, read as "a break written into it", and its `splitParagraph`'s rule for a field. Word wasn't measured inside either.
+4. **A field is seen within the paragraph** (11.1.2).
+5. **E3 drops at once**, where Word's session reads U+0002 and U+0001 until its save; Word's saved file agrees with this package's.
+6. **The new mark's formatting is the run before the split's** (core-ts's rule from its check 52 case 63), so a break straight after link text gives a mark in the `Hyperlink` character style (the Word check's case 6). Word's answer for a link is unmeasured.
+7. **A new paragraph is not this session's insertion** to `ChangeTracker.inserted`: it holds the document's text, so a later property write on it records a `w:pPrChange`.
+8. **`to_api_script`** writes a line break inside a run as U+000B where it wrote `\n`; the script reads the same and makes the same `w:br`.
+
+The facade's writers and `TrackedChange.text` are the departures sections 10.4 and 4.1 already record.
+
+#### 11.1.7 The gates
+
+| gate | before | after |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 4,109 passed, 8 skipped, 1,280 deselected, 1 failed (1 min 48 s) | 4,398 passed, 8 skipped, 1,280 deselected, 1 failed (1 min 54 s) |
+| the full suite | 5,389 passed, 8 skipped, 1 failed (3 min 07 s) | 5,678 passed, 8 skipped, 1 failed (3 min 16 s) |
+| `test_word_writers.py`; `test_office_js_characters.py` | ---; 127 | 301; 115 |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text/test_conformance.py`; `tests/text` | 24; 1,188 | 24; 1,188 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `tests/revisions` | 68; 550 | 68; 550 |
+| the parity goldens (numbering, properties, fonts) | 277, `PINS` empty | 277, `PINS` empty |
+| `scripts/roundtrip.py` | --- | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings; exit 0 |
+| `codegen/generate.sh --check` | --- | byte identical; 297 `.py` under `docx4j_py/`, `split.py` the one more; no generated file changed |
+| acceptance (`compare_acceptance.py`) | copied first to `out/acceptance-before-cr013a2/`; canonically equal to a regeneration at `f9f7b5a` | 13 artefacts, 175 entries, 0 differing beyond the dates, against the copy and against the regeneration; against the regeneration, 167 entries the same bytes and 8 in the dates only |
+| the landing audit | --- | 38,214 probes, 0 disagreements (11.1.2) |
+| `ruff check` | 479 findings in the tree | 479, none in the files this changed |
+
+- **Before** is `c5b466f`'s code: the suites run at it in this checkout, and the subsets, the ratchet and acceptance in a scratch worktree at `f9f7b5a` (`c5b466f` and the user's CR-014 documents), the sibling checkouts linked beside it.
+- **The one failure, both times:** `tests/content/test_office_js_subset.py::test_the_script_would_write_what_is_committed`, which Phase B fixes.
+- **The suites' difference** is the new file's 301 less the 12 cases that moved.
+- **Acceptance did not move**: no artefact writes a `\n`, a `\r` or an excluded character through a splice writer.
+
+#### 11.1.8 The Word check (staged 2026-10-23; not yet run)
+
+In `~/vbShares/Office 2016/__tmp/python-cr013a2/`, built by `out/cr013-a2-word-check/build.py` at `b27bdbc`, each file read back with `LoadOptions(strict=True)`: nothing skipped, no raw control character. `README.txt` says what each case's markup holds, says "unmeasured" where Word's display isn't known, and tells the user to view file 2 in **All Markup**. Its SOURCEs sit beside their saves:
+- `cr013a2-SOURCE-writers.docx` (SHA-1 `34ff5cb3…`), and its saves `cr013a2-1-writers-untracked.docx` (`e228d18d…`) and `cr013a2-2-writers-tracked.docx` (`c94c2a5e…`, author `CR-013 check`). The eleven cases:
+  - `\n`, `\r` and `\r\n` at a paragraph's end;
+  - `\n` in place of a word, `replace_text` with `\r\n`;
+  - a break inside a hyperlink and inside another author's insertion;
+  - `insert_paragraph` and `Paragraph.text = ...` with `\r\n`;
+  - a text holding U+0002 and U+0001;
+  - a centred Heading 1 split.
+- `cr013a2-SOURCE-bound-controls.docx` (`c4a3b720…`) and `cr013a2-3-bound-controls.docx` (`99499b6b…`): four block-level controls, given `insert_text("x\ny")` and written back. Multi-line, single-line and no-type controls are bound and hold one paragraph each; an unbound control of no type holds two.
+
+The main question is whether each opens without a repair prompt.
+
+#### 11.1.9 Found, and not done
+
+- **A tracked insertion strictly inside another author's insertion goes after it**, and the range returned is wrong. Measured at `f9f7b5a` and after: `a INSERTEDZ b` with the range 6:7 reading `R`. `_insert_tracked` puts the `w:ins` beside the revision element, not between the halves. The landing mirrors it, and the audit's seven skipped probes are it. Pre-existing; not this section's.
+- **E1 can give some bound block controls a second paragraph:** one with `w:richText`, which holds blocks, and a bound block-level date, drop-down list or combo box. Section 61's D1 covers plain text only, and what Word makes of the rest is unmeasured. Any other block write into a bound plain-text control (`insert_paragraph`, `insert_table`, `insert_xml`) still adds a second paragraph, section 10.10's defect: CR-014 phase 1's.
+- **Not built:** F2 (a non-breaking hyphen to a node as `-`), F3 (a line break dropped from a single-line control), G1 (`get_content_controls(types=...)`); they wait on the user.
+- **Phase B's:** a `Range` across paragraphs, which item 1 of 11.1.6 waits for.

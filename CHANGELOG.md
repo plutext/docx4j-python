@@ -241,13 +241,40 @@ save. It needs docx4j-xsdata 26.2.2.
   - **The writers** (`Paragraph.text = ...`, `insert_text`, `replace_text`, `insert_paragraph`,
     `Body.insert_text`, `TableCell.value = ...`, `values`, `insert_table` and `add_rows` values,
     `insert_comment`, `Comment.content = ...`, `reply`, a content control's `insert_text` and
-    `insert_paragraph`) write U+000B and `\n` as a `w:br`, U+000C and U+000E as a page and a
-    column break, U+000D as a `w:cr`, U+001E and U+001F as the hyphens and `\t` as a `w:tab`, so a
-    text read and written back reads as it did. 0.1.0's `Paragraph.text = ...`, `insert_text` and
-    `replace_text` wrote `\t` and `\n` raw into the `w:t` (the paragraph, cell, table and comment
-    writers mapped them), and the six that are not XML characters failed only at the save. **U+0002 and the other characters XML 1.0 excludes are refused**, before
-    anything changes, with `ContentError` `text.not_writable`. In a comment both `\r` and `\n`
-    are paragraph marks, where 0.1.0 split on `\n` and saved a `\r` as `&#13;`.
+    `insert_paragraph`) follow Word's own writers, as docx4j-core-ts's Word checks 55 and 55b
+    measured them (CR-013 section
+    [11](docs/change-requests/CR-013-ranges-across-paragraphs.md#11-phase-as-amendment-words-own-writers-decided-2026-10-23),
+    decided 2026-10-23). U+000B is a `w:br`, U+000C and U+000E a page and a column break, U+001E
+    and U+001F the hyphens and `\t` a `w:tab`, so a text read and written back reads as it did.
+    0.1.0's `Paragraph.text = ...`, `insert_text` and `replace_text` wrote `\t` and `\n` raw into
+    the `w:t` (the paragraph, cell, table and comment writers mapped them), and the six that are
+    not XML characters failed only at the save.
+    - **`insert_text` and `replace_text` make a new paragraph of each `\n` and each `\r`, `\r\n`
+      one**, as Word's `insertText` does: on a paragraph, a range, the body, a cell and a block
+      content control. Both paragraphs keep the paragraph's properties; the new one goes in front
+      with a mark of its own, and the `w:p` keeps the last piece, its mark, its section break and
+      its `w14:paraId`, so a `Paragraph` view goes on reading the last of them. The returned `Range`
+      is the text's part in the last paragraph (Office JS's spans them; a range across paragraphs
+      is CR-013 Phase B's). With change tracking on, the new mark is marked inserted. A hyperlink,
+      a tracked change or a smart tag the break falls in is cut in two; a text that would go into a
+      run-level content control or a field, or a break inside an equation or text read from a kept
+      `mc:AlternateContent`, is refused before anything changes (`SpanError`
+      `range.splits_control`, `range.splits_field`, `range.cuts_equation`; `address.read_only`).
+      Inside a bound plain-text block control (`w:text`, or no type) a break is a `w:br`, and
+      nothing in a single-line one, since Word can't open such a control holding two paragraphs
+      (docx4j-core-ts CR-002 section 61). 0.1.0 wrote `\n` and `\r` raw into the `w:t`.
+    - **`insert_paragraph` and `Paragraph.text = ...` write one paragraph**: `\n` and `\r\n` a
+      `w:br`, `\r` a `w:cr`; so do a cell's `value`, a table's values and a comment's paragraphs.
+      Word's `insertParagraph` writes the escapes as text instead, which this does not follow.
+    - **U+0002 and the other characters XML 1.0 excludes are dropped**, with no error, as Word
+      drops them; lxml's refusal at save stays behind that. So `paragraph.text = paragraph.text`
+      on a paragraph holding a note reference loses the reference.
+    - **In a comment** `\r`, `\n` and `\r\n` (one) are paragraph marks, where 0.1.0 split on `\n`
+      and saved a `\r` as `&#13;`.
+    - **New**: `Paragraph.refuse_paragraph_breaks` and `Paragraph.text_since`,
+      `controls.bound_plain_text_control`, `text_model.drop_unwritable` and `PARAGRAPH_BREAKS`,
+      and `model/content/split.py`'s `split_paragraph` (core-ts's `splitParagraph`).
+      `to_api_script` writes a run's line break as U+000B in an `insert_text` line.
   - **Equations in an edit**: an edit takes an equation whole, untracked, and never part of it
     (`SpanError` `range.cuts_equation`); with change tracking on, a deletion that would take one ---
     `Paragraph.delete()`, `Body.clear()`, a row's or a table's deletion, a replacement --- is
