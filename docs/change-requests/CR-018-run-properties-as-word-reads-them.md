@@ -262,6 +262,26 @@ Its decisions, as accepted:
 - **D5**: the full 140-name table.
 - **D6**: underline styles and emphasis marks in rendering go to a CR of their own.
 
+### 3.1a docx4j CR-060 as implemented (2026-10-24, `87e6ace56`, `893658f68`, `868a1797b`)
+
+docx4j's session handed it off the same day. The commits are on `VERSION_17_3_5`, unpushed, and checked in `../docx4j`. docx4j is this package's behavioural oracle, so its built answers are the ones to port against. Where this CR departs from them, section 4.10 says why.
+
+- **The fixtures and the oracle.** `docx4j-core-tests/src/test/resources/runprops/word365/` holds the 20 probes, Word's 20 saves and a README (41 files at `868a1797b`). `RunPropertiesWord365Test` takes Word's save as the oracle: each marker's reading in the probe must equal its reading in Word's save, through the resolver, the text model, HTML's direct styling, PDF's effective styling and a round trip. The readings are compared as what is drawn: the font size and language from Word's docDefaults are left out, off counts as absent, and colours are upper-case hex. This package's measurements (section 2.5) use the same method.
+  - The fixtures are in docx4j's Apache-2.0 tree, as `samples/` are. Q11 can therefore copy them from docx4j at `868a1797b`, byte for byte with their SHA-1s, rather than from the share. The user's confirmation is then needed only for the round-five probes, if any.
+- **On/off:** off for exactly `false`, `off` or `0`, else on, applied to 46 of docx4j's 48 on/off attributes. The two left out, `checkStyle` (`w:activeWritingStyle`) and `actualPg` (`w:readModeInkLockDown`), are required, so XJC makes them primitive booleans that an adapter can't bind; only Word reads either. Here `AllOptional` makes every attribute `None | T`, so no exclusion is needed. docx4j writes `true`/`false` (its D2; this CR's Q5 keeps the source spelling).
+- **Colour:**
+  - Trim, then six hex digits in any case with an optional `#`, written upper-case. Else one of the 140 classic HTML names, case-insensitive (docx4j-core `org/docx4j/model/color/ColorTables.java` `HTML`, the table this CR's 140-name list must equal). Else automatic.
+  - It applies to `w:color` and `w:u/@w:color` only. `w:shd` and border colours are untouched, since names there are unmeasured.
+  - An invalid direct `w:color` over a style's colour keeps the direct value, automatic. That is unmeasured, and the same as this CR's Q8.
+- **Highlight:** case-exact `ST_HighlightColor` (16 values and `none`). Anything else is absent, in the resolver too, so a style's highlight beneath shows. This is the same as this CR's (b).
+- **`w:u` with no value** (bare, colour only, or invalid): no underline is drawn.
+- **On save (docx4j's D3):**
+  - A `highlight`, `vertAlign` or `em` with a missing or invalid value is left out, on `w:rPr` and on `w:pPr`'s `w:rPr` only.
+  - A revision's former properties (`w:rPrChange/w:rPr`, `CT_ParaRPrOriginal`) are written as they are.
+  - `w:u` is written bare, as before. An invalid `w:u` over a style is unmeasured (core-ts's D5).
+  - This CR's Q6 keeps them on save.
+- **docx4j's inspector** (`InspectXml.on`) ignored case; it now uses the same rule.
+
 ### 3.2 docx4j-core-ts CR-015 (proposed, uncommitted)
 
 Known here only from its registry entry. jsonix fails the whole part on an on/off value outside `true`/`false`/`1`/`0`/`on`/`off`, or on an enumeration value outside its enumeration. Its D1 puts the leniency in the parse (jsonix and the generated objects), so it depends on a jsonix change. Its D2 keeps each invalid value's spelling until round five is measured, then drops those it shows to be as if absent. It plans an Office JS check 60 and a fifth probe round of invalid values over styles, and copies the probes into `test/onoff-fun/`.
