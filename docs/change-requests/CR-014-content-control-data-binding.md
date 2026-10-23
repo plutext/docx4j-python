@@ -116,14 +116,13 @@ docx4j's session sent this on 2026-10-23: docx4j CR-058 phase 1, `d8d8bfb71` on 
 | `w:dateFormat` is Word's date picture language, a DATE field's `\@` syntax; docx4j now formats with `FormattingSwitchHelper.formatDate(wordFormat, date, lang)` | its own .NET-token formatter, separate from the field code's converter (`model/fields/formatting.py`) |
 | `ddd` the weekday ("Thu"), `dddd`, `MMM`, `MMMM` | the same, in English |
 | `am/pm` and `AM/PM` both upper-case "AM"/"PM" | **wrong**: `h:mm am/pm` gives `2:05 a5/p5`, `AM/PM` gives `A10/P10`; only .NET's `tt` gives "PM" |
-| `h` runs 1 to 12 | right in `format_date`. **Wrong in the field code's converter**, which maps `h` to Java's `K` (0 to 11), the defect docx4j fixed in the same commit (its finding 2), so a DATE field at noon reads "0:05" |
+| `h` runs 1 to 12: **Word's documentation, not Word's run**. The probe's noon value (`12:05Z`) showed as 11:05 PM at UTC+11, where `h` and `K` agree; docx4j CR-058 sections 1 and 8 say so, and docx4j's next probe takes a 12:xx local value | right in `format_date`. **The field code's converter maps `h` to Java's `K`** (0 to 11), which docx4j changed in the same commit (its finding 2). Probed: a DATE field's `h:mm am/pm` reads "0:05 PM" at noon and "0:05 AM" at midnight |
 | names in the `w:lid` language ("22 Oktober 2026", "Okt. 2026" for de-DE) | English names only; `w:lid` ignored (CR-003 section 17) |
 | no `w:lid`: Word's editing language, not the run's `w:lang`; docx4j takes the document default (`w:docDefaults/w:rPrDefault/w:rPr/w:lang/@w:val`), else the platform's | `"en-US"`, unused |
 | a stored value that is not a date (`not-a-date`, `2026-13-45`) is shown as stored, plain | the same (`date_of` gives None, the text as stored) |
 | an empty value shows the placeholder (`w:showingPlcHdr`) | the same (docx4j's rule, CR-003 Phase E) |
 | a stored dateTime's `Z` is UTC, shown in local time; docx4j keeps the nominal fields by default, and its `dateTimeZone` property converts | nominal (`Z` stripped), docx4j's default; no zone option |
 | a date-only value is not shifted | not shifted |
-| unmeasured: `h` at 12 local (Word's documentation says 1 to 12) | --- |
 
 docx4j CR-058's second item (a `w:storeItemID` that names no part, which Word repairs) wasn't handed off with phase 1, and isn't looked at here.
 
@@ -210,7 +209,7 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
 
 10. **Q10. A bound date as Word formats it (2.9)?** *Recommended: take docx4j CR-058 phase 1 as phase 1b, with phase 1.*
     - The binder formats through `model/fields/formatting.py`'s converter, one date picture language for a control and a DATE field, as docx4j now has it.
-    - `h` maps to 1 to 12 (Java's `h`, not `K`) and the AM/PM names upper-case. This moves a DATE field's text only at hours 0 and 12, and CR-011's ratchet and goldens show whether any fixture holds one.
+    - `h` maps to 1 to 12 (Java's `h`, not `K`), on Word's documentation until docx4j's next probe measures a 12:xx local value, and the AM/PM names upper-case. This moves a DATE field's text only at hours 0 and 12, and CR-011's ratchet and goldens show whether any fixture holds one.
     - The language is `w:lid`, else the document default's. The month and day names need a locale source: either CLDR data, through a new dependency such as `babel`, or a committed table generated from it, as `resources/fonts/` is from docx4j. *Recommended: a committed table* for the languages docx4j's tests and Word's measurements name, with English where a language is missing and the result's entry saying so. That keeps the package free of a dependency.
     - No `dateTimeZone` option, unless a caller asks for one: the nominal default is docx4j's.
 
