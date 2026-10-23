@@ -108,6 +108,15 @@
         "implemented": true
       },
       {
+        "office_js": "getContentControls",
+        "name": "get_content_controls",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
         "office_js": "inlinePictures",
         "name": "inline_pictures",
         "kind": "property",
@@ -143,6 +152,16 @@
         "extension": false,
         "implemented": true,
         "note": "CR-002 phase H"
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false,
+        "implemented": true,
+        "note": "CR-014 phase 1"
       }
     ],
     "CheckboxContentControl": [
@@ -228,6 +247,16 @@
         "phase": "G",
         "extension": false,
         "implemented": true
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "G",
+        "extension": false,
+        "implemented": true,
+        "note": "One range, across paragraphs where the comment spans them (CR-014 phase 1, D2); undefined with no markers here."
       }
     ],
     "ContentControl": [
@@ -299,6 +328,15 @@
         "name": "content_controls",
         "kind": "property",
         "readonly": true,
+        "phase": "C",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "getContentControls",
+        "name": "get_content_controls",
+        "kind": "method",
+        "readonly": false,
         "phase": "C",
         "extension": false,
         "implemented": true
@@ -510,6 +548,17 @@
         "kind": "method",
         "readonly": false,
         "phase": "E",
+        "extension": false,
+        "implemented": true
+      }
+    ],
+    "ContentControlOptions": [
+      {
+        "office_js": "types",
+        "name": "types",
+        "kind": "property",
+        "readonly": false,
+        "phase": "C",
         "extension": false,
         "implemented": true
       }
@@ -1514,6 +1563,24 @@
         "implemented": true
       },
       {
+        "office_js": "getContentControls",
+        "name": "get_content_controls",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "tableNestingLevel",
+        "name": "table_nesting_level",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
         "office_js": "isListItem",
         "name": "is_list_item",
         "kind": "property",
@@ -1675,15 +1742,6 @@
         "implemented": true
       },
       {
-        "office_js": "getRange",
-        "name": "get_range",
-        "kind": "method",
-        "readonly": false,
-        "phase": "B",
-        "extension": false,
-        "implemented": true
-      },
-      {
         "office_js": "getComments",
         "name": "get_comments",
         "kind": "method",
@@ -1707,6 +1765,79 @@
         "kind": "method",
         "readonly": false,
         "phase": "F",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "paragraphs",
+        "name": "paragraphs",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false,
+        "implemented": true,
+        "note": "CR-014 phase 1: a range across paragraphs, read"
+      },
+      {
+        "office_js": "isEmpty",
+        "name": "is_empty",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "styleBuiltIn",
+        "name": "style_built_in",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "tables",
+        "name": "tables",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "contentControls",
+        "name": "content_controls",
+        "kind": "property",
+        "readonly": true,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "getContentControls",
+        "name": "get_content_controls",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
+        "extension": false,
+        "implemented": true
+      },
+      {
+        "office_js": "expandTo",
+        "name": "expand_to",
+        "kind": "method",
+        "readonly": false,
+        "phase": "B",
         "extension": false,
         "implemented": true
       }
@@ -1859,6 +1990,16 @@
         "phase": "C",
         "extension": false,
         "implemented": true
+      },
+      {
+        "office_js": "getRange",
+        "name": "get_range",
+        "kind": "method",
+        "readonly": false,
+        "phase": "C",
+        "extension": false,
+        "implemented": true,
+        "note": "CR-014 phase 1"
       }
     ],
     "TableCell": [

@@ -162,7 +162,8 @@ def test_every_implemented_member_is_there_with_the_right_kind(subset):
     for interface, members in subset["interfaces"].items():
         cls = CLASSES.get(interface)
         for member in members:
-            if member["extension"] or interface == "SearchOptions":
+            # an options object's fields are keyword arguments here (below)
+            if member["extension"] or interface in ("SearchOptions", "ContentControlOptions"):
                 continue
             if not member.get("implemented", True):
                 omitted.append(f"{interface}.{member['name']}: {member['reason']}")
@@ -234,6 +235,21 @@ def test_the_search_options_are_the_keyword_arguments(subset):
     signature = inspect.signature(search_pattern)
     for name in names:
         assert signature.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_the_content_control_options_are_a_keyword_argument(subset):
+    """Office JS's ``ContentControlOptions`` (``getContentControls``, WordApi 1.5) is ``types=`` here.
+
+    CR-013 section 11, G1: core-ts's subset declares ``getContentControls`` on
+    the body, a paragraph, a range and a control, with its options object;
+    here, as for ``SearchOptions``, the object's one field is a keyword-only
+    argument.
+    """
+    names = [member["name"] for member in subset["interfaces"]["ContentControlOptions"]]
+    assert names == ["types"]
+    for cls in (Body, Paragraph, Range, ContentControl):
+        signature = inspect.signature(cls.get_content_controls)
+        assert signature.parameters["types"].kind is inspect.Parameter.KEYWORD_ONLY, cls.__name__
 
 
 def test_the_classes_offer_nothing_under_an_office_js_name_they_should_not(subset):

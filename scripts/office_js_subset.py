@@ -19,6 +19,14 @@ commit e2ca8dc) and the block was deleted; everything is derived again.
     scripts/office_js_subset.py --check         # fail if it would change
     scripts/office_js_subset.py --source PATH   # a checkout somewhere else
 
+**Which version of the file** (CR-013 Q9, decided 2026-10-23): the one
+docx4j-core-ts has *committed*, ``git show HEAD:test/office-js-subset.ts`` in
+the checkout holding the file, so that the derivation follows core-ts's commits
+and not the edits in its working tree; the working tree's file only where the
+source is not in a git repository (or git is not there). It is not a pin:
+whatever core-ts commits next is what the next derivation reads (CR-003 section
+23.3).
+
 When the sibling checkout is absent the script says so and changes nothing: the
 JSON is committed, so the test runs anywhere.
 
@@ -40,6 +48,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -77,6 +86,8 @@ OMITTED: dict[str, str] = {
 #: The CR-003 phase that owns each interface, where every member is one phase's.
 PHASE_BY_INTERFACE: dict[str, str] = {
     "SearchOptions": "B",
+    # getContentControls' options (WordApi 1.5; CR-013 section 11, G1): keyword arguments here
+    "ContentControlOptions": "C",
     "Font": "B",
     "Range": "B",
     "Paragraph": "B",
@@ -271,11 +282,36 @@ def parse(text: str) -> dict[str, list[dict[str, Any]]]:
     return out
 
 
-def build(source: Path) -> dict[str, Any]:
-    """The whole JSON document, from the TypeScript declaration.
+def committed_text(source: Path) -> str | None:
+    """The source file as its git repository's ``HEAD`` commits it, or None where git can't say (CR-013 Q9)."""
+    try:
+        top = subprocess.run(
+            ["git", "-C", str(source.parent), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        relative = source.resolve().relative_to(Path(top).resolve()).as_posix()
+        return subprocess.run(
+            ["git", "-C", top, "show", f"HEAD:{relative}"],
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8",
+        ).stdout
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return None
 
-    """
-    interfaces = parse(source.read_text(encoding="utf-8"))
+
+def source_text(source: Path) -> str:
+    """What the derivation reads: core-ts's committed file, else the file as it stands (CR-013 Q9)."""
+    committed = committed_text(source)
+    return committed if committed is not None else source.read_text(encoding="utf-8")
+
+
+def build(source: Path) -> dict[str, Any]:
+    """The whole JSON document, from the TypeScript declaration as core-ts commits it (:func:`source_text`)."""
+    interfaces = parse(source_text(source))
     return {
         "_": (
             "The Office JS members docx4j-python promises, derived from "
