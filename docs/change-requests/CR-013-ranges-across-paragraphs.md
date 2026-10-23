@@ -1113,3 +1113,126 @@ The user ran the restaged `__tmp/python-cr013a2/` (built at `1ca981b`) in Word 3
 - **Case 14, a deleted picture (tracked, All Markup):** drawn with a line through it, inside the deletion with `14A` and `14B`, and `14X` inserted after.
 - **Control D, a bound `w:richText` block control written `NoteDxy`:** Word shows `NoteD`, its node's text. On open Word refreshes a bound control from its node, and this package's write-back skips a control marked `w:richText` (CR-003 section 4), so the `xy` written into the control is lost in Word. The README predicted it. It is not section 11's: core-ts binds such a control as text in both directions (its H4), and CR-014's Q9 takes that here.
 - **Passed 2026-10-23** (the user: "all five files open without a repair prompt"). With run 1's files 1 and 2 (section 10.10), every Word check of Phase A has passed. File 3 of run 1 is CR-014's. **Phase A is done.**
+
+## 12. Phase B implementation notes (2026-10-23)
+
+Sections 4.2 and 4.3 as built, at the user's go ("start phase b"): a `Range` with two ends and the reads across paragraphs, the port of docx4j-core-ts CR-014 phase 1 (`ef57729`; `Range.mts`, `story.mts`, `Font.mts`'s `MixedFont`, the views' `getRange`, read again at core-ts's committed `HEAD`, `f544b8f`, where sections 60 and 61 changed nothing a read takes). Every write across paragraphs is refused until Phase C. Held to Word 365 by core-ts's checks 52 and 53, their Script Lab snippets ported onto the content API (`tests/office_js/checks.py`), on the files Word read and Word's saves.
+
+**Commits.**
+- `fdda7c5`: the fixtures (Q8) in `tests/office_js/`, `SHA1SUMS` and `tests/README.md`'s provenance rows.
+- `89047b7`: the `Range` with two ends, the story, the members and views of section 4.3, Comment's D2, every write across paragraphs refused, and the pre-existing tests that move (12.9).
+- `ced7b75`: the subset read from core-ts's committed `HEAD` (Q9) and re-derived.
+- `c9ee610`: the oracles, `tests/office_js/checks.py` and `tests/content/test_ranges.py`.
+- The commit adding this section: this section, the CHANGELOG's 0.2.0 bullets, `tests/README.md`'s map.
+
+### 12.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| two ends | `range.py` | `Range(paragraph, start, end, *, end_paragraph=, mark=, end_mark=, whole=)`; `end_paragraph` (`paragraph` within one), `spans_paragraphs`, `holds_end_mark`, `whole`, `end_mark`; a range across paragraphs is checked at construction (`range.other_story`, `range.order`); `==`, `hash`, `len`, `repr` (`<Range 7:body/17:6 'HEAD3B\rBODY3A'>`) and `to_dict()` (`end_address` and `mark` across paragraphs only) |
+| the story | `story.py` | `story_of` (core-ts's `storyOf`, climbing the block containers only, so a text box's content is its own story and a run's list never is); `top_index`; `story_layout(items, text_of, start=, stop=)`, a layout of the top-level blocks between a range's ends, which is the story's slice shifted (each top-level block's text is its own); `StoryLayout.index_of`; `first_and_last_paragraph` |
+| the reads | `range.py` | `text`, `paragraphs`, `is_empty`, `runs`, `style`, `style_id`, `style_built_in` (check 53's rule, within one paragraph too), `font` and `get_font(direct=)` (`MixedFont` across), `search` and `find` a paragraph at a time, `get_tracked_changes()`, `get_comments()`, `get_range` with `"After"`, `expand_to`, `tables`, `content_controls`, `get_content_controls` (now `content_controls` filtered), `parent_table_cell`, `parent_table`, `hyperlink`'s read |
+| `MixedFont` | `font.py` | core-ts's: each run read in its own paragraph, effective or direct; a property where the runs differ `None`, `""` for the name, the colour and the highlight, `"Mixed"` for the underline; getters typed `bool \| None` and `float \| None` (Q4); every setter refuses |
+| the views | `paragraph.py`, `body.py`, `table.py`, `controls.py`, `comments.py`, `tracked_change.py` | `Paragraph.table_nesting_level`; `Paragraph.get_range` `whole` (and `"After"`); `Body.get_range` from the first paragraph to the last, `body.no_paragraph` on an empty body (Q7), `location.invalid` for another location; `Table.get_range` (`"Whole"` ending `\r\n`, `"Start"`, `"End"`, `"After"`); a block, row or cell control's `get_range` one range (`"Whole"` `\t\t` for a row control or one ending with a table), a row control's `text` without the row end; `Comment.get_range()` one `Range` or None, `get_ranges()` the old list (D2); `TrackedChange.get_range` across a group's paragraphs |
+| the refusals | `range.py`, `hyperlinks.py`, `ooxml.py`, `comments.py`, `customxml/insert.py`, `api_script.py` | `Range.require_one_paragraph` (`range.spans_paragraphs`, naming Phase C) before every write and in every consumer (12.6); `_extent_of` and `_assert_trackable`, core-ts's `extentOf` and `assertTrackable` (`53db5bc`) read only, before a deletion or replacement: `range.partial_table`, `range.partial_control`, `range.not_trackable` |
+| the split writers | `paragraph.py` (`_splice_paragraphs`), `range.py` | the range returned spans the paragraphs the text made, and a `Replace` range covers them (section 11.1.6 item 1 withdrawn) |
+| the enums | `enums.py` | `RangeLocation` gains `"After"`; `TableRangeLocation`, `BodyRangeLocation`; `RangeLocationName`, the `StrEnum` for all three |
+| `form` | `controls.py` | a content control's level is read past the markers its content opens with (12.7 item 2) |
+| the subset | `scripts/office_js_subset.py`, `tests/office_js_subset.json` | read from `git show HEAD:test/office-js-subset.ts` (Q9); 246 members (12.5) |
+| the oracles | `tests/office_js/checks.py`, `tests/content/test_ranges.py` | 12.3 |
+
+### 12.2 The fixtures (Q8)
+
+Copied byte for byte on 2026-10-23, each SHA-1 checked against section 6.1's table: `52-ranges.docx` (`e014014dec6295b6abcd638f83f19e9b60e28997`) and `53-reads.docx` (`aea48f83fd318b4260a73ac6ad9a99cd7a8f77f8`) from the share; Word's saves `52-ranges-word365.docx` (`15f505306f8faf95f6946b47789849ccbf34603b`) and `-accepted.docx` (`3d2a37367822fc323c0905e30b0931c6a3a4f58d`) by `git show 8fdccf8:test/check52/...`, each its git blob, the share's copies the same bytes (`cmp`); Word's JSON `52-ranges-word365-run.json` and `-accepted.json` (`8fdccf8`), `53-reads-word365-simple.json` and `-all.json` (`ef57729`), each its git blob. The share's snippets are the commits' (`check52-script-lab.js` `8fdccf8`'s, `check53-script-lab.js` `ef57729`'s; `cmp`). `SHA1SUMS` holds 15 files; `test_office_js_characters.py`'s manifest test checks all 15.
+
+### 12.3 The oracles: checks 52 and 53
+
+`tests/office_js/checks.py` is `CHECK52.runCheck`'s `reads` and `report` modes and `CHECK53.runCheck` (`ef57729`), step for step: `parse_region`, `find` (`search` with `match_case` and `match_whole_word`, the first hit), `rangeOf` and `regionOf` with `expand_to`, each read alone through `attempt`, the same JSON keys and `vis()` (a surrogate pair as two). A member this package doesn't offer is `error: NotImplemented: ...`, as core-ts's shim reports one (`Range.footnotes`, `Paragraph.get_text_ranges`, `Body.footnotes`, `ContentControl.showing_placeholder_text`). Check 52's `run` mode, the writes, is Phase C's.
+
+| oracle | held | as it stands, with why |
+|---|---|---|
+| check 52 `reads` on its file, against the run's `reads` | all 16 kinds; 3 (CELL, TC1, TC3) in every read, the other 13 but for the two at right | `marks`: `^p`, core-ts's phase 3 (Q10), `[]` here in the 12 kinds where Word found marks; TC2's `Other` after a nested table (Q6) |
+| check 52 `report` on Word's save after Accept All, against Word's report | 95 regions; 82 in every field compared | `Range.footnotes` not implemented (all 95); `get_text_ranges` not implemented (the 8 bold cases, 49 to 56); a paragraph's `font` its first run's (CR-002); `Other` after a nested table (89, 91, 94; Q6); the placeholder's five spaces (13, 26; core-ts CR-014 section 9.4); `Alignment` `"Unknown"` for Word's `"Left"` where no `w:jc` says otherwise, 333 of 423 paragraphs (CR-002 section 15's departure) |
+| the tracked changes a region's range lists, on Word's save after the run | 19 regions Word's, case 1's deletion and insertion across a mark among them | the eight tracked `Replace`s list the deletion too (CR-010's listing); 54 and 55, formatting across a table's cells five changes, Word's one; 87, the mark alone, Word's the table and the mark |
+| `accept_all` on Word's save after the run, against Word's Accept All | 94 of 95 regions; the joins (16, 17, 18, 19, 21) in the last paragraph's properties | 26, Word's five-space filler in an emptied control; `Alignment` `"Unknown"` where core-ts's strings say `'Left'` (17 and 19) |
+| check 53 against Word's Simple Markup run | 35 cases; 24 in every read (the colour compared in case 1 only, `""` as Word's) | exactly core-ts's eleven: 8 and 31, a paragraph's font (CR-002; core-ts CR-002 section 59); 10 and 12, `Other` (Q6); 25, 28 and 30, the Simple Markup readers and the listing (a change's text docx4j's, All Markup's: the three asserted equal to the All Markup run); 32, `Body.footnotes` not implemented; 33, `Body.text` in Simple Markup; 34 and 35, a control showing its placeholder |
+| check 48's `spans` (section 6.1: "they join in Phase B") | 18 of 19 | `REVA..REVB`: check 48 ran in All Markup, its deleted text in Word's span and not in Word's default view (Phase A's case 11) |
+
+`tests/content/test_ranges.py` is `ranges.test.mjs` at `53db5bc` test for test, its strings kept: phase 0's five (the file and snippet agreeing, 95 cases, every token once; `TABLE_OOXML`; the two JSONs of this file; the saves' SHA-1s; Accept All), phase 1's five (the reads, the report, the listing, a range from `expand_to`, the views), check 53's two, and phase 2's six marked skip as Phase C's. Where core-ts reads `check52Cases()` from its `build.mjs`, the test writes the cases out from that file's `MATRIX` (`8fdccf8`); where core-ts reads its `test/check52/manifest.json`, which is not copied, the test reads `SHA1SUMS` and the brief's two SHA-1s. Phase B's own tests follow it: Word's refusals in a table, a control and under tracking, nothing changed; the constructor's checks; a comment across paragraphs listed from any of them; a comment with no markers; check 48's spans; the style rule within one paragraph; a row control; `content_controls`; the split writers' range; a comment whose start marker stands between blocks. 23 tests pass and 6 skip.
+
+### 12.4 Comment's D2 (Q3)
+
+`Comment.get_range()` is one `Range` from the start marker to the end marker over the body's paragraphs, a start marker between blocks starting at the next paragraph and an end marker between blocks ending at the previous one's end (core-ts's `anchor`); None with no markers in the body; where a marker is missing, the first of `get_ranges()`. `get_ranges()` is 0.1.0's `get_range()` unchanged. Moved to them: `api_script.py`'s anchor (`get_ranges()`, a paragraph at a time), `README.md`'s fence (`comment.get_range().text`, and `get_ranges()` beside it, its answer checked by running the fences), and the tests: the 6 lines that indexed `get_range()[0]` (section 2.4: `test_comments.py` 5, `test_comment_workflows.py` 1) read `get_range()`, and the 12 that read the list read `get_ranges()` (`test_tracking.py` 7, `test_docx_facade.py` 2, `test_word_branch_text.py` 2, `test_comments.py` 1, which also asserts `get_range()`); a comment with no markers reads `get_ranges() == []` and `get_range() is None`. `docs/pypi-readme.md` has no comment range.
+
+### 12.5 The subset (Q9)
+
+`scripts/office_js_subset.py` reads the file as core-ts's `HEAD` commits it (`git rev-parse --show-toplevel`, then `git show HEAD:<path>`), the working tree's file only where git can't say. At core-ts `f544b8f` (the file as `6285dfa` committed it; `53db5bc`'s and `ef57729`'s are the same as each other) it is **246 members**, 231 before: CR-013's ten, and G1's four `getContentControls` (Body, Paragraph, Range, ContentControl) with `ContentControlOptions { types }`, tagged phase C and asserted a keyword-only argument of the four, as `SearchOptions`'s are (a new test). **No member beyond CR-013's ten and G1's five.** Every non-extension member is there with its kind; the two null-object members stay omitted (CR-003 section 18.2 item 12). `test_the_script_would_write_what_is_committed` passes.
+
+### 12.6 The audit (section 7 risk 5)
+
+Every consumer of a `Range` handles `end_paragraph` or refuses a range across paragraphs before anything changes:
+- **`range.py`** itself: every write refuses (`text`, `insert_text`, `insert_paragraph`, `insert_ooxml`, `delete`, `replace_text`, `insert_comment`, `insert_content_control`, `hyperlink`, `style`, `style_id`, `style_built_in`, every `font` setter), and `get_xml`, `to_api_script`, `holder_boundaries` and `require_one_holder`; `refuse_branch_text` checks each paragraph's piece. A range within one paragraph holding a whole table (a one-cell table's `'Whole'` range, its `end_mark` the row end) refuses too, since its write would take the table.
+- **`hyperlinks.py`**: `hyperlink_of` reads across paragraphs through `Range.hyperlink`; `set_hyperlink` refuses.
+- **`comments.py`**: `insert_comment_into` refuses; `comments_of` (a range's `get_comments`) reads both ends (12.7 item 1).
+- **`ooxml.py`** (`insert_ooxml_into_range`), **`customxml/insert.py`** (`insert_content_control_in_range`) and **`api_script.py`** (`to_api_script` of a range) refuse.
+- **`reports.py`**: `SearchHit.range` makes a range within one paragraph; nothing else takes one.
+- **The facade's `comments.py`**: `add_comment` makes a range within one paragraph and refuses runs in two (`comment.spans_paragraphs`), as before.
+- **`paragraph.py`**: `replace_matches` and the split writers follow a range across the paragraphs a split made.
+
+### 12.7 Departures and choices, with why
+
+1. **`Range.get_comments()` reads each comment's extent over the story** (section 2.5 item 1, as section 4.3 has it): its first marker to its last as (paragraph in story order, offset), a block-level marker at the next paragraph's start or the previous one's end, both edges inclusive as before. core-ts's still reads a range's own paragraph's markers (`idsInRange` at `f544b8f`), so a range on a comment's last paragraph lists it here and not there. Within one paragraph's markers the answers are unchanged.
+2. **A content control's `form` is read past the markers its content opens with** (`w:commentRangeStart`, `w:bookmarkStart` and the other range markers, `w:proofErr`): Word's save of check 52 opens case 82's block control with a `w:commentRangeStart`, which this package read as a run-level control (no text, no paragraphs; the report oracle found it). core-ts reads `'Run'` only where the first item is a `w:r`; both read case 82 as a block control. A control whose writes were broken that way (a run-level one opening with a bookmark, read as block) writes as its level now; no artefact holds one, and acceptance is unchanged.
+3. **The hidden-edge rule stays computed** (section 10.11 item 2): `whole` is kept as core-ts keeps it, set by a paragraph's, a body's, a control's and a table's ranges and by `expand_to`, and no write within one paragraph reads it, since moving the rule to the flag would change what a search hit covering a paragraph's whole text writes, and Phase B writes nothing new.
+4. **Every write across paragraphs is `range.spans_paragraphs`** (Q5), where core-ts's phase 1 threw `NotSupportedError`; the deletion's and replacement's refusals that Phase C keeps (`range.partial_table`, Word's own; `range.partial_control`; `range.not_trackable`) come first, from core-ts's phase 2 checks, so their codes don't move in Phase C.
+5. **A tracked change's group range** keeps a content control's insertion (`w:customXmlInsRangeStart`) among its spans, as Phase A's did; core-ts's group range takes only run, run-property and field pieces. A single change's range is unchanged but for a paragraph's mark alone (check 53).
+6. **`Body.get_range` on a body over several stories** (a notes or comments part's, `footnotes_part.body`) refuses with `range.other_story`, since its first and last paragraphs are in two notes; until Phase B it gave the first paragraph's range. Office JS has no such body; a note's own range is its paragraphs' (`expand_to` from them).
+7. **`Body.get_range` and `Table.get_range` refuse a location they don't take** (`location.invalid`), where core-ts's are typed; `Paragraph.get_range`, `Range.get_range` and a control's take `"After"` (an extension for the last two).
+8. **`story_of` climbs the block containers only** (a body, header, footer, note, comment, text box's content, cell, row, table, control's content, custom XML), where core-ts's takes any `content` array; and the layouts are of the top-level blocks a read touches, not the whole story, with the same answers.
+9. **The oracles assert this package's `Alignment`** (`"Unknown"` where no `w:jc` says otherwise; CR-002 section 15's recorded departure): in the report comparison, and in the Accept All test's join assertions, where core-ts's strings say `'Left'`.
+
+### 12.8 The sweep (section 6.3)
+
+`out/cr013-b/sweep.py`, over the 422 distinct documents of `out/cr012-b-corpus/` (its `COMMITS.txt` unchanged), before at `155fd9c` (a scratch worktree) and after at `c9ee610`; 4 load errors both times (the Strict documents).
+
+| reader | moved |
+|---|---|
+| `Body.text`; each paragraph's text and `'Whole'` range; each cell's text (nested tables too); each comment's `get_ranges()` | **0** |
+| each content control's `get_range("Whole")` | 16 controls in 15 documents: 8 block controls, 7 of several paragraphs (from the first paragraph's range to the control's) and one whose content is a table (`\t\t`), and 8 row controls (their cells, `\t\t`), all as section 4.3 says |
+| each tracked change's `get_range()` | 182 changes in 86 documents: 82 inserted lone marks (`\r`, the paragraph's whole range before), 78 deletions collapsed (a deleted mark, or a deletion across a mark), 22 groups over a mark or several paragraphs, from their first piece to their last (their part in the first paragraph before); each checked by category |
+| `Comment.get_range()` | new: 203 comments in 99 documents |
+
+**The readers' audit** (`scripts/mce_branches.py readers --holding all`, the same corpus): before at `155fd9c`, after at `c9ee610`, `compare-readers` in `out/cr013-b/compare.txt`. Only `body.content_controls` moved: 12 controls in 11 documents, each a row control or a block control ending with a table whose text no longer ends with the row's `\r\n` (checked mechanically: each after-text is its before-text less a final `\r\n`). No body or comment reader moved; a block control's range is not in the audit (the sweep has it).
+
+### 12.9 Pre-existing tests whose expectation changed, and why
+
+- `test_body.py::test_clear_and_get_range`: the body's range across its paragraphs, and `body.no_paragraph` on the emptied body (Q7).
+- `test_office_js_characters.py`: check 51's block control range, pinned as Phase B's (`CCP1\r`), is Word's `CCP1\rCCP2\rCCP3\r`; the manifest test counts 15 files.
+- `test_word_writers.py`: check 55 cases 2 to 4, 48 and 49 return Word's `x\ry`, their departures removed; `test_the_paragraph_keeps_its_identity...`, `test_a_range_follows_its_text` and `test_the_body_and_a_block_controls_insert_text` read the range across the paragraphs.
+- The comment tests of 12.4.
+
+### 12.10 The gates
+
+| gate | before (`155fd9c`) | after (`c9ee610`) |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 4,425 passed, 8 skipped, 1,280 deselected, 1 failed (1 min 56 s) | 4,450 passed, 14 skipped, 1,280 deselected, **0 failed** (1 min 59 s) |
+| the full suite | 5,705 passed, 8 skipped, 1 failed (3 min 21 s) | 5,730 passed, 14 skipped, **0 failed** (3 min 20 s) |
+| `tests/content/test_ranges.py` | --- | 23 passed, 6 skipped (Phase C's) |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text/test_conformance.py`; `tests/text` | 24; 1,188 | 24; 1,188 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `tests/revisions` | 68; 550 | 68; 550 |
+| the parity goldens (numbering, properties, fonts) | 277, `PINS` empty | 277, `PINS` empty |
+| `scripts/roundtrip.py` | --- | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings; exit 0 |
+| `codegen/generate.sh --check` | --- | byte identical, 297 modules; no generated file changed |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr013b/`) | copied first; canonically equal to a regeneration at `155fd9c` | 13 artefacts, 175 entries, 0 differing beyond the dates |
+| the readers' audit; the sweep | --- | 12.8 |
+
+- **The suites' difference** is the new tests (23 in `test_ranges.py`, one in `test_office_js_subset.py`) and the subset test that now passes; the six skipped are Phase C's.
+- **No saved output changed**: acceptance, the round trip and every write test hold, so Phase B has no Word check of its own (section 6.3).
+
+### 12.11 Found, and not done
+
+- **core-ts's phase 3 is committed now** (`87bbb38`: comments, `^p` and content controls on a range across paragraphs, with its check 54; and `202a01d`, `getOoxml` and `toApiScript` of a range across paragraphs giving its blocks). Q10 ports phase 3 as an amendment when core-ts commits it; that is for the user to start. `insert_comment`, `insert_content_control`, `^p`, `get_xml` and `to_api_script` across paragraphs stay refused here.
+- **Phase C** (section 4.4): the writes, check 52's `run` mode and its six skipped tests, the write sweep.
+- **The facade's `add_comment`** across paragraphs stays refused (section 4.10).
+- `Range.footnotes`, `Paragraph.get_text_ranges`, `Body.footnotes` and `ContentControl.showing_placeholder_text` are not implemented; neither subset declares them.

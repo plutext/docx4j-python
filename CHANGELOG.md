@@ -21,8 +21,9 @@ text, with Markdown, charts, equations and field switches as docx4j reads them
 `mc:AlternateContent` kept at every level with its branches typed, VML among them; and the
 Office JS readers (`Paragraph.text`, `get_text`, `search`) read the branch Word shows, as Office
 JS does (CR-011 Phase F), in Office JS's own characters, which every text writer takes back
-([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md) Phase A; its ranges across
-paragraphs, Phases B and C, are to come before the release). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
+([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md) Phase A), and a `Range` reads
+across paragraphs as Office JS's does (CR-013 Phase B; its writes, Phase C, are to come before the
+release). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
 of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
 save. It needs docx4j-xsdata 26.2.2.
 
@@ -254,8 +255,8 @@ save. It needs docx4j-xsdata 26.2.2.
       content control. Both paragraphs keep the paragraph's properties; the new one goes in front
       with a mark of its own, and the `w:p` keeps the last piece, its mark, its section break and
       its `w14:paraId`, so a `Paragraph` view goes on reading the last of them. The returned `Range`
-      is the text's part in the last paragraph (Office JS's spans them; a range across paragraphs
-      is CR-013 Phase B's). With change tracking on, the new mark is marked inserted. A hyperlink,
+      spans the paragraphs the text made, as Office JS's does (`x\ry`; CR-013 Phase B, below). With
+      change tracking on, the new mark is marked inserted. A hyperlink,
       a tracked change or a smart tag the break falls in is cut in two; a text that would go into a
       run-level content control or a field, or a break inside an equation or text read from a kept
       `mc:AlternateContent`, is refused before anything changes (`SpanError`
@@ -315,6 +316,58 @@ save. It needs docx4j-xsdata 26.2.2.
   - **`dry_run`** copies a part the real package has not read from its private reading, so a
     trial's first look at it leaves it unread: every `Paragraph.text` now asks the styles which
     runs they hide.
+- **Ranges across paragraphs: the reads** ([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md)
+  Phase B, section [12](docs/change-requests/CR-013-ranges-across-paragraphs.md#12-phase-b-implementation-notes-2026-10-23);
+  the port of docx4j-core-ts CR-014 phase 1, `ef57729`). A `Range` has two ends: `paragraph` and
+  `start`, and `end_paragraph` holding `end`, the same paragraph for a range within one, which
+  reads as it did. Held to Word 365 by core-ts's checks 52 and 53, run here through a Python port
+  of their Script Lab snippets (`tests/office_js/checks.py`) on the files Word read and Word's
+  saves:
+  - **Across paragraphs** a range's `text` is `Body.text`'s form between its ends (a mark `\r`, a
+    table's cells `\t` apart and its rows ended `\r\n`); `paragraphs` is every paragraph it
+    touches, a table's cells' among them; `font` is a `MixedFont`, a property where the runs
+    differ `None`, `""` for the name, the colour and the highlight, `"Mixed"` for the underline;
+    `search` and `find` go a paragraph at a time; `get_tracked_changes()` lists the story's
+    changes it overlaps; `hyperlink` reads the first link among its paragraphs.
+  - **New members** (the Office JS subset, `tests/office_js_subset.json`, is 246 members, derived
+    from core-ts's committed `test/office-js-subset.ts`): `Range.expand_to`, `is_empty`, `tables`
+    and `content_controls`; `Table.get_range` (`'Whole'` ending `\r\n`, `'Start'`, `'End'`,
+    `'After'`); `Paragraph.table_nesting_level`; `Range.get_range("After")`. Extensions:
+    `Range.end_paragraph`, `spans_paragraphs`, `holds_end_mark`, `whole`, `end_mark`,
+    `parent_table_cell`, `parent_table` and `require_one_paragraph`; `model/content/story.py`'s
+    `story_of`; `RangeLocationName`, `TableRangeLocation` and `BodyRangeLocation`.
+  - **The views give one range**: a block, row or cell content control's `get_range()` runs from its
+    first paragraph to its last (0.1.0's was the first paragraph's, so `get_range().delete()`
+    emptied that one paragraph); `Body.get_range()` from the body's first paragraph to its last
+    (0.1.0's was the first paragraph's); a tracked change's from its first piece to its last, a
+    deletion collapsed where it starts, an inserted mark `\r`, a deleted one collapsed at its
+    paragraph's end (0.1.0's was its part in its first paragraph).
+  - **`Comment.get_range()` is one `Range`, or None** with no markers in the body, as Office JS's
+    (`BODY1B\rLIST1A` across paragraphs; D2). **Breaking for 0.x**: 0.1.0 returned a list, a range
+    per paragraph, which is `Comment.get_ranges()` now; `comment.get_range()[0]` becomes
+    `comment.get_range()`, or `comment.get_ranges()[0]`.
+  - **`Body.get_range()` on a body with no paragraph** raises `ContentError` `body.no_paragraph`,
+    where 0.1.0 inserted a paragraph (a read that wrote); on a notes or comments part's body, whose
+    first and last paragraphs are in two notes, `SpanError` `range.other_story`.
+  - **`Range.style` and `style_built_in`** read Word's rule, within one paragraph too: a range
+    holding its paragraphs whole reads their shared paragraph style, else `Normal`; any other range
+    its runs' shared character style (`Emphasis`), `""` (`Other`) where they differ. 0.1.0 read the
+    paragraph's style. A paragraph after a nested table in a cell reads its own style, where Word
+    reads `Other` (core-ts CR-002 section 57's departure, taken here).
+  - **`Range.get_comments()`** reads each comment's extent over the story, so a range on any of a
+    comment's paragraphs lists it; 0.1.0 read only the range's own paragraph's markers, so a range
+    on a comment's last paragraph listed nothing.
+  - **A row content control's `text`** is its cells a `\t` apart, the row end left out, and its
+    `'Whole'` range ends `\t\t`, as Word's; a block control whose content ends with a table leaves
+    the row end out too. A content control's level (`form`) is read past the markers its content
+    opens with (a comment's, a bookmark's): Word's save of check 52 opens a block control with a
+    `w:commentRangeStart`, which 0.1.0 read as a run-level control.
+  - **Every write across paragraphs is refused** until CR-013 Phase C, before anything changes,
+    with `SpanError` `range.spans_paragraphs`, as are `get_xml` and `to_api_script` of such a range;
+    a deletion or replacement starting or ending inside a table with `range.partial_table`, as Word
+    refuses it, inside a content control with `range.partial_control`, and under change tracking
+    one holding a whole control with `range.not_trackable`. A `Range` made across stories, or with
+    its end before its start, is refused (`range.other_story`, `range.order`).
 - **A read leaves every part as it was**: `pkg.to_markdown()` and `pkg.markdown_budget()` read the
   package with nothing unmarshalled, so a save afterwards writes `word/document.xml`, and
   `word/footnotes.xml` in a document with a footnote reference, from the source bytes, where
