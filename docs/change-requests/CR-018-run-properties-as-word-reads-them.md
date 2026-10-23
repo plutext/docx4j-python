@@ -295,6 +295,12 @@ This changes two things in this CR:
 - **Q8's colour half turns.** An invalid colour is as if absent, not a stated automatic: the merge skips it as it skips an invalid enumeration, so the style's colour shows. docx4j's reading of it (the direct value kept) was unmeasured when it was built, and its session has the measurement.
 - **The colour reader's scope widens** to `w:shd/@w:fill` and the border colours (`w:pBdr`, `w:tcBorders`, `w:tblBorders`, `w:bdr` and their sides), each with the same rule. An invalid fill reads as no shading. docx4j's reader covers only `w:color` and `w:u/@w:color` (section 3.1a).
 
+**The portfolio's spot-check adds four details** (the w:u and enumeration saves agree):
+- Over an underlining style, a colour-only `w:u`, or `bogus` plus a colour, gives the style's underline in that colour.
+- An explicit `"auto"` colour does override a style's colour. `auto` or `AUTO` over a style is otherwise unmeasured.
+- Over a style, F00 in `w:u/@w:color` and in a border colour gives automatic, and in `w:shd/@w:fill` drops the shading.
+- Word drew no highlight from a character style, though a paragraph style's highlight showed. The file had been repaired, so this waits for a clean probe before it counts as Word's rule.
+
 The single-value `w:u w:val="true"` exception goes into Phase B as a pinned case. Whether the other on/off words over a style behave the same is a sixth-round question, if one is wanted.
 
 ### 3.2 docx4j-core-ts CR-015 (proposed, uncommitted)
