@@ -1,18 +1,6 @@
 # CR-015: Markdown output made safe --- the port of docx4j CR-056's Markdown half
 
-**Status:** Proposed 2026-10-23, at the user's request ("Markdown-safety CR: draft it, covering both fixes above"). It ports the Markdown half of docx4j CR-056, which docx4j decided and built the same day (`84ee9741c`, `30fb41024`). The CR makes two fixes:
-- **Links.** A link whose target's scheme is not on docx4j's allowlist is written as its text, with no link.
-- **Marker detail.** Under `markup_detail: author` or `author_date`, a CriticMarkup marker's author and date are written as text, escaped as any document text is, as REQ-703 of the text extraction WD 0.33 now requires (docx4j-portfolio `da07eab`).
-
-Both defects were measured here first (section 2). Every link destination the Markdown writer writes is the document's target as it is, so a `javascript:` target is a live link. A marker's detail goes out as raw HTML. The measuring found more (section 2.5):
-- character references such as `&#58;` carry a script scheme past docx4j's allowlist (Q3);
-- an address comment, `Outline.to_markdown()` and the readers' picture destination write document values into the Markdown unescaped (Q8 to Q10).
-
-docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). **Nothing is implemented.** This CR waits for the user's answers to section 8 and a go. It has four phases:
-- A, the links;
-- B, the markers;
-- C, the sinks found while measuring, as Q8 to Q10 decide;
-- D, the records.
+**Status:** Proposed 2026-10-23, at the user's request ("Markdown-safety CR: draft it, covering both fixes above"), to port the Markdown half of docx4j CR-056, which docx4j decided and built the same day (`84ee9741c`, `30fb41024`), with its two fixes: a link whose target's scheme is not on docx4j's allowlist is written as its text, with no link; and under `markup_detail` `author` or `author_date` a CriticMarkup marker's author and date are written as text, escaped as any document text is, as REQ-703 of the text extraction WD 0.33 now requires (docx4j-portfolio `da07eab`). Both defects were measured here first (section 2): every link destination the Markdown writer writes is the document's target as it is, so a `javascript:` target is a live link, and a marker's detail goes out as raw HTML. The measuring found four more (section 2.5): character references such as `&#58;` carry a script scheme past docx4j's allowlist (Q3), and an address comment, `Outline.to_markdown()` and the readers' picture destination write document values unescaped (Q8 to Q10). docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). Four phases: A, the links; B, the markers; C, the sinks found while measuring, as Q8 to Q10 decide; D, the records. Nothing is implemented; it waits on the user's answers to section 8 and a go.
 
 **Depends on:**
 - **docx4j**, cited by commit only (its working tree was not read):
@@ -32,7 +20,6 @@ docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). **Nothing 
   - CR-003 section 3.5 and Phase K, the address comments;
   - CR-003's `Outline`.
 - **No fork change and no schema change.** `codegen/generate.sh --check` is a gate only to prove it.
-- **The registry entry and the README row are not this draft's.** The caller adds them.
 
 **Counterpart:**
 - **docx4j CR-056's Markdown half.** Its other half doesn't apply: style IDs CSS-escaped in the HTML stylesheet (`CssIdentifiers`, phase 2), because this package writes no HTML and no stylesheet. WD 0.32's inspector kind `hyperlink.script` (docx4j-portfolio `55fab92`) doesn't apply either: there is no inspector here.
