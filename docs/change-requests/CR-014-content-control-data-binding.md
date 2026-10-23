@@ -1,10 +1,10 @@
 # CR-014: Content control data binding --- a bound control Word reads as plain text holds one paragraph (phase 1); rich text, XHTML and picture bindings and the OpenDoPE processor named for later
 
-**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed. core-ts's Word check 56 (`38dcae9`) measured the rule's scope for both ports: Word can't open **any** bound block control holding a second block, whether it has no type, `w:text` or `w:richText`, and whether the second block is a paragraph or a table. On open Word reads each as plain text. So such a control keeps one paragraph: the writes that would give it a second are refused, or joined where Word joins them, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go.
+**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed. core-ts's Word check 56 (`38dcae9`) measured the rule's scope for both ports: Word can't open **any** bound block control holding a second block, whether it has no type, `w:text` or `w:richText`, and whether the second block is a paragraph or a table. On open Word reads each as plain text. So such a control keeps one paragraph: the writes that would give it a second are refused, or joined where Word joins them, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go. Phase 1b (section 2.9, Q10), a bound date formatted as Word formats it, was proposed the same day from docx4j's hand-off of its CR-058 phase 1 (`d8d8bfb71`). A probe here found `am/pm` in a `w:dateFormat` written as `a5/p5`, names in English only, and the DATE field converter's `h` running 0 to 11.
 
 **Depends on:**
 - **This repository:** CR-003 Phase E (`docx4j_py/model/customxml/`, `ContentControl`; sections 3.7, 4 and 17); CR-013 (its writers: Phase A's amendment, section 11, makes `insert_text` split paragraphs, and Phase C writes across them; both must keep this rule); CR-002 Phase C's flat OPC sink, for phase 2 only.
-- **docx4j**, cited at `30fb41024` (`VERSION_17_3_5`): `org.docx4j.model.datastorage` (`bind.xslt`, `BindingTraverserXSLT`, `UpdateXmlFromDocumentSurface`, `OpenDoPEHandler`).
+- **docx4j**, cited at `30fb41024` (`VERSION_17_3_5`): `org.docx4j.model.datastorage` (`bind.xslt`, `BindingTraverserXSLT`, `UpdateXmlFromDocumentSurface`, `OpenDoPEHandler`). For phase 1b, `d8d8bfb71` (`VERSION_17_3_5`, unpushed; its CR-058 phase 1): `BindingTraverserXSLT.xpathDateRun` and `FormattingSwitchHelper.formatDate`.
 - **docx4j-core-ts:** its CR-002 phase E (the binding step this package ported), its CR-002 section 61 (the same defect there: D1 to D4 at `80a933d`, check 56 and H1 to H4 at `38dcae9`, decided 2026-10-23, not yet implemented), check 55b (`1e61bb1`, Word's bound controls), and its CR-005 (`05e1370`, the OpenDoPE processor: phase A done, phase B proposed, sections 8 and 9 released in its 0.4.0).
 
 **Counterpart:** docx4j `org.docx4j.model.datastorage`; docx4j-core-ts CR-002 phase E and section 61, and CR-005.
@@ -107,6 +107,26 @@ A block control with no type holding two paragraphs, its mapping deleted and set
 Check 56 (2.7) answered the first three and the last. Still unmeasured: the date and list kinds, the cell and row levels, and a bound control whose node holds flat OPC.
 - a cell- or row-level bound control holding more than one paragraph.
 
+### 2.9 A bound date, as Word formats it (docx4j CR-058 phase 1, handed off 2026-10-23)
+
+docx4j's session sent this on 2026-10-23: docx4j CR-058 phase 1, `d8d8bfb71` on `VERSION_17_3_5`, unpushed, checked in `../docx4j`. Word 365's rules for a bound `w:date` control were measured that day on docx4j-portfolio's `bind-typed-formats` probe (share `Office 2016/bind-fun`; docx4j CR-058 section 8 has the table; fixture `core-tests` `OpenDoPE/typed-controls-dates.docx`, expectations in `BoundDateFormatTest`). Each rule is set against what this package does, probed 2026-10-23 at `9de11a2` (`customxml/kinds.py`'s `format_date`, `bindings.py`'s `date_of`):
+
+| Word 365 | here |
+|---|---|
+| `w:dateFormat` is Word's date picture language, a DATE field's `\@` syntax; docx4j now formats with `FormattingSwitchHelper.formatDate(wordFormat, date, lang)` | its own .NET-token formatter, separate from the field code's converter (`model/fields/formatting.py`) |
+| `ddd` the weekday ("Thu"), `dddd`, `MMM`, `MMMM` | the same, in English |
+| `am/pm` and `AM/PM` both upper-case "AM"/"PM" | **wrong**: `h:mm am/pm` gives `2:05 a5/p5`, `AM/PM` gives `A10/P10`; only .NET's `tt` gives "PM" |
+| `h` runs 1 to 12 | right in `format_date`. **Wrong in the field code's converter**, which maps `h` to Java's `K` (0 to 11), the defect docx4j fixed in the same commit (its finding 2), so a DATE field at noon reads "0:05" |
+| names in the `w:lid` language ("22 Oktober 2026", "Okt. 2026" for de-DE) | English names only; `w:lid` ignored (CR-003 section 17) |
+| no `w:lid`: Word's editing language, not the run's `w:lang`; docx4j takes the document default (`w:docDefaults/w:rPrDefault/w:rPr/w:lang/@w:val`), else the platform's | `"en-US"`, unused |
+| a stored value that is not a date (`not-a-date`, `2026-13-45`) is shown as stored, plain | the same (`date_of` gives None, the text as stored) |
+| an empty value shows the placeholder (`w:showingPlcHdr`) | the same (docx4j's rule, CR-003 Phase E) |
+| a stored dateTime's `Z` is UTC, shown in local time; docx4j keeps the nominal fields by default, and its `dateTimeZone` property converts | nominal (`Z` stripped), docx4j's default; no zone option |
+| a date-only value is not shifted | not shifted |
+| unmeasured: `h` at 12 local (Word's documentation says 1 to 12) | --- |
+
+docx4j CR-058's second item (a `w:storeItemID` that names no part, which Word repairs) wasn't handed off with phase 1, and isn't looked at here.
+
 ## 3. Phase 1: a bound control Word reads as plain text holds one paragraph
 
 ### 3.1 The rule
@@ -152,6 +172,7 @@ For a value control holding more than one block (a document made elsewhere: Word
 | phase | what | status | size |
 |---|---|---|---|
 | 1 | Section 3: the rule (H1), the refusals and the join (3.2, 3.3), `apply_bindings` (3.4), the reading (3.5a); the tests; a Word check of `apply_bindings`' output and of the writes still allowed | **proposed** | 1 to 1½ days, with the check |
+| 1b | **A bound date as Word formats it** (2.9, docx4j CR-058 phase 1, `d8d8bfb71`): the binder formats `w:dateFormat` through the field code's converter, as docx4j now does. `h` becomes 1 to 12 there (the DATE field too) and the AM/PM names upper-case; names come in the `w:lid` language, else the document default's; docx4j's `BoundDateFormatTest` (DF1 to DF13) and `DateFieldLanguageTest.twelveHourClockRunsOneToTwelve` are ported as the oracle, on docx4j's fixture | **proposed** (Q10) | ½ to 1 day; locale names need a source (Q10) |
 | 2 | **Rich content in bound controls**, for parity with core-ts CR-005 sections 8 and 9 and with docx4j: explicitly rich-text bindings both ways (a flat OPC package in the node, docx4j's `od:progid=Word.Document`; needs CR-002 Phase C's flat OPC sink), escaped XHTML (`od:ContentType=application/xhtml+xml`, core-ts section 8, which needs an XHTML importer here), and picture bindings (core-ts section 9: the `a:blip` replaced from base64) | named, not proposed | to be estimated |
 | 3 | **The OpenDoPE processor**, core-ts CR-005 phase B and docx4j's `OpenDoPEHandler`: conditions, repeats with their contextualised XPaths, the integrity steps and removal; it needs an XPath 2 engine (core-ts uses FontoXPath; here `elementpath` would be a new dependency) | named, not proposed | weeks, as core-ts estimates its phase B |
 
@@ -187,10 +208,17 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
 8. **Q8. Phases 2 and 3.** *Recommended: leave them named and unproposed* until there is a consumer (a `bind` tool, a template workflow); phase 2 waits on CR-002 Phase C's flat OPC sink in any case.
 9. **Q9. The reading (H4).** *Recommended: as core-ts's H4*: a value control with no type or `w:richText` reads as `"PlainText"`, single-line (3.5a), so `apply_bindings` and the writers drop a newline there, as Word does. With it, `update_from_content_controls` writes a bound `w:richText` block control's text to its node, as core-ts does, where CR-003 section 4 skips it today. CR-013 section 11.2 measured the cost of the skip: a bound `w:richText` control written `NoteDxy` shows `NoteD` in Word, its node's text, because Word refreshes the control from its node on open.
 
+10. **Q10. A bound date as Word formats it (2.9)?** *Recommended: take docx4j CR-058 phase 1 as phase 1b, with phase 1.*
+    - The binder formats through `model/fields/formatting.py`'s converter, one date picture language for a control and a DATE field, as docx4j now has it.
+    - `h` maps to 1 to 12 (Java's `h`, not `K`) and the AM/PM names upper-case. This moves a DATE field's text only at hours 0 and 12, and CR-011's ratchet and goldens show whether any fixture holds one.
+    - The language is `w:lid`, else the document default's. The month and day names need a locale source: either CLDR data, through a new dependency such as `babel`, or a committed table generated from it, as `resources/fonts/` is from docx4j. *Recommended: a committed table* for the languages docx4j's tests and Word's measurements name, with English where a language is missing and the result's entry saying so. That keeps the package free of a dependency.
+    - No `dateTimeZone` option, unless a caller asks for one: the nominal default is docx4j's.
+
 ## 8. Effort
 
 | phase | days |
 |---|---|
 | 1, with its own Word check (Q1's scope from core-ts's check 56) | 1 |
+| 1b, a bound date as Word formats it (Q10) | ½ to 1 |
 | 2 | not estimated |
 | 3 | weeks (core-ts's phase B estimate) |
