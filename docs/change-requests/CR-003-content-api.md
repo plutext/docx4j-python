@@ -5032,3 +5032,13 @@ Section 23.3 asked for a record of what the port cost and what it gave Python an
 3. **The cost** fell mostly on Word checks the user ran for core-ts, which this package reused. The port itself took about one agent session per phase.
 
 **Recommendation: keep parity** (23.3 stands). Review it again at the next large core-ts change request, or when a core-ts member arrives with no Python or agent use; the middle way of 23.2 stays the fallback.
+
+## 24. Members owed as core-ts adds them: `ContentControl.showing_placeholder_text` (2026-10-23)
+
+core-ts `222cc20` (main, unpushed; its CR-012 section 18.1) added `ContentControl.showingPlaceholderText` to `test/office-js-subset.ts`. That made `tests/office_js_subset.json` stale beside the sibling checkout, and 0.2.0's release gate failed. Under section 23.3 the member is owed. The user said on 2026-10-23: "port showing_placeholder_text now".
+- **The member.** `ContentControl.showing_placeholder_text` is a read-only `bool`, Office JS's `showingPlaceholderText` (WordApiDesktop 1.3). It is `is_showing_placeholder` under Office JS's name, as core-ts's is.
+- **A fix with it.** `w:showingPlcHdr` is an on/off property, so `is_showing_placeholder` now reads `w:val="0"` (or `"false"`) as off, as core-ts's `isShowingPlaceholder` does. It used to read the element's presence alone. `placeholder_text`, which reads through it, follows.
+- **The subset**, re-derived from core-ts's committed `HEAD` (`222cc20`) by `scripts/office_js_subset.py`, has **247 members**. `test_the_script_would_write_what_is_committed` passes again.
+- **Check 53's oracle** (`tests/content/test_ranges.py`, cases 34 and 35) still lists `showingPlaceholderText` among its differences. Here it reads `True`, and Word's run returned it undefined, as core-ts's test notes at `222cc20`.
+- **Not taken now.** The reader change that comes with it in core-ts's CR-012 section 18.1 (a control showing its placeholder reads as no text, with nothing to search), and `222cc20`'s other behaviour changes (core-ts CR-002 sections 55 and 59, CR-012 section 19, check 59's wildcards), wait for the user's decision. They are parity behaviour, not members (section 23.3).
+

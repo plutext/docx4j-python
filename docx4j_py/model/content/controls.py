@@ -720,8 +720,23 @@ class ContentControl:
 
     @property
     def is_showing_placeholder(self) -> bool:
-        """Whether ``w:showingPlcHdr`` is set. Extension."""
-        return sdt_property(self.sdt_pr, "showingPlcHdr", W_NS) is not None
+        """Whether ``w:showingPlcHdr`` is set, and not ``w:val="0"``. Extension.
+
+        ``w:showingPlcHdr`` is an on/off property, so ``w:val="0"`` (or ``"false"``)
+        turns it off, as core-ts's ``isShowingPlaceholder`` reads it.
+        """
+        item = sdt_property(self.sdt_pr, "showingPlcHdr", W_NS)
+        return item is not None and getattr(item, "val", None) is not False
+
+    @property
+    def showing_placeholder_text(self) -> bool:
+        """Whether the control is showing its placeholder text rather than a value.
+
+        Office JS ``showingPlaceholderText`` (WordApiDesktop 1.3, read-only):
+        :attr:`is_showing_placeholder` under Office JS's name, as core-ts's
+        ``222cc20`` has it (CR-003 section 24).
+        """
+        return self.is_showing_placeholder
 
     @property
     def appearance(self) -> str:

@@ -406,6 +406,15 @@
         "implemented": true
       },
       {
+        "office_js": "showingPlaceholderText",
+        "name": "showing_placeholder_text",
+        "kind": "property",
+        "readonly": true,
+        "phase": "C",
+        "extension": false,
+        "implemented": true
+      },
+      {
         "office_js": "appearance",
         "name": "appearance",
         "kind": "property",

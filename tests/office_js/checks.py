@@ -23,8 +23,9 @@ step for step, onto the content API, and give the same JSON shape with the same
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
 package does not offer (``Range.footnotes``, ``Paragraph.get_text_ranges``,
-``Body.footnotes``, ``ContentControl.showing_placeholder_text``) is
-``error: NotImplemented: ...``, as core-ts's shim reports one.
+``Body.footnotes``) is ``error: NotImplemented: ...``, as core-ts's shim
+reports one. ``ContentControl.showing_placeholder_text`` is offered since CR-003
+section 24 (core-ts ``222cc20``).
 
 Office JS's names map to the content API's as the subset does (CR-003 section
 3.1): ``getRange`` is ``get_range``, ``parentTableCell`` is

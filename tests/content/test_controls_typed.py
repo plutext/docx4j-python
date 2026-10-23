@@ -26,6 +26,7 @@ from docx4j_py.model.customxml import (
     RepeatingSectionContentControl,
     format_date,
 )
+from docx4j_py.wml.sdt import sdt_property
 
 ITEM_ID = "{5D7BA57F-1E52-4637-9F82-2D4025768D4F}"
 
@@ -199,6 +200,25 @@ def test_placeholder_text_is_written_and_refused_over_content(new_package):
     again = saved.body.content_controls[0]
     assert again.is_showing_placeholder is True
     assert again.placeholder_text == "Your name"
+
+
+def test_showing_placeholder_text_is_office_js_s_name_for_the_flag(new_package):
+    """CR-003 section 24: Office JS ``showingPlaceholderText`` (core-ts ``222cc20``)."""
+    body = new_package.body
+    empty = body.insert_paragraph("").insert_content_control("PlainText")
+    full = body.insert_paragraph("Ada Lovelace").insert_content_control("PlainText")
+
+    assert empty.showing_placeholder_text is False
+    empty.placeholder_text = "Your name"
+    assert empty.showing_placeholder_text is True
+    assert full.showing_placeholder_text is False
+    assert reloaded(new_package).body.content_controls[0].showing_placeholder_text is True
+
+    # an on/off property: w:val="0" turns it off, as core-ts reads it
+    sdt_property(empty.sdt_pr, "showingPlcHdr").val = False
+    assert empty.showing_placeholder_text is False
+    assert empty.is_showing_placeholder is False
+    assert empty.placeholder_text == ""
 
 
 # ---------------------------------------------------------------------------

@@ -329,8 +329,10 @@ save. It needs docx4j-xsdata 26.2.2.
     differ `None`, `""` for the name, the colour and the highlight, `"Mixed"` for the underline;
     `search` and `find` go a paragraph at a time; `get_tracked_changes()` lists the story's
     changes it overlaps; `hyperlink` reads the first link among its paragraphs.
-  - **New members** (the Office JS subset, `tests/office_js_subset.json`, is 246 members, derived
-    from core-ts's committed `test/office-js-subset.ts`): `Range.expand_to`, `is_empty`, `tables`
+  - **New members** (the Office JS subset, `tests/office_js_subset.json`, is 247 members, derived
+    from core-ts's committed `test/office-js-subset.ts`): `ContentControl.showing_placeholder_text`
+    (CR-003 section 24; `is_showing_placeholder` now reads `w:showingPlcHdr w:val="0"` as off);
+    `Range.expand_to`, `is_empty`, `tables`
     and `content_controls`; `Table.get_range` (`'Whole'` ending `\r\n`, `'Start'`, `'End'`,
     `'After'`); `Paragraph.table_nesting_level`; `Range.get_range("After")`. Extensions:
     `Range.end_paragraph`, `spans_paragraphs`, `holds_end_mark`, `whole`, `end_mark`,
