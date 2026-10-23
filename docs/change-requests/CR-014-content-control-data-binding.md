@@ -185,7 +185,7 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
 6. **Q6. The error.** *Recommended: `BindingError`, code `binding.one_paragraph`, its message naming Word's own error where check 56 measured one* (`InvalidArgument` for a table, `GeneralException` for OOXML; core-ts's H3). This package's codes are CR-003 section 3.1's, not Office JS's.
 7. **Q7. Release.** *Recommended: in 0.2.0*, since it fixes files Word cannot open. A 0.1.x fix release is the user's call, with the OLE `w:object` order fix (CR-012 section 12.15) and CR-015.
 8. **Q8. Phases 2 and 3.** *Recommended: leave them named and unproposed* until there is a consumer (a `bind` tool, a template workflow); phase 2 waits on CR-002 Phase C's flat OPC sink in any case.
-9. **Q9. The reading (H4).** *Recommended: as core-ts's H4*: a value control with no type or `w:richText` reads as `"PlainText"`, single-line (3.5a), so `apply_bindings` and the writers drop a newline there, as Word does.
+9. **Q9. The reading (H4).** *Recommended: as core-ts's H4*: a value control with no type or `w:richText` reads as `"PlainText"`, single-line (3.5a), so `apply_bindings` and the writers drop a newline there, as Word does. With it, `update_from_content_controls` writes a bound `w:richText` block control's text to its node, as core-ts does, where CR-003 section 4 skips it today. CR-013 section 11.2 measured the cost of the skip: a bound `w:richText` control written `NoteDxy` shows `NoteD` in Word, its node's text, because Word refreshes the control from its node on open.
 
 ## 8. Effort
 

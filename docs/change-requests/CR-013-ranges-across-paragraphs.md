@@ -1104,3 +1104,11 @@ The one failure is the known `test_the_script_would_write_what_is_committed`, bo
 **Found, and not done:**
 - `insert_text(..., "End")` on a paragraph ending with a picture still puts the text before the picture (the target rule extends the last `w:t`); the edge rule covers hidden runs only, and core-ts's is the same. Which side Word puts it is unmeasured.
 - The tracked insertion strictly inside another author's insertion (11.1.9) is unchanged.
+
+### 11.2 The Word check of section 11, run 2026-10-23
+
+The user ran the restaged `__tmp/python-cr013a2/` (built at `1ca981b`) in Word 365 and noted its results in `results.txt` there, with two screenshots (`File 1 case 6.PNG`, `File 2 case 14.PNG`). No repair prompt was reported. The notes answer the README's "unmeasured" items:
+- **Case 6, a break inside a hyperlink:** the first paragraph's mark, which carries the Hyperlink character style from the run before the break (core-ts's rule), is drawn in the link colour, not underlined. Both halves are links, as built.
+- **Cases 1 to 3 and 11, an inserted paragraph mark (tracked):** drawn in the insertion colour.
+- **Case 14, a deleted picture (tracked, All Markup):** drawn with a line through it, inside the deletion with `14A` and `14B`, and `14X` inserted after.
+- **Control D, a bound `w:richText` block control written `NoteDxy`:** Word shows `NoteD`, its node's text. On open Word refreshes a bound control from its node, and this package's write-back skips a control marked `w:richText` (CR-003 section 4), so the `xy` written into the control is lost in Word. The README predicted it. It is not section 11's: core-ts binds such a control as text in both directions (its H4), and CR-014's Q9 takes that here.
