@@ -303,6 +303,25 @@ This changes two things in this CR:
 
 The single-value `w:u w:val="true"` exception goes into Phase B as a pinned case. Whether the other on/off words over a style behave the same is a sixth-round question, if one is wanted.
 
+### 3.1c Round six, run 2026-10-24 (docx4j CR-060 section 13)
+
+The user ran it with no repairs. docx4j's session read it, recording it in docx4j CR-060 section 13, and the portfolio spot-checked `props-u-onoff-styles` and `colour-auto-styles` against Word's saves. The files are in `onoff-fun/`, with their `-word365.docx` saves and PDFs.
+1. **`w:u w:val` set to an on/off word.** Exactly `"true"`, `"false"`, `"on"`, `"off"`, `"1"` or `"0"` (case-sensitive) reads as `none`: true and false alike remove a style's underline, and Word saves `w:val="none"`. `"True"`, `"TRUE"`, `"yes"` and `"no"` are invalid, so absent, and the style's underline shows. Section 3.1b's pinned exception for `"true"` widens to all six exact words.
+2. **`"auto"` is exact.** Only exactly `"auto"` is automatic, and it overrides a style's colour. `"Auto"`, `"AUTO"`, `" auto"`, `"auto "` and `"#auto"` are invalid, so absent, and the style's colour shows. Round three couldn't tell these apart, because no style was there to override. This corrects rule 3 as the portfolio first sent it. Hex is as round three measured it: trimmed, `"#"` accepted, any case.
+3. **A character style's highlight is never drawn.** This holds whether the style is alone, combined with bold, or inherited through `basedOn`, with no repair involved, and Word's save writes `w:highlight w:val="none"` on those runs. A paragraph style's highlight and a direct highlight are drawn, and so is a character style's shading. Section 3.1b's note on the repaired file is confirmed as Word's rule.
+4. **An invalid value over a style differs by attribute:**
+
+   | attribute | invalid value over a style |
+   |---|---|
+   | `w:color/@w:val` | absent: the style's colour shows (round five) |
+   | `w:u/@w:color` | absent: the style's underline colour shows (`"auto"` draws black over a style's red) |
+   | `w:shd/@w:fill` | **automatic** (no shading), and it **overrides** the style: Word saves `fill="auto"` |
+   | a border's `w:color` | **automatic** (black), and it **overrides**: Word saves `"auto"` |
+
+5. **Two of Word's own saves change meaning**, so an oracle that compares a probe with Word's save must take these two from the PDFs:
+   - **H7:** a direct green over a highlighting character style is drawn green, but the save drops the green.
+   - **U4:** `w:u w:color="auto"` over a red underline style is drawn black, but the save drops the `w:u`.
+
 ### 3.2 docx4j-core-ts CR-015 (proposed, uncommitted)
 
 Known here only from its registry entry. jsonix fails the whole part on an on/off value outside `true`/`false`/`1`/`0`/`on`/`off`, or on an enumeration value outside its enumeration. Its D1 puts the leniency in the parse (jsonix and the generated objects), so it depends on a jsonix change. Its D2 keeps each invalid value's spelling until round five is measured, then drops those it shows to be as if absent. It plans an Office JS check 60 and a fifth probe round of invalid values over styles, and copies the probes into `test/onoff-fun/`.
@@ -423,16 +442,24 @@ Two places use it, because an invalid direct value must not override a style's v
    - The facade's `underline`, `highlight_color`, `superscript` and `subscript` read through it. They already answer `None` and not-superscript here.
    - Nothing reads `em`, and the merge is all it needs.
 
+**Two of Word's rules beyond the enumerations** (round six, section 3.1c):
+- **`w:u w:val`** set to exactly `"true"`, `"false"`, `"on"`, `"off"`, `"1"` or `"0"` reads as `none`, so it removes a style's underline. Any other on/off spelling is invalid, so absent. `in_enumeration` takes a per-property alias table for this: `u` maps the six words to `NONE`.
+- **A character style's `w:highlight` is never drawn.** The resolver's effective highlight takes the paragraph style's and the direct value only: `StyleUtil`'s merge leaves `highlight` out of a character style's layer, `basedOn` chain included. A character style's `w:shd` is drawn, as now.
+
 The kept `str` is never rewritten: a save writes what was read (section 4.7, Q6). Under section 4.1a's `exact_types`, a padded member (`" yellow"`) is kept too, and reads as outside the enumeration until Word's whitespace is measured (Q15).
 
 ### 4.3 (c) The colour reader
 
 ```python
 def colour(value) -> str | None:
-    """w:color/@w:val as Word 365 reads it: 'RRGGBB' upper case, or None for automatic.
-    bytes of length 3 are the colour; a str is trimmed, loses one leading '#', and is
-    the colour if six hex digits; else a name in NETSCAPE_COLOURS, case-insensitive;
-    anything else ('auto' in any case, F00, 0xFF0000, five or seven digits, '') is None."""
+    """An ST_HexColor value as Word 365 reads it: 'RRGGBB' upper case, AUTO for a stated
+    automatic, or None for a value Word reads as not there. bytes of length 3 are the
+    colour; exactly 'auto' (the enumeration member) is AUTO; a str is trimmed, loses one
+    leading '#', and is the colour if six hex digits; else a name in NETSCAPE_COLOURS,
+    case-insensitive; anything else ('Auto', ' auto', '#auto', F00, 0xFF0000, five or
+    seven digits, '') is None. What None means is the attribute's (rounds five and six):
+    as if absent for w:color/@w:val and w:u/@w:color, automatic for w:shd/@w:fill and
+    border colours."""
 ```
 
 **The table.** `NETSCAPE_COLOURS`, the 140 names with their hex, written into `values.py` and tested against CSS 3's 147 less the seven (Q7).
@@ -444,7 +471,7 @@ def colour(value) -> str | None:
 
 **Order.** A stated `w:themeColor` is CR-009 Phase B's and wins over `w:val`, as Word reads it; `colour()` reads `w:val` only.
 
-**Over a style** (Q8, answered by round five, section 3.1b). An invalid value is as if absent, so the style's colour shows: the merge skips a value `colour()` reads as `None` unless it is a stated `auto`, which does override. The merge therefore gains a colour emptiness test beside the enumerations' (section 4.2).
+**Over a style** (Q8, answered by rounds five and six, sections 3.1b and 3.1c). For `w:color/@w:val` and `w:u/@w:color` an invalid value is as if absent: the merge skips a value `colour()` reads as `None`, so the style's colour shows. Exactly `"auto"` is a stated automatic and overrides. For `w:shd/@w:fill` and border colours an invalid value is a stated automatic and overrides the style: the merge takes `None` there as `AUTO`. The merge therefore gains a per-attribute colour test beside the enumerations' (section 4.2).
 
 ### 4.4 (d) `effective(obj, "field")`, the reader of a value the file leaves out
 
@@ -570,6 +597,7 @@ No new error. A value Word reads is never refused: loading stays lenient, and `L
 **The fixtures (Q11).** The 20 probes and Word's 20 saves (Appendix A), copied byte for byte from the share into **`tests/fixtures/onoff-fun/`** with a `SHA1SUMS` manifest, as `tests/fixtures/mc-fun/` was. The provenance goes into `tests/README.md`'s table: built by the docx4j-portfolio session (`onoff/build.py` to `build4.py`), run by the user in Word 365 on 2026-10-24, and the share's `README.txt` with its SHA-1. The PDFs and the round 1 screenshots stay on the share; the saves carry Word's answers.
 - **The name.** `onoff-fun` is the share's own name, and core-ts's CR-015 uses it (`test/onoff-fun/`). It sits beside `mc-fun/`, the precedent of a share's probe folder in this tree, and it holds the colour and enumeration rounds too.
 - **If docx4j's Phase 0** commits the same files first (core-tests `src/test/resources/runprops/word365/`), each copy is checked against its blob there too.
+- **Rounds five and six** add their probes and Word's saves. **Two of Word's own saves change meaning** (section 3.1c item 5, H7 and U4), so for those two markers the oracle states Word's drawn answer from the PDFs, not the save's reading.
 
 **The tests**, `tests/content/test_run_property_values.py` (new):
 1. **Every marker, every reader, against Word's save**, as section 2 measured. A reader's answer on the probe must equal its answer on Word's save. The readers are the resolver's toggles, `Font` (direct and effective), the text model's runs, Markdown, the facade, `Paragraph.text` and `search` (for T10), and `format_span`'s write.
