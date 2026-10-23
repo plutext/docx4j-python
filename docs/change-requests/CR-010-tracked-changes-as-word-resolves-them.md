@@ -27,6 +27,9 @@ decision): the tracker writes `w:date` on the local wall clock and `w16du:dateUt
 365 does, and every date is read as docx4j reads it; section 10.3 item 1 is superseded. **Both
 passed the user's Word check the same day: CR-010 is complete.** The port of docx4j's U23 fix
 (`a8bc6cda9`) followed on 2026-10-21 (section 12.9).
+**Section 13, decided 2026-10-23** (the user: "draft the amendment to CR-010's resolver porting rules 1 to
+3, then implement"): check 54's three Accept All rules, the port of docx4j CR-043 section 17 (`29dbf5964`),
+in the resolver and the text model's view, closing CR-013 Phase C's 64 sweep differences. Being implemented.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1536,3 +1539,44 @@ xfailed, in this machine's zone and again with `TZ=America/New_York`.
 `scripts/compare_acceptance.py` against the copy taken before the change printed: 13 artefacts,
 175 entries compared, 0 differ beyond the wall-clock dates. No artefact has a comment whose range
 spans paragraphs. No Word check was made of this port.
+
+## 13. Check 54's Accept All rules, the port of docx4j CR-043 section 17 (decided 2026-10-23)
+
+**Decided 2026-10-23** (the user: "draft the amendment to CR-010's resolver porting rules 1 to 3, then implement"). docx4j's session handed it off the same day: docx4j CR-043 section 17, `29dbf5964` on `VERSION_17_3_5`, unpushed, checked in `../docx4j`. Word 365's Accept All was measured by docx4j-core-ts's check 54 (2026-10-22, 16.0.20326.20232, the user's run; core-ts `87bbb38`, its CR-014 sections 12.3 and 12.4). docx4j's resolution, which this one ports, lacked three of its rules. CR-013 Phase C asserted them as differences: check 54's Accept All at cases 9, 13 and 19, and its write sweep's 64 (60 `"Whole"` deletions before a table, a control or a kept block-level branch; 4 deletions across a control's edge; CR-013 sections 13.3 and 14.9). The registry held this as the planned item `python/accept-all-check54-rules`.
+
+### 13.1 The rules
+
+| # | check 54 | Word 365's Accept All | here (and docx4j before `29dbf5964`) | rule |
+|---|---|---|---|---|
+| 1 | case 9: a paragraph deleted whole (its text and its mark), with a `w:tbl` next | the paragraph is gone, and the table follows | an empty paragraph stays, its `w:jc` kept | an emptied paragraph whose deleted mark has no paragraph to join goes when a table follows it. Word's untracked delete does the same (case 8). A story's, a cell's or a control's last paragraph still stays: it is the container's mark (docx4j's U1) |
+| 2 | case 13: a block control's last paragraph deleted whole | `<w:p/>`, a bare mark | the paragraph stays with its `w:pPr` (`ListParagraph` and `w:numPr`: an empty numbered item) | an emptied last paragraph of a control's content keeps its mark only: its `w:pPr` goes |
+| 3 | case 19: a deleted mark with a `w:sdt` next (the range ran from the head into the control's first paragraph) | nothing joins; the head keeps its text and takes the control's first paragraph's `w:pPr` | the head keeps its own properties | at a container's edge the join's property rule still applies: the paragraph takes a copy of the `w:pPr` a join would have given it, whether it is emptied or not. Word's untracked delete does the same (cases 18 and 20) |
+
+**Rule 4 of docx4j's section 17**, a control deleted whole in Word's `w:customXmlDelRange*` form, is already here. CR-013 Phase C (`e7f18a7`) lists it as `CONTENT_CONTROL_DELETION`; Accept takes the control with its four markers, and Reject the markers. Pieces resolve runs and holders before marks, so the deleted mark before such a control joins what follows. Check 54's cases 15 and 17 match Word's Accept All here. This phase confirms that the text model's view also reads an accepted deleted holder as absent (docx4j's `ResolvedView.removes`), and adds it if not.
+
+**Unmeasured, kept as they are** (docx4j's section 11 list): a paragraph with text left before a table; a control's last paragraph with text left; and the reject side of every rule. Word's Reject All of check 54 was not saved.
+
+### 13.2 Where
+
+- **The resolver** (`model/revisions/resolver.py`). `join_with_next` is a module function since CR-013's `e7f18a7`. Its branch with no paragraph next takes the three decisions, as docx4j's `Resolver.joinWithNext` does:
+  - rule 1: a `w:tbl` next, and the paragraph emptied: the paragraph goes;
+  - rule 3: a block control next: a copy of the control's first paragraph's `w:pPr`, through the property code the join already uses;
+  - rule 2: no next item in a control's content, and the paragraph emptied: its `w:pPr` goes.
+  - A kept block-level `mc:AlternateContent` next reads as Word's selected branch reads (CR-012 Phase A). Where that branch begins with a table or a control, the same rule applies. The phase records the sweep's cases of it.
+- **The text model's accepted view** (`model/text/view.py`, docx4j's `ResolvedView`, CR-011) takes the same three decisions without the joins:
+  - it removes rule 1's paragraph;
+  - it gives the walk rule 2's and rule 3's properties, as docx4j's `paragraphPropertiesOf` and `Extractor.viewPPr` do;
+  - it removes a table whose every row the view removes, as the resolver removes an emptied table. This is a pre-existing gap check 54's case 6 exposed in docx4j: the walk stopped at the table where the resolved copy had joined. The phase checks whether this package has it.
+- **The content API** reads through these two, so `TrackedChange.accept()` and `Body`'s views follow.
+
+### 13.3 The oracles and the gates
+
+- **Word's save against Word's Accept All**, docx4j's `TrackedChangesWordTest.check54AcceptAll`. The engine's Accept All of `tests/office_js/54-writes-word365.docx` is compared with `54-writes-word365-accepted.docx`, the whole document through `tests/revisions/description.py`, in `test_word_saves.py`. Both are already here (CR-013 Phase C, `SHA1SUMS`). docx4j found that the numbering-id drift goes once rule 2 drops the orphaned `w:numPr`; if it stays here, ids are compared by content.
+- **The text model**: the agreement test (`tests/text/test_agreement.py`, docx4j's `ViewAgreementTest`) walks the two check 54 files, the view against the resolved copy.
+- **CR-013's assertions move to Word's answer**: check 54's Accept All at cases 9, 13 and 19 in `tests/content/test_ranges.py`, the report and the markup alike. CR-013's write sweep (`out/cr013-c/sweep.py`) is re-run, and its 64 differences must close or each be explained.
+- **What must not move**: the 96 revisions goldens (docx4j's goldens didn't change with `29dbf5964`); CR-010's fifteen Word-save comparisons; CR-011's ratchet and goldens; the parity goldens; the round trip; `generate.sh --check`.
+- **Acceptance**: `compare_acceptance.py` against a copy made first. Artefacts 8 and 12 hold the engine's Accept All. If any part moves, each difference is explained, and a Word check of the moved Accept All copies against Word's own Accept All is staged.
+
+### 13.4 Effort
+
+About ½ day, as docx4j's plan has it. Most of it is the view's half and the re-run sweep.
