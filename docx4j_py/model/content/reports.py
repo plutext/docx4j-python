@@ -29,10 +29,12 @@ wanted (CR-003 section 3.1).
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import datetime
 import json
 import re
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.model.content.addresses import address_of, ordinal_of, para_id_address
@@ -59,6 +61,7 @@ __all__ = [
     "OutlineStats",
     "SearchHit",
     "TextExcerpt",
+    "composed_moves",
     "container_prefix",
     "find_in",
     "heading_level_of",
@@ -1301,6 +1304,51 @@ def moved_by_delete(body: Body, container: list, index: int) -> list[tuple[str, 
         (f"{prefix}/{position + 1}", f"{prefix}/{position}")
         for position in range(index, len(container) - 1)
     ]
+
+
+@contextlib.contextmanager
+def composed_moves(body: Body | None, *containers: list | None) -> Iterator[None]:
+    """One write's ``moved`` as (ordinal before the call, ordinal after), however many blocks it removed or added.
+
+    A write across paragraphs (CR-013 Phase C) removes several blocks and may
+    add some, and each primitive records the shift of its own step
+    (:func:`moved_by_delete`, :func:`moved_by_insert`) against the state the
+    step met, so their concatenation names intermediate states: two pairs
+    ``body/3 -> body/2`` for two blocks. Around such a write this snapshots
+    each container it may change, drops the steps' pairs, and records the
+    composition instead, by element identity: one pair for each direct child
+    that is there before and after and whose index changed, under the
+    container's prefix before and after. A block removed, or one that ends
+    where it started, has no pair, and nor has a new one (it is among the
+    addresses). Within a cell or a control the container's prefix numbers its
+    children, as :func:`moved_by_delete` does; a descendant of a block that
+    moved moves with it, as before.
+    """
+    package = getattr(body, "package", None) if body is not None else None
+    change = current_recorder(package)
+    if body is None or not getattr(change, "active", False):
+        yield
+        return
+    snapshots: list[tuple[list, str, list]] = []
+    for container in containers:
+        if container is None or any(container is seen for seen, _prefix, _before in snapshots):
+            continue
+        prefix = container_prefix(body, container)
+        if prefix is not None:
+            snapshots.append((container, prefix, list(container)))
+    mark = len(change.moved)
+    yield
+    del change.moved[mark:]
+    for container, prefix, before in snapshots:
+        try:
+            now = container_prefix(body, container) or prefix
+        except Exception:  # noqa: BLE001, S112 - a container whose owner went has no address
+            continue
+        after = {id(element): index for index, element in enumerate(container)}
+        for index, element in enumerate(before):
+            moved_to = after.get(id(element))
+            if moved_to is not None and moved_to != index:
+                change.moved.append((f"{prefix}/{index}", f"{now}/{moved_to}"))
 
 
 def container_prefix(body: Body, container: list) -> str | None:

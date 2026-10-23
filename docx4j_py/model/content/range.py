@@ -50,7 +50,7 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError, SpanError
 from docx4j_py.model.content.font import Font, MixedFont
-from docx4j_py.model.content.reports import recording
+from docx4j_py.model.content.reports import composed_moves, recording
 from docx4j_py.model.content.story import (
     StoryLayout,
     story_layout,
@@ -1083,7 +1083,7 @@ class Range:
         elif PARAGRAPH_BREAKS.search(text):
             # a line break in the text is a paragraph break (E1), refused before anything changes where none can be made
             refuse_split(self.paragraph, self.start, "head", "insert_text")
-        with recording(body, "insert_text") as change:
+        with recording(body, "insert_text") as change, composed_moves(body, extent.items):
             change.text(before=self.text)
             change.touched(*self.paragraphs)
             if tracker is not None:

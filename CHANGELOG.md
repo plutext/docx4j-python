@@ -371,7 +371,8 @@ save. It needs docx4j-xsdata 26.2.2.
   the port of docx4j-core-ts CR-014 phases 2 and 3, `53db5bc`, `87bbb38` and `202a01d`). Every write
   of a `Range` works across paragraphs, untracked and tracked, as Word 365 makes it in core-ts's checks
   52 and 54 (run here through `tests/office_js/checks.py`), with the range a write leaves as Office
-  JS's:
+  JS's, and one `ChangeReport` a write, its `moved` each shifted block's ordinal before the call
+  against its ordinal after, however many blocks the write removed:
   - **`delete()` and `insert_text(..., "Replace")`** join the paragraphs in the last one's
     properties; a paragraph mark the range holds goes, whatever ends the range, its emptied paragraph
     with it where no paragraph follows (a cell's last and a story's last kept); into or out of a block

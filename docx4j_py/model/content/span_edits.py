@@ -509,10 +509,14 @@ def delete_span(span: Range, extent: Extent, keep_last_mark: bool) -> Landing | 
     mark the range holds. Returns where the text closed up, or None where
     nothing of a paragraph is left at either end (a range of whole blocks).
     """
+    from docx4j_py.model.content.reports import composed_moves
+
     tracker = span.paragraph.change_tracker
-    if tracker is not None:
-        return _delete_tracked(span, extent, tracker, keep_last_mark)
-    return _delete_untracked(span, extent, keep_last_mark)
+    # the report's moved is before against after, not one pair list per block removed (14.2)
+    with composed_moves(span.paragraph.parent_body, extent.items, extent.head_inside, extent.tail_inside):
+        if tracker is not None:
+            return _delete_tracked(span, extent, tracker, keep_last_mark)
+        return _delete_untracked(span, extent, keep_last_mark)
 
 
 def _delete_untracked(span: Range, extent: Extent, keep_last_mark: bool) -> Landing | None:

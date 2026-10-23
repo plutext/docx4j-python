@@ -574,3 +574,148 @@ def to_xml_of_element(element) -> str:
     from docx4j_py.wml import to_xml
 
     return to_xml(element)
+
+
+def _five_blocks():
+    """The coordinator's probe: a heading, a paragraph, a table, two paragraphs (body/0 to body/4)."""
+    package = create_package()
+    body = package.body
+    body.insert_paragraph("Alpha heading text", style="Heading 1")
+    body.insert_paragraph("Beta body text")
+    body.insert_table(2, 2, values=[["a", "b"], ["c", "d"]])
+    body.insert_paragraph("Gamma after table")
+    body.insert_paragraph("Delta last")
+    return package
+
+
+def _composed(before: list, after: list, prefix: str = "body") -> list[list[str]]:
+    """(ordinal before, ordinal after) of each block there both times whose index changed, by identity."""
+    where = {id(element): index for index, element in enumerate(after)}
+    return [
+        [f"{prefix}/{index}", f"{prefix}/{where[id(element)]}"]
+        for index, element in enumerate(before)
+        if id(element) in where and where[id(element)] != index
+    ]
+
+
+def test_a_writes_moved_is_before_against_after_however_many_blocks_it_removed():
+    # several blocks removed: each removal's pairs named an intermediate state (body/3 -> body/2 twice, for two
+    # blocks), where ChangeReport.moved is (ordinal before the call, ordinal after; CR-003 section 3.4)
+    package = _five_blocks()
+    body = package.body
+    delta = body.content[4]
+    report = _one_report(package, lambda: body.search("heading")[0].expand_to(body.search("Gamma")[0]).delete())
+    # the joined paragraph is the tail's element, Gamma's (section 14.5 item 1: join_with_next keeps the last
+    # paragraph's element), so body/3 is now body/0; the heading's element and the two blocks between went
+    assert report.to_dict()["moved"] == [["body/3", "body/0"], ["body/4", "body/1"]]
+    assert body.content[1] is delta and body.paragraphs[0].text == "Alpha  after table"
+    # a dry run's report is the same
+    package = _five_blocks()
+    with package.dry_run() as trial:
+        trial.body.search("heading")[0].expand_to(trial.body.search("Gamma")[0]).delete()
+        assert trial.changes[-1].to_dict()["moved"] == [["body/3", "body/0"], ["body/4", "body/1"]]
+
+
+def test_a_single_block_removal_reports_the_moved_it_always_did():
+    package = _five_blocks()
+    body = package.body
+    expected = [["body/2", "body/1"], ["body/3", "body/2"], ["body/4", "body/3"]]
+    report = _one_report(package, lambda: body.paragraphs[1].delete())
+    assert report.to_dict()["moved"] == expected
+    # a paragraph's 'Whole' range before a table: the emptied paragraph goes (check 54 case 8), the same pairs
+    package = _five_blocks()
+    body = package.body
+    report = _one_report(package, lambda: body.paragraphs[1].get_range("Whole").delete())
+    assert report.to_dict()["moved"] == expected
+    # two paragraphs joined: the head's element goes, the tail's moves up into its place (section 14.5 item 1)
+    package = _five_blocks()
+    body = package.body
+    report = _one_report(package, lambda: body.search("Gamma")[0].expand_to(body.paragraphs[-1].get_range("End")).delete())
+    assert report.to_dict()["moved"] == [["body/4", "body/3"]]
+    # a container's last block removed (a control's last paragraph's 'Whole' range, check 54 case 12) moves nothing
+    package = create_package()
+    body = package.body
+    body.insert_xml(
+        f'<w:sdt xmlns:w="{W}"><w:sdtPr><w:tag w:val="c"/></w:sdtPr><w:sdtContent>'
+        "<w:p><w:r><w:t>First inside</w:t></w:r></w:p><w:p><w:r><w:t>Last inside</w:t></w:r></w:p>"
+        "</w:sdtContent></w:sdt>"
+    )
+    body.insert_paragraph("After the control")
+    report = _one_report(package, lambda: next(p for p in body.paragraphs if p.text == "Last inside").get_range("Whole").delete())
+    assert [p.text for p in body.paragraphs] == ["First inside", "After the control"]
+    assert "moved" not in report.to_dict()
+
+
+@pytest.mark.parametrize(
+    "write",
+    [
+        "delete",
+        "replace",
+        "replace with a break",
+        "insert_ooxml",
+        "whole joining the next",
+        "to a whole paragraph before a table",
+        "from a heading to a whole table",
+    ],
+)
+def test_every_multi_removal_writer_reports_the_composition(write):
+    package = _five_blocks()
+    body = package.body
+    span = body.search("heading")[0].expand_to(body.search("Gamma")[0])
+    writes = {
+        "delete": span.delete,
+        "replace": lambda: span.insert_text("NEW", location="Replace"),
+        "replace with a break": lambda: span.insert_text("NEW\nLINE", location="Replace"),
+        "insert_ooxml": lambda: span.insert_ooxml(f'<w:p xmlns:w="{W}"><w:r><w:t>N</w:t></w:r></w:p>', location="Replace"),
+        # to the end of Gamma's 'Whole' range: its mark goes too, and what is left joins Delta, the paragraph after it
+        "whole joining the next": lambda: body.search("heading")[0]
+        .expand_to(body.search("Gamma")[0].paragraphs[0].get_range("Whole"))
+        .delete(),
+        # to the end of Beta's 'Whole' range, the table after it: Beta's emptied paragraph goes (check 54 case 8)
+        "to a whole paragraph before a table": lambda: body.search("heading")[0]
+        .expand_to(body.paragraphs[1].get_range("Whole"))
+        .delete(),
+        "from a heading to a whole table": lambda: body.search("heading")[0]
+        .expand_to(body.tables[0].get_range("Whole"))
+        .delete(),
+    }
+    before = list(body.content)
+    report = _one_report(package, writes[write])
+    assert report.to_dict().get("moved", []) == _composed(before, list(body.content))
+    pairs = report.to_dict().get("moved", [])
+    assert len({old for old, _new in pairs}) == len(pairs) and len({new for _old, new in pairs}) == len(pairs)
+
+
+def test_a_delete_across_a_control_edge_reports_the_composition_in_the_body_and_in_the_control():
+    package = create_package()
+    body = package.body
+    body.insert_paragraph("One before")
+    body.insert_paragraph("Two head here")
+    body.insert_paragraph("Three between")
+    body.insert_xml(
+        f'<w:sdt xmlns:w="{W}"><w:sdtPr><w:tag w:val="c"/></w:sdtPr><w:sdtContent>'
+        "<w:p><w:r><w:t>Four inside</w:t></w:r></w:p><w:p><w:r><w:t>Five tail here</w:t></w:r></w:p>"
+        "<w:p><w:r><w:t>Six inside</w:t></w:r></w:p></w:sdtContent></w:sdt>"
+    )
+    body.insert_paragraph("Seven after")
+    control = body.content[3]
+    inner = control.sdt_content.content
+    before, inner_before = list(body.content), list(inner)
+    span = body.search("head")[0].expand_to(body.search("tail")[0])
+    report = _one_report(package, span.delete)
+    # nothing joins across the control's edge (check 54 cases 18 to 20): Three goes, so the control and Seven move up;
+    # inside the control Four goes, so Five and Six move up, under the control's prefix before (body/3) and after
+    assert _composed(before, list(body.content)) == [["body/3", "body/2"], ["body/4", "body/3"]]
+    where = {id(element): index for index, element in enumerate(inner)}
+    expected = _composed(before, list(body.content)) + [
+        [f"body/3/{index}", f"body/2/{where[id(element)]}"]
+        for index, element in enumerate(inner_before)
+        if id(element) in where and where[id(element)] != index
+    ]
+    assert report.to_dict()["moved"] == expected == [
+        ["body/3", "body/2"],
+        ["body/4", "body/3"],
+        ["body/3/1", "body/2/0"],
+        ["body/3/2", "body/2/1"],
+    ]
+    assert [p.text for p in body.paragraphs] == ["One before", "Two ", " here", "Six inside", "Seven after"]
