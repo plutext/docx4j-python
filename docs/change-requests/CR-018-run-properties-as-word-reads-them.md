@@ -282,6 +282,21 @@ docx4j's session handed it off the same day. The commits are on `VERSION_17_3_5`
   - This CR's Q6 keeps them on save.
 - **docx4j's inspector** (`InspectXml.on`) ignored case; it now uses the same rule.
 
+### 3.1b Round five, run 2026-10-24 (docx4j CR-060 section 12)
+
+The portfolio built the probes and the user ran them in Word 365 the same day: `props-u-styles`, `colour-styles`, `props-enum-styles` and `colour-elsewhere` in `~/vbShares/Office 2016/onoff-fun/`, with the README's round-5 section. docx4j's session reported the results; its CR-060 section 12 has each marker.
+- **An invalid value over a style that states the same property reads as absent, so the style's value shows.** This holds for an invalid or bare `w:u`, an invalid `w:color`, and an invalid `highlight`, `vertAlign` or `em`. Word's save drops each.
+  - **The exception:** `w:u w:val="true"` over a style removes the style's underline, and Word saves it as `"none"`. The other on/off words over a style are unmeasured.
+  - Keeping the value on save (Q5, Q6) therefore keeps the meaning, apart from the repair prompt that `highlight`, `vertAlign` and `em` bring.
+  - Word drew no highlight from a character style in the repaired file, which is an effect of the repair.
+- **Colour names are read in `w:u/@w:color`, `w:shd/@w:fill` and border colours too.** An invalid fill drops the shading.
+
+This changes two things in this CR:
+- **Q8's colour half turns.** An invalid colour is as if absent, not a stated automatic: the merge skips it as it skips an invalid enumeration, so the style's colour shows. docx4j's reading of it (the direct value kept) was unmeasured when it was built, and its session has the measurement.
+- **The colour reader's scope widens** to `w:shd/@w:fill` and the border colours (`w:pBdr`, `w:tcBorders`, `w:tblBorders`, `w:bdr` and their sides), each with the same rule. An invalid fill reads as no shading. docx4j's reader covers only `w:color` and `w:u/@w:color` (section 3.1a).
+
+The single-value `w:u w:val="true"` exception goes into Phase B as a pinned case. Whether the other on/off words over a style behave the same is a sixth-round question, if one is wanted.
+
 ### 3.2 docx4j-core-ts CR-015 (proposed, uncommitted)
 
 Known here only from its registry entry. jsonix fails the whole part on an on/off value outside `true`/`false`/`1`/`0`/`on`/`off`, or on an enumeration value outside its enumeration. Its D1 puts the leniency in the parse (jsonix and the generated objects), so it depends on a jsonix change. Its D2 keeps each invalid value's spelling until round five is measured, then drops those it shows to be as if absent. It plans an Office JS check 60 and a fifth probe round of invalid values over styles, and copies the probes into `test/onoff-fun/`.
@@ -584,7 +599,7 @@ CLAUDE.md asks for a Word check after any change to marshalling. Phase A changes
 5. **Q5. What does a save write?** This is the portfolio's D-question. *Recommended: the source's spelling* (section 4.7). It is this package's round-trip rule, canonical identity with `boolean-spelling` the one tolerated difference; it never changes meaning; and it needs no change to `canon.py`. Word's form can be a later explicit operation.
 6. **Q6. Invalid or missing `highlight`, `vertAlign`, `em` on save.** *Recommended: keep them as read, departing from docx4j's accepted D3.* Nothing is dropped silently here, the meaning is the same either way, and a save keeps the prompt the source already had. core-ts's D2 keeps them until round five. Revisit with round five if Word turns out to read any of them otherwise.
 7. **Q7. The colour table.** *Recommended: all 140 names of the classic table, as docx4j's D5 takes them*, with the 41 measured names as tests. Round five measures the other 99 in one file. All seven of CSS 3's extra keywords were probed and dropped, so the fit is strong.
-8. **Q8. A value outside the rules, over a style that states the same property.** *Recommended: an enumeration is as if absent (the merge skips it, so the style's value shows); a colour is a stated automatic (it overrides the style's colour)*, as docx4j reads both, pinned until round five measures them. Rule 2 says "as if absent", and S11 is the missing-value case of it. Rule 3 says "automatic", and Word's save can't tell the two readings apart without a style.
+8. **Q8. A value outside the rules, over a style that states the same property.** *Answered by round five (section 3.1b): both read as if absent, so the merge skips them and the style's value shows*, an enumeration and a colour alike. The one exception, `w:u w:val="true"` removing the style's underline, is a pinned case in Phase B. (The original recommendation, a colour as a stated automatic, is withdrawn.) Rule 2 says "as if absent", and S11 is the missing-value case of it. Rule 3 says "automatic", and Word's save can't tell the two readings apart without a style.
 9. **Q9. The facade: Word's reading, or python-docx's?** *Recommended: Word's throughout, keeping python-docx's tri-state shape*, recorded in CR-003 section 20.3. python-docx raises on 121 of the 227 probe reads and agrees with Word wherever it answers, but for three colour misparses (section 4.8). So following Word departs from python-docx's answers only there, and the facade stops failing or misreading files Word opens without a prompt.
 10. **Q10. `effective()`'s scope: all 546 defaults, or `wml`'s?** *Recommended: the `w` namespace (51 defaults), with `w14` and `w15` added once Phase C has checked their few, raising `LookupError` elsewhere until a namespace's defaults are audited.* Only `wml`'s defaults have been audited, by docx4j's #697 and CR-059. Unaudited defaults were how docx4j's getters went wrong, and no one has audited DrawingML's.
 11. **Q11. The probes as fixtures, under Apache-2.0.** *Recommended: copy the 40 files byte for byte into `tests/fixtures/onoff-fun/` with a `SHA1SUMS`* (section 6.1, Appendix A), once the user confirms they may be used here under Apache-2.0, as CR-013 Q8 did. They are the portfolio's builds and the user's own runs.
