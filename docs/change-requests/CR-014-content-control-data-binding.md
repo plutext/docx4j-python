@@ -1,10 +1,10 @@
 # CR-014: Content control data binding --- a bound control Word reads as plain text holds one paragraph (phase 1); rich text, XHTML and picture bindings and the OpenDoPE processor named for later
 
-**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed. core-ts's Word check 56 (`38dcae9`) measured the rule's scope for both ports: Word can't open **any** bound block control holding a second block, whether it has no type, `w:text` or `w:richText`, and whether the second block is a paragraph or a table. On open Word reads each as plain text. So such a control keeps one paragraph: the writes that would give it a second are refused, or joined where Word joins them, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go. Phase 1b (section 2.9, Q10), a bound date formatted as Word formats it, was proposed the same day from docx4j's hand-off of its CR-058 phase 1 (`d8d8bfb71`). A probe here found `am/pm` in a `w:dateFormat` written as `a5/p5`, names in English only, and the DATE field converter's `h` running 0 to 11. Q10 was decided the same day as recommended (the user: "CR-014 Q10 agree"): phase 1b goes with phase 1, the names from a committed CLDR-derived table. Q1 to Q9 are open.
+**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed. core-ts's Word check 56 (`38dcae9`) measured the rule's scope for both ports: Word can't open **any** bound block control holding a second block, whether it has no type, `w:text` or `w:richText`, and whether the second block is a paragraph or a table. On open Word reads each as plain text. So such a control keeps one paragraph: the writes that would give it a second are refused, or joined where Word joins them, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go. Phase 1b (section 2.9, Q10), a bound date formatted as Word formats it, was proposed the same day from docx4j's hand-off of its CR-058 phase 1 (`d8d8bfb71`). A probe here found `am/pm` in a `w:dateFormat` written as `a5/p5`, names in English only, and the DATE field converter's `h` running 0 to 11. Q10 was decided the same day as recommended (the user: "CR-014 Q10 agree"): phase 1b goes with phase 1, the names from a committed CLDR-derived table. Q1 to Q9 are open. Phase 1c (section 2.10, Q11), a store item ID that names no part resolved as Word repairs it, was proposed the same day from docx4j's second hand-off (`35cdeaee6`). Q11 is open.
 
 **Depends on:**
 - **This repository:** CR-003 Phase E (`docx4j_py/model/customxml/`, `ContentControl`; sections 3.7, 4 and 17); CR-013 (its writers: Phase A's amendment, section 11, makes `insert_text` split paragraphs, and Phase C writes across them; both must keep this rule); CR-002 Phase C's flat OPC sink, for phase 2 only.
-- **docx4j**, cited at `30fb41024` (`VERSION_17_3_5`): `org.docx4j.model.datastorage` (`bind.xslt`, `BindingTraverserXSLT`, `UpdateXmlFromDocumentSurface`, `OpenDoPEHandler`). For phase 1b, `d8d8bfb71` (`VERSION_17_3_5`, unpushed; its CR-058 phase 1): `BindingTraverserXSLT.xpathDateRun` and `FormattingSwitchHelper.formatDate`.
+- **docx4j**, cited at `30fb41024` (`VERSION_17_3_5`): `org.docx4j.model.datastorage` (`bind.xslt`, `BindingTraverserXSLT`, `UpdateXmlFromDocumentSurface`, `OpenDoPEHandler`). For phase 1b, `d8d8bfb71` (`VERSION_17_3_5`, unpushed; its CR-058 phase 1): `BindingTraverserXSLT.xpathDateRun` and `FormattingSwitchHelper.formatDate`. For phase 1c, `35cdeaee6` (its CR-058 phase 2): `StoreItemResolver`, `BoundValues`.
 - **docx4j-core-ts:** its CR-002 phase E (the binding step this package ported), its CR-002 section 61 (the same defect there: D1 to D4 at `80a933d`, check 56 and H1 to H4 at `38dcae9`, decided 2026-10-23, not yet implemented), check 55b (`1e61bb1`, Word's bound controls), and its CR-005 (`05e1370`, the OpenDoPE processor: phase A done, phase B proposed, sections 8 and 9 released in its 0.4.0).
 
 **Counterpart:** docx4j `org.docx4j.model.datastorage`; docx4j-core-ts CR-002 phase E and section 61, and CR-005.
@@ -126,6 +126,22 @@ docx4j's session sent this on 2026-10-23: docx4j CR-058 phase 1, `d8d8bfb71` on 
 
 docx4j CR-058's second item (a `w:storeItemID` that names no part, which Word repairs) wasn't handed off with phase 1, and isn't looked at here.
 
+### 2.10 A store item ID that names no part (docx4j CR-058 phase 2, handed off 2026-10-23)
+
+docx4j's session sent this second hand-off on 2026-10-23: docx4j CR-058 phase 2, `35cdeaee6` on `VERSION_17_3_5`, unpushed, checked in `../docx4j`. Word 365 was measured on 22 and 23 October 2026 (docx4j CR-058 section 8), on the fixtures `core-tests` `OpenDoPE/bind-plain.docx`, `bind-plain-two-parts.docx` and `bind-plain-no-part.docx`, with the expectations in `StoreItemRepairTest`. Word's rules:
+- **Binding.** Where a `w:dataBinding`'s `w:storeItemID` names no custom XML part, Word evaluates the binding against the part whose root element matches the XPath's first step. The match is by namespace and local name, read with the binding's own prefix mappings.
+- **Two parts.** Where two parts fit, Word takes the first in part order whose XPath selects a node: B7, with `b7` in both parts, takes part 1; B11, with `b11` only in part 2, takes part 2.
+- **Saving.** Word's save writes that part's ID into the control.
+- **No part.** Where no part fits (the XPath in another namespace, or a root no part has), the control keeps its surface and its stale ID, the binding untouched.
+
+docx4j now does the same. `StoreItemResolver` is new, and every lookup goes through it: each traverser's text, date, picture, checkbox and XHTML paths, `UpdateXmlFromDocumentSurface`, and the text model's `BoundValues`, which writes nothing. The generators write the resolved ID back into the `w:dataBinding`, in memory. Where no part fits, both traversers leave the control as it is. The XSLT traverser used to empty it, and the NonXSLT one wrote `[missing!]`. A property, `strictStoreItemIds`, restores the old failure.
+
+**Here** (read at `bfdd8be`):
+- `XmlMapping.custom_xml_part` finds a part by the ID alone (`collection.get_item`).
+- `apply_bindings` skips such a control with the code `no_part`, its surface and ID untouched. That is already Word's answer where no part fits, and never docx4j's old failure. But where a part fits, Word shows that part's value and this package keeps the stale surface.
+- `update_from_content_controls` skips it the same way.
+- The text model's `BoundValues._root` finds a part by the ID alone, so it reads the surface where Word reads the fitting part's value.
+
 ## 3. Phase 1: a bound control Word reads as plain text holds one paragraph
 
 ### 3.1 The rule
@@ -172,6 +188,7 @@ For a value control holding more than one block (a document made elsewhere: Word
 |---|---|---|---|
 | 1 | Section 3: the rule (H1), the refusals and the join (3.2, 3.3), `apply_bindings` (3.4), the reading (3.5a); the tests; a Word check of `apply_bindings`' output and of the writes still allowed | **proposed** | 1 to 1½ days, with the check |
 | 1b | **A bound date as Word formats it** (2.9, docx4j CR-058 phase 1, `d8d8bfb71`): the binder formats `w:dateFormat` through the field code's converter, as docx4j now does. `h` becomes 1 to 12 there (the DATE field too) and the AM/PM names upper-case; names come in the `w:lid` language, else the document default's; docx4j's `BoundDateFormatTest` (DF1 to DF13) and `DateFieldLanguageTest.twelveHourClockRunsOneToTwelve` are ported as the oracle, on docx4j's fixture | **decided** (Q10, 2026-10-23); with phase 1 | ½ to 1 day |
+| 1c | **A store item ID that names no part** (2.10, docx4j CR-058 phase 2, `35cdeaee6`): a port of `StoreItemResolver`, which `apply_bindings`, `update_from_content_controls` and the text model's `BoundValues` share. `apply_bindings` writes the resolved ID back, as Word's save does; `no_part` stays where no part fits. `StoreItemRepairTest` and its three fixtures are the oracle | **proposed** (Q11) | ½ day |
 | 2 | **Rich content in bound controls**, for parity with core-ts CR-005 sections 8 and 9 and with docx4j: explicitly rich-text bindings both ways (a flat OPC package in the node, docx4j's `od:progid=Word.Document`; needs CR-002 Phase C's flat OPC sink), escaped XHTML (`od:ContentType=application/xhtml+xml`, core-ts section 8, which needs an XHTML importer here), and picture bindings (core-ts section 9: the `a:blip` replaced from base64) | named, not proposed | to be estimated |
 | 3 | **The OpenDoPE processor**, core-ts CR-005 phase B and docx4j's `OpenDoPEHandler`: conditions, repeats with their contextualised XPaths, the integrity steps and removal; it needs an XPath 2 engine (core-ts uses FontoXPath; here `elementpath` would be a new dependency) | named, not proposed | weeks, as core-ts estimates its phase B |
 
@@ -213,11 +230,19 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
     - The language is `w:lid`, else the document default's. The month and day names need a locale source: either CLDR data, through a new dependency such as `babel`, or a committed table generated from it, as `resources/fonts/` is from docx4j. *Recommended: a committed table* for the languages docx4j's tests and Word's measurements name, with English where a language is missing and the result's entry saying so. That keeps the package free of a dependency.
     - No `dateTimeZone` option, unless a caller asks for one: the nominal default is docx4j's.
 
+11. **Q11. A store item ID that names no part (2.10)?** *Recommended: take docx4j CR-058 phase 2 as phase 1c, with phase 1.*
+    - A port of `StoreItemResolver` (`customxml/`). The part the ID names comes first. Failing that, the part whose root matches the XPath's first step under the binding's prefix mappings; of several, the first in part order whose XPath selects a node, else the first.
+    - `apply_bindings`, `update_from_content_controls` and `BoundValues` go through it. `apply_bindings` writes the resolved ID into the `w:dataBinding` and says so in its entry. `BoundValues` writes nothing.
+    - **`XmlMapping.custom_xml_part` keeps naming only the part the ID names.** It is Office JS's read (`customXmlPart`), and what Office JS gives for a stale ID is unmeasured.
+    - **No strict option.** This package never failed on a stale ID, so there is no old behaviour to restore.
+    - The fixtures are docx4j's (Apache-2.0), copied with a SHA-1 manifest, as `samples/` holds docx4j's.
+
 ## 8. Effort
 
 | phase | days |
 |---|---|
 | 1, with its own Word check (Q1's scope from core-ts's check 56) | 1 |
 | 1b, a bound date as Word formats it (Q10) | ½ to 1 |
+| 1c, a store item ID that names no part (Q11) | ½ |
 | 2 | not estimated |
 | 3 | weeks (core-ts's phase B estimate) |
