@@ -511,11 +511,12 @@ class Range:
 
     def _set_style(self, name: str, write: Callable[[Paragraph], None]) -> None:
         """A style written to the range's paragraph, or to each across paragraphs, as one report (core-ts's ``styledParagraphs``)."""
+        if self.spans_paragraphs:
+            self._refuse_read_only(f"Range.{name}")
         self.refuse_branch_text(name)
         if not self.spans_paragraphs:
             write(self.paragraph)
             return
-        self._refuse_read_only(f"Range.{name}")
         paragraphs = self.paragraphs
         with recording(self.paragraph.parent_body, "format") as change:
             change.text(before=f"{name}={getattr(self, name)}")
@@ -623,8 +624,8 @@ class Range:
         """A ``font`` write over a range across paragraphs (:func:`~.span_edits.format_span`), one ``"format"`` report."""
         from docx4j_py.model.content.span_edits import FontPiece, format_span
 
-        self.refuse_branch_text("a font write")
         self._refuse_read_only("a font write")
+        self.refuse_branch_text("a font write")
         name, value = next(iter(options.items()))
         pieces = self._pieces()
         with recording(self.paragraph.parent_body, "format") as change:
@@ -1031,6 +1032,8 @@ class Range:
         """
         from docx4j_py.model.content.span_edits import extent_of
 
+        # an end in a kept branch is read-only before anything else is asked (CR-013 section 4.5)
+        self._refuse_read_only(member, ends_only=True)
         extent = extent_of(self, member)
         if extent.tail is None or extent.head is None:
             side = "ends" if extent.tail is None else "starts"
@@ -1041,7 +1044,6 @@ class Range:
                 hint="delete the range, then insert the text where it closed up; or replace a range "
                 "that ends in a paragraph",
             )
-        self._refuse_read_only(member, ends_only=True)
         return extent
 
     def _replace(self, text: str) -> Range:
@@ -1563,8 +1565,9 @@ class Range:
             refuse_tracked_content,
         )
 
-        extent = extent_of(self, "delete", cross_controls=True)
+        # an end in a kept branch is read-only before anything else is asked (CR-013 section 4.5)
         self._refuse_read_only("delete", ends_only=True)
+        extent = extent_of(self, "delete", cross_controls=True)
         self._refuse_edge_pieces("delete")
         body = self.paragraph.parent_body
         if self.paragraph.change_tracker is not None:

@@ -380,10 +380,11 @@ def queue_removed(body: Any, subtree: Any) -> None:
     write ends. A bookmark is not touched: one a deletion breaks keeps what is
     left of it, as Word's check 54 case 30 left one at the join.
     """
-    if getattr(body, "copy", False):
+    if getattr(body, "copy", False) or subtree is None:
         return  # a detached copy's trim takes nothing from the document (CopyBody)
+    _name_parts(body, subtree)
     removals = _pending(getattr(body, "package", None))
-    if removals is None or subtree is None:
+    if removals is None:
         return
     removals.discard_removed(getattr(body, "part", None), subtree)
     _settle_unless_recording(body.package)
@@ -398,11 +399,64 @@ def queue_comment_removal(body: Any, identifier: int) -> None:
     """
     if getattr(body, "copy", False):
         return  # a detached copy's trim takes nothing from the document (CopyBody)
+    _name_comment_parts(body)
     removals = _pending(getattr(body, "package", None))
     if removals is None:
         return
     removals.comments.add(identifier)
     _settle_unless_recording(body.package)
+
+
+def _main_of(body: Any) -> Any:
+    package = getattr(body, "package", None)
+    try:
+        return getattr(package, "main_document_part", None)
+    except Exception:  # noqa: BLE001 - a package without a main document part names no part
+        return None
+
+
+def _name_parts(body: Any, subtree: Any) -> None:
+    """The write's report names the notes and comment parts the removed content's references reach.
+
+    Named when the removal is queued, so that a dry run's report, whose
+    package settles nothing (a trial touches no part outside its own), says
+    what the write would touch as the real one's does (CR-003 section 3.4).
+    """
+    from docx4j_py.model.content.reports import current_recorder
+    from docx4j_py.traversal import iter_nodes
+
+    change = current_recorder(getattr(body, "package", None))
+    if not getattr(change, "active", False):
+        return
+    names = set()
+    for node in iter_nodes(subtree, mce="all"):
+        local = (element_name(node) or "").rsplit("}", 1)[-1]
+        if local in ("footnoteReference", "endnoteReference", "commentReference"):
+            names.add(local)
+    main = _main_of(body)
+    if main is None:
+        return
+    if "footnoteReference" in names:
+        change.part(main.footnotes_part)
+    if "endnoteReference" in names:
+        change.part(main.endnotes_part)
+    if "commentReference" in names:
+        _name_comment_parts(body)
+
+
+def _name_comment_parts(body: Any) -> None:
+    from docx4j_py.model.content.reports import current_recorder
+
+    change = current_recorder(getattr(body, "package", None))
+    main = _main_of(body)
+    if not getattr(change, "active", False) or main is None:
+        return
+    change.part(
+        main.comments_part,
+        main.comments_extended_part,
+        main.comments_ids_part,
+        main.comments_extensible_part,
+    )
 
 
 def settle_removals(package: Any, change: Any = None) -> None:

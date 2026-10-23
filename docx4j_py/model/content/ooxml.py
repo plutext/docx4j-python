@@ -501,6 +501,8 @@ def insert_ooxml_into_range(
     # every refusal before any part is added: through text read from a kept branch (CR-011
     # Phase F), and a replacement's extent (Word's refusals inside a table, CR-013 Phase C)
     keeps_mark = location == "Replace" and (span.spans_paragraphs or span.holds_end_mark)
+    if span.spans_paragraphs:
+        span._refuse_read_only("insert_ooxml", ends_only=True)
     extent = None
     if location == "Replace":
         if keeps_mark:

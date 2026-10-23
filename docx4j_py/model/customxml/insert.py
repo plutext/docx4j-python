@@ -234,6 +234,8 @@ def wrap_paragraphs(span: Any, kind: str = "RichText") -> ContentControl:
             "get_range('Whole')), or wrap each paragraph (paragraph.insert_content_control())",
         )
 
+    for paragraph in (span.paragraph, span.end_paragraph):
+        refuse_read_only(paragraph.parent_body, "insert_content_control")
     if span.start != 0 or span.end < len(span.end_paragraph.text):
         raise refuse("starts or ends inside a paragraph")
     try:
