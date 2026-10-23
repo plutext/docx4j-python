@@ -56,6 +56,12 @@ class Kind(enum.StrEnum):
     """A field Word inserted: ``w:ins`` around its begin and instruction and around its end."""
     CONTENT_CONTROL_INSERTION = "content_control_insertion"
     """A content control or custom XML element inserted (``w:customXmlInsRangeStart`` around it)."""
+    CONTENT_CONTROL_DELETION = "content_control_deletion"
+    """A content control or custom XML element deleted (``w:customXmlDelRangeStart`` around it).
+
+    Word's form for a control a tracked deletion took whole (docx4j-core-ts
+    check 54 cases 15 and 17; CR-013 Phase C): an extension of docx4j's kinds,
+    as core-ts's ``CONTENT_CONTROL_DELETION`` is."""
     MATH_STRUCTURE_INSERTION = "math_structure_insertion"
     """An equation's structure (``m:sSup``, ``m:acc``, ...) inserted: a ``w:ins`` in its ``m:ctrlPr``."""
     MATH_STRUCTURE_DELETION = "math_structure_deletion"
@@ -222,12 +228,23 @@ class FieldT(Target):
 
 
 class HolderT(Target):
-    """A content control or custom XML element inserted: its two pairs of ``w:customXmlIns*`` markers."""
+    """A content control or custom XML element inserted or deleted: its two pairs of ``w:customXmlIns*`` or ``Del*`` markers.
 
-    __slots__ = ("holder", "inner_end", "inner_start", "outer_end", "outer_start", "owner")
+    `ins` is True for Word's form of an inserted control (check 30), False for
+    a deleted one's (docx4j-core-ts check 54 cases 15 and 17; CR-013 Phase C).
+    """
+
+    __slots__ = ("holder", "inner_end", "inner_start", "ins", "outer_end", "outer_start", "owner")
 
     def __init__(
-        self, holder: Any, owner: list, outer_start: Any, outer_end: Any, inner_end: Any, inner_start: Any
+        self,
+        holder: Any,
+        owner: list,
+        outer_start: Any,
+        outer_end: Any,
+        inner_end: Any,
+        inner_start: Any,
+        ins: bool = True,
     ) -> None:
         self.holder = holder
         self.owner = owner
@@ -235,6 +252,7 @@ class HolderT(Target):
         self.outer_end = outer_end
         self.inner_end = inner_end
         self.inner_start = inner_start
+        self.ins = ins
 
     def value(self) -> Any:
         return self.outer_start
@@ -361,7 +379,9 @@ class TrackedChange:
             if t.kind is GroupKind.INS:
                 return "Added"
             return "Deleted" if t.kind is GroupKind.DEL else "Formatted"
-        if isinstance(t, (HolderT, FieldT)):
+        if isinstance(t, HolderT):
+            return "Added" if t.ins else "Deleted"
+        if isinstance(t, FieldT):
             return "Added"
         return "Formatted"
 
@@ -388,7 +408,7 @@ class TrackedChange:
         if isinstance(t, FieldT):
             return Kind.FIELD_INSERTION
         if isinstance(t, HolderT):
-            return Kind.CONTENT_CONTROL_INSERTION
+            return Kind.CONTENT_CONTROL_INSERTION if t.ins else Kind.CONTENT_CONTROL_DELETION
         if isinstance(t, MathRunT):
             return Kind.RUN_INSERTION if t.ins else Kind.RUN_DELETION
         if isinstance(t, MathStructT):

@@ -39,7 +39,7 @@ from docx4j_py.model.revisions.change import (
 from docx4j_py.model.revisions.removals import Removals
 from docx4j_py.model.revisions.trees import Revision
 
-__all__ = ["resolve", "resolve_pieces"]
+__all__ = ["join_with_next", "resolve", "resolve_pieces"]
 
 
 def resolve(change: TrackedChange, accept: bool, removals: Removals) -> None:
@@ -223,11 +223,14 @@ class _Op:
                 self.remove(owner, element)
 
     def holder(self, t: HolderT, accept: bool) -> None:
-        """A content control or custom XML element inserted: accepted, its four markers go.
+        """A content control or custom XML element inserted or deleted.
 
-        Rejected, the element goes and what is left of its content stands in
-        its place --- nothing, once the insertions inside it have been rejected
-        with it (check 30, C16b).
+        Inserted (check 30, C16b): accepted, its four markers go; rejected, the
+        element goes and what is left of its content stands in its place ---
+        nothing, once the insertions inside it have been rejected with it.
+        Deleted (docx4j-core-ts check 54 cases 15 and 17; CR-013 Phase C):
+        accepted, the element goes with what it holds, as Word's Accept All
+        took it; rejected, its four markers go.
         """
         self.remove(t.owner, t.outer_start)
         self.remove(t.owner, t.outer_end)
@@ -235,6 +238,10 @@ class _Op:
         if items is not None:
             _remove_quietly(items, t.inner_end)
             _remove_quietly(items, t.inner_start)
+        if not t.ins:
+            if accept:
+                self.remove(t.owner, t.holder)
+            return
         if accept:
             return
         owner = self.current_owner(t.owner, t.holder)
@@ -453,45 +460,62 @@ class _Op:
         props.prune_paragraph(para.p)
 
     def join_with_next(self, para: Para) -> None:
-        """A paragraph mark taken away: the paragraph joins the next one in its list.
-
-        The result keeps the next paragraph's properties and ``w14:paraId``,
-        for markup Word did not write as well (checks 18, 22, 33; C10, C10b).
-        Range markers between the two (a bookmark's end, a comment's) go into
-        the joined paragraph where they stood. With no paragraph next in the
-        same list --- a story's, a cell's, a control's last, or a table next ---
-        the mark is only dropped: a join never crosses a container's boundary
-        (U1).
-        """
-        container = self.current_owner(para.container, para.p)
-        index = trees.index_of(container, para.p)
-        if index < 0:
-            return
-        j = index + 1
-        while j < len(container) and _is_marker(container[j]):
-            j += 1
-        following = container[j] if j < len(container) else None
-        if not isinstance(following, trees.cls("P")):
-            r_pr = para.p.p_pr.r_pr if para.p.p_pr is not None else None
-            if r_pr is not None:
-                r_pr.ins = None
-                r_pr.del_value = None
-            props.prune_paragraph(para.p)
-            return
-        # the properties the first paragraph loses: a section break's header and
-        # footer references among them (C06), whose parts may now be unreferenced (D7)
-        if para.p.p_pr is not None:
-            self.removals.discard(self.story, para.p.p_pr)
-        moved = list(para.p.content)
-        para.p.content.clear()
-        markers = [container[k] for k in range(index + 1, j)]
-        for _ in markers:
-            del container[index + 1]
-        moved.extend(markers)
-        trees.splice(following.content, 0, 0, moved)
-        del container[index]
+        """A paragraph mark taken away: the paragraph joins the next one in its list (:func:`join_with_next`)."""
+        join_with_next(para, self.removals, self.story, self.current_owner)
 
     # -- helpers ---------------------------------------------------------------
+
+
+def join_with_next(
+    para: Para, removals: Removals, story: Any, current_owner: Any = None
+) -> Any:
+    """A paragraph mark taken away: the paragraph joins the next one in its list.
+
+    The result keeps the next paragraph's properties and ``w14:paraId``,
+    for markup Word did not write as well (checks 18, 22, 33; C10, C10b).
+    Range markers between the two (a bookmark's end, a comment's) go into
+    the joined paragraph where they stood. With no paragraph next in the
+    same list --- a story's, a cell's, a control's last, or a table next ---
+    the mark is only dropped: a join never crosses a container's boundary
+    (U1).
+
+    A module function since CR-013 Phase C, so that a ``Range``'s untracked
+    deletion across paragraphs joins as Accept All joins, as docx4j-core-ts's
+    ``spanEdits`` reuses its ``joinWithNext``. `current_owner` is the
+    resolution's own lookup of the list an item is in now; `story` is what
+    `removals` records the first paragraph's properties against (a section
+    break's header and footer references, C06). Returns the paragraph that
+    holds the join (the next one), or `para`'s own ``w:p`` where nothing was
+    joined.
+    """
+    container = current_owner(para.container, para.p) if current_owner is not None else para.container
+    index = trees.index_of(container, para.p)
+    if index < 0:
+        return None
+    j = index + 1
+    while j < len(container) and _is_marker(container[j]):
+        j += 1
+    following = container[j] if j < len(container) else None
+    if not isinstance(following, trees.cls("P")):
+        r_pr = para.p.p_pr.r_pr if para.p.p_pr is not None else None
+        if r_pr is not None:
+            r_pr.ins = None
+            r_pr.del_value = None
+        props.prune_paragraph(para.p)
+        return para.p
+    # the properties the first paragraph loses: a section break's header and
+    # footer references among them (C06), whose parts may now be unreferenced (D7)
+    if para.p.p_pr is not None:
+        removals.discard(story, para.p.p_pr)
+    moved = list(para.p.content)
+    para.p.content.clear()
+    markers = [container[k] for k in range(index + 1, j)]
+    for _ in markers:
+        del container[index + 1]
+    moved.extend(markers)
+    trees.splice(following.content, 0, 0, moved)
+    del container[index]
+    return following
 
 
 def _is_marker(item: Any) -> bool:

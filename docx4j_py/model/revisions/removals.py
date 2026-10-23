@@ -136,6 +136,17 @@ class Removals:
 
         trees.walk(subtree, enter, relationship)
 
+    def discard_removed(self, part: Any, subtree: Any) -> None:
+        """Records what `subtree`, removed by an edit rather than a resolution, references: no bookmark.
+
+        CR-013 Phase C: a ``Range``'s untracked deletion across paragraphs takes
+        with it the notes, comments and relationships its content referenced,
+        as a resolution's removals do (docx4j-core-ts's ``queueNoteRemovals``
+        and ``releaseRelationships``), and leaves a bookmark it breaks as it
+        falls, as Word's check 54 case 30 left one at the join.
+        """
+        self._discard(None, part, subtree)
+
     def remove_comment(self, comment_id: int | None) -> None:
         """A comment to remove whole: its range held removed content, and is now empty."""
         if comment_id is not None:

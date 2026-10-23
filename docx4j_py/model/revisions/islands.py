@@ -83,6 +83,8 @@ REVISION_LOCALS: frozenset[str] = frozenset(
         "numberingChange",
         "customXmlInsRangeStart",
         "customXmlInsRangeEnd",
+        "customXmlDelRangeStart",
+        "customXmlDelRangeEnd",
     }
 )
 

@@ -71,7 +71,8 @@ _BOX_HOLDERS = frozenset({"drawing", "pict", "object", "AlternateContent"})
 _REVISION_BYTES = re.compile(
     rb"<(?:[A-Za-z_][\w.-]*:)?(?:ins|del|moveFrom|moveTo|rPrChange|pPrChange|sectPrChange"
     rb"|tblPrChange|tblGridChange|tblPrExChange|trPrChange|tcPrChange|cellIns|cellDel|cellMerge"
-    rb"|customXmlInsRangeStart|customXmlInsRangeEnd|numberingChange)[\s/>]"
+    rb"|customXmlInsRangeStart|customXmlInsRangeEnd|customXmlDelRangeStart|customXmlDelRangeEnd"
+    rb"|numberingChange)[\s/>]"
 )
 
 
@@ -540,30 +541,40 @@ class Lister:
     # -- content controls and fields inserted ----------------------------------
 
     def _holder_insertion_at(self, items: list, index: int, para: Para | None, ctx: _Ctx) -> TrackedChange | None:
-        """Word's form for a content control or custom XML element inserted under tracking (check 30).
+        """Word's form for a content control or custom XML element inserted or deleted under tracking.
 
-        ``w:customXmlInsRangeStart``, the element --- whose content starts with
-        that marker's ``w:customXmlInsRangeEnd`` and ends with a second start ---
-        and that second start's end.
+        Inserted (check 30): ``w:customXmlInsRangeStart``, the element --- whose
+        content starts with that marker's ``w:customXmlInsRangeEnd`` and ends
+        with a second start --- and that second start's end. Deleted, the same
+        form of ``w:customXmlDelRangeStart`` and ``End``, as Word writes a
+        control a tracked deletion took whole (docx4j-core-ts check 54 cases 15
+        and 17, its ``holderChangeAt``; CR-013 Phase C).
         """
         start = items[index]
-        if trees.name(start) != "customXmlInsRangeStart" or index + 2 >= len(items):
+        local = trees.name(start)
+        if local == "customXmlInsRangeStart":
+            start_name, end_name, ins = "customXmlInsRangeStart", "customXmlInsRangeEnd", True
+        elif local == "customXmlDelRangeStart":
+            start_name, end_name, ins = "customXmlDelRangeStart", "customXmlDelRangeEnd", False
+        else:
+            return None
+        if index + 2 >= len(items):
             return None
         holder = items[index + 1]
         outer_end = items[index + 2]
-        if not trees.is_holder(holder) or trees.name(outer_end) != "customXmlInsRangeEnd":
+        if not trees.is_holder(holder) or trees.name(outer_end) != end_name:
             return None
         inner = trees.children(holder)
         if inner is None or len(inner) < 2:
             return None
         inner_end, inner_start = inner[0], inner[-1]
-        if trees.name(inner_end) != "customXmlInsRangeEnd" or trees.name(inner_start) != "customXmlInsRangeStart":
+        if trees.name(inner_end) != end_name or trees.name(inner_start) != start_name:
             return None
         if trees.marker_id(inner_end) != trees.marker_id(start) or trees.marker_id(outer_end) != trees.marker_id(
             inner_start
         ):
             return None
-        return self._change(HolderT(holder, items, start, outer_end, inner_end, inner_start), para, ctx)
+        return self._change(HolderT(holder, items, start, outer_end, inner_end, inner_start, ins), para, ctx)
 
     def _inserted_field_at(self, items: list, index: int, para: Para | None, ctx: _Ctx) -> TrackedChange | None:
         """Word's form for a field inserted under tracking, when ``items[index]`` starts it (check 30, C01, C16).
@@ -881,7 +892,9 @@ def groupable(change: TrackedChange) -> GroupKind | None:
         return GroupKind.DEL if t.revision is Revision.DEL else None
     if isinstance(t, (RunPropsT, MarkPropsT)):
         return GroupKind.FORMAT
-    if isinstance(t, (HolderT, FieldT)):
+    if isinstance(t, HolderT):
+        return GroupKind.INS if t.ins else GroupKind.DEL
+    if isinstance(t, FieldT):
         return GroupKind.INS
     return None
 

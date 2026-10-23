@@ -196,8 +196,9 @@ def _sweep(package: Any, stories: list[Story] | None, accept: bool, removals: An
       the old number's text and not its definition: dropped either way;
     * a ``w:numPr/w:ins``: accepted, the marker goes; rejected, the
       ``w:numPr`` with it (U9);
-    * a ``w:customXmlInsRangeStart`` or ``End`` left without the form of an
-      inserted control, which marks nothing that can be found.
+    * a ``w:customXmlInsRangeStart`` or ``End`` (or their ``Del`` forms, CR-013
+      Phase C) left without the form of an inserted or deleted control, which
+      marks nothing that can be found.
 
     A record's own content is what was, not what is, and is not looked into.
     """
@@ -215,7 +216,12 @@ def _sweep(package: Any, stories: list[Story] | None, accept: bool, removals: An
 def _stray(item: Any) -> bool:
     from docx4j_py.model.revisions import trees
 
-    return trees.name(item) in ("customXmlInsRangeStart", "customXmlInsRangeEnd")
+    return trees.name(item) in (
+        "customXmlInsRangeStart",
+        "customXmlInsRangeEnd",
+        "customXmlDelRangeStart",
+        "customXmlDelRangeEnd",
+    )
 
 
 #: The run children a text box can be inside.
