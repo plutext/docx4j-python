@@ -772,7 +772,7 @@ The writers' map changes what the content API's inserts write, so CLAUDE.md asks
 2. **The edge rule for hidden text** is computed, not flagged: a span that is the paragraph's whole text takes the hidden runs at its edges, whatever made the range, where core-ts's `WHOLE` comes only from a paragraph's `'Whole'` or `'Content'` range. A search hit covering a whole paragraph's text takes them here and not in core-ts. Phase B's `whole` flag can replace it.
 3. **The equation refusals' codes** are new and not in section 4.7: `SpanError` `range.cuts_equation` and `TrackedChangeError` `tracking.equation` (core-ts's `NotSupportedError`).
 4. **A tracked deletion that takes an equation is refused**, core-ts's rule as section 3.8 records it, though section 4.1's list of what moves for callers names only "an edit that cuts an equation". It reaches a tracked `Paragraph.delete()`, `Body.clear()`, a row's or table's deletion and a replacement, where 0.1.0's tracked deletion skipped the equation (it was no text) and left it undeleted. `tests/content/test_tracking.py`'s `every_tracked_verb` now deletes the first paragraph from the third on holding no equation, since `samples/2010-sample1.docx`'s third is its equation (10.12).
-5. **A picture in a deleted span stays**, this package's rule (core-ts's CR-002 section 48 is not ported); a drawing in a hidden run goes with the run, and `search`'s `^g` passes it by.
+5. **A picture in a deleted span stays**, this package's rule (core-ts's CR-002 section 48 is not ported); a drawing in a hidden run goes with the run, and `search`'s `^g` passes it by. *Withdrawn 2026-10-23 (section 11, the review's item 4; 11.1.11): a deletion takes the pictures in its span, as core-ts's section 48 has it.*
 6. **A dry run copies an unread part privately** (10.5): needed to keep the trial's promise once `Paragraph.text` reads the styles.
 7. **The facade's `Comment.text`** is python-docx's `holder_text` join, not 0.1.0's content API text; the same for a comment of plain runs (10.4).
 8. **`story_layout` lays out a list of rows in Word's row form**, so a row-level control's `text` is its cells `\t` apart with each row ended `\r\n`. Check 53's rule for a row control (cells `\t` apart, `'Whole'` ending `\t\t`) is Phase B's.
@@ -857,7 +857,7 @@ The staged Word check (`__tmp/python-cr013a2/`) is rebuilt to cover these as wel
 
 ### 11.1 Implementation notes (2026-10-23)
 
-Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j-core-ts's CR-002 section 61 (`80a933d`, decided there the same day), added to this phase's brief: inside a bound block control a `\n` or `\r` makes no paragraph. Its scope and its line-ness were corrected the same day by core-ts's Word check 56 (`38dcae9`, its H1 and H4; 11.1.10). F2, F3 and G1 are not built. Every writer of section 10.4 follows Word's own writers where check 55 or 55b measured them, and each difference left is a recorded departure (below). No reader moved, so Phase A's readers' audit (10.7) was not re-run: `Paragraph.text`, `Body.text` and the rest read as they did, and every reader test passes unchanged.
+Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j-core-ts's CR-002 section 61 (`80a933d`, decided there the same day), added to this phase's brief: inside a bound block control a `\n` or `\r` makes no paragraph. Its scope and its line-ness were corrected the same day by core-ts's Word check 56 (`38dcae9`, its H1 and H4; 11.1.10). F2, F3 and G1 were built later the same day, with the review's three other changes (11.1.11). Every writer of section 10.4 follows Word's own writers where check 55 or 55b measured them, and each difference left is a recorded departure (below). No reader moved, so Phase A's readers' audit (10.7) was not re-run: `Paragraph.text`, `Body.text` and the rest read as they did, and every reader test passes unchanged.
 
 **Commits.**
 - `b27bdbc`: the writers, `model/content/split.py`, and the tests (`tests/content/test_word_writers.py`, new; `test_office_js_characters.py`, the cases that move).
@@ -872,7 +872,7 @@ Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j
 | E1 | `Paragraph.splice`, `_splice_paragraphs`, `_splice_text` | `splice` drops (E3), then for a text holding `PARAGRAPH_BREAKS` (`\r\n`, `\r`, `\n`) checks, writes the text without them through `_splice_text` (the old splice body), and splits after each piece |
 | the split | `model/content/split.py` (new; `KEEP` covers `model/`) | the port of core-ts's `splitParagraph` at `1e61bb1`: `SPLITTABLE`, `refuse_cut`, `field_depths`, `_place`, `_climb`, `refuse_split`, `split_paragraph`. One walk, `_climb`, answers the check (dry) and makes the cut, so the two cannot disagree |
 | the landing | `Paragraph._landing`, `_after_deletion`, `_untracked_landing`, `_tracked_landing`, `refuse_paragraph_breaks`, `split.refuse_place` | where `_splice_text` and `_insert_tracked` will put the text, read before anything changes, rule for rule |
-| section 61 | `controls.bound_plain_text_control`, `bound_control_is_multi_line`; `splice` | a block control with a `w:dataBinding` (or `w15:`), no type element, a `w:text` or a `w:richText`, not a container (`bindings.is_container`), its node no flat OPC package (H1, 11.1.10): a break a `w:br` where it is a `w:text` with `w:multiLine` set, nothing in any other (H4's reading, decided inside the exception) |
+| section 61 | `controls.bound_plain_text_control`, `bound_control_is_multi_line` (`is_bound_block_control`, `plain_text_lines_of` and `paragraph_lines_of` since 11.1.11); `splice` | a block control with a `w:dataBinding` (or `w15:`), no type element, a `w:text` or a `w:richText`, not a container (`bindings.is_container`), its node no flat OPC package (H1, 11.1.10): a break a `w:br` where it is a `w:text` with `w:multiLine` set, nothing in any other (H4's reading, decided inside the exception) |
 | a run-level control | `ContentControl.insert_text` | `\n` or `\r` refused, `range.splits_control` (core-ts's F4) |
 | the ranges | `Range.insert_text`, `paragraph.replace_matches`, `Paragraph.text_since` | a range follows its text across the split; `replace_text`'s earlier matches move to the first new paragraph; a report's `text_after` is the paragraphs `\r` apart |
 | E3 at every writer | `paragraph.py`, `range.py`, `body.py`, `table.py`, `comments.py`, `controls.py` | section 10.4's list exactly |
@@ -931,9 +931,9 @@ Word's answers are written into `test_word_writers.py` as data, by case, from co
 | 1 and 7, `A` | Word's: the control and the node `xAy` |
 | 2, U+000B, multi-line | the control Word's (`x`, `w:br`, `y`); the node `x\ny`, where Word writes `x\r\ny`: F1, decided, `\n` |
 | 3 and 4, `\n` and `\r`, multi-line; 9, `\n`, single-line | refused (`range.splits_control`, F4), nothing changed, where Word moved the control to block level |
-| 5, U+001E | the control Word's (`w:noBreakHyphen`); the node `x‑y` (docx4j's), where Word writes `x-y`: F2, proposed, not built |
+| 5, U+001E | the control Word's (`w:noBreakHyphen`); the node `x‑y` (docx4j's), where Word writes `x-y`: F2, proposed, not built. Word's since 11.1.11: the node `x-y` |
 | 6, U+0002 | the control `xy` and the node `xy`: dropped at the write (E3), where Word's session read `x\u0002y` and Word put a space in the node (`x y`) |
-| 8, U+000B, single-line | a `w:br` kept, the node `x\ny`, where Word dropped it from the control and wrote `x\r\ny` to the node: F3, proposed, not built |
+| 8, U+000B, single-line | a `w:br` kept, the node `x\ny`, where Word dropped it from the control and wrote `x\r\ny` to the node: F3, proposed, not built. Since 11.1.11 (F3): the control Word's, `xy`, and the node `xy`, following the control, where Word's is `x\r\ny` |
 | 10, a node's line feed | Word's: `line1`, a `w:br`, `line2` (`apply_bindings`, docx4j's `runsForValue`) |
 
 #### 11.1.5 The tests
@@ -991,6 +991,8 @@ The facade's writers and `TrackedChange.text` are the departures sections 10.4 a
 
 #### 11.1.8 The Word check (staged 2026-10-23; not yet run)
 
+*Superseded by the restaging of 11.1.11, which rebuilt every file.*
+
 In `~/vbShares/Office 2016/__tmp/python-cr013a2/`, built by `out/cr013-a2-word-check/build.py` at `b27bdbc`, each file read back with `LoadOptions(strict=True)`: nothing skipped, no raw control character. `README.txt` says what each case's markup holds, says "unmeasured" where Word's display isn't known, and tells the user to view file 2 in **All Markup**. Its SOURCEs sit beside their saves:
 - `cr013a2-SOURCE-writers.docx` (SHA-1 `34ff5cb3…`), and its saves `cr013a2-1-writers-untracked.docx` (`e228d18d…`) and `cr013a2-2-writers-tracked.docx` (`c94c2a5e…`, author `CR-013 check`). The eleven cases:
   - `\n`, `\r` and `\r\n` at a paragraph's end;
@@ -1007,7 +1009,7 @@ The main question is whether each opens without a repair prompt.
 
 - **A tracked insertion strictly inside another author's insertion goes after it**, and the range returned is wrong. Measured at `f9f7b5a` and after: `a INSERTEDZ b` with the range 6:7 reading `R`. `_insert_tracked` puts the `w:ins` beside the revision element, not between the halves. The landing mirrors it, and the audit's seven skipped probes are it. Pre-existing; not this section's.
 - **E1 can give some bound block controls a second paragraph:** a bound block-level date, drop-down list or combo box, which check 56 didn't measure and H1 doesn't name, and a bound control whose node holds a flat OPC package, which H1 leaves as it is. Any other block write into a bound plain-text control (`insert_paragraph`, `insert_table`, `insert_xml`) still adds a second paragraph, section 10.10's defect: CR-014 phase 1's.
-- **Not built:** F2 (a non-breaking hyphen to a node as `-`), F3 (a line break dropped from a single-line control), G1 (`get_content_controls(types=...)`); they wait on the user.
+- **Not built:** F2 (a non-breaking hyphen to a node as `-`), F3 (a line break dropped from a single-line control), G1 (`get_content_controls(types=...)`); they wait on the user. *Built since: 11.1.11.*
 - **Phase B's:** a `Range` across paragraphs, which item 1 of 11.1.6 waits for.
 
 #### 11.1.10 Correction: core-ts's Word check 56 (`38dcae9`)
@@ -1028,3 +1030,77 @@ core-ts ran its Word check 56 the same day (its CR-002 sections 61.3 and 61.4; t
   - 308 tests in the file, where there were 301.
 - **The Word check's** bound-controls SOURCE and save are rebuilt with all four kinds and the unbound control, and the README rewritten for them. Files 1 and 2 are left as staged. A rebuild of them differs only in the wall-clock dates (27 entries compared, canonically identical).
 - **The gates after the correction:** the fast suite 4,405 passed, 8 skipped, 1,280 deselected, 1 failed; the full suite 5,685 passed, 8 skipped, 1 failed. The difference is the seven new tests. The failure is the known one.
+
+#### 11.1.11 The four decided after core-ts's consistency review (`6285dfa`)
+
+Section 11's paragraph "Decided after core-ts's consistency review" (`5e82775`; the user: "go ahead with all four, then restage the Word check to cover all of it"), built at `1ca981b` from docx4j-core-ts `6285dfa` (its CR-002 sections 60.8 and 61.5, read from the commit).
+
+**1. Text into a hidden paragraph.** 0.1.0 wrote the text into the hidden run's own `w:t`, so Word hid it (measured in a `v0.1.0` worktree); Phase A put it in a run of its own before the hidden one, with its `w:vanish`. The three defects measured at `e79a8e8` are fixed:
+- the new run takes the look of the visible text beside it, or the first visible run's, and never a hidden run's (core-ts's `visibleFirstRunRPr`; `Paragraph._visible_first_run`), so it reads as text;
+- the writers' map reaches it, so a U+000B is a `w:br`;
+- `insert_text(..., "End")` goes after the trailing hidden runs, and `"Start"` before the leading ones (`_place_at_hidden_edge`, mirrored in `_landing`). core-ts still puts it before the hidden run (`spliceText`'s `start === 0`); landing at the end is this section's decision.
+
+Checked, untracked and tracked:
+- **a range at the paragraph's edges:** `Before` or `Start` at 0 goes before the leading hidden runs, and `After` or `End` at the text's end after the trailing ones. A collapsed range in a paragraph with no visible text lands at the end;
+- **`Replace`:** takes the whole content, hidden runs with it (core-ts's `WHOLE`). A tracked replacement's insertion doesn't take a deleted hidden run's look;
+- **`Paragraph.text = ...`:** takes the first visible run's look. core-ts's setter still takes the first run's;
+- **`Body.insert_text`:** at its last paragraph's end;
+- **`replace_text`:** doesn't find hidden text, as Phase A has it.
+
+**The partly hidden paragraph:**
+- the same defect at the hidden edge (`End` before trailing hidden text, `Start` after leading hidden text) is fixed the same way;
+- the new run takes the visible neighbour's look, a bold one's bold (tested).
+
+**2. The break rule in every `w:text` control.** core-ts's `plainTextLinesOf` and `forWriter` (`controls.plain_text_lines_of`, `paragraph_lines_of`; `text_model.for_writer`):
+- **the rule:** in a `w:text` control, bound or not, block or run, a break is a `w:br` where `w:multiLine` is set. Where it isn't, the break is dropped, and so are a line, page or column break (U+000B, U+000C, U+000E);
+- **a bound block control of no type or `w:richText`** is single-line, as 11.1.10 has it;
+- **an unbound one** of no type or `w:richText` splits as E1 has it;
+- **`Paragraph.text = ...`** in such a control follows the control's kind, so `\r` is a `w:br` there, not a `w:cr`. core-ts's setter does the same;
+- **the block control** is the paragraph's direct parent, core-ts's `blockControl`, where 11.1.10 took the innermost control above it;
+- **`w15:dataBinding`** is left out of the bound rule, as core-ts's `isBoundBlockControl` leaves it ("Word's rich-text binding"); 11.1.10 took it in. A difference found in the port, aligned.
+- **Renamed:** `is_bound_block_control` and `plain_text_lines_of` replace 11.1.10's `bound_plain_text_control` and `bound_control_is_multi_line`, unreleased.
+
+**3. F2, F3 and G1:**
+- **F2** (`bindings.bound_value_of`, core-ts's `boundValueOf`): a bound node takes a non-breaking hyphen as `-`; an optional hyphen stays U+00AD. Check 55b case 5 now holds: the node is `x-y`.
+- **F3:** a single-line plain-text control, run or block, drops a line break, and the node follows the control. Check 55b case 8's control is now Word's (`xy`), and its node `xy` is F3's, where Word's is `x\r\ny`.
+- **G1:** `get_content_controls(types=...)` on `Body`, `Paragraph`, `Range` and `ContentControl`. `types` are `Word.ContentControlType` values as a control's `type` reports them (this package's `SdtKind` strings); none or an empty list gives every control, as core-ts's.
+  - `Range`'s is core-ts's `Range.contentControls` rule within one paragraph: the run-level controls whose text overlaps the span, not one holding it whole. `Range.content_controls` itself stays Phase B's.
+  - **A departure:** a bound block control of no type or `w:richText` reports `RichText` here (H4 is CR-014's), so `types=["PlainText"]` doesn't find it, where Word's does.
+  - **The subset:** `tests/office_js_subset.json` is the stale one Phase B regenerates and doesn't declare `getContentControls`, so no subset test newly fails. The full suite's one failure is the known one. Phase B's regeneration will add the four members, as `test/office-js-subset.ts` at `6285dfa` declares them, and each is a method here. It will add `ContentControlOptions { types }` too, which is a keyword argument here, as `SearchOptions` is (`test_the_search_options_are_the_keyword_arguments`).
+
+**4. A deletion takes the pictures in its span** (core-ts's CR-002 section 48; 10.11 item 5 withdrawn):
+- **the edges:** a drawn object strictly inside a deleted span goes with it. A paragraph's whole content holds those at both its edges: `insert_text("Replace")`, `Paragraph.text = ...`, a `'Whole'` range, a span of all its text, a tracked `Paragraph.delete()` (which now deletes a paragraph holding only a picture) and a deleted row's cells. Any other span, a search hit beside a picture among them, leaves the pictures at its edges, as section 48 has it;
+- **tracked:** the picture's run goes into the `w:del`. Accept All removes it and Reject All brings it back (tested);
+- **`Range.get_xml`:** section 48 says nothing of `getOoxml`. Since the copy is trimmed by the same splice, a picture outside the span is now trimmed and one at its edge kept, and the document is not touched (tested);
+- **not ported:** section 48's release of the relationships removed content referenced. This package releases no image relationship when a picture goes, through `InlinePicture.delete` or `Paragraph.delete` either, so the image part stays, referenced by nothing.
+
+**Tests:** 20 more in `test_word_writers.py` (328): the hidden paragraph's writers and its partly hidden edges; the unbound `w:text` controls, block and run; F2, F3 and G1; the pictures, untracked and tracked, with the resolutions and `get_xml`. **The landing audit** (`out/cr013-a2-word-check/landing_audit.py`): 38,292 probes, 24 of them at a hidden edge with `edge` given, 0 disagreements.
+
+**The gates:**
+
+| gate | before (`5e82775`'s code, as 11.1.10's) | after (`1ca981b`) |
+|---|---|---|
+| the fast suite | 4,405 passed, 8 skipped, 1,280 deselected, 1 failed | 4,425 passed, 8 skipped, 1,280 deselected, 1 failed (1 min 56 s) |
+| the full suite | 5,685 passed, 8 skipped, 1 failed | 5,705 passed, 8 skipped, 1 failed (3 min 18 s) |
+| `codegen/generate.sh --check` | --- | byte identical; 297 `.py` under `docx4j_py/`; no generated file changed |
+| `scripts/roundtrip.py` | --- | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 benign respellings; exit 0 |
+| acceptance (`compare_acceptance.py`) | copied first to `out/acceptance-before-cr013a3/`; canonically equal to a regeneration at `5e82775` in a scratch worktree | 13 artefacts, 175 entries, 0 differing beyond the dates |
+
+The one failure is the known `test_the_script_would_write_what_is_committed`, both times.
+
+**The Word check, restaged** in `~/vbShares/Office 2016/__tmp/python-cr013a2/`, every file rebuilt by `out/cr013-a2-word-check/build.py` at `1ca981b`. No one had opened the staging: there was no `results*.txt` and no `~$*` file. Each file was read back from the share with `LoadOptions(strict=True)`: nothing skipped, no raw control character in any part.
+- `cr013a2-SOURCE-writers.docx` (`49cd1ec9…`), `cr013a2-1-writers-untracked.docx` (`79873e7e…`), `cr013a2-2-writers-tracked.docx` (`908a0b83…`, author `CR-013 check`). Cases 1 to 11 are as before, and four are new:
+  - 12, a paragraph of hidden text written into at its end with a line break;
+  - 13, a partly hidden paragraph's end;
+  - 14, a paragraph's whole text replaced, its picture with it;
+  - 15, a search hit beside a picture deleted, the picture left.
+- `cr013a2-SOURCE-bound-controls.docx` (`cd4057ae…`), `cr013a2-3-bound-controls.docx` (`6efedb69…`): nine controls.
+  - Block, bound: multi-line `w:text`, single-line `w:text`, no type, `w:richText`.
+  - Block, unbound: no type, multi-line `w:text`, single-line `w:text`.
+  - Run-level, bound: single-line `w:text` given a line break (F3), and multi-line `w:text` given a non-breaking and an optional hyphen (F2).
+  - Only the two multi-line `w:text` block controls hold a `w:br`, and only the unbound control of no type holds two paragraphs.
+- `README.txt` names what each case's markup holds, says "unmeasured" where Word's display isn't known (an inserted mark, a deleted picture, what Word shows of a bound control after refreshing it from its node), and tells the user to view file 2 in **All Markup**. This package's own Reject All of file 2 gives the SOURCE's text but for case 7, where it rejects the SOURCE's own insertion by Other Author too, and its Accept All gives file 1's text; the README says so.
+
+**Found, and not done:**
+- `insert_text(..., "End")` on a paragraph ending with a picture still puts the text before the picture (the target rule extends the last `w:t`); the edge rule covers hidden runs only, and core-ts's is the same. Which side Word puts it is unmeasured.
+- The tracked insertion strictly inside another author's insertion (11.1.9) is unchanged.

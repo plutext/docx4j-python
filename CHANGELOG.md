@@ -260,11 +260,19 @@ save. It needs docx4j-xsdata 26.2.2.
       run-level content control or a field, or a break inside an equation or text read from a kept
       `mc:AlternateContent`, is refused before anything changes (`SpanError`
       `range.splits_control`, `range.splits_field`, `range.cuts_equation`; `address.read_only`).
-      Inside a bound block control (no type, `w:text` or `w:richText`) a break makes no paragraph,
-      since Word can't open such a control holding a second block and reads every one as plain
-      text: it is a `w:br` in a multi-line `w:text` control, and nothing in any other
-      (docx4j-core-ts CR-002 section 61 and its Word check 56). 0.1.0 wrote `\n` and `\r` raw into
-      the `w:t`.
+      Inside a `w:text` content control, bound or not, block or run, and a bound block control of
+      no type or `w:richText` (Word can't open one holding a second block, and reads every one as
+      plain text), a break makes no paragraph: it is a `w:br` where the control is a multi-line
+      `w:text`, and nothing in any other, where a line, page or column break is dropped too and a
+      bound control's node follows (docx4j-core-ts CR-002 sections 60 and 61, its Word checks 55b
+      and 56). In a run-level control a `\n` or `\r` is refused (`range.splits_control`). 0.1.0
+      wrote `\n` and `\r` raw into the `w:t`.
+    - **Text written into a paragraph whose text is hidden** takes no hidden run's look, so it reads
+      as text and its characters reach the map, and `insert_text("End")` puts it after the trailing
+      hidden runs (`"Start"` before the leading ones). 0.1.0 wrote it into the hidden run's own
+      `w:t`, so Word hid it.
+    - **A bound control's custom XML node** takes a non-breaking hyphen as `-`, as Word writes it;
+      an optional hyphen stays U+00AD.
     - **`insert_paragraph` and `Paragraph.text = ...` write one paragraph**: `\n` and `\r\n` a
       `w:br`, `\r` a `w:cr`; so do a cell's `value`, a table's values and a comment's paragraphs.
       Word's `insertParagraph` writes the escapes as text instead, which this does not follow.
@@ -273,11 +281,23 @@ save. It needs docx4j-xsdata 26.2.2.
       on a paragraph holding a note reference loses the reference.
     - **In a comment** `\r`, `\n` and `\r\n` (one) are paragraph marks, where 0.1.0 split on `\n`
       and saved a `\r` as `&#13;`.
-    - **New**: `Paragraph.refuse_paragraph_breaks` and `Paragraph.text_since`,
-      `controls.bound_plain_text_control` and `bound_control_is_multi_line`, `text_model.drop_unwritable`
-      and `PARAGRAPH_BREAKS`,
-      and `model/content/split.py`'s `split_paragraph` (core-ts's `splitParagraph`).
-      `to_api_script` writes a run's line break as U+000B in an `insert_text` line.
+    - **New**: `get_content_controls(types=...)` on `Body`, `Paragraph`, `Range` and
+      `ContentControl` (Office JS `getContentControls`, WordApi 1.5), filtering by a control's
+      `type` as Word does; `content_controls` keeps listing every kind, where Word's lists rich-text
+      controls only. Extensions: `Paragraph.refuse_paragraph_breaks`, `text_since` and
+      `holds_objects`; `controls.is_bound_block_control`, `plain_text_lines_of`, `block_control_of`
+      and `paragraph_lines_of`; `bindings.bound_value_of`; `text_model.drop_unwritable`,
+      `for_writer`, `PARAGRAPH_BREAKS` and `LINE_CHARACTERS`; and `model/content/split.py`'s
+      `split_paragraph` (core-ts's `splitParagraph`). `to_api_script` writes a run's line break as
+      U+000B in an `insert_text` line.
+  - **A deletion takes the pictures in its span**, as docx4j-core-ts's CR-002 section 48 has it
+    (CR-013 section 11): a picture strictly inside a deleted or replaced span goes with it, and a
+    paragraph's whole content holds those at its edges too (`insert_text("Replace")`,
+    `Paragraph.text = ...`, a `'Whole'` range, a tracked `Paragraph.delete()`, which now takes a
+    paragraph holding only a picture); with change tracking on, the picture's run goes into the
+    `w:del`. A search hit beside a picture leaves it. `Range.get_xml` trims the pictures outside
+    its span. 0.1.0 left every picture in place. The image part stays in the package, as it does
+    when `InlinePicture.delete()` removes one.
   - **Equations in an edit**: an edit takes an equation whole, untracked, and never part of it
     (`SpanError` `range.cuts_equation`); with change tracking on, a deletion that would take one ---
     `Paragraph.delete()`, `Body.clear()`, a row's or a table's deletion, a replacement --- is
