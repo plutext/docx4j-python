@@ -29,7 +29,8 @@ passed the user's Word check the same day: CR-010 is complete.** The port of doc
 (`a8bc6cda9`) followed on 2026-10-21 (section 12.9).
 **Section 13, decided 2026-10-23** (the user: "draft the amendment to CR-010's resolver porting rules 1 to
 3, then implement"): check 54's three Accept All rules, the port of docx4j CR-043 section 17 (`29dbf5964`),
-in the resolver and the text model's view, closing CR-013 Phase C's 64 sweep differences. Being implemented.
+in the resolver and the text model's view, closing CR-013 Phase C's 64 sweep differences, with docx4j's follow-up `e55a83b8e`
+(section 13.3a: three accept rules revised by a second Word probe; the reject side measured, as it is). Being implemented.
 **Depends on:** docx4j CR-043, done 2026-10-16 (`062bd4a44`, `737c32139` and `00614748e` on
 `VERSION_17_3_3`, unpushed, shipping in 17.3.3), and this repository's CR-003 Phase F (section 16),
 whose listing, `accept()`, `reject()`, `accept_all()` and `reject_all()` this replaces.
@@ -1576,6 +1577,23 @@ spans paragraphs. No Word check was made of this port.
 - **CR-013's assertions move to Word's answer**: check 54's Accept All at cases 9, 13 and 19 in `tests/content/test_ranges.py`, the report and the markup alike. CR-013's write sweep (`out/cr013-c/sweep.py`) is re-run, and its 64 differences must close or each be explained.
 - **What must not move**: the 96 revisions goldens (docx4j's goldens didn't change with `29dbf5964`); CR-010's fifteen Word-save comparisons; CR-011's ratchet and goldens; the parity goldens; the round trip; `generate.sh --check`.
 - **Acceptance**: `compare_acceptance.py` against a copy made first. Artefacts 8 and 12 hold the engine's Accept All. If any part moves, each difference is explained, and a Word check of the moved Accept All copies against Word's own Accept All is staged.
+
+### 13.3a docx4j's follow-up, `e55a83b8e`, taken with it (2026-10-23)
+
+docx4j's session sent a second hand-off the same day: `e55a83b8e` on `VERSION_17_3_5` (unpushed, checked in `../docx4j`), "the unmeasured side measured; three more Accept All rules". The user ran two more Word 365 documents on 2026-10-23:
+- **Check 54's Reject All**: the original everywhere, equal to docx4j's. So the reject side of every section 17 rule agrees, and stays as it is here.
+- **A text-left probe**: five cases in Word's tracked form, written by script.
+
+The probe changes three of the accept rules, and this port takes them with 13.1's, since it ports docx4j's section 17 as docx4j now has it:
+1. **A deleted mark with text left and a table next**: the text joins the table's first cell's first paragraph, which keeps its own properties, and the paragraph goes. It used to stay before the table. This revises docx4j's U1, and the U1 test here (`TrackedChangesTest`'s) moves with it.
+2. **A block control's last paragraph with its mark deleted** keeps a bare mark whether or not text is left. This widens 13.1's rule 2: it had kept its style and its number.
+3. **An emptied paragraph with its mark deleted and a block control next** goes, as before a table. Taking the control's first paragraph's `w:pPr` (13.1's rule 3) applies only where text is left.
+
+The view and the text walk follow: docx4j's `ResolvedView.joinsIntoTable` and `Extractor`'s pending table join. Not followed, as docx4j doesn't follow it: the probe's case 4, a deleted mark on a cell's last paragraph, is not an edit Word writes, and Word collapsed the one-cell table.
+
+**The oracles gain:**
+- docx4j's `TrackedChangesWordTest.check54RejectAll`, `textLeftProbeAcceptAll` and `textLeftProbeRejectAll`;
+- the fixtures docx4j `core-tests` `revisions/cr043/s17/` (`17-text-left.docx`, `-accepted.docx`, `-rejected.docx` and `build-17-text-left.py`) and `revisions/core-ts/check54/54-writes-word365-rejected.docx`. These are copied with a SHA-1 manifest, from docx4j's tree at `e55a83b8e`, under Apache-2.0 as docx4j's fixtures in `samples/` are.
 
 ### 13.4 Effort
 
