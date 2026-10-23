@@ -64,6 +64,10 @@ SHARE_SHA1 = {
     "53-reads.docx": "aea48f83fd318b4260a73ac6ad9a99cd7a8f77f8",
     "52-ranges-word365.docx": "15f505306f8faf95f6946b47789849ccbf34603b",
     "52-ranges-word365-accepted.docx": "3d2a37367822fc323c0905e30b0931c6a3a4f58d",
+    # CR-013 Phase C (Q8 as extended): check 54's file and Word's two saves (core-ts 87bbb38)
+    "54-writes.docx": "98f548e35d47f28e87c38898a92f62e6b602b690",
+    "54-writes-word365.docx": "b5e958f9204751488625ca5adafea3d605a89933",
+    "54-writes-word365-accepted.docx": "5047a128aec36d2933d044ca6ae9b7ce62510daf",
 }
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -124,8 +128,9 @@ def xml_of(package) -> str:
 def test_every_fixture_is_the_manifests_and_the_files_word_read():
     lines = (OFFICE_JS / "SHA1SUMS").read_text(encoding="utf-8").splitlines()
     manifest = dict(reversed(line.split("  ", 1)) for line in lines if line.strip())
-    # Phase A's seven, and Phase B's eight: checks 52 and 53, Word's saves of 52 and Word's four JSONs
-    assert len(manifest) == 15
+    # Phase A's seven, Phase B's eight (checks 52 and 53, Word's saves of 52 and Word's four JSONs)
+    # and Phase C's five (check 54's file, Word's two saves and its two JSONs)
+    assert len(manifest) == 20
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():

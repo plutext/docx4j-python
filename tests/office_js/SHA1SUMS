@@ -13,3 +13,8 @@ ced5af5b4ec8e3b903cb41b005e45930908e03a0  52-ranges-word365-run.json
 82f94c8169c38e89ac26e1e34b02efe52173bc2f  52-ranges-word365-accepted.json
 2d29d5a57bf0314921049f79cb69563f2eaf9a64  53-reads-word365-simple.json
 e07f5e80312f5976431ad5e1ffa4d12dc9343064  53-reads-word365-all.json
+98f548e35d47f28e87c38898a92f62e6b602b690  54-writes.docx
+b5e958f9204751488625ca5adafea3d605a89933  54-writes-word365.docx
+5047a128aec36d2933d044ca6ae9b7ce62510daf  54-writes-word365-accepted.docx
+5a5faceaf1c04001451c55b0f0c277c2a0effc31  54-writes-word365-run.json
+bb4941448d79de1092cd6d7736ee5b8da28f07b6  54-writes-word365-accepted.json

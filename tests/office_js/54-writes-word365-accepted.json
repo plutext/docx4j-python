@@ -1,0 +1,2338 @@
+{
+ "check": 54,
+ "mode": "report",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 1,
+   "kind": "IN1",
+   "op": "paragraph-before",
+   "tracked": false,
+   "spec": "word head1b",
+   "region": {
+    "text": "BEGIN1 IN1 paragraph-before untracked word head1b\\u000dHEAD1A \\u000dNEWPARA\\u000dHEAD1B HEAD1C\\u000dBODY1A BODY1B\\u000dEND1\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN1 IN1 paragraph-before untracked word head1b",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD1A ",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "NEWPARA",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD1B HEAD1C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY1A BODY1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END1",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 2,
+   "kind": "IN1",
+   "op": "paragraph-after",
+   "tracked": false,
+   "spec": "word head2b",
+   "region": {
+    "text": "BEGIN2 IN1 paragraph-after untracked word head2b\\u000dHEAD2A HEAD2B\\u000dNEWPARA\\u000d HEAD2C\\u000dBODY2A BODY2B\\u000dEND2\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN2 IN1 paragraph-after untracked word head2b",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD2A HEAD2B",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "NEWPARA",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " HEAD2C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY2A BODY2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END2",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 3,
+   "kind": "IN1",
+   "op": "paragraph-before",
+   "tracked": true,
+   "spec": "word head3b",
+   "region": {
+    "text": "BEGIN3 IN1 paragraph-before tracked word head3b\\u000dHEAD3A \\u000dNEWPARA\\u000dHEAD3B HEAD3C\\u000dBODY3A BODY3B\\u000dEND3\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN3 IN1 paragraph-before tracked word head3b",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD3A ",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "NEWPARA",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD3B HEAD3C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY3A BODY3B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END3",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 4,
+   "kind": "IN1",
+   "op": "replace",
+   "tracked": true,
+   "spec": "word head4b",
+   "region": {
+    "text": "BEGIN4 IN1 replace tracked word head4b\\u000dHEAD4A NEWTEXT HEAD4C\\u000dBODY4A BODY4B\\u000dEND4\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN4 IN1 replace tracked word head4b",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD4A NEWTEXT HEAD4C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY4A BODY4B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END4",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 5,
+   "kind": "TE",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from head5b to-table t5r1c1a",
+   "region": {
+    "text": "BEGIN5 TE delete untracked from head5b to-table t5r1c1a\\u000dHEAD5A PLAIN5A PLAIN5B\\u000dEND5\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN5 TE delete untracked from head5b to-table t5r1c1a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD5A PLAIN5A PLAIN5B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END5",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 6,
+   "kind": "TE",
+   "op": "delete",
+   "tracked": true,
+   "spec": "from head6b to-table t6r1c1a",
+   "region": {
+    "text": "BEGIN6 TE delete tracked from head6b to-table t6r1c1a\\u000dHEAD6A PLAIN6A PLAIN6B\\u000dEND6\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN6 TE delete tracked from head6b to-table t6r1c1a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD6A PLAIN6A PLAIN6B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END6",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 7,
+   "kind": "TE",
+   "op": "replace",
+   "tracked": false,
+   "spec": "from head7b to-table t7r1c1a",
+   "region": {
+    "text": "BEGIN7 TE replace untracked from head7b to-table t7r1c1a\\u000dHEAD7A HEAD7B HEAD7C\\u000dT7R1C1A T7R1C1B\\u0009T7R1C2A T7R1C2B\\u000d\\u000aT7R2C1A T7R2C1B\\u0009T7R2C2A T7R2C2B\\u000d\\u000aPLAIN7A PLAIN7B\\u000dEND7\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN7 TE replace untracked from head7b to-table t7r1c1a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD7A HEAD7B HEAD7C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "T7R1C1A T7R1C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T7R1C2A T7R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T7R2C1A T7R2C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T7R2C2A T7R2C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "PLAIN7A PLAIN7B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END7",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 2,
+      "values": [
+       [
+        "T7R1C1A T7R1C1B",
+        "T7R1C2A T7R1C2B"
+       ],
+       [
+        "T7R2C1A T7R2C1B",
+        "T7R2C2A T7R2C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 8,
+   "kind": "WT",
+   "op": "delete",
+   "tracked": false,
+   "spec": "whole body8a",
+   "region": {
+    "text": "BEGIN8 WT delete untracked whole body8a\\u000dT8R1C1A T8R1C1B\\u0009T8R1C2A T8R1C2B\\u000d\\u000aT8R2C1A T8R2C1B\\u0009T8R2C2A T8R2C2B\\u000d\\u000aPLAIN8A PLAIN8B\\u000dEND8\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN8 WT delete untracked whole body8a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "T8R1C1A T8R1C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T8R1C2A T8R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T8R2C1A T8R2C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T8R2C2A T8R2C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "PLAIN8A PLAIN8B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END8",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 2,
+      "values": [
+       [
+        "T8R1C1A T8R1C1B",
+        "T8R1C2A T8R1C2B"
+       ],
+       [
+        "T8R2C1A T8R2C1B",
+        "T8R2C2A T8R2C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 9,
+   "kind": "WT",
+   "op": "delete",
+   "tracked": true,
+   "spec": "whole body9a",
+   "region": {
+    "text": "BEGIN9 WT delete tracked whole body9a\\u000dT9R1C1A T9R1C1B\\u0009T9R1C2A T9R1C2B\\u000d\\u000aT9R2C1A T9R2C1B\\u0009T9R2C2A T9R2C2B\\u000d\\u000aPLAIN9A PLAIN9B\\u000dEND9\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN9 WT delete tracked whole body9a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "T9R1C1A T9R1C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T9R1C2A T9R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T9R2C1A T9R2C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T9R2C2A T9R2C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "PLAIN9A PLAIN9B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END9",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 2,
+      "values": [
+       [
+        "T9R1C1A T9R1C1B",
+        "T9R1C2A T9R1C2B"
+       ],
+       [
+        "T9R2C1A T9R2C1B",
+        "T9R2C2A T9R2C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 10,
+   "kind": "WL",
+   "op": "delete",
+   "tracked": false,
+   "spec": "whole list10a",
+   "region": {
+    "text": "BEGIN10 WL delete untracked whole list10a\\u000dBODY10A BODY10B\\u000d\\u0009T10R1C2A T10R1C2B\\u000d\\u000aEND10\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN10 WL delete untracked whole list10a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY10A BODY10B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "",
+      "style": "",
+      "styleBuiltIn": "Other",
+      "alignment": "Left",
+      "tableNestingLevel": 1,
+      "list": {
+       "listString": "1.",
+       "level": 0
+      }
+     },
+     {
+      "text": "T10R1C2A T10R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "END10",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 1,
+      "values": [
+       [
+        "BODY10A BODY10B\\u000d",
+        "T10R1C2A T10R1C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 11,
+   "kind": "WL",
+   "op": "delete",
+   "tracked": true,
+   "spec": "whole list11a",
+   "region": {
+    "text": "BEGIN11 WL delete tracked whole list11a\\u000dBODY11A BODY11B\\u000d\\u0009T11R1C2A T11R1C2B\\u000d\\u000aEND11\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN11 WL delete tracked whole list11a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY11A BODY11B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "",
+      "style": "",
+      "styleBuiltIn": "Other",
+      "alignment": "Left",
+      "tableNestingLevel": 1,
+      "list": {
+       "listString": "1.",
+       "level": 0
+      }
+     },
+     {
+      "text": "T11R1C2A T11R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "END11",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 1,
+      "values": [
+       [
+        "BODY11A BODY11B\\u000d",
+        "T11R1C2A T11R1C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 12,
+   "kind": "WC",
+   "op": "delete",
+   "tracked": false,
+   "spec": "whole list12a",
+   "region": {
+    "text": "BEGIN12 WC delete untracked whole list12a\\u000dHEAD12A HEAD12B HEAD12C\\u000dBODY12A BODY12B\\u000dEND12\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN12 WC delete untracked whole list12a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD12A HEAD12B HEAD12C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY12A BODY12B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END12",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "c54-12",
+      "type": "RichText",
+      "text": "HEAD12A HEAD12B HEAD12C\\u000dBODY12A BODY12B"
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 13,
+   "kind": "WC",
+   "op": "delete",
+   "tracked": true,
+   "spec": "whole list13a",
+   "region": {
+    "text": "BEGIN13 WC delete tracked whole list13a\\u000dHEAD13A HEAD13B HEAD13C\\u000dBODY13A BODY13B\\u000d\\u000dEND13\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN13 WC delete tracked whole list13a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD13A HEAD13B HEAD13C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY13A BODY13B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END13",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "c54-13",
+      "type": "RichText",
+      "text": "HEAD13A HEAD13B HEAD13C\\u000dBODY13A BODY13B\\u000d"
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 14,
+   "kind": "CCW",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from head14b to body14a",
+   "region": {
+    "text": "BEGIN14 CCW delete untracked from head14b to body14a\\u000dHEAD14A  BODY14B\\u000dEND14\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN14 CCW delete untracked from head14b to body14a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD14A  BODY14B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END14",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 15,
+   "kind": "CCW",
+   "op": "delete",
+   "tracked": true,
+   "spec": "from head15b to body15a",
+   "region": {
+    "text": "BEGIN15 CCW delete tracked from head15b to body15a\\u000dHEAD15A  BODY15B\\u000dEND15\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN15 CCW delete tracked from head15b to body15a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD15A  BODY15B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END15",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 16,
+   "kind": "CCW",
+   "op": "replace",
+   "tracked": false,
+   "spec": "from head16b to body16a",
+   "region": {
+    "text": "BEGIN16 CCW replace untracked from head16b to body16a\\u000dHEAD16A NEWTEXT BODY16B\\u000dEND16\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN16 CCW replace untracked from head16b to body16a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD16A NEWTEXT BODY16B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END16",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 17,
+   "kind": "CCW",
+   "op": "replace",
+   "tracked": true,
+   "spec": "from head17b to body17a",
+   "region": {
+    "text": "BEGIN17 CCW replace tracked from head17b to body17a\\u000dHEAD17A NEWTEXT BODY17B\\u000dEND17\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN17 CCW replace tracked from head17b to body17a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD17A NEWTEXT BODY17B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END17",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 18,
+   "kind": "CCI",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from head18b to body18a",
+   "region": {
+    "text": "BEGIN18 CCI delete untracked from head18b to body18a\\u000dHEAD18A \\u000d BODY18B\\u000dLIST18A LIST18B\\u000dEND18\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN18 CCI delete untracked from head18b to body18a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD18A ",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " BODY18B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "LIST18A LIST18B",
+      "style": "List Paragraph",
+      "styleBuiltIn": "ListParagraph",
+      "alignment": "Left",
+      "tableNestingLevel": 0,
+      "list": {
+       "listString": "1.",
+       "level": 0
+      }
+     },
+     {
+      "text": "END18",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "c54-18",
+      "type": "RichText",
+      "text": " BODY18B\\u000dLIST18A LIST18B"
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 19,
+   "kind": "CCI",
+   "op": "delete",
+   "tracked": true,
+   "spec": "from head19b to body19a",
+   "region": {
+    "text": "BEGIN19 CCI delete tracked from head19b to body19a\\u000dHEAD19A \\u000d BODY19B\\u000dLIST19A LIST19B\\u000dEND19\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN19 CCI delete tracked from head19b to body19a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD19A ",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " BODY19B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "LIST19A LIST19B",
+      "style": "List Paragraph",
+      "styleBuiltIn": "ListParagraph",
+      "alignment": "Left",
+      "tableNestingLevel": 0,
+      "list": {
+       "listString": "1.",
+       "level": 0
+      }
+     },
+     {
+      "text": "END19",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "c54-19",
+      "type": "RichText",
+      "text": " BODY19B\\u000dLIST19A LIST19B"
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 20,
+   "kind": "CCO",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from body20b to plain20a",
+   "region": {
+    "text": "BEGIN20 CCO delete untracked from body20b to plain20a\\u000dHEAD20A HEAD20B HEAD20C\\u000dBODY20A \\u000d PLAIN20B\\u000dEND20\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN20 CCO delete untracked from body20b to plain20a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD20A HEAD20B HEAD20C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY20A ",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " PLAIN20B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END20",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "c54-20",
+      "type": "RichText",
+      "text": "HEAD20A HEAD20B HEAD20C\\u000dBODY20A "
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 21,
+   "kind": "QP",
+   "op": "italic",
+   "tracked": false,
+   "spec": "from quote21b to plain21a",
+   "region": {
+    "text": "BEGIN21 QP italic untracked from quote21b to plain21a\\u000dQUOTE21A QUOTE21B\\u000dPLAIN21A PLAIN21B\\u000dEND21\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN21 QP italic untracked from quote21b to plain21a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "QUOTE21A QUOTE21B",
+      "style": "Check 54 Italic",
+      "styleBuiltIn": "Other",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN21A PLAIN21B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END21",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 22,
+   "kind": "QP",
+   "op": "italic",
+   "tracked": true,
+   "spec": "from quote22b to plain22a",
+   "region": {
+    "text": "BEGIN22 QP italic tracked from quote22b to plain22a\\u000dQUOTE22A QUOTE22B\\u000dPLAIN22A PLAIN22B\\u000dEND22\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN22 QP italic tracked from quote22b to plain22a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "QUOTE22A QUOTE22B",
+      "style": "Check 54 Italic",
+      "styleBuiltIn": "Other",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN22A PLAIN22B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END22",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 23,
+   "kind": "HP",
+   "op": "size14",
+   "tracked": false,
+   "spec": "from head23b to plain23a",
+   "region": {
+    "text": "BEGIN23 HP size14 untracked from head23b to plain23a\\u000dHEAD23A HEAD23B HEAD23C\\u000dPLAIN23A PLAIN23B\\u000dEND23\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN23 HP size14 untracked from head23b to plain23a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD23A HEAD23B HEAD23C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN23A PLAIN23B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END23",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 24,
+   "kind": "HP",
+   "op": "size14",
+   "tracked": true,
+   "spec": "from head24b to plain24a",
+   "region": {
+    "text": "BEGIN24 HP size14 tracked from head24b to plain24a\\u000dHEAD24A HEAD24B HEAD24C\\u000dPLAIN24A PLAIN24B\\u000dEND24\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN24 HP size14 tracked from head24b to plain24a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD24A HEAD24B HEAD24C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN24A PLAIN24B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END24",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 25,
+   "kind": "LP",
+   "op": "underline",
+   "tracked": false,
+   "spec": "from list25b to plain25a",
+   "region": {
+    "text": "BEGIN25 LP underline untracked from list25b to plain25a\\u000dLIST25A LIST25B\\u000dPLAIN25A PLAIN25B\\u000dEND25\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN25 LP underline untracked from list25b to plain25a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "LIST25A LIST25B",
+      "style": "List Paragraph",
+      "styleBuiltIn": "ListParagraph",
+      "alignment": "Left",
+      "tableNestingLevel": 0,
+      "list": {
+       "listString": "1.",
+       "level": 0
+      }
+     },
+     {
+      "text": "PLAIN25A PLAIN25B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END25",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 26,
+   "kind": "PS",
+   "op": "replace",
+   "tracked": false,
+   "spec": "from plain26b to styl26a",
+   "region": {
+    "text": "BEGIN26 PS replace untracked from plain26b to styl26a\\u000dPLAIN26A NEWTEXT STYL26B\\u000dEND26\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN26 PS replace untracked from plain26b to styl26a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN26A NEWTEXT STYL26B",
+      "style": "Check 54 Styled",
+      "styleBuiltIn": "Other",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END26",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 27,
+   "kind": "CMT",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from head27a to body27a",
+   "region": {
+    "text": "BEGIN27 CMT delete untracked from head27a to body27a\\u000d BODY27B\\u000dEND27\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN27 CMT delete untracked from head27a to body27a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " BODY27B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END27",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 28,
+   "kind": "CMT",
+   "op": "delete",
+   "tracked": true,
+   "spec": "from head28a to body28a",
+   "region": {
+    "text": "BEGIN28 CMT delete tracked from head28a to body28a\\u000d BODY28B\\u000dEND28\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN28 CMT delete tracked from head28a to body28a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " BODY28B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END28",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 29,
+   "kind": "CMS",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from head29a to body29a",
+   "region": {
+    "text": "BEGIN29 CMS delete untracked from head29a to body29a\\u000d BODY29B\\u000dEND29\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN29 CMS delete untracked from head29a to body29a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " BODY29B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END29",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [
+     {
+      "content": "ACROSS29",
+      "range": " BODY29B"
+     }
+    ],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 30,
+   "kind": "BMK",
+   "op": "delete",
+   "tracked": false,
+   "spec": "from head30a to body30a",
+   "region": {
+    "text": "BEGIN30 BMK delete untracked from head30a to body30a\\u000d BODY30B\\u000dEND30\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN30 BMK delete untracked from head30a to body30a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": " BODY30B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END30",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [
+     "Check54Mark30"
+    ],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 31,
+   "kind": "OWN",
+   "op": "own-delete",
+   "tracked": true,
+   "spec": "from head31b to own31a",
+   "region": {
+    "text": "BEGIN31 OWN own-delete tracked from head31b to own31a\\u000dHEAD31A  OWN31B\\u000dBODY31A BODY31B\\u000dEND31\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN31 OWN own-delete tracked from head31b to own31a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD31A  OWN31B",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY31A BODY31B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END31",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 32,
+   "kind": "BL",
+   "op": "style",
+   "tracked": false,
+   "spec": "from body32b to list32a",
+   "region": {
+    "text": "BEGIN32 BL style untracked from body32b to list32a\\u000dBODY32A BODY32B\\u000dLIST32A LIST32B\\u000dEND32\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN32 BL style untracked from body32b to list32a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY32A BODY32B",
+      "style": "Heading 2",
+      "styleBuiltIn": "Heading2",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "LIST32A LIST32B",
+      "style": "Heading 2",
+      "styleBuiltIn": "Heading2",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END32",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 33,
+   "kind": "BL",
+   "op": "style",
+   "tracked": true,
+   "spec": "from body33b to list33a",
+   "region": {
+    "text": "BEGIN33 BL style tracked from body33b to list33a\\u000dBODY33A BODY33B\\u000dLIST33A LIST33B\\u000dEND33\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN33 BL style tracked from body33b to list33a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY33A BODY33B",
+      "style": "Heading 2",
+      "styleBuiltIn": "Heading2",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "LIST33A LIST33B",
+      "style": "Heading 2",
+      "styleBuiltIn": "Heading2",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END33",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 34,
+   "kind": "HB",
+   "op": "hyperlink",
+   "tracked": false,
+   "spec": "from head34b to body34a",
+   "region": {
+    "text": "BEGIN34 HB hyperlink untracked from head34b to body34a\\u000dHEAD34A HEAD34B HEAD34C\\u000dBODY34A BODY34B\\u000dEND34\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN34 HB hyperlink untracked from head34b to body34a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD34A HEAD34B HEAD34C",
+      "style": "",
+      "styleBuiltIn": "Other",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY34A BODY34B",
+      "style": "",
+      "styleBuiltIn": "Other",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END34",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": "https://example.com/check54"
+   }
+  },
+  {
+   "n": 35,
+   "kind": "HB",
+   "op": "ooxml",
+   "tracked": false,
+   "spec": "from head35b to body35a",
+   "region": {
+    "text": "BEGIN35 HB ooxml untracked from head35b to body35a\\u000dHEAD35A NEWOOXML BODY35B\\u000dEND35\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN35 HB ooxml untracked from head35b to body35a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD35A NEWOOXML BODY35B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END35",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 36,
+   "kind": "HB",
+   "op": "control",
+   "tracked": false,
+   "spec": "from head36b to body36a",
+   "region": {
+    "text": "BEGIN36 HB control untracked from head36b to body36a\\u000dHEAD36A HEAD36B HEAD36C\\u000dBODY36A BODY36B\\u000dEND36\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN36 HB control untracked from head36b to body36a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD36A HEAD36B HEAD36C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY36A BODY36B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END36",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 37,
+   "kind": "W2",
+   "op": "control",
+   "tracked": false,
+   "spec": "from head37b to-mark body37a",
+   "region": {
+    "text": "BEGIN37 W2 control untracked from head37b to-mark body37a\\u000dHEAD37A HEAD37B HEAD37C\\u000dBODY37A BODY37B\\u000dPLAIN37A PLAIN37B\\u000dEND37\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN37 W2 control untracked from head37b to-mark body37a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD37A HEAD37B HEAD37C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY37A BODY37B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN37A PLAIN37B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END37",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 38,
+   "kind": "WP",
+   "op": "control",
+   "tracked": false,
+   "spec": "start head38a to-mark body38a",
+   "region": {
+    "text": "BEGIN38 WP control untracked start head38a to-mark body38a\\u000dHEAD38A HEAD38B HEAD38C\\u000dBODY38A BODY38B\\u000dPLAIN38A PLAIN38B\\u000dEND38\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN38 WP control untracked start head38a to-mark body38a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD38A HEAD38B HEAD38C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY38A BODY38B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN38A PLAIN38B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END38",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "new54-38",
+      "type": "RichText",
+      "text": "HEAD38A HEAD38B HEAD38C\\u000dBODY38A BODY38B"
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 39,
+   "kind": "TBL",
+   "op": "control",
+   "tracked": false,
+   "spec": "from head39b to body39a",
+   "region": {
+    "text": "BEGIN39 TBL control untracked from head39b to body39a\\u000dHEAD39A HEAD39B HEAD39C\\u000dT39R1C1A T39R1C1B\\u0009T39R1C2A T39R1C2B\\u000d\\u000aT39R2C1A T39R2C1B\\u0009T39R2C2A T39R2C2B\\u000d\\u000aBODY39A BODY39B\\u000dEND39\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN39 TBL control untracked from head39b to body39a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD39A HEAD39B HEAD39C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "T39R1C1A T39R1C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T39R1C2A T39R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T39R2C1A T39R2C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T39R2C2A T39R2C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "BODY39A BODY39B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END39",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 2,
+      "values": [
+       [
+        "T39R1C1A T39R1C1B",
+        "T39R1C2A T39R1C2B"
+       ],
+       [
+        "T39R2C1A T39R2C1B",
+        "T39R2C2A T39R2C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 40,
+   "kind": "INTO",
+   "op": "control",
+   "tracked": false,
+   "spec": "from head40b to t40r2c1a",
+   "region": {
+    "text": "BEGIN40 INTO control untracked from head40b to t40r2c1a\\u000dHEAD40A HEAD40B HEAD40C\\u000dT40R1C1A T40R1C1B\\u0009T40R1C2A T40R1C2B\\u000d\\u000aT40R2C1A T40R2C1B\\u0009T40R2C2A T40R2C2B\\u000d\\u000aBODY40A BODY40B\\u000dEND40\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN40 INTO control untracked from head40b to t40r2c1a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD40A HEAD40B HEAD40C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "T40R1C1A T40R1C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T40R1C2A T40R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T40R2C1A T40R2C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T40R2C2A T40R2C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "BODY40A BODY40B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END40",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 2,
+      "values": [
+       [
+        "T40R1C1A T40R1C1B",
+        "T40R1C2A T40R1C2B"
+       ],
+       [
+        "T40R2C1A T40R2C1B",
+        "T40R2C2A T40R2C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 41,
+   "kind": "CELL",
+   "op": "control",
+   "tracked": false,
+   "spec": "from t41r1c1b to body41a",
+   "region": {
+    "text": "BEGIN41 CELL control untracked from t41r1c1b to body41a\\u000dHEAD41A HEAD41B HEAD41C\\u000dT41R1C1A T41R1C1B\\u0009T41R1C2A T41R1C2B\\u000d\\u000aT41R2C1A T41R2C1B\\u0009T41R2C2A T41R2C2B\\u000d\\u000aBODY41A BODY41B\\u000dEND41\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN41 CELL control untracked from t41r1c1b to body41a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD41A HEAD41B HEAD41C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "T41R1C1A T41R1C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T41R1C2A T41R1C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T41R2C1A T41R2C1B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "T41R2C2A T41R2C2B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 1
+     },
+     {
+      "text": "BODY41A BODY41B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END41",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [
+     {
+      "rowCount": 2,
+      "values": [
+       [
+        "T41R1C1A T41R1C1B",
+        "T41R1C2A T41R1C2B"
+       ],
+       [
+        "T41R2C1A T41R2C1B",
+        "T41R2C2A T41R2C2B"
+       ]
+      ]
+     }
+    ],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 42,
+   "kind": "HB",
+   "op": "control",
+   "tracked": true,
+   "spec": "from head42b to body42a",
+   "region": {
+    "text": "BEGIN42 HB control tracked from head42b to body42a\\u000dHEAD42A HEAD42B HEAD42C\\u000dBODY42A BODY42B\\u000dEND42\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN42 HB control tracked from head42b to body42a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD42A HEAD42B HEAD42C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY42A BODY42B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END42",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  },
+  {
+   "n": 43,
+   "kind": "WP",
+   "op": "control",
+   "tracked": true,
+   "spec": "start head43a to-mark body43a",
+   "region": {
+    "text": "BEGIN43 WP control tracked start head43a to-mark body43a\\u000dHEAD43A HEAD43B HEAD43C\\u000dBODY43A BODY43B\\u000dPLAIN43A PLAIN43B\\u000dEND43\\u000d",
+    "paragraphs": [
+     {
+      "text": "BEGIN43 WP control tracked start head43a to-mark body43a",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "HEAD43A HEAD43B HEAD43C",
+      "style": "Heading 1",
+      "styleBuiltIn": "Heading1",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "BODY43A BODY43B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Centered",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "PLAIN43A PLAIN43B",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     },
+     {
+      "text": "END43",
+      "style": "Normal",
+      "styleBuiltIn": "Normal",
+      "alignment": "Left",
+      "tableNestingLevel": 0
+     }
+    ],
+    "tables": [],
+    "trackedChanges": [],
+    "comments": [],
+    "contentControls": [
+     {
+      "tag": "new54-43",
+      "type": "RichText",
+      "text": "HEAD43A HEAD43B HEAD43C\\u000dBODY43A BODY43B"
+     }
+    ],
+    "bookmarks": [],
+    "hyperlink": ""
+   }
+  }
+ ],
+ "caseCount": 43
+}
