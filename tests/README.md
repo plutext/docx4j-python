@@ -488,6 +488,19 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > for the tracked file (CR-011 section 16.7). Both open with no repair prompt and read as the
 > README says. The eleven artefacts are canonically unchanged by Phase F.
 
+> **2026-10-23, Word checks of CR-013 Phase A.** Run 1, `__tmp/python-cr013a/` (CR-013 section
+> 10.10): the writers' files 1 and 2 opened, and each of the user's notes was explained by the
+> markup (a `w:cr` drawn as a paragraph mark, a page break in a table cell not drawn). File 3 failed:
+> Word can't open a bound block control holding two paragraphs. That is a 0.1.0 defect of the
+> content API, isolated by four variants ("3a unreadable; others 3b 3c 3d open fine"), and is now
+> CR-014. Run 2, `__tmp/python-cr013a2/`, rebuilt after section 11's amendment (Word's own writers,
+> core-ts checks 55, 55b and 56) and the four items of core-ts's review: **passed** (the user: "all
+> five files open without a repair prompt"). The user's notes measured what the README left
+> unmeasured (CR-013 section 11.2): an inserted mark is drawn in the insertion colour, a deleted
+> picture is struck through, and a mark after link text is drawn in the link colour. A bound
+> `w:richText` control shows its node's text, since the write-back skips it (CR-014 Q9). The eleven
+> artefacts are canonically unchanged by Phase A.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
