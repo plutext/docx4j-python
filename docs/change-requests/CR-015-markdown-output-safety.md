@@ -283,10 +283,11 @@ def scheme(target: str | None) -> str | None:
     """The scheme as a browser reads it, lower-cased; None for none (relative, fragment, UNC, empty)."""
 
 def is_safe(target: str | None, extra: str | Iterable[str] = ()) -> bool:
-    """docx4j isSafe: no scheme, a drive path, or a scheme in schemes(extra). None and "" are safe."""
+    """docx4j isSafe: safe as written and with its character references decoded as CommonMark decodes them (Q3):
+    no scheme, a drive path, or a scheme in schemes(extra). None and "" are safe."""
 
-def is_safe_destination(target: str | None, extra: str | Iterable[str] = ()) -> bool:
-    """is_safe of the target and of it with its character references decoded (Q3): what a CommonMark parser reads."""
+def decode_references(target: str) -> str:
+    """Numeric references and the 44 one-character HTML5 names decoded once, as CommonMark does (Q3); not html.unescape."""
 
 def excerpt(target: str | None) -> str:
     """For a log line: at most 80 characters and '...', controls shown as spaces; 'null' for None."""
@@ -310,7 +311,7 @@ In `_WmlToMarkdown._linked`, as `WmlToMarkdown.linked` at `84ee9741c`:
 ```python
 target = runs[i].link
 ...
-if target is not None and not is_safe_destination(target, self.link_schemes):
+if target is not None and not is_safe(target, self.link_schemes):
     self._refused(target)          # WARNING the first time in this export, DEBUG after (section 4.4)
     target = None                  # the runs as text, no link
 ```
@@ -411,7 +412,7 @@ def _detail_text(self, author, date, sink):      # docx4j detail(author, date, s
 2. **`Outline.to_markdown()` (Q9).** Each entry's text and label is escaped with CR-003's `escape()` (`model/markdown/export.py` line 132: `` \ ` * _ [ ] < > ``), the function kept for exactly that.
    - Over the corpus, 1,951 entries in 125 documents change, by a backslash before each such character.
    - `tests/agent/test_outline.py`'s two `to_markdown` assertions are checked, and any line that moves is listed in the implementation notes.
-3. **The readers' picture destination (Q10).** `_word_relative`'s answer goes through `is_safe_destination`. A refused one is `""`, the `![alt]()` REQ-703 already writes for a picture the package doesn't hold. It is logged with the links, under the same once-per-export WARNING.
+3. **The readers' picture destination (Q10).** `_word_relative`'s answer goes through `is_safe`. A refused one is `""`, the `![alt]()` REQ-703 already writes for a picture the package doesn't hold. It is logged with the links, under the same once-per-export WARNING.
 
 ### 4.8 Departures from docx4j, each with why
 
@@ -440,7 +441,7 @@ def _detail_text(self, author, date, sink):      # docx4j detail(author, date, s
 
 | phase | what | size |
 |---|---|---|
-| A | `link_targets.py`; `_linked`'s refusal with `is_safe_destination` (Q3); the logging; `link_schemes` on `MarkdownExportOptions`, `markdown()`, `markdown_blocks()` and the readers (Q2); `LinkTargetsTest` and `MarkdownHostileLinksTest` ported, and this package's tests (section 6.2); the CHANGELOG's 0.2.0 entry; a paragraph in README's "Markdown, coarse and fine" on what is refused and `link_schemes`, as docx4j's Getting Started gained one | ½ day |
+| A | `link_targets.py`; `_linked`'s refusal with `is_safe` (Q3); the logging; `link_schemes` on `MarkdownExportOptions`, `markdown()`, `markdown_blocks()` and the readers (Q2); `LinkTargetsTest` and `MarkdownHostileLinksTest` ported, and this package's tests (section 6.2); the CHANGELOG's 0.2.0 entry; a paragraph in README's "Markdown, coarse and fine" on what is refused and `link_schemes`, as docx4j's Getting Started gained one | ½ day |
 | B | `_runs` and `_comment` with the detail as text; `MarkdownHostileMarkupTest` ported, and this package's tests (moves, replies, a cell, the date, the code block); the CHANGELOG | ¼ day |
 | C | as Q8 to Q10 decide: the address rule and guard, the outline's escape, the readers' picture destination; their tests; the CHANGELOG | ½ day (all three) |
 | D | this CR's implementation notes (what landed, the numbers, the departures); `tests/README.md`'s map; CLAUDE.md's `model/text/` line; CR-006's line if Q7 is taken | ¼ day |
@@ -481,7 +482,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
 ### 6.2 This package's own
 
 **In `tests/text/test_link_targets.py`:**
-- **Q3's four reference forms** are refused by `is_safe_destination` and passed by `is_safe`, and `https://example.org/?a=1&b=2` is kept.
+- **Q3's reference forms** are refused by `is_safe`, and docx4j's kept forms (`R&D/report.html`, `page.html?a=1&amp;b=2`, `https&#58;//example.org`, `&colon`, `page.html#&#58;`) are kept, as its `characterReferencesDecodedAsACommonMarkRendererDecodesThem` has them.
 - **A string `link_schemes`** is split on commas, never iterated as characters.
 - **A letter outside the BMP** before `:\` is not a drive letter.
 
@@ -519,7 +520,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
 - **The corpus census of section 2.4, re-run after A and B**: 0 of 422 exports move in either view, and the 22 targets are all kept. Phase C's moves are counted against section 2.5's figures (1,951 outline entries; 0 paraIds).
 - **The byte check against docx4j at `30fb41024`,** CR-011 section 14.5's method: `git archive` into the scratch directory and an offline build.
   - The 277 documents' 1,385 exports must still be identical.
-  - So must the hostile documents of section 6.1, saved (all but U+0001), except for Q3's four forms if Q3 is taken.
+  - So must the hostile documents of section 6.1, saved (all but U+0001), Q3's forms included, once docx4j's fix is committed.
   - **Not run for this draft.**
 - **The rest, each unchanged by construction:** `codegen/generate.sh --check`; `scripts/roundtrip.py`; and acceptance (`scripts/acceptance.py`, then `scripts/compare_acceptance.py` against a copy made first, 0 differ). The acceptance artefacts are `.docx` only.
 
@@ -533,7 +534,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - The reader is a browser's, and Q3 adds the parser's decoding of references.
    - Percent-encoding is inert in a scheme: a browser doesn't decode `%3A` there, and markdown-it-py encodes a tab as `%09`.
    - A renderer that percent-decodes a destination before linking would see more. None was measured.
-3. **Parity with docx4j's bytes.** Q3 departs on its four forms only, and the rest stays byte for byte (section 6.3). If docx4j takes the finding, parity returns.
+3. **Parity with docx4j's bytes.** docx4j took Q3's decoded check into its own rule (uncommitted there), so parity holds on those forms too once it is committed (section 6.3).
 4. **The added schemes reaching an agent.** Under Q2's recommendation they are never a text option, so no tool argument can add one unless a server wires it. Under the alternative, every server must strip them (section 4.3).
 5. **Phase C moves outputs callers may pin.** The outline's Markdown changes in 125 of 418 corpus documents (1,951 entries). The address rule moves no corpus address. The picture rule's effect on the corpus is unmeasured. Each move goes into the CHANGELOG's 0.2.0 entry.
 6. **A sink this reading missed.** The census of section 2:
@@ -542,7 +543,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - the two string-built Markdown writers (`Outline.to_markdown` and the address comments);
    - the image destinations.
 
-   A new writer that builds Markdown as a string, or makes a `Link`, should go through the commonmark port and `is_safe_destination`. The tests can't enforce that, as CR-056 says of its own.
+   A new writer that builds Markdown as a string, or makes a `Link`, should go through the commonmark port and `is_safe`. The tests can't enforce that, as CR-056 says of its own.
 
 ## 8. Questions
 
@@ -577,7 +578,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - **Kept:** `R&D/report.html`, `page.html?a=1&amp;b=2`, `https&#58;//example.org`, `&colon`, `page.html#&#58;`.
    - **Oracle tests:** `docx4j-core-tests`' `LinkTargetsTest.characterReferencesDecodedAsACommonMarkRendererDecodesThem` and `docx4j-markdown`'s `MarkdownHostileLinksTest.noEntityEncodedScriptSchemeDestination`, ported once committed.
 
-   *Recommended: yes, as docx4j's rule*: `link_targets.is_safe` takes the decoded check itself, one rule as docx4j's, rather than a Markdown-only `is_safe_destination`. Section 4.8 item 2's departure goes, and parity with docx4j's bytes holds on these forms too. core-ts's session reported the same hole there (`57b2f98`) and is putting the decoded check to the user.
+   *Recommended: yes, as docx4j's rule*: `link_targets.is_safe` takes the decoded check itself, one rule as docx4j's, rather than a Markdown-only `is_safe`. Section 4.8 item 2's departure goes, and parity with docx4j's bytes holds on these forms too. core-ts's session reported the same hole there (`57b2f98`) and is putting the decoded check to the user.
 
    Escaping `&` in destinations instead would move every link with a query string, away from commonmark-java's bytes.
 4. **Q4. Logging as docx4j's?**
@@ -598,7 +599,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - `Outline.to_markdown()` unescaped.
 
    The second and third are fixed on main by CR-011's writer; the rest are this CR's. 0.1.0's exporter is CR-003's (`model/markdown/export.py` at `d234949`), not this writer, so a 0.1.x fix would be its own patch, not a cherry-pick. It would need:
-   - `is_safe_destination` on its targets;
+   - `is_safe` on its targets;
    - its destinations put in angle brackets with `<`, `>` and `\` escaped;
    - comment text escaped;
    - the address rule and the outline's escape.
@@ -617,7 +618,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - It writes document text as Markdown with no escaping at all: a heading's `<script>` or a paragraph's `<img onerror>` runs on render.
    - The README offers it to models.
    - The cost is 1,951 entries in 125 of 418 corpus documents gaining backslashes, in 0.2.0, whose outline already moved under CR-011.
-10. **Q10. The readers' picture destination (section 2.5 item 4).** Send `_word_relative`'s answer through `is_safe_destination`, writing `![alt]()` when refused? *Recommended: yes, as the smallest of the three.*
+10. **Q10. The readers' picture destination (section 2.5 item 4).** Send `_word_relative`'s answer through `is_safe`, writing `![alt]()` when refused? *Recommended: yes, as the smallest of the three.*
     - An image source with a script scheme is inert in browsers as far as is known; that is unmeasured.
     - REQ-703 already keeps a document-supplied target out of an image's destination.
     - The check is a line.
