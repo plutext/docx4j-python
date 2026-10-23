@@ -515,7 +515,7 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `w:richText` control shows its node's text, since the write-back skips it (CR-014 Q9). The eleven
 > artefacts are canonically unchanged by Phase A.
 
-> **2026-10-23, CR-013 Phase C: Word check staged, not yet run.** Phase C writes ranges across
+> **2026-10-23, CR-013 Phase C: passed** (the user: "__tmp/python-cr013c/ - all good": all five files open without a repair prompt and read as the README says). Phase C writes ranges across
 > paragraphs (CR-013 section 14). Artefact 12 is new (`12-ranges-across-paragraphs.docx`, untracked
 > and tracked, with the engine's Accept All and Reject All of the tracked copy), and the same sixteen
 > cases are staged in `__tmp/python-cr013c/` (built by `out/cr013-c-word-check/build.py`), with the
