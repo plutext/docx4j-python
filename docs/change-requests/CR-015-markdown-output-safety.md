@@ -416,7 +416,7 @@ def _detail_text(self, author, date, sink):      # docx4j detail(author, date, s
 ### 4.8 Departures from docx4j, each with why
 
 1. **The added schemes are a call's argument, not a JVM-wide property** (Q2). This package has no properties file, and an argument can't leak between documents. It is core-ts's choice.
-2. **References decoded (Q3).** `is_safe_destination` also refuses a target whose decoded form is refused, because a CommonMark parser decodes references in a destination (section 2.5 item 1). It keeps `LinkTargets.is_safe` docx4j's, so `LinkTargetsTest` ports unchanged. If Q3 is taken, the finding goes to docx4j's and core-ts's sessions, through the user.
+2. **References decoded (Q3)**: no longer a departure. docx4j took the decoded check into `LinkTargets.isSafe` itself (Q3's answer, uncommitted there), so this package's `is_safe` follows it, decoding as CommonMark does.
 3. **`schemes` takes a string or an iterable** (section 4.1), as docx4j's property (a string) and core-ts's argument (an array) both are.
 4. **`excerpt` counts code points**, not UTF-16 units. It matters only for a log line's length.
 5. **`DEFAULT_SCHEMES` is a tuple constant**, for `defaultSchemes()`, and there is no `LINK_SCHEMES_PROPERTY`.
@@ -568,10 +568,16 @@ A and B are independent, and each is committed on its own. C waits for the user'
    (a) works, at the cost of every server stripping it. (c) is process-wide and invisible at the call.
 3. **Q3. Character references.** Should a target also be refused when it is refused once its references are decoded (`html.unescape`)? Today `javascript&#58;alert(1)`, `&#106;avascript:...`, `javascript&colon;...` and `&#x6A;avascript:...` pass docx4j's rule. They come out as `<a href="javascript:...">` from a CommonMark renderer with no URL check (section 2.5 item 1).
 
-   *Recommended: yes, in the Markdown writer only* (`is_safe_destination`), with `is_safe` left docx4j's.
-   - The writer writes `&` raw, as commonmark-java does, so this is how a parser will read the destination.
-   - No corpus target holds `&`.
-   - The finding goes to docx4j's and core-ts's sessions, through the user, since both have it by their code.
+   **docx4j's answer (2026-10-23).** docx4j's session confirmed the finding and fixed it in docx4j. The fix is uncommitted, waits on the user's word there, and is recorded in docx4j CR-056 section 14; cite it by commit once it is committed. Its rule:
+   - `LinkTargets.isSafe(target)` is true only if the target is safe as written **and** safe with its character references decoded as CommonMark decodes a link destination. It is **one rule for every output** (HTML, FO, Markdown, tika), not a Markdown-only check.
+   - **What is decoded:** decimal and hex numeric references (U+FFFD for 0, for a value above 0x10FFFF, or for a surrogate), and the 44 HTML5 named references that stand for one ASCII character (`&colon;`, `&sol;`, `&num;`, `&quest;`, `&Tab;`, `&NewLine;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&lpar;`, `&rpar;` and the rest).
+   - **What is left as written:** other named references, and a bare `&`. Decoding happens once, so `&amp;#58;` stays `&#58;`.
+   - **Python's `html.unescape` won't do:** it decodes every HTML5 name and also names without a semicolon from the legacy set, while CommonMark needs the semicolon. The port decodes as CommonMark does (or is knowingly stricter).
+   - **Refused as written**, since the scheme is everything up to the first `:` before any `/`, `?` or `#` and must be in the set: `&#106;avascript:x`, `&unknown;avascript:x`, `a&b:c/d`.
+   - **Kept:** `R&D/report.html`, `page.html?a=1&amp;b=2`, `https&#58;//example.org`, `&colon`, `page.html#&#58;`.
+   - **Oracle tests:** `docx4j-core-tests`' `LinkTargetsTest.characterReferencesDecodedAsACommonMarkRendererDecodesThem` and `docx4j-markdown`'s `MarkdownHostileLinksTest.noEntityEncodedScriptSchemeDestination`, ported once committed.
+
+   *Recommended: yes, as docx4j's rule*: `link_targets.is_safe` takes the decoded check itself, one rule as docx4j's, rather than a Markdown-only `is_safe_destination`. Section 4.8 item 2's departure goes, and parity with docx4j's bytes holds on these forms too. core-ts's session reported the same hole there (`57b2f98`) and is putting the decoded check to the user.
 
    Escaping `&` in destinations instead would move every link with a query string, away from commonmark-java's bytes.
 4. **Q4. Logging as docx4j's?**
