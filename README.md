@@ -1033,7 +1033,7 @@ schemas/              docx4j's xsd tree with marked patches (schemas/PATCHES.md)
 scripts/              roundtrip.py, canon.py, checks.py, parents.py, bench.py, threads.py,
                       acceptance.py, office_js_subset.py, python_docx_subset.py
 samples/              16 documents from docx4j (Apache-2.0): 13 .docx, a .dotm, a .pptx, an .xlsx
-out/acceptance/       the eleven documents for the manual Word checklist
+out/acceptance/       the twelve documents for the manual Word checklist
 docs/change-requests/ the design: CR-001 the object model, CR-002 the engine,
                       CR-003 the content API (every phase implemented, 2026-09-16 to 2026-09-18)
 ```

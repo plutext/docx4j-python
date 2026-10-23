@@ -78,7 +78,7 @@ codegen/generate.sh --check                            # regenerate twice, prove
 .venv-fork/bin/python scripts/vml_census.py run --out out/x   # CR-012 Phase C: VML in every part, census and saves (then compare two runs)
 .venv-fork/bin/python scripts/threads.py               # the thread-safety check
 .venv-fork/bin/python scripts/bench_marshal.py         # parse and marshal, part by part (--json)
-.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the eleven Word checklist documents
+.venv-fork/bin/python scripts/acceptance.py            # writes out/acceptance/, the twelve Word checklist documents
 .venv-fork/bin/python scripts/generate_fonts.py        # docx4j_py/resources/fonts/ from ../docx4j
 scripts/release_check.sh                               # CR-007: build the wheel and sdist into dist/, twine check, a clean
                                                        # 3.12 venv with the wheel and the fork from PyPI, the smoke script,
