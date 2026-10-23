@@ -793,5 +793,24 @@ Each moves with the characters, the layout or the `'Whole'` range's mark; each c
 - **`to_api_script`'s note on a `w:tab` or `w:br` outside the leading run** (CR-003 section 19.3) is now stale: `insert_text` writes both as elements, so such a script is exact. The note and the `exact` flag are left as they were (conservative).
 - **Two writers that ignore change tracking**, before this phase too: `TableCell.value = ...` clears the cell's old content untracked, and a run control's `insert_text` at its `Start` or `End` edits the control's items directly. The tracked Word-check file shows both (its README says so).
 - **Phase B's:** a block control's, a comment's, a tracked change's and the body's ranges across paragraphs; `Range.is_empty`; check 53's row-control text; `story_of`.
-- **The Word check** of 10.10 is staged and not run; its result goes into `tests/README.md`'s record when the user has run it.
+- **The Word check** of 10.10 has had two runs (above); its record goes into `tests/README.md` when Phase A closes.
 - **The scratch worktree** of `e7e54e6` used for the before measurements was removed after use; the measurements are in this section.
+
+### 10.14 Word's own writers, measured after the build (docx4j-core-ts check 55, `a923aeb`)
+
+The user ran core-ts's check 55 in Word 365 (16.0.20326.20232) after Phase A was built. It has 58 cases, each writing `x`, a character, `y`. The writers were `insertText` at the end (also tracked), `insertParagraph` after, `insertComment` and `comment.content`. The snippet builds each text with `String.fromCodePoint`, so the characters are real ones. core-ts's CR-002 section 60.3 records it.
+- **Agrees with Q2 as built:**
+  - `\t`, U+000B, U+000C, U+000E, U+001E and U+001F became their elements in every writer, tracked too;
+  - in a comment, `\r`, `\n` and `\r\n` each made a paragraph, `\r\n` as one.
+- **Differs:**
+  1. In `insertText`, `\n`, `\r` and `\r\n` each made a new paragraph, `\r\n` as one, its mark marked inserted when tracked. Here `\n` is a `w:br` and `\r` a `w:cr`. Run 1's case 4 agrees with Word's direction: Word draws a `w:cr` as a paragraph mark.
+  2. `insertParagraph` wrote the escapes as text (a backslash, then `n`).
+  3. U+0002 and U+0001 were gone by the save, and U+0007 at once. Word refused none of them; here they are refused (`text.not_writable`).
+- **Open in core-ts, the user's:**
+  - E1: `insertText` makes a paragraph, as Word does; recommended there.
+  - E2: `insertParagraph` keeps Q2's map as a recorded departure; recommended there, and that is what this phase built.
+  - E3: the excluded characters dropped, as Word drops them; recommended there.
+  - E4: a check 55b for bound controls.
+  
+  E1 and E3, if taken, amend Q2 here. Both ports agreed to follow Word's measurement together.
+- **Bound controls:** a data point for E4. In run 1, Word's own save of the recovered file 3 wrote the plain-text control's line break into its node as `\r\n` (`<to>line one\r\nline two</to>`). Phase A writes `\n`, docx4j's character, and Word opened that (3b, 3c).
