@@ -846,7 +846,7 @@ Check 55 (section 10.14) and check 55b measured what Word's writers do with Offi
 
 ### 11.1 Implementation notes (2026-10-23)
 
-Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j-core-ts's CR-002 section 61 (`80a933d`, decided there the same day, its D1), added to this phase's brief: inside a bound plain-text block control a `\n` or `\r` makes no paragraph. F2, F3 and G1 are not built. Every writer of section 10.4 follows Word's own writers where check 55 or 55b measured them, and each difference left is a recorded departure (below). No reader moved, so Phase A's readers' audit (10.7) was not re-run: `Paragraph.text`, `Body.text` and the rest read as they did, and every reader test passes unchanged.
+Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j-core-ts's CR-002 section 61 (`80a933d`, decided there the same day), added to this phase's brief: inside a bound block control a `\n` or `\r` makes no paragraph. Its scope and its line-ness were corrected the same day by core-ts's Word check 56 (`38dcae9`, its H1 and H4; 11.1.10). F2, F3 and G1 are not built. Every writer of section 10.4 follows Word's own writers where check 55 or 55b measured them, and each difference left is a recorded departure (below). No reader moved, so Phase A's readers' audit (10.7) was not re-run: `Paragraph.text`, `Body.text` and the rest read as they did, and every reader test passes unchanged.
 
 **Commits.**
 - `b27bdbc`: the writers, `model/content/split.py`, and the tests (`tests/content/test_word_writers.py`, new; `test_office_js_characters.py`, the cases that move).
@@ -861,7 +861,7 @@ Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j
 | E1 | `Paragraph.splice`, `_splice_paragraphs`, `_splice_text` | `splice` drops (E3), then for a text holding `PARAGRAPH_BREAKS` (`\r\n`, `\r`, `\n`) checks, writes the text without them through `_splice_text` (the old splice body), and splits after each piece |
 | the split | `model/content/split.py` (new; `KEEP` covers `model/`) | the port of core-ts's `splitParagraph` at `1e61bb1`: `SPLITTABLE`, `refuse_cut`, `field_depths`, `_place`, `_climb`, `refuse_split`, `split_paragraph`. One walk, `_climb`, answers the check (dry) and makes the cut, so the two cannot disagree |
 | the landing | `Paragraph._landing`, `_after_deletion`, `_untracked_landing`, `_tracked_landing`, `refuse_paragraph_breaks`, `split.refuse_place` | where `_splice_text` and `_insert_tracked` will put the text, read before anything changes, rule for rule |
-| section 61 | `controls.bound_plain_text_control`; `splice` | a block control with a `w:dataBinding` (or `w15:`), a `w:text` element or no type element, not a container (`bindings.is_container`): a break a `w:br` where `is_multi_line` (a control of no type is), nothing where not |
+| section 61 | `controls.bound_plain_text_control`, `bound_control_is_multi_line`; `splice` | a block control with a `w:dataBinding` (or `w15:`), no type element, a `w:text` or a `w:richText`, not a container (`bindings.is_container`), its node no flat OPC package (H1, 11.1.10): a break a `w:br` where it is a `w:text` with `w:multiLine` set, nothing in any other (H4's reading, decided inside the exception) |
 | a run-level control | `ContentControl.insert_text` | `\n` or `\r` refused, `range.splits_control` (core-ts's F4) |
 | the ranges | `Range.insert_text`, `paragraph.replace_matches`, `Paragraph.text_since` | a range follows its text across the split; `replace_text`'s earlier matches move to the first new paragraph; a report's `text_after` is the paragraphs `\r` apart |
 | E3 at every writer | `paragraph.py`, `range.py`, `body.py`, `table.py`, `comments.py`, `controls.py` | section 10.4's list exactly |
@@ -895,7 +895,7 @@ Section 11 as built: E1, E2's `\r\n` and E3, with one addition to E1 from docx4j
   - `Replace` makes it that last part;
   - `Before` and `Start` leave it after the text, in the last paragraph;
   - `After` and `End` move it, offsets unchanged, to the first new paragraph, which now holds it.
-- **A bound plain-text block control** (core-ts section 61, D1): a `\n` or `\r` there is a `w:br` in a multi-line control or one of no type, and nothing in a single-line one, as Word wrote them in check 55b (its run-level control's). An unbound control and a bound `w:richText` one split as usual (tests: multi-line, single-line, no type, unbound, rich text; through the control and through its paragraph). The refusal of other block writes in such a control is CR-014 phase 1's, not this section's.
+- **A bound block control** (core-ts section 61, as check 56 corrected it: 11.1.10): a `\n` or `\r` there is a `w:br` in a `w:text` control with `w:multiLine` set, and nothing in a single-line `w:text`, one of no type or a `w:richText` one, as Word wrote them in check 56 (cases 3, 7, 11 and 15). An unbound control, and a bound one whose node holds a flat OPC package, split as usual. The refusal of other block writes in such a control is CR-014 phase 1's, not this section's.
 - **A run-level control's `insert_text`** refuses `\n` and `\r` before anything changes, bound or not (core-ts's F4). Word, given one in a bound plain-text control, moved the control to block level, in a paragraph of its own (check 55b cases 3, 4 and 9); that is recorded, not followed.
 
 #### 11.1.3 E2 and E3 as built
@@ -931,7 +931,7 @@ Word's answers are written into `test_word_writers.py` as data, by case, from co
 - the oracles: check 55's 33 writer cases, 18 comment cases and one listing test; check 55b's six written cases, its three refusals and its node read;
 - **E1:** 54 over nine splice writers (`Paragraph.insert_text` at the start, the end and in place, `Range.insert_text` in place, before and after, both `replace_text`s, `Body.insert_text`) by `\n`, `\r` and `\r\n`, untracked and tracked. A centred Heading 1 is split, and both halves keep their properties; tracked, the new mark is inserted, and Reject All and Accept All of a strict reload are checked;
 - E1's others: the paragraph's identity and the report, breaks leading, trailing and in a row, a range following its text, `replace_text` at every match, the body's and a block control's `insert_text`; the hyperlink, another author's insertion and a smart tag cut, untracked and tracked; the six refusals, untracked and tracked, nothing changed; beside a control and a field the split made; every match checked first;
-- section 61: ten cases;
+- section 61: twelve cases (six kinds, through the control and through its paragraph), a flat OPC node left as it is, and check 56's four `insertText('x\ny')` cases as Word's answers (11.1.10);
 - **E2:** six one-paragraph writers, untracked and tracked;
 - **E3:** 140 over 20 writers by seven characters, a note reference lost, the facade's refusal kept.
 
@@ -988,13 +988,32 @@ In `~/vbShares/Office 2016/__tmp/python-cr013a2/`, built by `out/cr013-a2-word-c
   - `insert_paragraph` and `Paragraph.text = ...` with `\r\n`;
   - a text holding U+0002 and U+0001;
   - a centred Heading 1 split.
-- `cr013a2-SOURCE-bound-controls.docx` (`c4a3b720…`) and `cr013a2-3-bound-controls.docx` (`99499b6b…`): four block-level controls, given `insert_text("x\ny")` and written back. Multi-line, single-line and no-type controls are bound and hold one paragraph each; an unbound control of no type holds two.
+- `cr013a2-SOURCE-bound-controls.docx` and `cr013a2-3-bound-controls.docx`: block-level controls given `insert_text("x\ny")` and written back. As first staged (`c4a3b720…`, `99499b6b…`) there were four: multi-line, single-line and no-type controls bound, holding one paragraph each, and an unbound control of no type holding two. Rebuilt after check 56 (`c006031e…`, `9af76d3e…`; 11.1.10) there are five: bound multi-line `w:text`, single-line `w:text`, no type and `w:richText`, one paragraph each, only the first with a line break; and the unbound control of no type, two paragraphs.
 
 The main question is whether each opens without a repair prompt.
 
 #### 11.1.9 Found, and not done
 
 - **A tracked insertion strictly inside another author's insertion goes after it**, and the range returned is wrong. Measured at `f9f7b5a` and after: `a INSERTEDZ b` with the range 6:7 reading `R`. `_insert_tracked` puts the `w:ins` beside the revision element, not between the halves. The landing mirrors it, and the audit's seven skipped probes are it. Pre-existing; not this section's.
-- **E1 can give some bound block controls a second paragraph:** one with `w:richText`, which holds blocks, and a bound block-level date, drop-down list or combo box. Section 61's D1 covers plain text only, and what Word makes of the rest is unmeasured. Any other block write into a bound plain-text control (`insert_paragraph`, `insert_table`, `insert_xml`) still adds a second paragraph, section 10.10's defect: CR-014 phase 1's.
+- **E1 can give some bound block controls a second paragraph:** a bound block-level date, drop-down list or combo box, which check 56 didn't measure and H1 doesn't name, and a bound control whose node holds a flat OPC package, which H1 leaves as it is. Any other block write into a bound plain-text control (`insert_paragraph`, `insert_table`, `insert_xml`) still adds a second paragraph, section 10.10's defect: CR-014 phase 1's.
 - **Not built:** F2 (a non-breaking hyphen to a node as `-`), F3 (a line break dropped from a single-line control), G1 (`get_content_controls(types=...)`); they wait on the user.
 - **Phase B's:** a `Range` across paragraphs, which item 1 of 11.1.6 waits for.
+
+#### 11.1.10 Correction: core-ts's Word check 56 (`38dcae9`)
+
+core-ts ran its Word check 56 the same day (its CR-002 sections 61.3 and 61.4; the user there: "recommendations H1 to H4 are ok"). It measured section 61's rule wider than its D1, the rule as first built here (`b27bdbc`):
+- Word 365 can't open a file holding **any** bound block control with a second block: no type, `w:text` multi-line and `w:richText`, each with two paragraphs, and no type with a table (its 56a to 56d). Each repair made the control plain text and refilled it from its node.
+- On open, Word reads **every** bound block control as plain text. It gives one with no type, or with `w:richText`, a `<w:text/>` with no `w:multiLine`, so single-line, and Office JS reports it as `PlainText` (H4).
+- `insertText('x\ny', 'End')` gave a `w:br` in the multi-line `w:text` control (case 7) and dropped the line feed in the other three (cases 3, 11 and 15).
+
+**What changed here** (the coordinator's brief, after H1 and H4):
+- `bound_plain_text_control` covers `w:richText` bound block controls too (H1). Containers stay out, and a control whose node holds a flat OPC package, Word's own rich-text binding, is left as it is, as H1 leaves it (not measured).
+- The line-ness is decided inside the exception, `bound_control_is_multi_line`: only a `w:text` with `w:multiLine` set is multi-line. A control of no type and a `w:richText` one are single-line there, so a break is dropped, not written as a `w:br`. As first built, a control of no type wrote a `w:br`, `is_multi_line`'s reading.
+- `ContentControl.is_multi_line` and `.type` are unchanged: reading such a control as `PlainText` and single-line (H4) is CR-014's. A test pins that they still read the file as it is.
+- **The tests:**
+  - section 61's cases are now: no type dropped; `w:richText` bound dropped, no split; `w:text` multi-line a `w:br`; `w:text` single-line dropped; unbound with no type, and unbound `w:richText`, split;
+  - new: a flat OPC node split as usual;
+  - new: check 56's cases 3, 7, 11 and 15, as Word's answers (the control's text and the range returned). The nodes after `update_from_content_controls` are Word's, but for case 7, `\n` (F1), and case 15, `start15`, since the write-back skips an explicit `w:richText` (CR-003 section 4; Word's reading of it is H4, CR-014's);
+  - 308 tests in the file, where there were 301.
+- **The Word check's** bound-controls SOURCE and save are rebuilt with all four kinds and the unbound control, and the README rewritten for them. Files 1 and 2 are left as staged. A rebuild of them differs only in the wall-clock dates (27 entries compared, canonically identical).
+- **The gates after the correction:** the fast suite 4,405 passed, 8 skipped, 1,280 deselected, 1 failed; the full suite 5,685 passed, 8 skipped, 1 failed. The difference is the seven new tests. The failure is the known one.

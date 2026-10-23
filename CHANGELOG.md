@@ -260,9 +260,11 @@ save. It needs docx4j-xsdata 26.2.2.
       run-level content control or a field, or a break inside an equation or text read from a kept
       `mc:AlternateContent`, is refused before anything changes (`SpanError`
       `range.splits_control`, `range.splits_field`, `range.cuts_equation`; `address.read_only`).
-      Inside a bound plain-text block control (`w:text`, or no type) a break is a `w:br`, and
-      nothing in a single-line one, since Word can't open such a control holding two paragraphs
-      (docx4j-core-ts CR-002 section 61). 0.1.0 wrote `\n` and `\r` raw into the `w:t`.
+      Inside a bound block control (no type, `w:text` or `w:richText`) a break makes no paragraph,
+      since Word can't open such a control holding a second block and reads every one as plain
+      text: it is a `w:br` in a multi-line `w:text` control, and nothing in any other
+      (docx4j-core-ts CR-002 section 61 and its Word check 56). 0.1.0 wrote `\n` and `\r` raw into
+      the `w:t`.
     - **`insert_paragraph` and `Paragraph.text = ...` write one paragraph**: `\n` and `\r\n` a
       `w:br`, `\r` a `w:cr`; so do a cell's `value`, a table's values and a comment's paragraphs.
       Word's `insertParagraph` writes the escapes as text instead, which this does not follow.
@@ -272,7 +274,8 @@ save. It needs docx4j-xsdata 26.2.2.
     - **In a comment** `\r`, `\n` and `\r\n` (one) are paragraph marks, where 0.1.0 split on `\n`
       and saved a `\r` as `&#13;`.
     - **New**: `Paragraph.refuse_paragraph_breaks` and `Paragraph.text_since`,
-      `controls.bound_plain_text_control`, `text_model.drop_unwritable` and `PARAGRAPH_BREAKS`,
+      `controls.bound_plain_text_control` and `bound_control_is_multi_line`, `text_model.drop_unwritable`
+      and `PARAGRAPH_BREAKS`,
       and `model/content/split.py`'s `split_paragraph` (core-ts's `splitParagraph`).
       `to_api_script` writes a run's line break as U+000B in an `insert_text` line.
   - **Equations in an edit**: an edit takes an equation whole, untracked, and never part of it
