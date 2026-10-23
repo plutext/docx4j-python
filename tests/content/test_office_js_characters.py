@@ -135,8 +135,9 @@ def test_every_fixture_is_the_manifests_and_the_files_word_read():
     manifest = dict(reversed(line.split("  ", 1)) for line in lines if line.strip())
     # Phase A's seven, Phase B's eight (checks 52 and 53, Word's saves of 52 and Word's four JSONs)
     # and Phase C's ten (check 54's file, Word's two saves and its two JSONs; check 57's file, Word's
-    # three saves and its run JSON, CR-013 section 13.7)
-    assert len(manifest) == 25
+    # three saves and its run JSON, CR-013 section 13.7); and Word's Reject All of check 54 (docx4j
+    # e55a83b8e, CR-010 section 13.3a)
+    assert len(manifest) == 26
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():
