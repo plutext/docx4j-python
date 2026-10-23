@@ -481,6 +481,7 @@ def insert_ooxml_into_range(
     """What :meth:`Range.insert_ooxml` is. See its docstring."""
     from docx4j_py.wml import P
 
+    span.require_one_paragraph("insert_ooxml")  # one paragraph's runs (CR-013 Phase B)
     paragraph = span.paragraph
     body = paragraph.parent_body
     with recording(body, "insert_ooxml") as change:

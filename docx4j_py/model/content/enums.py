@@ -27,6 +27,7 @@ __all__ = [
     "Alignment",
     "AlignmentValue",
     "BodyLocation",
+    "BodyRangeLocation",
     "BreakType",
     "BreakTypeValue",
     "ChangeTracking",
@@ -35,6 +36,8 @@ __all__ = [
     "Location",
     "ParagraphLocation",
     "RangeLocation",
+    "RangeLocationName",
+    "TableRangeLocation",
     "TextLocation",
     "TextView",
     "TrackedChangeType",
@@ -55,14 +58,28 @@ BodyLocation = Literal["Start", "End"]
 TextLocation = Literal["Start", "End", "Replace"]
 #: Where a paragraph goes relative to another one.
 ParagraphLocation = Literal["Before", "After"]
-#: Office JS ``Word.RangeLocation``, what ``get_range`` takes.
-RangeLocation = Literal["Whole", "Start", "End", "Content"]
+#: Office JS ``Word.RangeLocation``, what ``get_range`` takes; ``"After"`` since CR-013 Phase B.
+RangeLocation = Literal["Whole", "Start", "End", "Content", "After"]
+#: What ``Table.get_range`` takes (Office JS's, CR-013 Phase B).
+TableRangeLocation = Literal["Whole", "Start", "End", "After"]
+#: What ``Body.get_range`` takes (Office JS's, CR-013 Phase B).
+BodyRangeLocation = Literal["Whole", "Start", "End", "Content"]
 #: The views of a document with tracked changes (CR-003 section 3.8): the
 #: document as Accept All leaves it, as Reject All leaves it, and, since
 #: CR-011 Phase B, every run as stored with its revision marked (the text
 #: model's ``markup`` view, REQ-401). ``current`` is accepted by the text
 #: model as a synonym of ``accepted``.
 TextView = Literal["accepted", "original", "markup"]
+
+
+class RangeLocationName(StrEnum):
+    """:data:`RangeLocation`, :data:`TableRangeLocation` and :data:`BodyRangeLocation` by name (CR-013 section 4.8)."""
+
+    WHOLE = "Whole"
+    START = "Start"
+    END = "End"
+    CONTENT = "Content"
+    AFTER = "After"
 
 
 class InsertLocation(StrEnum):

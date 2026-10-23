@@ -60,7 +60,7 @@ def test_the_audit_trail_scenario_end_to_end():
     assert back[0].author_email == "claude@example.com"
     assert back[0].resolved is True
     assert [r.content for r in back[0].replies] == ["Checked against the source."]
-    assert back[0].get_range()[0].text == "first"
+    assert back[0].get_range().text == "first"  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 def test_a_comment_by_address_is_one_tool_call():

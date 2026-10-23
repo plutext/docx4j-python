@@ -37,9 +37,9 @@ from docx4j_py.model.content.addresses import (
 from docx4j_py.model.content.controls import ContentControl, controls_in
 from docx4j_py.model.content.enums import (
     BodyLocation,
+    BodyRangeLocation,
     BreakTypeValue,
     Location,
-    RangeLocation,
     TextLocation,
     TextView,
 )
@@ -1333,16 +1333,44 @@ class Body(Sequence):
             change.text(after=self.text)
             return count
 
-    def get_range(self, location: RangeLocation = "Whole") -> Range:
-        """A range over this body's first or last paragraph (Office JS's shape)."""
+    def get_range(self, location: BodyRangeLocation = "Whole") -> Range:
+        """The body's range (Office JS ``Body.getRange``; CR-013 Phase B, core-ts's at ``ef57729``).
+
+        ``"Whole"`` from the first paragraph's start to the last one's end,
+        with that paragraph's mark (core-ts check 51: a cell's
+        ``CELLP1\\rCELLP2\\rCELLP3\\t``, a note's ``... NOTEP2\\r``);
+        ``"Content"`` the same without the mark; ``"Start"`` and ``"End"``
+        collapsed at the two ends. A body of one paragraph gives that
+        paragraph's range. A read: it changes nothing (CR-011 section 14.4).
+
+        Raises:
+            ContentError: ``body.no_paragraph``, a body holding no paragraph
+                (Q7; 0.1.0 inserted one); ``location.invalid`` for a location
+                other than the four.
+        """
+        from docx4j_py.model.content.range import Range
+
+        if location not in ("Whole", "Start", "End", "Content"):
+            raise ContentError(
+                f"Body.get_range takes Whole, Start, End or Content, not {location!r}",
+                code="location.invalid",
+                hint="Whole is the default; Content leaves the last mark out",
+            )
         paragraphs = self.paragraphs
         if not paragraphs:
-            return self.insert_paragraph("").get_range("Content")
+            raise ContentError(
+                "this body holds no paragraph, so it has no range",
+                code="body.no_paragraph",
+                hint="insert a paragraph first: body.insert_paragraph(text)",
+            )
+        first, last = paragraphs[0], paragraphs[-1]
         if location == "Start":
-            return paragraphs[0].get_range("Start")
+            return first.get_range("Start")
         if location == "End":
-            return paragraphs[-1].get_range("End")
-        return paragraphs[0].get_range("Whole" if location == "Whole" else location)
+            return last.get_range("End")
+        if len(paragraphs) == 1:
+            return first.get_range(location)
+        return Range(first, 0, len(last.text), end_paragraph=last, mark=location == "Whole", whole=True)
 
     # -- docx4j names ------------------------------------------------------
 

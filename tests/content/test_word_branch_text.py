@@ -307,7 +307,7 @@ def test_the_facades_add_comment_on_a_run_holding_a_branch_is_refused() -> None:
     assert caught.value.code == "address.read_only"
     document.add_comment(paragraph.runs[0], "ok")
     (comment,) = paragraph.view.get_comments()
-    assert [span.text for span in comment.get_range()] == ["I prefer "]
+    assert [span.text for span in comment.get_ranges()] == ["I prefer "]  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 # ---------------------------------------------------------------------------
@@ -476,7 +476,7 @@ def test_a_comment_after_the_element_has_its_range() -> None:
     pkg = built(_AROUND)
     paragraph = pkg.body.paragraphs[0]
     comment = paragraph.search("tail")[0].insert_comment("note")
-    (span,) = comment.get_range()
+    (span,) = comment.get_ranges()  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
     assert (span.start, span.end, span.text) == (12, 16, "tail")
     assert [c.content for c in paragraph.get_comments()] == ["note"]
 

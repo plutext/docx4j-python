@@ -79,9 +79,10 @@ def test_one_comment_read_from_a_document_word_wrote():
 
 def test_the_commented_range_is_the_text_the_markers_surround():
     comment = fixture("comments.docx").body.get_comments()[0]
-    ranges = comment.get_range()
+    ranges = comment.get_ranges()  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
     assert len(ranges) == 1
     assert ranges[0].text == "paragraph"
+    assert comment.get_range().text == "paragraph"
 
 
 def test_the_modern_parts_give_the_email_the_para_id_and_the_done_flag():
@@ -164,7 +165,8 @@ def test_a_block_level_marker_gets_no_range():
     parts_holder = body.get_comments()[0].parts
     ghost = Comment(parts_holder.comments.comment[0], parts_holder, body)
     object.__setattr__(ghost.element, "id", 9)
-    assert ghost.get_range() == []
+    assert ghost.get_ranges() == []
+    assert ghost.get_range() is None  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +278,7 @@ def test_the_markers_go_around_the_span_and_the_reference_run_follows():
     assert '<w:commentRangeStart w:id="0"/>' in xml
     assert '<w:commentRangeEnd w:id="0"/>' in xml
     assert '<w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="0"/>' in xml
-    assert comment.get_range()[0].text == "first"
+    assert comment.get_range().text == "first"  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 def test_the_change_report_names_every_part_the_insert_touched():
@@ -313,7 +315,7 @@ def test_a_comment_survives_a_save_and_a_reload():
     assert len(back) == 1
     assert back[0].content == "Changed because the source says 'red'."
     assert back[0].author_email == "claude@example.com"
-    assert back[0].get_range()[0].text == "first"
+    assert back[0].get_range().text == "first"  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 def test_a_comment_on_a_whole_paragraph():
@@ -321,7 +323,7 @@ def test_a_comment_on_a_whole_paragraph():
     package.id_seed = 20260917
     paragraph = package.body.paragraphs[0]
     comment = paragraph.insert_comment("The whole paragraph.")
-    assert comment.get_range()[0].text == paragraph.text
+    assert comment.get_range().text == paragraph.text  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
     assert [c.id for c in paragraph.get_comments()] == [comment.id]
 
 
@@ -333,7 +335,7 @@ def test_an_empty_range_gets_a_reference_run_only():
     xml = package.main_document_part.get_xml()
     assert "commentRangeStart" not in xml
     assert '<w:commentReference w:id="0"/>' in xml
-    assert comment.get_range()[0].text == ""
+    assert comment.get_range().text == ""  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 def test_the_next_comment_id_is_above_the_highest_in_the_document():
@@ -375,7 +377,7 @@ def test_a_comment_on_a_tracked_insertion_starts_inside_it():
     assert '<w:ins w:id="1"' in xml
     assert xml.count("<w:ins ") == 1, "the comment ends with the insertion: no split"
     assert "</w:ins><w:commentRangeEnd" in xml
-    assert comment.get_range()[0].text == "An insertion"
+    assert comment.get_range().text == "An insertion"  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 def test_a_marker_inside_a_run_holder_has_its_offset_in_the_paragraph():

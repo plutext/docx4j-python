@@ -835,7 +835,7 @@ def test_a_comment_made_while_tracking_is_on_is_a_comment_not_an_insertion():
 
     package.body.accept_all()
     assert [c.content for c in package.body.get_comments()] == ["On the insertion."]
-    assert [r.text for r in package.body.get_comments()[0].get_range()] == ["INSERTED"]
+    assert [r.text for r in package.body.get_comments()[0].get_ranges()] == ["INSERTED"]
     assert package.body.paragraphs[0].text == "INSERTED Base text."
 
 
@@ -898,7 +898,7 @@ def test_a_comment_on_an_insertion_stays_on_accept_and_goes_on_reject():
     assert accepted.body.accept_all() == 2
     comments = accepted.body.get_comments()
     assert [c.content for c in comments] == ["why"]
-    assert [r.text for r in comments[0].get_range()] == ["report"]
+    assert [r.text for r in comments[0].get_ranges()] == ["report"]
 
     rejected = commented()
     assert rejected.body.reject_all() == 2
@@ -931,7 +931,7 @@ def test_a_comment_on_a_paragraph_inserted_while_tracking_is_on_goes_with_its_re
     accepted.body.accept_all()
     comments = accepted.body.get_comments()
     assert [c.content for c in comments] == ["about the new paragraph"]
-    assert [r.text for r in comments[0].get_range()] == ["A whole new paragraph."]
+    assert [r.text for r in comments[0].get_ranges()] == ["A whole new paragraph."]
 
     rejected = reloaded(commented())
     rejected.body.reject_all()
@@ -1065,7 +1065,7 @@ def test_a_comment_on_part_of_an_insertion_splits_it_as_word_does(mode):
     assert int(second.get(identifier)) > int(first.get(identifier))
 
     # the anchor is narrow, and the parents are wired
-    assert [r.text for r in comment.get_range()] == ["monthly"]
+    assert [r.text for r in comment.get_ranges()] == ["monthly"]
     assert package.change_tracking_mode == mode
     for item in paragraph.element.content:
         assert item.parent is paragraph.element
@@ -1084,7 +1084,7 @@ def test_a_comment_ending_with_its_insertion_does_not_split_it():
         r'</w:rPr><w:commentReference w:id="0"/></w:r></w:p>$',
         xml,
     )
-    assert [r.text for r in comment.get_range()] == ["in advance."]
+    assert [r.text for r in comment.get_ranges()] == ["in advance."]
 
     # and on the whole of it: the start is the w:ins's first item
     _package, paragraph = _claudes_insertion()
@@ -1117,7 +1117,7 @@ def test_a_comment_on_someone_elses_insertion_with_tracking_off_takes_words_form
         r'<w:t xml:space="preserve"> insertion</w:t></w:r></w:ins>',
         xml,
     ), "the second half one above the highest annotation id in use"
-    assert [r.text for r in comment.get_range()] == ["An"]
+    assert [r.text for r in comment.get_ranges()] == ["An"]
     assert package.change_tracking_mode == "Off", "nothing turned tracking on"
     changes = package.body.get_tracked_changes()
     assert [(c.type, c.author, c.text) for c in changes] == [
@@ -1147,7 +1147,7 @@ def test_the_listing_after_a_split_is_one_insertion_and_reject_takes_the_comment
 
     accepted = reloaded(package)
     accepted.body.accept_all()
-    assert [r.text for r in accepted.body.get_comments()[0].get_range()] == ["monthly"]
+    assert [r.text for r in accepted.body.get_comments()[0].get_ranges()] == ["monthly"]
     assert [c.content for c in accepted.body.get_comments()[0].replies] == ["R1"]
     assert "<w:ins" not in accepted.main_document_part.get_xml()
 

@@ -738,8 +738,10 @@ comment.to_dict()
 #               'creation_date': '2026-09-16T23:45:00+00:00',
 #               'para_id': '4CD9291E', 'address': 'body/0'}]}
 
-comment.get_range()[0].text                   # exactly what the markers surround
+comment.get_range().text                      # exactly what the markers surround, one Range as Office JS's
 # 'first'
+comment.get_ranges()                          # the same a paragraph at a time
+# [<Range 3:8 'first'>]
 pkg.body.to_markdown(view="markup")           # the same comments as CriticMarkup
 # "My first{>>Changed 'first' because the source says 'red'.<<}{>>Checked against the source;
 #  agreed.<<} 2010 document."

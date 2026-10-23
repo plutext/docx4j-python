@@ -1095,7 +1095,7 @@ def test_add_comment_anchors_on_the_runs_and_creates_the_parts(doc):
     assert again.comments.get(0).text == "Is this right?"
     assert again.comments.get(99) is None
     # the anchor is exactly the run that was given
-    ranges = first.view.get_range()
+    ranges = first.view.get_ranges()  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
     assert [str(span) for span in ranges] == ["quick brown fox"]
 
 
@@ -1104,7 +1104,7 @@ def test_a_comment_can_be_given_a_whole_paragraphs_runs(doc):
     paragraph.add_run("two ")
     paragraph.add_run("three")
     comment = doc.add_comment(paragraph.runs, "all of it")
-    assert [str(span) for span in comment.view.get_range()] == ["one two three"]
+    assert [str(span) for span in comment.view.get_ranges()] == ["one two three"]  # Comment.get_range() is one Range since CR-013 Phase B (D2); get_ranges() the old list
 
 
 def test_a_comment_takes_more_paragraphs_and_keeps_the_comment_style(doc):

@@ -35,7 +35,7 @@ from typing import Any
 from docx4j_py.model.content.enums import UnderlineValue
 from docx4j_py.wml import RPr, apply_run_options, read_run_options
 
-__all__ = ["Font"]
+__all__ = ["Font", "MixedFont"]
 
 
 class Font:
@@ -313,3 +313,186 @@ class Font:
         inside = " ".join(parts) or "plain"
         scope = f" {self._scope}" if self._scope else ""
         return f"<Font{scope} {inside}>"
+
+
+class MixedFont(Font):
+    """The :class:`Font` of a range across paragraphs: each run read in its own paragraph. Extension.
+
+    CR-013 Phase B (core-ts ``MixedFont``, ``Font.mts`` at ``ef57729``; Q4): a
+    property where the runs differ reads as Office JS reads it (core-ts checks
+    52 and 53) --- ``None``, ``""`` for the name, the colour and the
+    highlight, and ``"Mixed"`` for the underline --- so the getters are typed
+    ``bool | None`` and ``float | None``. Where they agree, that value. A
+    write across paragraphs is CR-013 Phase C's: until then every setter
+    refuses (``range.spans_paragraphs``) before anything changes.
+    """
+
+    __slots__ = ("_readings", "_refuse")
+
+    def __init__(self, readings: Callable[[], list[dict[str, Any]]], refuse: Callable[[], None]) -> None:
+        """Build the view.
+
+        Args:
+            readings: called on every read; each run's
+                :func:`~docx4j_py.wml.builders.read_run_options` dict, effective
+                or direct as the range asked, read in its own paragraph.
+            refuse: called by every setter; it raises.
+        """
+        super().__init__(list)
+        self._readings = readings
+        self._refuse = refuse
+
+    def _value(self, key: str, mixed: Any = None) -> Any:
+        values = [reading.get(key) for reading in self._readings()]
+        if not values:
+            return None
+        first = values[0]
+        return first if all(value == first for value in values) else mixed
+
+    def _flag(self, key: str) -> bool | None:
+        values = [bool(reading.get(key)) for reading in self._readings()]
+        if not values:
+            return None
+        return values[0] if all(value == values[0] for value in values) else None
+
+    def _read(self) -> dict[str, Any]:
+        return {
+            "bold": self._flag("bold"),
+            "italic": self._flag("italic"),
+            "strike_through": self._flag("strike_through"),
+            "double_strike_through": self._flag("double_strike_through"),
+            "subscript": self._flag("subscript"),
+            "superscript": self._flag("superscript"),
+            "underline": self._value("underline", "Mixed") or "Mixed",
+            "name": self._value("name", "") or "",
+            "size": self._value("size"),
+            "color": self._value("color", "") or "",
+            "highlight_color": self._highlight(),
+            "style": self._value("style", "") or "",
+        }
+
+    def _highlight(self) -> str | None:
+        values = [reading.get("highlight_color") for reading in self._readings()]
+        if not values:
+            return None
+        return values[0] if all(value == values[0] for value in values) else ""
+
+    def _apply(self, **options: Any) -> None:
+        self._refuse()
+        raise AssertionError("unreachable: a MixedFont's refuse() raises")  # pragma: no cover
+
+    # the getters, typed for a value that may be mixed (Q4)
+
+    @property
+    def bold(self) -> bool | None:  # type: ignore[override]
+        """``w:b`` where every run agrees, else None."""
+        return self._read()["bold"]
+
+    @bold.setter
+    def bold(self, value: bool) -> None:
+        self._apply(bold=value)
+
+    @property
+    def italic(self) -> bool | None:  # type: ignore[override]
+        """``w:i`` where every run agrees, else None."""
+        return self._read()["italic"]
+
+    @italic.setter
+    def italic(self, value: bool) -> None:
+        self._apply(italic=value)
+
+    @property
+    def strike_through(self) -> bool | None:  # type: ignore[override]
+        """``w:strike`` where every run agrees, else None."""
+        return self._read()["strike_through"]
+
+    @strike_through.setter
+    def strike_through(self, value: bool) -> None:
+        self._apply(strike_through=value)
+
+    @property
+    def double_strike_through(self) -> bool | None:  # type: ignore[override]
+        """``w:dstrike`` where every run agrees, else None."""
+        return self._read()["double_strike_through"]
+
+    @double_strike_through.setter
+    def double_strike_through(self, value: bool) -> None:
+        self._apply(double_strike_through=value)
+
+    @property
+    def subscript(self) -> bool | None:  # type: ignore[override]
+        """Subscript where every run agrees, else None."""
+        return self._read()["subscript"]
+
+    @subscript.setter
+    def subscript(self, value: bool) -> None:
+        self._apply(subscript=value)
+
+    @property
+    def superscript(self) -> bool | None:  # type: ignore[override]
+        """Superscript where every run agrees, else None."""
+        return self._read()["superscript"]
+
+    @superscript.setter
+    def superscript(self, value: bool) -> None:
+        self._apply(superscript=value)
+
+    @property
+    def underline(self) -> UnderlineValue:
+        """The underline where every run agrees, else ``"Mixed"``."""
+        return self._read()["underline"]  # type: ignore[no-any-return]
+
+    @underline.setter
+    def underline(self, value: UnderlineValue | bool) -> None:
+        self._apply(underline=value)
+
+    @property
+    def name(self) -> str:
+        """The face where every run agrees, else ``""``."""
+        return self._read()["name"]  # type: ignore[no-any-return]
+
+    @name.setter
+    def name(self, value: str) -> None:
+        self._apply(name=value)
+
+    @property
+    def size(self) -> float | None:  # type: ignore[override]
+        """The size in points where every run agrees, else None."""
+        return self._read()["size"]  # type: ignore[no-any-return]
+
+    @size.setter
+    def size(self, value: float) -> None:
+        self._apply(size=value)
+
+    @property
+    def color(self) -> str:
+        """The colour where every run agrees, else ``""``."""
+        return self._read()["color"]  # type: ignore[no-any-return]
+
+    @color.setter
+    def color(self, value: str) -> None:
+        self._apply(color=value)
+
+    @property
+    def highlight_color(self) -> str | None:
+        """The highlight where every run agrees (None for none), else ``""``."""
+        return self._read()["highlight_color"]  # type: ignore[no-any-return]
+
+    @highlight_color.setter
+    def highlight_color(self, value: str | None) -> None:
+        self._apply(highlight_color=value)
+
+    @property
+    def style(self) -> str:
+        """The character style id where every run agrees, else ``""``. Extension."""
+        return self._read()["style"]  # type: ignore[no-any-return]
+
+    @style.setter
+    def style(self, value: str) -> None:
+        self._apply(style=value)
+
+    def __repr__(self) -> str:
+        """``<Font across paragraphs bold=None ...>``: the read, None where the runs differ."""
+        read = self._read()
+        inside = " ".join(f"{name}={read[name]!r}" for name in ("bold", "italic", "underline", "name", "size"))
+        return f"<Font across paragraphs {inside}>"

@@ -691,7 +691,8 @@ class _Emitter:
 
     def _anchor(self, name: str, comment: Any, view: Any, lines: list[str]) -> str:
         """The expression for the range a comment is on."""
-        spans = [span for span in comment.get_range() if span.paragraph == view]
+        # a paragraph at a time: get_ranges(), what get_range() returned until CR-013 Phase B (D2)
+        spans = [span for span in comment.get_ranges() if span.paragraph == view]
         if not spans:
             lines.append(f"# comment {comment.id}: the anchor is not a span in this paragraph")
             return f"{name}.get_range()"
@@ -1083,6 +1084,8 @@ def _targets(target: Any) -> tuple[list[Any], Any, Any]:
     if isinstance(target, Body):
         return list(target.content), target, None
     if isinstance(target, Range):
+        # one w:p's runs: a range across paragraphs is refused (CR-013 Phase B)
+        target.require_one_paragraph("to_api_script")
         return [], target.paragraph.parent_body, target
     if isinstance(target, (Paragraph, Table)):
         return [target.element], target.parent_body, None

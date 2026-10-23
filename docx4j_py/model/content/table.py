@@ -36,7 +36,12 @@ from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.addresses import ordinal_of
-from docx4j_py.model.content.enums import BodyLocation, ParagraphLocation, TextLocation
+from docx4j_py.model.content.enums import (
+    BodyLocation,
+    ParagraphLocation,
+    TableRangeLocation,
+    TextLocation,
+)
 from docx4j_py.model.content.errors import ContentError, InvalidTargetError
 from docx4j_py.model.content.reports import recording, refuse_read_only
 from docx4j_py.model.content.styles import (
@@ -360,6 +365,42 @@ class Table:
         ``mc:AlternateContent`` (Q4 revised, CR-011 section 15).
         """
         return text_of(self.element)
+
+    def get_range(self, location: TableRangeLocation = "Whole") -> Range:
+        """The table's range (Office JS ``Table.getRange``; CR-013 Phase B, core-ts's at ``ef57729``).
+
+        ``"Whole"`` from the first cell's start to the last cell's end, its
+        text the table's in ``Body.text``'s form, every row ended ``\\r\\n``
+        as Word 365 gives it (core-ts check 52); ``"Start"`` and ``"End"``
+        collapsed at those two ends; ``"After"`` at the start of the paragraph
+        after the table (core-ts check 53).
+
+        Raises:
+            ContentError: ``table.no_paragraph``, a table holding no
+                paragraph; ``location.invalid`` for another location.
+        """
+        from docx4j_py.model.content.range import Range
+
+        if location not in ("Whole", "Start", "End", "After"):
+            raise ContentError(
+                f"Table.get_range takes Whole, Start, End or After, not {location!r}",
+                code="location.invalid",
+                hint="Whole is the default",
+            )
+        paragraphs = [p for row in self.rows for cell in row.cells for p in cell.paragraphs]
+        if not paragraphs:
+            raise ContentError(
+                "this table holds no paragraph, so it has no range",
+                code="table.no_paragraph",
+                hint="read its rows and cells instead",
+            )
+        first, last = paragraphs[0], paragraphs[-1]
+        if location == "Start":
+            return first.get_range("Start")
+        if location == "End":
+            return last.get_range("End")
+        whole = Range(first, 0, len(last.text), end_paragraph=last, mark=True, end_mark="\r\n", whole=True)
+        return whole.get_range("After") if location == "After" else whole
 
     @property
     def parent_table_cell(self) -> TableCell | None:

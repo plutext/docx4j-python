@@ -155,6 +155,7 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
             code="binding.form_mismatch",
             hint="call insert_content_control on a paragraph or on the body",
         )
+    span.require_one_paragraph("insert_content_control")  # a range across paragraphs (CR-013 Phase B)
     span.refuse_branch_text("insert_content_control")
     span.require_one_holder("insert_content_control")
     _require_no_revision_between(span)

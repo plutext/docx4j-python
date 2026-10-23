@@ -232,10 +232,11 @@ def test_check_51_cells_controls_comments_and_notes_of_several_paragraphs_read_a
         measured["contentControls"][1]["whole"],
         measured["contentControls"][1]["content"],
     ]
-    # a block control of several paragraphs: its range is its first paragraph's until CR-013
-    # Phase B, which makes it one range over the control (Word's "CCP1\rCCP2\rCCP3\r")
+    # a block control of several paragraphs: one range over the control since CR-013 Phase B (it was
+    # its first paragraph's, "CCP1\r", until then), Word's "CCP1\rCCP2\rCCP3\r"
     assert unescape(measured["contentControls"][0]["whole"]) == "CCP1\rCCP2\rCCP3\r"
-    assert block.get_range("Whole").text == "CCP1\r", "pinned: CR-013 Phase B"
+    assert block.get_range("Whole").text == unescape(measured["contentControls"][0]["whole"])
+    assert block.get_range("Content").text == "CCP1\rCCP2\rCCP3"
     assert body.get_comments()[0].content == unescape(measured["comments"][0]["content"])
     # a note's own mark reads U+0002, as its reference does
     for part, notes in (

@@ -319,7 +319,8 @@ def markers_of(container: Any, resolver: Any = None) -> list[CommentMarker]:
     A table, a row, a cell and a content control are all one
     :func:`~docx4j_py.model.content.text_model.block_children_of` step, so the
     walk has no special case for any of them. `resolver` is
-    :func:`markers_of_paragraph`'s.
+    :func:`markers_of_paragraph`'s. `container` may be a block list itself (a
+    story's, CR-013 Phase B).
     """
     out: list[CommentMarker] = []
 
@@ -345,7 +346,7 @@ def markers_of(container: Any, resolver: Any = None) -> list[CommentMarker]:
             if children is not None:
                 visit(children)
 
-    children = block_children_of(container)
+    children = container if isinstance(container, list) else block_children_of(container)
     if children is not None:
         visit(children)
     return out
@@ -969,13 +970,69 @@ class Comment:
                 return self.body.paragraph_for(marker.paragraph).address
         return None
 
-    def get_range(self) -> list[Range]:
-        """The commented span: a :class:`Range` **per paragraph** it touches.
+    def get_range(self) -> Range | None:
+        """The commented range: one :class:`Range` from the comment's start to its end (Office JS ``getRange``).
 
-        Office JS returns one ``Range``; CR-003 section 4 says a list, because a
-        comment may span paragraphs and this API's ``Range`` is within one.
-        Empty for a comment whose markers sit at block level, and for one whose
-        markers are in another body.
+        CR-013 Phase B (D2, Q3; core-ts's at ``ef57729``): across paragraphs
+        where the comment spans them, as Office JS's (core-ts check 52: a
+        comment from one paragraph into the next reads ``BODY1B\\rLIST1A``). A
+        start marker between blocks (Word writes one before a control's first
+        paragraph) starts the range at the next paragraph, and an end marker
+        between blocks ends it at the previous one's end. None when the
+        comment has no markers in this body. Until 0.2.0 this returned a list
+        a paragraph at a time, which is :meth:`get_ranges` now: a caller that
+        indexed ``get_range()[0]`` reads ``get_range()``, or ``get_ranges()``.
+        """
+        from docx4j_py.model.content.range import Range
+
+        markers = [m for m in markers_of(self.body.container, _resolver_of(self.body)) if m.id == self.id]
+        start = next((m for m in markers if m.kind == "start"), None)
+        end = next((m for m in reversed(markers) if m.kind == "end"), None)
+        begins = self._anchor(start, "start") if start is not None else None
+        ends = self._anchor(end, "end") if end is not None else None
+        if begins is None or ends is None:
+            ranges = self.get_ranges()
+            return ranges[0] if ranges else None
+        paragraphs = self.body.paragraphs
+        index_of = {id(p.element): i for i, p in enumerate(paragraphs)}
+        a = index_of.get(id(begins[0].element))
+        b = index_of.get(id(ends[0].element))
+        if a is None or b is None or b < a or (a == b and ends[1] < begins[1]):
+            ranges = self.get_ranges()
+            return ranges[0] if ranges else None
+        if a == b:
+            return Range(begins[0], begins[1], ends[1])
+        return Range(begins[0], begins[1], ends[1], end_paragraph=ends[0])
+
+    def _anchor(self, marker: CommentMarker, side: str) -> tuple[Paragraph, int] | None:
+        """Where a range marker stands: its paragraph and offset; a block-level one's the next or the previous paragraph's edge."""
+        from docx4j_py.model.content.paragraph import Paragraph
+        from docx4j_py.model.content.story import first_and_last_paragraph
+
+        if marker.paragraph is not None and marker.paragraph_container is not None:
+            paragraph = Paragraph(marker.paragraph, marker.paragraph_container, self.body)
+            if marker.offset is not None:
+                return paragraph, marker.offset
+            return paragraph, 0 if side == "start" else len(paragraph.text)
+        at = _index_of(marker.owner, marker.item)
+        if at < 0:
+            return None
+        indices = range(at + 1, len(marker.owner)) if side == "start" else range(at - 1, -1, -1)
+        for index in indices:
+            first, last = first_and_last_paragraph(marker.owner, index)
+            place = first if side == "start" else last
+            if place is None:
+                continue
+            paragraph = Paragraph(place.element, place.container, self.body)
+            return paragraph, 0 if side == "start" else len(paragraph.text)
+        return None
+
+    def get_ranges(self) -> list[Range]:
+        """The commented span a paragraph at a time: a :class:`Range` **per paragraph** it touches. Extension.
+
+        What :meth:`get_range` returned until CR-013 Phase B (D2; core-ts's
+        ``getRanges``). Empty for a comment whose markers sit at block level,
+        and for one whose markers are in another body.
         """
         from docx4j_py.model.content.range import Range
 
@@ -1326,6 +1383,7 @@ def insert_comment_into(span: Range, text: str, *, marks: Any = None) -> Comment
     `marks`, a compiled pattern, splits the lines otherwise (the python-docx
     facade's ``\\n``, after its own refusal of those characters).
     """
+    span.require_one_paragraph("insert_comment")  # core-ts's phase 3, not ported (CR-013 Q10)
     text = drop_unwritable(text)
     body = span.paragraph.parent_body
     with recording(body, "insert_comment") as change:
@@ -1402,13 +1460,39 @@ def comments_of(scope: Any) -> list[Comment]:
 
 
 def _ids_in_range(span: Range) -> list[int]:
-    """The comments a span touches: those whose markers overlap ``[start, end]``."""
-    spans: dict[int, list[int]] = {}
+    """The comments a span touches: those whose extent over the story overlaps ``[start, end]``, both edges inclusive.
+
+    CR-013 Phase B (section 2.5 item 1): a comment's extent runs from its
+    first marker to its last over the story, each as ``(paragraph, offset)``
+    in story order, a block-level marker at the next paragraph's start (a
+    start) or the previous one's end (an end). Until then
+    only the span's own paragraph's markers were read, so a range on a
+    comment's last paragraph, which holds only its end marker, listed
+    nothing. Within one paragraph's markers the answer is as it was.
+    """
+    from docx4j_py.model.content.story import story_layout, story_of
+
+    items, _owner = story_of(span.paragraph.element)
+    order_of: dict[int, int] = {}
+    layout = story_layout(items, lambda _element, _container: "")
+    for index, place in enumerate(layout.places):
+        order_of[id(place.element)] = index
+    first = order_of.get(id(span.paragraph.element))
+    last = order_of.get(id(span.end_paragraph.element))
+    if first is None or last is None:
+        return []
+    low, high = (first, span.start), (last, span.end)
+    resolver = _resolver_of(span.paragraph.parent_body)
+    spans: dict[int, list[tuple[int, float]]] = {}
     order: list[int] = []
-    for marker in markers_of_paragraph(
-        span.paragraph.element, span.paragraph.container, _resolver_of(span.paragraph.parent_body)
-    ):
-        at = marker.offset or 0
+    for marker in markers_of(items, resolver):
+        if marker.paragraph is not None:
+            index = order_of.get(id(marker.paragraph))
+            at: tuple[int, float] | None = None if index is None else (index, marker.offset or 0)
+        else:
+            at = _block_marker_at(marker, order_of)
+        if at is None:
+            continue
         found = spans.get(marker.id)
         if found is None:
             spans[marker.id] = [at, at]
@@ -1416,7 +1500,27 @@ def _ids_in_range(span: Range) -> list[int]:
         else:
             found[0] = min(found[0], at)
             found[1] = max(found[1], at)
-    return [i for i in order if spans[i][0] <= span.end and spans[i][1] >= span.start]
+    return [i for i in order if spans[i][0] <= high and spans[i][1] >= low]
+
+
+def _block_marker_at(marker: CommentMarker, order_of: dict[int, int]) -> tuple[int, float] | None:
+    """A block-level marker's place in story order: a start at the next paragraph's start, an end at the previous one's end."""
+    from docx4j_py.model.content.story import first_and_last_paragraph
+
+    at = _index_of(marker.owner, marker.item)
+    if at < 0:
+        return None
+    if marker.kind == "start":
+        for index in range(at + 1, len(marker.owner)):
+            first, _last = first_and_last_paragraph(marker.owner, index)
+            if first is not None and id(first.element) in order_of:
+                return order_of[id(first.element)], 0
+        return None
+    for index in range(at - 1, -1, -1):
+        _first, last = first_and_last_paragraph(marker.owner, index)
+        if last is not None and id(last.element) in order_of:
+            return order_of[id(last.element)], float("inf")
+    return None
 
 
 def _unique(ids: Any) -> list[int]:

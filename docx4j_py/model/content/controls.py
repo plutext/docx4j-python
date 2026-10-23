@@ -38,7 +38,9 @@ from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.table import Table
 from docx4j_py.model.content.text_model import (
     PARAGRAPH_BREAKS,
+    W_P,
     W_SDT,
+    W_TBL,
     W_TC,
     W_TR,
     block_children_of,
@@ -256,7 +258,10 @@ class ContentControl:
         for _ in range(_MAX_DEPTH):
             if not items:
                 break
-            item = items[0]
+            # a marker says nothing of the level: Word's save of core-ts check 52 case 82 opens a block
+            # control's content with a w:commentRangeStart (CR-013 Phase B); the first item that is no
+            # marker decides, the first item where there is none
+            item = next((item for item in items if element_name(item) not in _MARKER_NAMES), items[0])
             if is_alternate_content(item):
                 # a kept block-level mc:AlternateContent: what Word's branch holds says
                 # (CR-012 Phase A2; it read "run" before)
@@ -299,8 +304,10 @@ class ContentControl:
         ``Body.text``, its paragraphs a mark ``\\r`` apart; a run-level
         control's is the span of its paragraph's ``Paragraph.text`` it covers,
         in Office JS's characters, hidden text left out. A row- or cell-level
-        control's is its content's ``Body.text`` too, in Word's table form
-        (its own rule, check 53's, is CR-013 Phase B's).
+        control's is its content's ``Body.text`` too, in Word's table form,
+        and a control whose content ends with a row or a table leaves the
+        row's ``\\r\\n`` out (core-ts check 53; CR-013 Phase B): a row
+        control's text is its cells a ``\\t`` apart.
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
@@ -316,7 +323,10 @@ class ContentControl:
                 return paragraph.text[start:end]
             inner = getattr(self.element, "sdt_content", None)
             return text_of_view(inner) if inner is not None else ""
-        return self.body().text
+        # a row control's cells a \t apart (core-ts check 53: ROW15A\tROW15B), a cell control's paragraphs
+        # a \r apart; a control whose content ends with a row (a row control, or a table last) leaves the
+        # row's end out (check 53; CR-013 Phase B)
+        return self.body().text.removesuffix("\r\n")
 
     @property
     def docx4j_text(self) -> str:
@@ -425,9 +435,16 @@ class ContentControl:
         """The control's range.
 
         **Exact** for a run-level control --- the offsets its runs cover in the
-        paragraph --- and the first paragraph's range for the block, row and
-        cell forms, because a ``Range`` here is within one paragraph (CR-003
-        section 4).
+        paragraph. For the block, row and cell forms one range over its
+        paragraphs, from the first one's start to the last one's end (CR-013
+        Phase B; core-ts's at ``ef57729``): ``"Whole"`` ending with the last
+        one's mark, as Office JS's does (core-ts check 51:
+        ``CCP1\\rCCP2\\rCCP3\\r``), ``"Content"`` without it; a row-level
+        control's, or one whose content ends with a table, ``"Content"``
+        ending with the last cell's text and ``"Whole"`` with ``\\t\\t``, as
+        Word 365 gives them (core-ts check 53). ``"Start"`` is the first
+        paragraph's start and ``"End"`` the last one's end; ``"After"`` is
+        after the range's end.
 
         Raises:
             ContentError: a run-level control that is in no paragraph, or a
@@ -448,6 +465,8 @@ class ContentControl:
                 return Range(paragraph, start, start)
             if location == "End":
                 return Range(paragraph, end, end)
+            if location == "After":
+                return Range(paragraph, start, end).get_range("After")
             return Range(paragraph, start, end)
         paragraphs = self.paragraphs
         if not paragraphs:
@@ -456,7 +475,21 @@ class ContentControl:
                 code="control.no_paragraph",
                 hint="insert one with insert_paragraph(), or read its text",
             )
-        return paragraphs[0].get_range(location)
+        first, last = paragraphs[0], paragraphs[-1]
+        if location == "Start":
+            return first.get_range("Start")
+        if location == "End":
+            return last.get_range("End")
+        length = len(last.text)
+        if self.form == "row" or _ends_with_table(self.content):
+            if location == "Whole":
+                return Range(first, 0, length, end_paragraph=last, mark=True, end_mark="\t\t", whole=True)
+            whole = Range(first, 0, length, end_paragraph=last, whole=True)
+            return whole.get_range("After") if location == "After" else whole
+        if len(paragraphs) == 1:
+            return first.get_range(location)
+        whole = Range(first, 0, length, end_paragraph=last, mark=location in ("Whole", "After"), whole=True)
+        return whole.get_range("After") if location == "After" else whole
 
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text` inside the control, as ranges.
@@ -1136,14 +1169,62 @@ _BLOCK_NAMES = frozenset(
 )
 
 
+#: What a control's content may open with that tells nothing of its level (:attr:`ContentControl.form`).
+_MARKER_NAMES = frozenset(
+    f"{{{W_NS}}}{local}"
+    for local in (
+        "bookmarkStart",
+        "bookmarkEnd",
+        "commentRangeStart",
+        "commentRangeEnd",
+        "permStart",
+        "permEnd",
+        "proofErr",
+        "moveFromRangeStart",
+        "moveFromRangeEnd",
+        "moveToRangeStart",
+        "moveToRangeEnd",
+        "customXmlInsRangeStart",
+        "customXmlInsRangeEnd",
+        "customXmlDelRangeStart",
+        "customXmlDelRangeEnd",
+    )
+)
+
+
+def _ends_with_table(content: list) -> bool:
+    """Whether a control's content's last block, as a reader reads it, is a table (core-ts's ``BLOCK_ITEMS``, ``ef57729``)."""
+    items = content
+    for _ in range(_MAX_DEPTH):
+        last = next(
+            (
+                item
+                for item in reversed(items)
+                if element_name(item) in (W_P, W_TBL, W_TR, W_TC) or is_alternate_content(item)
+            ),
+            None,
+        )
+        if last is None:
+            return False
+        if is_alternate_content(last):
+            items = block_children_of(last) or []
+            continue
+        return element_name(last) == W_TBL
+    return False
+
+
 def _is_block(name: str | None) -> bool:
     """Whether an element name is block-level content, for :attr:`form`."""
     return name in _BLOCK_NAMES
 
 
-def _collect(items: list, body: Body, out: list[ContentControl]) -> None:
-    """Every control in a block list, in document order, nested ones included."""
-    for item in items:
+def _collect(items: list, body: Body, out: list[ContentControl], start: int = 0, stop: int | None = None) -> None:
+    """Every control in a block list, in document order, nested ones included.
+
+    `start` and `stop` take ``items[start:stop]`` only, each control still held
+    by the live `items` (CR-013 Phase B's ``Range.content_controls``).
+    """
+    for item in items if start == 0 and stop is None else items[start:stop]:
         if isinstance(item, _SDT_CLASSES):
             control = ContentControl(item, items, body)
             out.append(control)

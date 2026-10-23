@@ -124,6 +124,8 @@ __all__ = [
     "for_writer",
     "grapheme_clusters",
     "hidden_runs_of",
+    "is_block_container",
+    "is_branch",
     "is_grapheme_boundary",
     "item_text",
     "kept_content_under",
@@ -1193,6 +1195,28 @@ def _block_level(ac: Any) -> bool:
             )
         node = getattr(node, "parent", None)
     return False
+
+
+def is_block_container(value: Any) -> bool:
+    """Whether `value` is one of the block, row or cell containers whose list :func:`block_children_of` reads.
+
+    The classes of :data:`_CONTAINERS` (docx4j ``McSplice``'s block, row and
+    cell containers): a body, a header or footer, a cell, a note, a comment, a
+    text box's content, a block control's content, block custom XML, a table,
+    a row-level control's content, a row and a cell-level control's content.
+    Not a ``w:p`` or a ``w:r``, whose lists are run content. CR-013 Phase B's
+    ``story_of`` climbs through these.
+    """
+    cls = value.__class__
+    return cls.__module__ == "docx4j_py.wml" and any(
+        base.__name__ in _CONTAINERS for base in cls.__mro__ if base.__module__ == "docx4j_py.wml"
+    )
+
+
+def is_branch(value: Any) -> bool:
+    """Whether `value` is a typed ``mc:Choice`` or ``mc:Fallback``."""
+    cls = value.__class__
+    return cls.__module__ == "docx4j_py.mce" and cls.__name__ in _MC_BRANCHES
 
 
 def in_kept_branch(element: Any) -> bool:

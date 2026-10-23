@@ -131,53 +131,137 @@ class TrackedChange:
         return self.change.text  # type: ignore[no-any-return]
 
     def get_range(self) -> Range | None:
-        """The range the change covers in its first paragraph, or None when it has none.
+        """The range the change covers, or None when it has none (Office JS ``TrackedChange.getRange``).
 
         A deletion is a **collapsed** range where it sits in the accepted text,
-        because its text is not in that view at all; a mark, a ``w:pPrChange``
-        or an equation's change is the whole paragraph; a row revision, a
-        table's or a section's records and a text box's change have no range.
-        A change over several paragraphs gives its range in the first.
+        because its text is not in that view at all; a ``w:pPrChange``, a
+        mark's formatting or an equation's change is the whole paragraph; a
+        row revision, a table's or a section's records and a text box's change
+        have no range.
+
+        CR-013 Phase B (core-ts's at ``ef57729``, held to its checks 52 and
+        53): a change of several pieces runs from where its first piece starts
+        to where its last ends, **across paragraphs** where its pieces are in
+        several (an insertion through a paragraph's mark is one change whose
+        range spans both paragraphs); a mark ends its own paragraph's range,
+        holding it; a deletion is collapsed where it starts, as Word's default
+        view reads it. A paragraph's mark alone is its mark, ``\\r``, when
+        inserted, and collapsed at the paragraph's end when deleted. Until
+        Phase B a change's range was its part in the paragraph it starts in.
         """
         from docx4j_py.model.content.range import Range
-        from docx4j_py.model.revisions.change import (
-            FieldT,
-            HolderT,
-            MarkPropsT,
-            MarkT,
-            RunPropsT,
-            RunT,
-        )
+        from docx4j_py.model.revisions.change import GroupT, MarkPropsT, MarkT
 
         paragraph = self.paragraph
         if paragraph is None:
             return None
-        element = paragraph.element
-        spans: list[tuple[int, int]] = []
-        whole = False
-        length = len(paragraph.text)
-        for piece in self.change.pieces:
-            if piece.para is None or piece.para.p is not element:
-                continue
-            t = piece.target
-            if isinstance(t, RunT):
-                spans.append(_span_of(paragraph, t.item))
-            elif isinstance(t, FieldT):
-                first, last = _span_of(paragraph, t.span[0]), _span_of(paragraph, t.span[-1])
-                spans.append((first[0], last[1]))
-            elif isinstance(t, HolderT):
-                spans.append(_span_of(paragraph, t.holder))
-            elif isinstance(t, RunPropsT):
-                covered = [s for s in paragraph.segments() if s.run is t.run]
-                at = _accepted_offset_of(element, t.run)
-                spans.append((covered[0].start, covered[-1].end) if covered else (at, at))
-            elif isinstance(t, (MarkT, MarkPropsT)):
-                spans.append((length, length))
-            else:
-                whole = True
-        if whole or not spans or all(isinstance(p.target, (MarkT, MarkPropsT)) for p in self.change.pieces):
+        t = self.change.target
+        if isinstance(t, GroupT):
+            return self._group_range(paragraph)
+        if isinstance(t, MarkT):
+            length = len(paragraph.text)
+            return Range(paragraph, length, length, mark=bool(t.ins))
+        if isinstance(t, MarkPropsT):
             return paragraph.get_range("Whole")
-        return Range(paragraph, min(s for s, _ in spans), max(e for _, e in spans))
+        span = _piece_span(paragraph, self.change)
+        if span is None:
+            return paragraph.get_range("Whole")
+        return Range(paragraph, span[0], span[1])
+
+    def _group_range(self, paragraph: Paragraph) -> Range | None:
+        """A group's range: from its first piece to its last, across paragraphs (core-ts ``getRange``'s ``group``)."""
+        from docx4j_py.model.content.paragraph import Paragraph
+        from docx4j_py.model.content.range import Range
+        from docx4j_py.model.content.story import story_layout, story_of, top_index
+        from docx4j_py.model.revisions.change import MarkT
+
+        def view(para: Any) -> Paragraph:
+            if para.p is paragraph.element:
+                return paragraph
+            return Paragraph(para.p, para.container, self.body)
+
+        ranges: list[tuple[Paragraph, int, int]] = []
+        marks: list[Paragraph] = []
+        for piece in self.change.pieces:
+            if piece.para is None:
+                continue
+            if isinstance(piece.target, MarkT):
+                marks.append(view(piece.para))
+                continue
+            here = view(piece.para)
+            span = _piece_span(here, piece)
+            if span is not None:
+                ranges.append((here, span[0], span[1]))
+        if not ranges and not marks:
+            # the first piece's, as a change of its own (a mark's formatting, a w:pPrChange: the paragraph)
+            first = self.pieces[0]
+            return first.get_range() if first is not self else paragraph.get_range("Whole")
+        if not marks and all(r[0].element is ranges[0][0].element for r in ranges):
+            return Range(ranges[0][0], min(r[1] for r in ranges), max(r[2] for r in ranges))
+        try:
+            items, owner = story_of(paragraph.element)
+        except Exception:  # noqa: BLE001 - a change in no story reads its part in its first paragraph
+            items = owner = None
+        involved = [r[0] for r in ranges] + marks
+        indices = [top_index(p.element, items, owner) for p in involved] if items is not None else [-1]
+        if any(index < 0 for index in indices):
+            here = [r for r in ranges if r[0].element is paragraph.element]
+            if not here:
+                return Range(*ranges[0]) if ranges else paragraph.get_range("Whole")
+            return Range(paragraph, min(r[1] for r in here), max(r[2] for r in here))
+        views = {id(p.element): p for p in involved}
+        views.setdefault(id(paragraph.element), paragraph)
+        layout = story_layout(
+            items,
+            lambda element, container: (
+                views[id(element)] if id(element) in views else Paragraph(element, container, self.body)
+            ).text,
+            start=min(indices),
+            stop=max(indices) + 1,
+        )
+
+        def at(p: Paragraph, offset: int) -> int | None:
+            index = layout.index_of(p.element)
+            return None if index < 0 else layout.places[index].start + offset
+
+        spans: list[tuple[int, int, Paragraph | None]] = []
+        for p, start, end in ranges:
+            a, b = at(p, start), at(p, end)
+            if a is None or b is None:
+                return Range(*ranges[0])
+            spans.append((a, b, None))
+        for p in marks:
+            a = at(p, len(p.text))
+            if a is None:
+                return Range(*ranges[0]) if ranges else paragraph.get_range("Whole")
+            spans.append((a, a, p))
+        begin = min(span[0] for span in spans)
+        first_place = next(place for place in layout.places if place.start <= begin <= place.end)
+
+        def view_of(place: Any) -> Paragraph:
+            found = views.get(id(place.element))
+            return found if found is not None else Paragraph(place.element, place.container, self.body)
+
+        head = view_of(first_place)
+        if self.type == "Deleted":
+            return Range(head, begin - first_place.start, begin - first_place.start)
+        last = spans[0]
+        for span in spans[1:]:
+            if span[1] > last[1] or (span[1] == last[1] and span[2] is not None):
+                last = span
+        last_place = next(
+            place
+            for place in layout.places
+            if place.start <= last[1] <= place.end and (last[2] is None or place.element is last[2].element)
+        )
+        tail = view_of(last_place)
+        return Range(
+            head,
+            begin - first_place.start,
+            last[1] - last_place.start,
+            end_paragraph=tail,
+            mark=last[2] is not None,
+        )
 
     def accept(self) -> None:
         """Keep the change, as Word's Review tab does (docx4j CR-043 section 3.2).
@@ -402,6 +486,25 @@ def tracked_changes_of_package(package: Any) -> list[TrackedChange]:
 # ---------------------------------------------------------------------------
 # where a revision sits in the accepted text
 # ---------------------------------------------------------------------------
+
+
+def _piece_span(paragraph: Paragraph, piece: Any) -> tuple[int, int] | None:
+    """A single change's span in its paragraph's accepted text, or None for one that is no span (a mark, a record)."""
+    from docx4j_py.model.revisions.change import FieldT, HolderT, RunPropsT, RunT
+
+    t = piece.target
+    if isinstance(t, RunT):
+        return _span_of(paragraph, t.item)
+    if isinstance(t, FieldT):
+        first, last = _span_of(paragraph, t.span[0]), _span_of(paragraph, t.span[-1])
+        return first[0], last[1]
+    if isinstance(t, HolderT):
+        return _span_of(paragraph, t.holder)
+    if isinstance(t, RunPropsT):
+        covered = [s for s in paragraph.segments() if s.run is t.run]
+        at = _accepted_offset_of(paragraph.element, t.run)
+        return (covered[0].start, covered[-1].end) if covered else (at, at)
+    return None
 
 
 def _span_of(paragraph: Paragraph, element: Any) -> tuple[int, int]:

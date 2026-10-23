@@ -183,12 +183,8 @@ CHECK_55_DEPARTURES = {
 
 #: The range ``insert_text`` returns, where it is not Word's (case to (ours, why)).
 CHECK_55_RANGE_DEPARTURES = {
-    # a range across paragraphs is CR-013 Phase B's: the range is the text's part in the last paragraph
-    2: ("y", "the last paragraph's part"),
-    3: ("y", "the last paragraph's part"),
-    4: ("y", "the last paragraph's part"),
-    48: ("y", "the last paragraph's part"),
-    49: ("y", "the last paragraph's part"),
+    # cases 2 to 4, 48 and 49: the range across the paragraphs the text made is Word's (x\ry) since
+    # CR-013 Phase B, where it was the text's part in the last paragraph (y) until then
     # E3: dropped at the write, where Word's session read them until the save (its save holds neither)
     10: ("xy", "dropped at once"),
     11: ("xy", "dropped at once"),
@@ -427,7 +423,10 @@ def test_the_paragraph_keeps_its_identity_and_the_new_one_comes_in_front():
     assert second.text == "z", "the view goes on viewing the paragraph that keeps the mark"
     assert second.para_id == para_id
     assert len({q.para_id for q in package.body.paragraphs}) == 4, "each new paragraph its own paraId"
-    assert (out.paragraph.element is second.element, out.start, out.end) == (True, 0, 1)
+    # the range returned spans the paragraphs the text made, as Office JS's (CR-013 Phase B); it was the
+    # last paragraph's part, (second, 0, 1), until then
+    assert (out.paragraph.text, out.start, out.end_paragraph.element is second.element, out.end) == ("secondx", 6, True, 1)
+    assert out.text == "x\ry\rz"
     report = package.changes[-1]
     assert report.operation == "insert_text"
     assert len(report.created_para_ids) == 2
@@ -457,7 +456,8 @@ def test_a_range_follows_its_text():
     assert after.text == "one" and after.paragraph.text == "one C"
     replaced = package.body.paragraphs[-1].search("three")[0]
     out = replaced.insert_text("E\nF", location="Replace")
-    assert (replaced.text, out.text) == ("F", "F")
+    # across the paragraphs the replacement made since CR-013 Phase B (("F", "F") until then)
+    assert (replaced.text, out.text) == ("E\rF", "E\rF")
     assert [q.text for q in package.body.paragraphs] == ["one C", "D two A", "B E", "F"]
 
 
@@ -474,7 +474,7 @@ def test_the_body_and_a_block_controls_insert_text():
     package.body.insert_paragraph("old")
     out = package.body.insert_text("x\ny", location="Replace")
     assert [q.text for q in package.body.paragraphs] == ["x", "y"]
-    assert out.text == "y"
+    assert out.text == "x\ry", "across the paragraphs it made (CR-013 Phase B; 'y' until then)"
     empty = create_package()
     empty.body.content.clear()
     empty.body.insert_text("p\rq", location="End")

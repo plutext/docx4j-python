@@ -835,6 +835,23 @@ class Paragraph:
         return cell_of(self.element, self.parent_body)
 
     @property
+    def table_nesting_level(self) -> int:
+        """How many tables deep the paragraph is (Office JS ``tableNestingLevel``).
+
+        0 outside a table, 1 in a cell, 2 in a nested table's cell, counted
+        through :attr:`parent_table_cell` (CR-013 Phase B; core-ts's at
+        ``ef57729``).
+        """
+        level = 0
+        cell = self.parent_table_cell
+        for _ in range(256):
+            if cell is None:
+                break
+            level += 1
+            cell = cell.parent_table.parent_table_cell
+        return level
+
+    @property
     def parent_content_control(self) -> Any:
         """The innermost content control this paragraph is in, or None."""
         from docx4j_py.model.content.controls import parent_control_of
@@ -956,7 +973,8 @@ class Paragraph:
 
         Returns:
             The :class:`~docx4j_py.model.content.Range` of the inserted text; where
-            it made paragraphs, of its part in the last (CR-013 section 11.1).
+            it made paragraphs, a range across them, as Office JS's (CR-013
+            Phase B).
         """
         with recording(self.parent_body, "insert_text") as change:
             before = self.text
@@ -1290,7 +1308,9 @@ class Paragraph:
         :attr:`mark_text` (``\\r``, or ``\\t`` for a cell's last paragraph), as
         Office JS's does (core-ts check 48; CR-013 Phase A); ``"Content"`` ends
         with the paragraph's text. The mark is no offset: every edit and search
-        works on the text before it.
+        works on the text before it. Both hold the paragraph's whole content
+        (:attr:`Range.whole`, core-ts's ``whole``; CR-013 Phase B).
+        ``"After"`` is collapsed at the start of the paragraph after it.
         """
         from docx4j_py.model.content.range import Range
 
@@ -1299,7 +1319,9 @@ class Paragraph:
             return Range(self, 0, 0)
         if location == "End":
             return Range(self, length, length)
-        return Range(self, 0, length, mark=location == "Whole")
+        if location == "After":
+            return Range(self, 0, length, mark=True).get_range("After")
+        return Range(self, 0, length, mark=location == "Whole", whole=True)
 
     def delete(self) -> None:
         """Remove the paragraph from its container.
@@ -1514,9 +1536,9 @@ class Paragraph:
         ``\\r\\n`` are a ``w:br`` and ``\\r`` a ``w:cr``.
 
         Returns:
-            The range of the new text; where it made paragraphs, of its part in
-            the last (this ``w:p``), since a range across paragraphs is CR-013
-            Phase B's (section 11.1).
+            The range of the new text; where it made paragraphs, a range across
+            them, from the first new paragraph to this ``w:p``, as Office JS's
+            is (core-ts check 55: ``x\\ry``; CR-013 Phase B).
         """
         text = drop_unwritable(text)
         if LINE_CHARACTERS.search(text):
@@ -1584,12 +1606,19 @@ class Paragraph:
         edge = start + len(joined)
         consumed = 0
         position = start
+        container = self.container
+        index = _index_of(container, self.element)
         for piece in pieces[:-1]:
             position += len(piece)
             # after the text's last character the places of no text after it stay with what follows
             keep = "tail" if joined and position == edge else "head"
             split_paragraph(self, position - consumed, keep=keep, operation=verb)
             consumed = position
+        # the text's range runs from its first piece, in the first paragraph the splits made, to
+        # its last, in this w:p (CR-013 Phase B; core-ts check 55: Word's range reads x\ry)
+        if len(pieces) > 1 and 0 <= index < len(container) and container[index] is not self.element:
+            first = Paragraph(container[index], container, self.parent_body)
+            return Range(first, start, len(pieces[-1]), end_paragraph=self)
         return Range(self, 0, len(pieces[-1]))
 
     def refuse_paragraph_breaks(

@@ -100,13 +100,21 @@ def test_clear_and_get_range(new_package):
     body.insert_paragraph("one")
     body.insert_paragraph("two")
 
-    # the first paragraph's 'Whole' range, with its mark (CR-013 Phase A); a body's own range
-    # across its paragraphs is CR-013 Phase B's
-    assert body.get_range().text == "one\r"
+    # the body's own range, from its first paragraph to its last with that one's mark (CR-013 Phase B;
+    # the first paragraph's, "one\r", until then)
+    assert body.get_range().text == "one\rtwo\r"
+    assert body.get_range("Content").text == "one\rtwo"
+    assert body.get_range().paragraphs == body.paragraphs
     assert body.get_range("End").text == ""
+    assert body.get_range("End").paragraph.text == "two"
     body.clear()
     assert len(body) == 0
     assert body.text == ""
+    # a read changes nothing: no paragraph, no range (Q7; 0.1.0 inserted one)
+    with pytest.raises(ContentError) as raised:
+        body.get_range()
+    assert raised.value.code == "body.no_paragraph"
+    assert len(body) == 0
 
 
 def test_get_text_takes_a_budget(new_package):

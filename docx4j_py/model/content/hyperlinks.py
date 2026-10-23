@@ -116,7 +116,13 @@ def touched_links(span: Range) -> list[tuple[Any, int, int]]:
 
 
 def hyperlink_of(span: Range) -> str:
-    """``Range.hyperlink``'s read: the first link the span touches, as ``address#location``."""
+    """``Range.hyperlink``'s read: the first link the span touches, as ``address#location``.
+
+    A range across paragraphs reads the first link among its paragraphs'
+    pieces (CR-013 Phase B), through :attr:`Range.hyperlink`.
+    """
+    if span.spans_paragraphs:
+        return span.hyperlink
     found = touched_links(span)
     if not found:
         return ""
@@ -150,7 +156,10 @@ def set_hyperlink(span: Range, value: str | None) -> None:
             changed when it raises.
         ContentError: an address was given and the span's body has no part to
             relate it from (``hyperlink.no_part``).
+        SpanError: ``range.spans_paragraphs``, a range across paragraphs
+            (CR-013 Phase B).
     """
+    span.require_one_paragraph("Range.hyperlink")
     value = "" if value is None else str(value)
     if span.start == span.end:
         # Office JS refuses a hyperlink set on an empty range --- inside a link,
