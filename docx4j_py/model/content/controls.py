@@ -32,15 +32,16 @@ from typing import TYPE_CHECKING, Any
 from docx4j_py.child import ChildList, is_alternate_content, link_parents
 from docx4j_py.model.content.addresses import ordinal_of
 from docx4j_py.model.content.enums import RangeLocation, TextLocation
-from docx4j_py.model.content.errors import ContentError, InvalidTargetError
+from docx4j_py.model.content.errors import ContentError, InvalidTargetError, SpanError
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.table import Table
 from docx4j_py.model.content.text_model import (
+    PARAGRAPH_BREAKS,
     W_SDT,
     W_TC,
     W_TR,
     block_children_of,
-    check_writable,
+    drop_unwritable,
     explode_mapped,
     text_of_view,
     text_run,
@@ -66,6 +67,7 @@ __all__ = [
     "SDT_PR_ORDER",
     "ContentControl",
     "ContentControlForm",
+    "bound_plain_text_control",
     "controls_in",
     "controls_in_paragraph",
     "parent_control_of",
@@ -460,18 +462,37 @@ class ContentControl:
     def insert_text(self, text: str, *, location: TextLocation = "End") -> Range:
         """Text at the start, the end, or in place of the control's text.
 
+        ``\\n``, ``\\r`` and ``\\r\\n`` make a paragraph each in a block,
+        row or cell control, as every writer through ``Paragraph.splice`` makes
+        them (CR-013 section 11, E1), except in a bound plain-text one, where they
+        are a ``w:br``, or nothing in a single-line one (docx4j-core-ts CR-002
+        section 61, ``80a933d``; :func:`bound_plain_text_control`). In a run-level
+        control a paragraph break is refused (core-ts's F4). U+0002 and the
+        other characters XML 1.0 excludes are dropped (section 11, E3).
+
         Raises:
             InvalidTargetError: a row- or cell-level control asked to
                 ``"Replace"``; the message names what it holds.
+            SpanError: ``range.splits_control``, a run-level control given a
+                ``\\n`` or a ``\\r``; nothing has changed.
         """
         form = self.form
         if form in ("row", "cell") and location == "Replace":
             raise self._holds(
                 f"a {form}-level content control", "replace the text of its cells instead"
             )
-        check_writable(text, "insert_text")
+        text = drop_unwritable(text)
         if form != "run":
             return self.body().insert_text(text, location=location)
+        if PARAGRAPH_BREAKS.search(text):
+            # Word, given one, moved a bound plain-text control to block level (core-ts
+            # check 55b, cases 3 and 4); core-ts's F4 refuses it, and so does this
+            raise SpanError(
+                "insert_text refused: a paragraph break (\\n or \\r) written into a run-level content "
+                "control would cut the control in two (CR-013 section 11, E1; docx4j-core-ts F4)",
+                code="range.splits_control",
+                hint="write a line break (U+000B) instead, or write the paragraph outside the control",
+            )
         span = self._run_span()
         if span is None:
             raise ContentError(
@@ -564,7 +585,7 @@ class ContentControl:
                 f"a {form}-level content control holds {holds}, not paragraphs",
                 "insert into a cell's body",
             )
-        check_writable(text, "insert_paragraph")
+        text = drop_unwritable(text)  # CR-013 section 11, E3
         if form == "run" or location in ("Before", "After"):
             where = "Before" if location == "Before" else "After"
             paragraph = self.parent_paragraph()
@@ -1138,6 +1159,35 @@ def controls_in_paragraph(paragraph: Paragraph) -> list[ContentControl]:
     out: list[ContentControl] = []
     _collect_run_controls(paragraph.element, paragraph.parent_body, out)
     return out
+
+
+def bound_plain_text_control(paragraph: Paragraph) -> ContentControl | None:
+    """The bound plain-text block control a paragraph is in, or None. Extension.
+
+    docx4j-core-ts CR-002 section 61 (``80a933d``, decided 2026-10-23, its D1):
+    a block-level control with a ``w:dataBinding`` whose content is plain text
+    --- a ``w:text`` element, or no type element at all, as Word's repair and
+    docx4j's write-back read it --- and that is not a container. Word refuses
+    to open such a control holding more than one paragraph (CR-013 section
+    10.10, run 2), so inside one a ``\\n`` or ``\\r`` written through
+    ``Paragraph.splice`` makes no paragraph: it is a ``w:br`` in a multi-line
+    control and nothing in a single-line one, as Word wrote them in check 55b
+    (a control with no type is multi-line, :attr:`ContentControl.is_multi_line`).
+    Not a ``w:richText`` control, which holds blocks.
+    """
+    from docx4j_py.model.customxml.bindings import is_container
+
+    control = parent_control_of(paragraph.element, paragraph.parent_body)
+    if control is None or control.form != "block":
+        return None
+    sdt_pr = control.sdt_pr
+    if sdt_property(sdt_pr, "dataBinding", (W_NS, W15_NS)) is None:
+        return None
+    plain = sdt_property(sdt_pr, "text", W_NS) is not None
+    untyped = control.type == "RichText" and sdt_property(sdt_pr, "richText", W_NS) is None
+    if not (plain or untyped) or is_container(control):
+        return None
+    return control
 
 
 def parent_control_of(element: Any, body: Body) -> ContentControl | None:

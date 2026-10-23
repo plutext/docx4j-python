@@ -20,10 +20,13 @@ paragraph's ``'Whole'`` range ends with its mark; and ``search`` takes Word's
 Find codes, a picture as U+FFFC and an optional hyphen passed over.
 
 Then Q2 and section 4.1's additions: every text writer maps each of those
-characters back to the element it reads from, U+0002 and the other characters
-XML 1.0 excludes are refused before anything changes, a comment's writer splits
-on ``\\r`` as well as ``\\n``, a bound control's write-back keeps docx4j's
+characters back to the element it reads from, a comment's writer splits on
+``\\r`` as well as ``\\n``, a bound control's write-back keeps docx4j's
 characters, and the python-docx facade's writers follow python-docx 1.2.0.
+Section 11's amendment (Word's own writers, core-ts checks 55 and 55b) moves two
+things, each test marked: U+0002 and the other characters XML 1.0 excludes are
+dropped, no longer refused (E3), and ``\\n`` and ``\\r`` through the splice
+writers make paragraphs (E1), which ``test_word_writers.py`` holds.
 """
 
 from __future__ import annotations
@@ -37,7 +40,7 @@ from conftest import ROOT, reloaded
 
 from docx4j_py import create_package, load
 from docx4j_py.model.content.body import Body
-from docx4j_py.model.content.errors import ContentError, SpanError, TrackedChangeError
+from docx4j_py.model.content.errors import SpanError, TrackedChangeError
 from docx4j_py.model.content.math_text import math_letter
 from docx4j_py.model.content.text_model import (
     hidden_runs_of,
@@ -470,9 +473,20 @@ def _seeded(tracked: bool):
     return package
 
 
+#: The writers through ``Paragraph.splice``: ``\\n`` and ``\\r`` make a paragraph there since CR-013
+#: section 11 (E1), which ``test_word_writers.py`` holds; the rest keep Q2's map.
+SPLICE_WRITERS = frozenset({"Range.insert_text", "Paragraph.insert_text Replace", "Body.replace_text"})
+
+WRITER_CASES = [
+    pytest.param(writer, char, element, reads, id=f"{char!r}-{writer}")
+    for writer in sorted(WRITERS)
+    for char, element, reads in MAPPED
+    if not (writer in SPLICE_WRITERS and char in "\r\n")
+]
+
+
 @pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
-@pytest.mark.parametrize("writer", sorted(WRITERS))
-@pytest.mark.parametrize(("char", "element", "reads"), MAPPED, ids=[repr(c) for c, _e, _r in MAPPED])
+@pytest.mark.parametrize(("writer", "char", "element", "reads"), WRITER_CASES)
 def test_each_writer_writes_each_character_as_the_element_it_reads_from(writer, char, element, reads, tracked):
     package = _seeded(tracked)
     WRITERS[writer](package, f"a{char}b")
@@ -523,21 +537,24 @@ def test_a_comments_writer_splits_on_r_as_well_as_n():
 
 
 @pytest.mark.parametrize("char", ["\u0002", "\u0001", "\u0000", "\u0010", "\u001d", "￾", "\ud800"])
-def test_the_other_non_xml_characters_are_refused_before_anything_changes(char):
-    package = _seeded(False)
-    before = xml_of(package)
-    for write in (
-        *(lambda w=w: w(package, f"a{char}b") for w in WRITERS.values()),
-        lambda: package.body.paragraphs[0].insert_comment(f"a{char}b"),
-        lambda: package.body.insert_table(1, 1, values=[[f"a{char}b"]]),
-        lambda: package.body.insert_text(f"a{char}b", location="Replace"),
+def test_the_other_non_xml_characters_are_dropped_as_word_drops_them(char):
+    """CR-013 section 11, E3 ("Drop, as Word does"): Phase A refused them (``text.not_writable``); now dropped.
+
+    Word 365 dropped U+0002, U+0001 and U+0007 through every writer and refused
+    none (core-ts check 55 at ``a923aeb``, cases 10 to 12, 24 to 26, 38 to 40).
+    """
+    for write, read in (
+        *((lambda pkg, w=w: w(pkg, f"a{char}b"), lambda pkg: "".join(p.text for p in pkg.body.paragraphs))
+          for w in WRITERS.values()),
+        (lambda pkg: pkg.body.paragraphs[0].insert_comment(f"a{char}b"), lambda pkg: pkg.body.get_comments()[0].content),
+        (lambda pkg: pkg.body.insert_table(1, 1, values=[[f"a{char}b"]]), lambda pkg: pkg.body.tables[0].values[0][0]),
+        (lambda pkg: pkg.body.insert_text(f"a{char}b", location="Replace"), lambda pkg: pkg.body.text),
     ):
-        with pytest.raises(ContentError) as raised:
-            write()
-        assert raised.value.code == "text.not_writable"
-        assert xml_of(package) == before, "nothing changed"
-    if char == "\u0002":
-        assert "no text makes a note" in raised.value.message
+        package = _seeded(False)
+        write(package)
+        assert char not in xml_of(package)
+        assert "ab" in read(package), "dropped, the text either side kept"
+        assert char not in read(reloaded(package)), "it saves, and reads back without it"
 
 
 def test_a_bound_controls_write_back_keeps_docx4js_characters():

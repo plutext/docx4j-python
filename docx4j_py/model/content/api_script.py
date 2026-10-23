@@ -183,6 +183,17 @@ def _quote(text: str) -> str:
     return out
 
 
+def _text_literal(text: str) -> str:
+    """The literal an ``insert_text`` line writes: a line break as U+000B, Office JS's character for a ``w:br``.
+
+    ``insert_text`` makes a paragraph of a ``\\n`` (CR-013 section 11, E1), and
+    writes U+000B as a ``w:br`` (Q2), so a run's break is written as U+000B
+    there; ``insert_paragraph``'s leading run keeps ``\\n``, a ``w:br`` in a
+    one-paragraph writer (E2).
+    """
+    return _quote(text.replace("\n", "\x0b"))
+
+
 def _xml_literal(xml: str) -> str:
     """A literal for a marshalled fragment: triple quoted when it can be read."""
     if '"""' not in xml and "\\" not in xml and not xml.endswith('"'):
@@ -523,10 +534,10 @@ class _Emitter:
                 notes.append("a w:tab or w:br outside the leading run")
                 exact = False
             if not diff:
-                lines.append(f"{name}.insert_text({_quote(piece.text)})")
+                lines.append(f"{name}.insert_text({_text_literal(piece.text)})")
                 continue
             span = self.name("r")
-            lines.append(f"{span} = {name}.insert_text({_quote(piece.text)})")
+            lines.append(f"{span} = {name}.insert_text({_text_literal(piece.text)})")
             for member, value in diff:
                 lines.append(f"{span}.font.{member} = {_literal(value)}")
 
@@ -1186,10 +1197,10 @@ def _range_block(emitter: _Emitter, span: Any) -> ScriptBlock:
         diff = _font_diff(previous, piece.fmt)
         previous = piece.fmt
         if not diff:
-            lines.append(f"{emitter.variable}.insert_text({_quote(piece.text)})")
+            lines.append(f"{emitter.variable}.insert_text({_text_literal(piece.text)})")
             continue
         name = emitter.name("r")
-        lines.append(f"{name} = {emitter.variable}.insert_text({_quote(piece.text)})")
+        lines.append(f"{name} = {emitter.variable}.insert_text({_text_literal(piece.text)})")
         for member, value in diff:
             lines.append(f"{name}.font.{member} = {_literal(value)}")
     return ScriptBlock(

@@ -53,7 +53,7 @@ from docx4j_py.model.content.text_model import (
     WRITTEN_AS,
     block_children_of,
     cells_of,
-    check_writable,
+    drop_unwritable,
     kept_content_under,
     rows_of,
     text_run,
@@ -330,9 +330,7 @@ class Table:
 
     @values.setter
     def values(self, values: list[list[str]]) -> None:
-        for row in values:
-            for value in row:
-                check_writable(value, "set_values")
+        # each cell's value drops what no element carries (CR-013 section 11, E3)
         rows = self.rows
         _refuse_in_branch(
             [
@@ -571,9 +569,8 @@ class Table:
                 code="table.no_rows",
                 hint="pass row_count=1 or more",
             )
-        for row in values or ():
-            for value in row:
-                check_writable(value, "add_rows")
+        # what no element carries is dropped (CR-013 section 11, E3)
+        values = [[drop_unwritable(value) for value in row] for row in values] if values is not None else None
         with recording(self.parent_body, "add_rows") as change:
             widths = self.column_widths_twips()
             added = [
@@ -787,8 +784,7 @@ class TableRow:
 
     @values.setter
     def values(self, values: list[str]) -> None:
-        for value in values:
-            check_writable(value, "set_values")
+        # each cell's value drops what no element carries (CR-013 section 11, E3)
         cells = self.cells
         _refuse_in_branch(cells[: len(values)], "set_values")
         with recording(self.parent_body, "set_values") as change:
@@ -1009,13 +1005,14 @@ class TableCell:
 
         Written as one paragraph, each of Office JS's characters the element it
         reads from (CR-013 Q2): a ``\\r`` in it is a ``w:cr``, not a paragraph
-        mark.
+        mark, and ``\\r\\n`` one ``w:br`` (section 11, E2). U+0002 and the other
+        characters XML 1.0 excludes are dropped (section 11, E3).
         """
         return self.text
 
     @value.setter
     def value(self, text: str) -> None:
-        check_writable(text, "set_value")
+        text = drop_unwritable(text)  # CR-013 section 11, E3: what no element carries is dropped
         with recording(self._parent_body, "set_value") as change:
             change.text(before=self.text)
             body = self.body
@@ -1143,9 +1140,8 @@ def insert_table_into(
             code="table.empty",
             hint="pass insert_table(rows, columns) with both at least 1",
         )
-    for row in values or ():
-        for value in row:
-            check_writable(value, "insert_table")
+    # what no element carries is dropped (CR-013 section 11, E3)
+    values = [[drop_unwritable(value) for value in row] for row in values] if values is not None else None
     with recording(body, "insert_table") as change:
         rows = [
             [

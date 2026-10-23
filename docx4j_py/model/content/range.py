@@ -43,7 +43,7 @@ from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.text_model import (
     RUN_HOLDER_NAMES,
     canonical_view,
-    check_writable,
+    drop_unwritable,
     office_matches,
     require_view,
 )
@@ -386,25 +386,41 @@ class Range:
                 range), ``"Before"`` / ``"Start"`` for in front of the span, or
                 ``"After"`` / ``"End"`` for behind it.
 
+        ``\\n``, ``\\r`` and ``\\r\\n`` each make a new paragraph, as
+        Word's ``insertText`` does (CR-013 section 11, E1;
+        :meth:`Paragraph.splice`); U+0002 and the other characters XML 1.0
+        excludes are dropped (E3).
+
         Returns:
-            The range of the inserted text. This range goes on covering the
-            same text: a replacement resizes it, text before it shifts it, and
-            text after it leaves it where it was.
+            The range of the inserted text; where it made paragraphs, of its
+            part in the last of them, where Office JS's range spans them (a
+            range across paragraphs is CR-013 Phase B's). This range goes on
+            covering the same text: a replacement resizes it (to that last part,
+            where the text made paragraphs), text before it shifts it, and text
+            after it leaves it where it was, in the paragraph that now holds it.
         """
         if location in ("Replace", "Before", "Start", "After", "End"):
-            check_writable(text, "insert_text")
+            text = drop_unwritable(text)
             with recording(self.paragraph.parent_body, "insert_text") as change:
                 change.touched(self.paragraph)
                 change.text(before=self.text)
+                paragraph = self.paragraph
+                container = paragraph.container
+                index = next((i for i, item in enumerate(container) if item is paragraph.element), -1)
                 if location == "Replace":
-                    out = self.paragraph.splice(self.start, self.end, text)
-                    self.end = self.start + len(text)
+                    out = paragraph.splice(self.start, self.end, text)
+                    self.start, self.end = out.start, out.end
                 elif location in ("Before", "Start"):
-                    out = self.paragraph.splice(self.start, self.start, text)
-                    self.start += len(text)
-                    self.end += len(text)
+                    out = paragraph.splice(self.start, self.start, text)
+                    # the span now follows the text, in the paragraph keeping the mark
+                    self.start, self.end = out.end, out.end + (self.end - self.start)
                 else:
-                    out = self.paragraph.splice(self.end, self.end, text)
+                    out = paragraph.splice(self.end, self.end, text)
+                    if 0 <= index < len(container) and container[index] is not paragraph.element:
+                        # the span is before the text: in the first paragraph the split made
+                        from docx4j_py.model.content.paragraph import Paragraph
+
+                        self.paragraph = Paragraph(container[index], container, paragraph.parent_body)
                 change.text(after=text)
                 return out
         raise ContentError(
@@ -469,15 +485,18 @@ class Range:
         case each replacement is a ``w:del`` and a ``w:ins``. The report names
         the pair, as :meth:`Body.replace_text`'s does.
         """
-        check_writable(replace, "replace_text")
+        from docx4j_py.model.content.paragraph import replace_matches
+
+        replace = drop_unwritable(replace)
         with recording(self.paragraph.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
             for match in matches:  # every match checked before the first is replaced (CR-011 Phase F)
                 match.refuse_branch_text("replace_text")
                 match.paragraph.refuse_equation(match.start, match.end)
-            for match in reversed(matches):
-                match.insert_text(replace, location="Replace")
+                match.paragraph.refuse_paragraph_breaks(match.start, match.end, replace, "replace_text")
+            # a replacement holding a paragraph break splits the paragraph (CR-013 section 11, E1)
+            replace_matches(matches, replace)
             if matches:
                 change.touched(self.paragraph)
             change.text(after=replace)

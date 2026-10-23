@@ -51,8 +51,9 @@ from docx4j_py.model.content.styles import (
     style_name_of,
 )
 from docx4j_py.model.content.text_model import (
+    PARAGRAPH_BREAKS,
     canonical_view,
-    check_writable,
+    drop_unwritable,
     explode_mapped,
     hidden_runs_of,
     markup_text,
@@ -74,7 +75,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
     from docx4j_py.model.content.range import Range
 
-__all__ = ["Paragraph"]
+__all__ = ["Paragraph", "replace_matches"]
 
 #: Twips per point: the unit every Office JS measurement here is in.
 TWIPS_PER_POINT = 20
@@ -180,25 +181,29 @@ class Paragraph:
 
         Setting it replaces the content, every such element with it, hidden runs
         too: ``paragraph.text = paragraph.text`` drops hidden text, as core-ts's
-        does. Each of Office JS's characters is written as the element it reads
-        from (CR-013 Q2; :func:`~.text_model.text_items`), and U+0002 and the
-        other characters XML 1.0 excludes are refused (``text.not_writable``).
-        With change tracking on, a paragraph whose text holds a branch's is
-        refused (``address.read_only``), since its deletion would be marked in
-        Word's branch alone.
+        does. It writes one paragraph (CR-013 section 11, E2): each of Office JS's
+        characters is written as the element it reads from (Q2;
+        :func:`~.text_model.text_items`), ``\\n`` and ``\\r\\n`` a ``w:br``
+        and ``\\r`` a ``w:cr``. U+0002 and the other characters XML 1.0 excludes
+        are dropped (E3), so ``paragraph.text = paragraph.text`` on a paragraph
+        holding a note reference loses the reference, as core-ts's does. With
+        change tracking on, a paragraph whose text holds a branch's is refused
+        (``address.read_only``), since its deletion would be marked in Word's
+        branch alone.
         """
         return "".join(segment.text for segment in self.segments())
 
     @text.setter
     def text(self, value: str) -> None:
-        check_writable(value, "Paragraph.text")
+        value = drop_unwritable(value)
         with recording(self.parent_body, "set_text") as change:
             change.text(before=self.text, after=value)
             if self.change_tracker is not None:
                 # tracked, replacing the text is a deletion and an insertion,
                 # not a new run: the splice writes both (CR-003 section 3.8); the
-                # hidden runs go too, as the untracked setter takes them (CR-013)
-                self.splice(0, len(self.text), value, whole=True)
+                # hidden runs go too, as the untracked setter takes them (CR-013);
+                # one paragraph, its breaks w:br (section 11, E2)
+                self.splice(0, len(self.text), value, whole=True, breaks="line")
                 change.touched(self)
                 return
             r_pr = None
@@ -212,6 +217,20 @@ class Paragraph:
             self.element.content[:] = [run]
             link_parents(self.element)
             change.touched(self)
+
+    def text_since(self, index: int) -> str:
+        """The text of this paragraph and of those a split put in front of it since it stood at `index`. Extension.
+
+        A write through :meth:`splice` that made paragraphs leaves them in
+        front of this one (CR-013 section 11, E1); their texts a ``\\r`` apart,
+        as Office JS reads text across paragraphs, are what it wrote over. With
+        no split, :attr:`text`.
+        """
+        position = _index_of(self.container, self.element)
+        if index < 0 or position <= index:
+            return self.text
+        views = [Paragraph(item, self.container, self.parent_body) for item in self.container[index:position]]
+        return "\r".join([*(view.text for view in views if isinstance(view.element, P)), self.text])
 
     def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
         """The text in one of the views of a tracked document.
@@ -906,12 +925,17 @@ class Paragraph:
     def insert_text(self, text: str, *, location: TextLocation = "End") -> Range:
         """Insert text at the start, the end, or in place of the whole text.
 
+        ``\\n``, ``\\r`` and ``\\r\\n`` each make a new paragraph, as
+        Word's ``insertText`` does (CR-013 section 11, E1; :meth:`splice`): this
+        view goes on viewing the paragraph that keeps the mark, the last.
+
         Args:
             text: what to insert.
             location: ``"Start"``, ``"End"`` (the default) or ``"Replace"``.
 
         Returns:
-            The :class:`~docx4j_py.model.content.Range` of the inserted text.
+            The :class:`~docx4j_py.model.content.Range` of the inserted text; where
+            it made paragraphs, of its part in the last (CR-013 section 11.1).
         """
         with recording(self.parent_body, "insert_text") as change:
             before = self.text
@@ -922,9 +946,10 @@ class Paragraph:
                     "End": (length, length),
                     "Replace": (0, length),
                 }[location]
+                index = _index_of(self.container, self.element)
                 out = self.splice(start, end, text)
                 change.touched(self)
-                change.text(before=before, after=self.text)
+                change.text(before=before, after=self.text_since(index))
                 return out
         raise ContentError(
             f"insert_text at paragraph level takes Start, End or Replace, not {location!r}",
@@ -946,11 +971,15 @@ class Paragraph:
         so does this.
 
         Args:
-            text: the text of the new paragraph; ``""`` leaves it empty.
+            text: the text of the new paragraph; ``""`` leaves it empty. One
+                paragraph whatever it holds (CR-013 section 11, E2): ``\\n`` and
+                ``\\r\\n`` a ``w:br``, ``\\r`` a ``w:cr``, each other of Office
+                JS's characters its element (Q2), and U+0002 and the other
+                characters XML 1.0 excludes dropped (E3).
             location: ``"Before"`` or ``"After"`` (the default).
             style: a style name or id for the new paragraph.
         """
-        check_writable(text, "insert_paragraph")
+        text = drop_unwritable(text)
         with recording(self.parent_body, "insert_paragraph") as change:
             new = P(content=ChildList([_text_run(text)] if text else []))
             if self.element.p_pr is not None:
@@ -1148,7 +1177,10 @@ class Paragraph:
         stay valid --- **tracked** when the package's ``change_tracking_mode``
         is on, in which case each replacement is a ``w:del`` and a ``w:ins``.
         The report names the pair rather than the text either side, because one
-        call may touch many paragraphs (CR-003 section 16).
+        call may touch many paragraphs (CR-003 section 16). A `replace` holding
+        ``\\n``, ``\\r`` or ``\\r\\n`` makes a paragraph of each, as
+        :meth:`insert_text` does (CR-013 section 11, E1); every match's split is
+        checked with the rest before the first replacement.
 
         Args:
             find: what to look for.
@@ -1159,18 +1191,19 @@ class Paragraph:
         Returns:
             How many were replaced.
         """
-        check_writable(replace, "replace_text")
+        replace = drop_unwritable(replace)
         with recording(self.parent_body, "replace_text") as change:
             change.text(before=find)
             matches = self.search(find, **options)
-            # every match checked before the first is replaced (CR-011 Phase F)
+            # every match checked before the first is replaced (CR-011 Phase F),
+            # a paragraph break's split among the checks (CR-013 section 11, E1)
             segments = self.segments()
             tracked = self.change_tracker is not None
             for match in matches:
                 refuse_branch_text(self.element, match.start, match.end, "replace_text", segments=segments)
                 refuse_equation(segments, match.start, match.end, tracked=tracked)
-            for match in reversed(matches):
-                match.insert_text(replace, location="Replace")
+                self.refuse_paragraph_breaks(match.start, match.end, replace, "replace_text")
+            replace_matches(matches, replace)
             if matches:
                 change.touched(self)
             change.text(after=replace)
@@ -1406,7 +1439,9 @@ class Paragraph:
 
         return insert_content_control_in_paragraph(self, kind)
 
-    def splice(self, start: int, end: int, text: str, *, whole: bool = False) -> Range:
+    def splice(
+        self, start: int, end: int, text: str, *, whole: bool = False, breaks: str = "paragraph"
+    ) -> Range:
         """Replace the text in ``[start, end)`` and return the range of the new text.
 
         Runs are edited in place: a ``w:t`` loses or gains characters, a tab or
@@ -1419,17 +1454,151 @@ class Paragraph:
         Office JS's characters in `text` are written as the elements they read
         from (CR-013 Q2; :func:`~.text_model.text_items`), each in the run the
         text went into; U+0002 and the other characters XML 1.0 excludes are
-        refused (``text.not_writable``) before anything changes. Hidden text
-        strictly inside the span goes with it, as Word takes it (core-ts's rule;
-        CR-013 Phase A); at the span's edges only when `whole`, or when the span
-        is the paragraph's whole text. An equation is taken whole and untracked,
-        or not at all (:func:`~.text_model.refuse_equation`).
+        dropped (CR-013 section 11, E3). Hidden text strictly inside the span
+        goes with it, as Word takes it (core-ts's rule; CR-013 Phase A); at the
+        span's edges only when `whole`, or when the span is the paragraph's
+        whole text. An equation is taken whole and untracked, or not at all
+        (:func:`~.text_model.refuse_equation`).
+
+        **Paragraph breaks** (CR-013 section 11, E1; docx4j-core-ts check 55,
+        cases 2 to 4 and 48 to 49). With `breaks` ``"paragraph"`` (the default)
+        each ``\\n`` and each ``\\r`` makes a new paragraph, ``\\r\\n`` one,
+        as Word's ``insertText`` does: the text is written without them, and the
+        paragraph is split after each piece (:func:`~.split.split_paragraph`).
+        Each new paragraph is in front, in a copy of the properties with a mark
+        of its own (marked inserted under change tracking); this ``w:p`` keeps
+        the last piece, its mark, its section break and its ``w14:paraId``, as
+        Word keeps them, so this view goes on viewing the last. A hyperlink, a
+        revision or a smart tag the text is in is cut in two; a text that would
+        go into a run-level content control or a field is refused
+        (``range.splits_control``, ``range.splits_field``) before anything
+        changes. Inside a bound plain-text block control a break is a ``w:br``,
+        or nothing in a single-line one (docx4j-core-ts CR-002 section 61,
+        ``80a933d``; :func:`~.controls.bound_plain_text_control`). With `breaks`
+        ``"line"`` (the one-paragraph writers, section 11's E2) ``\\n`` and
+        ``\\r\\n`` are a ``w:br`` and ``\\r`` a ``w:cr``.
+
+        Returns:
+            The range of the new text; where it made paragraphs, of its part in
+            the last (this ``w:p``), since a range across paragraphs is CR-013
+            Phase B's (section 11.1).
         """
+        text = drop_unwritable(text)
+        if breaks == "line":
+            text = text.replace("\r\n", "\n")
+        elif PARAGRAPH_BREAKS.search(text):
+            from docx4j_py.model.content.controls import bound_plain_text_control
+
+            control = bound_plain_text_control(self)
+            if control is None:
+                return self._splice_paragraphs(start, end, text, whole=whole)
+            # no paragraph in a bound plain-text control: a w:br, or nothing (core-ts section 61)
+            text = PARAGRAPH_BREAKS.sub("\n" if control.is_multi_line else "", text)
+        return self._splice_text(start, end, text, whole=whole)
+
+    def _splice_paragraphs(self, start: int, end: int, text: str, *, whole: bool) -> Range:
+        """:meth:`splice` of a text holding paragraph breaks: the text without them, then a split after each piece."""
         from docx4j_py.model.content.range import Range
         from docx4j_py.model.content.reports import current_recorder
+        from docx4j_py.model.content.split import split_paragraph
 
-        verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None)
-        check_writable(text, verb or "this edit")
+        verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None) or "this edit"
+        pieces = PARAGRAPH_BREAKS.split(text)
+        joined = "".join(pieces)
+        length = len(self.text)
+        start = max(0, min(start, length))
+        end = max(start, min(end, length))
+        self.refuse_paragraph_breaks(start, end, text, verb)
+        out = self._splice_text(start, end, joined, whole=whole)
+        start = out.start
+        edge = start + len(joined)
+        consumed = 0
+        position = start
+        for piece in pieces[:-1]:
+            position += len(piece)
+            # after the text's last character the places of no text after it stay with what follows
+            keep = "tail" if joined and position == edge else "head"
+            split_paragraph(self, position - consumed, keep=keep, operation=verb)
+            consumed = position
+        return Range(self, 0, len(pieces[-1]))
+
+    def refuse_paragraph_breaks(self, start: int, end: int, text: str, operation: str = "this edit") -> None:
+        """Refuse, before anything changes, a splice of `text` whose paragraph breaks can't be made there. Extension.
+
+        CR-013 section 11, E1: where :meth:`splice` would put the text --- its
+        landing --- must not be inside a run-level content control or a field;
+        a text of breaks alone is checked as a split at the place. Nothing to
+        check for a text with no break, or in a bound plain-text control, where
+        a break makes no paragraph.
+
+        Raises:
+            SpanError: ``range.splits_control``, ``range.splits_field``,
+                ``range.cuts_equation``.
+            AddressError: ``address.read_only``.
+        """
+        from docx4j_py.model.content.split import refuse_place, refuse_split
+
+        text = drop_unwritable(text)
+        if not PARAGRAPH_BREAKS.search(text):
+            return
+        from docx4j_py.model.content.controls import bound_plain_text_control
+
+        if bound_plain_text_control(self) is not None:
+            return
+        segments = self.segments()
+        if any(segment.branch is not None for segment in segments):
+            self.refuse_branch_text(start, end, operation)
+        refuse_equation(segments, start, end, tracked=self.change_tracker is not None)
+        if PARAGRAPH_BREAKS.sub("", text):
+            anchor, how = self._landing(start, end)
+            refuse_place(self.element, anchor, how, operation)
+        else:
+            refuse_split(self, end, keep="head", operation=operation)
+
+    def _landing(self, start: int, end: int) -> tuple[Any, str]:
+        """Where :meth:`_splice_text` puts a text, read without changing anything: ``(anchor, how)``.
+
+        `how` is ``"into"`` (the text extends `anchor`, a ``w:t``), ``"after"``
+        or ``"before"`` (a new run beside `anchor`); `anchor` None is the
+        paragraph's own list, ``"start"`` or ``"end"``. It follows
+        :meth:`_splice_text` and :meth:`_insert_tracked` rule for rule, so that a
+        paragraph break is refused before the text is written.
+        """
+        from docx4j_py.model.content.tracking import revision_of
+
+        listed = self.segments(objects=True)
+        segments = [segment for segment in listed if not segment.object]
+        length = segments[-1].end if segments else 0
+        start = max(0, min(start, length))
+        end = max(start, min(end, length))
+        whole = start == 0 and end == length and end > start
+        hidden = [segment for segment in listed if segment.hidden and _in_span(segment.start, start, end, whole)]
+        tracker = self.change_tracker
+        if tracker is None:
+            if end > start or hidden:
+                first = next((s for s in segments if s.start <= start < s.end), None)
+                if first is not None and first.editable:
+                    return first.item, "into"
+                segments = _after_deletion(segments, start, end)
+            return _untracked_landing(segments, start)
+        if end > start or hidden:
+            deleted = [
+                s
+                for s in listed
+                if (s.hidden and _in_span(s.start, start, end, whole))
+                or (not s.object and s.end > start and s.start < end and s.text)
+            ]
+            others = [s for s in deleted if not tracker.own_insertion(revision_of(s.run))]
+            if others:
+                # the w:ins follows the last w:del, which is where that text's run was
+                return others[-1].item, "after"
+            segments = _after_deletion(segments, start, end)
+        return _tracked_landing(tracker, segments, start)
+
+    def _splice_text(self, start: int, end: int, text: str, *, whole: bool = False) -> Range:
+        """:meth:`splice` of a text the paragraph breaks have been taken out of."""
+        from docx4j_py.model.content.range import Range
+
         listed = self.segments(objects=True)
         segments = [segment for segment in listed if not segment.object]
         length = segments[-1].end if segments else 0
@@ -1820,6 +1989,92 @@ class Paragraph:
                         del items[position]
 
         prune(self.element.content)
+
+
+def _after_deletion(segments: list[Any], start: int, end: int) -> list[Any]:
+    """The segments as they will stand once ``[start, end)`` is deleted, offsets shifted: for :meth:`Paragraph._landing`.
+
+    What the deletion keeps: everything outside the span, and the part outside
+    it of an editable item it cuts; an item of no editable text inside goes
+    whole, as :meth:`Paragraph._splice_text` removes it.
+    """
+    shift = end - start
+    out: list[Any] = []
+    for segment in segments:
+        if segment.end <= start:
+            out.append(segment)
+        elif segment.start >= end:
+            out.append(dataclasses.replace(segment, start=segment.start - shift, end=segment.end - shift))
+        elif segment.editable:
+            text = segment.text[: max(0, start - segment.start)] + segment.text[max(0, end - segment.start) :]
+            if text:
+                at = min(segment.start, start)
+                out.append(dataclasses.replace(segment, text=text, start=at, end=at + len(text)))
+    return out
+
+
+def _untracked_landing(segments: list[Any], start: int) -> tuple[Any, str]:
+    """Where :meth:`Paragraph._splice_text` puts a text at a collapsed `start`, untracked: its target rule."""
+    target = (
+        next((s for s in segments if s.editable and s.start < start < s.end), None)
+        or next((s for s in segments if s.editable and s.end == start), None)
+        or next((s for s in segments if s.editable and s.start == start), None)
+    )
+    if target is not None:
+        return target.item, "into"
+    before = next((s for s in reversed(segments) if s.end <= start), None)
+    after = next((s for s in segments if s.start >= start), None)
+    if before is not None:
+        return before.site()[0], "after"
+    if after is not None:
+        return after.site()[0], "before"
+    return None, "start" if start == 0 else "end"
+
+
+def _tracked_landing(tracker: Any, segments: list[Any], at: int) -> tuple[Any, str]:
+    """Where :meth:`Paragraph._insert_tracked` puts a ``w:ins`` at `at`: this author's insertion extended, or beside."""
+    from docx4j_py.model.content.tracking import revision_of
+
+    inside = next((s for s in segments if s.editable and s.start < at < s.end), None)
+    before = inside or next((s for s in reversed(segments) if s.end <= at), None)
+    after = inside or next((s for s in segments if s.start >= at), None)
+    for segment, side in ((before, "after"), (after, "before")):
+        if segment is None or segment.branch is not None:
+            continue
+        if not tracker.own_insertion(revision_of(segment.run)):
+            continue
+        return (segment.item, "into") if segment.editable else (segment.run, side)
+    neighbour = before or after
+    if neighbour is None:
+        return None, "start" if at == 0 else "end"
+    site = neighbour.site()[0]
+    revision = revision_of(site)
+    if revision is not None:
+        return revision.element, "after" if neighbour is before else "before"
+    if inside is not None:
+        # split there first: the w:ins goes between the halves, where the w:t was
+        return inside.item, "into"
+    return site, "after" if neighbour is before else "before"
+
+
+def replace_matches(matches: list[Range], replace: str) -> None:
+    """Each match's text replaced, last first, each a ``Replace`` of :meth:`Range.insert_text`.
+
+    A replacement holding a paragraph break leaves the text before it in a new
+    paragraph in front (CR-013 section 11, E1: the ``w:p`` keeps the last), so
+    the matches still to do, all before it, move there with their offsets.
+    """
+    for position in range(len(matches) - 1, -1, -1):
+        match = matches[position]
+        paragraph = match.paragraph
+        container = paragraph.container
+        index = _index_of(container, paragraph.element)
+        match.insert_text(replace, location="Replace")
+        if 0 <= index < len(container) and container[index] is not paragraph.element:
+            first = Paragraph(container[index], container, paragraph.parent_body)
+            for earlier in matches[:position]:
+                if earlier.paragraph.element is paragraph.element:
+                    earlier.paragraph = first
 
 
 def _in_span(at: int, start: int, end: int, whole: bool) -> bool:

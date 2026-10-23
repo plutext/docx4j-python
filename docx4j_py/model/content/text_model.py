@@ -42,13 +42,18 @@ custom XML (CR-013 section 4.1). ``w:delText``, ``w:instrText`` and
 the original view, inside the ``w:del`` or ``w:moveFrom`` that removed it, which
 is the only place it is read.
 
-**The writers** (Q2). Six of those characters are not XML 1.0 characters, so a
-text read and written back maps each one to the element it reads from
-(:func:`text_items`): U+000B a ``w:br``, U+000C a page break, U+000E a column
-break, U+000D a ``w:cr``, U+001E a ``w:noBreakHyphen``, U+001F a
-``w:softHyphen``; ``\\t`` a ``w:tab`` and ``\\n`` a ``w:br``. U+0002 and the
-other characters XML 1.0 excludes are refused before anything changes
-(:func:`check_writable`, ``text.not_writable``): no text makes a note.
+**The writers** (Q2, with section 11's amendment). Six of those characters are
+not XML 1.0 characters, so a text read and written back maps each one to the
+element it reads from (:func:`text_items`): U+000B a ``w:br``, U+000C a page
+break, U+000E a column break, U+001E a ``w:noBreakHyphen``, U+001F a
+``w:softHyphen``, ``\\t`` a ``w:tab``. ``\\n``, ``\\r`` and ``\\r\\n``
+are Word's own (docx4j-core-ts check 55, its CR-002 section 60.4): every writer
+through ``Paragraph.splice`` makes a new paragraph of each (:data:`PARAGRAPH_BREAKS`,
+``\\r\\n`` one), and the one-paragraph writers (``insert_paragraph``,
+``Paragraph.text = ...``) write ``\\n`` and ``\\r\\n`` as one ``w:br`` and
+``\\r`` as a ``w:cr``. U+0002 and the other characters XML 1.0 excludes are
+dropped at the write, as Word drops them (:func:`drop_unwritable`; check 55):
+no text makes a note, and lxml's refusal at save stays as the guard behind it.
 
 What is descended into: ``w:hyperlink``, ``w:smartTag``, ``w:customXml``, a
 run-level ``w:sdt``, ``w:fldSimple``, ``w:dir``, ``w:bdo``, and the revision
@@ -101,6 +106,7 @@ __all__ = [
     "FIND_CODES",
     "OBJECT_REPLACEMENT",
     "OFFICE_CHARACTERS",
+    "PARAGRAPH_BREAKS",
     "RUN_HOLDER_NAMES",
     "TEXT_ITEM_NAMES",
     "VIEWS",
@@ -113,7 +119,7 @@ __all__ = [
     "branch_text",
     "canonical_view",
     "cells_of",
-    "check_writable",
+    "drop_unwritable",
     "find_all",
     "grapheme_clusters",
     "hidden_runs_of",
@@ -1593,6 +1599,9 @@ def set_text(item: Any, value: str) -> None:
 #: read and written back reads as the items it read. ``\\t`` and ``\\n`` keep
 #: 0.1.0's ``w:tab`` and ``w:br``. A ``w:sym``'s ``(`` and a ``w:ptab``'s ``0``
 #: are ordinary text, so writing their read text back is lossy, as it is in Word.
+#: ``\\n`` and ``\\r`` are this map's only in the one-paragraph writers; every
+#: writer through ``Paragraph.splice`` makes a paragraph of them first (CR-013
+#: section 11, E1; :data:`PARAGRAPH_BREAKS`).
 WRITTEN_AS: dict[str, tuple[str, str | None]] = {
     "\t": ("tab", None),
     "\n": ("br", None),
@@ -1606,51 +1615,43 @@ WRITTEN_AS: dict[str, tuple[str, str | None]] = {
 
 _MAPPED = re.compile("[\t\n\x0b\x0c\x0e\r\x1e\x1f]")
 
-#: The characters a text writer refuses: U+0002 (a note's character: no text
+#: A paragraph break in a text written through ``Paragraph.splice``: ``\\r\\n``
+#: as one, then ``\\r`` and ``\\n`` each, as Word's ``insertText`` makes them
+#: (docx4j-core-ts check 55, cases 2 to 4 and 48 to 49, at ``a923aeb``; CR-013
+#: section 11, E1).
+PARAGRAPH_BREAKS = re.compile("\r\n|\r|\n")
+
+#: The characters a text writer drops: U+0002 (a note's character: no text
 #: makes a note), and every other character XML 1.0 excludes that the map does
 #: not take --- U+0000 to U+0008, U+000F to U+001D, a lone surrogate, U+FFFE and
-#: U+FFFF (CR-013 section 4.1).
+#: U+FFFF (CR-013 section 4.1; dropped since section 11, E3).
 _UNWRITABLE = re.compile("[\x00-\x08\x0f-\x1d\ud800-\udfff\ufffe\uffff]")
 
 
 def unwritable(text: str) -> tuple[int, str] | None:
-    """The first character a text writer refuses, with its offset, or None (:func:`check_writable`)."""
+    """The first character a text writer drops, with its offset, or None (:func:`drop_unwritable`)."""
     if not text:
         return None
     found = _UNWRITABLE.search(text)
     return None if found is None else (found.start(), found.group())
 
 
-def check_writable(text: str | None, operation: str = "this write") -> None:
-    """Refuse a text no element can carry, before anything changes (CR-013 Phase A, Q2).
+def drop_unwritable(text: str | None) -> str:
+    """`text` without the characters no element can carry, as Word's writers drop them.
 
-    U+0002 is a note reference's character in Office JS's text, and no text
-    makes a note; the other characters XML 1.0 excludes have no element.
-    lxml's own refusal at save stays as the guard behind this one.
-
-    Raises:
-        ContentError: ``text.not_writable``, naming the character and its offset.
+    CR-013 section 11, E3 (decided 2026-10-23, "Drop, as Word does"; docx4j-core-ts
+    CR-002 section 60.4): U+0002, a note reference's character in Office JS's
+    text, and the other characters XML 1.0 excludes are dropped at the write,
+    with no error. Word 365 dropped U+0002, U+0001 and U+0007 through
+    ``insertText``, ``insertParagraph``, ``insertComment`` and ``comment.content``
+    and refused none (core-ts check 55, cases 10 to 12, 24 to 26 and 38 to 40, at
+    ``a923aeb``). It supersedes Phase A's refusal, ``text.not_writable``.
+    lxml's refusal at save stays as the guard behind this one, for a value set
+    on the tree directly. None is ``""``.
     """
     if not text:
-        return
-    found = unwritable(text)
-    if found is None:
-        return
-    at, char = found
-    if char == "\x02":
-        raise ContentError(
-            f"{operation} refused: the text holds U+0002 at offset {at}, Office JS's character for a "
-            "footnote or endnote reference, and no text makes a note (CR-013 Q2)",
-            code="text.not_writable",
-            hint="leave the reference's character out of the text: the reference stays where it is "
-            "when the text around it is edited",
-        )
-    raise ContentError(
-        f"{operation} refused: the text holds U+{ord(char):04X} at offset {at}, which XML 1.0 does not "
-        "allow and no element of WordprocessingML stands for (CR-013 section 4.1)",
-        code="text.not_writable",
-        hint="remove the character; a line break is U+000B or \\n, a page break U+000C, a tab \\t",
-    )
+        return ""
+    return _UNWRITABLE.sub("", text)
 
 
 def _written_item(char: str) -> Any:
@@ -1667,13 +1668,15 @@ def text_items(text: str) -> list[Any]:
 
     :data:`WRITTEN_AS` (CR-013 Q2): U+000B and ``\\n`` a ``w:br``, U+000C and
     U+000E a page and a column break, U+000D a ``w:cr``, U+001E and U+001F the
-    hyphens, ``\\t`` a ``w:tab``. A text with none of them is one ``w:t``, as
-    before. The caller has checked it (:func:`check_writable`).
+    hyphens, ``\\t`` a ``w:tab``; ``\\r\\n`` one ``w:br`` (CR-013 section 11,
+    E2). A text with none of them is one ``w:t``, as before. The caller has
+    dropped the characters no element carries (:func:`drop_unwritable`).
     """
     from docx4j_py.wml import el
 
     if not text:
         return []
+    text = text.replace("\r\n", "\n")
     if _MAPPED.search(text) is None:
         return [el.t(text)]
     out: list[Any] = []

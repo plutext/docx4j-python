@@ -59,7 +59,7 @@ from docx4j_py.model.content.styles import ensure_style, style_ids_of
 from docx4j_py.model.content.text_model import (
     _REVISIONS,
     block_children_of,
-    check_writable,
+    drop_unwritable,
     hidden_runs_of,
     segments_of,
     text_run,
@@ -878,9 +878,12 @@ class Comment:
 
         Its body's ``Body.text``: the paragraphs a mark ``\\r`` apart, in Office
         JS's characters (CR-013 Phase A; core-ts check 51). Written, both
-        ``\\r`` and ``\\n`` are paragraph marks, so that the content read and
-        written back makes the paragraphs it read (CR-013 section 4.1), and each
-        other character of Office JS's is the element it reads from (Q2).
+        ``\\r`` and ``\\n`` are paragraph marks, ``\\r\\n`` one, as Word's
+        ``comment.content`` makes them (core-ts check 55, cases 43 to 45), so
+        that the content read and written back makes the paragraphs it read
+        (CR-013 section 4.1); each other character of Office JS's is the
+        element it reads from (Q2), and U+0002 and the other characters XML 1.0
+        excludes are dropped (section 11, E3).
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
@@ -891,7 +894,7 @@ class Comment:
 
     @content.setter
     def content(self, text: str) -> None:
-        check_writable(text, "Comment.content")
+        text = drop_unwritable(text)  # CR-013 section 11, E3: what no element carries is dropped
         with recording(self.body, "set_comment_content") as change:
             change.text(before=self.content, after=text)
             para_id = self.para_id
@@ -1052,10 +1055,11 @@ class Comment:
 
         Raises:
             ContentError: this comment is no longer in the document, or it has
-                no markers in this body to nest a reply inside; or
-                ``text.not_writable``, as :meth:`content`'s setter.
+                no markers in this body to nest a reply inside. U+0002 and the
+                other characters XML 1.0 excludes are dropped, as
+                :meth:`content`'s setter drops them.
         """
-        check_writable(text, "reply")
+        text = drop_unwritable(text)  # CR-013 section 11, E3
         with recording(self.body, "reply_to_comment") as change:
             self._require_present()
             parts = self._writable()
@@ -1317,11 +1321,12 @@ def insert_comment_into(span: Range, text: str, *, marks: Any = None) -> Comment
 
     The comment's text is a paragraph per line, ``\\r`` and ``\\n`` both
     marks (CR-013 section 4.1), each of Office JS's characters its element
-    (Q2); U+0002 and the other characters XML 1.0 excludes are refused
-    (``text.not_writable``) before any part is made. `marks`, a compiled
-    pattern, splits the lines otherwise (the python-docx facade's ``\\n``).
+    (Q2); U+0002 and the other characters XML 1.0 excludes are dropped, as
+    Word drops them (CR-013 section 11, E3; core-ts check 55 cases 38 to 40).
+    `marks`, a compiled pattern, splits the lines otherwise (the python-docx
+    facade's ``\\n``, after its own refusal of those characters).
     """
-    check_writable(text, "insert_comment")
+    text = drop_unwritable(text)
     body = span.paragraph.parent_body
     with recording(body, "insert_comment") as change:
         span.refuse_branch_text("insert_comment")

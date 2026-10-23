@@ -57,10 +57,11 @@ from docx4j_py.model.content.reports import (
 )
 from docx4j_py.model.content.table import Table, insert_table_into
 from docx4j_py.model.content.text_model import (
+    PARAGRAPH_BREAKS,
     block_children_of,
     block_list_of,
     canonical_view,
-    check_writable,
+    drop_unwritable,
     in_kept_branch,
     markup_text,
     require_view,
@@ -518,21 +519,22 @@ class Body(Sequence):
         """Append or prepend a paragraph of the text (Office JS ``insertParagraph``).
 
         Args:
-            text: the paragraph's text; each of Office JS's characters becomes
-                the element it reads from (CR-013 Q2: a tab ``w:tab``, ``\\n``
+            text: the paragraph's text, one paragraph whatever it holds (CR-013
+                section 11, E2); each of Office JS's characters becomes the
+                element it reads from (Q2: a tab ``w:tab``, ``\\n``, ``\\r\\n``
                 and U+000B a ``w:br``, U+000C a page break, U+000E a column
-                break, U+000D a ``w:cr``, U+001E and U+001F the hyphens).
+                break, U+000D a ``w:cr``, U+001E and U+001F the hyphens), and
+                U+0002 and the other characters XML 1.0 excludes are dropped
+                (E3). Word's ``insertParagraph`` writes ``\\n`` and ``\\r`` as
+                their escapes' text (core-ts check 55, cases 16 to 18), which
+                this does not follow (a recorded departure, core-ts's E2).
             location: ``"End"`` (the default) or ``"Start"``.
             style: a style display name, stored name or id.
 
         Returns:
             The new paragraph's view.
-
-        Raises:
-            ContentError: ``text.not_writable``, the text holds U+0002 or
-                another character XML 1.0 excludes; nothing has changed.
         """
-        check_writable(text, "insert_paragraph")
+        text = drop_unwritable(text)
         with recording(self, "insert_paragraph") as change:
             element = P(content=ChildList([text_run(text)] if text else []))
             view = self.insert_element(element, location=location)
@@ -544,17 +546,28 @@ class Body(Sequence):
     def insert_text(self, text: str, *, location: TextLocation = "End") -> Range:
         """Text at the start of the first paragraph, the end of the last, or instead of all.
 
+        ``\\n``, ``\\r`` and ``\\r\\n`` make a new paragraph each, as Word's
+        ``insertText`` does (CR-013 section 11, E1; :meth:`Paragraph.splice`);
+        U+0002 and the other characters XML 1.0 excludes are dropped (E3).
+
         Returns:
-            The :class:`~docx4j_py.model.content.Range` of the inserted text.
+            The :class:`~docx4j_py.model.content.Range` of the inserted text; where
+            the text made paragraphs, of its part in the last of them (a
+            departure from Office JS's range across them, which is CR-013 Phase
+            B's).
         """
-        check_writable(text, "insert_text")
+        text = drop_unwritable(text)
         with recording(self, "insert_text") as change:
             paragraphs = self.paragraphs
             if location == "Replace" or not paragraphs:
                 if location == "Replace":
                     change.text(before=self.text)
                     self.clear()
-                out = self.insert_paragraph(text).get_range("Content")
+                if PARAGRAPH_BREAKS.search(text):
+                    # a paragraph of the text, then its breaks made paragraphs by the splice (E1)
+                    out = self.insert_paragraph("").insert_text(text, location="End")
+                else:
+                    out = self.insert_paragraph(text).get_range("Content")
                 change.text(after=text)
                 return out
             if location == "Start":
@@ -1163,14 +1176,16 @@ class Body(Sequence):
         Returns:
             How many were replaced.
         """
-        check_writable(replace, "replace_text")
+        replace = drop_unwritable(replace)
         with recording(self, "replace_text") as change:
             change.text(before=find)
-            # every match checked before the first is replaced (CR-011 Phase F)
+            # every match checked before the first is replaced (CR-011 Phase F),
+            # a paragraph break's split among the checks (CR-013 section 11, E1)
             for paragraph in self.paragraphs:
                 for match in paragraph.search(find, **options):
                     match.refuse_branch_text("replace_text")
                     paragraph.refuse_equation(match.start, match.end)
+                    paragraph.refuse_paragraph_breaks(match.start, match.end, replace, "replace_text")
             count = 0
             for paragraph in self.paragraphs:
                 count += paragraph.replace_text(find, replace, **options)
