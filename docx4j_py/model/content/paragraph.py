@@ -1472,9 +1472,11 @@ class Paragraph:
         revision or a smart tag the text is in is cut in two; a text that would
         go into a run-level content control or a field is refused
         (``range.splits_control``, ``range.splits_field``) before anything
-        changes. Inside a bound plain-text block control a break is a ``w:br``,
-        or nothing in a single-line one (docx4j-core-ts CR-002 section 61,
-        ``80a933d``; :func:`~.controls.bound_plain_text_control`). With `breaks`
+        changes. Inside a bound block control (no type, ``w:text`` or
+        ``w:richText``), which Word reads as plain text, a break is a ``w:br`` in a
+        multi-line ``w:text`` one and nothing in any other (docx4j-core-ts CR-002
+        section 61, ``80a933d``, widened by its check 56, ``38dcae9``;
+        :func:`~.controls.bound_plain_text_control`). With `breaks`
         ``"line"`` (the one-paragraph writers, section 11's E2) ``\\n`` and
         ``\\r\\n`` are a ``w:br`` and ``\\r`` a ``w:cr``.
 
@@ -1487,13 +1489,17 @@ class Paragraph:
         if breaks == "line":
             text = text.replace("\r\n", "\n")
         elif PARAGRAPH_BREAKS.search(text):
-            from docx4j_py.model.content.controls import bound_plain_text_control
+            from docx4j_py.model.content.controls import (
+                bound_control_is_multi_line,
+                bound_plain_text_control,
+            )
 
             control = bound_plain_text_control(self)
             if control is None:
                 return self._splice_paragraphs(start, end, text, whole=whole)
-            # no paragraph in a bound plain-text control: a w:br, or nothing (core-ts section 61)
-            text = PARAGRAPH_BREAKS.sub("\n" if control.is_multi_line else "", text)
+            # no paragraph in a bound block control: a w:br in a multi-line w:text one, else
+            # nothing (core-ts section 61 and its check 56, 38dcae9)
+            text = PARAGRAPH_BREAKS.sub("\n" if bound_control_is_multi_line(control) else "", text)
         return self._splice_text(start, end, text, whole=whole)
 
     def _splice_paragraphs(self, start: int, end: int, text: str, *, whole: bool) -> Range:
@@ -1528,8 +1534,8 @@ class Paragraph:
         CR-013 section 11, E1: where :meth:`splice` would put the text --- its
         landing --- must not be inside a run-level content control or a field;
         a text of breaks alone is checked as a split at the place. Nothing to
-        check for a text with no break, or in a bound plain-text control, where
-        a break makes no paragraph.
+        check for a text with no break, or in a bound block control, where a
+        break makes no paragraph (:func:`~.controls.bound_plain_text_control`).
 
         Raises:
             SpanError: ``range.splits_control``, ``range.splits_field``,

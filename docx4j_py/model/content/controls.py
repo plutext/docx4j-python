@@ -67,6 +67,7 @@ __all__ = [
     "SDT_PR_ORDER",
     "ContentControl",
     "ContentControlForm",
+    "bound_control_is_multi_line",
     "bound_plain_text_control",
     "controls_in",
     "controls_in_paragraph",
@@ -464,9 +465,10 @@ class ContentControl:
 
         ``\\n``, ``\\r`` and ``\\r\\n`` make a paragraph each in a block,
         row or cell control, as every writer through ``Paragraph.splice`` makes
-        them (CR-013 section 11, E1), except in a bound plain-text one, where they
-        are a ``w:br``, or nothing in a single-line one (docx4j-core-ts CR-002
-        section 61, ``80a933d``; :func:`bound_plain_text_control`). In a run-level
+        them (CR-013 section 11, E1), except in a bound one, which Word reads as
+        plain text: there they are a ``w:br`` in a multi-line ``w:text`` control and
+        nothing in any other (docx4j-core-ts CR-002 section 61, ``80a933d``, as its
+        check 56 widened it, ``38dcae9``; :func:`bound_plain_text_control`). In a run-level
         control a paragraph break is refused (core-ts's F4). U+0002 and the
         other characters XML 1.0 excludes are dropped (section 11, E3).
 
@@ -1162,18 +1164,19 @@ def controls_in_paragraph(paragraph: Paragraph) -> list[ContentControl]:
 
 
 def bound_plain_text_control(paragraph: Paragraph) -> ContentControl | None:
-    """The bound plain-text block control a paragraph is in, or None. Extension.
+    """The bound block control a paragraph is in, which Word reads as plain text, or None. Extension.
 
-    docx4j-core-ts CR-002 section 61 (``80a933d``, decided 2026-10-23, its D1):
-    a block-level control with a ``w:dataBinding`` whose content is plain text
-    --- a ``w:text`` element, or no type element at all, as Word's repair and
-    docx4j's write-back read it --- and that is not a container. Word refuses
-    to open such a control holding more than one paragraph (CR-013 section
-    10.10, run 2), so inside one a ``\\n`` or ``\\r`` written through
-    ``Paragraph.splice`` makes no paragraph: it is a ``w:br`` in a multi-line
-    control and nothing in a single-line one, as Word wrote them in check 55b
-    (a control with no type is multi-line, :attr:`ContentControl.is_multi_line`).
-    Not a ``w:richText`` control, which holds blocks.
+    docx4j-core-ts CR-002 section 61, as its Word check 56 widened it (``38dcae9``,
+    sections 61.3 and 61.4, H1 superseding D1): every block-level control with
+    a ``w:dataBinding`` (or ``w15:``) that has no type element, a ``w:text`` or a
+    ``w:richText``, and is not a container --- save one whose node holds a flat
+    OPC package, Word's own rich-text binding, left as it is (not measured).
+    Word can't open such a control holding a second block (CR-013 section
+    10.10; check 56's four files), and reads every one as plain text on open.
+    So inside one a ``\\n`` or ``\\r`` written through ``Paragraph.splice``
+    makes no paragraph: a ``w:br`` where the control is multi-line, nothing
+    where not (:func:`bound_control_is_multi_line`), as Word wrote them (check
+    56, cases 3, 7, 11 and 15).
     """
     from docx4j_py.model.customxml.bindings import is_container
 
@@ -1184,10 +1187,42 @@ def bound_plain_text_control(paragraph: Paragraph) -> ContentControl | None:
     if sdt_property(sdt_pr, "dataBinding", (W_NS, W15_NS)) is None:
         return None
     plain = sdt_property(sdt_pr, "text", W_NS) is not None
-    untyped = control.type == "RichText" and sdt_property(sdt_pr, "richText", W_NS) is None
-    if not (plain or untyped) or is_container(control):
+    rich = sdt_property(sdt_pr, "richText", W_NS) is not None
+    untyped = control.type == "RichText" and not rich
+    if not (plain or rich or untyped) or is_container(control) or _node_holds_flat_opc(control):
         return None
     return control
+
+
+def bound_control_is_multi_line(control: ContentControl) -> bool:
+    """Whether a bound block control takes a line break: a ``w:text`` with ``w:multiLine`` set, and nothing else. Extension.
+
+    Word 365 gives a bound block control with no type element, or with
+    ``w:richText``, a ``<w:text/>`` with no ``w:multiLine`` on open, so it is
+    single-line (core-ts check 56; its H4). :attr:`ContentControl.is_multi_line`
+    and :attr:`ContentControl.type` still read the file as it is: their reading
+    of such a control is CR-014's.
+    """
+    text = sdt_property(control.sdt_pr, "text", W_NS)
+    if text is None:
+        return False
+    value = getattr(text, "multi_line", None)
+    value = getattr(value, "value", value)
+    return value is not None and str(value).lower() not in ("0", "false")
+
+
+#: The namespace of a flat OPC package, which Word's rich-text binding stores in its node.
+_FLAT_OPC_NS = "http://schemas.microsoft.com/office/2006/xmlPackage"
+
+
+def _node_holds_flat_opc(control: ContentControl) -> bool:
+    """Whether the node a control is bound to holds a flat OPC package (core-ts's H1 leaves such a control as it is)."""
+    try:
+        node = control.xml_mapping.custom_xml_node
+    except Exception:  # noqa: BLE001 - an unusable binding is no package
+        return False
+    text = getattr(node, "text", None) if node is not None else None
+    return bool(text) and (_FLAT_OPC_NS in text or "pkg:package" in text)
 
 
 def parent_control_of(element: Any, body: Body) -> ContentControl | None:

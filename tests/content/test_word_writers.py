@@ -18,9 +18,11 @@ decided its CR-002 section 60 on them (sections 60.4 to 60.7), and the user here
   ``\\r\\n`` is one ``w:br``, where Phase A wrote a ``w:cr`` and a ``w:br``.
 * **E3.** U+0002 and the other characters XML 1.0 excludes are dropped at the
   write, with no error.
-* **From core-ts CR-002 section 61** (``80a933d``): inside a bound plain-text
-  block control a ``\\n`` or ``\\r`` makes no paragraph: a ``w:br`` in a
-  multi-line control, nothing in a single-line one.
+* **From core-ts CR-002 section 61** (``80a933d``), as its Word check 56
+  widened it (``38dcae9``, H1 and H4): inside a bound block control --- no type,
+  ``w:text`` or ``w:richText``, all of which Word reads as plain text --- a
+  ``\\n`` or ``\\r`` makes no paragraph: a ``w:br`` in a multi-line ``w:text``
+  control, nothing in any other.
 
 The oracles are Word's answers, written here as data and cited by commit and
 case: core-ts's ``.docx`` and JSON files are not copied (CR-013 Q8's grant names
@@ -585,44 +587,90 @@ def test_every_match_is_checked_before_the_first_is_replaced():
 
 
 # ---------------------------------------------------------------------------
-# core-ts CR-002 section 61 (80a933d): no paragraph in a bound plain-text block control
+# core-ts CR-002 section 61 (80a933d), widened by its check 56 (38dcae9, H1, H4): no paragraph in a bound block
+# control, a w:br only in a multi-line w:text one
 # ---------------------------------------------------------------------------
 
+DATA_56 = "urn:check56"
+FLAT_OPC = (
+    '<?xml version="1.0" standalone="yes"?><?mso-application progid="Word.Document"?>'
+    '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage"></pkg:package>'
+)
 
-def block_control(kind: str, *, bound: bool):
+
+def block_control(kind: str, *, bound: bool, value: str = "Note"):
+    """A block-level control of `kind` holding `value`, bound (or not) to ``value1`` of a custom XML part holding it."""
     package = create_package()
-    binding = (
-        f"<w:dataBinding w:prefixMappings=\"{NAMESPACES}\" w:xpath=\"/ns0:check55b[1]/ns0:value1[1]\" "
-        'w:storeItemID="{11111111-1111-4111-8111-111111111111}"/>'
-        if bound
-        else ""
-    )
     package.body.insert_xml(
-        f'<w:sdt xmlns:w="{W}"><w:sdtPr><w:id w:val="9"/>{binding}{kind}</w:sdtPr><w:sdtContent>'
-        "<w:p><w:r><w:t>Note</w:t></w:r></w:p></w:sdtContent></w:sdt>"
+        f'<w:sdt xmlns:w="{W}"><w:sdtPr><w:id w:val="9"/>{kind}</w:sdtPr><w:sdtContent>'
+        f"<w:p><w:r><w:t>{value}</w:t></w:r></w:p></w:sdtContent></w:sdt>"
     )
-    return package, package.body.content_controls[0]
+    control = package.body.content_controls[0]
+    if bound:
+        from xml.sax.saxutils import escape
+
+        node = escape(FLAT_OPC) if value == "flat" else value
+        part = package.custom_xml_parts.add(f'<check56 xmlns="{DATA_56}"><value1>{node}</value1></check56>')
+        control.xml_mapping.set_mapping("/ns0:check56[1]/ns0:value1[1]", f"xmlns:ns0='{DATA_56}'", part)
+    return package, control
 
 
 SECTION_61 = [
-    ("multi-line", '<w:text w:multiLine="1"/>', True, ["Notex\x0by\x0bz"]),
-    ("single-line", "<w:text/>", True, ["Notexyz"]),
-    ("no type", "", True, ["Notex\x0by\x0bz"]),
+    ("w:text multi-line", '<w:text w:multiLine="1"/>', True, ["Notex\x0by\x0bz"]),
+    ("w:text single-line", "<w:text/>", True, ["Notexyz"]),
+    ("no type", "", True, ["Notexyz"]),
+    ("w:richText", "<w:richText/>", True, ["Notexyz"]),
     ("unbound, no type", "", False, ["Notex", "y", "z"]),
-    ("bound rich text", "<w:richText/>", True, ["Notex", "y", "z"]),
+    ("unbound, w:richText", "<w:richText/>", False, ["Notex", "y", "z"]),
 ]
 
 
 @pytest.mark.parametrize("writer", ["control", "paragraph"])
 @pytest.mark.parametrize(("label", "kind", "bound", "paragraphs"), SECTION_61, ids=[case[0] for case in SECTION_61])
-def test_a_bound_plain_text_block_control_holds_one_paragraph(label, kind, bound, paragraphs, writer):
-    """A ``w:br`` in a multi-line control (no type counts as multi-line), nothing in a single-line one, as Word wrote them in 55b."""
+def test_a_bound_block_control_holds_one_paragraph(label, kind, bound, paragraphs, writer):
+    """Word reads every bound block control as plain text: a ``w:br`` in a multi-line ``w:text`` one, nothing in any other."""
     package, control = block_control(kind, bound=bound)
     if writer == "control":
         control.insert_text("x\ny\r\nz", location="End")
     else:
         control.paragraphs[0].insert_text("x\ny\r\nz", location="End")
     assert [p.text for p in control.paragraphs] == paragraphs
+    assert control.type == ("PlainText" if "w:text" in kind else "RichText"), "the reader is CR-014's (H4)"
+    strict_reload(package)
+
+
+def test_a_control_whose_node_holds_flat_opc_is_left_as_it_is():
+    """H1: Word's own rich-text binding, its node a flat OPC package, isn't in the rule (not measured): E1 splits."""
+    _package, control = block_control("<w:richText/>", bound=True, value="flat")
+    control.paragraphs[0].insert_text("x\ny", location="End")
+    assert [p.text for p in control.paragraphs] == ["flatx", "y"]
+
+
+#: Check 56 (core-ts 38dcae9, 56-writes-word365-run.json): insertText('x\ny', 'End') on a bound block control holding
+#: start<n>, by kind: (case, kind, the control's text, insertText's range, the node after Word's write).
+CHECK_56 = [
+    (3, "", "start3xy", "xy", "start3xy"),
+    (7, '<w:text w:multiLine="1"/>', "start7x\x0by", "x\x0by", "start7x\r\ny"),
+    (11, "<w:text/>", "start11xy", "xy", "start11xy"),
+    (15, "<w:richText/>", "start15xy", "xy", "start15xy"),
+]
+
+#: Where this package's node is not Word's, and why.
+CHECK_56_NODES = {
+    7: ("start7x\ny", "F1: a node's break \\n"),
+    15: ("start15", "update_from_content_controls skips an explicit w:richText (CR-003 section 4); H4 is CR-014's"),
+}
+
+
+@pytest.mark.parametrize(("n", "kind", "text", "returned", "node"), CHECK_56, ids=[f"case{c[0]}" for c in CHECK_56])
+def test_check_56_insert_text_with_a_line_feed(n, kind, text, returned, node):
+    package, control = block_control(kind, bound=True, value=f"start{n}")
+    out = control.insert_text("x\ny", location="End")
+    assert (control.text, out.text, len(control.paragraphs)) == (text, returned, 1)
+    package.custom_xml_parts.update_from_content_controls()
+    if n in CHECK_56_NODES:
+        node, _why = CHECK_56_NODES[n]
+    assert control.xml_mapping.custom_xml_node.text == node
     strict_reload(package)
 
 
