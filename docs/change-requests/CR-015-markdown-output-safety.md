@@ -287,7 +287,7 @@ def is_safe(target: str | None, extra: str | Iterable[str] = ()) -> bool:
     no scheme, a drive path, or a scheme in schemes(extra). None and "" are safe."""
 
 def decode_references(target: str) -> str:
-    """Numeric references and the 44 one-character HTML5 names decoded once, as CommonMark does (Q3); not html.unescape."""
+    """Numeric references and the 45 one-character HTML5 names decoded once, as CommonMark does (Q3); not html.unescape."""
 
 def excerpt(target: str | None) -> str:
     """For a log line: at most 80 characters and '...', controls shown as spaces; 'null' for None."""
@@ -571,10 +571,11 @@ A and B are independent, and each is committed on its own. C waits for the user'
 
    **docx4j's answer (2026-10-23).** docx4j's session confirmed the finding and fixed it in docx4j. The fix is uncommitted, waits on the user's word there, and is recorded in docx4j CR-056 section 14; cite it by commit once it is committed. Its rule:
    - `LinkTargets.isSafe(target)` is true only if the target is safe as written **and** safe with its character references decoded as CommonMark decodes a link destination. It is **one rule for every output** (HTML, FO, Markdown, tika), not a Markdown-only check.
-   - **What is decoded:** decimal and hex numeric references (U+FFFD for 0, for a value above 0x10FFFF, or for a surrogate), and the 44 HTML5 named references that stand for one ASCII character (`&colon;`, `&sol;`, `&num;`, `&quest;`, `&Tab;`, `&NewLine;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&lpar;`, `&rpar;` and the rest).
+   - **What is decoded:** decimal and hex numeric references (U+FFFD for 0, for a value above 0x10FFFF, or for a surrogate), and the 45 HTML5 named references that stand for one ASCII character (`&colon;`, `&sol;`, `&num;`, `&quest;`, `&Tab;`, `&NewLine;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&lpar;`, `&rpar;` and the rest).
    - **What is left as written:** other named references, and a bare `&`. Decoding happens once, so `&amp;#58;` stays `&#58;`.
    - **Python's `html.unescape` won't do:** it decodes every HTML5 name and also names without a semicolon from the legacy set, while CommonMark needs the semicolon. The port decodes as CommonMark does (or is knowingly stricter).
-   - **Refused as written**, since the scheme is everything up to the first `:` before any `/`, `?` or `#` and must be in the set: `&#106;avascript:x`, `&unknown;avascript:x`, `a&b:c/d`.
+   - **Refused as written**, since the scheme is everything up to the first `:` before any `/`, `?` or `#` and must be in the set: a malformed scheme such as `&unknown;avascript:x` or `a&b:c/d`.
+   - **Caught only by the decoded reading:** `&#106;avascript:alert(2)` and `&#x6A;avascript:alert(4)` (no scheme as written, since a `#` comes before the `:`), `javascript&#58;...` and `javascript&colon;...`. (docx4j's session corrected its first note, which had the first two refused as written.)
    - **Kept:** `R&D/report.html`, `page.html?a=1&amp;b=2`, `https&#58;//example.org`, `&colon`, `page.html#&#58;`.
    - **Oracle tests:** `docx4j-core-tests`' `LinkTargetsTest.characterReferencesDecodedAsACommonMarkRendererDecodesThem` and `docx4j-markdown`'s `MarkdownHostileLinksTest.noEntityEncodedScriptSchemeDestination`, ported once committed.
 
