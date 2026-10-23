@@ -417,7 +417,7 @@ def _detail_text(self, author, date, sink):      # docx4j detail(author, date, s
 ### 4.8 Departures from docx4j, each with why
 
 1. **The added schemes are a call's argument, not a JVM-wide property** (Q2). This package has no properties file, and an argument can't leak between documents. It is core-ts's choice.
-2. **References decoded (Q3)**: no longer a departure. docx4j took the decoded check into `LinkTargets.isSafe` itself (Q3's answer, uncommitted there), so this package's `is_safe` follows it, decoding as CommonMark does.
+2. **References decoded (Q3)**: no longer a departure. docx4j took the decoded check into `LinkTargets.isSafe` itself (Q3's answer, `525d1ccb3`), so this package's `is_safe` follows it, decoding as CommonMark does.
 3. **`schemes` takes a string or an iterable** (section 4.1), as docx4j's property (a string) and core-ts's argument (an array) both are.
 4. **`excerpt` counts code points**, not UTF-16 units. It matters only for a log line's length.
 5. **`DEFAULT_SCHEMES` is a tuple constant**, for `defaultSchemes()`, and there is no `LINK_SCHEMES_PROPERTY`.
@@ -520,7 +520,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
 - **The corpus census of section 2.4, re-run after A and B**: 0 of 422 exports move in either view, and the 22 targets are all kept. Phase C's moves are counted against section 2.5's figures (1,951 outline entries; 0 paraIds).
 - **The byte check against docx4j at `30fb41024`,** CR-011 section 14.5's method: `git archive` into the scratch directory and an offline build.
   - The 277 documents' 1,385 exports must still be identical.
-  - So must the hostile documents of section 6.1, saved (all but U+0001), Q3's forms included, once docx4j's fix is committed.
+  - So must the hostile documents of section 6.1, saved (all but U+0001), Q3's forms included (docx4j `525d1ccb3`).
   - **Not run for this draft.**
 - **The rest, each unchanged by construction:** `codegen/generate.sh --check`; `scripts/roundtrip.py`; and acceptance (`scripts/acceptance.py`, then `scripts/compare_acceptance.py` against a copy made first, 0 differ). The acceptance artefacts are `.docx` only.
 
@@ -534,7 +534,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    - The reader is a browser's, and Q3 adds the parser's decoding of references.
    - Percent-encoding is inert in a scheme: a browser doesn't decode `%3A` there, and markdown-it-py encodes a tab as `%09`.
    - A renderer that percent-decodes a destination before linking would see more. None was measured.
-3. **Parity with docx4j's bytes.** docx4j took Q3's decoded check into its own rule (uncommitted there), so parity holds on those forms too once it is committed (section 6.3).
+3. **Parity with docx4j's bytes.** docx4j took Q3's decoded check into its own rule (`525d1ccb3`), so parity holds on those forms too (section 6.3).
 4. **The added schemes reaching an agent.** Under Q2's recommendation they are never a text option, so no tool argument can add one unless a server wires it. Under the alternative, every server must strip them (section 4.3).
 5. **Phase C moves outputs callers may pin.** The outline's Markdown changes in 125 of 418 corpus documents (1,951 entries). The address rule moves no corpus address. The picture rule's effect on the corpus is unmeasured. Each move goes into the CHANGELOG's 0.2.0 entry.
 6. **A sink this reading missed.** The census of section 2:
@@ -569,7 +569,7 @@ A and B are independent, and each is committed on its own. C waits for the user'
    (a) works, at the cost of every server stripping it. (c) is process-wide and invisible at the call.
 3. **Q3. Character references.** Should a target also be refused when it is refused once its references are decoded (`html.unescape`)? Today `javascript&#58;alert(1)`, `&#106;avascript:...`, `javascript&colon;...` and `&#x6A;avascript:...` pass docx4j's rule. They come out as `<a href="javascript:...">` from a CommonMark renderer with no URL check (section 2.5 item 1).
 
-   **docx4j's answer (2026-10-23).** docx4j's session confirmed the finding and fixed it in docx4j. The fix is uncommitted, waits on the user's word there, and is recorded in docx4j CR-056 section 14; cite it by commit once it is committed. Its rule:
+   **docx4j's answer (2026-10-23).** docx4j's session confirmed the finding and fixed it in docx4j. It is committed as `525d1ccb3` (docx4j CR-056 section 14), and the oracle is `LinkTargets.decodeCharacterReferences` with `LinkTargetsTest.characterReferencesDecodedAsACommonMarkRendererDecodesThem` at that commit. Its rule:
    - `LinkTargets.isSafe(target)` is true only if the target is safe as written **and** safe with its character references decoded as CommonMark decodes a link destination. It is **one rule for every output** (HTML, FO, Markdown, tika), not a Markdown-only check.
    - **What is decoded:** decimal and hex numeric references (U+FFFD for 0, for a value above 0x10FFFF, or for a surrogate), and the 45 HTML5 named references that stand for one ASCII character (`&colon;`, `&sol;`, `&num;`, `&quest;`, `&Tab;`, `&NewLine;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&lpar;`, `&rpar;` and the rest).
    - **What is left as written:** other named references, and a bare `&`. Decoding happens once, so `&amp;#58;` stays `&#58;`.
