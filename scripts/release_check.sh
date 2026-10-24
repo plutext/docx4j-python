@@ -77,7 +77,7 @@ WHEEL_FILES="$(echo "$WHEEL_LIST" | wc -l)"
 WHEEL_MODULES="$(echo "$WHEEL_LIST" | grep -c '\.py$')"
 echo "wheel: $WHEEL_FILES files, $WHEEL_MODULES modules, $(stat -c %s "$WHEEL") bytes"
 
-must_have() { echo "$WHEEL_LIST" | grep -qx "$1" || fail "wheel lacks $1"; }
+must_have() { grep -qx "$1" <<< "$WHEEL_LIST" || fail "wheel lacks $1"; }
 must_have "docx4j_py/py.typed"
 must_have "docx4j_py/resources/KnownStyles.xml"
 must_have "docx4j_py/resources/warmup_document.xml"
@@ -93,13 +93,13 @@ must_have "docx4j_py/resources/fonts/theme-2013.xml"
 must_have "docx4j_py/resources/fonts/theme-2023.xml"
 must_have "${NAME}-${VERSION}.dist-info/licenses/LICENSE"
 must_have "${NAME}-${VERSION}.dist-info/licenses/NOTICE"
-echo "$WHEEL_LIST" | grep -q "__pycache__" && fail "wheel carries __pycache__"
-echo "$WHEEL_LIST" | grep -q "\.pyc$" && fail "wheel carries .pyc"
-echo "$WHEEL_LIST" | grep -q "^codegen/\|^scripts/\|^baseline/\|^tests/\|^samples/\|^schemas/" && fail "wheel carries something from outside docx4j_py/"
-echo "$WHEEL_LIST" | grep -qv "^docx4j_py/\|^${NAME}-${VERSION}.dist-info/" && fail "wheel carries an unexpected top-level entry: $(echo "$WHEEL_LIST" | grep -v "^docx4j_py/\|^${NAME}-${VERSION}.dist-info/")"
+grep -q "__pycache__" <<< "$WHEEL_LIST" && fail "wheel carries __pycache__"
+grep -q "\.pyc$" <<< "$WHEEL_LIST" && fail "wheel carries .pyc"
+grep -q "^codegen/\|^scripts/\|^baseline/\|^tests/\|^samples/\|^schemas/" <<< "$WHEEL_LIST" && fail "wheel carries something from outside docx4j_py/"
+grep -qv "^docx4j_py/\|^${NAME}-${VERSION}.dist-info/" <<< "$WHEEL_LIST" && fail "wheel carries an unexpected top-level entry: $(echo "$WHEEL_LIST" | grep -v "^docx4j_py/\|^${NAME}-${VERSION}.dist-info/")"
 # every git-tracked file under docx4j_py/ is in the wheel
 while read -r tracked; do
-    echo "$WHEEL_LIST" | grep -qx "$tracked" || fail "wheel lacks tracked $tracked"
+    grep -qx "$tracked" <<< "$WHEEL_LIST" || fail "wheel lacks tracked $tracked"
 done < <(git ls-files docx4j_py)
 echo "every one of $(git ls-files docx4j_py | wc -l) git-tracked files under docx4j_py/ is in the wheel; LICENSE, NOTICE, py.typed and the 18 resources present; no __pycache__"
 
@@ -111,10 +111,10 @@ for top in docx4j_py tests samples schemas codegen scripts docs; do
 done
 echo "sdist: $(echo "$SDIST_LIST" | wc -l) entries, $(stat -c %s "$SDIST") bytes"
 for needed in docx4j_py/py.typed tests/test_readme.py tests/README.md samples/sample-docx.docx schemas/docx4j_python__ROOT.xsd codegen/generate.sh codegen/clean.py scripts/acceptance.py scripts/canon.py docs/pypi-readme.md .xsdata.phase-b.xml pyproject.toml README.md CHANGELOG.md RELEASING.md LICENSE NOTICE PKG-INFO; do
-    echo "$SDIST_LIST" | grep -qx "$needed" || fail "sdist lacks $needed"
+    grep -qx "$needed" <<< "$SDIST_LIST" || fail "sdist lacks $needed"
 done
-echo "$SDIST_LIST" | grep -q "__pycache__\|\.pyc$" && fail "sdist carries __pycache__"
-echo "$SDIST_LIST" | grep -q "^baseline/\|^out/\|^\.venv\|^\.claude/\|^\.github/" && fail "sdist carries baseline/, out/, .venv*, .claude/ or .github/"
+grep -q "__pycache__\|\.pyc$" <<< "$SDIST_LIST" && fail "sdist carries __pycache__"
+grep -q "^baseline/\|^out/\|^\.venv\|^\.claude/\|^\.github/" <<< "$SDIST_LIST" && fail "sdist carries baseline/, out/, .venv*, .claude/ or .github/"
 echo "the sdist carries the wheel's contents, tests/, samples/, schemas/, codegen/, scripts/, docs/ and the documents; nothing git-ignored"
 
 # ---------------------------------------------------------------- 3. clean venv
