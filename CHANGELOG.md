@@ -34,7 +34,7 @@ keeps Word's table rule, a cell ends with a paragraph, through every edit, which
 0.1.0 shared: eleven edits left a cell Word opens as unreadable content; its Phase B reads
 `Font`, a control showing its placeholder and a deleted paragraph mark as Office JS reads them,
 and writes into a placeholder as Word does; its Phase C matches Word's wildcards across a
-paragraph mark and finds no hit that cuts a grapheme cluster (its Phase D follows). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
+paragraph mark and finds no hit that cuts a grapheme cluster; the three are Word-checked together (Phase D). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
 as Word draws them, so `Font.color` reads a theme colour in the theme's colour rather than the
 cache written beside it.
 
@@ -914,7 +914,9 @@ cache written beside it.
   Word 365 opens as unreadable content; tracked, a cell's last mark was marked deleted, which Word
   never writes. Over the 422 documents of `out/cr012-b-corpus/` and their 2,435 main-part cells,
   every cell nine writes edited, untracked and tracked, now ends with a paragraph, and so does
-  every cell after Accept All and Reject All of them (CR-016 section 10.4).
+  every cell after Accept All and Reject All of them (CR-016 section 10.4). Word 365 repairs the Word
+  check's edits as written before the fix, adding a paragraph to exactly the 16 cells this release
+  ends with one, and opens them as written now without a repair prompt (CR-016 section 13).
 - **A value written into a control showing its placeholder stayed a placeholder** (CR-016 section
   2.4, a defect 0.1.0 shared): `ContentControl.insert_text` left `w:showingPlcHdr` on and the
   `PlaceholderText` style on its runs, and wrote beside the prompt at `"Start"` and `"End"`, so

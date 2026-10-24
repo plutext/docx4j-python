@@ -563,6 +563,23 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `props-enum-missing` (bare `w:highlight`, `w:vertAlign`, `w:em`), as in round two. Acceptance:
 > 17 artefacts, 0 differ.
 
+> **2026-10-24, CR-016 Phase D, Phases A to C together: passed** (the user: "__tmp/python-cr016
+> done; see also comments in results.txt"; `results.txt`: file 0 "repaired", and region 10 "still
+> the grey prompt"). Phase A ends every edited cell with a paragraph, Phase B writes into a control
+> showing its placeholder as Word does, and Phase C's wildcard replacements take hits across a
+> paragraph's mark (CR-016 sections 10 to 12). Staged in `__tmp/python-cr016/` (15 files from
+> `7758561`, built by `out/cr016-{a,b,c}-word-check/build.py`, with a README naming All Markup for
+> the tracked files). Every file opened without a repair prompt but file 0,
+> `cr016a-0-at-955547c-untracked.docx`, the edits as written before Phase A, which Word repaired
+> as predicted. Region 10, a bound control left showing its placeholder over an empty node, kept
+> Word's grey prompt (the README's first alternative). Word's saves, in `out/cr016-d-word-saves/`
+> (CR-016 section 13.3): Accept All and Reject All of the tracked file the engine's
+> (`scripts/compare_word_resolution.py --no-records`: 0 lines; with the properties, only Word's
+> spelled-out defaults and the regridding of five autofit tables), the placeholders' markup the
+> engine's, and Word's repair of file 0 a plain paragraph in exactly the 16 cells Phase A ends with
+> one. The optional `^13`-over-`w:cr` measurement was not made. Acceptance: unchanged since Phase C
+> (no code change).
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

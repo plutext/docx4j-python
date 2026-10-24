@@ -1,6 +1,6 @@
 # CR-016: A cell ends with a paragraph; `Font`, placeholders and deleted marks read as Office JS reads them; wildcards across marks --- the port of docx4j-core-ts `222cc20` and `3ba1e68`
 
-**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). **Phase A implemented 2026-10-24** (section 10): `table_rules.py` (docx4j's `ends_with_paragraph` and `end_with_paragraph`, exported); `Paragraph.delete`, `Body.clear`, `ContentControl.delete` and `Body.insert_ooxml("Replace")` keep a cell's end paragraph, emptied, its mark never marked under tracking; a table after it splits it at its end; docx4j's repair elsewhere and in what goes in (D3); nothing on load (D4); a tracked `TableCell.value` a tracked deletion (Q11); the facade's `_Cell.add_table` python-docx's (Q13). Check 52's cases 86 to 95 Word's in the run, the save and Accept All but the new table's paragraph (Q4) and case 94's value; over the corpus's 2,435 cells, no write leaves one without a paragraph end, and `Range.delete()` moved in none. One pre-existing expectation moved. Its Word check is Phase D's (files built, section 10.5). **Phase B implemented 2026-10-24** (section 11): `Font` reads every run in scope, `None`, `""` or `"Mixed"` where they differ, a paragraph its text's runs, else a placeholder's, else its mark, an automatic colour `#000000` (the user's decision, CR-009 section 12.9), a read splitting nothing (Q12), the getters `bool | None` and `float | None` (Q10); a control showing its placeholder read as no text (K3) and written over at any location, its flag cleared and its style dropped, `placeholder_text` from the runs (Q6), `paragraph.text = ...` over a run-level one refused (risk 2; the user decided 2026-10-24 to keep the refusal); no `\r` after a deleted mark in the default view, none after an inserted one in the original; K1 pinned. Check 58 Word's in 17 of 22 read cases (2 to 4 K1, 12 K3, 13 Phase C's) and 9 of 9 edit cases; no font difference in check 53; check 52's paragraph fonts Word's; the audit's 10 moved readers, 10,112 font answers among them, all explained. Its Word check's file is built (section 11.12). **Phase C implemented 2026-10-24** (section 12): `^13` a paragraph's mark and a wildcard pattern `re.DOTALL`; a range across paragraphs, or holding its mark, searched across its paragraphs' marks exactly where `^p` matches one (K7), a paragraph's search over its `"Whole"` range, a body's (a block control's, a cell body's) over its `"Content"` range; `replace_text` with wildcards refusing, before anything changes, where a hit holds a mark (Q9, `range.replaces_mark`); no search, `find` or `replace_text` hit cutting a grapheme cluster (Q8), Latin text never filtered; `find` a paragraph at a time. Check 59 Word's in every scope (5 of 5; 0 before); check 58's case 13 differing by K6 and `[!a-z ]` over the emoji alone; in the audit `body.search` and `body.find` unmoved, its new wildcard reader's 288 moved documents all explained. Saved output changes where a replacement takes other hits, so its Word check's file is built (section 12.10). Phase D not started.
+**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). **Phase A implemented 2026-10-24** (section 10): `table_rules.py` (docx4j's `ends_with_paragraph` and `end_with_paragraph`, exported); `Paragraph.delete`, `Body.clear`, `ContentControl.delete` and `Body.insert_ooxml("Replace")` keep a cell's end paragraph, emptied, its mark never marked under tracking; a table after it splits it at its end; docx4j's repair elsewhere and in what goes in (D3); nothing on load (D4); a tracked `TableCell.value` a tracked deletion (Q11); the facade's `_Cell.add_table` python-docx's (Q13). Check 52's cases 86 to 95 Word's in the run, the save and Accept All but the new table's paragraph (Q4) and case 94's value; over the corpus's 2,435 cells, no write leaves one without a paragraph end, and `Range.delete()` moved in none. One pre-existing expectation moved. Its Word check is Phase D's (files built, section 10.5). **Phase B implemented 2026-10-24** (section 11): `Font` reads every run in scope, `None`, `""` or `"Mixed"` where they differ, a paragraph its text's runs, else a placeholder's, else its mark, an automatic colour `#000000` (the user's decision, CR-009 section 12.9), a read splitting nothing (Q12), the getters `bool | None` and `float | None` (Q10); a control showing its placeholder read as no text (K3) and written over at any location, its flag cleared and its style dropped, `placeholder_text` from the runs (Q6), `paragraph.text = ...` over a run-level one refused (risk 2; the user decided 2026-10-24 to keep the refusal); no `\r` after a deleted mark in the default view, none after an inserted one in the original; K1 pinned. Check 58 Word's in 17 of 22 read cases (2 to 4 K1, 12 K3, 13 Phase C's) and 9 of 9 edit cases; no font difference in check 53; check 52's paragraph fonts Word's; the audit's 10 moved readers, 10,112 font answers among them, all explained. Its Word check's file is built (section 11.12). **Phase C implemented 2026-10-24** (section 12): `^13` a paragraph's mark and a wildcard pattern `re.DOTALL`; a range across paragraphs, or holding its mark, searched across its paragraphs' marks exactly where `^p` matches one (K7), a paragraph's search over its `"Whole"` range, a body's (a block control's, a cell body's) over its `"Content"` range; `replace_text` with wildcards refusing, before anything changes, where a hit holds a mark (Q9, `range.replaces_mark`); no search, `find` or `replace_text` hit cutting a grapheme cluster (Q8), Latin text never filtered; `find` a paragraph at a time. Check 59 Word's in every scope (5 of 5; 0 before); check 58's case 13 differing by K6 and `[!a-z ]` over the emoji alone; in the audit `body.search` and `body.find` unmoved, its new wildcard reader's 288 moved documents all explained. Saved output changes where a replacement takes other hits, so its Word check's file is built (section 12.10). **Phase D done 2026-10-24** (section 13): the records in CR-003, CR-014 and CR-011; the Word check of Phases A to C together (15 files, Word 365) **passed**, every file opening without a repair prompt but file 0, the code before Phase A, which Word repaired as predicted; Word's Accept All and Reject All of the tracked cells the engine's, and Word's save of the placeholders the engine's markup; Word's repair of file 0 adding a paragraph in exactly the 16 cells Phase A ends with one. **CR-016 is complete.**
 1. Word's table rule (core-ts CR-002 section 55): a cell ends with a paragraph.
 2. `Font` reading every run in scope (section 59).
 3. A control showing its placeholder read as no text (core-ts CR-012 section 18).
@@ -8,7 +8,7 @@
 5. The paragraph tracked-change listing kept and pinned (CR-002 section 58.1, K1).
 6. Word's wildcards (CR-002 section 32): K4, and K7 at `3ba1e68`.
 
-Three things core-ts did in the same commits are done here already (section 3.8). Four phases are proposed (section 5): A, the cell rule; B, the readers; C, the wildcards; D, the Word check and the records. They come to 4½ to 5½ days. Fourteen questions, decided 2026-10-24 (section 8). **Phases A, B and C are implemented** (sections 10 to 12); D is not started.
+Three things core-ts did in the same commits are done here already (section 3.8). Four phases are proposed (section 5): A, the cell rule; B, the readers; C, the wildcards; D, the Word check and the records. They come to 4½ to 5½ days. Fourteen questions, decided 2026-10-24 (section 8). **All four phases are done** (sections 10 to 13); CR-016 is complete.
 
 *The number:* an earlier, undrafted idea used "CR-016" for a port of docx4j CR-057 (`insert_markdown` reading local image files). That idea now takes CR-017.
 
@@ -1067,3 +1067,67 @@ No golden, ratchet row, Word-save comparison or acceptance artefact moved.
 5. **A wildcard search over a big body costs 1.5 times what it did** (12.8); a cache of each paragraph's segments between reads would bring it back, which nothing here keeps.
 6. **The notes in CR-003 section 24, CR-014 and CR-011** and the Word check are Phase D's.
 7. **`CLAUDE.md`** should name Phase C (left to the coordinator; the sentence proposed is in the report).
+
+## 13. Phase D notes and the Word check (2026-10-24)
+
+**Phase D is done, and with it CR-016.** It changed no code. The suite at `7758561` stands (6,335 passed, 8 skipped), and `c32f13c` and this section's commit are records only.
+
+### 13.1 What landed
+
+- **The records** (`c32f13c`):
+  - CR-003 section 24's "not taken now" is marked taken (Phases A to C, with the departures of sections 4.9, 11.6 and 12.5);
+  - CR-014 section 4 notes that phase 2's cells end with a paragraph, how a bound placeholder written into reaches its node, and core-ts's immediate node sync, for CR-014 to decide;
+  - CR-011 section 8 notes that Phase E's cells end with a paragraph;
+  - section 11.11 item 2a is the span path over a run-level placeholder.
+- **Each phase's own records**, written with it: the CHANGELOG's bullets, `tests/README.md`'s map and the fixtures' provenance. D adds the Word check's run record there, this section, the Status line and the index row.
+- **The Word check** (section 6.3), staged in `__tmp/python-cr016/` from `7758561`: 15 files. Phase A's ten (`out/cr016-a-word-check/`, file 0 among them), Phase B's one (`out/cr016-b-word-check/`) and Phase C's four (`out/cr016-c-word-check/`), with a `README.txt` over all three, each phase's README, the manifests and `SHA1SUMS`. Every file was rebuilt at `7758561` and is canonically identical to the copy staged (dates scrubbed).
+
+### 13.2 The Word check: passed
+
+Word 365, PC, 2026-10-24. The user: "__tmp/python-cr016 done; see also comments in results.txt". `results.txt` reads:
+
+```
+cr016a-0-at-955547c-untracked.docx   repaired
+cr016b-2-placeholders.docx   Region 10: what do you mean reference? It is still the grey prompt.
+```
+
+1. **Every file opened without a repair prompt but file 0**, and each read as its README says.
+2. **File 0 was repaired, as predicted** (section 6.3 item 3, Q14). It is `955547c`'s output of file 1's untracked edits, the code before Phase A. Section 2.1's defect was a prediction from docx4j's probes; it is now measured on this package's own output.
+3. **Region 10 showed the grey prompt**, the README's first alternative. "Reference" meant a control the script left as built, for comparison. The README should have said what it shows, as region 8's did. So **Word 365 does not refresh a bound control showing its placeholder from an empty node**: Word's save keeps `w:showingPlcHdr`, the control's own prompt run and the empty node.
+4. **Not made:** the optional measurement of Word's `^13` over a `w:cr`. Section 12.11 item 1 stays open.
+
+### 13.3 Word's saves against the engine's
+
+The user saved four files. They are copied, with `results.txt`, into `out/cr016-d-word-saves/` (git-ignored):
+
+| file | SHA-1 |
+|---|---|
+| `cr016a-1-tracked-word365-accepted.docx` | `dd533d5d9981925b50c167b03a06c1b215e373b6` |
+| `cr016a-1-tracked-word365-rejected.docx` | `c663759c0acd929285f88dcb3be0cfc85a7d5253` |
+| `cr016b-2-placeholders-word365.docx` | `921297db00f34cce31c030d308ceccf819f3b333` |
+| `cr016a-0-at-955547c-untracked-repaired-word365.docx` | `f74b896d47abed858cc80507191e44d535dba719` |
+
+- **Accept All and Reject All of file 1's tracked copy agree with the engine's.**
+  - `scripts/compare_word_resolution.py --no-records` (CR-010's `DocumentDescription` port) reports 0 lines differing for each.
+  - With the table, row, cell and section properties shown, the only differences are ones Word adds on every save:
+    - it spells out each border's defaults (`w:color="auto" w:space="0"`) and `w:pgMar`'s `w:header`, `w:footer` and `w:gutter`;
+    - in the accepted save alone, it recomputes the grid of the five top-level autofit tables whose first cell holds a nested table (`4500 4500` becomes `8149 868` or `8150 867`).
+  - Without these, 0 lines differ either way.
+- **The placeholders file's markup is Word's.**
+  - The description reports 0 lines differing.
+  - The markup of controls 1 to 9 is the engine's, ignoring `w:id`'s value, the rsids, the paraIds and the empty `w:sdtEndPr` Word writes. Each `w:sdtPr` holds `w:alias`, `w:tag` and `w:id` alone (9 with its `w:dataBinding` and `w:text`), with no `w:showingPlcHdr`, and one plain run (7's bold). These are check 58's cases 20 to 22.
+  - Control 10, which the script did not edit, differs in order only. The builder wrote `w:showingPlcHdr` after `w:text`, and Word saves it before `w:dataBinding`, in the order Word writes. docx4j's `CT_SdtPr` is an unbounded choice, and Word opened the file clean, so this is the test file's order, not an edit's.
+  - The custom XML part holds `VALUE` in `/greeting/to` both sides. Word drops the line break after its declaration.
+- **Word's repair of file 0 is Phase A's rule.** This save was not asked for.
+  - Against file 0, Word added 16 empty paragraphs and changed nothing else, even with the properties shown (less the defaults above). There is one at the end of each cell that ended in a table (12) or held no block (4).
+  - Against file 1, Phase A's output of the same edits, the 16 paragraphs are in the same places. They differ only in their properties:
+    - Word's repair writes a plain `w:p`, as `end_with_paragraph` does;
+    - Phase A keeps the cell paragraph's `w:pPr` (here `ListParagraph`, numbered), as Word's own edits do in check 52's cases 86 to 95 (D2: Word's edits where measured).
+  - So Phase A puts a paragraph exactly where Word's repair would, in the form Word's own edits give it.
+
+### 13.4 Found, and not done
+
+1. **`apply_bindings` over an empty node writes docx4j's prompt, not the control's.** `runs_for_value("")` writes docx4j's placeholder run, "Click here to enter text." in `PlaceholderText`, in place of the control's own run. Probe: `apply_bindings()` over `cr016b-2-placeholders.docx` and over Word's save, after which control 10's `placeholder_text` reads "Click here to enter text.". Word keeps the control's own prompt, "Click or tap here to enter text." (region 10). This is docx4j's `BindingTraverser`, so it is parity with docx4j, and it predates CR-016. Noted in CR-014 section 4 for that CR to decide; not changed.
+2. **Word's `^13` over a `w:cr`** stays unmeasured (section 12.11 item 1).
+3. **`scripts/acceptance.py --out`** with a directory outside the checkout raises `ValueError` from `target.relative_to(ROOT)` (line 919) after writing the first file. The phases' gates used each tree's own `out/acceptance/` instead; not fixed.
+4. **A Word-check README should say what a reference region shows** (item 3 of section 13.2), as region 8's did.

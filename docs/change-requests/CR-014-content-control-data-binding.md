@@ -197,6 +197,7 @@ Phases 2 and 3 are outside CR-003 section 23's Office JS parity, so each is the 
 **From CR-016 (2026-10-24).**
 - **Cells.** Phase 2 builds block content from XHTML and from a flat OPC package. Each table cell it builds ends with a paragraph, through `table_rules.end_with_paragraph` (CR-016 Phase A, its section 4.2).
 - **Placeholders.** A bound control showing its placeholder reads as no text since CR-016 Phase B. `ContentControl.insert_text` into it clears `w:showingPlcHdr`, and the value reaches its node at the next `update_from_content_controls()` (CR-016 section 4.8 item 3). `update_from_control` still skips a control that shows its placeholder. core-ts's `insertText` syncs the bound node at once (`syncBoundNode`); here it doesn't. The difference is recorded here, for this CR to decide.
+- **An empty node** (CR-016 section 13.4 item 1, Word 365 2026-10-24). Word doesn't refresh a bound control showing its placeholder from an empty node: its save keeps `w:showingPlcHdr`, the control's own prompt run ("Click or tap here to enter text.") and the empty node. `apply_bindings` here writes docx4j's placeholder run (`runs_for_value("")`, "Click here to enter text.") in place of the control's own. That is docx4j's `BindingTraverser`, so it is parity with docx4j and not CR-016's change. Whether to keep the control's own prompt is this CR's to decide.
 
 ## 5. Tests and the gate (phase 1)
 

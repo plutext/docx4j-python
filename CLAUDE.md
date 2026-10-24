@@ -13,7 +13,7 @@ departure.
 
 The design lives in `docs/change-requests/`, indexed in its `README.md`. Each CR's
 implementation-notes sections record what was actually built, the numbers and every deliberate
-departure; read them before changing the area they cover. Status, 2026-10-23:
+departure; read them before changing the area they cover. Status, 2026-10-24:
 
 - **CR-001** (the object model): Phases A to C implemented; D (PML and SML) proposed.
 - **CR-002** (the engine): Phases A and B implemented. B (section 15) is `PropertyResolver` and
@@ -70,11 +70,11 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   and a wildcard pattern `re.DOTALL`; a paragraph searches its `"Whole"` range, a body or block
   control its `"Content"`; a wildcard `replace_text` refuses a hit holding a mark,
   `range.replaces_mark`; no search hit cuts a grapheme cluster; `find` stays a paragraph at a
-  time); D proposed, and its Word check covers A, B and C.
+  time); D done 2026-10-24 (the records, and the Word check of A to C together, passed): complete.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
-  user, 2026-10-24); CR-018 and CR-009 Phase B are done, CR-016 D remains.
+  user, 2026-10-24); all three are done, and the release remainder (`RELEASING.md`) is next.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
