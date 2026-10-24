@@ -10,7 +10,7 @@ comment beginning `docx4j-python:` on the line before it, so
 `grep -rn 'docx4j-python' schemas/` finds all of them and a re-copy from docx4j can be
 re-patched mechanically.
 
-**The copy is from docx4j commit `2853b7280` (2026-10-21, refreshed for CR-012 Phase A; its section 9 lists every docx4j change to the closure since the previous copy, and how each was checked).** The closure is the same 103 files: docx4j's CR-051 phase 1 (`1cff2cd5c`) admits `mc:AlternateContent` in `EG_ContentBlockContent`, `EG_ContentRowContent` and `EG_ContentCellContent` (`wml/wml.xsd`), `dae2dfc8b` declares `CT_Settings`' `w14:docId` before `w15:chartTrackingRefBased` (which retires patch 4), `8e8f6ea83` makes `a:graphicData`'s wildcard `lax` (`dml/dml-graphicalObject.xsd`; no generated change, the generator writing `process_contents` only for `skip`), and `409aade38` renames docx4j 17.1.1 to 17.2.0 in comments across `wml.xsd`, `dml-chart.xsd`, `dml-spreadsheetDrawing.xsd`, `dml-textParagraph.xsd`, the mce schema and `oart14docprop.xsd`. VML (`acd0defc9`, docx4j CR-048) and the other changed files (digital signatures, FOP, SpreadsheetML, the bibliography) are outside the closure and not copied. The previous copy was from docx4j commit `c363a969f` (2026-09-20; three files --- `shared/shared-math-2ed.xsd`, `dml/dml-textCharacter.xsd`, `odrawxml/office_drawing_2017_03_chart_.xsd`, docx4j's CR-025 and its c16r3 fix --- copied on top of the `58cce65a8` refresh the same day, CR-001 section 14.11; none of the three carries a patch). One more file has been copied since: `odrawxml/office_drawing_2014_chartex.xsd`, from docx4j `14fcb2f4e` (2026-10-15, docx4j CR-040 phases 1 and 2, CR-001 section 14.12; first copied from `28bdf831c` the day before). It carries docx4j's own two corrections, each commented in place: a histogram's `cx:binSize` and `cx:binCount` are bound as Excel writes them, with a `val` attribute, and `CT_ExternalData`'s `autoUpdate` is bound in the chartex namespace (`form="qualified"`), as Word and PowerPoint write it. Those are docx4j's departures from [MS-ODRAWXML], not patches of this repository's.** It was first taken at `6b8048aab`
+**`wml/wml.xsd` alone is from docx4j commit `46c727bf8` (2026-10-24, refreshed for CR-018 Phase A, [below](#wmlwmlxsd-refreshed-from-docx4j-46c727bf8-cr-018-phase-a)): docx4j's #697 and CR-059 corrected its on/off attribute defaults, and nothing else in `xsd/` changed between the two commits.** **The copy is from docx4j commit `2853b7280` (2026-10-21, refreshed for CR-012 Phase A; its section 9 lists every docx4j change to the closure since the previous copy, and how each was checked).** The closure is the same 103 files: docx4j's CR-051 phase 1 (`1cff2cd5c`) admits `mc:AlternateContent` in `EG_ContentBlockContent`, `EG_ContentRowContent` and `EG_ContentCellContent` (`wml/wml.xsd`), `dae2dfc8b` declares `CT_Settings`' `w14:docId` before `w15:chartTrackingRefBased` (which retires patch 4), `8e8f6ea83` makes `a:graphicData`'s wildcard `lax` (`dml/dml-graphicalObject.xsd`; no generated change, the generator writing `process_contents` only for `skip`), and `409aade38` renames docx4j 17.1.1 to 17.2.0 in comments across `wml.xsd`, `dml-chart.xsd`, `dml-spreadsheetDrawing.xsd`, `dml-textParagraph.xsd`, the mce schema and `oart14docprop.xsd`. VML (`acd0defc9`, docx4j CR-048) and the other changed files (digital signatures, FOP, SpreadsheetML, the bibliography) are outside the closure and not copied. The previous copy was from docx4j commit `c363a969f` (2026-09-20; three files --- `shared/shared-math-2ed.xsd`, `dml/dml-textCharacter.xsd`, `odrawxml/office_drawing_2017_03_chart_.xsd`, docx4j's CR-025 and its c16r3 fix --- copied on top of the `58cce65a8` refresh the same day, CR-001 section 14.11; none of the three carries a patch). One more file has been copied since: `odrawxml/office_drawing_2014_chartex.xsd`, from docx4j `14fcb2f4e` (2026-10-15, docx4j CR-040 phases 1 and 2, CR-001 section 14.12; first copied from `28bdf831c` the day before). It carries docx4j's own two corrections, each commented in place: a histogram's `cx:binSize` and `cx:binCount` are bound as Excel writes them, with a `val` attribute, and `CT_ExternalData`'s `autoUpdate` is bound in the chartex namespace (`form="qualified"`), as Word and PowerPoint write it. Those are docx4j's departures from [MS-ODRAWXML], not patches of this repository's.** It was first taken at `6b8048aab`
 (2026-09-05, 90 files in the WML closure) and refreshed on 2026-09-20 (CR-001 section 14.10):
 docx4j's CR-018, CR-021 phase 2, CR-023 and CR-024 and the lax mce wildcards changed nine files
 of the closure (`wml/wml.xsd`, `wml/w14_word_2010_wordml.xsd`, `wml/w15_word_2012_wordml.xsd`,
@@ -66,6 +66,40 @@ with no patch.** The five files of docx4j's `xsd/vml/` that `vml-main.xsd`'s imp
   `ParserConfig(lexical_types=)` (stage 12, item 28), not by a patch: the types stay docx4j's.
 * `grep -ro 'docx4j-python' schemas --include='*.xsd'` still finds 26 matches: the VML files carry
   none. (28 since patches 6 and 7, which are not in the VML files.)
+
+## `wml/wml.xsd` refreshed from docx4j `46c727bf8` (CR-018 Phase A)
+
+**Refreshed 2026-10-24 from docx4j `46c727bf8`** (CR-059 phase 2, "the CR is complete"; it changes no
+schema itself). `git -C ../docx4j log 2853b7280..46c727bf8 -- xsd` lists two commits, and both
+change only `wml/wml.xsd`:
+
+| commit | docx4j's change | checked |
+| --- | --- | --- |
+| `77ba784d6` | #697: `w:fldChar`'s and `w:fldSimple`'s `fldLock` and `dirty`, and `w:documentProtection`'s `enforcement`, `default="false"` where docx4j's 2008 conversion (`6cbe2e057`) wrote `"true"` | regenerated: `FldChar`, `CTSimpleField`, `CTDocProtect` |
+| `ac97b56c5` | CR-059 phases 0 and 1: 25 more on/off attributes `default="false"` (borders' `shadow` and `frame`, `w:eastAsianLayout`'s three, `w:framePr`'s `anchorLock`, `nlCheck`, `w:documentProtection`'s `formatting`, every hyperlink's `history`, `customMarkFollows`, `recommended`, `tentative`, `null`, `legacy`, `subsetted`, `w:docPart`'s `all` and `decorated`, `w:style`'s `customStyle`, `w:latentStyles`' three `def*`, `w:caption`'s `chapNum` and `noLabel`, `w:cols`' `sep`, `w:text`'s `multiLine`); 10 with no default (`w:lsdException`'s `locked`, `semiHidden`, `unhideWhenUsed`; `w:revisionView`'s five; `w:spacing`'s `beforeAutospacing` and `afterAutospacing`); `w:cols`' `equalWidth` kept `"true"` | regenerated, below |
+
+* **The procedure.** `git -C ../docx4j diff 2853b7280 46c727bf8 -- xsd/wml/wml.xsd | patch -p3
+  schemas/wml/wml.xsd`: 29 hunks, every one clean, at offsets of 31 to 66 lines (the patches'
+  lines above them). Nothing was taken from docx4j's working tree.
+* **The patches are unchanged.** The lines by which the copy now differs from docx4j's blob at
+  `46c727bf8` (`0915b7fb4292`) are exactly the lines by which it differed from docx4j's at
+  `2853b7280` (both `diff`s, line numbers aside, compared equal): the 17 markers of `wml.xsd`
+  (patch 1's, patch 2's 13 part roots, patch 3's two and patch 6's) and their hunks. `grep -ro 'docx4j-python'
+  schemas --include='*.xsd'` still finds 28.
+* **What regenerated.** `codegen/generate.sh` changed only `docx4j_py/wml/__init__.py`, and only
+  `schema_default` metadata: 36 fields (counted with the classes that inherit them) from `"true"`
+  to `"false"`, 8 `"true"` and 2 `"false"` gone, 76 lines in all. The `wml` classes' fields
+  declaring a default go from 62 to 52 (counted as `dataclasses.fields` sees them). No type, no
+  name and no `el` table changed; the module count is 298. `generate.sh --check` is byte identical.
+* **No answer moves.** Nothing reads a schema default until CR-018 Phase C's `effective()`
+  (`docx4j_py/model/values.py`); `tests/test_schema_defaults.py` holds the model's `w` defaults to
+  the copy's and the copy's to docx4j's at `46c727bf8`, so the next refresh is checked
+  mechanically.
+* **Not taken: docx4j's later `wml.xsd` commits.** `893658f68` (CR-060 phase 1) and `1d1b824a9`
+  (CR-060 phase 4) bind docx4j's `OnOffAdapter` and `UnderlineValueAdapter` with 47 `annox`
+  annotations and add revision-history and inline comments. They change no type and no default,
+  and this package's reading of those values is CR-018's, in `docx4j_py`, not the schema's. A later
+  refresh may take them verbatim; the generator ignores `xsd:appinfo`.
 
 ## 1. `CT_Dir` / `CT_Bdo`: anonymous types promoted (pre-existing, Phase A)
 

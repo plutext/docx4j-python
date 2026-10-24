@@ -246,7 +246,7 @@ class CTDocPartName(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -325,7 +325,7 @@ class CTFtnEdnRef(Child):
             "name": "customMarkFollows",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     id: None | int = field(
@@ -638,7 +638,7 @@ class CTSdtText(Child):
             "name": "multiLine",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -901,7 +901,6 @@ class CTTrackChangesView(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     comments: None | bool = field(
@@ -909,7 +908,6 @@ class CTTrackChangesView(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     ins_del: None | bool = field(
@@ -918,7 +916,6 @@ class CTTrackChangesView(Child):
             "name": "insDel",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     formatting: None | bool = field(
@@ -926,7 +923,6 @@ class CTTrackChangesView(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     ink_annotations: None | bool = field(
@@ -935,7 +931,6 @@ class CTTrackChangesView(Child):
             "name": "inkAnnotations",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
 
@@ -1004,7 +999,7 @@ class CTWritingStyle(Child):
             "name": "nlCheck",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     check_style: None | bool = field(
@@ -1254,7 +1249,7 @@ class CtLvlLegacy(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     legacy_space: None | int = field(
@@ -1320,7 +1315,7 @@ class CtLvlLvlText(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -3961,7 +3956,6 @@ class StylesLatentStylesLsdException(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     ui_priority: None | int = field(
@@ -3978,7 +3972,6 @@ class StylesLatentStylesLsdException(Child):
             "name": "semiHidden",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     unhide_when_used: None | bool = field(
@@ -3987,7 +3980,6 @@ class StylesLatentStylesLsdException(Child):
             "name": "unhideWhenUsed",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
         },
     )
     q_format: None | bool = field(
@@ -4158,7 +4150,7 @@ class CTBorder(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     frame: None | bool = field(
@@ -4166,7 +4158,7 @@ class CTBorder(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -4210,7 +4202,7 @@ class CTCaption(Child):
             "name": "chapNum",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     heading: None | int = field(
@@ -4226,7 +4218,7 @@ class CTCaption(Child):
             "name": "noLabel",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     num_fmt: None | NumberFormat = field(
@@ -4433,7 +4425,7 @@ class CTColumns(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -5084,7 +5076,7 @@ class CTDocProtect(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     enforcement: None | bool = field(
@@ -5092,7 +5084,7 @@ class CTDocProtect(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     crypt_provider_type: None | STCryptProv = field(
@@ -5261,7 +5253,7 @@ class CTEastAsianLayout(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     combine_brackets: None | STCombineBrackets = field(
@@ -5277,7 +5269,7 @@ class CTEastAsianLayout(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     vert_compress: None | bool = field(
@@ -5286,7 +5278,7 @@ class CTEastAsianLayout(Child):
             "name": "vertCompress",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -5578,7 +5570,7 @@ class CTFramePr(Child):
             "name": "anchorLock",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -6503,7 +6495,7 @@ class CTWriteProtection(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     crypt_provider_type: None | STCryptProv = field(
@@ -6734,7 +6726,6 @@ class CtPprBaseSpacing(Child):
             "name": "beforeAutospacing",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "false",
         },
     )
     after: None | int = field(
@@ -6758,7 +6749,6 @@ class CtPprBaseSpacing(Child):
             "name": "afterAutospacing",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "false",
         },
     )
     line: None | int = field(
@@ -7122,7 +7112,7 @@ class FontRel(CTRel):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -7613,7 +7603,7 @@ class StylesLatentStyles(Child):
             "name": "defLockedState",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     def_uipriority: None | int = field(
@@ -7630,7 +7620,7 @@ class StylesLatentStyles(Child):
             "name": "defSemiHidden",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     def_unhide_when_used: None | bool = field(
@@ -7639,7 +7629,7 @@ class StylesLatentStyles(Child):
             "name": "defUnhideWhenUsed",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     def_qformat: None | bool = field(
@@ -7851,7 +7841,7 @@ class CTDocPartTypes(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -11205,7 +11195,7 @@ class FldChar(Child):
             "name": "fldLock",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     dirty: None | bool = field(
@@ -11213,7 +11203,7 @@ class FldChar(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -14443,7 +14433,7 @@ class Lvl(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -14904,7 +14894,7 @@ class CTSimpleField(Child):
             "name": "fldLock",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     dirty: None | bool = field(
@@ -14912,7 +14902,7 @@ class CTSimpleField(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -15121,7 +15111,7 @@ class Style(Child):
             "name": "customStyle",
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
 
@@ -18307,7 +18297,7 @@ class CtBdoHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(
@@ -18578,7 +18568,7 @@ class CtCustomXmlRunHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(
@@ -18849,7 +18839,7 @@ class CtDirHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(
@@ -19120,7 +19110,7 @@ class CtSdtContentRunHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(
@@ -19391,7 +19381,7 @@ class CtSimpleFieldHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(
@@ -19662,7 +19652,7 @@ class CtSmartTagRunHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(
@@ -19933,7 +19923,7 @@ class PHyperlink(Child):
         metadata={
             "type": "Attribute",
             "namespace": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-            "schema_default": "true",
+            "schema_default": "false",
         },
     )
     anchor: None | str = field(

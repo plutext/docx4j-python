@@ -1807,13 +1807,13 @@ PRINCIPLES:
 				<xsd:documentation>Border Spacing Measurement</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="shadow" type="xsd:boolean" default="true"
+		<xsd:attribute name="shadow" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Border Shadow</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="frame" type="xsd:boolean" default="true"
+		<xsd:attribute name="frame" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Create Frame Effect</xsd:documentation>
@@ -2222,7 +2222,7 @@ PRINCIPLES:
 				<xsd:documentation>East Asian Typography Run ID</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="combine" type="xsd:boolean" default="true"
+		<xsd:attribute name="combine" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Two Lines in One</xsd:documentation>
@@ -2235,13 +2235,13 @@ PRINCIPLES:
 					One</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="vert" type="xsd:boolean" default="true" use="optional">
+		<xsd:attribute name="vert" type="xsd:boolean" default="false" use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Horizontal in Vertical (Rotate
 					Text)</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="vertCompress" type="xsd:boolean" default="true"
+		<xsd:attribute name="vertCompress" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Compress Rotated Text to Line
@@ -2530,7 +2530,7 @@ PRINCIPLES:
 				<xsd:documentation>Frame Height Type</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="anchorLock" type="xsd:boolean" default="true"
+		<xsd:attribute name="anchorLock" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Lock Frame Anchor to
@@ -2841,7 +2841,7 @@ PRINCIPLES:
 					Version</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="nlCheck" type="xsd:boolean" default="true"
+		<xsd:attribute name="nlCheck" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Natural Language Grammar
@@ -3072,14 +3072,14 @@ PRINCIPLES:
 					Restrictions</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="formatting" type="xsd:boolean" default="true"
+		<xsd:attribute name="formatting" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Only Allow Formatting With Unlocked
 					Styles</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="enforcement" type="xsd:boolean" default="true">
+		<xsd:attribute name="enforcement" type="xsd:boolean" default="false"> <!-- absent is off (issue 697); was default="true" -->
 			<xsd:annotation>
 				<xsd:documentation>Enforce Document Protection
 					Settings</xsd:documentation>
@@ -3248,33 +3248,33 @@ PRINCIPLES:
 		</xsd:attribute>
 	</xsd:complexType>
 	<xsd:complexType name="CT_TrackChangesView">
-		<xsd:attribute name="markup" type="xsd:boolean" default="true"
+		<xsd:attribute name="markup" type="xsd:boolean"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Display Visual Indicator Of Markup
 					Area</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="comments" type="xsd:boolean" default="true"
+		<xsd:attribute name="comments" type="xsd:boolean"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Display Comments</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="insDel" type="xsd:boolean" default="true"
+		<xsd:attribute name="insDel" type="xsd:boolean"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Display Content Revisions</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="formatting" type="xsd:boolean" default="true"
+		<xsd:attribute name="formatting" type="xsd:boolean"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Display Formatting
 					Revisions</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="inkAnnotations" type="xsd:boolean" default="true"
+		<xsd:attribute name="inkAnnotations" type="xsd:boolean"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Display Ink Annotations</xsd:documentation>
@@ -4206,8 +4206,7 @@ PRINCIPLES:
 								Units</xsd:documentation>
 						</xsd:annotation>
 					</xsd:attribute>
-					<xsd:attribute name="beforeAutospacing" type="xsd:boolean"
-						default="false" use="optional">
+					<xsd:attribute name="beforeAutospacing" type="xsd:boolean" use="optional">
 						<xsd:annotation>
 							<xsd:documentation>Automatically Determine Spacing
 								Above Paragraph</xsd:documentation>
@@ -4227,8 +4226,7 @@ PRINCIPLES:
 								Units</xsd:documentation>
 						</xsd:annotation>
 					</xsd:attribute>
-					<xsd:attribute name="afterAutospacing" type="xsd:boolean"
-						default="false" use="optional">
+					<xsd:attribute name="afterAutospacing" type="xsd:boolean" use="optional">
 						<xsd:annotation>
 							<xsd:documentation>Automatically Determine Spacing
 								Below Paragraph</xsd:documentation>
@@ -4693,13 +4691,13 @@ PRINCIPLES:
 				<xsd:documentation>Field Codes</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="fldLock" type="xsd:boolean" default="true">
+		<xsd:attribute name="fldLock" type="xsd:boolean" default="false"> <!-- absent is off (issue 697); was default="true" -->
 			<xsd:annotation>
 				<xsd:documentation>Field Should Not Be
 					Recalculated</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="dirty" type="xsd:boolean" default="true">
+		<xsd:attribute name="dirty" type="xsd:boolean" default="false"> <!-- absent is off (issue 697); was default="true" -->
 			<xsd:annotation>
 				<xsd:documentation>Field Result Invalidated</xsd:documentation>
 			</xsd:annotation>
@@ -4851,13 +4849,13 @@ PRINCIPLES:
 				<xsd:documentation>Field Character Type</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="fldLock" type="xsd:boolean" default="true">
+		<xsd:attribute name="fldLock" type="xsd:boolean" default="false"> <!-- absent is off (issue 697); was default="true" -->
 			<xsd:annotation>
 				<xsd:documentation>Field Should Not Be
 					Recalculated</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="dirty" type="xsd:boolean" default="true">
+		<xsd:attribute name="dirty" type="xsd:boolean" default="false"> <!-- absent is off (issue 697); was default="true" -->
 			<xsd:annotation>
 				<xsd:documentation>Field Result Invalidated</xsd:documentation>
 			</xsd:annotation>
@@ -5641,7 +5639,7 @@ PRINCIPLES:
 				<xsd:documentation>Number of Equal Width Columns</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="sep" type="xsd:boolean" default="true" use="optional">
+		<xsd:attribute name="sep" type="xsd:boolean" default="false" use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Draw Line Between Columns</xsd:documentation>
 			</xsd:annotation>
@@ -8186,7 +8184,7 @@ PRINCIPLES:
 		</xsd:sequence>
 	</xsd:complexType>
 	<xsd:complexType name="CT_SdtText">
-		<xsd:attribute name="multiLine" type="xsd:boolean" default="true">
+		<xsd:attribute name="multiLine" type="xsd:boolean" default="false">
 			<xsd:annotation>
 				<xsd:documentation>Allow Soft Line Breaks</xsd:documentation>
 			</xsd:annotation>
@@ -9420,7 +9418,7 @@ PRINCIPLES:
 						</xsd:annotation>
 					</xsd:attribute>
 					<xsd:attribute name="history" type="xsd:boolean"
-						default="true" use="optional">
+						default="false" use="optional">
 						<xsd:annotation>
 							<xsd:documentation>
 								Add To Viewed Hyperlinks
@@ -10647,7 +10645,7 @@ PRINCIPLES:
 		</xsd:attribute>
 	</xsd:complexType>
 	<xsd:complexType name="CT_FtnEdnRef">
-		<xsd:attribute name="customMarkFollows" type="xsd:boolean" default="true"
+		<xsd:attribute name="customMarkFollows" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Suppress Footnote/Endnote Reference
@@ -11991,7 +11989,7 @@ PRINCIPLES:
 		</xsd:attribute>
 	</xsd:complexType>
 	<xsd:complexType name="CT_WriteProtection">
-		<xsd:attribute name="recommended" type="xsd:boolean" default="true"
+		<xsd:attribute name="recommended" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Recommend Write Protection in User
@@ -13188,7 +13186,7 @@ PRINCIPLES:
 							<xsd:documentation>Level Text</xsd:documentation>
 						</xsd:annotation>
 					</xsd:attribute>
-					<xsd:attribute name="null" type="xsd:boolean" default="true"
+					<xsd:attribute name="null" type="xsd:boolean" default="false"
 						use="optional">
 						<xsd:annotation>
 							<xsd:documentation>Level Text Is Null
@@ -13218,7 +13216,7 @@ PRINCIPLES:
 						Properties</xsd:documentation>
 				</xsd:annotation>
 				<xsd:complexType>
-					<xsd:attribute name="legacy" type="xsd:boolean" default="true"
+					<xsd:attribute name="legacy" type="xsd:boolean" default="false"
 						use="optional">
 						<xsd:annotation>
 							<xsd:documentation>Use Legacy Numbering
@@ -13268,7 +13266,7 @@ PRINCIPLES:
 				<xsd:documentation>Template Code</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="tentative" type="xsd:boolean" default="true"
+		<xsd:attribute name="tentative" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Tentative Numbering</xsd:documentation>
@@ -13562,7 +13560,7 @@ PRINCIPLES:
 							Key</xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
-				<xsd:attribute name="subsetted" type="xsd:boolean" default="true">
+				<xsd:attribute name="subsetted" type="xsd:boolean" default="false">
 					<xsd:annotation>
 						<xsd:documentation>Embedded Font Is
 							Subsetted</xsd:documentation>
@@ -14153,7 +14151,7 @@ PRINCIPLES:
 				</xsd:annotation>
 			</xsd:element>
 		</xsd:choice>
-		<xsd:attribute name="all" type="xsd:boolean" default="true" use="optional">
+		<xsd:attribute name="all" type="xsd:boolean" default="false" use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Entry Is Of All Types</xsd:documentation>
 			</xsd:annotation>
@@ -14405,7 +14403,7 @@ PRINCIPLES:
 				<xsd:documentation>Name Value</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="decorated" type="xsd:boolean" default="true"
+		<xsd:attribute name="decorated" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Built-In Entry</xsd:documentation>
@@ -15214,7 +15212,7 @@ PRINCIPLES:
 				</xsd:annotation>
 			</xsd:attribute>
 			<xsd:attribute name="customStyle" type="xsd:boolean"
-				default="true" use="optional">
+				default="false" use="optional">
 				<xsd:annotation>
 					<xsd:documentation>
 						User-Defined Style
@@ -15255,7 +15253,7 @@ PRINCIPLES:
 										</xsd:annotation>
 									</xsd:attribute>
 									<xsd:attribute name="locked"
-										type="xsd:boolean" default="true">
+										type="xsd:boolean">
 										<xsd:annotation>
 											<xsd:documentation>Latent Style
 												Locking
@@ -15270,14 +15268,14 @@ PRINCIPLES:
 										</xsd:annotation>
 									</xsd:attribute>
 									<xsd:attribute name="semiHidden"
-										type="xsd:boolean" default="true">
+										type="xsd:boolean">
 										<xsd:annotation>
 											<xsd:documentation>Semi hidden text
 												override</xsd:documentation>
 										</xsd:annotation>
 									</xsd:attribute>
 									<xsd:attribute name="unhideWhenUsed"
-										type="xsd:boolean" default="true">
+										type="xsd:boolean">
 										<xsd:annotation>
 											<xsd:documentation>Unhide when
 												used</xsd:documentation>
@@ -15299,7 +15297,7 @@ PRINCIPLES:
 							</xsd:element>
 						</xsd:sequence>
 						<xsd:attribute name="defLockedState" type="xsd:boolean"
-							default="true">
+							default="false">
 							<xsd:annotation>
 								<xsd:documentation>Default Style Locking
 									Setting</xsd:documentation>
@@ -15313,14 +15311,14 @@ PRINCIPLES:
 							</xsd:annotation>
 						</xsd:attribute>
 						<xsd:attribute name="defSemiHidden" type="xsd:boolean"
-							default="true">
+							default="false">
 							<xsd:annotation>
 								<xsd:documentation>Default Semi-Hidden
 									Setting</xsd:documentation>
 							</xsd:annotation>
 						</xsd:attribute>
 						<xsd:attribute name="defUnhideWhenUsed" type="xsd:boolean"
-							default="true">
+							default="false">
 							<xsd:annotation>
 								<xsd:documentation>Default Hidden Until Used
 									Setting</xsd:documentation>
@@ -15393,7 +15391,7 @@ PRINCIPLES:
 				<xsd:documentation>Automatic Caption Placement</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="chapNum" type="xsd:boolean" default="true"
+		<xsd:attribute name="chapNum" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Include Chapter Number in Field for
@@ -15405,7 +15403,7 @@ PRINCIPLES:
 				<xsd:documentation>Style for Chapter Headings</xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="noLabel" type="xsd:boolean" default="true"
+		<xsd:attribute name="noLabel" type="xsd:boolean" default="false"
 			use="optional">
 			<xsd:annotation>
 				<xsd:documentation>Do Not Include Name In Caption</xsd:documentation>
