@@ -75,7 +75,8 @@ departure; read them before changing the area they cover. Status, 2026-10-24:
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
   user, 2026-10-24); all three are done. **It also waits for core-ts's CR-002 section 63** (Word's writes into a
-  control showing its placeholder, checks 63 and 64) **and its port here** (the user, 2026-10-25; CR-016 section 13.5).
+  control showing its placeholder, checks 63 and 64) **and its port here** (the user, 2026-10-25; CR-016 section 13.5). core-ts implemented it at `020c039`; the port is
+  **CR-019** (proposed 2026-10-25: A the writes, B placeholders in Word's form and the glossary, C the records and the Word check).
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
