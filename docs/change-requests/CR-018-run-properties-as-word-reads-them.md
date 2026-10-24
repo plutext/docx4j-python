@@ -337,6 +337,18 @@ The user ran it with no repairs. docx4j's session read it, recording it in docx4
    - **H7:** a direct green over a highlighting character style is drawn green, but the save drops the green.
    - **U4:** `w:u w:color="auto"` over a red underline style is drawn black, but the save drops the `w:u`.
 
+### 3.1d Round seven, and docx4j CR-061 complete (2026-10-24)
+
+docx4j's session reported both. They're unpushed there, and checked in `../docx4j`.
+- **CR-061 is complete** (`5163c2986`). Its Word check passed:
+  - no repair prompt on docx4j's normalised saves of 15 probes;
+  - Word's saves of those equal its saves of the probes at 251 markers;
+  - the PDFs are pixel-identical.
+- **Round seven.** The fixtures are in docx4j-core-tests' `runprops/word365/`; the probes and `build7.py` are on the share.
+  - **`w:shd/@w:color`** follows the fill rule: names are written as hex, and an invalid value is `auto`, over a style too. Phase B takes it with `w:shd/@w:fill`.
+  - **`w:background/@w:color`** reads names. Word **drops** a `w:background` whose colour it rejects, where docx4j writes `auto`. Both presumably mean no page colour.
+  - **This package follows Word's save and drops it** in the normaliser, Phase B. The reason is section 4.7's rule, "Word's reading, written plainly": with no page colour, absent is the plain form. That is a difference in spelling from docx4j only.
+
 ### 3.2 docx4j-core-ts CR-015 (proposed, uncommitted)
 
 Known here only from its registry entry. jsonix fails the whole part on an on/off value outside `true`/`false`/`1`/`0`/`on`/`off`, or on an enumeration value outside its enumeration. Its D1 puts the leniency in the parse (jsonix and the generated objects), so it depends on a jsonix change. Its D2 kept each invalid value's spelling until round five was measured. As of 2026-10-24 (core-ts's session, reviewing this CR at the user's request) the leniency is jsonix-CR-010's callbacks (jsonix 3.7.0), scoped by the objects facade to `org_docx4j_wml` classes. Its D5 and D6 are answered by rounds five and six. Its D2 matched docx4j's accepted D2 to D4, and core-ts is recommending this CR's section 4.7 instead: normalise by default, with an opt-out. It plans an Office JS check 60 and a fifth probe round of invalid values over styles, and copies the probes into `test/onoff-fun/`.
@@ -548,6 +560,8 @@ Nothing reads the defaults until Phase C, so the refresh changes no answer.
 | `w:color/@w:val` invalid **beside a `w:themeColor`** | `w:val="auto"`, the theme attributes kept | the theme colour, which wins over `w:val` (CR-009); `w:val` is required, so it is set rather than dropped |
 | `w:shd/@w:fill` or a border colour: a name or hex | `RRGGBB` | that colour |
 | `w:shd/@w:fill` or a border colour invalid | `auto` | automatic, overriding a style (round six) |
+| `w:shd/@w:color` invalid | `auto` | the fill rule (round seven) |
+| `w:background/@w:color` invalid | the `w:background` dropped, as Word's save drops it | no page colour (round seven) |
 
 **Values that bind as they are** (an exact `true`, `false`, `1`, `0`, an enumeration member, six hex digits as bytes) are not the normaliser's: the serialiser writes them as today, booleans numeric (`"1"`, `"0"`). So "bare" in the table is the form of a rewritten on value only, and an existing `w:val="1"` stays `"1"`. Both mean on to every reader.
 
