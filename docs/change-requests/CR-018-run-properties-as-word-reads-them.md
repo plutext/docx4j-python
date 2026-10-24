@@ -759,7 +759,8 @@ Phases A and C as built, at the user's go ("implement CR-018"), on the fork's st
 - `46bc013`: Phase A: `values.py`, every reader switched, the exact parse, `part.kept`, the normaliser, `canon.py`'s `word-normal-form`, `roundtrip.py` both ways, `tests/test_parser_configs.py` and `tests/content/test_run_property_values.py`.
 - `2d37778`: Phase C: `effective()`, the attribute readers through it, `tests/content/test_effective.py`.
 - `ae6e611` (the coordinator's, not this phase's): `pyproject.toml`'s floor raised to `docx4j-xsdata[lxml]>=26.2.3,<26.3` in both places once 26.2.3 was on PyPI, and `.venv-fork`'s editable install refreshed to 26.2.3.
-- The commit adding this section: this section, the Status line, the index row, the CHANGELOG's 0.2.0 bullets and `tests/README.md`'s map and provenance.
+- `4f8c12f`: this section, the Status line, the index row, the CHANGELOG's 0.2.0 bullets and `tests/README.md`'s map and provenance.
+- `2c9b788`: `roundtrip.py`'s unused `XmlContext` in `main`, after Phase A moved it into `_upstream_configs`.
 
 ### 10.1 What landed
 
