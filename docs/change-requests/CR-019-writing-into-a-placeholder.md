@@ -549,7 +549,7 @@ Phase A already wrote check 67's plain run, so check 67 moves nothing; it is hel
   - (c) a Word's-form control whose `w:sdtPr/w:rPr` has `w:b`.
 
   Both ports follow Word's answer before Phase C's Word check. Until then the rule stays as Phase A wrote it.
-- **Phase B's oracle moves to core-ts's section 63.18**, in progress there when this was written ("A placeholder shows its entry's
+- **Phase B's oracle moves to core-ts's section 63.18**, committed at `aefc41f` ("A placeholder shows its entry's
   content; a missing entry gives way to Word's default"). It aligns core-ts with docx4j's CR-063 phases 1 and 2 (docx4j `5f5e53921`,
   `VERSION_17_3_5`, unpushed), which docx4j-25 reported the same day:
   - a control showing its placeholder holds a copy of its entry's content, the control's own `w:sdtPr/w:rPr` over each run's
@@ -559,5 +559,5 @@ Phase A already wrote check 67's plain run, so check 67 moves nothing; it is hel
 
   Section 4.8's "a control naming an entry the glossary lacks ... has that entry written with the default text" is replaced by the
   second. Q3's departure from docx4j shrinks to what core-ts records there: entries written on save (docx4j writes them during
-  binding), a new `w:guid` (docx4j gives check 34's), and no configurable placeholder run. Phase B starts from core-ts's commit of
-  section 63.18.
+  binding), a new `w:guid` (docx4j gives check 34's), and no configurable placeholder run. Phase B starts from `aefc41f`.
+- **Check 68:** the user said yes (2026-10-25), with cases (a) to (c) and core-ts's (d): a Word's-form control whose `w:sdtPr/w:rPr` is bold, its content deleted, to see whether the entry Word brings back carries the control's bold (section 63.18's run-property precedence).
