@@ -493,6 +493,8 @@ docx4j built it in four phases with its own engine underneath; this port has its
 and its goldens from the start. C is most of the work: docx4j's `FormattingSwitchHelper` alone is
 1,092 lines, and its OMML conversion 668.
 
+**From CR-016 (2026-10-24).** When Phase E (the HTML reader, Q12 and Q13) builds a table into the document, each cell it builds ends with a paragraph, through `table_rules.end_with_paragraph` (CR-016 Phase A, its section 4.2). Word repairs a cell that doesn't. A reader that only extracts text builds no cell and is not touched.
+
 ## 9. Questions
 
 1. **Q1: the package and names**: `docx4j_py.model.text`; `extract(...)` for docx4j's
