@@ -1,6 +1,6 @@
 # CR-018: Run properties read as Word 365 reads them --- on/off values, the enumerations and `w:color`, one reader for each, and `effective()` for a value the file leaves out
 
-**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new. Q5 and Q6 were revised the same day at the user's direction: a save writes Word's reading in a plain normal form by default, with an opt-out that keeps the source's spelling (section 4.7, Q17).
+**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new. Q5 and Q6 were revised the same day at the user's direction: a save writes Word's reading in a plain normal form by default, with an opt-out that keeps the source's spelling (section 4.7, Q17). **Decided 2026-10-24**, every question as recommended (the user: "CR-018's other questions answered as recommended"). **Implementation started the same day** (the user: "implement CR-018"), with the fork's stage 13 first.
 - **(a)** one ST_OnOff reader, used by every reader of an on/off value here, with the value kept as written so that Word's rule can be applied to it;
 - **(b)** the enumerations `u`, `highlight`, `vertAlign` and `em` read as unset when the value is outside the enumeration, in the resolver's merge as well as in the readers;
 - **(c)** one `w:color` reader: hex, the classic HTML colour names, and automatic;
@@ -324,7 +324,7 @@ The user ran it with no repairs. docx4j's session read it, recording it in docx4
 
 ### 3.2 docx4j-core-ts CR-015 (proposed, uncommitted)
 
-Known here only from its registry entry. jsonix fails the whole part on an on/off value outside `true`/`false`/`1`/`0`/`on`/`off`, or on an enumeration value outside its enumeration. Its D1 puts the leniency in the parse (jsonix and the generated objects), so it depends on a jsonix change. Its D2 keeps each invalid value's spelling until round five is measured, then drops those it shows to be as if absent. It plans an Office JS check 60 and a fifth probe round of invalid values over styles, and copies the probes into `test/onoff-fun/`.
+Known here only from its registry entry. jsonix fails the whole part on an on/off value outside `true`/`false`/`1`/`0`/`on`/`off`, or on an enumeration value outside its enumeration. Its D1 puts the leniency in the parse (jsonix and the generated objects), so it depends on a jsonix change. Its D2 kept each invalid value's spelling until round five was measured. As of 2026-10-24 (core-ts's session, reviewing this CR at the user's request) the leniency is jsonix-CR-010's callbacks (jsonix 3.7.0), scoped by the objects facade to `org_docx4j_wml` classes. Its D5 and D6 are answered by rounds five and six. Its D2 matched docx4j's accepted D2 to D4, and core-ts is recommending this CR's section 4.7 instead: normalise by default, with an opt-out. It plans an Office JS check 60 and a fifth probe round of invalid values over styles, and copies the probes into `test/onoff-fun/`.
 
 ### 3.3 The xsdata fork session's answer (2026-10-24)
 
@@ -578,15 +578,15 @@ So **following Word contradicts python-docx's answer only where python-docx misp
 
 ### 4.10 Departures
 
-**From Word.** None in reading. On save, the source's spelling (Q5) and the repaired enumerations (Q6) are kept, where Word writes its own form.
+**From Word.** None in reading. On save, a normal form of Word's reading (section 4.7): on is bare and off `"0"` wherever Word would drop an off value, and the repairs Word makes on load are made on save instead. Word's own save changes meaning in two places (H7, U4), which this package doesn't copy.
 
 **From docx4j CR-060:**
 1. **The bound value.** docx4j's adapter reads the value into a `Boolean`; here the value is kept as a `str` and read by a function. The answers are the same.
-2. **D2.** docx4j writes `true`/`false`; here the source's spelling is kept (Q5).
-3. **D3.** docx4j drops invalid `highlight`, `vertAlign` and `em` on save; here they are kept (Q6).
+2. **D2.** docx4j writes `true`/`false`; here on is bare and off `"0"` (Q5, section 4.7). Both mean the same to Word; only the spelling differs.
+3. **D3.** docx4j drops invalid `highlight`, `vertAlign` and `em` on save, and so does this package's normaliser (Q6, as revised); the opt-out keeps them.
 4. **The scope.** docx4j's adapter reaches every ST_OnOff attribute by type. Here the readers are switched one by one (section 2.8's 20 rows), and the converter reaches every `bool` field.
 
-**From core-ts CR-015**, as its registry entry states it: none foreseen. Its leniency lives in jsonix's parse, and this package's parse is lenient already.
+**From core-ts CR-015**, as its session described it on 2026-10-24: its leniency lives in jsonix's parse, and this package's in the fork's (section 4.1a). The two normal forms are being aligned (Q5's spellings, a theme colour beside an invalid `w:val`, the names of the kept-value record); differences left after that are listed here.
 
 ### 4.11 Errors
 
@@ -688,7 +688,9 @@ CLAUDE.md asks for a Word check after any change to marshalling. Phase A changes
 5. **The enumeration merge** changes the resolver's output for an invalid direct value. docx4j's JAXB already nulls such a value, so the two engines agree after the change, and no golden holds one.
 6. **The counterparts move.** docx4j's CR-060 is accepted and being implemented; core-ts's CR-015 is uncommitted and may change. This CR follows the rules, not either implementation, and section 4.10 records where it departs. A later change there is a later amendment here.
 
-## 8. Questions (open; each with a recommendation)
+## 8. Questions (decided 2026-10-24, each as recommended)
+
+**Decided 2026-10-24** (the user: "CR-018's other questions answered as recommended"), Q5 and Q6 as revised at the user's direction the same day (section 4.7). Q11 is confirmed with them: the share's probe files may be used here under Apache-2.0, and rounds one to four come from docx4j's tree (Q14). Q8 was answered by rounds five and six (sections 3.1b, 3.1c). The questions stand below as they were asked.
 
 1. **Q1. Does 0.2.0 wait for CR-018?** *Recommended: yes for Phase A only (the refresh and the on/off reader), as this repository's session recommended to the user on 2026-10-24; B to D in the next release.* Phase A closes a save that changes meaning (`" false"` written `"0"`, finding 1), which 0.1.0 has too. It needs the fork's 26.2.3 (section 4.1a) and nothing from CR-016, and it is a day or a day and a half here. The refresh changes metadata only.
 2. **Q2. How does `" false"` survive the parse?** *Recommended (revised 2026-10-24, the user assuming a fork release): the fork's `ParserConfig(exact_types={bool, Enum})`, stage 13 item 29, set by `runtime.parser_config()`* (section 4.1a). It is explicit per parse, with no global mutation, no import-order trap and no test swapping, and it covers the enumerations' padding too. The first draft's option 1, a converter registered through `register_converter`, needs no release, binds the same values, and stays the fallback if 26.2.3 is delayed.
