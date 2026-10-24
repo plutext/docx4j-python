@@ -17,6 +17,7 @@ before CR-004 and CR-005.
 (section 2 the rules, section 4 the design, section 5 the probes, section 11 Office's readings) and
 docx4j-core-ts's `docs/change-requests/CR-008-theme-colours.md` (proposed the same day, the same
 two phases; the two engines stay one design).
+**Phase B scheduled 2026-10-24** (the user: "0.2.0 waits for CR-009 Phase B"): docx4j's colour resolver ported as section 11 records docx4j-core-ts did (`27be4a7`), after CR-018 Phase B. Not started.
 
 ## 1. Why
 
@@ -505,3 +506,5 @@ docx4j-core-ts's session reported it at the user's word: CR-008 phase 2, `27be4a
 - **A package with no theme** reads the default theme its `fonts.defaultTheme` names; the 2007 and 2013 themes both give `4472C4` (docx4j CR-034 D2).
 
 **For Phase B here:** port docx4j's package as core-ts did, held to the same vectors copied from docx4j's tree with their SHA-1s. `Font.color`'s effective view then moves exactly where 10.7's measurement says a theme reference meets a stale cache. CR-013's check 53 assertion of `font.color` (`#000000` against `""`, listed "CR-009's" in CR-013 section 6.1) and CR-016's `Font` reading every run both take the new answer. When Phase B is scheduled is the user's call, including whether 0.2.0 waits for it.
+
+**Scheduled 2026-10-24** (the user: "0.2.0 waits for CR-009 Phase B"). Phase B ports docx4j's `org.docx4j.model.color` as section 11 says, after CR-018 Phase B, whose colour reader and merge it sits on, and before or with CR-016 Phase B, whose `Font` reads every run. It is not started.
