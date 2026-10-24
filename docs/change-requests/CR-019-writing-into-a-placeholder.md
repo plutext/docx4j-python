@@ -1,9 +1,9 @@
 # CR-019: Writing into a content control showing its placeholder, and placeholders written in Word's form --- the port of docx4j-core-ts CR-002 section 63 (`020c039`)
 
-**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A implemented 2026-10-25** (section 10), in two commits: the rules check 64 measured (`b17bbab`: Word's form, every route, D4, D7) and those resting on check 63 alone (`dc027fd`: the bare form's tracked deletion and `insert_paragraph`, a control's `"Content"` delete, D3 with risk 2's and the equation refusals gone, D6 (b)), held to Word's runs of checks 63 and 64 but for the bare form's look, settled plain by core-ts's check 67 (Q1, so no D2 (a)), and the controls Phase B makes. Three phases (section 6): A, the writes; B, placeholders in Word's form; C, the records and the Word check. They come to 3 to 4 days. 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
+**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A implemented 2026-10-25** (section 10), in two commits: the rules check 64 measured (`b17bbab`: Word's form, every route, D4, D7) and those resting on check 63 alone (`dc027fd`: the bare form's tracked deletion and `insert_paragraph`, a control's `"Content"` delete, D3 with risk 2's and the equation refusals gone, D6 (b)), held to Word's runs of checks 63 and 64 but for the bare form's look, settled plain by core-ts's check 67 (Q1, so no D2 (a)), and the controls Phase B makes. **Then check 63 was run again with Design Mode off** (section 11): its first run had been made in Design Mode, and with it off the bare form writes as Word's form does. The user decided core-ts's revised rules there (D1, D2 (b), D3's tracked markup, D5 and a new D10); Phase A2 ports them, correcting `dc027fd`. Four phases (sections 6 and 11): A, the writes; A2, run 2's answers; B, placeholders in Word's form; C, the records and the Word check. 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
 
 **Depends on:**
-- **docx4j-core-ts** `020c039`: CR-002 sections 63 to 63.12; its `src/model/content/placeholders.mts`, `ContentControl.mts`, `Paragraph.mts` and `Range.mts`, and `src/model/customxml/bindings.mts`; `test/placeholders.test.mjs` (25 tests); Word checks 63 to 66, with their files, Word's JSONs and Word's saves (`test/fixtures/check63/` to `check66/`, `test/check63/` to `check66/`). Checks 63 to 66 were written and run at `2070694`, `ae9215f` and `2d080d4`.
+- **docx4j-core-ts** `020c039`: CR-002 sections 63 to 63.12; its `src/model/content/placeholders.mts`, `ContentControl.mts`, `Paragraph.mts` and `Range.mts`, and `src/model/customxml/bindings.mts`; `test/placeholders.test.mjs` (25 tests); Word checks 63 to 66, with their files, Word's JSONs and Word's saves (`test/fixtures/check63/` to `check66/`, `test/check63/` to `check66/`). Checks 63 to 66 were written and run at `2070694`, `ae9215f` and `2d080d4`. Check 67 and check 63's run 2 (Design Mode off), and the revision to run 2, at `2bafbcb` and `d84f3da` (section 11).
 - **This repository:** CR-016 Phase B (the placeholder reads and `ContentControl.insert_text`), CR-013 Phase C (the span edits, `mark_holder_deleted`, the tracked Replace's order), CR-003 Phase E (the control kinds, `apply_bindings`), and the typed `GlossaryDocumentPart` (CR-002).
 - **docx4j** CR-063 (proposed; its D7 decided, D1 to D6 open) is docx4j's counterpart for its binder. It is not needed; see Q3.
 - **No fork change.** `codegen/generate.sh --check` is a gate only.
@@ -200,7 +200,7 @@ The knowledge is on that `Range` object only. A range derived from it (`expand_t
 | B | Word's form written: 4.8 and 4.9 (`placeholder_text`, `show_placeholder`, the binding pass, `insert_content_control`, `package.glossary_entries` and the save hook); checks 65 and 66 ported and held to Word's runs | 1 to 1½ days |
 | C | The records (this CR's notes, CR-016 section 13.5's pointer, CR-014 section 4, CR-003's member notes, `CHANGELOG.md` with CR-016 Phase B's placeholder lines rewritten, `CLAUDE.md`, `tests/README.md`), the Word check (Q5) | ½ day |
 
-The phases go in order: B's emptied-control rule (4.4) needs A's ranges. Each phase is committed when its gates pass. After C, 0.2.0's own steps: the CHANGELOG date, `release_check.sh`, and the wheel's Word check.
+The phases go in order (A2 between A and B, section 11.3): B's emptied-control rule (4.4) needs A's ranges. Each phase is committed when its gates pass. After C, 0.2.0's own steps: the CHANGELOG date, `release_check.sh`, and the wheel's Word check.
 
 ## 7. Risks
 
@@ -370,3 +370,56 @@ About 3.5 µs a write where no control is near (`_placeholder_control`'s parent 
 3. **Check 63's rerun** (Design Mode, above) may move 10.4's rules: they are `dc027fd`'s.
 4. **`CLAUDE.md`'s CR-016 line** still says `paragraph.text = ...` over a run-level placeholder is refused, `range.holds_placeholder`, and `CHANGELOG.md`'s 0.2.0 entry says so too (line 298). Both are the coordinator's and Phase C's.
 5. **Phase B's**, untouched: `placeholder_text`'s reading and setter, `show_placeholder`, the binding pass, `insert_content_control` showing a placeholder, `w:showingPlcHdr` without `w:val`, the glossary, and a Word's-form control emptied showing its entry again.
+
+## 11. Check 63 run again, with Design Mode off (2026-10-25)
+
+### 11.1 What core-ts found (its CR-002 sections 63.13 to 63.17)
+
+- **Check 67** (core-ts `2bafbcb`; Word 365 16.0.20326.20232, the user's run) gave check 58's three bare-form writes in three
+  files, four phases and both lookups. All 72 came out a plain run with the flag cleared, as check 58's did.
+- **The cause was Design Mode.** Only check 63's two saves carry `<w:formsDesign/>`, and the user confirmed that Developer >
+  Design Mode was on for the whole run, to see the controls. In Design Mode a control's placeholder is editable text. core-ts's
+  `test/README.md` now says to keep Design Mode off while a check writes into controls.
+- **Check 63's run 2, with Design Mode off** (core-ts section 63.16; `test/fixtures/check63/63-placeholders-word365-run2-*.json`,
+  `test/check63/63-run2-*-word365.docx`): **the bare form gives Word's form's answers, case for case.**
+  - A write into the control is plain, with the flag cleared, and no `w:color auto` (D2 (b)).
+  - Tracked, only the insertion is recorded (D5).
+  - The control's `insertParagraph` clears the flag; the placeholder's paragraph is left empty and the new one follows (D1).
+  - Every bound node holds its write, and the controls show the writes on reopening (D7 is Word's behaviour, not a departure).
+  - **The bare form's own:** a control's `Content` delete keeps the control and its flag over a run of five spaces, nothing marked
+    tracked (D10; Word's filler for an emptied control, check 52's cases 13 and 26). A Replace or delete over the whole control
+    takes it, as in run 1 (D3); tracked, it stands between Word's `w:customXmlDelRange` markers with nothing inside marked deleted
+    and the flag gone. A paragraph beside a block control's only paragraph goes outside it, as in run 1 (D6).
+  - **Design Mode refused to turn off** over check 63's control 53: a run-level control showing its placeholder over an empty
+    `w:sdtContent`, which this package's `Content` delete leaves (section 11.2). D10's filler stops that.
+- **Decided 2026-10-25** (the user, in core-ts: "section 63 decisions as recommended, including (b) for D2"): D1, D2 (b), D3's tracked
+  markup, D5 and D10 (a) as Word; D7 needs no change; D4, D6 (b), D8 and D9 stand. core-ts implemented them as its section 63.17
+  at `d84f3da` (`main`, unpushed), Phase A2's oracle.
+
+### 11.2 What it means here
+
+The user had decided, before the rerun, to hold the rules resting on check 63 alone until it came, and then apply its answers
+("Hold them for the rerun"). The decision reached Phase A after `dc027fd` was committed. It is not reverted: run 2 confirms two of
+its five rules, and Phase A2 corrects the other three.
+
+| `dc027fd`'s rule | run 2 | Phase A2 |
+|---|---|---|
+| the bare form's tracked `w:ins` then `w:del` of the placeholder | only the insertion (D5) | the `w:del` goes: one rule for both forms |
+| the bare form's `insert_paragraph("Start"/"End")` in the placeholder's place, the flag left on | as Word's form (D1) | `b17bbab`'s Word's-form rule for both forms |
+| a control's `"Content"` delete: the bare form's runs out (deleted under tracking), the flag on, an empty `w:sdtContent` | five spaces under the flag, nothing marked (D10 (a)) | core-ts's `showFiller`, and `showEmptied` for a control holding text emptied untracked |
+| D3, `_take_whole` | confirmed; tracked: nothing inside marked deleted, the flag cleared | the tracked markup changed |
+| D6 (b) | confirmed | none |
+
+Q1 is settled as Phase A writes it: plain, by checks 58, 67 and run 2. CR-016 section 13.5's "Start" question (Q4) and D4, D7, D8
+and D9 are unchanged. Checked by hand at `b435a28`: the bare form's tracked write is the `w:ins` and the `w:del` (as `dc027fd`
+wrote it), and a run-level control's `"Content"` delete leaves `<w:sdtContent/>` with the flag on, control 53's state.
+
+### 11.3 Phase A2
+
+- **The port** of core-ts's section 63.17 at `d84f3da`, onto `dc027fd`'s code: the table above. Pre-existing pins move, among them
+  check 52's case 13 (the filler; Word's is bold, from `w:sdtPr/w:rPr` taken from the deleted text, which core-ts doesn't follow).
+- **The oracle:** run 2's two JSONs and two saves, copied into `tests/office_js/` with their SHA-1s; this package's run of check 63
+  held to run 2 in every write, as core-ts's is. Run 1's files stay, as the Design Mode record. Check 67's files are copied and held
+  to as well.
+- **The gates** as Phase A's.
+- **Size:** ½ to 1 day.
