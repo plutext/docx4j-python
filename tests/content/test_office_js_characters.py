@@ -40,7 +40,7 @@ from conftest import ROOT, reloaded
 
 from docx4j_py import create_package, load
 from docx4j_py.model.content.body import Body
-from docx4j_py.model.content.errors import SpanError, TrackedChangeError
+from docx4j_py.model.content.errors import SpanError
 from docx4j_py.model.content.math_text import math_letter
 from docx4j_py.model.content.text_model import (
     hidden_runs_of,
@@ -437,14 +437,14 @@ def test_an_equation_reads_as_word_draws_it_and_an_edit_takes_it_whole_and_untra
     cleared.change_tracking_mode = "TrackAll"
     cleared.body.clear()
     assert re.search(r"<m:oMath><m:r><w:del ", xml_of(cleared))
-    # a tracked replacement taking one is still refused, before anything changes (unmeasured where Word puts the text)
+    # a tracked paragraph's Replace taking one goes ahead, its insertion first and the equation deleted in Word's
+    # form, as a range's Replace does: refused until CR-019 (tracking.equation, core-ts's section 62.2, which went at
+    # its 020c039; CR-019 section 4.3)
     replaced = equation_package()
     replaced.change_tracking_mode = "TrackAll"
-    before = xml_of(replaced)
-    with pytest.raises(TrackedChangeError) as raised:
-        replaced.body.paragraphs[0].insert_text("z", location="Replace")
-    assert raised.value.code == "tracking.equation"
-    assert xml_of(replaced) == before, "refused before anything changed"
+    replaced.body.paragraphs[0].insert_text("z", location="Replace")
+    assert replaced.body.paragraphs[0].text == "z"
+    assert re.search(r"<w:ins [^>]*><w:r><w:t>z</w:t></w:r></w:ins><w:del .*<m:oMath><m:r><w:del ", xml_of(replaced))
     # a range's XML keeps the equation whole where the span holds part of it
     assert "oMath" in equation_package().body.paragraphs[0].search("+1 b")[0].get_xml()
 

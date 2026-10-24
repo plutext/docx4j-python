@@ -19,10 +19,12 @@ values left out, as CR-016's check 58 comparison leaves them).
   check 34's glossary), with controls Word makes and bound controls' nodes.
 
 What still differs is pinned, with its reason: the bare form's look (check 63's
-``PlaceholderText`` and ``w:color auto``, contradicted by core-ts's checks 58
-and 67: CR-019 Q1), the controls ``insert_content_control`` makes (Phase B's,
-D8), and the rules that rest on check 63 alone (CR-019 section 10), which come
-with the commit after the first.
+``PlaceholderText``, ``w:color auto`` and ``w:rPrChange``, contradicted by
+core-ts's checks 58 and 67: CR-019 Q1), the controls ``insert_content_control``
+makes (Phase B's, D8), and in Word's saves D6 (b)'s level and Word's run
+boundaries. Then core-ts's tests that are no replay: D3's markup, accepted and
+rejected; D6's level; D7's nodes in both forms. And this package's own: every
+route, the control's own ranges, Q4, the nodes.
 """
 
 from __future__ import annotations
@@ -324,37 +326,16 @@ MADE = "a control insert_content_control made, which shows no placeholder here: 
 ALONE = "a rule resting on check 63 alone, the commit after the first's (CR-019 section 10)"
 
 #: Check 63's writes whose run differs from Word's: ``n: (why, this package's digest, its other reads or None)``.
+#: Each is the bare form's look alone: the text written is a plain run here (``-`` where Word's ``S``), and tracked
+#: the placeholder's deleted runs keep their style (``s``), where in a bound plain-text control Word took it off them
+#: too, recorded in a ``w:rPrChange`` (cases 47 to 51; core-ts's D2 (a)).
 DIFFERS_63: dict[int, tuple[str, str, dict[str, Any] | None]] = {
-    **{n: (Q1, f"{n} C-- in NEW{n}", None) for n in (1, 2, 4, 5, 7, 8, 9, 27, 28, 30, 31, 33, 34, 35)},
-    **{n: (Q1, f"{n} C-- in PLAIN{n}A NEW{n} PLAIN{n}B", None) for n in (13, 14, 15, 16, 39, 40, 41, 42)},
-    # the bare form's insert_paragraph at 'End': a paragraph inside, the placeholder kept (Word: in its place, flag on)
-    **{
-        n: (ALONE, f"{n} CPS in |", {"control": {"type": "RichText", "text": "\\u000d", "paragraphs": ["", ""]}})
-        for n in (3, 29)
-    },
-    # D6 (b): a paragraph beside the control's only paragraph goes inside it
-    **{
-        n: (
-            ALONE,
-            f"{n} CPS in |",
-            {"control": {"type": "RichText", "text": "\\u000d", "paragraphs": ["", ""]}, "returned": ""},
-        )
-        for n in (10, 11, 36, 37)
-    },
-    # D3: a Replace or delete over the whole control keeps it, emptied
-    12: (ALONE, "12 CP- - ", {"control": {"type": "RichText", "text": "", "paragraphs": [""]}}),
-    18: (
-        ALONE,
-        "18 CPS out PLAIN18A NEW18 PLAIN18B",
-        {"control": {"type": "RichText", "text": "", "paragraphs": ["PLAIN18A NEW18 PLAIN18B"]}},
-    ),
-    19: (ALONE, "19 CP- out NEW19", {"control": {"type": "RichText", "text": "", "paragraphs": ["NEW19"]}}),
-    20: (ALONE, "20 CP- - ", {"control": {"type": "RichText", "text": "", "paragraphs": [""]}}),
-    26: (ALONE, "26 CP- out NEW26", {"control": {"type": "PlainText", "text": "", "paragraphs": ["NEW26"]}}),
-    44: (ALONE, "44 CPS out PLAIN44A NEW44 PLAIN44B", None),
-    # the control's own Content range's delete deletes nothing
-    17: (ALONE, "17 CPS - PLAIN17A  PLAIN17B", None),
-    43: (ALONE, "43 CPS - PLAIN43A  PLAIN43B", None),
+    **{n: (Q1, f"{n} C-- in NEW{n}", None) for n in (1, 2, 4, 5, 7, 8, 9)},
+    **{n: (Q1, f"{n} C-- in PLAIN{n}A NEW{n} PLAIN{n}B", None) for n in (13, 14, 15, 16)},
+    3: (Q1, "3 CP- in ", None),
+    **{n: (Q1, f"{n} C-s in NEW{n}", None) for n in (27, 28, 30, 31, 33, 34, 35, 47, 48, 49)},
+    **{n: (Q1, f"{n} C-s in PLAIN{n}A NEW{n} PLAIN{n}B", None) for n in (39, 40, 41, 42, 50, 51)},
+    29: (Q1, "29 CPs in ", None),
 }
 
 #: Check 64's writes whose run differs from Word's: the controls made with insert_content_control, Phase B's.
@@ -517,8 +498,9 @@ def test_check_63s_run_is_word_365s_but_for_the_differences_pinned():
     _package, ours = run_63()
     assert not [c for c in ours["cases"] if c.get("error")]
     agreeing = _held(word("63-placeholders-word365-run.json")["cases"], ours["cases"], DIFFERS_63)
-    # before CR-019, 8 of the 52 writes: 6, 21, 24, 32, 38, 45, 46 and 52
-    assert agreeing == [6, 21, 22, 23, 24, 25, 32, 38, 45, 46, 47, 48, 49, 50, 51, 52]
+    # before CR-019, 8 of the 52 writes: 6, 21, 24, 32, 38, 45, 46 and 52; at the first commit 16
+    assert agreeing == [6, 10, 11, 12, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 36, 37, 38, 43, 44, 45, 46, 52]
+    assert {why for why, _digest, _rest in DIFFERS_63.values()} == {Q1}
 
 
 def test_check_64s_run_is_word_365s_but_for_the_controls_insert_content_control_made():
@@ -631,13 +613,31 @@ def _plain(region: str) -> str:
     return re.sub(r"<w:r><w:rPr>([\s\S]*?)</w:rPr><w:t>NEW", strip, region)
 
 
-def _no_deletion(region: str) -> str:
-    """Word's markup without the bare form's tracked deletion of the placeholder, which rests on check 63 alone."""
+def _deleted_look(region: str) -> str:
+    """Word's deleted placeholder runs as they were: in a bound plain-text control Word took the style off them, recorded
+    in a ``w:rPrChange`` (check 63 cases 47 to 51), core-ts's D2 (a), which checks 58 and 67 contradict (CR-019 Q1)."""
+    return region.replace(
+        '<w:rPr><w:rPrChange><w:rPr><w:rStyle w:val="PlaceholderText"/></w:rPr></w:rPrChange></w:rPr><w:delText>',
+        '<w:rPr><w:rStyle w:val="PlaceholderText"/></w:rPr><w:delText>',
+    )
+
+
+def _block_level(region: str) -> str:
+    """A control Word's save made run-level in its paragraph, put back at block level around it (D6 (b), CR-019 4.5)."""
     return re.sub(
-        rf"<w:del><w:r>(?:<w:rPr>[\s\S]*?</w:rPr>)?<w:delText>{re.escape(PLACEHOLDER)}</w:delText></w:r></w:del>",
-        "",
+        r"<w:p>((?:<w:pPr>[\s\S]*?</w:pPr>)?)<w:sdt>(<w:sdtPr>[\s\S]*?</w:sdtPr>)<w:sdtContent>([\s\S]*?)</w:sdtContent>"
+        r"</w:sdt></w:p>",
+        r"<w:sdt>\2<w:sdtContent><w:p>\1\3</w:p></w:sdtContent></w:sdt>",
         region,
     )
+
+
+def _runs_joined(region: str) -> str:
+    """Adjacent runs of plain text as one: Word's save leaves a run boundary where this package's text joined a run."""
+    joined = re.sub(
+        r"<w:r><w:t>([^<]*)</w:t></w:r><w:r><w:t>([^<]*)</w:t></w:r>", r"<w:r><w:t>\1\2</w:t></w:r>", region
+    )
+    return joined if joined == region else _runs_joined(joined)
 
 
 def _no_layout(region: str) -> str:
@@ -645,17 +645,22 @@ def _no_layout(region: str) -> str:
     return region.replace("<w:lastRenderedPageBreak/>", "")
 
 
-#: Check 63's regions whose saved markup differs from Word's save after the run: ``n: (why, what turns Word's markup
-#: into this package's)``; None where the difference is pinned as a difference only.
+D6 = "D6 (b), decided in core-ts: the control left at block level, where Word's save made it run-level (CR-019 4.11)"
+RUNS = "Word's save leaves the text a run of its own, where this package's joined the run before (CR-019 4.11)"
+
+#: Check 63's regions whose saved markup differs from Word's save after the run: ``n: (why, the forms that make the
+#: two alike, applied to both)``; None where the difference is pinned as a difference only.
 SAVES_63: dict[int, tuple[str, tuple[Any, ...] | None]] = {
-    **{n: (Q1, (_plain,)) for n in (1, 2, 4, 5, 7, 8, 9, 13, 14, 15, 16)},
-    # tracked, the bare form's deletion of the placeholder too
     **{
-        n: (Q1 + "; " + ALONE, (_plain, _no_deletion))
-        for n in (27, 28, 30, 31, 33, 34, 35, 39, 40, 41, 47, 48, 49, 50, 51)
+        n: (Q1, (_plain,)) for n in (1, 2, 3, 4, 5, 7, 8, 9, 13, 14, 15, 16, 27, 28, 29, 30, 31, 33, 34, 35, 39, 40, 41)
     },
-    42: (Q1 + "; " + ALONE + "; Word's layout", (_plain, _no_deletion, _no_layout)),
-    **{n: (ALONE, None) for n in (3, 10, 11, 12, 17, 18, 19, 20, 26, 29, 36, 37, 38, 43, 44, 45, 46, 52)},
+    42: (Q1 + "; and Word's layout", (_plain, _no_layout)),
+    **{n: (Q1, (_plain, _deleted_look)) for n in (47, 48, 49, 50, 51)},
+    **{n: (D6, (_block_level,)) for n in (10, 11, 37)},
+    # tracked 'After': the mark marked inserted is the new paragraph's, where Word's, its control run-level, is the
+    # mark before the new paragraph, the control's paragraph's
+    36: (D6 + "; the inserted mark the new paragraph's", None),
+    18: (RUNS, (_runs_joined,)),
 }
 
 #: Check 64's regions whose saved markup differs from Word's: the controls insert_content_control made.
@@ -678,16 +683,18 @@ def _held_to_save(
         _why, forms = pinned[n]
         assert ours[n] != markup, f"{n} is Word's now: unpin it"
         if forms is not None:
+            mine = ours[n]
             for form in forms:
-                markup = form(markup)
-            assert ours[n] == markup, n
+                mine, markup = form(mine), form(markup)
+            assert mine == markup, n
     return same
 
 
 def test_check_63s_saved_markup_is_words_save_after_the_run_but_for_the_differences_pinned():
     package, _ours = run_63()
     same = _held_to_save(_saved_regions(package), _words_regions("63-run-word365.docx"), SAVES_63)
-    assert same == [6, 21, 22, 23, 24, 25, 32, 53, 54]
+    # D3's markers among them (12, 19, 20, 26, 38, 44 to 46, 52), and the bare form's tracked deletion's place
+    assert same == [6, 12, 17, 19, 20, 21, 22, 23, 24, 25, 26, 32, 38, 43, 44, 45, 46, 52, 53, 54]
 
 
 def test_check_64s_saved_markup_is_words_save_after_the_run_but_for_the_controls_insert_content_control_made():
@@ -741,13 +748,58 @@ def test_every_route_into_a_block_placeholder_writes_one_paragraph_in_its_place_
         paragraph.splice(0, 0, "VALUE")
     xml = to_xml(control.element)
     assert (control.text, control.is_showing_placeholder, len(control.paragraphs)) == ("VALUE", False, 1), xml
-    assert "PlaceholderText" not in xml and PLACEHOLDER not in xml, xml
+    # what the control shows, its deleted runs aside
+    shown = re.sub(r"<w:del [\s\S]*?</w:del>", "", xml)
+    assert "PlaceholderText" not in shown and PLACEHOLDER not in shown, xml
     # the bare form's text takes the placeholder run's look but the style; Word's form's is plain (check 64)
-    assert ("<w:b/>" in xml) == (entry is None), xml
-    # tracked, the insertion alone, in either form until the bare form's deletion (check 63 alone)
-    assert ("<w:ins " in xml) == tracked and "<w:del " not in xml, xml
+    assert ("<w:b/>" in shown) == (entry is None), xml
+    # tracked, the insertion first; in the bare form the placeholder's runs then, deleted (check 63), in Word's form not
+    # at all (check 64)
+    assert ("<w:ins " in xml) == tracked and ("<w:del " in xml) == (tracked and entry is None), xml
+    if tracked and entry is None:
+        assert xml.index("<w:ins ") < xml.index("<w:del ") and f"<w:delText>{PLACEHOLDER}</w:delText>" in xml
     again = load(io.BytesIO(package.save()), options=None).body.content_controls[0]
     assert (again.text, again.is_showing_placeholder) == ("VALUE", False)
+
+
+def test_the_bare_forms_insert_paragraph_at_end_writes_in_the_placeholders_place_and_leaves_the_flag_on_check_63_case_3():
+    for tracked in (False, True):
+        _package, control = _block_placeholder(None, tracked=tracked)
+        made = control.insert_paragraph("NEW", location="End")
+        assert len(control.paragraphs) == 1 and made.element is control.paragraphs[0].element
+        assert control.is_showing_placeholder and control.text == ""
+        xml = to_xml(control.element)
+        assert ">NEW</w:t>" in xml and ("<w:delText>" in xml) == tracked
+
+
+@pytest.mark.parametrize("tracked", [False, True])
+def test_a_controls_own_content_range_deleted_keeps_it_and_its_flag_its_placeholder_going_in_the_bare_form(tracked):
+    # core-ts check 63 cases 6, 17, 32 and 43; in Word's form nothing changes (unmeasured, CR-019 section 4.10)
+    for entry in (None, DEFAULT_ENTRY):
+        package, control = _block_placeholder(entry, tracked=tracked)
+        before = to_xml(control.element)
+        control.get_range("Content").delete()
+        xml = to_xml(control.element)
+        assert len(package.body.content_controls) == 1 and control.is_showing_placeholder
+        if entry is not None:
+            assert xml == before
+        else:
+            assert (f"<w:delText>{PLACEHOLDER}</w:delText>" in xml) == tracked
+            assert (f"<w:t>{PLACEHOLDER}</w:t>" in xml) is False
+
+
+def test_a_run_level_controls_whole_range_deleted_takes_it_as_its_replace_does():
+    # D3, unmeasured for the delete (CR-019 section 4.10): untracked the control goes; tracked it is marked deleted
+    package, control = _run_control(_PLACEHOLDER_RUN, showing=True)
+    control.get_range("Whole").delete()
+    assert (package.body.paragraphs[0].text, package.body.content_controls) == ("A  B", [])
+    package, control = _run_control(_PLACEHOLDER_RUN, showing=True)
+    package.change_tracking_mode = "TrackAll"
+    control.get_range("Whole").delete()
+    xml = to_xml(package.body.paragraphs[0].element)
+    assert re.search(
+        r"<w:customXmlDelRangeStart [^>]*/><w:sdt>.*<w:sdtContent><w:customXmlDelRangeEnd [^>]*/><w:del ", xml
+    )
 
 
 def test_words_form_insert_paragraph_at_end_empties_the_placeholders_paragraph_and_puts_the_new_one_after_check_64_case_6():
@@ -836,3 +888,94 @@ def test_d7_a_bound_controls_node_takes_every_routes_write_block_or_run(block, r
         package.body.paragraphs[0].splice(len("To: VAL"), len("To: VAL"), "UE")
     assert part.select_single_node("/ns0:greeting[1]/ns0:to[1]").text == "VALUE"
     assert control.text == "VALUE"
+
+
+# ---------------------------------------------------------------------------
+# core-ts's tests that are no replay (placeholders.test.mjs at 020c039): D3 and D6
+# ---------------------------------------------------------------------------
+
+_MARKED = (
+    '<w:customXmlDelRangeStart/><w:sdt><w:sdtPr><w:alias w:val="Check 63 control {n}"/><w:tag w:val="c63-{n}"/>'
+    '<w:id w:val="{id}"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd/><w:del><w:r><w:rPr>'
+    '<w:rStyle w:val="PlaceholderText"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del>'
+    "<w:customXmlDelRangeStart/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd/>"
+)
+
+
+def test_d3_a_replace_or_delete_over_a_whole_control_showing_its_placeholder_takes_it_tracked_in_words_markers_the_insertion_first():
+    package, ours = run_63()
+    assert not [c for c in ours["cases"] if c.get("error")]
+    saved = package.save()
+    regions = _regions(zipfile.ZipFile(io.BytesIO(saved)).read("word/document.xml"))
+
+    def marked(n: int) -> str:
+        return _MARKED.format(n=n, id=63000 + n)
+
+    # untracked the control goes: the paragraph's Replace (19), its Content delete (20), the control's Whole Replace (18)
+    assert regions[19] == "<w:p><w:r><w:t>NEW19</w:t></w:r></w:p>"
+    assert regions[20] == "<w:p/>"
+    assert regions[18] == "<w:p><w:r><w:t>PLAIN18A NEW18</w:t></w:r><w:r><w:t> PLAIN18B</w:t></w:r></w:p>"
+    assert regions[12] == "<w:p/>", "a block control goes, its paragraph emptied in its place"
+    # tracked (44 to 46): Word's markers around the control and inside it, its placeholder deleted, a Replace's
+    # insertion first
+    assert regions[44] == (
+        "<w:p><w:r><w:t>PLAIN44A </w:t></w:r><w:ins><w:r><w:t>NEW44</w:t></w:r></w:ins>"
+        f"{marked(44)}<w:r><w:t> PLAIN44B</w:t></w:r></w:p>"
+    )
+    assert regions[45] == (
+        "<w:p><w:ins><w:r><w:t>NEW45</w:t></w:r></w:ins><w:del><w:r><w:delText>PLAIN45A </w:delText></w:r></w:del>"
+        f"{marked(45)}<w:del><w:r><w:delText> PLAIN45B</w:delText></w:r></w:del></w:p>"
+    )
+    assert regions[46] == (
+        f"<w:p><w:del><w:r><w:delText>PLAIN46A </w:delText></w:r></w:del>{marked(46)}"
+        "<w:del><w:r><w:delText> PLAIN46B</w:delText></w:r></w:del></w:p>"
+    )
+    assert re.match(
+        r"^<w:customXmlDelRangeStart/><w:sdt>.*<w:sdtContent><w:customXmlDelRangeEnd/><w:p><w:del><w:r><w:rPr>"
+        r'<w:rStyle w:val="PlaceholderText"/></w:rPr><w:delText>Click or tap here to enter text\.</w:delText></w:r>'
+        r"</w:del></w:p><w:customXmlDelRangeStart/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd/>$",
+        regions[38],
+    )
+    # the bare form's tracked write: the insertion, then the placeholder's deletion (28, 47): core-ts's D2 (a) gives the
+    # insertion Word's PlaceholderText, w:color auto and w:rPrChange, which checks 58 and 67 contradict (CR-019 Q1)
+    placeholder = '<w:del><w:r><w:rPr><w:rStyle w:val="PlaceholderText"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del>'
+    assert regions[28] == (
+        '<w:sdt><w:sdtPr><w:alias w:val="Check 63 control 28"/><w:tag w:val="c63-28"/><w:id w:val="63028"/></w:sdtPr>'
+        f"<w:sdtContent><w:p><w:ins><w:r><w:t>NEW28</w:t></w:r></w:ins>{placeholder}</w:p></w:sdtContent></w:sdt>"
+    )
+    assert (
+        f"<w:sdtContent><w:p><w:ins><w:r><w:t>NEW47</w:t></w:r></w:ins>{placeholder}</w:p></w:sdtContent>"
+        in regions[47]
+    )
+    # accepted, the controls taken go and the text stays; rejected, they come back showing their placeholder
+    from docx4j_py.model import revisions
+
+    accepted = load(io.BytesIO(saved))
+    revisions.accept_all(accepted)
+    after = _saved_regions(accepted)
+    assert after[45] == "<w:p><w:r><w:t>NEW45</w:t></w:r></w:p>"
+    assert _runs_joined(after[44]) == "<w:p><w:r><w:t>PLAIN44A NEW44 PLAIN44B</w:t></w:r></w:p>"
+    rejected = load(io.BytesIO(saved))
+    revisions.reject_all(rejected)
+    restored = checks.control_by_tag(rejected.body, "c63-45")
+    assert [restored.is_showing_placeholder, restored.text, restored.paragraphs[0].text] == [
+        True,
+        "",
+        "PLAIN45A  PLAIN45B",
+    ]
+
+
+def test_d6_b_a_paragraph_put_beside_the_only_paragraph_of_a_block_control_showing_its_placeholder_goes_outside_it_at_block_level():
+    package, _ours = run_63()
+    regions = _saved_regions(package)
+    # Word's save has the control run-level in its paragraph (core-ts section 63.2); here it stays as it was
+    held = (
+        '<w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val="PlaceholderText"/></w:rPr>'
+        "<w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt>"
+    )
+    for n, before in ((10, False), (11, True), (36, False), (37, True)):
+        region = regions[n]
+        assert held in region, n
+        assert re.match(
+            rf"^<w:p>.*NEW{n}.*</w:p><w:sdt>" if before else rf"^<w:sdt>.*</w:sdt><w:p>.*NEW{n}.*</w:p>$", region
+        ), n

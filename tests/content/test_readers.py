@@ -536,18 +536,26 @@ def test_the_text_model_reads_a_placeholder_as_text_and_its_runs_have_no_office_
     assert [run.office_offset for run in others] == [0, 2]
 
 
-def test_risk_2_paragraph_text_written_over_a_run_level_placeholder_is_refused_tracked_or_not_nothing_changed():
-    for tracked in (False, True):
-        package = _section_18()
-        if tracked:
-            package.change_tracking_mode = "TrackAll"
-        paragraph = package.body.paragraphs[1]
-        before = to_xml(paragraph.element)
-        with pytest.raises(SpanError) as raised:
-            paragraph.text = paragraph.text
-        assert raised.value.code == "range.holds_placeholder"
-        assert to_xml(paragraph.element) == before, tracked
-        assert len(package.body.content_controls) == 2
+def test_risk_2_paragraph_text_written_over_a_run_level_placeholder_takes_the_control_as_words_replace_does():
+    # CR-016 Phase B refused the write (range.holds_placeholder, the user's decision of 2026-10-24, pending a
+    # measurement); Word's Replace takes the control (core-ts check 63 cases 19, 26, 45 and 52), and so does the
+    # setter since CR-019 (section 4.3, core-ts's D3): untracked it goes with the content, tracked it is marked
+    # deleted in Word's form, between w:customXmlDelRange markers, its placeholder deleted inside
+    package = _section_18()
+    paragraph = package.body.paragraphs[1]
+    paragraph.text = paragraph.text
+    assert (paragraph.text, len(package.body.content_controls)) == ("A  B", 1)
+    assert "w:sdt" not in to_xml(paragraph.element)
+    package = _section_18()
+    package.change_tracking_mode = "TrackAll"
+    paragraph = package.body.paragraphs[1]
+    paragraph.text = "C"
+    xml = to_xml(paragraph.element)
+    assert paragraph.text == "C"
+    assert re.search(r"<w:customXmlDelRangeStart [^>]*/><w:sdt>.*<w:customXmlDelRangeEnd [^>]*/><w:del [^>]*>", xml), (
+        xml
+    )
+    assert "<w:delText>Click here.</w:delText>" in xml
     # once written into, the control holds a value and the paragraph's text is the control's too
     package = _section_18()
     package.body.content_controls[1].insert_text("X")

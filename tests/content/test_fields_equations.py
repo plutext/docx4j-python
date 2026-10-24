@@ -31,12 +31,10 @@ import json
 import re
 import zipfile
 
-import pytest
 from conftest import ROOT
 
 from docx4j_py import create_package, load
 from docx4j_py.model import revisions
-from docx4j_py.model.content import TrackedChangeError
 
 OFFICE_JS = ROOT / "tests" / "office_js"
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -377,7 +375,7 @@ _SOURCE_10 = (
 )
 
 
-def test_cr_002_section_62_2_d2_a_tracked_delete_of_an_equation_holding_a_revision_of_its_own_puts_it_whole_in_one_wdel_a_tracked_range_replacement_goes_ahead_a_paragraph_one_is_refused():
+def test_cr_002_section_62_2_d2_a_tracked_delete_of_an_equation_holding_a_revision_of_its_own_puts_it_whole_in_one_wdel_a_tracked_replacement_goes_ahead_a_ranges_and_a_paragraphs():
     revised = (
         f'<w:p xmlns:w="{W}" xmlns:m="{M}"><w:r><w:t xml:space="preserve">x </w:t></w:r>'
         '<m:oMath><m:r><w:ins w:id="90" w:author="Other" w:date="2026-10-01T00:00:00Z"><m:t>q</m:t></w:ins></m:r></m:oMath>'
@@ -393,12 +391,6 @@ def test_cr_002_section_62_2_d2_a_tracked_delete_of_an_equation_holding_a_revisi
     package, body = body_of(_SOURCE_10)
     package.change_tracking_mode = "TrackAll"
     p = next(q for q in body.paragraphs if q.text.startswith("keep10a"))
-    before = document_xml_of(package.save())
-    # Paragraph.insert_text's Replace: where Word puts the text beside a deleted equation isn't measured, refused
-    with pytest.raises(TrackedChangeError) as refused:
-        p.insert_text("new", location="Replace")
-    assert refused.value.code == "tracking.equation" and "tracked replacement of an equation" in str(refused.value)
-    assert document_xml_of(package.save()) == before
     # a Range's puts its text before the deletion, as Word's does (check 52 cases 39 to 48), the equation deleted in
     # Word's form
     p.get_range().search("L10")[0].expand_to(p.get_range().search("R10")[0]).insert_text("new", location="Replace")
@@ -406,5 +398,18 @@ def test_cr_002_section_62_2_d2_a_tracked_delete_of_an_equation_holding_a_revisi
     assert re.search(
         r'<w:ins [^>]*><w:r><w:t>new</w:t></w:r></w:ins><w:del [^>]*><w:r><w:delText xml:space="preserve">L10 </w:delText></w:r></w:del>'
         r"<m:oMath><m:r><w:del ",
+        equation_or_field_paragraphs(document_xml_of(package.save()))[0],
+    )
+    # Paragraph.insert_text's Replace was refused here, since core-ts's put its text after the deletion; core-ts's
+    # puts it first since its CR-002 section 63 (D3, check 63 cases 45 and 52), as this one's has since CR-013 Phase
+    # C, and goes ahead the same way (CR-019 section 4.3)
+    package, body = body_of(_SOURCE_10)
+    package.change_tracking_mode = "TrackAll"
+    p = next(q for q in body.paragraphs if q.text.startswith("keep10a"))
+    p.insert_text("new", location="Replace")
+    assert p.text == "new"
+    assert re.search(
+        r'^<w:p><w:ins [^>]*><w:r><w:t>new</w:t></w:r></w:ins><w:del [^>]*><w:r><w:delText xml:space="preserve">'
+        r"keep10a L10 </w:delText></w:r></w:del><m:oMath><m:r><w:del ",
         equation_or_field_paragraphs(document_xml_of(package.save()))[0],
     )

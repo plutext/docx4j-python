@@ -1717,6 +1717,14 @@ class Range:
         ``w:customXmlDelRange*`` markers. The range is left collapsed where the
         text closed up (tracked, where the deletion starts).
 
+        **A content control showing its placeholder** (CR-019 sections 4.3
+        and 4.4, core-ts's D3 and D4): the control's own ``"Content"`` range
+        keeps it and its flag, its placeholder's runs going in the bare form
+        (marked deleted under tracking); its ``"Whole"`` range takes a
+        run-level one; a paragraph's ``"Content"`` range over a block
+        control's only paragraph takes the control, its paragraph left in its
+        place, emptied (tracked, the control marked deleted in Word's form).
+
         Raises:
             SpanError: ``range.partial_table`` for a range starting or ending
                 inside a table, as Word refuses it (core-ts check 52);
@@ -1725,6 +1733,26 @@ class Range:
                 change tracking for one holding a whole ``w:altChunk`` or kept
                 ``mc:AlternateContent``. Nothing has changed.
         """
+        if self.of_control is not None:
+            # a control's own range takes a control showing its placeholder as Word does (CR-019 section
+            # 4.4, core-ts's D3 and D4)
+            control, part = self.of_control
+            if control._delete_through(part):
+                self.end = self.start
+                return
+        elif self.whole and not self.mark and not self.spans_paragraphs:
+            # a paragraph's 'Content' range over a block control's only paragraph takes the control, as
+            # Word's took one showing its placeholder (CR-019 section 4.3, D3; check 63 cases 12 and 38)
+            control = self.paragraph._placeholder_control
+            if (
+                control is not None
+                and len(control.paragraphs) == 1
+                and self.start == 0
+                and self.end >= len(self.paragraph.text)
+            ):
+                landed = control._take_whole()
+                self._land_at(landed.paragraph, 0)
+                return
         if self.spans_paragraphs or self.holds_end_mark:
             self._delete_span()
             return

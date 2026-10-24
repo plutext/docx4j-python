@@ -62,7 +62,6 @@ from docx4j_py.model.content.text_model import (
     markup_text,
     office_matches,
     paragraph_mark_pieces,
-    placeholder_control_of,
     refuse_branch_text,
     refuse_equation,
     refuse_mark_replacement,
@@ -207,11 +206,12 @@ class Paragraph:
         does. In a block content control showing its placeholder the text goes
         in the placeholder's place and the control shows it
         (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2). **A
-        run-level content control showing its placeholder** reads as
-        no text (CR-016 Phase B), so the write would take it and its binding
-        with it: the write is **refused** (``SpanError`` ``range.holds_placeholder``,
-        tracked or not, nothing changed), and the control is written into with
-        :meth:`ContentControl.insert_text` instead (CR-016 section 7, risk 2). It writes one paragraph (CR-013 section 11, E2): each of Office JS's
+        run-level content control showing its placeholder**, which reads as no
+        text (CR-016 Phase B), goes with the content, as Word's Replace takes
+        one (CR-019 section 4.3, core-ts's D3; check 63 cases 19, 26, 45 and
+        52): tracked, it is marked deleted in Word's form. Until CR-019 the
+        write was refused (``range.holds_placeholder``, CR-016 section 7's risk
+        2). It writes one paragraph (CR-013 section 11, E2): each of Office JS's
         characters is written as the element it reads from (Q2;
         :func:`~.text_model.text_items`), ``\\n`` and ``\\r\\n`` a ``w:br``
         and ``\\r`` a ``w:cr``. U+0002 and the other characters XML 1.0 excludes
@@ -234,7 +234,6 @@ class Paragraph:
                 placeholder._write_placeholder(value, breaks="line")
                 change.touched(self)
             return
-        self._refuse_placeholder_controls("Paragraph.text = ...")
         with recording(self.parent_body, "set_text") as change:
             change.text(before=self.text, after=value)
             if self.change_tracker is not None:
@@ -262,31 +261,6 @@ class Paragraph:
             self.element.content[:] = [run]
             link_parents(self.element)
             change.touched(self)
-
-    def _refuse_placeholder_controls(self, operation: str) -> None:
-        """Refuse a write that replaces the whole content where a run-level control shows its placeholder.
-
-        CR-016 Phase B (its section 7, risk 2): such a control reads as no text
-        (core-ts CR-012 section 18), so a write that replaces the paragraph's
-        content would take it, and its binding, with nothing read to say so.
-
-        Raises:
-            SpanError: ``range.holds_placeholder``; nothing has changed.
-        """
-        for run in runs_of(self.element):
-            control = placeholder_control_of(run, self.element)
-            if control is None:
-                continue
-            from docx4j_py.wml.sdt import sdt_property
-
-            tag = getattr(sdt_property(getattr(control, "sdt_pr", None), "tag", WML_NS), "val", None)
-            named = f" (tagged {tag!r})" if tag else ""
-            raise SpanError(
-                f"{operation} refused: this paragraph holds a content control showing its placeholder{named}, "
-                "which reads as no text, and the write would take it (CR-016 Phase B)",
-                code="range.holds_placeholder",
-                hint="write into the control with ContentControl.insert_text, or delete the control first",
-            )
 
     @property
     def _placeholder_control(self) -> Any:
@@ -342,6 +316,30 @@ class Paragraph:
                 add(current)
                 current = getattr(current, "parent", None)
         return out
+
+    def _placeholder_controls_in(self, start: int, end: int, whole: bool | tuple[bool, bool] = False) -> list[Any]:
+        """The run-level controls showing their placeholder that ``[start, end)`` holds whole (core-ts ``placeholderControlsIn``).
+
+        Where the walk passes one strictly inside the span, or at an edge
+        `whole` holds (:func:`_in_span`). A placeholder is no text, so such a
+        control has no width (CR-019 section 4.3, D3). Not in a kept branch,
+        which is read-only.
+        """
+        from docx4j_py.model.content.controls import ContentControl
+        from docx4j_py.model.values import is_on
+
+        found: list[tuple[Any, list]] = []
+
+        def visit(item: Any, at: int, owner: Any, run: Any, _run_owner: Any, branch: Any) -> None:
+            if run is not None or branch is not None or not isinstance(item, _SDT_TYPES):
+                return
+            if not _in_span(at, start, end, whole):
+                return
+            if is_on(sdt_property(getattr(item, "sdt_pr", None), "showingPlcHdr", WML_NS)):
+                found.append((item, owner))
+
+        segments_of(self.element, hidden=self.hidden_runs(), visit=visit)
+        return [ContentControl(item, owner, self.parent_body) for item, owner in found]
 
     def text_since(self, index: int) -> str:
         """The text of this paragraph and of those a split put in front of it since it stood at `index`. Extension.
@@ -1128,7 +1126,10 @@ class Paragraph:
         after it, as Word does (CR-013 Phase C; :meth:`Range.insert_text`). In
         a block content control showing its placeholder the text goes in the
         placeholder's place at any location, and the control shows it
-        (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2).
+        (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2). A
+        ``"Replace"`` takes a run-level control showing its placeholder whole
+        (CR-019 section 4.3, core-ts's D3; check 63 cases 19, 26, 45 and 52),
+        and, tracked, deletes an equation in Word's form.
 
         Args:
             text: what to insert.
@@ -1158,11 +1159,11 @@ class Paragraph:
                 }[location]
                 index = _index_of(self.container, self.element)
                 if location == "Replace" and self.change_tracker is not None:
-                    # a tracked replacement taking an equation is refused, unmeasured, as
-                    # core-ts's Paragraph.insertText refuses it (CR-013 section 13.7, D2)
-                    self.refuse_equation(start, end)
                     # tracked, the w:ins first and the w:del after it, as Word writes a
-                    # replacement (CR-013 Phase C; docx4j-core-ts check 54 case 4)
+                    # replacement (CR-013 Phase C; docx4j-core-ts check 54 case 4, check 63
+                    # cases 45 and 52), an equation deleted in Word's form as a range's
+                    # Replace deletes one: core-ts's refusal of one went at 020c039, and
+                    # this one with it (CR-019 section 4.3)
                     out = self.get_range("Content").insert_text(text, location="Replace")
                 elif location == "Replace":
                     # the whole content: its hidden runs and pictures with it (core-ts's WHOLE)
@@ -1190,7 +1191,9 @@ class Paragraph:
 
         Word copies the paragraph properties when it splits a paragraph, minus
         the mark's run properties, the section break and any ``w:pPrChange``;
-        so does this.
+        so does this. Beside the only paragraph of a block content control
+        showing its placeholder it goes outside the control, which stays at
+        block level (CR-019 section 4.5, core-ts's D6 (b)).
 
         Args:
             text: the text of the new paragraph; ``""`` leaves it empty. One
@@ -1214,7 +1217,16 @@ class Paragraph:
                 new.p_pr = p_pr
                 link_parents(new)
                 p_pr.parent = new
-            view = self.parent_body.insert_element(new, location=location, target=self)
+            from docx4j_py.model.content.controls import holds_one_paragraph
+
+            control = self._placeholder_control
+            if control is not None and holds_one_paragraph(control):
+                # beside the only paragraph of a block control showing its placeholder, outside it, the
+                # control left at block level (CR-019 section 4.5, core-ts's D6 (b); check 63 cases 10,
+                # 11, 36 and 37, where Word's save made the control run-level)
+                view = control.parent_body.insert_element(new, location=location, target=control)
+            else:
+                view = self.parent_body.insert_element(new, location=location, target=self)
             if style is not None:
                 view.style = style
             change.text(after=text)
@@ -2070,6 +2082,16 @@ class Paragraph:
         # under tracking a deletion takes an equation whole in Word's form, and a replacement
         # doesn't take one at all (CR-013 section 13.7, D2)
         refuse_equation(segments, start, end, tracked=False if tracker is None else "replace" if text else "delete")
+        if tracker is None and (end > start or whole):
+            # a run-level control showing its placeholder that the span holds whole goes with it, as Word
+            # takes one; tracked, _delete_text marks it deleted (CR-019 section 4.3, core-ts's D3; check
+            # 63 cases 19, 20 and 26)
+            taken = self._placeholder_controls_in(start, end, whole)
+            for control in taken:
+                control._take_whole()
+            if taken:
+                listed = self.segments(objects=True)
+                segments = [segment for segment in listed if not segment.object]
         # the places of no text in the span: hidden runs' items (CR-013 Phase A) and
         # drawn objects (core-ts CR-002 section 48; CR-013 section 11), which go with it
         hidden = [
@@ -2303,7 +2325,9 @@ class Paragraph:
         (:func:`~.tracking.mark_equation_deleted`; CR-013 section 13.7, D2;
         docx4j-core-ts check 57) --- the runs either side in ``w:del``\\ s of
         their own; one holding a revision of its own goes into the ``w:del``
-        whole.
+        whole. A run-level content control showing its placeholder that the
+        span holds whole is marked deleted whole, between Word's
+        ``w:customXmlDelRange`` markers (CR-019 section 4.3, D3).
         """
         from docx4j_py.model.content.tracking import (
             equation_revision_in,
@@ -2314,6 +2338,11 @@ class Paragraph:
 
         self.refuse_branch_text(start, end, "a tracked deletion")
         refuse_equation(self.segments(), start, end, tracked="delete")
+        # a run-level control showing its placeholder that the span holds whole is marked deleted whole,
+        # in Word's markers, its placeholder deleted inside (CR-019 section 4.3, core-ts's D3; check 63
+        # cases 45, 46 and 52)
+        for control in self._placeholder_controls_in(start, end, whole):
+            control._take_whole()
         targets = self._isolate(start, end, whole=whole)
         for segment in targets:
             tracker.assert_editable(revision_of(segment.run))
