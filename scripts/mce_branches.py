@@ -431,6 +431,11 @@ def _table(totals: dict, table: str) -> str:
 #: The words ``find`` and ``search`` look for: common enough to hit in most documents.
 WORDS = ("e", "the", "Text")
 
+#: The wildcard queries ``search`` looks for (CR-016 Phase C): a full stop or a colon and the
+#: paragraph's mark after it (``^13``, Word's wildcard code for one), and a letter, a mark and a
+#: letter, which crosses from one paragraph into the next where Word's wildcards do.
+WILDCARDS = ("[.:]^13", "[a-z]^13[A-Z]")
+
 
 def _jsonable(value: Any) -> Any:
     return json.loads(json.dumps(value, default=repr))
@@ -483,6 +488,11 @@ def reader_answers(path: Path) -> dict[str, Any]:
     read("body.get_text.original", lambda: body.get_text(view="original"))
     read("body.find", lambda: {w: [h.to_dict() for h in body.find(w)] for w in WORDS})
     read("body.search", lambda: {w: [r.text for r in body.search(w)] for w in WORDS})
+    # CR-016 Phase C: Word's wildcards across a paragraph's mark
+    read(
+        "body.search.wildcards",
+        lambda: {w: [r.text for r in body.search(w, match_wildcards=True)] for w in WILDCARDS},
+    )
     read("text.extract", lambda: extract(package).to_dict())
     read("text.plain_text", lambda: plain_text(extract(package)))
     read("text.markdown", lambda: markdown(extract(package), package))
