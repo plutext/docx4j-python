@@ -58,8 +58,7 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   changes): proposed.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
-  C done (Word-checked); Phase B implemented and D's records written 2026-10-24, their Word check
-  staged in `__tmp/python-cr018b/`. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
+  C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
   user, 2026-10-24).
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D

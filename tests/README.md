@@ -541,6 +541,17 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > bold set across V4 to V6; `props-b-case` with K5 unbolded. All 21 opened without a repair prompt.
 > Acceptance: 17 artefacts, 243 entries, 0 differ beyond the dates.
 
+> **2026-10-24, CR-018 Phases B and D: passed** (the user: "__tmp/python-cr018b/ done, all opened
+> without a repair prompt except for cr018b-SOURCE-props-enum-missing.docx, which it recovered").
+> Phase B reads every enumeration and colour as Word 365 does and saves them in its normal form
+> (CR-018 section 11). Staged in `__tmp/python-cr018b/` (53 files, built by
+> `out/cr018-b-word-check/build.py` at `d1936b4`): rounds two to seven's 24 probes as sources, each
+> saved normalised; `colour-styles` saved with `normalise=False`; three edits (`Font.color` to
+> `#0000FF` and `navy`; the facade's underline to `None` and `True`; a highlight over a character
+> style's). Every save opened without a repair prompt. The one recovered file is the probe source
+> `props-enum-missing` (bare `w:highlight`, `w:vertAlign`, `w:em`), as in round two. Acceptance:
+> 17 artefacts, 0 differ.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
