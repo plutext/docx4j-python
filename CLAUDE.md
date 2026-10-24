@@ -55,7 +55,9 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   core-ts's committed `HEAD` (246 members).
 - **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058) and **CR-015**
   (Markdown output safety): proposed. **CR-016** (core-ts's cell, font, placeholder and wildcard
-  changes): proposed.
+  changes): decided 2026-10-24. Phase A (a table cell ends with a paragraph, as Word reads it:
+  `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B to D proposed,
+  and Phase D's Word check covers A.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
@@ -260,6 +262,9 @@ section 12.3.
 
 - A part that is never unmarshalled is written back **byte for byte** from the source store.
   Reading `contents` marks a part for re-marshalling. There is no dirty tracking (docx4j's rule).
+- A table cell ends with a paragraph, as Word reads it, after every content-API edit (CR-016
+  Phase A: `ends_with_paragraph` and `end_with_paragraph`, through `table_rules.py`). A file that
+  already breaks the rule is never repaired on load or save, only when an edit touches that cell.
 - An unmarshalled part saved unchanged must be **canonically identical** to the source
   (`scripts/canon.py`'s prefix-insensitive normal form). The one tolerated category is
   `boolean-spelling` (`1` against `true`). Every other difference category must be zero. The one
