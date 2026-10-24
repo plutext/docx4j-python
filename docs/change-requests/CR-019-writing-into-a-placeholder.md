@@ -1,6 +1,6 @@
 # CR-019: Writing into a content control showing its placeholder, and placeholders written in Word's form --- the port of docx4j-core-ts CR-002 section 63 (`020c039`)
 
-**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A implemented 2026-10-25** (section 10), in two commits: the rules check 64 measured (`b17bbab`: Word's form, every route, D4, D7) and those resting on check 63 alone (`dc027fd`: the bare form's tracked deletion and `insert_paragraph`, a control's `"Content"` delete, D3 with risk 2's and the equation refusals gone, D6 (b)), held to Word's runs of checks 63 and 64 but for the bare form's look, settled plain by core-ts's check 67 (Q1, so no D2 (a)), and the controls Phase B makes. **Then check 63 was run again with Design Mode off** (section 11): its first run had been made in Design Mode, and with it off the bare form writes as Word's form does. The user decided core-ts's revised rules there (D1, D2 (b), D3's tracked markup, D5 and a new D10); Phase A2 ports them, correcting `dc027fd`. Four phases (sections 6 and 11): A, the writes; A2, run 2's answers; B, placeholders in Word's form; C, the records and the Word check. 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
+**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A implemented 2026-10-25** (section 10), in two commits: the rules check 64 measured (`b17bbab`: Word's form, every route, D4, D7) and those resting on check 63 alone (`dc027fd`: the bare form's tracked deletion and `insert_paragraph`, a control's `"Content"` delete, D3 with risk 2's and the equation refusals gone, D6 (b)), held to Word's runs of checks 63 and 64 but for the bare form's look, settled plain by core-ts's check 67 (Q1, so no D2 (a)), and the controls Phase B makes. **Then check 63 was run again with Design Mode off** (section 11): its first run had been made in Design Mode, and with it off the bare form writes as Word's form does. The user decided core-ts's revised rules there (D1, D2 (b), D3's tracked markup, D5 and a new D10); **Phase A2 implemented 2026-10-25** (section 11.4, `dbce995`): it ports them, correcting `dc027fd`, so this package's run of check 63 gives run 2's answer in all 52 writes and core-ts's check 67 Word's in all 72; the bare form's look stays Phase A's, which differs from core-ts's `d84f3da` only for a placeholder run carrying more than its style, unmeasured, and wants a decision (section 11.4.4 item 1). Four phases (sections 6 and 11): A, the writes; A2, run 2's answers; B, placeholders in Word's form; C, the records and the Word check. 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
 
 **Depends on:**
 - **docx4j-core-ts** `020c039`: CR-002 sections 63 to 63.12; its `src/model/content/placeholders.mts`, `ContentControl.mts`, `Paragraph.mts` and `Range.mts`, and `src/model/customxml/bindings.mts`; `test/placeholders.test.mjs` (25 tests); Word checks 63 to 66, with their files, Word's JSONs and Word's saves (`test/fixtures/check63/` to `check66/`, `test/check63/` to `check66/`). Checks 63 to 66 were written and run at `2070694`, `ae9215f` and `2d080d4`. Check 67 and check 63's run 2 (Design Mode off), and the revision to run 2, at `2bafbcb` and `d84f3da` (section 11).
@@ -423,3 +423,117 @@ wrote it), and a run-level control's `"Content"` delete leaves `<w:sdtContent/>`
   to as well.
 - **The gates** as Phase A's.
 - **Size:** ½ to 1 day.
+
+### 11.4 Phase A2 implementation notes (2026-10-25)
+
+Phase A2 as built, on `67db0d5` (the coordinator's `4616c68`, the commit before Phase A2's, touches nothing of placeholders, so every "before" figure is `67db0d5`'s code). The oracle is docx4j-core-ts `d84f3da` (its CR-002 sections 63.13 to 63.17; the diff to `ContentControl.mts`, `Paragraph.mts`, `Range.mts`, `placeholders.mts` and `customxml/bindings.mts`; `test/placeholders.test.mjs`, `ranges.test.mjs` and `readers.test.mjs`), and check 67 from `2bafbcb`, read from core-ts's commits and, for the git-ignored files, its working tree, which was left untouched.
+
+**Commits.**
+- `dbce995`: the port (one commit: `dc027fd`'s three corrected rules and D10 are one change of `_write_placeholder`'s callers and the control's own delete), check 63's run 2 and check 67 copied and held to, `run_check_67`, and the tests they move.
+- the records, the commit after `dbce995`: this section and the Status line.
+
+#### 11.4.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| one write for both forms (D1, D2 (b), D5) | `controls.py`, `_write_placeholder` (its `keep_flag` gone), `_dress_as_placeholder` (its tracked half gone), `_put_back_deleted` removed | the placeholder's runs go untracked in either form, so under tracking only the insertion is recorded; the bare form's look is Phase A's (11.4.4 item 1) |
+| `insert_paragraph("Start" \| "End")` (D1) | `ContentControl.insert_paragraph` | `b17bbab`'s Word's-form rule for both forms: the placeholder's paragraph emptied, the flag cleared, the new paragraph after it |
+| D3's tracked markup | `ContentControl._mark_whole_deleted` | the control between Word's `w:customXmlDelRange` markers, its placeholder's runs taken out unmarked, `w:showingPlcHdr` removed (core-ts `markWholeDeleted`) |
+| D10 (a), Word's filler | `controls.py`, `FILLER`, `_show_filler`, `_show_emptied`; `_delete_through`; `range.py`, `Range.delete` and `_delete_own` | core-ts `showFiller` and `showEmptied`: a `"Content"` delete of a bare-form control showing its placeholder shows five spaces in one run in `w:sdtPr/w:rPr`'s properties under the flag, tracked or not, nothing marked; an untracked `"Content"` delete that leaves a bare-form control holding no text does the same; Word's form's emptied control is Phase B's seam (`_show_emptied`'s early return, where B calls `show_placeholder`) |
+| D7's wording | `test_placeholder_writes.py` | the bare form's node write is Word's behaviour now (check 63's run 2), not a departure; the code's docstrings never called it one, and `_write_placeholder`'s now says so |
+| comments | `insert_text`, `placeholder_entry`, `_take_whole`, `Range.delete`, `Paragraph._delete_text` | run 2's cases and `d84f3da`'s rules, where they cited run 1 |
+| check 63's run 2 and check 67 | `tests/office_js/` (sixteen files, `SHA1SUMS`): `63-placeholders-word365-run2-report.json`, `-run2-run.json`, `63-run2-opened-word365.docx`, `63-run2-word365.docx`; `67a-plain.docx`, `67b-custom-xml.docx`, `67c-revisions.docx`, their three `-word365.json`, and Word's six saves `67{a,b,c}-{opened,run}-word365.docx` | Apache-2.0 here, as checks 58 to 64's; every SHA-1 checked against core-ts's commits (the JSONs and saves) and, for Word's saves, against its `test/check63/` and `test/check67/` manifests |
+| check 67's snippet | `tests/office_js/checks.py`: `run_check_67`, `parse_region_67`, `PHASES_67`, `_control_of_67`, `_apply_67`, `_report_67` | `check67-script-lab.js` at `2bafbcb` (unchanged at `d84f3da`) step for step: its report and its four phases, each write alone, change tracking set off around each write in an `-off` phase and never touched in an `-untouched` one, the control found by `getByTag` or `getContentControls()` as the case's lookup says |
+| the tests | `tests/content/test_placeholder_writes.py` | 11.4.3 and 11.4.5 |
+
+No file under `docx4j_py/` is new, so `codegen/clean.py`'s `KEEP` is unchanged.
+
+#### 11.4.2 The rules as built, against `d84f3da`'s
+
+1. **`writePlaceholder`:** one rule, as core-ts's: the runs out untracked, the flag cleared, the text into the first paragraph (`Paragraph.splice(0, 0, ...)`) or the empty run-level control (`_insert_into_empty`), the node written. Only the bare form's look differs, in a case Word hasn't measured (11.4.4 item 1).
+2. **`insertParagraph('Start' | 'End')`** on a block control showing its placeholder: core-ts's, in both forms.
+3. **`markWholeDeleted`:** core-ts's: `mark_holder_deleted` with `_take_placeholder_runs` inside, then the flag off. Rejected, the control comes back empty without the flag, as core-ts's test has it (unmeasured).
+4. **`showFiller`:** core-ts's: the content's runs out (`_take_placeholder_runs`, a block control's paragraphs after the first going), one run of `FILLER` with a deep copy of `w:sdtPr/w:rPr` where there is one, last in what held them but before an inner `w:customXmlInsRangeStart` or `DelRangeStart` (core-ts `pushBeforeMarker`; `_TRACKED_HOLDER_STARTS`), then `w:showingPlcHdr` on (`put_property`, in `SDT_PR_ORDER`'s place).
+5. **`deleteThrough('Content')`:** core-ts's: a bare-form control showing its placeholder shows the filler, tracked or not; Word's form changes nothing. `'Whole'` unchanged (D3).
+6. **`showEmptied`:** core-ts's condition (not showing its placeholder, a block or run control, its `text` `""`); the bare form's filler; Word's form left as the delete left it, for Phase B (core-ts calls `showPlaceholder`, `020c039`'s D8, which Phase A didn't port).
+7. **`Range.delete` on a control's own `"Content"` range** the control didn't take: core-ts's `emptied` (untracked, read from the range's first paragraph before the delete), the range's own delete (`_delete_own`: `_delete_span` across paragraphs or with a mark, else the splice), then `_show_emptied`. The two are one `ChangeReport` (an outer `recording`, the inner ones adding to it).
+8. **`Paragraph.insertText`:** core-ts dropped its `colour` option; this package never wrote it (Phase A's 10.5 item 1).
+9. **`placeholders.mts` and `bindings.mts`:** comments only at `d84f3da`, on code that is Phase B's here.
+
+Everything else of Phase A stands as section 10 has it: D4, Q4, D6 (b), risk 2's and the equation refusals gone, and every rule of `020c039` that `d84f3da` left alone.
+
+#### 11.4.3 The oracles and the tallies
+
+Run through the port and held to Word's JSONs through core-ts's `digest` (now `d84f3da`'s, which finds `FILL<n>` as well as `NEW<n>`) and `view`:
+
+| | before (`67db0d5`'s code) | after |
+|---|---|---|
+| check 63's 52 writes agreeing with run 2 | 27 | **52** (core-ts: 52) |
+| check 63's 52 writes agreeing with run 1, in Design Mode | 23 | 21, differing in exactly the 31 writes in which Word's two runs differ (core-ts's 31) |
+| check 64's 52 writes | 45 | 45 (Phase B's seven, unchanged) |
+| check 67's 72 writes (and its three report steps) | 72 (all) | **72** (all; core-ts's 72) |
+| the report modes (check 63's two runs, check 64) | every region Word's | every region Word's |
+| check 63's 54 regions' saved markup, Word's run-2 save | 22 | **49** |
+| check 63's 54 regions, Word's run-1 save (the record) | 20 | 11 |
+| check 64's 52 regions' saved markup | 38 | 38 |
+| check 67's 72 controls' saved markup, Word's three run saves | 72 | 72 |
+| check 63's twelve bound nodes, run 2's | 12 | 12 (D7 had written them since `b17bbab`) |
+
+Phase A already wrote check 67's plain run, so check 67 moves nothing; it is held now, and it pins the look in all 72 writes.
+
+**Pinned after Phase A2, each with its reason:**
+- **check 63's writes:** none.
+- **check 64's writes, 7:** the controls `insert_content_control` makes (19 to 21, 36, 40 to 42), Phase B's (D8), as section 10.3 has them.
+- **check 63's saves against run 2's, 5:** D6 (b) (10, 11 and 37, otherwise Word's once Word's run-level control is put back at block level; 36, D6 (b) and the inserted mark the new paragraph's, section 10.5 item 5), and case 18's run boundary (Word's save leaves `NEW18` a run of its own). Every other region is Word's: D3's markers (12, 19, 20, 26, 38, 44 to 46, 52), D10's filler (6, 17, 32, 43), the emptied paragraph of `insert_paragraph` (3, 29) and every tracked insertion.
+- **check 64's saves, 14:** the controls made, Phase B's, unchanged.
+- **check 67:** none. Its title paragraph in 67c holds a tracked deletion, which Word's All Markup steps read into `paragraph.text` (`... Inserted. Deleted.`); that is Word's display view, which this package's text doesn't take, and the test compares the title as Simple Markup reads it.
+- **check 52's case 13** (`test_ranges.py`): this package's filler is a plain run of five spaces, where Word's is bold: Word also gave that control a `w:sdtPr/w:rPr` taken from the text it deleted, which isn't followed, as core-ts doesn't (its `ranges.test.mjs`).
+
+**core-ts's tests, ported** (`placeholders.test.mjs` at `d84f3da`): run 2's two JSONs of this file's cases and `w:formsDesign` in run 1's saves alone; Word's answers with Design Mode off (the plain writes, the insertion alone, `insert_paragraph`'s emptied paragraph, the filler, the taken controls without their flag, the nodes in the JSON and in Word's save); the port's run held to run 2 in every write, and its 31 differences from run 1; D3's markup (the markers with nothing inside, 38's empty paragraph, 28 and 47 the insertion alone, D10's 6, 17, 32 and 43), Accept All and Reject All (45 back empty, its flag off); check 67's files and snippet agreeing, Word's JSONs and saves as copied, Word's answers (every write a plain run, the flag cleared, in the JSONs and the saves), and the port's run held to Word's in every step.
+
+**This package's own:** every route into a block placeholder, both forms, tracked or not (no `w:del` in either); `insert_paragraph("End")` in both forms, tracked or not; D10's filler for a block and a run control, tracked or not, read as no text by `text`, `Body.text` and `search`, read by the text model as the placeholder run it is (left out with `TextOptions(placeholders=False)`), and saved and read back; Word's form's `"Content"` delete changing nothing; a control holding text emptied by its `"Content"` range showing the filler untracked and nothing tracked, block and run, and Word's form's left empty for Phase B; a run-level `"Whole"` delete tracked with nothing inside marked; check 67's saved controls against Word's saves.
+
+#### 11.4.4 Departures and choices, with why
+
+1. **The bare form's look stays Phase A's, where `d84f3da` writes plain in both forms.** `_dress_as_placeholder` gives the text the first placeholder run's own properties with the `PlaceholderText` style dropped (CR-016 Phase B's rule, pinned by `test_readers.py`'s `test_every_location_writes_in_the_placeholders_place_the_flag_cleared_the_style_gone_the_runs_own_look_kept` and Word-checked in CR-016's file 2, region 7, bold); core-ts's `writePlaceholder` at `d84f3da` writes the text with none of the placeholder run's properties in either form. The two agree on every placeholder Word measured (checks 58, 63, 64 and 67: each placeholder run has the style alone, so both write a run with no properties) and differ only for a placeholder run carrying more, such as `w:b`, which no check has measured. The brief ("the plain look stays as it is") and section 11.2 ("Q1 is settled as Phase A writes it") keep it, so it is not changed here; it is the one rule of `d84f3da` not mapped as core-ts has it, and wants a decision: keep it as a recorded departure, or take core-ts's (delete `_dress_as_placeholder` and its call; that test's run-level cases move).
+2. **Word's form's emptied control** is left as the delete left it (`_show_emptied`), where core-ts shows its entry (`showPlaceholder`, D8): Phase B's, as before Phase A2.
+3. **The filler and the readers.** Every Office JS reader reads it as no text while the flag is on (CR-016 Phase B's rule, already in place for check 52's case 26 accepted); the text model reads it as it reads any placeholder's prompt (REQ-508's placeholder runs, on by default), five spaces, and leaves it out with `placeholders=False`. No reader changed.
+4. **One `ChangeReport` for a delete and its filler** (11.4.2 item 7), where a nested write would otherwise report twice.
+5. **Check 67's three files** are core-ts's git-ignored copies, written by `build.mjs` (unchanged since `2bafbcb`) at 08:00 on 2026-10-25, before Word's run at 08:16; each reads paragraph for paragraph and control for control as Word's save of it as opened, as checks 63's and 64's files do (section 10.5 item 8).
+6. **Check 67's view** is core-ts's: the digest, the control's type and text (not its paragraphs) and what the write returned; and the title (above).
+7. **One code commit**, where Phase A made two: Phase A2's rules are all run 2's and decided together, so there is nothing to hold apart.
+
+#### 11.4.5 Pre-existing tests whose expectation changed
+
+- **`test_placeholder_writes.py`** (Phase A's own):
+  - `DIFFERS_63`'s 29 Q1 pins are gone: the run is held to run 2 in every write (`test_check_63s_run_is_word_365s_run_2_in_every_write`, which replaces `..._but_for_the_differences_pinned`); run 1 is kept as a record (`test_check_63s_run_differs_from_run_1_in_design_modes_31_writes`, `WORD_RUN_63`), with `WORD_RUN2_63` beside it.
+  - `SAVES_63`, from 34 pins against run 1's save to 5 against run 2's (`test_check_63s_saved_markup_is_words_save_after_run_2_but_for_d6_b_and_a_run_boundary`); `_plain`, `_deleted_look` and `_no_layout`, the forms check 63's run 1 needed, are gone.
+  - every route into a block placeholder: tracked, no `w:del` in the bare form (it held the placeholder's runs deleted after the insertion).
+  - `test_the_bare_forms_insert_paragraph_at_end_writes_in_the_placeholders_place_and_leaves_the_flag_on_check_63_case_3` and `test_words_form_insert_paragraph_...` become one test over both forms.
+  - `test_a_controls_own_content_range_deleted_keeps_it_and_its_flag_its_placeholder_going_in_the_bare_form` becomes the D10 tests: the filler, nothing marked tracked (it held the content empty, and tracked the placeholder's runs deleted).
+  - `test_a_run_level_controls_whole_range_deleted_takes_it_as_its_replace_does`: tracked, nothing inside the markers and no flag (it held a `w:del` inside).
+  - the D3 test: `_MARKED` without the flag or the `w:del`, region 38 an empty paragraph inside the markers, 28 and 47 the insertion alone, D10's four regions, and Reject All's control back without its flag (it came back showing its placeholder).
+  - the D7 test: check 63's nodes are Word's run 2's, no departure.
+- **`test_readers.py`:** `test_risk_2_paragraph_text_written_over_a_run_level_placeholder_takes_the_control_as_words_replace_does`, tracked: the control between the markers with nothing inside and no flag (it held the placeholder deleted inside).
+- **`test_ranges.py`:** check 52's case 13 in the markup test: `P[ListParagraph/num|] "     "` (it was an empty paragraph), Word's still `{b}`; the comment on case 13 in the phase-2 run test (its `paragraphs` still differ: Word's filler reads bold).
+- **`test_office_js_characters.py`:** `SHA1SUMS` counts 59 files (43).
+- **Unmoved:** CR-016's look test above (11.4.4 item 1), check 58's cases 20 to 22 markup pin (now Word's in checks 58, 63's run 2 and 67), the accept-all test of check 52 (13 and 26 still Word's bold filler), and every binding test (Phase B's).
+
+#### 11.4.6 The gates
+
+| gate | before (`4616c68`) | `dbce995` |
+|---|---|---|
+| the full suite | 6,388 passed, 8 skipped (this commit's run less the 13 tests it adds; a clean worktree of `4616c68` skips 639, lacking the sibling checkouts) | **6,401 passed, 8 skipped** (4 min 16 s), twice; the 8 warnings are `test_effective.py`'s converter warnings, as before |
+| `roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata`, `--normalise` and `--no-normalise` | --- | 50 of 50 both ways, 0 differences, 34 `boolean-spelling`, 0 kept, 0 normalised, 0 skipped |
+| acceptance (`compare_acceptance.py out/acceptance-before-cr019a out/acceptance`) | Phase A left the copy equal to `HEAD` | 17 artefacts, 243 entries, 0 differing beyond the dates: no artefact writes into or deletes a placeholder |
+| `scripts/compare_word_resolution.py --no-records` | --- | 0 lines either side (2 compared, 0 differ) |
+| `codegen/generate.sh --check` (a scratch worktree of `dbce995`, `TMPDIR` in the scratchpad) | --- | "two generations of docx4j_py are byte identical", 307 modules; the tree left as committed |
+| `ruff check`, and `ruff format --line-length 120` on the lines changed | --- | clean; `test_placeholder_writes.py` formatted whole (it was clean at 120); the other files' format differences are those `HEAD` had |
+
+#### 11.4.7 Found, and not done
+
+1. **The look question** (11.4.4 item 1), for the user.
+2. **Word's bold filler** in check 52's case 13 (Word's `w:sdtPr/w:rPr` taken from the deleted text): not followed, as core-ts doesn't.
+3. **Word's form's emptied control showing its entry:** Phase B's (section 4.8), at `_show_emptied`'s seam.
+4. **Section 10.9's items 1 and 2** stand: a collapsed range's `insert_content_control` wraps the run around its point (Phase B's), and a tracked `ContentControl.insert_text("Start" | "End")` on a run control holding text writes untracked.
+5. **`CLAUDE.md`'s and `CHANGELOG.md`'s placeholder lines** (section 10.9 item 4) are the coordinator's and Phase C's; the CHANGELOG's should now say that a `"Content"` delete of a bare-form control writes Word's filler.
