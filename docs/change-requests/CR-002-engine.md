@@ -1470,6 +1470,8 @@ docx4j's four test cases are ported in `tests/content/test_properties.py`.
 
 **The parity goldens.** They come from docx4j's 17.3.4 release, whose merge wrote `w:anchorLock="true"` into every effective `w:framePr` no layer stated it in. Eight comparisons in three goldens (NumberingImplicitNumId, NumberingIndents and loadAndSave) differ in that one attribute alone, each checked mechanically. They are pinned in `tests/content/goldens.py`'s `PINS`, `xfail(strict=True)`, and come out when docx4j-core-ts regenerates the goldens from 17.3.5 (the user's decision, 2026-10-24: "commit anchorLock port"). Every other golden comparison is unchanged.
 
+**The pins out (2026-10-24).** docx4j-core-ts regenerated the goldens at docx4j `5163c2986` (`VERSION_17_3_5`) in its `76fb45d` (its CR-015), and its only moved answers were these eight. The eight pairs turned into unexpected passes, and `PINS` is empty again: zero differences on every golden.
+
 ## 16. Adopting the private tree (proposed 2026-10-21)
 
 The user's go, the same day: "add it to CR-002 and have an agent implement it with those tests".
