@@ -6,8 +6,10 @@ after its phase 3). **Decided 2026-10-12: all three recommendations of section 9
 `StyleUtil` at docx4j `2e381ef26`, exactly the two comparisons of section 2 move, pinned
 `xfail(strict=True)` until docx4j-core-ts regenerated the goldens at `2e381ef26` the same day
 (its `1f78b94`), when the pins came out (10.10), and no content-API answer over
-the 64 corpus documents changes; Phase B (the WordprocessingML resolver) is new scope; Phase C
-(DrawingML and SpreadsheetML) waits for a consumer.
+the 64 corpus documents changes; **Phase B (the WordprocessingML resolver) implemented
+2026-10-24** (section 12; scheduled the same day, 0.2.0 waiting for it), with section 12.9's
+question decided (automatic reads `#000000` in the effective view, built in CR-016 Phase B);
+Phase C (DrawingML and SpreadsheetML) waits for a consumer.
 **Depends on:** docx4j CR-034 (phases 0 to 3 done 2026-10-12: `3dbe4eee5` the resolver,
 `2e381ef26` the outputs and `StyleUtil`, on `VERSION_17_3_3`, pushed by 2026-10-13) and this
 repository's CR-002 Phase B (implemented, section 15), whose property catalogue mirrors
@@ -17,7 +19,7 @@ before CR-004 and CR-005.
 (section 2 the rules, section 4 the design, section 5 the probes, section 11 Office's readings) and
 docx4j-core-ts's `docs/change-requests/CR-008-theme-colours.md` (proposed the same day, the same
 two phases; the two engines stay one design).
-**Phase B scheduled 2026-10-24** (the user: "0.2.0 waits for CR-009 Phase B"): docx4j's colour resolver ported as section 11 records docx4j-core-ts did (`27be4a7`), after CR-018 Phase B. **Phase B implemented 2026-10-24** (section 12): `docx4j_py/model/color/` (docx4j's `org.docx4j.model.color` at `a9e0303ff`, its Word half), the resolver's `theme_colors` and `resolve_color`, `resolve_fill`, `resolve_pattern_color`, and `Font.color`'s effective view as Word draws it. docx4j's vectors are copied into `tests/fixtures/theme-colors/` with their SHA-1s, and every P1 and P2 case is at docx4j's own tallies through a `PropertyResolver`; the corpus triples are 76 exact and 41 within one. Over 728 corpus documents, 119 of 58,555 effective answers move, each a theme reference meeting a stale cache, and 0 direct answers; check 53's Heading 1 reads Word's `#0F4761`. Nothing written changes: no Word check. One question is open for the user (12.9: automatic as `#000000`). Phase C (DrawingML and SpreadsheetML) waits for a consumer.
+**Phase B scheduled 2026-10-24** (the user: "0.2.0 waits for CR-009 Phase B"): docx4j's colour resolver ported as section 11 records docx4j-core-ts did (`27be4a7`), after CR-018 Phase B. **Phase B implemented 2026-10-24** (section 12): `docx4j_py/model/color/` (docx4j's `org.docx4j.model.color` at `a9e0303ff`, its Word half), the resolver's `theme_colors` and `resolve_color`, `resolve_fill`, `resolve_pattern_color`, and `Font.color`'s effective view as Word draws it. docx4j's vectors are copied into `tests/fixtures/theme-colors/` with their SHA-1s, and every P1 and P2 case is at docx4j's own tallies through a `PropertyResolver`; the corpus triples are 76 exact and 41 within one. Over 728 corpus documents, 119 of 58,555 effective answers move, each a theme reference meeting a stale cache, and 0 direct answers; check 53's Heading 1 reads Word's `#0F4761`. Nothing written changes: no Word check. The one question (12.9: automatic as `#000000`) is decided: yes, in CR-016 Phase B. Phase C (DrawingML and SpreadsheetML) waits for a consumer.
 
 ## 1. Why
 
@@ -644,6 +646,8 @@ A document with few theme colours reads within the noise. Where every read is th
 **Automatic text reads `""` (none stated) or `"auto"` here, and `#000000` in Word and in core-ts.** core-ts reads it that way since its CR-002 section 59; Word 365 does in check 53's eight cases and in P1 and P2. This phase keeps CR-018 rule 3 as the task requires: the effective read of an automatic or unstated colour is unchanged. CR-018 section 4.9 item 1 says whatever CR-016 decides for `auto` becomes the answer for every automatic spelling.
 
 **Question for the user** (not decided here): should the effective `Font.color` read automatic as `#000000`, as Office JS and core-ts do, with the direct view keeping `""` and `"auto"`? *If yes,* check 53's eight automatic differences close, P1's and P2's automatic paragraphs read Word's `#000000`, and `to_dict()`'s `color` changes for every paragraph whose colour is automatic, which is most of them. That belongs with CR-016 Phase B.
+
+**Decided 2026-10-24: yes** (the user, choosing "Yes, #000000 (Recommended)"). The effective `Font.color` reads an automatic or unstated colour as `#000000`, as Office JS and core-ts (`Font.mts` `readingOf` at `76fb45d`) do, and the direct view keeps `""` and `"auto"`. CR-016 section 4.3 already designs this for its Phase B, which builds it; this phase leaves it alone. Caveat recorded: Word draws automatic text white over a dark shading, and Office JS still reports `#000000`, so this is the API's answer, not the drawn pixel.
 
 ### 12.10 Found, and not done
 
