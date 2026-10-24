@@ -66,11 +66,15 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   every Office JS reader, `hidden_runs_of`; `ContentControl.insert_text` writes in its place and
   clears the flag; `paragraph.text = ...` over a run-level one is refused, `range.holds_placeholder`;
   no `\r` after a deleted mark in the default view, none after an inserted one in the original); C
-  and D proposed, and Phase D's Word check covers A and B.
+  implemented 2026-10-24 (Word's wildcards match a paragraph's mark where `^p` does, `^13` is one
+  and a wildcard pattern `re.DOTALL`; a paragraph searches its `"Whole"` range, a body or block
+  control its `"Content"`; a wildcard `replace_text` refuses a hit holding a mark,
+  `range.replaces_mark`; no search hit cuts a grapheme cluster; `find` stays a paragraph at a
+  time); D proposed, and its Word check covers A, B and C.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
-  user, 2026-10-24); CR-018 and CR-009 Phase B are done, CR-016 C and D remain.
+  user, 2026-10-24); CR-018 and CR-009 Phase B are done, CR-016 D remains.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
