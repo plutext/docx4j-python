@@ -20,11 +20,21 @@ cached per style id. The merging itself is
 level indents are folded in per layer; table styles are not applied to
 paragraphs here (the resolver is handed a ``w:pPr`` and does not know the table).
 
+**Colours** (CR-009 Phase B, docx4j CR-034). A resolved colour's ``w:themeColor``
+(or a shading's ``w:themeFill``) is what Word draws, the value beside it a cache
+which can be stale: :meth:`PropertyResolver.resolve_color`,
+:meth:`~PropertyResolver.resolve_fill` and
+:meth:`~PropertyResolver.resolve_pattern_color` give the colour drawn, in the
+document's :attr:`~PropertyResolver.theme_colors` (its theme part, or the bundled
+theme ``pkg.default_theme`` names where it has none, and the settings'
+``w:clrSchemeMapping``). The effective properties themselves keep the attributes
+as written, as docx4j's do. A colour inherits as one (CR-009 Phase A).
+
 **Live objects.** What the style forms and ``get_effective_ppr(p_pr)`` return is
 cached and shared: copy it before changing it. The cached objects share no leaf
 with the styles part, and resolution writes nothing into the part.
 
-**Nothing is unmarshalled.** The styles and numbering parts are read with
+**Nothing is unmarshalled.** The styles, numbering, theme and settings parts are read with
 :meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart.read_contents`, which
 does not mark a part for re-marshalling, so a document whose styles nobody
 edited still saves byte for byte. Once something else unmarshals the part ---
@@ -38,6 +48,7 @@ import logging
 import re
 from typing import Any
 
+from docx4j_py.model.color import ThemeColors, WordColors
 from docx4j_py.model.style_util import (
     apply_ppr_base,
     apply_rpr,
@@ -121,6 +132,7 @@ class PropertyResolver:
         "_scanned_style_count",
         "_styles",
         "_styles_are_private",
+        "_theme_colors",
         "_vanish",
         "default_paragraph_style_id",
     )
@@ -149,6 +161,8 @@ class PropertyResolver:
         self.default_paragraph_style_id: str | None = None
         self._default_character_style_id: str | None = None
         self._default_table_style_id: str | None = None
+        #: :attr:`theme_colors`, made on first use and dropped by :meth:`refresh`.
+        self._theme_colors: Any = None
         self._read_source()
         self._init()
 
@@ -237,8 +251,11 @@ class PropertyResolver:
 
         A style merely *added* is picked up on its own; call this when a style
         has been modified or removed, or the styles part's contents replaced.
-        The content API's ``ensure_style`` calls it where it adds a style.
+        The content API's ``ensure_style`` calls it where it adds a style. The
+        theme colours are read again too (a changed theme part or
+        ``w:clrSchemeMapping``), as docx4j's ``refresh`` re-reads them.
         """
+        self._theme_colors = None
         self._chain_ppr.clear()
         self._chain_rpr.clear()
         self._character_level_rpr.clear()
@@ -322,6 +339,47 @@ class PropertyResolver:
 
         emulator = emulator_of(self._package)
         return None if emulator is None or emulator.part is None else emulator
+
+    # -- colours (CR-009 Phase B) -----------------------------------------
+
+    @property
+    def theme_colors(self) -> Any:
+        """The document's :class:`~docx4j_py.model.color.ThemeColors`. docx4j ``getThemeColors``.
+
+        Its theme part (or the bundled theme ``pkg.default_theme`` names where
+        it has none) and the settings' ``w:clrSchemeMapping``, both read without
+        being unmarshalled. Made once, and again after :meth:`refresh`. A
+        resolver over a ``w:styles`` tree alone has the process-wide default
+        theme and the default colour map.
+        """
+        colours = self._theme_colors
+        if colours is None:
+            colours = ThemeColors.of_theme(None) if self._package is None else ThemeColors.of(self._package)
+            self._theme_colors = colours
+        return colours
+
+    def get_theme_colors(self) -> Any:
+        """:attr:`theme_colors`, by docx4j's name."""
+        return self.theme_colors
+
+    def resolve_color(self, obj: Any) -> Any:
+        """The colour Word draws for a ``w:color``, a border or a ``w:u``; None for automatic.
+
+        docx4j ``resolveColor(Color)``, ``resolveColor(CTBorder)`` and
+        ``resolveColor(U)``: the theme reference where there is one (the value
+        beside it is a cache), else the value, as a
+        :class:`~docx4j_py.model.color.ResolvedColor`. None is the caller's
+        default: black text, as a rule; an underline's is the text's colour.
+        """
+        return WordColors.of(obj, self.theme_colors)
+
+    def resolve_fill(self, shd: Any) -> Any:
+        """A shading's fill (``w:fill``, ``w:themeFill``); None for automatic. docx4j ``resolveFill``."""
+        return WordColors.fill(shd, self.theme_colors)
+
+    def resolve_pattern_color(self, shd: Any) -> Any:
+        """A shading's pattern colour (``w:color``, ``w:themeColor``); None for automatic. docx4j ``resolvePatternColor``."""
+        return WordColors.pattern(shd, self.theme_colors)
 
     # -- defaults ----------------------------------------------------------
 

@@ -538,9 +538,7 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
     differing: dict[int, list[str]] = {}
     for index, theirs in enumerate(measured["cases"]):
         a, b = flat(ours["cases"][index]["reads"]), flat(theirs["reads"])
-        # a colour reads "" for automatic and resolves theme colours another way here (Font's, CR-002 and
-        # CR-009): compared below where it is CR-013's
-        keys = [k for k in dict.fromkeys([*a, *b]) if k != "font.color" and a.get(k) != b.get(k)]
+        keys = [k for k in dict.fromkeys([*a, *b]) if a.get(k) != b.get(k)]
         if keys:
             differing[theirs["n"]] = sorted(keys)
 
@@ -553,11 +551,16 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
 
     placeholder = ["control.text", "control.placeholderText", "control.paragraph", "control.whole", "showingPlaceholderText"]
     style_other = ["paragraph.style", "paragraph.styleBuiltIn", "whole.style", "whole.styleBuiltIn"]
+    # an automatic colour, none stated or w:val="auto", reads "" or "auto" here, as Word's w:val reads
+    # (CR-018 rule 3), where Office JS reads "#000000" (as core-ts does, its CR-002 section 59): an open
+    # question (CR-009 section 12, CR-016's)
+    automatic = {n: ["font.color"] for n in (2, 7, 9, 19, 20, 21, 24)}
     assert differing == {
+        **automatic,
         # a single paragraph's font reads its first run (CR-002), where Office JS reads '' or None where
-        # its runs differ (core-ts CR-002 section 59, proposed there)
-        8: ["font.italic"],
-        31: ["font.highlightColor"],
+        # its runs differ (core-ts CR-002 section 59, proposed there); 8's colour is automatic too
+        8: ["font.color", "font.italic"],
+        31: ["font.color", "font.highlightColor"],
         # a paragraph after a nested table in a cell, whose style isn't Normal: Word's 'Other', not
         # followed (core-ts CR-002 section 57; Q6)
         10: sorted(style_other),
@@ -591,6 +594,17 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
     assert re.match(r"^error: NotImplemented", ours["cases"][31]["reads"])
     # the colour across two paragraphs whose runs' colours differ: '' (MixedFont), as Word's
     assert flat(ours["cases"][0]["reads"])["font.color"] == flat(measured["cases"][0]["reads"])["font.color"] == ""
+    # Heading 1's w:color 365F91 under themeColor accent1 and themeShade BF, over the created package's Office
+    # 2023 theme, reads as Word draws it (CR-009 Phase B; core-ts CR-008 phase 2)
+    def colour(case: dict, n: int) -> Any:
+        return flat(case["cases"][n - 1]["reads"])["font.color"]
+
+    for n in (3, 4, 5):
+        assert [colour(ours, n), colour(measured, n)] == ["#0F4761", "#0F4761"], n
+    # the automatic ones: "" here, "#000000" in Word; and 31's first run is red where Word's runs differ
+    assert {colour(ours, n) for n in (2, 7, 8, 9, 19, 20, 21, 24)} == {""}
+    assert {colour(measured, n) for n in (2, 7, 8, 9, 19, 20, 21, 24)} == {"#000000"}
+    assert [colour(ours, 31), colour(measured, 31)] == ["#FF0000", ""]
     # the changes' text is All Markup's
     for n in (25, 28, 30):
         assert ours["cases"][n - 1]["reads"]["region"][0]["text"] == all_markup["cases"][n - 1]["reads"]["region"][0]["text"], n

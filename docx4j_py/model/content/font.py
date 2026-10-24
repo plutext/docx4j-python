@@ -14,6 +14,12 @@ is what a caller reproducing markup wants and what these reads were until Phase
 B; a font over something with no package behind it reads direct, because there
 is no hierarchy to resolve against.
 
+**A theme colour** reads as Word draws it in the effective read: the
+``w:themeColor`` (with its tint or shade) through the document's theme, not the
+``w:val`` cache beside it (CR-009 Phase B, :attr:`Font.color`); the direct read
+keeps ``w:val``, and :meth:`Font.to_dict` carries the theme attributes as
+written.
+
 The **python-docx facade** (:mod:`docx4j_py.docx`) keeps python-docx's own
 tri-state semantics --- ``None`` means *inherited*, and python-docx does not
 report effective values either --- and is deliberately not switched (CR-003
@@ -36,6 +42,47 @@ from docx4j_py.model.content.enums import UnderlineValue
 from docx4j_py.wml import RPr, apply_run_options, read_run_options
 
 __all__ = ["Font", "MixedFont"]
+
+#: ``Font.to_dict()``'s keys for ``w:color``'s theme attributes, as written (CR-009 Phase B).
+THEME_KEYS = ("theme_color", "theme_tint", "theme_shade")
+
+
+def _theme_attributes(color: Any) -> dict[str, str | None]:
+    """``w:color``'s ``w:themeColor``, ``w:themeTint`` and ``w:themeShade`` as written; None where absent.
+
+    An ``ST_ThemeColor`` member reads as its value (``"accent1"``), and a value
+    the exact parse kept as its text (CR-018) as that text.
+    """
+    if color is None:
+        return dict.fromkeys(THEME_KEYS)
+    reference = color.theme_color
+    return {
+        "theme_color": None if reference is None else str(getattr(reference, "value", reference)),
+        "theme_tint": color.theme_tint,
+        "theme_shade": color.theme_shade,
+    }
+
+
+def _drawn(resolver: Any, color: Any) -> str | None:
+    """``"#RRGGBB"``, the colour Word draws, where an effective ``w:color`` has a theme reference; else None.
+
+    CR-009 Phase B (question 2), core-ts's ``readingOf`` at ``76fb45d``: the
+    ``w:themeColor`` with its tint or shade, through the document's theme and
+    ``w:clrSchemeMapping``, over the ``w:val`` cache, Word's own value kept
+    where it is within one unit
+    (:meth:`~docx4j_py.model.property_resolver.PropertyResolver.resolve_color`).
+    None where there is no reference (or it is ``none``), and where the
+    reference resolves to automatic: the read of ``w:val`` stands then, so an
+    automatic or unstated colour reads as it did (``"auto"``, ``""``; CR-018
+    rule 3).
+    """
+    if color is None:
+        return None
+    reference = color.theme_color
+    if reference is None or getattr(reference, "value", reference) == "none":
+        return None
+    resolved = resolver.resolve_color(color)
+    return None if resolved is None else f"#{resolved.hex()}"
 
 
 class Font:
@@ -104,14 +151,23 @@ class Font:
             if resolver is not None:
                 effective = resolver.get_effective_rpr(r_pr, p_pr)
                 out = read_run_options(effective)
-                # The one read the effective w:rPr cannot answer on its own: a
-                # run whose face comes from the theme has a w:asciiTheme and no
-                # w:ascii, so the name is the selector's (CR-002 section 15.3).
+                # The reads the effective w:rPr cannot answer on its own: a run
+                # whose face comes from the theme has a w:asciiTheme and no
+                # w:ascii, so the name is the selector's (CR-002 section 15.3);
+                # and a theme colour is drawn in the theme's colour, not the
+                # w:val beside it (CR-009 Phase B).
                 selector = self._selector()
                 if selector is not None:
                     out["name"] = selector.ascii_font_name(effective)
+                color = getattr(effective, "color", None)
+                drawn = _drawn(resolver, color)
+                if drawn is not None:
+                    out["color"] = drawn
+                out.update(_theme_attributes(color))
                 return out
-        return read_run_options(r_pr)
+        out = read_run_options(r_pr)
+        out.update(_theme_attributes(getattr(r_pr, "color", None)))
+        return out
 
     def _selector(self) -> Any:
         """The package's run font selector, where one has been built."""
@@ -127,7 +183,10 @@ class Font:
             return None
 
     def _read_direct(self) -> dict[str, Any]:
-        return read_run_options(self._direct_r_pr())
+        r_pr = self._direct_r_pr()
+        out = read_run_options(r_pr)
+        out.update(_theme_attributes(getattr(r_pr, "color", None)))
+        return out
 
     def _apply(self, **options: Any) -> None:
         if self._guard is not None:
@@ -264,14 +323,27 @@ class Font:
     def color(self) -> str:
         """``w:color`` as ``"#RRGGBB"``, which is what Office JS reports.
 
-        As Word reads ``w:val`` (CR-018 Phase B, rule 3): six hex digits in any
-        case, with a leading ``#`` or surrounding spaces, or a classic HTML
-        colour name (``red``, ``DarkRed``), as ``"#RRGGBB"``; exactly ``auto`` as
-        ``"auto"``; ``""`` when the run sets none, and for a value Word rejects
-        (``Auto``, ``F00``, ``grey``), which it reads as absent --- the effective
-        read then gives the style's colour beneath. A theme colour is read by
-        its ``w:val`` (CR-009 Phase B's). Setting accepts ``"#FF0000"``,
-        ``"FF0000"`` and a name, which is written as its ``RRGGBB``.
+        **A theme colour reads as Word draws it** in the effective read
+        (CR-009 Phase B, question 2): where the effective ``w:color`` has a
+        ``w:themeColor``, the theme's colour, its ``w:themeTint`` or
+        ``w:themeShade`` applied (the tint where both are), through the
+        document's theme and ``w:clrSchemeMapping``, and not the ``w:val``
+        beside it, which is a cache Word keeps and can be stale; Word's own
+        value where it is within one unit (:class:`~docx4j_py.model.color.WordColors`).
+        So a Heading 1 written ``365F91`` under ``accent1`` shaded ``BF`` reads
+        ``#0F4761`` in the Office 2023 theme, as Word 365 reads it. The direct
+        read (``get_font(direct=True)``) keeps ``w:val`` as written, and
+        :meth:`to_dict` gives the reference itself (``theme_color``,
+        ``theme_tint``, ``theme_shade``).
+
+        Otherwise as Word reads ``w:val`` (CR-018 Phase B, rule 3): six hex
+        digits in any case, with a leading ``#`` or surrounding spaces, or a
+        classic HTML colour name (``red``, ``DarkRed``), as ``"#RRGGBB"``;
+        exactly ``auto`` as ``"auto"``; ``""`` when the run sets none, and for a
+        value Word rejects (``Auto``, ``F00``, ``grey``), which it reads as
+        absent --- the effective read then gives the style's colour beneath.
+        Setting accepts ``"#FF0000"``, ``"FF0000"`` and a name, which is
+        written as its ``RRGGBB`` with no theme reference.
         """
         return self._read()["color"]
 
@@ -308,7 +380,13 @@ class Font:
         self._apply(style=value)
 
     def to_dict(self) -> dict[str, Any]:
-        """Every property this font reports, JSON-ready. Extension."""
+        """Every property this font reports, JSON-ready. Extension.
+
+        With ``theme_color``, ``theme_tint`` and ``theme_shade``, the
+        ``w:color``'s theme attributes as written (effective or direct as this
+        font reads; None where absent), so a reader sees both the reference and
+        the colour it draws (CR-009 Phase B).
+        """
         return dict(self._read())
 
     def __repr__(self) -> str:
@@ -385,6 +463,8 @@ class MixedFont(Font):
             "color": self._value("color", "") or "",
             "highlight_color": self._highlight(),
             "style": self._value("style", "") or "",
+            # w:color's theme attributes where every run agrees, else None (CR-009 Phase B)
+            **{key: self._value(key) for key in THEME_KEYS},
         }
 
     def _highlight(self) -> str | None:

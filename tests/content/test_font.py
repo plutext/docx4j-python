@@ -96,6 +96,10 @@ def test_the_empty_values_remove_the_element(new_package):
         "color": "",
         "highlight_color": None,
         "style": "",
+        # w:color's theme attributes as written (CR-009 Phase B)
+        "theme_color": None,
+        "theme_tint": None,
+        "theme_shade": None,
     }
     # the effective read still reports the document defaults underneath
     assert font.size == 11.0
