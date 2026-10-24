@@ -58,7 +58,9 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   changes): proposed.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
-  C implemented, their Word check staged; B and D next.
+  C done (Word-checked); Phase B implemented and D's records written 2026-10-24, their Word check
+  staged in `__tmp/python-cr018b/`. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
+  user, 2026-10-24).
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -269,13 +271,18 @@ section 12.3.
   sets the fork's `exact_types={bool, Enum}`, so a value not exactly a lexical form is kept as its
   text and listed in `part.kept`), and a save normalises by default (`package.save(normalise=True)`,
   `LoadOptions(normalise_on_save=...)`), writing each kept value in the form Word reads as it read
-  the source (an on/off value Word reads as on bare, one it reads as off `0`), recorded in
+  the source (an on/off value Word reads as on bare, one it reads as off `0`; since Phase B every
+  enumeration and colour too: a colour as upper-case `RRGGBB`; a rejected text or underline colour,
+  a missing or invalid `w:highlight`/`w:vertAlign`/`w:em` and a bare `<w:u/>` dropped; a rejected
+  fill or border colour `auto`; `w:u`'s on/off words `none`, those rows found by name in each part's
+  render, `normalise.normalise_render`, so the tree keeps what was read), recorded in
   `package.last_save.normalised`. `canon.compare(..., normalise=True)` writes the same normal form
   into the source before comparing, so every other category must still be zero;
   `save(normalise=False)` keeps the source's spelling and is held to `boolean-spelling` alone. Every
   `ParserConfig` in the tree is `parser_config()`'s (`tests/test_parser_configs.py`), and every
-  on/off reader goes through `docx4j_py/model/values.py` (Word's rule: off for exactly `false`,
-  `off` or `0`).
+  on/off, enumeration and colour reader goes through `docx4j_py/model/values.py` (Word's rules: off
+  for exactly `false`, `off` or `0`; an enumeration value outside it unset; a colour six hex digits,
+  a classic HTML name, or exactly `auto`).
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
   `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. Empty is
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
