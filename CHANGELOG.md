@@ -32,9 +32,28 @@ meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdat
 [CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md)'s Phase A
 keeps Word's table rule, a cell ends with a paragraph, through every edit, which closes a defect
 0.1.0 shared: eleven edits left a cell Word opens as unreadable content (its Phases B to D
-follow).
+follow). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
+as Word draws them, so `Font.color` reads a theme colour in the theme's colour rather than the
+cache written beside it.
 
 ### Added
+
+- **Theme colours as Word draws them: `docx4j_py.model.color`**
+  ([CR-009](docs/change-requests/CR-009-theme-colours.md) Phase B, section
+  [12](docs/change-requests/CR-009-theme-colours.md#12-phase-b-implementation-notes-2026-10-24)),
+  the WordprocessingML half of docx4j's `org.docx4j.model.color` (its CR-034, at `a9e0303ff`) as
+  docx4j-core-ts ports it (`76fb45d`): `ResolvedColor` (red, green, blue and OOXML's alpha),
+  `ThemeColors` (a docx's theme part, or the bundled theme `pkg.default_theme` names where it has
+  none, with the settings' `w:clrSchemeMapping`) and `WordColors` (`resolve`, `of` for a
+  `w:color`, a border or a `w:u`, `fill` and `pattern`; `normalise` and `stated` are
+  `docx4j_py.model.values`' colour reader). A theme reference wins over the value beside it,
+  `w:themeTint` and `w:themeShade` change the HSL luminance (the tint where both are given), and
+  Word's written value is kept where it is within one unit of the computation. The
+  `PropertyResolver` gains `theme_colors` (made once, read again on `refresh()`),
+  `resolve_color`, `resolve_fill` and `resolve_pattern_color`. Held to docx4j's vectors, copied
+  into `tests/fixtures/theme-colors/`: the 117 tint and shade triples of four corpora within one
+  unit (76 exact), and every case of the P1 and P2 probes through a resolver at docx4j's own
+  tallies. DrawingML and SpreadsheetML colours are Phase C's.
 
 - **Word's table rule: `ends_with_paragraph` and `end_with_paragraph`**
   ([CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md) Phase A,
@@ -205,6 +224,17 @@ follow).
 
 ### Changed
 
+- **`Font.color` reads a theme colour as Word draws it** (CR-009 Phase B, question 2): where the
+  effective `w:color` has a `w:themeColor`, the effective read reports the theme's colour with its
+  tint or shade, through the document's theme and `w:clrSchemeMapping`, where 0.1.0 reported the
+  `w:val` beside it, a cache that can be stale. So a Heading 1 in docx4j's default styles (written
+  `365F91`, Office 2010's, under `accent1` shaded `BF`) reads `#0F4761` in a new document's Office
+  2023 theme, as Word 365 reads it (Office JS check 53). The direct read
+  (`get_font(direct=True)`) keeps `w:val`; an automatic or unstated colour still reads `"auto"`
+  or `""`. `Font.to_dict()` gains `theme_color`, `theme_tint` and `theme_shade`, as written. Over
+  the 728 documents of `samples/` and `out/cr012-b-corpus/`, 119 of 58,555 effective answers move,
+  every one a theme reference meeting a stale cache (or `auto`) beside it; no direct answer
+  moves. The python-docx facade's `ColorFormat` keeps python-docx's semantics (question 3).
 - **A table cell ends with a paragraph, as Word reads it, after every edit** (CR-016 Phase A,
   core-ts CR-002 section 55, held to Word 365 in check 52's cases 86 to 95). `Paragraph.delete()`,
   `Body.clear()`, `ContentControl.delete(keep_content=False)` and `Body.insert_ooxml(...,
