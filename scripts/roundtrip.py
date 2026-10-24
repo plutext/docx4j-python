@@ -407,7 +407,6 @@ def main() -> int:
     import_ms = (time.perf_counter() - t0) * 1000
 
     rt = load_runtime(args.runtime)
-    XmlContext = rt["formats.dataclass.context"].XmlContext
     XmlParser = rt["formats.dataclass.parsers"].XmlParser
     ParserConfig = rt["formats.dataclass.parsers.config"].ParserConfig
     LxmlEventHandler = rt["formats.dataclass.parsers.handlers"].LxmlEventHandler
