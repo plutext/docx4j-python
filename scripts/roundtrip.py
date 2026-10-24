@@ -4,6 +4,16 @@
     python scripts/roundtrip.py                 # lenient (default)
     python scripts/roundtrip.py --strict        # fail_on_unknown_* = True
     python scripts/roundtrip.py --only tables.docx
+    python scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata --no-normalise
+
+With the fork runtime the parse is the engine's (``docx4j_py.runtime.parser_config``:
+the exact booleans and enumerations of CR-018, the hooks) and so is the
+serialiser's configuration. ``--normalise`` (the default there, as
+``package.save()``'s) writes each value the parse kept as its text in Word's
+normal form (CR-018 section 4.7) and compares with ``canon.compare(...,
+normalise=True)``, which counts those as ``word-normal-form``;
+``--no-normalise`` writes them as read. The upstream runtime (``--runtime
+xsdata``, the pre-Phase-B baseline) has neither, and builds its own config.
 
 Writes per-part artefacts to out/<docx>/<part>/{orig.xml,rt.xml,diff.txt}
 and prints a markdown results table.
@@ -158,6 +168,47 @@ def load_runtime(name: str = "xsdata"):
     return mods
 
 
+def _engine_configs(rt, strict: bool, class_factory: dict):
+    """The fork runtime: the engine's own parser configuration, so that the harness measures what a load does.
+
+    ``docx4j_py.runtime.parser_config`` is the one place a ``ParserConfig`` is
+    made (``tests/test_parser_configs.py``): it reads ``" false"`` as written
+    (CR-018's exact booleans and enumerations) and keeps the skipped report,
+    here with ``log=False`` since the harness prints and fails on it itself.
+    """
+    from docx4j_py import runtime as engine
+
+    SkippedReport = rt["formats.dataclass.parsers.skipped"].SkippedReport
+    lenient = engine.parser_config(skipped_report=SkippedReport(log=False), **class_factory)
+    strict_cfg = engine.parser_config(lenient=False, skipped_report=False, fail_on_converter_warnings=True) if strict else None
+    return engine.context(), lenient, strict_cfg
+
+
+def _upstream_configs(rt, strict: bool, class_factory: dict):
+    """The upstream runtime (``--runtime xsdata``, the REPORT.md baseline): upstream's own ``ParserConfig``.
+
+    The one place a script builds a ``ParserConfig`` of its own
+    (``tests/test_parser_configs.py`` allows it): upstream ``xsdata`` has
+    neither the engine's hooks nor the fork's exact mode.
+    """
+    XmlContext = rt["formats.dataclass.context"].XmlContext
+    ParserConfig = rt["formats.dataclass.parsers.config"].ParserConfig
+    lenient_kw = dict(fail_on_unknown_properties=False,
+                      fail_on_unknown_attributes=False,
+                      fail_on_converter_warnings=False, **class_factory)
+    if "skipped_report" in inspect.signature(ParserConfig).parameters:
+        # fork only: collect what lenient parsing dropped, CR-001 section 7.
+        # log=False, the harness prints and fails on them itself.
+        SkippedReport = rt["formats.dataclass.parsers.skipped"].SkippedReport
+        lenient_kw["skipped_report"] = SkippedReport(log=False)
+    strict_cfg = None
+    if strict:
+        strict_cfg = ParserConfig(fail_on_unknown_properties=True,
+                                  fail_on_unknown_attributes=True,
+                                  fail_on_converter_warnings=True)
+    return XmlContext(), ParserConfig(**lenient_kw), strict_cfg
+
+
 def part_class(name: str, models) -> type | None:
     if name in models:
         return models[name]
@@ -188,11 +239,13 @@ class PartResult:
     ignorable_orig: str = ""
     ignorable_rt: str = ""
     skipped: list = field(default_factory=list)
+    kept: list = field(default_factory=list)
+    normalised: list = field(default_factory=list)
 
 
 def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
              parser, serializer, strict_parser, nsmap_from_source=False,
-             repeat: int = 3) -> PartResult:
+             repeat: int = 3, normalise: bool = False) -> PartResult:
     res = PartResult(docx=docx, part=part, bytes_in=len(data))
 
     # --- strict pass (informational) ---
@@ -222,6 +275,8 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     report = getattr(parser, "skipped", None)
     if report is not None:
         res.skipped = [(n.kind, n.path, n.parent_class or "") for n in report]
+    kept = list(getattr(report, "kept", None) or ())  # the fork's stage 13 (CR-018 Q16)
+    res.kept = [(k.reason, k.path, k.text) for k in kept]
 
     # --- serialize ---
     try:
@@ -232,7 +287,16 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
             ns_map = src or dict(NS_MAP)
         else:
             ns_map = dict(NS_MAP)
-        out = serializer.render(obj, ns_map=ns_map)
+        if normalise and kept:
+            # CR-018 section 4.7: the save's normal form, written for the
+            # render and taken back out, as package.save() does it
+            from docx4j_py.openpackaging.normalise import normalised_tree
+
+            with normalised_tree(obj, part=part) as rewrites:
+                out = serializer.render(obj, ns_map=ns_map)
+            res.normalised = [(n.path, n.before, n.after) for n in rewrites]
+        else:
+            out = serializer.render(obj, ns_map=ns_map)
         res.ser_ms = (time.perf_counter() - t) * 1000
     except Exception as exc:  # noqa: BLE001
         res.error = f"serialize: {type(exc).__name__}: {exc}"[:500]
@@ -260,7 +324,7 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     except Exception:  # noqa: BLE001
         pass
 
-    rep = canon.compare(data, new)
+    rep = canon.compare(data, new, normalise=normalise)
     res.identical = rep.identical
     res.counts = dict(rep.counts)
     res.samples = [(d.category, d.path[-110:], d.detail[:160]) for d in rep.diffs[:60]]
@@ -276,6 +340,11 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
         fh.write(f"skipped       = {len(res.skipped)}\n")
         for kind, path, owner in res.skipped:
             fh.write(f"    SKIPPED {kind} {path} (in {owner})\n")
+        fh.write(f"kept          = {len(res.kept)}\n")
+        for reason, path, text in res.kept:
+            fh.write(f"    KEPT {reason} {path} {text!r}\n")
+        for path, before, after in res.normalised:
+            fh.write(f"    NORMALISED {path} {before!r} -> {after!r}\n")
         fh.write("\n")
         for k, v in sorted(rep.counts.items(), key=lambda kv: -kv[1]):
             fh.write(f"{v:6d}  {k}\n")
@@ -317,10 +386,21 @@ def main() -> int:
                          "that has the option")
     ap.add_argument("--allow-skipped", action="store_true",
                     help="do not fail when the parser skipped content")
+    ap.add_argument("--normalise", dest="normalise",
+                    action=argparse.BooleanOptionalAction, default=None,
+                    help="write each value the parse kept as its text in Word's "
+                         "normal form, as package.save() does (CR-018 section "
+                         "4.7), and compare in canon's word-normal-form; the "
+                         "default is on for the docx4j_xsdata runtime, the only "
+                         "one that keeps values")
     args = ap.parse_args()
 
     if args.bool_numeric is None:
         args.bool_numeric = args.runtime == "docx4j_xsdata"
+    if args.normalise is None:
+        args.normalise = args.runtime == "docx4j_xsdata"
+    if args.normalise and args.runtime != "docx4j_xsdata":
+        raise SystemExit("--normalise needs the fork runtime")
 
     t0 = time.perf_counter()
     models = load_models(args.package, args.models_module)
@@ -335,25 +415,15 @@ def main() -> int:
     SerializerConfig = rt["formats.dataclass.serializers.config"].SerializerConfig
     LxmlEventWriter = rt["formats.dataclass.serializers.writers"].LxmlEventWriter
 
-    ctx = XmlContext()
-    lenient_kw = dict(fail_on_unknown_properties=False,
-                      fail_on_unknown_attributes=False,
-                      fail_on_converter_warnings=False)
-    if args.tolerant_factory:
-        lenient_kw["class_factory"] = tolerant_class_factory
-    if "skipped_report" in inspect.signature(ParserConfig).parameters:
-        # fork only: collect what lenient parsing dropped, CR-001 section 7.
-        # log=False, the harness prints and fails on them itself.
-        SkippedReport = rt["formats.dataclass.parsers.skipped"].SkippedReport
-        lenient_kw["skipped_report"] = SkippedReport(log=False)
-    lenient = ParserConfig(**lenient_kw)
+    class_factory = {"class_factory": tolerant_class_factory} if args.tolerant_factory else {}
+    if args.runtime == "docx4j_xsdata":
+        ctx, lenient, strict_cfg = _engine_configs(rt, args.strict, class_factory)
+    else:
+        ctx, lenient, strict_cfg = _upstream_configs(rt, args.strict, class_factory)
     parser = XmlParser(config=lenient, context=ctx, handler=LxmlEventHandler)
 
     strict_parser = None
-    if args.strict:
-        strict_cfg = ParserConfig(fail_on_unknown_properties=True,
-                                  fail_on_unknown_attributes=True,
-                                  fail_on_converter_warnings=True)
+    if strict_cfg is not None:
         strict_parser = XmlParser(config=strict_cfg, context=ctx,
                                   handler=LxmlEventHandler)
 
@@ -364,7 +434,14 @@ def main() -> int:
             raise SystemExit(f"--bool-numeric needs the fork runtime, "
                              f"{args.runtime} has no SerializerConfig.bool_format")
         ser_kw["bool_format"] = "numeric"
-    ser_cfg = SerializerConfig(**ser_kw)
+    if args.runtime == "docx4j_xsdata":
+        # the engine's serialiser configuration: the hook that names a typed
+        # branch child, which the engine's parse binds (CR-012 Phase B)
+        from docx4j_py.runtime import serializer_config
+
+        ser_cfg = serializer_config(**ser_kw)
+    else:
+        ser_cfg = SerializerConfig(**ser_kw)
     serializer = XmlSerializer(config=ser_cfg, context=ctx,
                                writer=LxmlEventWriter)
 
@@ -388,7 +465,8 @@ def main() -> int:
                 od.mkdir(parents=True, exist_ok=True)
                 r = run_part(docx.name, name, data, klass, od, parser,
                              serializer, strict_parser,
-                             args.nsmap_from_source, args.repeat)
+                             args.nsmap_from_source, args.repeat,
+                             normalise=args.normalise)
                 results.append(r)
                 flag = "OK " if r.ok else "ERR"
                 same = "SAME" if r.identical else "diff"
@@ -459,7 +537,10 @@ def main() -> int:
           f"\n  differences              {sum(real.values())}"
           f"\n  benign respellings       {sum(benign.values())}"
           f" {sorted(benign) if benign else ''}"
-          f"\n  skipped content          {total_skipped}")
+          f"\n  skipped content          {total_skipped}"
+          f"\n  kept values              {sum(len(r.kept) for r in results)}"
+          f"\n  normalised               {sum(len(r.normalised) for r in results)}"
+          f" ({'on' if args.normalise else 'off'})")
 
     problems = []
     if failed:

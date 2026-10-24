@@ -364,15 +364,13 @@ def context():
 @pytest.fixture(scope="module")
 def parser(context):
     from docx4j_xsdata.formats.dataclass.parsers import XmlParser
-    from docx4j_xsdata.formats.dataclass.parsers.config import ParserConfig
     from docx4j_xsdata.formats.dataclass.parsers.handlers import LxmlEventHandler
 
+    from docx4j_py.runtime import parser_config
+
+    # the engine's config without its post-bind hook, so that link_parents is what wires the tree
     return XmlParser(
-        config=ParserConfig(
-            fail_on_unknown_properties=False,
-            fail_on_unknown_attributes=False,
-            fail_on_converter_warnings=False,
-        ),
+        config=parser_config(on_bind=None, skipped_report=False),
         context=context,
         handler=LxmlEventHandler,
     )

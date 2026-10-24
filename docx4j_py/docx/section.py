@@ -29,6 +29,7 @@ from docx4j_py.docx.enums import (
     WD_SECTION_START,
 )
 from docx4j_py.docx.shared import Length, Twips, twips_of
+from docx4j_py.model.values import is_on
 from docx4j_py.wml import CtSectPrType, P, SectPr, el
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -250,11 +251,7 @@ class Section:
     @property
     def different_first_page_header_footer(self) -> bool:
         """``w:titlePg``: this section has its own first-page header and footer."""
-        toggle = getattr(self._sect_pr, "title_pg", None)
-        if toggle is None:
-            return False
-        value = getattr(toggle, "val", None)
-        return True if value is None else bool(value)
+        return is_on(getattr(self._sect_pr, "title_pg", None))
 
     @different_first_page_header_footer.setter
     def different_first_page_header_footer(self, value: bool) -> None:

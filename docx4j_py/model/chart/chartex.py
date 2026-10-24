@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from docx4j_py.model.values import xsd_boolean
+
 __all__ = ["ChartExModel", "java_double"]
 
 CX = "http://schemas.microsoft.com/office/drawing/2014/chartex"
@@ -24,7 +26,8 @@ def _q(local: str) -> str:
 
 
 def _true(value: str | None) -> bool:
-    return value in ("1", "true")
+    """A chartex ``xsd:boolean`` attribute, as XSD reads it (:func:`~docx4j_py.model.values.xsd_boolean`)."""
+    return bool(xsd_boolean(value, default=False))
 
 
 def java_double(d: float) -> str:

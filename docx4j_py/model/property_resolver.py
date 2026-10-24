@@ -48,6 +48,7 @@ from docx4j_py.model.style_util import (
     has_direct_formatting_rpr,
     is_cyclic,
 )
+from docx4j_py.model.values import is_on, on_off
 
 __all__ = [
     "WORD_DEFAULT_CELL_MARGIN_TWIPS",
@@ -188,7 +189,7 @@ class PropertyResolver:
         if styles is not None:
             self._scan_styles()
             for style in styles.style or ():
-                if style.default is not True or style.style_id is None:
+                if not on_off(style.default, default=False) or style.style_id is None:
                     continue
                 kind = _style_kind(style)
                 if kind == "paragraph" and self.default_paragraph_style_id is None:
@@ -550,7 +551,7 @@ class PropertyResolver:
             vanish = getattr(self.get_effective_rpr(r_pr, p_pr), "vanish", None)
         except Exception:  # noqa: BLE001 - not resolved: not hidden
             return False
-        hidden = vanish is not None and getattr(vanish, "val", None) is not False
+        hidden = is_on(vanish)
         if (paragraph_style_id is None or self._live_style(paragraph_style_id) is not None) and (
             run_style_id is None or self._live_style(run_style_id) is not None
         ):

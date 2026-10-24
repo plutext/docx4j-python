@@ -87,6 +87,7 @@ class OpcPackage:
         "doc_props_core_part",
         "doc_props_custom_part",
         "doc_props_extended_part",
+        "last_save",
         "load_options",
         "parts",
         "relationships_part",
@@ -108,6 +109,10 @@ class OpcPackage:
         self._custom_xml_parts: Any = None
         self.source_part_store: PartStore | None = None
         self.load_options = LoadOptions()
+        #: What the last save did beyond writing the tree (CR-018 section 4.7): a
+        #: :class:`~docx4j_py.openpackaging.normalise.SaveReport`, each value it
+        #: wrote in Word's normal form in ``normalised``. None before the first save.
+        self.last_save: Any = None
         # CR-012 Phase A: this package's own mc_load_mode, over the load
         # options' (None: theirs)
         self._mc_load_mode: str | None = None
@@ -376,13 +381,47 @@ class OpcPackage:
         out.extend((rels.part_name, item) for item in rels.skipped)
         return out
 
+    @property
+    def kept(self) -> list[tuple[PartName, Any]]:
+        """The values the parse bound as the text they were read with, over every part that was unmarshalled.
+
+        CR-018 Q16: each entry names its part and is the fork's ``KeptValue``
+        (``reason``, ``qname``, ``text``, ``field_name``, ``parent_class``,
+        ``path``). ``"exact"`` is a value the exact parse kept on purpose
+        (``w:val=" false"``, which XSD would have trimmed and Word reads as on);
+        ``"invalid"`` is one no rule converts (POI's ``"off"``, ``"Yellow"``).
+        Not skipped content, and ``LoadOptions(strict=True)`` does not raise on
+        it: the text is in the tree, :mod:`docx4j_py.model.values` reads it as
+        Word does, and a save writes Word's reading of it (``save(normalise=)``).
+        """
+        out: list[tuple[PartName, Any]] = []
+        for part in self.parts.parts():
+            if isinstance(part, XmlPart):
+                out.extend((part.part_name, item) for item in part.kept)
+        rels = self.relationships_part
+        out.extend((rels.part_name, item) for item in rels.kept)
+        return out
+
     # -- saving ------------------------------------------------------------
 
-    def save(self, target: str | os.PathLike[str] | IO[bytes] | None = None) -> bytes | None:
+    def save(
+        self,
+        target: str | os.PathLike[str] | IO[bytes] | None = None,
+        *,
+        normalise: bool | None = None,
+    ) -> bytes | None:
         """Write the package as a zip.
 
         Args:
             target: a path, a binary file object, or None for bytes.
+            normalise: write each value the parse kept as its text in the
+                normal form Word reads exactly as it read the source (CR-018
+                section 4.7; :mod:`~docx4j_py.openpackaging.normalise`): an
+                on/off value Word reads as on bare, one it reads as off ``0``.
+                None (the default) is ``load_options.normalise_on_save``, which
+                is True; False keeps the source's spelling. Only the parts the
+                save re-marshals are touched, and each rewrite is listed in
+                :attr:`last_save`.
 
         Returns:
             The bytes when `target` is None, else None.
@@ -395,23 +434,23 @@ class OpcPackage:
         """
         if target is None:
             sink = ZipPartSink(None)
-            return save_package(self, sink)
+            return save_package(self, sink, normalise=normalise)
 
         if isinstance(target, (str, os.PathLike)):
             path = Path(target)
             if self._is_source_path(path):
-                return self._save_over(path)
+                return self._save_over(path, normalise=normalise)
             sink = ZipPartSink(str(path))
-            save_package(self, sink)
+            save_package(self, sink, normalise=normalise)
             return None
 
         sink = ZipPartSink(target)
-        save_package(self, sink)
+        save_package(self, sink, normalise=normalise)
         return None
 
-    def save_to(self, sink: PartSink) -> Any:
-        """Write the package to any sink and return what the sink produces."""
-        return save_package(self, sink)
+    def save_to(self, sink: PartSink, *, normalise: bool | None = None) -> Any:
+        """Write the package to any sink and return what the sink produces. `normalise` is :meth:`save`'s."""
+        return save_package(self, sink, normalise=normalise)
 
     def _is_source_path(self, path: Path) -> bool:
         store = self.source_part_store
@@ -423,7 +462,7 @@ class OpcPackage:
         except OSError:  # pragma: no cover - a path that cannot be resolved is not ours
             return False
 
-    def _save_over(self, path: Path) -> None:
+    def _save_over(self, path: Path, *, normalise: bool | None = None) -> None:
         """Temporary file beside the target, then rename. Decided question 4."""
         directory = path.parent
         handle, temporary = tempfile.mkstemp(
@@ -432,7 +471,7 @@ class OpcPackage:
         os.close(handle)
         try:
             sink = ZipPartSink(temporary)
-            save_package(self, sink)
+            save_package(self, sink, normalise=normalise)
             os.replace(temporary, path)
         except BaseException:
             Path(temporary).unlink(missing_ok=True)

@@ -23,9 +23,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from docx4j_xsdata.formats.dataclass.parsers import XmlParser
-from docx4j_xsdata.formats.dataclass.parsers.config import ParserConfig
 from docx4j_xsdata.formats.dataclass.parsers.skipped import SkippedReport
 
+from docx4j_py.runtime import parser_config
 from docx4j_py.wml import Document
 
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -40,13 +40,9 @@ CLEAN = (
 
 
 def lenient_parser() -> XmlParser:
-    config = ParserConfig(
-        fail_on_unknown_properties=False,
-        fail_on_unknown_attributes=False,
-        fail_on_converter_warnings=False,
-        skipped_report=SkippedReport(log=False),
-    )
-    return XmlParser(config=config)
+    # the engine's config (every parse in this package is, tests/test_parser_configs.py), lenient,
+    # with a report that does not log
+    return XmlParser(config=parser_config(skipped_report=SkippedReport(log=False)))
 
 
 @pytest.fixture

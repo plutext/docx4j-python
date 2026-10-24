@@ -26,6 +26,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Iterable
+from enum import Enum
 from importlib import import_module, resources
 from typing import Any
 
@@ -38,6 +39,8 @@ from docx4j_xsdata.formats.dataclass.serializers.tree import TreeSerializer
 
 __all__ = [
     "BRANCH_CHILD_NAMES",
+    "EXACT_TYPES",
+    "LEXICAL_TYPES",
     "branch_child_class",
     "container_binding",
     "context",
@@ -76,6 +79,14 @@ def context() -> XmlContext:
 #: and ``xsd:base64Binary`` attributes, which Word spells otherwise than the
 #: converter would, and any other ``float`` or ``bytes`` value the same way.
 LEXICAL_TYPES: frozenset[type] = frozenset({float, bytes})
+
+#: The value types read exactly as written (the fork's ``ParserConfig(exact_types=)``,
+#: stage 13, item 29; CR-018 section 4.1a): an ``xsd:boolean`` (Word's ST_OnOff in
+#: docx4j's copy of the schema) converts only from exactly ``true``, ``false``,
+#: ``1`` or ``0``, and an enumeration only from exactly a member's value. Anything
+#: else is bound as the text it was read with and written back as read, so that
+#: ``w:b w:val=" false"``, which Word reads as on, is not trimmed to ``False``.
+EXACT_TYPES: frozenset[type] = frozenset({bool, Enum})
 
 
 def parser_config(
@@ -119,10 +130,21 @@ def parser_config(
     wrapped at 76 characters, is not saved on one line. A value set in code is
     written in the converter's spelling, as before.
 
+    ``exact_types`` is the fork's stage 13 (CR-018 section 4.1a, :data:`EXACT_TYPES`):
+    a ``bool`` or an enumeration value converts only from exactly a lexical form,
+    with no XSD whitespace collapse. Anything else keeps its text: ``" false"``
+    (which XSD would have trimmed) silently, ``"off"`` or ``"Yellow"`` with the
+    usual ``ConverterWarning``. The skipped report lists both apart from the
+    skipped items (``SkippedReport.kept``; ``part.kept``), and
+    :mod:`docx4j_py.model.values` reads them as Word does. **Every parse in this
+    package goes through this function** (``tests/test_parser_configs.py``), so
+    that no parse reads ``" false"`` as ``False``.
+
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
     """
     kwargs.setdefault("lexical_types", LEXICAL_TYPES)
+    kwargs.setdefault("exact_types", EXACT_TYPES)
     if "on_bind" not in kwargs:
         from functools import partial
 

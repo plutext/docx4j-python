@@ -20,6 +20,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from docx4j_py.model.values import xsd_boolean
+
 __all__ = ["ChartAxis", "ChartData", "ChartGroup", "ChartModel", "ChartSeries", "ChartTitle", "root_tag"]
 
 #: A chart part's root.
@@ -49,11 +51,15 @@ def _val(element: Any) -> Any:
 
 
 def _bool(element: Any) -> bool | None:
-    """A ``CT_Boolean``: None for no element, true where its ``val`` is absent (the schema's default)."""
+    """A ``CT_Boolean``: None for no element, true where its ``val`` is absent (the schema's default).
+
+    DrawingML's ``val`` is ``xsd:boolean``, read as XSD reads it, whitespace collapsed
+    (:func:`~docx4j_py.model.values.xsd_boolean`), so that an exact parse that keeps
+    a padded value as its string reads it as the converter's trim did (CR-018).
+    """
     if element is None:
         return None
-    value = getattr(element, "val", None)
-    return True if value is None else bool(value) and value not in ("0", "false")
+    return xsd_boolean(getattr(element, "val", None), default=True)
 
 
 def _str(element: Any) -> str | None:

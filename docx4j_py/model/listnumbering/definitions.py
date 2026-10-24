@@ -37,6 +37,7 @@ import dataclasses
 from typing import Any
 
 from docx4j_py.model.listnumbering.formats import format_value
+from docx4j_py.model.values import on_off
 
 __all__ = [
     "LEVELS",
@@ -85,8 +86,7 @@ def _on(element: Any, local: str) -> bool:
     child = element.find(_w(local))
     if child is None:
         return False
-    value = child.get(_w("val"))
-    return value not in ("0", "false", "off")
+    return on_off(child.get(_w("val")))
 
 
 # ---------------------------------------------------------------------------

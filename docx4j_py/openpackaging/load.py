@@ -84,12 +84,19 @@ class LoadOptions:
             what it took out (``part.resolved_alternate_content``). Read when
             each part is first parsed; ``pkg.mc_load_mode`` overrides it for
             one package. See :mod:`docx4j_py.openpackaging.mc_load_mode`.
+        normalise_on_save: what ``package.save()`` does when its own
+            ``normalise`` is not given (CR-018 Q17): True (the default) writes
+            each value a parse kept as its text in the normal form Word reads
+            exactly as it read the source (section 4.7,
+            :mod:`docx4j_py.openpackaging.normalise`); False keeps the source's
+            spelling, for a tool that must change nothing it was not asked to.
     """
 
     strict: bool = False
     mce_preprocess: bool = False
     registry: PartRegistry | None = field(default=None)
     mc_load_mode: str = "preserve"
+    normalise_on_save: bool = True
 
     def __post_init__(self) -> None:
         """Refuse a mode that is neither ``"preserve"`` nor ``"word"``."""

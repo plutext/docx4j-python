@@ -37,16 +37,31 @@ if TYPE_CHECKING:  # pragma: no cover
 __all__ = ["save_package"]
 
 
-def save_package(package: OpcPackage, sink: PartSink) -> Any:
-    """Write a package to a sink and return whatever the sink produces."""
-    sink.put(
-        CONTENT_TYPES_NAME,
-        package.content_type_manager.to_bytes(),
-        content_type=ContentTypes.CONTENT_TYPES_PART,
-    )
-    saver = _Saver(package, sink)
-    saver.save_rels(package.relationships_part)
-    return sink.finish()
+def save_package(package: OpcPackage, sink: PartSink, *, normalise: bool | None = None) -> Any:
+    """Write a package to a sink and return whatever the sink produces.
+
+    `normalise` (CR-018 section 4.7): write each value a parse kept as its text
+    in Word's normal form, for this save only
+    (:func:`~docx4j_py.openpackaging.normalise.normalised_package`). None is the
+    package's ``load_options.normalise_on_save``. What it rewrote is
+    ``package.last_save``.
+    """
+    from docx4j_py.openpackaging.normalise import normalised_package
+
+    if normalise is None:
+        normalise = bool(getattr(getattr(package, "load_options", None), "normalise_on_save", True))
+    with normalised_package(package, enabled=normalise) as report:
+        sink.put(
+            CONTENT_TYPES_NAME,
+            package.content_type_manager.to_bytes(),
+            content_type=ContentTypes.CONTENT_TYPES_PART,
+        )
+        saver = _Saver(package, sink)
+        saver.save_rels(package.relationships_part)
+        result = sink.finish()
+    if hasattr(package, "last_save"):
+        package.last_save = report
+    return result
 
 
 class _Saver:

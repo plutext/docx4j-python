@@ -30,6 +30,7 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
 from docx4j_py.child import deep_copy
+from docx4j_py.model.values import is_on
 
 __all__ = [
     "CELL",
@@ -106,8 +107,9 @@ def is_empty_bool(value: Any) -> bool:
 
 
 def is_true(value: Any) -> bool:
-    """A ``BooleanDefaultTrue``'s value: an absent ``w:val`` means true (docx4j ``isVal``)."""
-    return value is not None and value.val is not False
+    """A ``BooleanDefaultTrue``'s value as Word reads it: an absent ``w:val`` means true (docx4j ``isVal``),
+    and only exactly ``false``, ``off`` or ``0`` means false (CR-018, :func:`docx4j_py.model.values.is_on`)."""
+    return is_on(value)
 
 
 def is_empty_val(value: Any) -> bool:

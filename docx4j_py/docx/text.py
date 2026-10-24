@@ -49,6 +49,7 @@ from docx4j_py.docx.enums import (
 )
 from docx4j_py.docx.shared import Emu, Length, Pt, RGBColor, Twips, points_of, twips_of
 from docx4j_py.model.content.paragraph import Paragraph as ContentParagraph
+from docx4j_py.model.values import is_on
 from docx4j_py.wml import CTTabStop, P, PPr, R, RPr, el
 from docx4j_py.wml import r as r_builder
 
@@ -408,8 +409,7 @@ class Font:
         toggle = getattr(r_pr, field, None)
         if toggle is None:
             return None
-        value = getattr(toggle, "val", None)
-        return True if value is None else bool(value)
+        return is_on(toggle)
 
     def _set_bool(self, name: str, value: bool | None) -> None:
         field, twin = BOOL_PROPERTIES[name]
@@ -847,8 +847,7 @@ class ParagraphFormat:
         toggle = getattr(p_pr, field, None) if p_pr is not None else None
         if toggle is None:
             return None
-        value = getattr(toggle, "val", None)
-        return True if value is None else bool(value)
+        return is_on(toggle)
 
     def _set_toggle(self, field: str, name: str, value: bool | None) -> None:
         if value is None and self._p_pr(create=False) is None:

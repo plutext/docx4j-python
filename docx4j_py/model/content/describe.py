@@ -24,6 +24,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
+from docx4j_py.model.values import on_off
 from docx4j_py.traversal import element_name, iter_nodes
 
 __all__ = [
@@ -149,6 +150,15 @@ class Description:
     """
     skipped: int = 0
     """How many items lenient parsing dropped (CR-002 section 8)."""
+    kept: dict[str, int] = dataclasses.field(default_factory=dict)
+    """How many values the parse kept as their text, by reason (CR-018 Q16; ``package.kept``).
+
+    ``"exact"``: a value kept on purpose that XSD would have trimmed
+    (``w:val=" false"``); ``"invalid"``: one no rule converts (``"off"``,
+    ``"Yellow"``). Each is read as Word reads it, and a save writes Word's
+    reading of it; the values themselves are ``package.kept``. Empty when there
+    are none, which is the usual answer.
+    """
     application: str | None = None
     """``docProps/app.xml``'s ``Application``."""
     created: str | None = None
@@ -169,6 +179,7 @@ class Description:
             "tracking_on": self.tracking_on,
             "compatibility_mode": self.compatibility_mode,
             "skipped": self.skipped,
+            "kept": dict(self.kept),
             "application": self.application,
             "created": self.created,
             "modified": self.modified,
@@ -231,7 +242,7 @@ def _styles(package: Any, in_use: set[str]) -> tuple[StyleInfo, ...]:
                 # Word stores ``heading 1`` and shows ``Heading 1`` (section 4)
                 name=display_name_of(style_id, stored),
                 kind=style.get(f"{{{_W}}}type") or "paragraph",
-                built_in=custom not in ("1", "true"),
+                built_in=not on_off(custom, default=False),
                 in_use=style_id in in_use,
             )
         )
@@ -383,8 +394,7 @@ def _tracking_on(package: Any) -> bool:
     node = root.find(f"{{{_W}}}trackRevisions")
     if node is None:
         return False
-    value = node.get(f"{{{_W}}}val")
-    return value not in ("0", "false")
+    return on_off(node.get(f"{{{_W}}}val"))
 
 
 def _compatibility_mode(package: Any) -> int:
@@ -429,6 +439,15 @@ def _properties(package: Any) -> tuple[str | None, str | None, str | None]:
     return application, created, modified
 
 
+def _kept_by_reason(package: Any) -> dict[str, int]:
+    """``package.kept`` counted by reason, in a stable order (CR-018 Q16)."""
+    counts: dict[str, int] = {}
+    for _part, value in getattr(package, "kept", ()) or ():
+        reason = getattr(value, "reason", "invalid")
+        counts[reason] = counts.get(reason, 0) + 1
+    return dict(sorted(counts.items()))
+
+
 def describe_package(package: Any) -> Description:
     """``pkg.describe()``. See this module's docstring for what is read how."""
     from docx4j_py.model.content.addresses import package_parts, prefix_for_part
@@ -460,6 +479,7 @@ def describe_package(package: Any) -> Description:
         tracking_on=_tracking_on(package),
         compatibility_mode=_compatibility_mode(package),
         skipped=len(getattr(package, "skipped", ()) or ()),
+        kept=_kept_by_reason(package),
         application=application,
         created=created,
         modified=modified,

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from docx4j_py.model.values import is_on
 from docx4j_py.wml import el
 
 __all__ = ["Settings"]
@@ -54,11 +55,7 @@ class Settings:
         part = self._part
         if part is None:
             return False
-        toggle = getattr(part.contents, "even_and_odd_headers", None)
-        if toggle is None:
-            return False
-        value = getattr(toggle, "val", None)
-        return True if value is None else bool(value)
+        return is_on(getattr(part.contents, "even_and_odd_headers", None))
 
     @odd_and_even_pages_header_footer.setter
     def odd_and_even_pages_header_footer(self, value: bool) -> None:

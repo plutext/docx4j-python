@@ -52,6 +52,7 @@ from docx4j_py.model.listnumbering.definitions import (
     StyleNumbering,
     read_definitions,
 )
+from docx4j_py.model.values import on_off
 
 __all__ = [
     "Emulator",
@@ -912,7 +913,7 @@ def _read_styles(package: Any) -> tuple[dict[str, StyleNumbering], str | None]:
         based_on_element = style.find(_w("basedOn"))
         if based_on_element is not None:
             based_on = based_on_element.get(_w("val"))
-        default = (style.get(_w("default")) or "") in ("1", "true", "on")
+        default = on_off(style.get(_w("default")), default=False)
         styles[style_id] = StyleNumbering(style_id, based_on, num_id, ilvl, default, ind, kind=kind)
         if default and default_id is None and kind == "paragraph":
             default_id = style_id

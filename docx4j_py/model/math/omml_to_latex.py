@@ -20,6 +20,7 @@ from collections.abc import Callable
 from typing import Any
 
 from docx4j_py.model.math.latex_symbols import FUNCTION_NAMES, NARY, SYMBOLS
+from docx4j_py.model.values import is_on
 
 __all__ = ["OmmlMathError", "OmmlToLatex"]
 
@@ -479,7 +480,8 @@ class OmmlToLatex:
 
 
 def _on(flag: Any) -> bool:
-    return flag is not None and getattr(flag, "val", None) is not False
+    """A math run's ``w:b`` or ``w:i``, as Word reads an on/off value (CR-018)."""
+    return is_on(flag)
 
 
 def _math_chars(s: str, builder: _LatexBuilder, in_eq_arr: bool) -> None:

@@ -104,6 +104,7 @@ class XmlPart(Part, Generic[T]):
         "_private_contents",
         "_private_settings",
         "_source_ns_map",
+        "kept",
         "resolved_alternate_content",
         "root_name",
         "skipped",
@@ -128,6 +129,13 @@ class XmlPart(Part, Generic[T]):
         self._source_ns_map: dict[str, str] = {}
         #: What the fork's parser skipped, per entry. Empty is the good answer.
         self.skipped: list[Any] = []
+        #: The values the last parse bound as the text they were read with (CR-018 Q16): the fork's
+        #: ``SkippedReport.kept``, each a ``KeptValue`` (``reason`` ``"exact"`` for a value the exact
+        #: parse kept on purpose, such as ``w:val=" false"``; ``"invalid"`` for one no rule converts,
+        #: such as ``"off"`` or ``"Yellow"``). Not skipped content: the text is in the tree, a save
+        #: writes it back (normalised where CR-018 section 4.7 says, :mod:`~docx4j_py.openpackaging.normalise`),
+        #: and :mod:`docx4j_py.model.values` reads it as Word does. Empty is the usual answer.
+        self.kept: list[Any] = []
         #: Each ``mc:AlternateContent`` the last parse took out in ``"word"`` mode
         #: (CR-012 Phase A), outermost first: a
         #: :class:`~docx4j_py.openpackaging.mc_load_mode.ResolvedAlternateContent`,
@@ -274,6 +282,7 @@ class XmlPart(Part, Generic[T]):
         self._private_contents = None
         self._private_settings = None
         self.skipped = []
+        self.kept = []
         self.resolved_alternate_content = []
 
     def set_xml(self, xml: str) -> None:
@@ -325,6 +334,7 @@ class XmlPart(Part, Generic[T]):
 
         report = xml_parser.skipped
         self.skipped = list(getattr(report, "items", ()) or ())
+        self.kept = list(getattr(report, "kept", ()) or ())
         self.resolved_alternate_content = resolved
         if self.skipped:
             for item in self.skipped:
@@ -353,7 +363,7 @@ class XmlPart(Part, Generic[T]):
     def _adopt(self) -> None:
         """The private tree made the live one: what :meth:`_unmarshal` would leave, without the parse.
 
-        :attr:`skipped`, :attr:`resolved_alternate_content` and
+        :attr:`skipped`, :attr:`kept`, :attr:`resolved_alternate_content` and
         ``_source_ns_map`` are already that parse's: the private parse set them
         from the same bytes under the same settings.
         """

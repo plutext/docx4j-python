@@ -64,6 +64,7 @@ from docx4j_py.model.content.text_model import (
     segments_of,
     text_run,
 )
+from docx4j_py.model.values import on_off
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.openpackaging.parts.wml.comments import (
     CommentParts,
@@ -985,9 +986,7 @@ class Comment:
         that is the key the entry is filed under.
         """
         entry = self._comment_ex()
-        value = getattr(entry, "done", None) if entry is not None else None
-        value = getattr(value, "value", value)
-        return str(value) in ("1", "true", "on")
+        return on_off(getattr(entry, "done", None) if entry is not None else None, default=False)
 
     @resolved.setter
     def resolved(self, value: bool) -> None:

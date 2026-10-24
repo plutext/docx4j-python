@@ -28,6 +28,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
+from docx4j_py.model.values import on_off
 from docx4j_py.traversal import element_name
 
 __all__ = ["is_math", "math_letter", "math_text_of"]
@@ -218,11 +219,8 @@ def _value(obj: Any) -> Any:
 
 
 def _on(prop: Any) -> bool:
-    """An ``m:`` on/off property: present and not ``0``, ``false`` or ``off``."""
-    if prop is None:
-        return False
-    value = _value(prop)
-    return value not in (False, "off", "0", 0, "false")
+    """An ``m:`` on/off property: present and not exactly ``0``, ``false`` or ``off`` (CR-018's rule)."""
+    return prop is not None and on_off(_value(prop))
 
 
 def _run_properties(run: Any) -> tuple[str | None, str | None, bool]:

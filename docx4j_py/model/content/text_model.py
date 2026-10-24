@@ -99,6 +99,7 @@ from docx4j_py.child import (
     mce_branch,
 )
 from docx4j_py.model.content.errors import ContentError
+from docx4j_py.model.values import is_on
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
 
@@ -825,8 +826,8 @@ def text_of_view(
 
 
 def _on(flag: Any) -> bool:
-    """An on/off property: present, and not ``w:val="0"`` (the text model's ``_on``)."""
-    return flag is not None and getattr(flag, "val", None) is not False
+    """An on/off property as Word reads it (CR-018): present, and not exactly ``false``, ``off`` or ``0``."""
+    return is_on(flag)
 
 
 def hidden_runs_of(resolver: Any, paragraph: Any) -> Callable[[Any], bool]:

@@ -28,6 +28,7 @@ import re
 from typing import TYPE_CHECKING, Any, Literal
 
 from docx4j_py.model.content.errors import BindingError
+from docx4j_py.model.values import is_on, on_off
 from docx4j_py.wml import el
 from docx4j_py.wml.sdt import CHECKBOX_FONT, W14_NS, W15_NS, W_NS, sdt_property
 
@@ -141,8 +142,8 @@ class CheckboxContentControl(_KindView):
     @property
     def is_checked(self) -> bool:
         """Whether the box is ticked. Office JS ``isChecked``."""
-        value = _value_of(getattr(self.element, "checked", None))
-        return str(value).lower() in ("1", "true", "on")
+        checked = getattr(self.element, "checked", None)
+        return checked is not None and on_off(getattr(checked, "val", None), default=False)
 
     @is_checked.setter
     def is_checked(self, value: bool) -> None:
@@ -592,8 +593,7 @@ class RepeatingSectionContentControl(_KindView):
         flag = getattr(self.element, "do_not_allow_insert_delete_section", None)
         if flag is None:
             return True
-        value = _value_of(flag, True)
-        return str(value).lower() in ("0", "false")
+        return not is_on(flag)
 
     @allow_insert_delete_section.setter
     def allow_insert_delete_section(self, value: bool) -> None:

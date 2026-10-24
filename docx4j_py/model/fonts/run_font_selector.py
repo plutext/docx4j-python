@@ -38,6 +38,7 @@ from typing import Any
 from docx4j_py.model.fonts.default_theme import DefaultTheme, default_theme_setting
 from docx4j_py.model.fonts.fallback import coverage_group_of
 from docx4j_py.model.fonts.theme_fonts import theme_font_of
+from docx4j_py.model.values import is_on as _is_on
 
 __all__ = [
     "BUILT_IN_DEFAULT_FONT",
@@ -92,8 +93,8 @@ class FontSpan:
 
 
 def is_on(value: Any) -> bool:
-    """``w:cs`` and ``w:rtl`` are ``ST_OnOff``: present without ``w:val`` means true."""
-    return value is not None and value.val is not False
+    """``w:cs`` and ``w:rtl`` are ``ST_OnOff``: present without ``w:val`` means true (CR-018's reader)."""
+    return _is_on(value)
 
 
 def symbol_font_name(document_font_name: str | None) -> str | None:

@@ -63,6 +63,7 @@ from docx4j_py.model.content.text_model import (
     rows_of,
     text_run,
 )
+from docx4j_py.model.values import is_on
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, text_of
 from docx4j_py.wml import P, Tbl, Tc, Tr, el, tbl, to_xml, tr
@@ -834,7 +835,7 @@ class TableRow:
     def is_header(self) -> bool:
         """``w:trPr/w:tblHeader``: the row repeats at the top of every page."""
         item = self._tbl_header()
-        return item is not None and getattr(item, "val", None) is not False
+        return is_on(item)
 
     @is_header.setter
     def is_header(self, header: bool) -> None:

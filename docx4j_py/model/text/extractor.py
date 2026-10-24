@@ -89,6 +89,7 @@ from docx4j_py.model.text.result import (
     TextWarning,
 )
 from docx4j_py.model.text.trees import Context, PackageTrees
+from docx4j_py.model.values import is_on, on_off, xsd_boolean
 
 __all__ = ["Extractor", "normalize"]
 
@@ -165,8 +166,8 @@ def _v(value: Any) -> Any:
 
 
 def _on(flag: Any) -> bool:
-    """An on/off property: present, and not ``w:val="0"``."""
-    return flag is not None and getattr(flag, "val", None) is not False
+    """An on/off property as Word reads it (CR-018): present, and not exactly ``false``, ``off`` or ``0``."""
+    return is_on(flag)
 
 
 def _local(item: Any) -> str:
@@ -716,7 +717,7 @@ class Extractor:
             settings = self.trees.settings
             protect = getattr(settings, "document_protection", None) if settings is not None else None
             self._forms_protected = (
-                protect is not None and _v(protect.edit) == "forms" and protect.enforcement in (True, "1", "true", "on")
+                protect is not None and _v(protect.edit) == "forms" and on_off(protect.enforcement, default=False)
             )
         return self._forms_protected
 
@@ -1384,7 +1385,7 @@ class Extractor:
                 custom = _attr(item, "customMarkFollows")
                 if not is_any_element(item):
                     custom = getattr(item, "custom_mark_follows", None)
-                run.note_number = self.context.note_number(run.note_type, run.note_id, custom in (True, "1", "true", "on"))
+                run.note_number = self.context.note_number(run.note_type, run.note_id, on_off(custom, default=False))
             para.block.runs.append(run)
             return
         if name in ("footnoteRef", "endnoteRef"):
@@ -2107,7 +2108,7 @@ class Extractor:
                 by_para_id[para_id.upper()] = comment_id
                 ex = extended.get(para_id.upper())
                 if ex is not None:
-                    comment.resolved = ex.done in (True, 1, "1", "true")
+                    comment.resolved = on_off(ex.done, default=False)
                     comment.parent_id = ex.para_id_parent
             out[comment_id] = comment
         for comment in out.values():
@@ -2418,7 +2419,7 @@ def _decorative(nv: Any) -> bool:
             continue
         for item in items:
             val = (item.attributes or {}).get("val") if is_any_element(item) else getattr(item, "val", None)
-            if val in (True, 1) or str(val).lower() in ("1", "true"):
+            if xsd_boolean(val, default=False):
                 return True
     return False
 
@@ -2531,9 +2532,9 @@ EMPTY_FORM_FIELD = "\u2002" * 5
 
 
 def _written(item: Any, field_name: str, attribute: str) -> bool:
-    """An on/off attribute as written, false when absent (``w:fldLock``)."""
+    """An on/off attribute as Word reads it (CR-018), false when absent (``w:fldLock``)."""
     value = (item.attributes or {}).get(f"{_W}{attribute}") if is_any_element(item) else getattr(item, field_name, None)
-    return value in (True, 1, "1", "true", "on")
+    return on_off(value, default=False)
 
 
 def _ff_data(fld_char: Any) -> Any:

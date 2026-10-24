@@ -50,6 +50,7 @@ from docx4j_py.model.content.text_model import (
     text_of_view,
     text_run,
 )
+from docx4j_py.model.values import is_on, on_off
 from docx4j_py.traversal import element_name, run_items_of, text_of
 from docx4j_py.wml import (
     CTSdtCell,
@@ -722,11 +723,12 @@ class ContentControl:
     def is_showing_placeholder(self) -> bool:
         """Whether ``w:showingPlcHdr`` is set, and not ``w:val="0"``. Extension.
 
-        ``w:showingPlcHdr`` is an on/off property, so ``w:val="0"`` (or ``"false"``)
-        turns it off, as core-ts's ``isShowingPlaceholder`` reads it.
+        ``w:showingPlcHdr`` is an on/off property, so ``w:val="0"`` (or ``"false"``,
+        or ``"off"``) turns it off, as core-ts's ``isShowingPlaceholder`` reads it
+        and as Word reads an on/off value (CR-018).
         """
         item = sdt_property(self.sdt_pr, "showingPlcHdr", W_NS)
-        return item is not None and getattr(item, "val", None) is not False
+        return is_on(item)
 
     @property
     def showing_placeholder_text(self) -> bool:
@@ -827,9 +829,7 @@ class ContentControl:
         element = sdt_property(self.sdt_pr, "temporary", W_NS)
         if element is None:
             return False
-        value = getattr(element, "val", None)
-        value = getattr(value, "value", value)
-        return value is None or str(value).lower() not in ("0", "false")
+        return is_on(element)
 
     @remove_when_edited.setter
     def remove_when_edited(self, value: bool) -> None:
@@ -936,9 +936,7 @@ class ContentControl:
         text = sdt_property(self.sdt_pr, "text", W_NS)
         if text is None:
             return self.type != "PlainText"
-        value = getattr(text, "multi_line", None)
-        value = getattr(value, "value", value)
-        return value is not None and str(value).lower() not in ("0", "false")
+        return on_off(getattr(text, "multi_line", None), default=False)
 
     # -- the XML mapping and the typed kinds --------------------------------
 
@@ -1325,9 +1323,7 @@ def plain_text_lines_of(control: ContentControl) -> str | None:
     """
     text = sdt_property(control.sdt_pr, "text", W_NS)
     if text is not None:
-        value = getattr(text, "multi_line", None)
-        value = getattr(value, "value", value)
-        return "multi" if value is not None and str(value).lower() not in ("0", "false") else "single"
+        return "multi" if on_off(getattr(text, "multi_line", None), default=False) else "single"
     return "single" if is_bound_block_control(control) else None
 
 

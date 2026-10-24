@@ -41,6 +41,7 @@ from lxml import etree
 
 from docx4j_py.child import is_any_element, iter_children
 from docx4j_py.model.revisions import tables, trees
+from docx4j_py.model.values import is_on
 
 __all__ = ["describe", "differing"]
 
@@ -458,8 +459,7 @@ def _format(r_pr: Any) -> str:
         ("smallCaps", "small_caps"),
         ("vanish", "vanish"),
     ):
-        found = getattr(r_pr, field, None)
-        if found is not None and getattr(found, "val", None) in (None, True, 1, "1", "true", "on"):
+        if is_on(getattr(r_pr, field, None)):
             out.append(name)
     if r_pr.u is not None and r_pr.u.val is not None:
         out.append(f"u={_value(r_pr.u.val)}")

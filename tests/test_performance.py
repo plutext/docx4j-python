@@ -109,16 +109,14 @@ def document_bytes() -> bytes:
 def test_parse_throughput(document_bytes: bytes) -> None:
     from docx4j_xsdata.formats.dataclass.context import XmlContext
     from docx4j_xsdata.formats.dataclass.parsers import XmlParser
-    from docx4j_xsdata.formats.dataclass.parsers.config import ParserConfig
     from docx4j_xsdata.formats.dataclass.parsers.handlers import LxmlEventHandler
+
+    from docx4j_py.runtime import parser_config
 
     from docx4j_py.wml import Document
 
-    config = ParserConfig(
-        fail_on_unknown_properties=False,
-        fail_on_unknown_attributes=False,
-        fail_on_converter_warnings=False,
-    )
+    # the engine's config, without the post-bind hook: the parse alone, and link_parents apart
+    config = parser_config(on_bind=None, skipped_report=False)
     parser = XmlParser(config=config, context=XmlContext(), handler=LxmlEventHandler)
     parser.from_bytes(document_bytes, Document)  # warm the class metadata
 
@@ -138,17 +136,15 @@ def test_link_parents_stays_within_its_budget(document_bytes: bytes) -> None:
     """CR-001 section 8 budgets 20% of parse for the parent pointers."""
     from docx4j_xsdata.formats.dataclass.context import XmlContext
     from docx4j_xsdata.formats.dataclass.parsers import XmlParser
-    from docx4j_xsdata.formats.dataclass.parsers.config import ParserConfig
     from docx4j_xsdata.formats.dataclass.parsers.handlers import LxmlEventHandler
+
+    from docx4j_py.runtime import parser_config
 
     from docx4j_py.child import link_parents
     from docx4j_py.wml import Document
 
-    config = ParserConfig(
-        fail_on_unknown_properties=False,
-        fail_on_unknown_attributes=False,
-        fail_on_converter_warnings=False,
-    )
+    # the engine's config, without the post-bind hook: the parse alone, and link_parents apart
+    config = parser_config(on_bind=None, skipped_report=False)
     parser = XmlParser(config=config, context=XmlContext(), handler=LxmlEventHandler)
     doc = parser.from_bytes(document_bytes, Document)
 

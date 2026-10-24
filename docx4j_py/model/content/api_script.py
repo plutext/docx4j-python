@@ -47,6 +47,7 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 from docx4j_py.fragments import to_xml
+from docx4j_py.model.values import is_on
 from docx4j_py.traversal import element_name
 from docx4j_py.wml import read_run_options
 
@@ -912,10 +913,10 @@ def _table_grid(element: Any) -> dict[str, Any]:
 
 
 def _has_header(tr_pr: Any) -> bool:
-    """Whether a ``w:trPr`` carries ``w:tblHeader``."""
+    """Whether a ``w:trPr`` carries ``w:tblHeader``, on as Word reads it (CR-018)."""
     for item in getattr(tr_pr, "content", None) or ():
         if element_name(item) == f"{W}tblHeader":
-            return True
+            return is_on(item)
     return False
 
 

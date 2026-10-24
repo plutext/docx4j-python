@@ -26,6 +26,7 @@ from docx4j_py.docx.enums import (
 )
 from docx4j_py.docx.shared import Inches, Length, Twips, twips_of
 from docx4j_py.model.content.table import Table as ContentTable
+from docx4j_py.model.values import is_on
 from docx4j_py.wml import Tbl, Tc, Tr, el
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -370,9 +371,7 @@ class Table:
         toggle = getattr(tbl_pr, "bidi_visual", None) if tbl_pr else None
         if toggle is None:
             return None
-        value = getattr(toggle, "val", None)
-        on = True if value is None else bool(value)
-        return WD_TABLE_DIRECTION.RTL if on else WD_TABLE_DIRECTION.LTR
+        return WD_TABLE_DIRECTION.RTL if is_on(toggle) else WD_TABLE_DIRECTION.LTR
 
     @table_direction.setter
     def table_direction(self, value: WD_TABLE_DIRECTION | None) -> None:

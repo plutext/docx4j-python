@@ -42,6 +42,7 @@ from typing import Any
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
 from docx4j_py.model.content.errors import BuilderError
+from docx4j_py.model.values import is_on
 from docx4j_py.wml import (
     RT,
     P,
@@ -184,8 +185,8 @@ def highlight_name_for_color(color: str | None) -> str | None:
 
 
 def _on(value: Any) -> bool:
-    """A ``BooleanDefaultTrue`` toggle is on when present and not ``val=0``."""
-    return value is not None and getattr(value, "val", None) is not False
+    """A ``BooleanDefaultTrue`` toggle as Word reads it: present, and not exactly ``false``, ``off`` or ``0`` (CR-018)."""
+    return is_on(value)
 
 
 def apply_run_options(r_pr: RPr, **options: Any) -> RPr:

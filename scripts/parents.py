@@ -93,35 +93,27 @@ def main() -> int:
 
     from docx4j_xsdata.formats.dataclass.context import XmlContext
     from docx4j_xsdata.formats.dataclass.parsers import XmlParser
-    from docx4j_xsdata.formats.dataclass.parsers.config import ParserConfig
     from docx4j_xsdata.formats.dataclass.parsers.handlers import LxmlEventHandler
     from docx4j_xsdata.formats.dataclass.serializers import XmlSerializer
-    from docx4j_xsdata.formats.dataclass.serializers.config import SerializerConfig
     from docx4j_xsdata.formats.dataclass.serializers.writers import LxmlEventWriter
 
+    from docx4j_py.runtime import parser_config, serializer_config
+
     ctx = XmlContext()
+    # the engine's config (tests/test_parser_configs.py), without its post-bind hook
     parser = XmlParser(
-        config=ParserConfig(
-            fail_on_unknown_properties=False,
-            fail_on_unknown_attributes=False,
-            fail_on_converter_warnings=False,
-        ),
+        config=parser_config(on_bind=None, skipped_report=False),
         context=ctx,
         handler=LxmlEventHandler,
     )
     # the engine's parser: the parent pointers are wired as the tree is built
     hooked = XmlParser(
-        config=ParserConfig(
-            fail_on_unknown_properties=False,
-            fail_on_unknown_attributes=False,
-            fail_on_converter_warnings=False,
-            on_bind=lambda obj: link_children(obj, context=ctx),
-        ),
+        config=parser_config(on_bind=lambda obj: link_children(obj, context=ctx), skipped_report=False),
         context=ctx,
         handler=LxmlEventHandler,
     )
     serializer = XmlSerializer(
-        config=SerializerConfig(xml_declaration=True, indent=None),
+        config=serializer_config(xml_declaration=True, indent=None),
         context=ctx,
         writer=LxmlEventWriter,
     )

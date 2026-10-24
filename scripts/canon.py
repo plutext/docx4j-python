@@ -121,8 +121,12 @@ class DiffReport:
     counts: dict[str, int] = field(default_factory=dict)
 
     #: categories that are a different spelling of the same value, not a
-    #: difference; they are counted and reported but ``identical`` ignores them
-    BENIGN = ("boolean-spelling",)
+    #: difference; they are counted and reported but ``identical`` ignores them.
+    #: ``word-normal-form`` (CR-018 section 4.7) is a value a normalising save
+    #: wrote in Word's normal form: :func:`compare` with ``normalise=True``
+    #: writes the same normal form into the source first, counting each, so
+    #: that the diff proves nothing else moved
+    BENIGN = ("boolean-spelling", "word-normal-form")
 
     def add(self, category: str, path: str, detail: str, limit: int = 400) -> None:
         self.counts[category] = self.counts.get(category, 0) + 1
@@ -250,7 +254,7 @@ def sort_children(el: etree._Element) -> None:
         el.append(child)
 
 
-def compare(orig: bytes, new: bytes, *, unordered_root: bool = False) -> DiffReport:
+def compare(orig: bytes, new: bytes, *, unordered_root: bool = False, normalise: bool = False) -> DiffReport:
     """Diff two parts.
 
     Args:
@@ -259,9 +263,19 @@ def compare(orig: bytes, new: bytes, *, unordered_root: bool = False) -> DiffRep
         unordered_root: sort the root's children on both sides first, for a
             part whose root content model is ``xsd:all`` (see
             :func:`sort_children`).
+        normalise: `new` is a normalising save's (CR-018 section 4.7,
+            ``package.save()``'s default): write the same normal form into the
+            source first (:func:`docx4j_py.openpackaging.normalise.normalise_tree`),
+            each rewrite counted as ``word-normal-form``, so that any other
+            difference is still one.
     """
     rep = DiffReport()
     a, b = normalize_tree(orig), normalize_tree(new)
+    if normalise:
+        from docx4j_py.openpackaging.normalise import normalise_tree
+
+        for path, attribute, before, after in normalise_tree(a):
+            rep.add("word-normal-form", path, f"{_q(attribute)}: {before!r} -> {after!r}")
     if unordered_root:
         sort_children(a)
         sort_children(b)

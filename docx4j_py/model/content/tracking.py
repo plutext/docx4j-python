@@ -63,6 +63,7 @@ from docx4j_py.model.content.enums import (
 )
 from docx4j_py.model.content.errors import ContentError, TrackedChangeError
 from docx4j_py.model.content.text_model import RUN_HOLDER_NAMES
+from docx4j_py.model.values import is_on, on_off
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
 from docx4j_py.wml import (
@@ -1577,8 +1578,7 @@ def _track_revisions_in(package: Any) -> bool:
     if part is None:
         return False
     if getattr(part, "is_unmarshalled", False):
-        value = getattr(part.contents, "track_revisions", None)
-        return value is not None and getattr(value, "val", True) is not False
+        return is_on(getattr(part.contents, "track_revisions", None))
     from docx4j_py.model.content.describe import _root
 
     root = _root(part)
@@ -1587,7 +1587,7 @@ def _track_revisions_in(package: Any) -> bool:
     node = root.find(W_TRACK_REVISIONS)
     if node is None:
         return False
-    return node.get(_w("val")) not in ("0", "false")
+    return on_off(node.get(_w("val")))
 
 
 def set_mode(package: Any, value: str | None) -> list[str]:
