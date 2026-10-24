@@ -1,0 +1,1012 @@
+{
+ "check": 67,
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "title": "Check 67a: check 58's writes into a control in the bare form, in four phases; this file holds nothing else.",
+ "steps": {
+  "report": {
+   "check": 67,
+   "step": "report",
+   "host": {
+    "host": "Word",
+    "version": "16.0.20326.20232",
+    "platform": "PC"
+   },
+   "title": "Check 67a: check 58's writes into a control in the bare form, in four phases; this file holds nothing else.",
+   "cases": [
+    {
+     "n": 1,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN1 control-text-replace block simple-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 1\"/><w:tag w:val=\"c67-1\"/><w:id w:val=\"67001\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 2,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN2 control-text-end block simple-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 2\"/><w:tag w:val=\"c67-2\"/><w:id w:val=\"67002\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 3,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-untouched",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       "PLAIN3A  PLAIN3B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN3 control-text-end run simple-untouched tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN3A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 3\"/><w:tag w:val=\"c67-3\"/><w:id w:val=\"67003\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN3B</w:t></w:r></w:p><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 4,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN4 control-text-replace block simple-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 4\"/><w:tag w:val=\"c67-4\"/><w:id w:val=\"67004\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 5,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN5 control-text-end block simple-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 5\"/><w:tag w:val=\"c67-5\"/><w:id w:val=\"67005\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 6,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-untouched",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       "PLAIN6A  PLAIN6B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN6 control-text-end run simple-untouched list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN6A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 6\"/><w:tag w:val=\"c67-6\"/><w:id w:val=\"67006\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN6B</w:t></w:r></w:p><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 7,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN7 control-text-replace block all-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 7\"/><w:tag w:val=\"c67-7\"/><w:id w:val=\"67007\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 8,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN8 control-text-end block all-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 8\"/><w:tag w:val=\"c67-8\"/><w:id w:val=\"67008\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 9,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-untouched",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       "PLAIN9A  PLAIN9B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN9 control-text-end run all-untouched tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN9A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 9\"/><w:tag w:val=\"c67-9\"/><w:id w:val=\"67009\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN9B</w:t></w:r></w:p><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 10,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN10 control-text-replace block all-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 10\"/><w:tag w:val=\"c67-10\"/><w:id w:val=\"67010\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 11,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN11 control-text-end block all-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 11\"/><w:tag w:val=\"c67-11\"/><w:id w:val=\"67011\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END11</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 12,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-untouched",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       "PLAIN12A  PLAIN12B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN12 control-text-end run all-untouched list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN12A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 12\"/><w:tag w:val=\"c67-12\"/><w:id w:val=\"67012\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN12B</w:t></w:r></w:p><w:p><w:r><w:t>END12</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 13,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN13 control-text-replace block all-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 13\"/><w:tag w:val=\"c67-13\"/><w:id w:val=\"67013\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END13</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 14,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN14 control-text-end block all-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 14\"/><w:tag w:val=\"c67-14\"/><w:id w:val=\"67014\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END14</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 15,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-off",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       "PLAIN15A  PLAIN15B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN15 control-text-end run all-off tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN15A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 15\"/><w:tag w:val=\"c67-15\"/><w:id w:val=\"67015\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN15B</w:t></w:r></w:p><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 16,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN16 control-text-replace block all-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 16\"/><w:tag w:val=\"c67-16\"/><w:id w:val=\"67016\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 17,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN17 control-text-end block all-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 17\"/><w:tag w:val=\"c67-17\"/><w:id w:val=\"67017\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 18,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-off",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       "PLAIN18A  PLAIN18B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN18 control-text-end run all-off list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN18A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 18\"/><w:tag w:val=\"c67-18\"/><w:id w:val=\"67018\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN18B</w:t></w:r></w:p><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 19,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN19 control-text-replace block simple-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 19\"/><w:tag w:val=\"c67-19\"/><w:id w:val=\"67019\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 20,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN20 control-text-end block simple-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 20\"/><w:tag w:val=\"c67-20\"/><w:id w:val=\"67020\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 21,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-off",
+     "lookup": "tag",
+     "after": {
+      "paragraphs": [
+       "PLAIN21A  PLAIN21B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN21 control-text-end run simple-off tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN21A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 21\"/><w:tag w:val=\"c67-21\"/><w:id w:val=\"67021\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN21B</w:t></w:r></w:p><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 22,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN22 control-text-replace block simple-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 22\"/><w:tag w:val=\"c67-22\"/><w:id w:val=\"67022\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END22</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 23,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       ""
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN23 control-text-end block simple-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 23\"/><w:tag w:val=\"c67-23\"/><w:id w:val=\"67023\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END23</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 24,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-off",
+     "lookup": "list",
+     "after": {
+      "paragraphs": [
+       "PLAIN24A  PLAIN24B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN24 control-text-end run simple-off list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN24A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 24\"/><w:tag w:val=\"c67-24\"/><w:id w:val=\"67024\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN24B</w:t></w:r></w:p><w:p><w:r><w:t>END24</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "",
+       "placeholderText": null
+      }
+     }
+    }
+   ],
+   "caseCount": 24
+  },
+  "simple-untouched": {
+   "check": 67,
+   "step": "simple-untouched",
+   "host": {
+    "host": "Word",
+    "version": "16.0.20326.20232",
+    "platform": "PC"
+   },
+   "title": "Check 67a: check 58's writes into a control in the bare form, in four phases; this file holds nothing else.",
+   "cases": [
+    {
+     "n": 1,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL1"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL1"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN1 control-text-replace block simple-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 1\"/><w:tag w:val=\"c67-1\"/><w:id w:val=\"67001\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL1</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL1",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 2,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL2"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL2"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN2 control-text-end block simple-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 2\"/><w:tag w:val=\"c67-2\"/><w:id w:val=\"67002\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL2</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL2",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 3,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-untouched",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL3"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN3A FILL3 PLAIN3B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN3 control-text-end run simple-untouched tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN3A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 3\"/><w:tag w:val=\"c67-3\"/><w:id w:val=\"67003\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL3</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN3B</w:t></w:r></w:p><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL3",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 4,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL4"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL4"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN4 control-text-replace block simple-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 4\"/><w:tag w:val=\"c67-4\"/><w:id w:val=\"67004\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL4</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL4",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 5,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-untouched",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL5"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL5"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN5 control-text-end block simple-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 5\"/><w:tag w:val=\"c67-5\"/><w:id w:val=\"67005\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL5</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL5",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 6,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-untouched",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL6"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN6A FILL6 PLAIN6B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN6 control-text-end run simple-untouched list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN6A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 6\"/><w:tag w:val=\"c67-6\"/><w:id w:val=\"67006\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL6</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN6B</w:t></w:r></w:p><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL6",
+       "placeholderText": null
+      }
+     }
+    }
+   ],
+   "caseCount": 24
+  },
+  "all-untouched": {
+   "check": 67,
+   "step": "all-untouched",
+   "host": {
+    "host": "Word",
+    "version": "16.0.20326.20232",
+    "platform": "PC"
+   },
+   "title": "Check 67a: check 58's writes into a control in the bare form, in four phases; this file holds nothing else.",
+   "cases": [
+    {
+     "n": 7,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL7"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL7"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN7 control-text-replace block all-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 7\"/><w:tag w:val=\"c67-7\"/><w:id w:val=\"67007\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL7</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL7",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 8,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL8"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL8"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN8 control-text-end block all-untouched tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 8\"/><w:tag w:val=\"c67-8\"/><w:id w:val=\"67008\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL8</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL8",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 9,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-untouched",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL9"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN9A FILL9 PLAIN9B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN9 control-text-end run all-untouched tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN9A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 9\"/><w:tag w:val=\"c67-9\"/><w:id w:val=\"67009\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL9</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN9B</w:t></w:r></w:p><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL9",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 10,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL10"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL10"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN10 control-text-replace block all-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 10\"/><w:tag w:val=\"c67-10\"/><w:id w:val=\"67010\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL10</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL10",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 11,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-untouched",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL11"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL11"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN11 control-text-end block all-untouched list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 11\"/><w:tag w:val=\"c67-11\"/><w:id w:val=\"67011\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL11</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END11</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL11",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 12,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-untouched",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL12"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN12A FILL12 PLAIN12B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN12 control-text-end run all-untouched list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN12A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 12\"/><w:tag w:val=\"c67-12\"/><w:id w:val=\"67012\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL12</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN12B</w:t></w:r></w:p><w:p><w:r><w:t>END12</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL12",
+       "placeholderText": null
+      }
+     }
+    }
+   ],
+   "caseCount": 24
+  },
+  "all-off": {
+   "check": 67,
+   "step": "all-off",
+   "host": {
+    "host": "Word",
+    "version": "16.0.20326.20232",
+    "platform": "PC"
+   },
+   "title": "Check 67a: check 58's writes into a control in the bare form, in four phases; this file holds nothing else.",
+   "cases": [
+    {
+     "n": 13,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL13"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL13"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN13 control-text-replace block all-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 13\"/><w:tag w:val=\"c67-13\"/><w:id w:val=\"67013\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL13</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END13</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL13",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 14,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL14"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL14"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN14 control-text-end block all-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 14\"/><w:tag w:val=\"c67-14\"/><w:id w:val=\"67014\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL14</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END14</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL14",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 15,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-off",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL15"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN15A FILL15 PLAIN15B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN15 control-text-end run all-off tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN15A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 15\"/><w:tag w:val=\"c67-15\"/><w:id w:val=\"67015\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL15</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN15B</w:t></w:r></w:p><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL15",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 16,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL16"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL16"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN16 control-text-replace block all-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 16\"/><w:tag w:val=\"c67-16\"/><w:id w:val=\"67016\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL16</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL16",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 17,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "all-off",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL17"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL17"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN17 control-text-end block all-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 17\"/><w:tag w:val=\"c67-17\"/><w:id w:val=\"67017\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL17</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL17",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 18,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "all-off",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL18"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN18A FILL18 PLAIN18B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN18 control-text-end run all-off list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN18A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 18\"/><w:tag w:val=\"c67-18\"/><w:id w:val=\"67018\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL18</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN18B</w:t></w:r></w:p><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL18",
+       "placeholderText": null
+      }
+     }
+    }
+   ],
+   "caseCount": 24
+  },
+  "simple-off": {
+   "check": 67,
+   "step": "simple-off",
+   "host": {
+    "host": "Word",
+    "version": "16.0.20326.20232",
+    "platform": "PC"
+   },
+   "title": "Check 67a: check 58's writes into a control in the bare form, in four phases; this file holds nothing else.",
+   "cases": [
+    {
+     "n": 19,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL19"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL19"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN19 control-text-replace block simple-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 19\"/><w:tag w:val=\"c67-19\"/><w:id w:val=\"67019\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL19</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL19",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 20,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL20"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL20"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN20 control-text-end block simple-off tag</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 20\"/><w:tag w:val=\"c67-20\"/><w:id w:val=\"67020\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL20</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL20",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 21,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-off",
+     "lookup": "tag",
+     "result": {
+      "returned": "FILL21"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN21A FILL21 PLAIN21B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN21 control-text-end run simple-off tag</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN21A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 21\"/><w:tag w:val=\"c67-21\"/><w:id w:val=\"67021\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL21</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN21B</w:t></w:r></w:p><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL21",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 22,
+     "op": "control-text-replace",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL22"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL22"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN22 control-text-replace block simple-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 22\"/><w:tag w:val=\"c67-22\"/><w:id w:val=\"67022\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL22</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END22</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL22",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 23,
+     "op": "control-text-end",
+     "shape": "block",
+     "phase": "simple-off",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL23"
+     },
+     "after": {
+      "paragraphs": [
+       "FILL23"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN23 control-text-end block simple-off list</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 23\"/><w:tag w:val=\"c67-23\"/><w:id w:val=\"67023\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>FILL23</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END23</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL23",
+       "placeholderText": null
+      }
+     }
+    },
+    {
+     "n": 24,
+     "op": "control-text-end",
+     "shape": "run",
+     "phase": "simple-off",
+     "lookup": "list",
+     "result": {
+      "returned": "FILL24"
+     },
+     "after": {
+      "paragraphs": [
+       "PLAIN24A FILL24 PLAIN24B"
+      ],
+      "ooxml": "<w:p><w:r><w:t>BEGIN24 control-text-end run simple-off list</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN24A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 67 control 24\"/><w:tag w:val=\"c67-24\"/><w:id w:val=\"67024\"/></w:sdtPr><w:sdtContent><w:r><w:t>FILL24</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN24B</w:t></w:r></w:p><w:p><w:r><w:t>END24</w:t></w:r></w:p><w:p/>",
+      "control": {
+       "type": "RichText",
+       "text": "FILL24",
+       "placeholderText": null
+      }
+     }
+    }
+   ],
+   "caseCount": 24
+  }
+ }
+}

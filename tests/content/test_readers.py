@@ -540,7 +540,9 @@ def test_risk_2_paragraph_text_written_over_a_run_level_placeholder_takes_the_co
     # CR-016 Phase B refused the write (range.holds_placeholder, the user's decision of 2026-10-24, pending a
     # measurement); Word's Replace takes the control (core-ts check 63 cases 19, 26, 45 and 52), and so does the
     # setter since CR-019 (section 4.3, core-ts's D3): untracked it goes with the content, tracked it is marked
-    # deleted in Word's form, between w:customXmlDelRange markers, its placeholder deleted inside
+    # deleted in Word's form, between w:customXmlDelRange markers, nothing inside marked deleted, its placeholder gone
+    # unmarked and its flag cleared (CR-019 Phase A2, core-ts's D3 at d84f3da, check 63's run 2; Phase A put the
+    # placeholder in a w:del inside and kept the flag, as run 1, in Design Mode, had it)
     package = _section_18()
     paragraph = package.body.paragraphs[1]
     paragraph.text = paragraph.text
@@ -552,10 +554,13 @@ def test_risk_2_paragraph_text_written_over_a_run_level_placeholder_takes_the_co
     paragraph.text = "C"
     xml = to_xml(paragraph.element)
     assert paragraph.text == "C"
-    assert re.search(r"<w:customXmlDelRangeStart [^>]*/><w:sdt>.*<w:customXmlDelRangeEnd [^>]*/><w:del [^>]*>", xml), (
-        xml
-    )
-    assert "<w:delText>Click here.</w:delText>" in xml
+    assert re.search(
+        r'<w:customXmlDelRangeStart [^>]*/><w:sdt><w:sdtPr><w:id w:val="2"/></w:sdtPr><w:sdtContent>'
+        r"<w:customXmlDelRangeEnd [^>]*/><w:customXmlDelRangeStart [^>]*/></w:sdtContent></w:sdt>"
+        r"<w:customXmlDelRangeEnd [^>]*/>",
+        xml,
+    ), xml
+    assert "Click here." not in xml
     # once written into, the control holds a value and the paragraph's text is the control's too
     package = _section_18()
     package.body.content_controls[1].insert_text("X")

@@ -192,6 +192,9 @@ def _placeholder_run(text: str, run_properties: Any) -> Any:
     return R(r_pr=properties, content=ChildList([text_element(text)]))
 
 
+#: Word's filler for a control emptied in the bare form: five spaces under ``w:showingPlcHdr`` (CR-019 section 11, D10).
+FILLER = "     "
+
 #: The inner start markers a control tracked as inserted or deleted ends its content with (check 30).
 _TRACKED_HOLDER_STARTS = frozenset({f"{{{W_NS}}}customXmlInsRangeStart", f"{{{W_NS}}}customXmlDelRangeStart"})
 
@@ -576,13 +579,13 @@ class ContentControl:
         **A control showing its placeholder** (``w:showingPlcHdr``), block- or
         run-level, takes the text in the placeholder's place whatever
         `location` says, as Word's does (core-ts check 58 cases 20 to 22, check
-        63 cases 1, 2, 13 and 14, check 64 cases 1 to 3 and 10 to 12; CR-016
-        Phase B, CR-019 section 4.2): the write is :meth:`_write_placeholder`'s,
-        which clears ``w:showingPlcHdr``, writes the text in the placeholder's
-        runs' place, in one paragraph tracked or not, and writes a bound
-        control's node. In Word's form (:attr:`placeholder_entry`) the text is
-        plain; in the bare form it takes the placeholder run's look, the
-        ``PlaceholderText`` style left off. A refusal below leaves the control
+        63's run 2 cases 1, 2, 13 and 14, check 64 cases 1 to 3 and 10 to 12,
+        check 67; CR-016 Phase B, CR-019 sections 4.2 and 11): the write is
+        :meth:`_write_placeholder`'s, which clears ``w:showingPlcHdr``, writes
+        the text plain in the placeholder's runs' place (in the bare form in
+        the placeholder run's own look, its style left off), in one paragraph
+        tracked or not, only the insertion tracked, and writes a bound
+        control's node, in either form. A refusal below leaves the control
         showing its placeholder.
 
         ``\\n``, ``\\r`` and ``\\r\\n`` make a paragraph each in a block,
@@ -752,11 +755,10 @@ class ContentControl:
         ``"Start"`` and ``"End"`` put it inside a block control; ``"Before"``
         and ``"After"`` beside it, which is the only thing a run-level control
         offers. Into a block control **showing its placeholder** (CR-019
-        section 4.2, core-ts's D1): in the bare form the text goes in the
-        placeholder's place, in its paragraph, the flag left on, and that
-        paragraph is returned, as Word's (core-ts check 63 cases 3 and 29); in
-        Word's form the placeholder goes, its paragraph left empty, and the new
-        paragraph follows it (check 64 cases 6 and 27).
+        sections 4.2 and 11, core-ts's D1): the placeholder goes, its paragraph
+        left empty, the flag cleared, and the new paragraph follows it, in
+        either form, as Word's (core-ts check 64 cases 6 and 27, check 63's run
+        2 cases 3 and 29).
 
         Raises:
             InvalidTargetError: a row- or cell-level control asked for
@@ -771,13 +773,9 @@ class ContentControl:
             )
         text = drop_unwritable(text)  # CR-013 section 11, E3
         if location in ("Start", "End") and form == "block" and self.is_showing_placeholder:
-            # in the bare form Word puts the text in the placeholder's place, in its paragraph, and
-            # leaves the flag on (core-ts check 63 cases 3 and 29); in Word's form the placeholder goes,
-            # its paragraph left empty, the flag cleared, and the new paragraph follows (check 64 cases
-            # 6 and 27; CR-019 section 4.2, core-ts's D1)
-            if self.placeholder_entry is None:
-                self._write_placeholder(text, keep_flag=True)
-                return self._first_paragraph()
+            # the placeholder goes, its paragraph left empty, the flag cleared, and the new paragraph
+            # follows, in either form (core-ts check 64 cases 6 and 27, check 63's run 2 cases 3 and 29;
+            # CR-019 sections 4.2 and 11, core-ts's D1 at d84f3da)
             self._take_placeholder_runs(form)
             self.remove_property("showingPlcHdr", W_NS)
         if form == "run" or location in ("Before", "After"):
@@ -846,14 +844,15 @@ class ContentControl:
     def placeholder_entry(self) -> str | None:
         """The glossary entry the control's ``w:placeholder`` names; None where it has none. Extension.
 
-        CR-019 section 4.1 (core-ts ``placeholderEntry`` at ``020c039``, its
-        CR-002 section 63.9): ``w:placeholder/w:docPart/@w:val``, ``""`` for a
-        ``w:placeholder`` naming none. With any entry, present in the glossary
-        or not, the control is in **Word's form**, whose placeholder Word reads
-        as no content (core-ts checks 64 and 65); with None, in the **bare
-        form**, docx4j's binding's, whose placeholder runs Word takes for the
-        control's content (check 63). Every placeholder write goes by this
-        alone.
+        CR-019 section 4.1 (core-ts ``placeholderEntry`` at ``d84f3da``, its
+        CR-002 sections 63.9 and 63.17): ``w:placeholder/w:docPart/@w:val``,
+        ``""`` for a ``w:placeholder`` naming none. With any entry, present in
+        the glossary or not, the control is in **Word's form** (core-ts checks
+        64 and 65); with None, in the **bare form**, docx4j's binding's. Writes
+        are the same in both forms (core-ts check 63's run 2, CR-019 section
+        11): the form decides only what a control emptied shows (its entry, or
+        Word's five-space filler, :meth:`_show_emptied`) and, in Phase B, what
+        ``placeholder_text`` reads.
         """
         item = sdt_property(self.sdt_pr, "placeholder", W_NS)
         if item is None:
@@ -870,34 +869,31 @@ class ContentControl:
         """
         return self.is_showing_placeholder and self.form in ("block", "run")
 
-    def _write_placeholder(self, text: str, *, keep_flag: bool = False, breaks: str = "paragraph") -> Range:
-        """Text written into this control while it shows its placeholder, by any route (CR-019 section 4.2).
+    def _write_placeholder(self, text: str, *, breaks: str = "paragraph") -> Range:
+        """Text written into this control while it shows its placeholder, by any route (CR-019 sections 4.2 and 11).
 
-        core-ts ``writePlaceholder`` (``020c039``; its D1, D2 and D5). The
+        core-ts ``writePlaceholder`` (``d84f3da``; its D1, D2 (b) and D5). The
         routes: :meth:`insert_text`, its ``"Content"`` range's ``insert_text``
         (:meth:`_write_through`), and a block control's paragraph's
-        ``insert_text``, ``text = ...`` and ``splice``. The placeholder's runs
-        come out (a block control's other paragraphs go), the text takes their
-        place in the first paragraph, and ``w:showingPlcHdr`` is cleared
-        (`keep_flag`: left on, as the bare form's ``insert_paragraph`` leaves
-        it, core-ts check 63 cases 3 and 29):
-
-        * **Word's form** (:attr:`placeholder_entry`; core-ts check 64): the
-          placeholder is no content. Its runs go untracked and the text is
-          plain; under tracking only the insertion is recorded.
-        * **The bare form** (core-ts checks 58, 63 and 67): the text takes the
-          first placeholder run's look, the ``PlaceholderText`` style left off
-          (:meth:`_dress_as_placeholder`); under tracking the insertion comes
-          first, then the placeholder's runs back in a ``w:del`` (check 63
-          cases 27 to 51, which Word reads as content in this form).
+        ``insert_text``, ``text = ...`` and ``splice``. **One rule for both
+        forms**: the placeholder is no content (core-ts checks 64 and 67,
+        check 63's run 2). Its runs come out untracked (a block control's
+        other paragraphs go), the text takes their place, plain, in the first
+        paragraph, ``w:showingPlcHdr`` is cleared, and under tracking only the
+        insertion is recorded. In the bare form "plain" is CR-016 Phase B's
+        and Phase A's: the first placeholder run's own properties, the
+        ``PlaceholderText`` style left off (:meth:`_dress_as_placeholder`),
+        which is no properties at all for every placeholder Word measured
+        (core-ts checks 58, 63 and 67); core-ts at ``d84f3da`` drops a
+        placeholder run's other properties too, unmeasured (CR-019 section
+        11.4).
 
         One paragraph, tracked as untracked (D5, core-ts's F1 and F3): the flag
         is cleared, so the tracked write reads as text. A run-level control's
         refusals come first, before anything changes. `breaks` is
         :meth:`Paragraph.splice`'s, ``"line"`` for the one-paragraph writers.
-        A bound control's node takes the text (D7). Section 4.2's ``colour``
-        column, check 63's ``w:color auto``, is not written: checks 58 and 67
-        contradict it (CR-019 Q1).
+        A bound control's node takes the text (D7, Word's behaviour in both
+        forms since check 63's run 2).
 
         Raises:
             SpanError: ``range.splits_control``, a paragraph break into a
@@ -913,8 +909,6 @@ class ContentControl:
                 self._refuse_run_text(text)
             # the report says what the write replaced: the prompt (CR-016 section 11.6 item 6)
             change.text(before=self._shown_text())
-            bare = self.placeholder_entry is None
-            tracker = self.parent_body.change_tracker
             taken = self._take_placeholder_runs(form)
             self.remove_property("showingPlcHdr", W_NS)
             if form == "run":
@@ -926,10 +920,8 @@ class ContentControl:
                 first = self._first_paragraph()
                 out = first.splice(0, 0, text, breaks=breaks)
                 change.touched(out.paragraph, out.end_paragraph)
-            if bare:
-                self._dress_as_placeholder(taken, tracker)
-            if keep_flag:
-                self.put_property(el.showingPlcHdr())
+            if self.placeholder_entry is None:
+                self._dress_as_placeholder(taken)
             change.text(after=text)
             self.write_through()
             return out
@@ -968,7 +960,7 @@ class ContentControl:
 
         A run-level control's, or a block control's paragraphs', the first
         paragraph kept, emptied, and any other going. What held them is kept,
-        for a deletion to go back into.
+        for Word's filler to go into (:meth:`_show_filler`).
         """
         from docx4j_py.wml import R
 
@@ -991,38 +983,17 @@ class ContentControl:
         first = paragraphs[0] if paragraphs else self._first_paragraph().element
         return _Taken(runs, first.content, first)
 
-    def _put_back_deleted(self, tracker: Any, taken: _Taken) -> None:
-        """The placeholder's runs, taken out, put back marked deleted: last in what held them, before an inner start marker.
-
-        core-ts ``putBackDeleted``: after the insertion, before the inner
-        ``w:customXmlInsRangeStart`` a control tracked as inserted ends with
-        (check 30), and after the inner ``w:customXmlDelRangeEnd`` one marked
-        deleted opens with (check 63 cases 38 and 44).
-        """
-        from docx4j_py.model.content.tracking import to_deleted_text
-
-        if not taken.runs:
-            return
-        for run in taken.runs:
-            to_deleted_text(run)
-        deletion = tracker.deletion(taken.runs)
-        holder = taken.holder
-        last = element_name(holder[-1]) if holder else None
-        holder.insert(len(holder) - 1 if last in _TRACKED_HOLDER_STARTS else len(holder), deletion)
-        deletion.parent = taken.owner
-
-    def _dress_as_placeholder(self, taken: _Taken, tracker: Any) -> None:
-        """The bare form's look for the text written: the first placeholder run's (CR-019 section 4.2, Q1).
+    def _dress_as_placeholder(self, taken: _Taken) -> None:
+        """The bare form's text in the first placeholder run's own look, the ``PlaceholderText`` style left off (CR-016 Phase B).
 
         The text written takes the first placeholder run's run properties, its
         ``w:rPrChange`` left out and the ``PlaceholderText`` style dropped, as
-        CR-016 Phase B wrote it: a plain run, as Word's saves of core-ts checks
-        58 (cases 20 to 22) and 67 (all 72 bare-form writes) have it. Check
-        63's save keeps the style in a rich text control and adds ``w:color
-        auto`` at an end (core-ts's D2 (a)); checks 58 and 67 contradict it,
-        so neither is written. Under tracking the placeholder's runs go back
-        marked deleted after the insertion, as they are (check 63 cases 27 to
-        51; D5, which doesn't depend on the look).
+        CR-016 Phase B wrote it: a plain run where the placeholder run had the
+        style alone, as Word's saves of core-ts checks 58 (cases 20 to 22), 63
+        (run 2) and 67 have it, its bold kept where it was bold too
+        (unmeasured). Under tracking nothing more is recorded: only the
+        insertion, as in Word's form (core-ts's D5 at ``d84f3da``; check 63's
+        run 2).
         """
         from docx4j_py.model.content.tracking import copy_r_pr
 
@@ -1033,8 +1004,53 @@ class ContentControl:
             if look is not None:
                 look.parent = run
                 _drop_placeholder_style(run)
-        if tracker is not None:
-            self._put_back_deleted(tracker, taken)
+
+    def _show_filler(self) -> None:
+        """Word's filler for a control emptied in the bare form: the flag on over a run of five spaces (CR-019 section 11).
+
+        core-ts ``showFiller`` (``d84f3da``, its D10 (a)): where no glossary
+        entry gives the control a placeholder, Word shows one run of five
+        spaces, in the control's own run properties (``w:sdtPr/w:rPr``,
+        deep-copied), with ``w:showingPlcHdr`` on (core-ts check 63's run 2
+        cases 6, 17, 32 and 43; check 52 case 13, whose Word's filler is bold
+        because Word also gave that control a ``w:sdtPr/w:rPr`` taken from the
+        deleted text, which is not followed). Whatever runs the content holds go
+        first, as the placeholder's do, and the filler goes last in what held
+        them, before an inner ``w:customXmlInsRangeStart`` or ``DelRangeStart``
+        a tracked control ends with (core-ts ``pushBeforeMarker``). Nothing is
+        marked under tracking. The spaces read as no text while the flag is
+        on (CR-016 Phase B), and the control is never left a run-level
+        placeholder over an empty ``w:sdtContent``, which Word refused to
+        leave Design Mode over (core-ts section 63.16, control 53).
+        """
+        from docx4j_py.child import deep_copy
+
+        taken = self._take_placeholder_runs(self.form)
+        properties = self.run_properties
+        run = text_run(FILLER, deep_copy(properties) if properties is not None else None)
+        link_parents(run)
+        holder = taken.holder
+        last = element_name(holder[-1]) if holder else None
+        holder.insert(len(holder) - 1 if last in _TRACKED_HOLDER_STARTS else len(holder), run)
+        run.parent = taken.owner
+        self.put_property(el.showingPlcHdr())
+
+    def _show_emptied(self) -> None:
+        """After an untracked ``"Content"`` delete that left the control holding no text (CR-019 section 11).
+
+        core-ts ``showEmptied`` (``d84f3da``, its D10 (a)). A block or run
+        control not showing its placeholder whose text is now ``""``: in the
+        bare form it shows Word's filler (:meth:`_show_filler`; core-ts check
+        52 case 13); in Word's form Word shows its entry again (core-ts check
+        66 case 3), which is Phase B's ``show_placeholder`` (CR-019 section
+        4.8), so here it is left empty until then.
+        """
+        if self.is_showing_placeholder or self.form not in ("block", "run") or self.text != "":
+            return
+        if self.placeholder_entry is not None:
+            # Phase B's seam: Word's form shows its glossary entry again (show_placeholder, CR-019 section 4.8)
+            return
+        self._show_filler()
 
     def _insert_into_empty(self, paragraph: Paragraph, text: str) -> Range:
         """Text into a run-level control holding no run: a new run in its content (core-ts ``insertIntoEmpty``).
@@ -1114,12 +1130,13 @@ class ContentControl:
     def _delete_through(self, part: str) -> bool:
         """A delete through the control's own ``"Content"`` or ``"Whole"`` range that the control takes (CR-019 section 4.4).
 
-        core-ts ``deleteThrough``. A ``"Content"`` delete of a control showing
-        its placeholder keeps the control and the flag: in the bare form its
-        runs go, marked deleted under tracking (core-ts check 63 cases 6, 17,
-        32 and 43); in Word's form the placeholder is no content, and nothing
-        changes (unmeasured, section 4.10). A ``"Whole"`` delete takes a
-        run-level control showing its placeholder, as its Replace does (D3,
+        core-ts ``deleteThrough`` (``d84f3da``). A ``"Content"`` delete of a
+        control showing its placeholder keeps the control and the flag: in the
+        bare form over Word's filler, five spaces, nothing marked under
+        tracking (:meth:`_show_filler`, D10 (a); core-ts check 63's run 2 cases
+        6, 17, 32 and 43); in Word's form the placeholder is no content, and
+        nothing changes (unmeasured, section 4.10). A ``"Whole"`` delete takes
+        a run-level control showing its placeholder, as its Replace does (D3,
         unmeasured). False where the range's own delete applies.
         """
         if part == "Whole":
@@ -1133,10 +1150,7 @@ class ContentControl:
             if self.placeholder_entry is not None:
                 return True
             change.text(before=self._shown_text(), after="")
-            tracker = self.parent_body.change_tracker
-            taken = self._take_placeholder_runs(self.form)
-            if tracker is not None:
-                self._put_back_deleted(tracker, taken)
+            self._show_filler()
             change.touched(self.address)
         return True
 
@@ -1149,10 +1163,12 @@ class ContentControl:
         paragraph, emptied, in its place; `text` goes where a run-level
         control stood. **Tracked** it is marked deleted in Word's form
         (:func:`~.tracking.mark_holder_deleted`: ``w:customXmlDelRange``
-        markers around it and inside its content), its placeholder's runs in a
-        ``w:del`` inside, the flag left on; `text` goes first, before the
-        control, as Word puts a Replace's insertion first. A bound control
-        taken leaves its node as it was: nothing is bound any more.
+        markers around it and inside its content), nothing inside marked
+        deleted, its placeholder gone unmarked and the flag cleared (core-ts's
+        D3 at ``d84f3da``; check 63's run 2 cases 38, 44 to 46 and 52); `text`
+        goes first, before the control, as Word puts a Replace's insertion
+        first. A bound control taken leaves its node as it was: nothing is
+        bound any more.
 
         Returns:
             The range of the text, or the collapsed place the control stood.
@@ -1197,16 +1213,16 @@ class ContentControl:
             return Range(view, 0, 0)
 
     def _mark_whole_deleted(self, tracker: Any, form: str) -> None:
-        """The control marked deleted with Word's markers, its placeholder's runs in a ``w:del`` inside (:meth:`_take_whole`)."""
+        """The control marked deleted with Word's markers, its placeholder gone, unmarked, the flag cleared (:meth:`_take_whole`).
+
+        core-ts ``markWholeDeleted`` at ``d84f3da`` (check 63's run 2 cases 38
+        and 44 to 46). Rejected, the control comes back empty, without the
+        flag, as Word's markup implies (unmeasured).
+        """
         from docx4j_py.model.content.tracking import mark_holder_deleted
 
-        # inside the content, after the inner w:customXmlDelRangeEnd, as Word puts it (check 63 cases 38 and 44)
-        mark_holder_deleted(
-            tracker,
-            self.element,
-            self.container,
-            lambda: self._put_back_deleted(tracker, self._take_placeholder_runs(form)),
-        )
+        mark_holder_deleted(tracker, self.element, self.container, lambda: self._take_placeholder_runs(form))
+        self.remove_property("showingPlcHdr", W_NS)
 
     # -- the w:sdtPr properties (CR-003 section 3.7, Phase E) ---------------
 

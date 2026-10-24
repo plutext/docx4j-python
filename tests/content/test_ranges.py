@@ -736,7 +736,8 @@ def test_cr_014_phase_2_check_52s_writes_run_through_the_port_on_the_same_file_l
         # insert_comment (core-ts's phase 3): the comments, their ranges and what the snippet reads back are
         # Word's, 79 to 85 among them; core-ts's differ in the snippet's own error, its result asynchronous there
         # case 13, a control emptied: Word fills it with a bold run of five spaces (core-ts CR-014 section 9.4),
-        # which reads bold; this package's emptied paragraph reads its mark (CR-016 Phase B, as core-ts's)
+        # which reads bold; this package's filler since CR-019 Phase A2 (core-ts's D10 (a)) is in the control's own
+        # run properties, not bold, and reads so (until then its emptied paragraph read its mark)
         13: ["paragraphs"],
         # a table at a cell's end (CR-016 Phase A): Word gives the new table's paragraph the cell paragraph's
         # properties, and so its numbering, which is insert_table's wherever it inserts and not followed (Q4; the
@@ -922,7 +923,8 @@ def test_cr_014_phase_2_the_markup_check_52s_writes_leave_through_the_port_is_wo
     measured = markup_of(load(OFFICE_JS / "52-ranges-word365.docx"))
     differing = [n for n in measured if n <= RANGE_CASES and mine.get(n) != measured.get(n)]
     # 1, read only: Word's save gave the comment reference's run w:u and w:sz of its own; 13: Word's filler for
-    # an emptied control, a bold run of five spaces (core-ts CR-014 section 9.4); 60 and 66: Word's extra empty
+    # an emptied control is a bold run of five spaces (core-ts CR-014 section 9.4), this package's not bold (below);
+    # 60 and 66: Word's extra empty
     # paragraph in a control; 67 and 68: Word gives a paragraph's mark its last run's formatting (italic) when
     # insert_paragraph("After") goes after it, not followed (core-ts CR-014 section 10); 79 to 85: insert_comment
     # (phase 3), whose markers are Word's but for the two differences below; 86 and 87: the new table's paragraph
@@ -944,8 +946,12 @@ def test_cr_014_phase_2_the_markup_check_52s_writes_leave_through_the_port_is_wo
                 if line != "  <commentRangeStart>"
             ]
         assert mine[n] == expected, f"case {n}"
+    # since CR-019 Phase A2 (core-ts's D10 (a) and showEmptied at d84f3da) this package writes Word's filler too, in
+    # the control's own run properties; Word also gave this control bold ones, a w:sdtPr/w:rPr taken from the text
+    # deleted, and its filler is bold, which is not followed (core-ts's ranges.test.mjs); until then the paragraph was
+    # left empty
     assert measured[13] == ["SDT", '  P[ListParagraph/num|] "     "{b}']
-    assert mine[13] == ["SDT", "  P[ListParagraph/num|] "]
+    assert mine[13] == ["SDT", '  P[ListParagraph/num|] "     "']
     for n in (67, 68):
         assert [re.sub(r'^P\[center\|\] "BODY', 'P[center|i] "BODY', line) for line in mine[n]] == measured[n], f"case {n}"
     # a table at a cell's end (CR-016 Phase A, core-ts CR-002 section 55.6): the cell's paragraph split at its end,

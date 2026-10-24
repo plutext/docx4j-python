@@ -1,4 +1,4 @@
-"""docx4j-core-ts's Office JS checks 52 to 64, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
+"""docx4j-core-ts's Office JS checks 52 to 67, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
 
 CR-013 section 6.1. Word 365 ran each check's Script Lab snippet on the file in
 this directory and wrote JSON (``52-ranges-word365-run.json``,
@@ -31,6 +31,13 @@ step for step, onto the content API, and give the same JSON shape with the same
   ``check64-script-lab.js`` at ``020c039``; CR-019 Phase A) in their ``run``
   and ``report`` modes: each case's one write into a content control showing
   its placeholder, in the bare form (63) and in Word's (64), then the region.
+  Check 63 was run twice by Word: run 1 in Developer > Design Mode, run 2
+  with it off (core-ts ``d84f3da``; CR-019 section 11); the snippet is the
+  same for both.
+* :func:`run_check_67` is ``CHECK67.runCheck`` (``check67-script-lab.js`` at
+  ``2bafbcb``, unchanged at ``d84f3da``; CR-019 Phase A2) in its ``report``
+  step and its four phases: check 58's three writes into a control in the
+  bare form, each through both of the snippet's lookups.
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -62,6 +69,7 @@ __all__ = [
     "parse_region_59",
     "parse_region_63",
     "parse_region_64",
+    "parse_region_67",
     "run_check_52",
     "run_check_53",
     "run_check_54",
@@ -70,6 +78,7 @@ __all__ = [
     "run_check_59",
     "run_check_63",
     "run_check_64",
+    "run_check_67",
     "vis",
 ]
 
@@ -1588,4 +1597,118 @@ def run_check_64(package: Any, mode: str) -> dict[str, Any]:
             result["cases"].append(entry)
     finally:
         _track_63(package, False)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# check 67 (core-ts check67-script-lab.js at 2bafbcb, unchanged at d84f3da; CR-019 Phase A2)
+# ---------------------------------------------------------------------------
+
+_BEGIN_67 = re.compile(r"^BEGIN(\d+) ([\w-]+) ([\w-]+) ([\w-]+) (tag|list)$")
+
+#: The phases in the order they run, and the view each wants (the snippet's ``PHASES``). The view is Word's display
+#: setting, which this package has no counterpart of; an ``-off`` phase sets change tracking off around each write.
+PHASES_67 = (
+    ("simple-untouched", "Simple Markup"),
+    ("all-untouched", "All Markup"),
+    ("all-off", "All Markup"),
+    ("simple-off", "Simple Markup"),
+)
+
+
+def parse_region_67(text: str) -> dict[str, Any] | None:
+    """A check 67 BEGIN paragraph's text as a case, ``{n, op, shape, phase, lookup}``, or None (``parseRegion``)."""
+    match = _BEGIN_67.match(text.strip())
+    if match is None:
+        return None
+    return {
+        "n": int(match.group(1)),
+        "op": match.group(2),
+        "shape": match.group(3),
+        "phase": match.group(4),
+        "lookup": match.group(5),
+    }
+
+
+def _control_of_67(body: Any, region: dict[str, Any]) -> Any:
+    """The case's control as its lookup finds it (the snippet's ``controlOf``).
+
+    ``tag``: check 58's ``body.contentControls.getByTag(tag).getFirst()``
+    (:func:`control_by_tag`); ``list``: check 63's
+    ``body.getContentControls()`` filtered by tag (:func:`_control_of_63`).
+    """
+    tag = f"c67-{region['n']}"
+    if region["lookup"] == "tag":
+        return control_by_tag(body, tag)
+    found = _control_of_63(body, tag)
+    if found is None:
+        raise LookupError(f"not found: {tag}")
+    return found["control"]
+
+
+def _apply_67(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's write, check 58's (``FILL<n>``): ``"Replace"`` for ``control-text-replace``, else ``"End"``."""
+    control = _control_of_67(body, region)
+    text = f"FILL{region['n']}"
+    location = "Replace" if region["op"] == "control-text-replace" else "End"
+    return {"returned": vis(control.insert_text(text, location=location).text)}
+
+
+def _report_67(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The region as it stands: its paragraphs' text, its OOXML, and the control's reads, found by the case's lookup."""
+    n = region["n"]
+    out: dict[str, Any] = {}
+    out["paragraphs"] = attempt_57(lambda: [vis(p.text) for p in _content_paragraphs_63(body, n)])
+    out["ooxml"] = attempt_57(lambda: body_of_57(region_of_63(body, n).get_xml()))
+
+    def control() -> dict[str, Any]:
+        c = _control_of_67(body, region)
+        return {"type": c.type, "text": vis(c.text), "placeholderText": vis(c.placeholder_text)}
+
+    out["control"] = attempt_57(control)
+    return out
+
+
+def run_check_67(package: Any, step: str) -> dict[str, Any]:
+    """``CHECK67.runCheck`` for one step, ``"report"`` or a phase's name, on a loaded package (the snippet at ``2bafbcb``).
+
+    A report reads every region and changes nothing; a phase gives its own
+    cases check 58's write, each alone, then reads the region. An
+    ``-untouched`` phase never reads or sets change tracking; an ``-off``
+    phase sets it off before each write and after it, as check 63's run did.
+    What Office JS refuses fails alone, as ``'error: ' + code + ': ' +
+    message``.
+    """
+    names = [name for name, _view in PHASES_67]
+    if step != "report" and step not in names:
+        raise ValueError(f"check 67 has no {step!r} step")
+    body = package.body
+    paragraphs = body.paragraphs
+    result: dict[str, Any] = {
+        "check": 67,
+        "step": step,
+        "host": None,
+        "title": vis(paragraphs[0].text) if paragraphs else None,
+        "cases": [],
+    }
+    regions = [region for p in paragraphs if (region := parse_region_67(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    mine = regions if step == "report" else [region for region in regions if region["phase"] == step]
+    off = step.endswith("-off")
+    for region in mine:
+        entry = dict(region)
+        if step != "report":
+            try:
+                if off:
+                    _track_63(package, False)
+                entry["result"] = _apply_67(body, region)
+            except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+                entry["error"] = failed_57(error)
+            if off:
+                _track_63(package, False)
+        try:
+            entry["after"] = _report_67(body, region)
+        except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
+            entry["after"] = failed_57(error)
+        result["cases"].append(entry)
     return result

@@ -2339,8 +2339,8 @@ class Paragraph:
         self.refuse_branch_text(start, end, "a tracked deletion")
         refuse_equation(self.segments(), start, end, tracked="delete")
         # a run-level control showing its placeholder that the span holds whole is marked deleted whole,
-        # in Word's markers, its placeholder deleted inside (CR-019 section 4.3, core-ts's D3; check 63
-        # cases 45, 46 and 52)
+        # in Word's markers, its placeholder gone unmarked (CR-019 section 4.3, core-ts's D3 at d84f3da;
+        # check 63's run 2 cases 45, 46 and 52)
         for control in self._placeholder_controls_in(start, end, whole):
             control._take_whole()
         targets = self._isolate(start, end, whole=whole)

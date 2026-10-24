@@ -1717,13 +1717,17 @@ class Range:
         ``w:customXmlDelRange*`` markers. The range is left collapsed where the
         text closed up (tracked, where the deletion starts).
 
-        **A content control showing its placeholder** (CR-019 sections 4.3
-        and 4.4, core-ts's D3 and D4): the control's own ``"Content"`` range
-        keeps it and its flag, its placeholder's runs going in the bare form
-        (marked deleted under tracking); its ``"Whole"`` range takes a
-        run-level one; a paragraph's ``"Content"`` range over a block
-        control's only paragraph takes the control, its paragraph left in its
-        place, emptied (tracked, the control marked deleted in Word's form).
+        **A content control showing its placeholder** (CR-019 sections 4.3,
+        4.4 and 11, core-ts's D3, D4 and D10 at ``d84f3da``): the control's own
+        ``"Content"`` range keeps it and its flag, in the bare form over Word's
+        filler, five spaces, nothing marked under tracking; its ``"Whole"``
+        range takes a run-level one; a paragraph's ``"Content"`` range over a
+        block control's only paragraph takes the control, its paragraph left
+        in its place, emptied (tracked, the control marked deleted in Word's
+        form). **A control's own ``"Content"`` range deleted untracked** that
+        leaves it holding no text shows Word's filler in the bare form, as
+        Word's does (core-ts check 52 case 13; Word's form's entry is CR-019
+        Phase B's).
 
         Raises:
             SpanError: ``range.partial_table`` for a range starting or ending
@@ -1740,6 +1744,13 @@ class Range:
             if control._delete_through(part):
                 self.end = self.start
                 return
+            if part == "Content" and self.paragraph.change_tracker is None:
+                # a control emptied shows Word's filler in the bare form (CR-019 section 11, core-ts's D10 and
+                # showEmptied at d84f3da; check 52 case 13), its entry in Word's form (Phase B's)
+                with recording(self.paragraph.parent_body, "delete"):
+                    self._delete_own()
+                    control._show_emptied()
+                return
         elif self.whole and not self.mark and not self.spans_paragraphs:
             # a paragraph's 'Content' range over a block control's only paragraph takes the control, as
             # Word's took one showing its placeholder (CR-019 section 4.3, D3; check 63 cases 12 and 38)
@@ -1753,6 +1764,10 @@ class Range:
                 landed = control._take_whole()
                 self._land_at(landed.paragraph, 0)
                 return
+        self._delete_own()
+
+    def _delete_own(self) -> None:
+        """:meth:`delete` once a control's or a placeholder's rule has passed: the range's own delete."""
         if self.spans_paragraphs or self.holds_end_mark:
             self._delete_span()
             return
