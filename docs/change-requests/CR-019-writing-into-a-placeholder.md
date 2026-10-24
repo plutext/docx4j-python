@@ -1,6 +1,6 @@
 # CR-019: Writing into a content control showing its placeholder, and placeholders written in Word's form --- the port of docx4j-core-ts CR-002 section 63 (`020c039`)
 
-**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions are open (section 8). Three phases (section 6): A, the writes; B, placeholders in Word's form; C, the records and the Word check. They come to 3 to 4 days. 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
+**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A started** the same day. Three phases (section 6): A, the writes; B, placeholders in Word's form; C, the records and the Word check. They come to 3 to 4 days. 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
 
 **Depends on:**
 - **docx4j-core-ts** `020c039`: CR-002 sections 63 to 63.12; its `src/model/content/placeholders.mts`, `ContentControl.mts`, `Paragraph.mts` and `Range.mts`, and `src/model/customxml/bindings.mts`; `test/placeholders.test.mjs` (25 tests); Word checks 63 to 66, with their files, Word's JSONs and Word's saves (`test/fixtures/check63/` to `check66/`, `test/check63/` to `check66/`). Checks 63 to 66 were written and run at `2070694`, `ae9215f` and `2d080d4`.
@@ -210,7 +210,9 @@ The phases go in order: B's emptied-control rule (4.4) needs A's ranges. Each ph
 4. **The bare form's node write departs from Word** (D7, decided in core-ts). It keeps the write through Word's reopen, which Word's own write loses.
 5. **The binding pass moves ahead of docx4j** (Q3) until docx4j's CR-063 lands.
 
-## 8. Questions
+## 8. Questions (decided 2026-10-25)
+
+The user, 2026-10-25: Q1, "Hold for check 67" (option (c), as recommended); Q2 to Q5, "All as recommended".
 
 - **Q1. The bare form's style.** For the bare form's text, take:
   - (a) check 63's answer, core-ts's D2 (a): the style kept in a rich text control, `w:color auto` where Word added it, check 58's markup pin moved and recorded as a Word disagreement;
