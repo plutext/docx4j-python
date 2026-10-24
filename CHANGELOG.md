@@ -323,7 +323,9 @@ cache written beside it.
   and `Z`; a paragraph's `replace_text("?", ...)`, whose hits now include its mark), as a plain
   `^p` query is refused. A body's replacement reads its `"Content"` range, so over a body of one
   paragraph `?` is replaced where that paragraph's own `replace_text("?", ...)` refuses (core-ts's
-  rule). 0.1.0 replaced each paragraph's hits.
+  rule). 0.1.0 replaced each paragraph's hits. So a query whose `?`, `*` or negated class can reach
+  a paragraph's end is now refused where 0.1.0 replaced: `e?` over a paragraph ending in `e`,
+  `[!a-z]` over any two paragraphs. Search for the hits and edit their ranges instead.
 - **No search hit cuts a grapheme cluster** (CR-016 Phase C, Q8; core-ts `ebb218e`): `search`,
   `find` and `replace_text`, plain or wildcard, drop a hit whose start or end falls inside a
   cluster (`is_grapheme_boundary`): `cafe` no longer matches inside `cafe` + U+0301, nor `?` an

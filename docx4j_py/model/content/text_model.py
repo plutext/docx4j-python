@@ -1916,10 +1916,12 @@ def search_pattern(
     pattern is compiled with ``re.DOTALL``, so that ``?``, ``*`` and a class
     cross a mark where a search reads one
     (:func:`wildcard_matches_across`), as core-ts's ``[\\s\\S]`` does. ``.``
-    crosses ``\\r`` in Python without it, but not ``\\n``; no wildcard search
-    reads a row's ``\\r\\n``, since no hit crosses a cell, so ``DOTALL`` is for
-    clarity, and a test pins it. ``?`` is a code point, so it takes an emoji
-    whole, as Word's does (core-ts's K4; check 58 case 13).
+    crosses ``\\r`` in Python without it, but not ``\\n``, so ``DOTALL`` is what
+    lets ``?`` and ``*`` match a line feed held in a ``w:t``, which
+    :attr:`Paragraph.text` keeps (CR-016 section 12.5 item 5; core-ts parity);
+    no wildcard search reads a row's ``\\r\\n``, since no hit crosses a cell.
+    A test pins it. ``?`` is a code point, so it takes an emoji whole, as
+    Word's does (core-ts's K4; check 58 case 13).
     """
     if match_wildcards:
         out: list[str] = []
