@@ -1460,6 +1460,16 @@ The suite is **1,942 tests**, all passing, with one skip (the corpus round trip 
   --- **passed in Word on 2026-09-19**, the same day: no repair prompt, the body in Aptos and the
   headings in Aptos Display, as `tests/README.md` records. Nothing of Phase B awaits a check.
 
+### 15.6 `w:framePr`'s `w:anchorLock` read as stated: the port of docx4j `82c64bf14` (2026-10-24)
+
+docx4j's CR-059 (`ac97b56c5`) corrected its `wml.xsd`'s 2008 on/off defaults, and with them `w:anchorLock`'s, from `true` to `false`. Its `StyleUtil` had read the attribute through the generated getter, so two places changed meaning. This package found them from reading the code (the user's question on schema defaults), and docx4j's session confirmed them and fixed them in `82c64bf14` (`VERSION_17_3_5`, its `FramePrAccess.getAnchorLock`, `StyleUtilFramePrAnchorLockTest`):
+- **`is_empty_frame_pr`** (`property_catalogue.py`; docx4j `isEmpty(CTFramePr)`) now requires `w:anchorLock` to be absent. A bare `<w:framePr/>` is empty, and `w:anchorLock="1"` or `"0"` alone is not. It had read an absent value as true, as docx4j's old getter did.
+- **`merge_frame_pr`** (docx4j `apply(CTFramePr, CTFramePr)`) merges the stated values. An omitted `w:anchorLock` keeps the style's, a stated one wins, and where neither layer states one, none is written. It had written `true` into every merged `w:framePr`, as docx4j's old merge did.
+
+docx4j's four test cases are ported in `tests/content/test_properties.py`.
+
+**The parity goldens.** They come from docx4j's 17.3.4 release, whose merge wrote `w:anchorLock="true"` into every effective `w:framePr` no layer stated it in. Eight comparisons in three goldens (NumberingImplicitNumId, NumberingIndents and loadAndSave) differ in that one attribute alone, each checked mechanically. They are pinned in `tests/content/goldens.py`'s `PINS`, `xfail(strict=True)`, and come out when docx4j-core-ts regenerates the goldens from 17.3.5 (the user's decision, 2026-10-24: "commit anchorLock port"). Every other golden comparison is unchanged.
+
 ## 16. Adopting the private tree (proposed 2026-10-21)
 
 The user's go, the same day: "add it to CR-002 and have an agent implement it with those tests".

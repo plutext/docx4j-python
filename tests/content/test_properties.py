@@ -456,3 +456,36 @@ def test_a_detached_body_reads_direct_formatting_and_raises_nothing():
     assert paragraph.font.size == 0
     assert paragraph.alignment == "Unknown"
     assert paragraph.effective_p_pr is None
+
+
+# ---------------------------------------------------------------------------
+# w:framePr's w:anchorLock read as stated: docx4j 82c64bf14 (CR-059), its
+# StyleUtilFramePrAnchorLockTest case for case
+
+
+def _frame_pr(attributes: str):
+    from docx4j_py.fragments import wml
+
+    return wml(f'<w:framePr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" {attributes}/>')
+
+
+def test_a_frame_pr_with_nothing_set_is_empty():
+    assert catalogue.is_empty_frame_pr(_frame_pr(""))
+    assert not catalogue.is_empty_frame_pr(_frame_pr('w:anchorLock="1"'))
+    assert not catalogue.is_empty_frame_pr(_frame_pr('w:anchorLock="0"'))
+    assert not catalogue.is_empty_frame_pr(_frame_pr('w:w="3600"'))
+
+
+def test_an_omitted_anchor_lock_keeps_the_styles():
+    merged = catalogue.merge_frame_pr(_frame_pr('w:w="3600"'), _frame_pr('w:w="3629" w:anchorLock="1"'))
+    assert merged.anchor_lock is True
+    assert int(merged.w) == 3600
+
+
+def test_a_stated_anchor_lock_wins():
+    assert catalogue.merge_frame_pr(_frame_pr('w:w="1" w:anchorLock="0"'), _frame_pr('w:anchorLock="1"')).anchor_lock is False
+    assert catalogue.merge_frame_pr(_frame_pr('w:w="1" w:anchorLock="1"'), _frame_pr('w:w="2"')).anchor_lock is True
+
+
+def test_neither_states_it_and_none_is_written():
+    assert catalogue.merge_frame_pr(_frame_pr('w:w="1"'), _frame_pr('w:w="2"')).anchor_lock is None

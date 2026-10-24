@@ -272,15 +272,15 @@ def is_empty_num_pr(value: Any) -> bool:
 
 
 def is_empty_frame_pr(value: Any) -> bool:
-    """docx4j ``isEmpty(CTFramePr)``.
+    """docx4j ``isEmpty(CTFramePr)``: nothing stated, ``w:anchorLock`` included.
 
-    ``w:anchorLock`` defaults to **true** (docx4j reads it through
-    ``isAnchorLock()``), so only an explicit ``w:anchorLock="0"`` makes a frame
-    non-empty on its own.
+    docx4j reads ``w:anchorLock`` as stated (``FramePrAccess.getAnchorLock``,
+    ``82c64bf14``), since CR-059 corrected its schema default to false: a bare
+    ``<w:framePr/>`` is empty, and ``w:anchorLock="1"`` or ``"0"`` alone is not.
+    Until then docx4j read an absent one as true, and so did this port.
     """
     if value is None:
         return True
-    anchor_lock = True if value.anchor_lock is None else value.anchor_lock
     return (
         value.drop_cap is None
         and value.lines is None
@@ -296,7 +296,7 @@ def is_empty_frame_pr(value: Any) -> bool:
         and value.y is None
         and value.y_align is None
         and value.h_rule is None
-        and bool(anchor_lock)
+        and value.anchor_lock is None
     )
 
 
@@ -692,12 +692,13 @@ def merge_tabs(source: Any, destination: Any) -> Any:
 
 
 def merge_frame_pr(source: Any, destination: Any) -> Any:
-    """``w:framePr``: each attribute inherits on its own.
+    """``w:framePr``: each attribute inherits on its own, ``w:anchorLock`` too.
 
-    ``w:anchorLock`` defaults to true, and docx4j's merge --- which reads it
-    through ``isAnchorLock()`` --- writes that default out explicitly, so any
-    merged ``w:framePr`` carries ``w:anchorLock="true"`` even where no layer
-    stated it.
+    docx4j's merge passes the stated values (``82c64bf14``): an omitted
+    ``w:anchorLock`` keeps the style's, a stated one wins, and where neither
+    layer states it none is written. Before that docx4j's merge read it through
+    ``isAnchorLock()`` and wrote the old schema default, true, explicitly; this
+    port did the same.
     """
     from docx4j_py.wml import CTFramePr
 
@@ -718,7 +719,7 @@ def merge_frame_pr(source: Any, destination: Any) -> Any:
     out.y = _attr(source.y, out.y)
     out.y_align = _attr(source.y_align, out.y_align)
     out.h_rule = _attr(source.h_rule, out.h_rule)
-    out.anchor_lock = True if source.anchor_lock is None else source.anchor_lock
+    out.anchor_lock = _attr(source.anchor_lock, out.anchor_lock)
     return out
 
 

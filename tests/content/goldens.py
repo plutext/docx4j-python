@@ -244,12 +244,72 @@ class Pin:
 #: Where this package is ahead of the goldens: one :class:`Pin` per comparison
 #: expected to differ until docx4j-core-ts regenerates them, each marking its
 #: (test, golden) pair ``xfail(strict=True)`` so that the regeneration turns it
-#: into an unexpected pass and the pin comes out. Empty since 2026-10-12: CR-009
-#: Phase A's two pins (``fonts-modesOfApplication`` main[5] run 3 and
-#: ``invoice2013`` table 0, docx4j CR-034's colour merge) came out when
-#: docx4j-core-ts regenerated the goldens at docx4j ``2e381ef26`` (its ``1f78b94``,
-#: CR-008 phase 1); CR-009 section 10.4.
-PINS: tuple[Pin, ...] = ()
+#: into an unexpected pass and the pin comes out. CR-009 Phase A's two pins came
+#: out when docx4j-core-ts regenerated the goldens at docx4j ``2e381ef26`` (its
+#: ``1f78b94``, CR-008 phase 1); CR-009 section 10.4.
+#:
+#: Since 2026-10-24, eight pins in three goldens for docx4j ``82c64bf14`` (CR-059: ``StyleUtil``
+#: reads ``w:framePr``'s ``w:anchorLock`` as stated, on ``VERSION_17_3_5``). The
+#: goldens come from docx4j's 17.3.4 release, whose merge wrote the old schema
+#: default ``w:anchorLock="true"`` into every effective ``w:framePr`` no layer
+#: stated it in; this port, as docx4j now does, writes none. Each comparison
+#: differs in that one attribute alone, and the pins come out when docx4j-core-ts
+#: regenerates the goldens from 17.3.5.
+_ANCHOR_LOCK = (
+    "docx4j 82c64bf14 (CR-059): an omitted w:anchorLock keeps the style's and none is "
+    "written where no layer states one; the 17.3.4 goldens carry the old merge's "
+    "w:anchorLock=\"true\" in this effective w:framePr, and nothing else differs"
+)
+PINS: tuple[Pin, ...] = (
+    Pin(
+        test="test_the_styles_resolve_as_docx4j_resolves_them",
+        golden="NumberingImplicitNumId",
+        where="NumberingImplicitNumId: effectivePPr('DraftStampFrame')",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="NumberingIndents",
+        where="NumberingIndents/footer:rId10[1] 'PAGE  5': effectivePPr",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="loadAndSave",
+        where="loadAndSave/header:rId15[0] '': effectivePPr",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_the_styles_resolve_as_docx4j_resolves_them",
+        golden="NumberingImplicitNumId",
+        where="NumberingImplicitNumId: effectivePPr('EnvelopeAddress')",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="loadAndSave",
+        where="loadAndSave/header:rId15[1] ' PAGE ': effectivePPr",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="loadAndSave",
+        where="loadAndSave/header:rId16[0] ' PAGE 1': effectivePPr",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="loadAndSave",
+        where="loadAndSave/footer:rId17[0] ' PAGE ': effectivePPr",
+        reason=_ANCHOR_LOCK,
+    ),
+    Pin(
+        test="test_every_paragraph_and_run_resolves_as_docx4j_resolves_it",
+        golden="loadAndSave",
+        where="loadAndSave/footer:rId18[0] ' PAGE 1': effectivePPr",
+        reason=_ANCHOR_LOCK,
+    ),
+)
 
 
 class PinnedDifference(AssertionError):
