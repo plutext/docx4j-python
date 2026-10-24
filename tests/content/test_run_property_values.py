@@ -1365,3 +1365,23 @@ def test_the_fixtures_are_docx4j_s_at_5163c2986() -> None:
         data = (ONOFF / name).read_bytes()
         git_blob = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
         assert git_blob == blobs[name], name
+
+
+def test_concurrent_saves_keep_their_own_reports() -> None:
+    """The render pass finds its save through a context variable: saves in threads do not mix their rows."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from docx4j_py.openpackaging.api import load
+
+    def save(name: str) -> tuple[str, list[tuple[str, Any]]]:
+        package = load(ONOFF / f"{name}.docx")
+        _ = package.main_document_part.contents
+        package.save()
+        return name, sorted((r.before, r.after) for r in package.last_save.normalised)
+
+    names = ["props-enum-other", "colour-pattern", "colour-background-red", "props-u-valid", "onoff-valid"]
+    alone = dict(save(name) for name in names)
+    with ThreadPoolExecutor(8) as pool:
+        together = list(pool.map(save, names * 6))
+    assert all(rows == alone[name] for name, rows in together)
+    assert len(alone["colour-pattern"]) == 5 and len(alone["onoff-valid"]) == 2
