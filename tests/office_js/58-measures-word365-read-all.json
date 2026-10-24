@@ -1,0 +1,954 @@
+{
+ "check": 58,
+ "label": "All Markup",
+ "mode": "read",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 1,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "OLD1A OLD1B\\u000d",
+      "range": "OLD1A OLD1B\\u000d",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN1 changes",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN1A",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "OLD1A OLD1B",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "OLD1A OLD1B\\u000d",
+        "range": "OLD1A OLD1B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "OLD1A OLD1B\\u000d",
+        "range": "OLD1A OLD1B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Deleted",
+        "text": "OLD1A OLD1B",
+        "range": "OLD1A OLD1B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "PLAIN1C",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END1",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 2,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "OLD2A OLD2B\\u000dOLD2C OLD2D\\u000d",
+      "range": "OLD2A OLD2B\\u000dOLD2C OLD2D\\u000d",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN2 changes",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN2A",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "OLD2A OLD2B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "OLD2C OLD2D",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN2C",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END2",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 3,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "OLD3A OLD3B\\u000d",
+      "range": "OLD3A OLD3B\\u000d",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN3 changes",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN3A",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "OLD3A OLD3B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "OLD3C OLD3D",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN3C",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END3",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 4,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "OLD4A OLD4B",
+      "range": "OLD4A OLD4B",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN4 changes",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN4A",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "OLD4A OLD4B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN4C",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END4",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 5,
+   "op": "changes",
+   "args": [],
+   "reads": {
+    "region": [
+     {
+      "type": "Added",
+      "text": "NEW5A NEW5B\\u000d",
+      "range": "NEW5A NEW5B\\u000d",
+      "rangeParagraphs": 1
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN5 changes",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "PLAIN5A",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "NEW5A NEW5B",
+      "changes": [
+       {
+        "type": "Added",
+        "text": "NEW5A NEW5B\\u000d",
+        "range": "NEW5A NEW5B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Added",
+        "text": "NEW5A NEW5B\\u000d",
+        "range": "NEW5A NEW5B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Added",
+        "text": "NEW5A NEW5B",
+        "range": "NEW5A NEW5B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "PLAIN5C",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END5",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 6,
+   "op": "range",
+   "args": [
+    "HEAD6A",
+    "BODY6B"
+   ],
+   "reads": {
+    "range": {
+     "text": "HEAD6A HEAD6B\\u000dBODY6A BODY6B",
+     "isEmpty": false
+    },
+    "paragraphs": [
+     "HEAD6A HEAD6B",
+     "BODY6A BODY6B"
+    ],
+    "whole": "HEAD6A HEAD6B\\u000dBODY6A BODY6B"
+   }
+  },
+  {
+   "n": 7,
+   "op": "range",
+   "args": [
+    "TWO7A",
+    "TWO7B"
+   ],
+   "reads": {
+    "range": {
+     "text": "TWO7A\\u000dTWO7B",
+     "isEmpty": false
+    },
+    "paragraphs": [
+     "TWO7A",
+     "TWO7B"
+    ],
+    "whole": "TWO7A\\u000dTWO7B"
+   }
+  },
+  {
+   "n": 8,
+   "op": "range",
+   "args": [
+    "PLAIN8A",
+    "PLAIN8C"
+   ],
+   "reads": {
+    "range": {
+     "text": "PLAIN8A\\u000dOLD8A OLD8B\\u000dPLAIN8C",
+     "isEmpty": false
+    },
+    "paragraphs": [
+     "PLAIN8A",
+     "OLD8A OLD8B",
+     "PLAIN8C"
+    ],
+    "whole": "PLAIN8A\\u000dOLD8A OLD8B\\u000dPLAIN8C"
+   }
+  },
+  {
+   "n": 9,
+   "op": "cell",
+   "args": [],
+   "reads": {
+    "table": {
+     "values": [
+      [
+       "CELL9A",
+       "CELL9B"
+      ]
+     ],
+     "whole": "CELL9A\\u0009CELL9B\\u000d\\u000a"
+    },
+    "cell": {
+     "value": "CELL9A",
+     "bodyText": "CELL9A",
+     "whole": "CELL9A\\u0009",
+     "paragraphs": [
+      {
+       "text": "CELL9A",
+       "whole": "CELL9A\\u0009"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 10,
+   "op": "cell",
+   "args": [],
+   "reads": {
+    "table": {
+     "values": [
+      [
+       "CELL10A\\u000dCELL10B",
+       "CELL10C"
+      ]
+     ],
+     "whole": "CELL10A\\u000dCELL10B\\u0009CELL10C\\u000d\\u000a"
+    },
+    "cell": {
+     "value": "CELL10A\\u000dCELL10B",
+     "bodyText": "CELL10A\\u000dCELL10B",
+     "whole": "CELL10A\\u000dCELL10B\\u0009",
+     "paragraphs": [
+      {
+       "text": "CELL10A",
+       "whole": "CELL10A\\u000d"
+      },
+      {
+       "text": "CELL10B",
+       "whole": "CELL10B\\u0009"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 11,
+   "op": "placeholder",
+   "args": [
+    "c58-11"
+   ],
+   "reads": {
+    "control": {
+     "text": "",
+     "placeholderText": null,
+     "paragraph": "PLAIN11A  PLAIN11B",
+     "paragraphWhole": "PLAIN11A  PLAIN11B\\u000d",
+     "whole": "",
+     "content": ""
+    }
+   }
+  },
+  {
+   "n": 12,
+   "op": "search",
+   "args": [
+    "placeholder"
+   ],
+   "reads": {
+    "Click or tap here to enter text.": [
+     [
+      ""
+     ],
+     [
+      ""
+     ],
+     [
+      "Click or tap here to enter text."
+     ]
+    ],
+    "tap": [
+     [
+      ""
+     ],
+     [
+      ""
+     ],
+     [
+      "tap"
+     ]
+    ],
+    "PLAIN12A Click": [
+     [],
+     [
+      "PLAIN12A "
+     ],
+     []
+    ]
+   }
+  },
+  {
+   "n": 13,
+   "op": "search",
+   "args": [
+    "wildcards"
+   ],
+   "reads": {
+    "?": [
+     [
+      "x",
+      "\\ud83d\\ude00",
+      "y",
+      " ",
+      "a",
+      "\\ud83d\\ude00",
+      "b",
+      " ",
+      " ",
+      "z",
+      "\\u000d"
+     ]
+    ],
+    "[!a-z ]": [
+     [
+      "\\u000d"
+     ]
+    ],
+    "a?b": [
+     [
+      "a\\ud83d\\ude00b"
+     ]
+    ],
+    "x?y": [
+     [
+      "x\\ud83d\\ude00y"
+     ]
+    ],
+    "[!a-z ]@": [
+     [
+      "\\u000d"
+     ]
+    ]
+   }
+  },
+  {
+   "n": 14,
+   "op": "accept",
+   "args": [
+    "1"
+   ],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "HEAD14B\\u000dBODY14A ",
+      "range": "HEAD14B\\u000dBODY14A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN14 accept 1",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "HEAD14A HEAD14B",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "HEAD14B\\u000d",
+        "range": "HEAD14B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD14B\\u000d",
+        "range": "HEAD14B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD14B",
+        "range": "HEAD14B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "BODY14A BODY14B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END14",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 15,
+   "op": "accept",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "HEAD15B\\u000dBODY15A ",
+      "range": "HEAD15B\\u000dBODY15A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN15 accept 2",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "HEAD15A HEAD15B",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "HEAD15B\\u000d",
+        "range": "HEAD15B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD15B\\u000d",
+        "range": "HEAD15B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD15B",
+        "range": "HEAD15B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "BODY15A BODY15B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END15",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 16,
+   "op": "reject",
+   "args": [
+    "1"
+   ],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "HEAD16B\\u000dBODY16A ",
+      "range": "HEAD16B\\u000dBODY16A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN16 reject 1",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "HEAD16A HEAD16B",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "HEAD16B\\u000d",
+        "range": "HEAD16B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD16B\\u000d",
+        "range": "HEAD16B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD16B",
+        "range": "HEAD16B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "BODY16A BODY16B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END16",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 17,
+   "op": "reject",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "region": [
+     {
+      "type": "Deleted",
+      "text": "HEAD17B\\u000dBODY17A ",
+      "range": "HEAD17B\\u000dBODY17A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN17 reject 2",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "HEAD17A HEAD17B",
+      "changes": [
+       {
+        "type": "Deleted",
+        "text": "HEAD17B\\u000d",
+        "range": "HEAD17B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD17B\\u000d",
+        "range": "HEAD17B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Deleted",
+        "text": "HEAD17B",
+        "range": "HEAD17B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "BODY17A BODY17B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END17",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 18,
+   "op": "accept",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "region": [
+     {
+      "type": "Added",
+      "text": " LIST18B\\u000dPLAIN18A ",
+      "range": " LIST18B\\u000dPLAIN18A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN18 accept 2",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "LIST18A LIST18B",
+      "changes": [
+       {
+        "type": "Added",
+        "text": " LIST18B\\u000d",
+        "range": " LIST18B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Added",
+        "text": " LIST18B\\u000d",
+        "range": " LIST18B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Added",
+        "text": " LIST18B",
+        "range": " LIST18B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "PLAIN18A PLAIN18B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END18",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 19,
+   "op": "reject",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "region": [
+     {
+      "type": "Added",
+      "text": " LIST19B\\u000dPLAIN19A ",
+      "range": " LIST19B\\u000dPLAIN19A ",
+      "rangeParagraphs": 2
+     }
+    ],
+    "paragraphs": [
+     {
+      "text": "BEGIN19 reject 2",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "LIST19A LIST19B",
+      "changes": [
+       {
+        "type": "Added",
+        "text": " LIST19B\\u000d",
+        "range": " LIST19B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "wholeChanges": [
+       {
+        "type": "Added",
+        "text": " LIST19B\\u000d",
+        "range": " LIST19B\\u000d",
+        "rangeParagraphs": 1
+       }
+      ],
+      "contentChanges": [
+       {
+        "type": "Added",
+        "text": " LIST19B",
+        "range": " LIST19B",
+        "rangeParagraphs": 1
+       }
+      ]
+     },
+     {
+      "text": "PLAIN19A PLAIN19B",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     },
+     {
+      "text": "END19",
+      "changes": [],
+      "wholeChanges": [],
+      "contentChanges": []
+     }
+    ]
+   }
+  },
+  {
+   "n": 20,
+   "op": "fill",
+   "args": [
+    "c58-20",
+    "replace"
+   ],
+   "reads": {
+    "control": {
+     "text": "",
+     "placeholderText": null,
+     "paragraph": "",
+     "paragraphWhole": "\\u000d",
+     "whole": "\\u000d",
+     "content": ""
+    }
+   }
+  },
+  {
+   "n": 21,
+   "op": "fill",
+   "args": [
+    "c58-21",
+    "end"
+   ],
+   "reads": {
+    "control": {
+     "text": "",
+     "placeholderText": null,
+     "paragraph": "",
+     "paragraphWhole": "\\u000d",
+     "whole": "\\u000d",
+     "content": ""
+    }
+   }
+  },
+  {
+   "n": 22,
+   "op": "fill",
+   "args": [
+    "c58-22",
+    "end"
+   ],
+   "reads": {
+    "control": {
+     "text": "",
+     "placeholderText": null,
+     "paragraph": "PLAIN22A  PLAIN22B",
+     "paragraphWhole": "PLAIN22A  PLAIN22B\\u000d",
+     "whole": "",
+     "content": ""
+    }
+   }
+  }
+ ]
+}

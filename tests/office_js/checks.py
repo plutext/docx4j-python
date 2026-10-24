@@ -1,4 +1,4 @@
-"""docx4j-core-ts's Office JS checks 52 and 53, ported to the content API: CR-013 Phase B's oracles.
+"""docx4j-core-ts's Office JS checks 52 to 58, ported to the content API: CR-013's and CR-016's oracles.
 
 CR-013 section 6.1. Word 365 ran each check's Script Lab snippet on the file in
 this directory and wrote JSON (``52-ranges-word365-run.json``,
@@ -19,6 +19,9 @@ step for step, onto the content API, and give the same JSON shape with the same
   ``87bbb38``; CR-013 Phase C) in its ``run`` and ``report`` modes.
 * :func:`run_check_57` is ``CHECK57.runCheck`` (``check57-script-lab.js`` at
   ``906d5e3``; CR-013 section 13.7) in its ``run`` and ``report`` modes.
+* :func:`run_check_58` is ``CHECK58.runCheck`` (``check58-script-lab.js`` at
+  ``222cc20``; CR-016 Phase B) in its ``read`` and ``edit`` modes, with its
+  ``QUERIES`` (:data:`QUERIES_58`).
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -46,10 +49,12 @@ __all__ = [
     "parse_region_53",
     "parse_region_54",
     "parse_region_57",
+    "parse_region_58",
     "run_check_52",
     "run_check_53",
     "run_check_54",
     "run_check_57",
+    "run_check_58",
     "vis",
 ]
 
@@ -984,5 +989,239 @@ def run_check_57(package: Any, mode: str) -> dict[str, Any]:
         except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
             entry["error"] = failed_57(error)
         entry["region"] = attempt_57(lambda region=region: report_57(body, region))
+        result["cases"].append(entry)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# check 58 (core-ts check58-script-lab.js at 222cc20; CR-016 Phase B)
+# ---------------------------------------------------------------------------
+
+_BEGIN_58 = re.compile(r"^BEGIN(\d+) (\w+)(?: (.*))?$")
+
+WILD = {"match_wildcards": True}
+
+#: The queries a ``search`` region is searched with, paragraph by paragraph: ``(query, options)``.
+QUERIES_58: dict[str, Callable[[int], list[tuple[str, dict[str, Any]]]]] = {
+    # a control showing its placeholder: Word's own text, a word of it, and a hit from plain text into it
+    "placeholder": lambda n: [("Click or tap here to enter text.", {}), ("tap", TOKEN), (f"PLAIN{n}A Click", {})],
+    # a surrogate pair (U+1F600) and an Arabic word with its fathas (combining marks)
+    "wildcards": lambda n: [("?", WILD), ("[!a-z ]", WILD), ("a?b", WILD), ("x?y", WILD), ("[!a-z ]@", WILD)],
+}
+
+#: The ops the Edit run runs; the Read run reads every case and changes nothing.
+EDITS_58 = frozenset({"accept", "reject", "fill"})
+
+
+def parse_region_58(text: str) -> dict[str, Any] | None:
+    """A BEGIN paragraph's text as a case, or None; a ``range`` op's word arguments upper-cased, as the content has them."""
+    match = _BEGIN_58.match(text.strip())
+    if match is None:
+        return None
+    op = match.group(2)
+    args = [a for a in (match.group(3) or "").split(" ") if a]
+    return {"n": int(match.group(1)), "op": op, "args": [a.upper() for a in args] if op == "range" else args}
+
+
+def _paragraph_of_58(body: Any, token: str) -> Any:
+    return find(body, token).paragraphs[0]
+
+
+def region_of_58(body: Any, n: int) -> Any:
+    """The region's range: its BEGIN paragraph's whole range expanded to its END paragraph's."""
+    return _paragraph_of_58(body, f"BEGIN{n}").get_range("Whole").expand_to(
+        _paragraph_of_58(body, f"END{n}").get_range("Whole")
+    )
+
+
+def _content_paragraphs_58(body: Any, n: int) -> list[Any]:
+    """The region's paragraphs between its BEGIN and END paragraphs."""
+    return region_of_58(body, n).paragraphs[1:-1]
+
+
+def changes_of_58(changes: list[Any]) -> list[dict[str, Any]]:
+    """Tracked changes as type, text, and their range's text and paragraph count (the snippet's ``changesOf``)."""
+    out = []
+    for change in changes:
+        found = change.get_range()
+        out.append(
+            {
+                "type": change.type,
+                "text": vis(change.text),
+                "range": vis(found.text),
+                "rangeParagraphs": len(found.paragraphs),
+            }
+        )
+    return out
+
+
+def _changes_58(body: Any, n: int) -> dict[str, Any]:
+    """The region's changes, and each paragraph's, its whole range's and its content range's."""
+    region = region_of_58(body, n)
+    out: dict[str, Any] = {}
+    out["region"] = attempt(lambda: changes_of_58(region.get_tracked_changes()))
+
+    def paragraphs() -> list[dict[str, Any]]:
+        return [
+            {
+                "text": vis(p.text),
+                "changes": attempt(lambda p=p: changes_of_58(p.get_tracked_changes())),
+                "wholeChanges": attempt(lambda p=p: changes_of_58(p.get_range("Whole").get_tracked_changes())),
+                "contentChanges": attempt(lambda p=p: changes_of_58(p.get_range("Content").get_tracked_changes())),
+            }
+            for p in region.paragraphs
+        ]
+
+    out["paragraphs"] = attempt(paragraphs)
+    return out
+
+
+def _placeholder_58(body: Any, tag: str) -> dict[str, Any]:
+    """A control showing its placeholder: its text and placeholder text, its paragraph's text and ranges, its own ranges."""
+    out: dict[str, Any] = {}
+
+    def control() -> dict[str, Any]:
+        found = control_by_tag(body, tag)
+        p = found.get_range("Whole").paragraphs[0]
+        return {
+            "text": vis(found.text),
+            "placeholderText": vis(found.placeholder_text),
+            "paragraph": vis(p.text),
+            "paragraphWhole": vis(p.get_range("Whole").text),
+            "whole": vis(found.get_range("Whole").text),
+            "content": vis(found.get_range("Content").text),
+        }
+
+    out["control"] = attempt(control)
+    out["showingPlaceholderText"] = attempt(
+        lambda: member(control_by_tag(body, tag), "showing_placeholder_text", "showingPlaceholderText")
+    )
+    return out
+
+
+def _region_after_58(body: Any, n: int) -> dict[str, Any]:
+    """After an edit: the region's paragraphs and its changes."""
+    return {
+        "paragraphs": attempt(lambda: [vis(p.text) for p in _content_paragraphs_58(body, n)]),
+        "changes": attempt(lambda: changes_of_58(region_of_58(body, n).get_tracked_changes())),
+    }
+
+
+def _resolve_part_58(body: Any, n: int, i: int, verb: str) -> dict[str, Any]:
+    """The first change paragraph `i` of region `n` lists (its BEGIN paragraph is 0), accepted or rejected; the region after."""
+
+    def resolved() -> Any:
+        listed = region_of_58(body, n).paragraphs[i].get_tracked_changes()
+        if not listed:
+            return "none listed"
+        change = listed[0]
+        what = {"type": change.type, "text": vis(change.text), "listed": len(listed)}
+        getattr(change, verb)()
+        return what
+
+    out: dict[str, Any] = {"resolved": attempt(resolved)}
+    out["after"] = _region_after_58(body, n)
+    return out
+
+
+def _op_range_58(body: Any, args: list[str], n: int, mode: str) -> Any:
+    found = find(body, args[0]).expand_to(find(body, args[1]))
+    out: dict[str, Any] = {}
+    out["range"] = attempt(lambda: {"text": vis(found.text), "isEmpty": found.is_empty})
+    out["paragraphs"] = attempt(lambda: [vis(p.text) for p in found.paragraphs])
+    out["whole"] = attempt(lambda: vis(found.get_range("Whole").text))
+    return out
+
+
+def _op_cell_58(body: Any, args: list[str], n: int, mode: str) -> Any:
+    table = region_of_58(body, n).tables[0]
+    out: dict[str, Any] = {}
+    out["table"] = attempt(
+        lambda: {"values": [[vis(v) for v in row] for row in table.values], "whole": vis(table.get_range("Whole").text)}
+    )
+
+    def cell() -> dict[str, Any]:
+        found = table.cell(0, 0)
+        return {
+            "value": vis(found.value),
+            "bodyText": vis(found.body.text),
+            "whole": vis(found.body.get_range("Whole").text),
+            "paragraphs": [
+                {"text": vis(p.text), "whole": vis(p.get_range("Whole").text)} for p in found.body.paragraphs
+            ],
+        }
+
+    out["cell"] = attempt(cell)
+    return out
+
+
+def _op_search_58(body: Any, args: list[str], n: int, mode: str) -> Any:
+    paragraphs = _content_paragraphs_58(body, n)
+    out: dict[str, Any] = {}
+    for query, options in QUERIES_58[args[0]](n):
+        out[vis(query)] = attempt(
+            lambda query=query, options=options: [
+                [vis(hit.text) for hit in p.search(query, **options)] for p in paragraphs
+            ]
+        )
+    return out
+
+
+def _op_resolve_58(verb: str) -> Callable[[Any, list[str], int, str], Any]:
+    def op(body: Any, args: list[str], n: int, mode: str) -> Any:
+        if mode != "edit":
+            return _changes_58(body, n)
+        return _resolve_part_58(body, n, int(args[0]), verb)
+
+    return op
+
+
+def _op_fill_58(body: Any, args: list[str], n: int, mode: str) -> Any:
+    tag, how = args
+    if mode != "edit":
+        return _placeholder_58(body, tag)
+    out: dict[str, Any] = {}
+    out["inserted"] = attempt(
+        lambda: vis(
+            control_by_tag(body, tag).insert_text(f"FILL{n}", location="Replace" if how == "replace" else "End").text
+        )
+    )
+    out["after"] = _placeholder_58(body, tag)
+    return out
+
+
+OPS_58: dict[str, Callable[[Any, list[str], int, str], Any]] = {
+    "changes": lambda body, args, n, mode: _changes_58(body, n),
+    "range": _op_range_58,
+    "cell": _op_cell_58,
+    "placeholder": lambda body, args, n, mode: _placeholder_58(body, args[0]),
+    "search": _op_search_58,
+    "accept": _op_resolve_58("accept"),
+    "reject": _op_resolve_58("reject"),
+    "fill": _op_fill_58,
+}
+
+
+def run_check_58(package: Any, label: str, mode: str = "read") -> dict[str, Any]:
+    """``CHECK58.runCheck`` in its ``read`` or ``edit`` mode, on a loaded package; `label` names the view.
+
+    ``read`` reads every case and changes nothing; ``edit`` accepts, rejects or
+    fills in its edit cases only, and reads each region after (the snippet at
+    core-ts ``222cc20``, byte for byte the share's ``check58-script-lab.js``).
+    """
+    if mode not in ("read", "edit"):
+        raise ValueError(f"check 58 has no {mode!r} mode")
+    body = package.body
+    result: dict[str, Any] = {"check": 58, "label": label, "mode": mode, "host": None, "cases": []}
+    regions = [region for p in body.paragraphs if (region := parse_region_58(p.text)) is not None]
+    for region in regions:
+        if mode == "edit" and region["op"] not in EDITS_58:
+            continue
+        op = OPS_58.get(region["op"])
+        entry: dict[str, Any] = {"n": region["n"], "op": region["op"], "args": region["args"]}
+        if op is None:
+            entry["reads"] = f"error: no op {region['op']}"
+        else:
+            entry["reads"] = attempt(lambda op=op, region=region: op(body, region["args"], region["n"], mode))
         result["cases"].append(entry)
     return result

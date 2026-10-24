@@ -29,6 +29,8 @@ an equation (``m:oMath``, ``m:oMathPara``)     Word's text of it, one segment
                                                (:mod:`.math_text`)
 a hidden run (its own ``w:vanish``, else its   nothing (:func:`hidden_runs_of`)
 styles')
+a run in a content control showing its         nothing (:func:`hidden_runs_of`;
+placeholder (``w:showingPlcHdr``)              CR-016 Phase B)
 a comment reference, a field code, a picture   nothing
 =============================================  ============================
 
@@ -102,6 +104,7 @@ from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.values import is_on
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
+from docx4j_py.wml.sdt import sdt_property
 
 __all__ = [
     "FIND_CODES",
@@ -125,6 +128,7 @@ __all__ = [
     "for_writer",
     "grapheme_clusters",
     "hidden_runs_of",
+    "in_showing_placeholder",
     "is_block_container",
     "is_branch",
     "is_grapheme_boundary",
@@ -135,6 +139,7 @@ __all__ = [
     "office_item_text",
     "office_matches",
     "paragraph_mark_pieces",
+    "placeholder_control_of",
     "reading_of",
     "refuse_branch_text",
     "refuse_equation",
@@ -830,6 +835,51 @@ def _on(flag: Any) -> bool:
     return is_on(flag)
 
 
+def _shows_placeholder(node: Any) -> bool:
+    """Whether `node` is a content control (any level) whose ``w:showingPlcHdr`` is on."""
+    sdt_pr = getattr(node, "sdt_pr", None)
+    if sdt_pr is None or getattr(node, "sdt_content", None) is None:
+        return False
+    return is_on(sdt_property(sdt_pr, "showingPlcHdr", WML_NS))
+
+
+def in_showing_placeholder(node: Any) -> bool:
+    """Whether a run (or a paragraph) is inside a content control showing its placeholder. CR-016 Phase B.
+
+    docx4j-core-ts ``inShowingPlaceholder`` (``tree.mts`` at ``222cc20``; its
+    CR-012 section 18): up the parent pointers, a run-, block-, row- or
+    cell-level ``w:sdt`` whose ``w:showingPlcHdr`` is on, read as Word reads an
+    on/off value (``w:val="0"`` is off; CR-018). Office JS reads a placeholder
+    as no text and finds no text there (core-ts check 53 cases 34 and 35, check
+    58 cases 11 and 12), so :func:`hidden_runs_of` takes its runs as it takes
+    hidden ones.
+    """
+    current = getattr(node, "parent", None)
+    for _ in range(256):
+        if current is None:
+            return False
+        if _shows_placeholder(current):
+            return True
+        current = getattr(current, "parent", None)
+    return False
+
+
+def placeholder_control_of(run: Any, paragraph: Any) -> Any | None:
+    """The run-level content control showing its placeholder that holds `run` inside `paragraph`, or None.
+
+    Up the run's parent pointers to `paragraph` (CR-016 Phase B): a control
+    above the paragraph, block-level, is not this paragraph's.
+    """
+    current = getattr(run, "parent", None)
+    for _ in range(256):
+        if current is None or current is paragraph:
+            return None
+        if _shows_placeholder(current):
+            return current
+        current = getattr(current, "parent", None)
+    return None
+
+
 def hidden_runs_of(resolver: Any, paragraph: Any) -> Callable[[Any], bool]:
     """Which of a paragraph's runs are hidden, as the text model's rule has it (CR-013 Phase A).
 
@@ -839,13 +889,39 @@ def hidden_runs_of(resolver: Any, paragraph: Any) -> Callable[[Any], bool]:
     Office JS's text leaves such a run out in every view (docx4j-core-ts check
     48b, ``hiddenRunsOf`` at ``9307bdb``). Without a resolver only a run's own
     ``w:vanish`` counts.
+
+    **A run in a content control showing its placeholder** is hidden too, first
+    (CR-016 Phase B; core-ts ``hiddenRunsOf`` at ``222cc20``,
+    :func:`in_showing_placeholder`): Office JS reads a placeholder as no text,
+    so every reader through this rule --- ``Paragraph.text``, the story layout,
+    a range, ``search``, a comment's and a change's offsets, the text model's
+    ``office_offset`` --- reads it as nothing. The text model's own text keeps
+    it (docx4j's semantics). A paragraph inside such a control is found once,
+    and a run's own climb stops at the paragraph.
     """
     p_pr = getattr(paragraph, "p_pr", None)
     style = getattr(p_pr, "p_style", None) if p_pr is not None else None
     value = getattr(style, "val", None) if style is not None else None
     p_style = getattr(value, "value", value)
+    above: list[bool] = []
+
+    def placeholder(run: Any) -> bool:
+        current = getattr(run, "parent", None)
+        for _ in range(256):
+            if current is None or current is paragraph:
+                break
+            if _shows_placeholder(current):
+                return True
+            current = getattr(current, "parent", None)
+        # the run's climb reached its paragraph (or its parent pointers stop short of it, as a run
+        # read from its paragraph's lists is the paragraph's): the controls above the paragraph
+        if not above:
+            above.append(in_showing_placeholder(paragraph))
+        return above[0]
 
     def hidden(run: Any) -> bool:
+        if placeholder(run):
+            return True
         r_pr = getattr(run, "r_pr", None)
         own = getattr(r_pr, "vanish", None) if r_pr is not None else None
         if own is not None:

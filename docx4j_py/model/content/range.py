@@ -565,22 +565,28 @@ class Range:
     def font(self) -> Font:
         """The formatting of exactly this span.
 
-        Asking for it splits nothing; a read reports the first run the span
-        touches, **effective** as Office JS reports it (CR-002 section 15.1).
-        A **write** splits the runs at the boundaries first --- the start
-        backwards and the end forwards to the nearest grapheme boundary, so a
-        cluster is never cut in two (CR-003 section 3.12) --- so that only the
-        span is touched.
+        A **read** splits nothing (CR-016 Q12) and reports **every run the
+        span touches** (a run partly inside counts, :attr:`runs`), each
+        **effective** as Office JS reports it (CR-002 section 15.1): a property
+        where they differ reads ``None``, ``""`` for the name, the colour and
+        the highlight, and ``"Mixed"`` for the underline (CR-016 Phase B;
+        core-ts at ``222cc20``, its CR-002 section 59). A range holding its
+        paragraph's mark and no run --- an empty paragraph's ``"Whole"`` range
+        --- reads the mark's run properties, and a collapsed range its
+        paragraph's style. An automatic colour reads ``#000000``. A **write**
+        splits the runs at the boundaries first --- the start backwards and
+        the end forwards to the nearest grapheme boundary, so a cluster is
+        never cut in two (CR-003 section 3.12) --- so that only the span is
+        touched.
 
         **Across paragraphs** (CR-013 Phase B, Q4) it is a
-        :class:`~.font.MixedFont`: each run read in its own paragraph, a
-        property where they differ ``None``, ``""`` for the name, the colour
-        and the highlight, ``"Mixed"`` for the underline, as Office JS reads
-        it (core-ts checks 52 and 53). A write (Phase C) goes to every run in
-        the range, a table's cells' too, and to each mark it holds, a property
-        written only where a run or mark doesn't read it already, as Word
-        formats them (core-ts checks 52 and 54; :func:`~.span_edits.format_span`);
-        tracked, a mark's change is its ``w:pPr/w:rPr/w:rPrChange``.
+        :class:`~.font.MixedFont`: each run read in its own paragraph, by the
+        same rule, as Office JS reads it (core-ts checks 52 and 53). A write
+        (Phase C) goes to every run in the range, a table's cells' too, and to
+        each mark it holds, a property written only where a run or mark doesn't
+        read it already, as Word formats them (core-ts checks 52 and 54;
+        :func:`~.span_edits.format_span`); tracked, a mark's change is its
+        ``w:pPr/w:rPr/w:rPrChange``.
         """
         return self.get_font()
 
@@ -589,15 +595,18 @@ class Range:
 
         CR-002 section 15.1, as :meth:`Paragraph.get_font` is.
         """
+        from docx4j_py.model.content.font import mark_run_properties
+
         if self.spans_paragraphs:
 
             def readings() -> list[dict[str, Any]]:
                 out: list[dict[str, Any]] = []
                 for piece in self._pieces():
                     paragraph = piece.paragraph
-                    for run in piece.runs:
-                        font = Font(lambda run=run: [run], context=paragraph.resolution_context, direct=direct)
-                        out.append(font._read())
+                    reader = Font(list, context=paragraph.resolution_context, direct=direct)
+                    out.extend(
+                        reader.read_each([getattr(run, "r_pr", None) for run in piece.runs], direct=direct)
+                    )
                 return out
 
             return MixedFont(readings, self._format_across)
@@ -611,6 +620,14 @@ class Range:
             self.start, self.end = self.paragraph.split_runs_around(self.start, self.end)
             return self.runs
 
+        def reads() -> list[Any]:
+            # a read splits nothing: the runs the span touches (CR-016 Q12, core-ts's holders(false))
+            return [] if self.start == self.end else self.runs
+
+        def mark() -> Any:
+            # a range holding its paragraph's mark and no run reads the mark (core-ts CR-002 section 59)
+            return mark_run_properties(self.paragraph.element) if self.holds_end_mark else None
+
         return Font(
             holders,
             scope=f"{self.start}:{self.end}",
@@ -619,6 +636,8 @@ class Range:
             context=self.paragraph.resolution_context,
             direct=direct,
             guard=lambda: self.refuse_branch_text("a font write"),
+            reads=reads,
+            mark=mark,
         )
 
     def _format_across(self, options: dict[str, Any]) -> None:

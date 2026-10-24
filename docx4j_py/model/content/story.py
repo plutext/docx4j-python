@@ -5,7 +5,11 @@ docx4j-core-ts's ``Body.textIn`` at ``9307bdb`` (its CR-012 phase 4) and
 ``storyLayout`` at ``ef57729`` (``story.mts``, CR-014 phase 1). The form is
 Word's, measured in Word 365 (core-ts checks 30, 31, 48 and 51):
 
-* each paragraph's text (``Paragraph.text``) followed by its mark, ``\\r``;
+* each paragraph's text (``Paragraph.text``) followed by its mark, ``\\r``,
+  but a mark tracked as deleted, which Word's default view shows as nothing,
+  the paragraphs staying apart (CR-016 Phase B; core-ts ``222cc20``, its CR-012
+  section 19, check 58 cases 6 to 10); the original view writes no inserted
+  mark instead (:func:`shown_in_original_view`);
 * in a table, a row's cells a ``\\t`` apart, each cell's paragraphs a mark apart
   with the cell's last mark not written, and the row ended by ``\\r\\n``; a
   row-level content control's rows the same, since :func:`rows_of` reads
@@ -54,6 +58,8 @@ __all__ = [
     "StoryLayout",
     "first_and_last_paragraph",
     "mark_text_of",
+    "shown_in_default_view",
+    "shown_in_original_view",
     "story_layout",
     "story_of",
     "top_index",
@@ -65,6 +71,41 @@ MARK = "\r"
 CELL_END = "\t"
 #: After a row's last cell.
 ROW_END = "\r\n"
+
+
+def _mark(element: Any) -> Any:
+    """A paragraph's mark properties, ``w:pPr/w:rPr``, or None."""
+    p_pr = getattr(element, "p_pr", None)
+    return getattr(p_pr, "r_pr", None) if p_pr is not None else None
+
+
+def shown_in_default_view(element: Any) -> bool:
+    """Whether a paragraph's mark is written in Word's default view: not where it is tracked as deleted.
+
+    CR-016 Phase B, core-ts ``shownInDefaultView`` (``story.mts`` at
+    ``222cc20``; its CR-012 section 19): a deleted mark reads as nothing there,
+    the paragraphs staying apart (check 58 cases 6 to 8). A cell's last
+    paragraph is ended by the cell's ``\\t`` whatever its mark (cases 9 and 10).
+    """
+    mark = _mark(element)
+    return mark is None or getattr(mark, "del_value", None) is None
+
+
+def shown_in_original_view(element: Any) -> bool:
+    """Whether a paragraph's mark is written in the original view: not where it is tracked as inserted.
+
+    The marks Reject All keeps: a deleted mark written, an inserted one not
+    (core-ts ``Body.textIn`` at ``222cc20``; CR-016 Phase B).
+    """
+    mark = _mark(element)
+    return mark is None or getattr(mark, "ins", None) is None
+
+
+#: The mark rule of each view of :func:`story_layout` (``"accepted"`` is Word's default view's).
+MARK_SHOWN: dict[str, Callable[[Any], bool]] = {
+    "accepted": shown_in_default_view,
+    "original": shown_in_original_view,
+}
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -83,7 +124,7 @@ class Place:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class StoryLayout:
-    """A story's text in ``body.text``'s form, every paragraph's mark written, and each paragraph's place."""
+    """A story's text in ``body.text``'s form, each paragraph's mark written as its view shows it, and each paragraph's place."""
 
     text: str
     places: list[Place]
@@ -102,6 +143,7 @@ def story_layout(
     *,
     start: int = 0,
     stop: int | None = None,
+    mark_shown: Callable[[Any], bool] = shown_in_default_view,
 ) -> StoryLayout:
     """The text of a block list in Office JS's ``body.text`` form, with each paragraph's place.
 
@@ -116,10 +158,13 @@ def story_layout(
             text is its own, so ``items[start:stop]``'s layout is the whole
             list's slice, shifted; the places keep `items` as the container of
             a top-level paragraph.
+        mark_shown: whether a paragraph's mark is written; Word's default
+            view's rule (:func:`shown_in_default_view`, no deleted mark) unless
+            another view's is given (:data:`MARK_SHOWN`; CR-016 Phase B).
 
     Returns:
-        The text with **every** paragraph's mark written, the last one's too;
-        ``Body.text`` drops a final ``\\r``.
+        The text with every paragraph's mark the view shows written, the last
+        one's too; ``Body.text`` drops a final ``\\r``.
     """
     pieces: list[str] = []
     places: list[Place] = []
@@ -154,7 +199,8 @@ def story_layout(
                 text = text_of(element, blocks)
                 places.append(Place(element, blocks, position, position + len(text)))
                 push(text)
-                push(MARK)
+                if mark_shown(element):
+                    push(MARK)
                 continue
             if name == W_TBL:
                 for tr, _owner in rows_of(element):
@@ -254,24 +300,27 @@ def mark_text_of(element: Any) -> str:
     """The character Office JS gives a paragraph's mark at the end of its ``'Whole'`` range.
 
     core-ts check 48: ``\\t`` for the last paragraph of a table cell, the
-    cell's end, and ``\\r`` for any other. The paragraph is a cell's last when,
+    cell's end, whatever its mark; ``""`` for a mark tracked as deleted, which
+    Word's default view does not show (CR-016 Phase B; core-ts ``markText`` at
+    ``222cc20``, check 58); and ``\\r`` for any other. The paragraph is a cell's last when,
     climbing through the block holders above it (a content control, custom
     XML, a kept branch), the first ancestor is a ``w:tc`` and the cell's last
     paragraph, read through the same holders and not into a nested table, is
     this one (core-ts ``lastInCell``).
     """
+    other = MARK if shown_in_default_view(element) else ""
     holder = getattr(element, "parent", None)
     for _ in range(32):
         if holder is None:
-            return MARK
+            return other
         name = element_name(holder)
         if name == W_TC:
             break
         if name in (W_P, W_TBL, W_TR):
-            return MARK
+            return other
         holder = getattr(holder, "parent", None)
     else:
-        return MARK
+        return other
     last: list[Any] = [None]
 
     def visit(blocks: list) -> None:
@@ -285,4 +334,4 @@ def mark_text_of(element: Any) -> str:
                     visit(children)
 
     visit(block_children_of(holder) or [])
-    return CELL_END if last[0] is element else MARK
+    return CELL_END if last[0] is element else other

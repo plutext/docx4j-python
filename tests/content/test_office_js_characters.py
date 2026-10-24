@@ -73,6 +73,9 @@ SHARE_SHA1 = {
     "57-fields-equations-word365.docx": "e8ac302be7a8a7551da61c3a1306881ca0bb5fba",
     "57-fields-equations-word365-accepted.docx": "ee615f9e9a876a4aeddde7924da8c71ea6ec9d65",
     "57-fields-equations-word365-rejected.docx": "ad0937a076ff013b3e6e51c556899f465ebadef0",
+    # CR-016 Phase B (Q2): check 58's file and Word's save after its three runs (core-ts 222cc20)
+    "58-measures.docx": "03647705a7461f9ec6a441213f8e96d3ca69a32e",
+    "58-measures-word365.docx": "0e5184c5ad383c67c68dd08d16ed26fe58e41a8c",
 }
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -135,9 +138,10 @@ def test_every_fixture_is_the_manifests_and_the_files_word_read():
     manifest = dict(reversed(line.split("  ", 1)) for line in lines if line.strip())
     # Phase A's seven, Phase B's eight (checks 52 and 53, Word's saves of 52 and Word's four JSONs)
     # and Phase C's ten (check 54's file, Word's two saves and its two JSONs; check 57's file, Word's
-    # three saves and its run JSON, CR-013 section 13.7); and Word's Reject All of check 54 (docx4j
-    # e55a83b8e, CR-010 section 13.3a)
-    assert len(manifest) == 26
+    # three saves and its run JSON, CR-013 section 13.7); Word's Reject All of check 54 (docx4j
+    # e55a83b8e, CR-010 section 13.3a); and CR-016 Phase B's five (check 58's file, Word's save and its
+    # three JSONs, Q2)
+    assert len(manifest) == 31
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():

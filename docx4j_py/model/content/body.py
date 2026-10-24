@@ -455,7 +455,11 @@ class Body(Sequence):
 
         CR-013 Phase A (decided 2026-10-23; core-ts checks 30, 31, 48 and 51):
         each paragraph's :attr:`Paragraph.text` followed by its mark, ``\\r``,
-        the last paragraph's left out; in a table a row's cells a ``\\t`` apart,
+        the last paragraph's left out, and none after a mark tracked as
+        deleted, which Word's default view shows as nothing, the paragraphs
+        staying apart (CR-016 Phase B; core-ts check 58 cases 6 to 10); a
+        control showing its placeholder reads as no text (CR-016 Phase B,
+        check 58 case 11); in a table a row's cells a ``\\t`` apart,
         each cell's paragraphs a mark apart (its last mark not written), and the
         row ended by ``\\r\\n``. A content control is transparent. Split it
         into paragraphs with ``split("\\r")``, not ``splitlines()``, which also
@@ -471,13 +475,19 @@ class Body(Sequence):
         return self._layout_text("accepted")
 
     def _layout_text(self, view: str) -> str:
-        """:attr:`text` in a view: the story layout, its last mark dropped."""
-        from docx4j_py.model.content.story import MARK, story_layout
+        """:attr:`text` in a view: the story layout, its last mark dropped.
+
+        Each view writes the marks its resolution keeps (CR-016 Phase B; core-ts
+        ``Body.textIn`` at ``222cc20``): the accepted view, Word's default, no
+        deleted mark; the original view no inserted one
+        (:data:`~docx4j_py.model.content.story.MARK_SHOWN`).
+        """
+        from docx4j_py.model.content.story import MARK, MARK_SHOWN, story_layout
 
         def text_of(element: Any, container: list) -> str:
             return Paragraph(element, container, self).get_text(view=view)  # type: ignore[arg-type]
 
-        text = story_layout(self.content, text_of).text
+        text = story_layout(self.content, text_of, mark_shown=MARK_SHOWN[view]).text
         return text.removesuffix(MARK)
 
     def get_text(self, *, view: TextView = "accepted", max_chars: int | None = None) -> str:
@@ -488,7 +498,9 @@ class Body(Sequence):
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
         records its ``office_offset`` in this text, which reads Word's branch of a run- or
         paragraph-level ``mc:AlternateContent`` (Q4 revised, CR-011 section 15). A view here is a filter of
-        the revision holders: a deleted paragraph mark is not joined, and a
+        the revision holders, and of the marks: the accepted view writes no
+        ``\\r`` after a deleted mark and the original view none after an
+        inserted one (CR-016 Phase B), the paragraphs staying apart, and a
         paragraph whose content and mark are deleted is an empty one.
 
         Args:

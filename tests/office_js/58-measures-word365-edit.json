@@ -1,0 +1,226 @@
+{
+ "check": 58,
+ "label": "All Markup",
+ "mode": "edit",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 14,
+   "op": "accept",
+   "args": [
+    "1"
+   ],
+   "reads": {
+    "resolved": {
+     "type": "Deleted",
+     "text": "HEAD14B\\u000d",
+     "listed": 1
+    },
+    "after": {
+     "paragraphs": [
+      "HEAD14A BODY14A BODY14B"
+     ],
+     "changes": [
+      {
+       "type": "Deleted",
+       "text": "BODY14A ",
+       "range": "BODY14A ",
+       "rangeParagraphs": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 15,
+   "op": "accept",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "resolved": "none listed",
+    "after": {
+     "paragraphs": [
+      "HEAD15A HEAD15B",
+      "BODY15A BODY15B"
+     ],
+     "changes": [
+      {
+       "type": "Deleted",
+       "text": "HEAD15B\\u000dBODY15A ",
+       "range": "HEAD15B\\u000dBODY15A ",
+       "rangeParagraphs": 2
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 16,
+   "op": "reject",
+   "args": [
+    "1"
+   ],
+   "reads": {
+    "resolved": {
+     "type": "Deleted",
+     "text": "HEAD16B\\u000d",
+     "listed": 1
+    },
+    "after": {
+     "paragraphs": [
+      "HEAD16A HEAD16B",
+      "BODY16A BODY16B"
+     ],
+     "changes": [
+      {
+       "type": "Deleted",
+       "text": "BODY16A ",
+       "range": "BODY16A ",
+       "rangeParagraphs": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 17,
+   "op": "reject",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "resolved": "none listed",
+    "after": {
+     "paragraphs": [
+      "HEAD17A HEAD17B",
+      "BODY17A BODY17B"
+     ],
+     "changes": [
+      {
+       "type": "Deleted",
+       "text": "HEAD17B\\u000dBODY17A ",
+       "range": "HEAD17B\\u000dBODY17A ",
+       "rangeParagraphs": 2
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 18,
+   "op": "accept",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "resolved": "none listed",
+    "after": {
+     "paragraphs": [
+      "LIST18A LIST18B",
+      "PLAIN18A PLAIN18B"
+     ],
+     "changes": [
+      {
+       "type": "Added",
+       "text": " LIST18B\\u000dPLAIN18A ",
+       "range": " LIST18B\\u000dPLAIN18A ",
+       "rangeParagraphs": 2
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 19,
+   "op": "reject",
+   "args": [
+    "2"
+   ],
+   "reads": {
+    "resolved": "none listed",
+    "after": {
+     "paragraphs": [
+      "LIST19A LIST19B",
+      "PLAIN19A PLAIN19B"
+     ],
+     "changes": [
+      {
+       "type": "Added",
+       "text": " LIST19B\\u000dPLAIN19A ",
+       "range": " LIST19B\\u000dPLAIN19A ",
+       "rangeParagraphs": 2
+      }
+     ]
+    }
+   }
+  },
+  {
+   "n": 20,
+   "op": "fill",
+   "args": [
+    "c58-20",
+    "replace"
+   ],
+   "reads": {
+    "inserted": "FILL20",
+    "after": {
+     "control": {
+      "text": "FILL20",
+      "placeholderText": null,
+      "paragraph": "FILL20",
+      "paragraphWhole": "FILL20\\u000d",
+      "whole": "FILL20\\u000d",
+      "content": "FILL20"
+     }
+    }
+   }
+  },
+  {
+   "n": 21,
+   "op": "fill",
+   "args": [
+    "c58-21",
+    "end"
+   ],
+   "reads": {
+    "inserted": "FILL21",
+    "after": {
+     "control": {
+      "text": "FILL21",
+      "placeholderText": null,
+      "paragraph": "FILL21",
+      "paragraphWhole": "FILL21\\u000d",
+      "whole": "FILL21\\u000d",
+      "content": "FILL21"
+     }
+    }
+   }
+  },
+  {
+   "n": 22,
+   "op": "fill",
+   "args": [
+    "c58-22",
+    "end"
+   ],
+   "reads": {
+    "inserted": "FILL22",
+    "after": {
+     "control": {
+      "text": "FILL22",
+      "placeholderText": null,
+      "paragraph": "PLAIN22A FILL22 PLAIN22B",
+      "paragraphWhole": "PLAIN22A FILL22 PLAIN22B\\u000d",
+      "whole": "FILL22",
+      "content": "FILL22"
+     }
+    }
+   }
+  }
+ ]
+}

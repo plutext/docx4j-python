@@ -120,12 +120,18 @@ def test_the_accepted_markdown_reads_as_accept_all_leaves_the_document(name):
 def test_get_text_keeps_office_jss_filtered_text():
     """CR-011 Q4: ``get_text(view="accepted")`` is Office JS's text, a filter, not the text model's.
 
-    A deleted paragraph mark is not joined, and a paragraph whose content and
-    mark are deleted is an empty one (:data:`DIFFERS`), where the model and
-    Accept All give ``Four.Five eight.`` and no line for ``Two.``. Since CR-013
-    Phase A each paragraph's mark is Office JS's ``\\r``.
+    The paragraphs stay apart, each its own, and since CR-016 Phase B a
+    deleted mark writes no ``\\r`` (Word's default view, core-ts check 58), so a
+    paragraph whose content and mark are deleted reads as nothing and the
+    paragraphs a deleted mark ends read as one line: here the same text as the
+    model's and Accept All's, ``Four.Five eight.`` and no line for ``Two.``, where
+    until then it was ``Four.\\rFive \\reight.`` and an empty line
+    (:data:`DIFFERS`, the record of 2026-10-18). Since CR-013 Phase A each
+    paragraph's mark is Office JS's ``\\r``. The paragraphs themselves stay
+    apart: ``body.paragraphs`` keeps all eight.
     """
     package = fixture("core-ts/check22/22-deleted.docx")
-    assert package.body.get_text(view="accepted") == "One.\r\rThree.\rFour.\rFive \reight.\rNine.\r"
+    assert package.body.get_text(view="accepted") == "One.\rThree.\rFour.Five eight.\rNine.\r"
+    assert len(package.body.paragraphs) == 8
     assert _accepted("core-ts/check22/22-deleted.docx").body.get_text() == "One.\rThree.\rFour.Five eight.\rNine.\r"
     assert plain_text(extract(package)) == "One.\nThree.\nFour.Five eight.\nNine.\n\n"

@@ -311,9 +311,8 @@ def test_font_color_is_what_word_drew_for_every_p1_and_p2_paragraph_s_text() -> 
     """core-ts's: ``Font.color`` through the content API, ``w:clrSchemeMapping`` included (17 and 6 paragraphs).
 
     The shaded and bordered paragraphs' text is automatic, which Word draws
-    black and this reads ``""`` (CR-018 rule 3; the open question of CR-009
-    section 12.9), so only a text colour Word drew other than by automatic is
-    compared as ``#RRGGBB``.
+    black and this reads ``#000000`` since CR-016 Phase B (CR-009 section
+    12.9, decided 2026-10-24), as core-ts's does: every paragraph is Word's.
     """
     for probe, count in (("tc-p1-precedence.docx", 17), ("tc-p2-colour-map.docx", 6)):
         package = load(VECTORS / probe)
@@ -323,9 +322,7 @@ def test_font_color_is_what_word_drew_for_every_p1_and_p2_paragraph_s_text() -> 
             want = expected(probe, label, 3) if re.fullmatch(r"P[12]-\d\d", label) else None
             if not want:
                 continue
-            got = paragraph.font.color
-            stated = paragraph.runs[0].r_pr is not None and paragraph.runs[0].r_pr.color is not None
-            assert got == (f"#{want}" if stated else ""), f"{probe} {label}"
+            assert paragraph.font.color == f"#{want}", f"{probe} {label}"
             n += 1
         assert n == count, probe
 
@@ -463,14 +460,16 @@ def test_a_theme_colour_with_no_value_is_inherited() -> None:
 def test_font_color_reads_the_colour_word_draws_and_the_direct_view_w_val() -> None:
     """core-ts's: the effective view the drawn colour, the direct view ``w:val`` as written (its D2).
 
-    Unlike core-ts, an automatic colour reads ``""`` (none stated) or ``"auto"``
-    here, not ``#000000`` (CR-018 rule 3; CR-009 section 12.9's question).
+    An automatic colour reads ``#000000`` in the effective view, as core-ts's
+    does, since CR-016 Phase B (CR-009 section 12.9, decided 2026-10-24); the
+    direct view keeps ``""`` (none stated) and ``"auto"``.
     """
     package = output_doc()
     ps = package.body.paragraphs
-    assert [ps[i].font.color for i in (0, 1, 2, 3, 4, 6)] == ["#156082", "#FF0000", "#E97132", "#156082", "#A02B93", ""]
+    assert [ps[i].font.color for i in (0, 1, 2, 3, 4, 6)] == ["#156082", "#FF0000", "#E97132", "#156082", "#A02B93", "#000000"]
     whole = [ps[i].get_range("Whole").font.color for i in (0, 1, 2, 3, 4, 6)]
-    assert whole == ["#156082", "#FF0000", "#E97132", "#156082", "#A02B93", ""]
+    assert whole == ["#156082", "#FF0000", "#E97132", "#156082", "#A02B93", "#000000"]
+    assert [ps[i].get_font(direct=True).color for i in (6,)] == [""]
     assert [ps[i].get_font(direct=True).color for i in (0, 1, 4)] == ["", "#FF0000", "auto"]
     # across paragraphs whose runs' colours differ, '' (MixedFont); where they agree, the colour drawn
     assert ps[0].get_range("Whole").expand_to(ps[1].get_range("Whole")).font.color == ""

@@ -27,6 +27,7 @@ The rules of CR-003 section 4 that land here:
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
@@ -163,6 +164,21 @@ def _position_for(items: list, name: str) -> int:
     return len(items)
 
 
+#: The character style Word gives a placeholder's runs (docx4j's, and :mod:`~docx4j_py.model.customxml.bindings`').
+PLACEHOLDER_STYLE = "PlaceholderText"
+
+
+def _drop_placeholder_style(run: Any) -> None:
+    """Take a ``PlaceholderText`` ``w:rStyle`` off a run; an ``w:rPr`` left saying nothing goes too (CR-016 Phase B)."""
+    r_pr = getattr(run, "r_pr", None)
+    style = getattr(r_pr, "r_style", None) if r_pr is not None else None
+    if style is None or getattr(style, "val", None) != PLACEHOLDER_STYLE:
+        return
+    r_pr.r_style = None
+    if all(getattr(r_pr, field.name) is None for field in dataclasses.fields(r_pr)):
+        run.r_pr = None
+
+
 def _placeholder_run(text: str, run_properties: Any) -> Any:
     """docx4j's placeholder run: the prompt, styled ``PlaceholderText``."""
     from docx4j_py.child import deep_copy
@@ -170,7 +186,7 @@ def _placeholder_run(text: str, run_properties: Any) -> Any:
     from docx4j_py.wml import t as text_element
 
     properties = deep_copy(run_properties) if run_properties is not None else el.rPr()
-    properties.r_style = el.rStyle(val="PlaceholderText")
+    properties.r_style = el.rStyle(val=PLACEHOLDER_STYLE)
     return R(r_pr=properties, content=ChildList([text_element(text)]))
 
 
@@ -309,6 +325,11 @@ class ContentControl:
         and a control whose content ends with a row or a table leaves the
         row's ``\\r\\n`` out (core-ts check 53; CR-013 Phase B): a row
         control's text is its cells a ``\\t`` apart.
+
+        A control **showing its placeholder** (``w:showingPlcHdr``) reads
+        ``""``, as Office JS reads it (CR-016 Phase B; core-ts check 53 cases 34
+        and 35, check 58 case 11), and so does a control inside one; its
+        prompt is :attr:`placeholder_text`.
 
         Office JS's text, not the text model's (CR-011 Q4; WD REQ-202's exemption for a reader of an
         emulated API): :func:`docx4j_py.model.text.extract` is the text model, and each of its runs
@@ -515,6 +536,17 @@ class ContentControl:
     def insert_text(self, text: str, *, location: TextLocation = "End") -> Range:
         """Text at the start, the end, or in place of the control's text.
 
+        **A control showing its placeholder** (``w:showingPlcHdr``), block- or
+        run-level, takes the text in the placeholder's place whatever
+        `location` says, as Word's does (core-ts check 58 cases 20 to 22, Word
+        365 at ``"End"`` as at ``"Replace"``; CR-016 Phase B, core-ts
+        ``insertText`` at ``222cc20``): ``w:showingPlcHdr`` is cleared, the
+        write goes the ``"Replace"`` way, and the ``PlaceholderText``
+        character style comes off the runs it leaves, so the control shows the
+        text in the run's own style. A bound control then holds a value, which
+        :meth:`write_through` and ``update_from_content_controls()`` write to
+        its node. A refusal below leaves the control showing its placeholder.
+
         ``\\n``, ``\\r`` and ``\\r\\n`` make a paragraph each in a block,
         row or cell control, as every writer through ``Paragraph.splice`` makes
         them (CR-013 section 11, E1), except in a ``w:text`` control, bound or not,
@@ -539,6 +571,61 @@ class ContentControl:
                 f"a {form}-level content control", "replace the text of its cells instead"
             )
         text = drop_unwritable(text)
+        if not (self.is_showing_placeholder and form in ("block", "run")):
+            return self._insert_text(text, location, form)
+        if form == "run":
+            # the refusals first, so that a refused write leaves the placeholder showing
+            self._refuse_run_text(text)
+        flag = self._take_property("showingPlcHdr", W_NS)
+        try:
+            out = self._insert_text(text, "Replace", form)
+        except Exception:
+            if flag is not None:
+                self.properties().insert(*flag)
+            raise
+        for run in self._content_runs():
+            _drop_placeholder_style(run)
+        return out
+
+    def _refuse_run_text(self, text: str) -> None:
+        """A run-level control's refusals of :meth:`insert_text`, before anything changes."""
+        if PARAGRAPH_BREAKS.search(text):
+            raise SpanError(
+                "insert_text refused: a paragraph break (\\n or \\r) written into a run-level content "
+                "control would cut the control in two (CR-013 section 11, E1; docx4j-core-ts F4)",
+                code="range.splits_control",
+                hint="write a line break (U+000B) instead, or write the paragraph outside the control",
+            )
+        if self.parent_paragraph() is None:
+            raise ContentError(
+                "this run-level content control is not in a paragraph",
+                code="control.no_paragraph",
+                hint="a run-level w:sdt is edited through the w:p it sits in",
+            )
+
+    def _take_property(self, local_name: str, namespace: str) -> tuple[int, Any] | None:
+        """Remove every ``w:sdtPr`` child of a name; the first one's ``(index, element)``, to put it back, or None."""
+        items = self.properties()
+        for index, item in enumerate(items):
+            name = element_name(item) or ""
+            uri, _, local = name.rpartition("}")
+            if local == local_name and uri.lstrip("{") == namespace:
+                del items[index]
+                self.remove_property(local_name, namespace)
+                return index, item
+        return None
+
+    def _content_runs(self) -> list[Any]:
+        """The runs of the control's content, a block control's paragraphs' too (core-ts ``contentRuns``)."""
+        from docx4j_py.model.content.text_model import runs_of
+
+        if self.form == "run":
+            inner = getattr(self.element, "sdt_content", None)
+            return runs_of(inner) if inner is not None else []
+        return [run for paragraph in self.paragraphs for run in paragraph.runs]
+
+    def _insert_text(self, text: str, location: TextLocation, form: str) -> Range:
+        """:meth:`insert_text` once the placeholder rule has run."""
         if form != "run":
             return self.body().insert_text(text, location=location)
         if PARAGRAPH_BREAKS.search(text):
@@ -712,8 +799,13 @@ class ContentControl:
     def placeholder_text(self) -> str:
         """The greyed-out prompt the control shows while it is empty.
 
-        Office JS ``placeholderText``. Read: the control's own text while
-        ``w:showingPlcHdr`` is set, and ``""`` otherwise. Written: the text
+        Office JS ``placeholderText``. Read: the text of the control's runs
+        while ``w:showingPlcHdr`` is set --- a run-level control's content, a
+        block control's paragraphs ``\\r`` apart --- and ``""`` otherwise.
+        :attr:`text` reads no placeholder (CR-016 Phase B), so this reads the
+        runs themselves, where Word, with no glossary part to read, reads
+        ``null`` (core-ts check 58): a departure that keeps the setter's text
+        readable (CR-016 Q6; core-ts ``placeholderText`` at ``222cc20``). Written: the text
         becomes the control's content, styled ``PlaceholderText``, and
         ``w:showingPlcHdr`` goes on --- but **only on a control that holds
         nothing**, because overwriting real content with a prompt is silent data
@@ -724,7 +816,12 @@ class ContentControl:
         Raises:
             BindingError: the control already holds content.
         """
-        return self.text if self.is_showing_placeholder else ""
+        if not self.is_showing_placeholder:
+            return ""
+        if self.form == "run":
+            inner = getattr(self.element, "sdt_content", None)
+            return text_of_view(inner) if inner is not None else ""
+        return "\r".join(text_of_view(paragraph.element) for paragraph in self.paragraphs)
 
     @placeholder_text.setter
     def placeholder_text(self, value: str) -> None:
@@ -1178,7 +1275,10 @@ class ContentControl:
 
         start: int | None = None
         end = 0
-        for segment in paragraph.segments():
+        # each hidden run's item and each object as a place of no text (``objects``), so that a
+        # control holding only those --- one showing its placeholder (CR-016 Phase B), a picture
+        # control --- is found where it stands, collapsed
+        for segment in paragraph.segments(objects=True):
             if not self._inside(segment.run):
                 continue
             if start is None:

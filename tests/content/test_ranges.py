@@ -247,11 +247,11 @@ def test_check_52_accept_all_on_word_365s_save_after_the_run_gives_words_accept_
     assert len(theirs) == 95
     assert list(mine) == list(theirs)
     differing = [n for n in theirs if mine[n] != theirs[n]]
-    # case 26 (CC, its content deleted under tracking): Word fills the emptied control with five spaces,
-    # this package leaves it empty; the paragraph is the same otherwise
-    assert differing == [26]
-    assert [p[0] for p in theirs[26]] == ["     "]
-    assert mine[26] == [("", *p[1:]) for p in theirs[26]]
+    # case 26 (CC, its content deleted under tracking): Word fills the emptied control with five spaces
+    # marked as its placeholder, which reads as no text since CR-016 Phase B, as this package's empty
+    # control does (core-ts CR-012 section 18); until then the one region differing
+    assert differing == []
+    assert [p[0] for p in theirs[26]] == [p[0] for p in mine[26]] == [""]
     # the joins: the joined paragraph in the properties of the paragraph the range ended in (HB, BH, LB,
     # BL, TBL). Word's 'Left' is this package's "Unknown" where no w:jc says so anywhere: CR-002 section
     # 15's recorded departure (Alignment keeps "Unknown")
@@ -290,10 +290,18 @@ def test_cr_014_phase_1_check_52s_reads_run_through_the_port_on_the_same_file_ar
         assert mine == theirs, kind
 
 
-#: The paragraphs check 52's report reads, but for the paragraph's font: a paragraph's font reads its first
-#: run here (CR-002), where Office JS reads null where its runs differ.
-def _without_font(entry: dict) -> dict:
-    return {k: v for k, v in entry.items() if k not in ("bold", "italic", "underline", "words")}
+#: The paragraphs check 52's report reads, but for ``words``: ``get_text_ranges``, which the bold cases'
+#: report reads each word with, is not implemented. Each paragraph's font is compared since CR-016 Phase B,
+#: which reads every run as Office JS does (core-ts CR-002 section 59); until then a paragraph's font read
+#: its first run, and was left out.
+def _without_words(entry: dict) -> dict:
+    return {k: v for k, v in entry.items() if k != "words"}
+
+
+#: Under tracking Word's run was in All Markup, its font reads taking the deleted runs in (core-ts's run
+#: test): a tracked case's paragraphs are compared without their text and their font.
+def _without_text_and_font(entry: dict) -> dict:
+    return {**_without_words(entry), "text": None, "bold": None, "italic": None, "underline": None}
 
 
 def _alignment_as_ours(expected: list[dict], mine: list[dict], n: int) -> int:
@@ -324,8 +332,8 @@ def test_cr_014_phase_1_check_52s_report_run_through_the_port_on_words_save_afte
             assert re.match(r"^error: NotImplemented", mine["paragraphs"]), n
             del expected["paragraphs"], mine["paragraphs"]
         else:
-            expected["paragraphs"] = [_without_font(p) for p in expected["paragraphs"]]
-            mine["paragraphs"] = [_without_font(p) for p in mine["paragraphs"]]
+            expected["paragraphs"] = [_without_words(p) for p in expected["paragraphs"]]
+            mine["paragraphs"] = [_without_words(p) for p in mine["paragraphs"]]
             unknown += _alignment_as_ours(expected["paragraphs"], mine["paragraphs"], n)
         # a paragraph after a nested table in a cell: Word's style 'Other' again (cases 89, 91, 94), Q6
         for k, p in enumerate(expected.get("paragraphs", [])):
@@ -336,12 +344,9 @@ def test_cr_014_phase_1_check_52s_report_run_through_the_port_on_words_save_afte
                     "List Paragraph",
                 ], n
                 expected["paragraphs"][k] = {**p, "style": "List Paragraph", "styleBuiltIn": "ListParagraph"}
-        # cases 13 and 26, a control emptied: Word marks it w:showingPlcHdr over a run of five spaces, and
-        # reads no text there, where this package reads the spaces (core-ts CR-014 section 9.4)
-        if n in (13, 26):
-            expected["text"] = expected["text"].replace("\\u000d\\u000d", "\\u000d     \\u000d")
-            expected["paragraphs"][1]["text"] = "     "
-            expected["contentControls"][0]["text"] = "     "
+        # cases 13 and 26, a control emptied: Word marks it w:showingPlcHdr over a run of five spaces, which
+        # reads as no text, here as in Word since CR-016 Phase B (core-ts CR-012 section 18; until then this
+        # package read the spaces, core-ts CR-014 section 9.4)
         assert mine == expected, f"case {n} ({theirs['kind']} {theirs['op']}{' tracked' if theirs['tracked'] else ''})"
     # this package's Alignment reads "Unknown" where no w:jc says otherwise (CR-002 section 15), each such
     # paragraph Word's 'Left'
@@ -549,18 +554,15 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
             for field in ("type", "text", "range", "rangeParagraphs")
         ]
 
-    placeholder = ["control.text", "control.placeholderText", "control.paragraph", "control.whole", "showingPlaceholderText"]
+    # a control showing its placeholder reads as empty, as Word's (CR-016 Phase B, core-ts CR-012 section 18);
+    # its placeholder_text reads the runs here, where Word, with no glossary part, reads null (Q6); and Word's
+    # showingPlaceholderText came back undefined, where this package reads True (CR-003 section 24)
+    placeholder = ["control.placeholderText", "showingPlaceholderText"]
     style_other = ["paragraph.style", "paragraph.styleBuiltIn", "whole.style", "whole.styleBuiltIn"]
-    # an automatic colour, none stated or w:val="auto", reads "" or "auto" here, as Word's w:val reads
-    # (CR-018 rule 3), where Office JS reads "#000000" (as core-ts does, its CR-002 section 59): an open
-    # question (CR-009 section 12, CR-016's)
-    automatic = {n: ["font.color"] for n in (2, 7, 9, 19, 20, 21, 24)}
+    # every font read is Word's since CR-016 Phase B, as core-ts's at 76fb45d: every run read, '' or None where
+    # they differ (8, 31), an automatic colour #000000 (2, 7, 8, 9, 19, 20, 21, 24), and Heading 1's theme colour
+    # drawn through the theme (3 to 5, CR-009 Phase B); until then 12 cases' fonts differed
     assert differing == {
-        **automatic,
-        # a single paragraph's font reads its first run (CR-002), where Office JS reads '' or None where
-        # its runs differ (core-ts CR-002 section 59, proposed there); 8's colour is automatic too
-        8: ["font.color", "font.italic"],
-        31: ["font.color", "font.highlightColor"],
         # a paragraph after a nested table in a cell, whose style isn't Normal: Word's 'Other', not
         # followed (core-ts CR-002 section 57; Q6)
         10: sorted(style_other),
@@ -583,11 +585,8 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
         30: sorted(["region.0.text", *change_read(2)]),
         # Body.footnotes is not implemented, so the snippet can't reach expand_to's refusal
         32: [""],
-        # body.text in Simple Markup joins paragraphs at a deleted mark, drops a deleted paragraph and
-        # reads a control showing its placeholder as empty (CR-011's readers, core-ts's CR-012)
-        33: sorted(["text.length", "Whole.length", "Content.length"]),
-        # a control showing its placeholder reads as empty in Word, and Word's showingPlaceholderText came
-        # back undefined, where this package reads True (CR-003 section 24)
+        # body.text (33) is Word's since CR-016 Phase B: no mark after a deleted one, and a control showing its
+        # placeholder read as empty (core-ts CR-012 sections 18 and 19)
         34: sorted(placeholder),
         35: sorted(placeholder),
     }
@@ -601,10 +600,18 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
 
     for n in (3, 4, 5):
         assert [colour(ours, n), colour(measured, n)] == ["#0F4761", "#0F4761"], n
-    # the automatic ones: "" here, "#000000" in Word; and 31's first run is red where Word's runs differ
-    assert {colour(ours, n) for n in (2, 7, 8, 9, 19, 20, 21, 24)} == {""}
+    # the automatic ones, #000000 as Word's (until CR-016 Phase B ""); and 31's runs differ, "" as Word's (until
+    # then its first run's red)
+    assert {colour(ours, n) for n in (2, 7, 8, 9, 19, 20, 21, 24)} == {"#000000"}
     assert {colour(measured, n) for n in (2, 7, 8, 9, 19, 20, 21, 24)} == {"#000000"}
-    assert [colour(ours, 31), colour(measured, 31)] == ["#FF0000", ""]
+    assert [colour(ours, 31), colour(measured, 31)] == ["", ""]
+    # the placeholder controls read as Word's: no text, their paragraph's text without it
+    for n in (34, 35):
+        mine, theirs = flat(ours["cases"][n - 1]["reads"]), flat(measured["cases"][n - 1]["reads"])
+        assert [mine[k] for k in ("control.text", "control.paragraph", "control.whole")] == [
+            theirs[k] for k in ("control.text", "control.paragraph", "control.whole")
+        ], n
+        assert mine["control.text"] == "", n
     # the changes' text is All Markup's
     for n in (25, 28, 30):
         assert ours["cases"][n - 1]["reads"]["region"][0]["text"] == all_markup["cases"][n - 1]["reads"]["region"][0]["text"], n
@@ -672,7 +679,7 @@ def _run_view(case: dict, *, links: bool = False) -> dict:
     markup = case["tracked"] or (not links and case["n"] == 1)
     paragraphs = r.get("paragraphs")
     out["paragraphs"] = (
-        [{**_without_font(p), "text": None} if markup else _without_font(p) for p in paragraphs]
+        [_without_text_and_font(p) if markup else _without_words(p) for p in paragraphs]
         if isinstance(paragraphs, list)
         else paragraphs
     )
@@ -708,8 +715,9 @@ def each(ns: list[int], keys: list[str]) -> dict[int, list[str]]:
 def test_cr_014_phase_2_check_52s_writes_run_through_the_port_on_the_same_file_leave_each_region_as_word_365s_run_did():
     ours, _saved = phase_2_run()
     measured = word("52-ranges-word365-run.json")
-    # a paragraph's font reads its first run here (CR-002); Word's 'Left' is this package's "Unknown" where no
-    # w:jc says otherwise (CR-002 section 15)
+    # each paragraph's font is compared since CR-016 Phase B (a tracked case's not: Word's run was in All Markup,
+    # its font reads taking the deleted runs in); Word's 'Left' is this package's "Unknown" where no w:jc says
+    # otherwise (CR-002 section 15)
     assert _differing(ours, measured, limit=RANGE_CASES, other=True) == {
         # Word's refusals are this package's, under this package's code: range.partial_table for Office JS's
         # GeneralException (CR-013 section 4.9 item 1)
@@ -727,6 +735,9 @@ def test_cr_014_phase_2_check_52s_writes_run_through_the_port_on_the_same_file_l
         **each([60, 66], ["paragraphs", "text", "controls"]),
         # insert_comment (core-ts's phase 3): the comments, their ranges and what the snippet reads back are
         # Word's, 79 to 85 among them; core-ts's differ in the snippet's own error, its result asynchronous there
+        # case 13, a control emptied: Word fills it with a bold run of five spaces (core-ts CR-014 section 9.4),
+        # which reads bold; this package's emptied paragraph reads its mark (CR-016 Phase B, as core-ts's)
+        13: ["paragraphs"],
         # a table at a cell's end (CR-016 Phase A): Word gives the new table's paragraph the cell paragraph's
         # properties, and so its numbering, which is insert_table's wherever it inserts and not followed (Q4; the
         # markup test below); the cell's own paragraphs are Word's
@@ -756,11 +767,11 @@ def test_cr_014_phase_2_accept_all_after_check_52s_writes_through_the_port_gives
         if theirs["n"] > RANGE_CASES:
             break
 
-        # Range.footnotes is not implemented, and a paragraph's font reads its first run here (CR-002)
+        # Range.footnotes is not implemented; each paragraph's font is compared (CR-016 Phase B)
         def view(region: dict) -> dict:
             region = {k: v for k, v in region.items() if k != "footnotes"}
             if isinstance(region.get("paragraphs"), list):
-                region["paragraphs"] = [_without_font(p) for p in region["paragraphs"]]
+                region["paragraphs"] = [_without_words(p) for p in region["paragraphs"]]
             return json.loads(json.dumps(region))
 
         a, b = view(ours["cases"][index]["region"]), view(theirs["region"])
@@ -770,10 +781,11 @@ def test_cr_014_phase_2_accept_all_after_check_52s_writes_through_the_port_gives
         if json.dumps(a, sort_keys=True) != json.dumps(b, sort_keys=True):
             differing.append(theirs["n"])
     # every tracked deletion and replacement, accepted, is Word's, and every comment across paragraphs (phase 3);
-    # what differs is listed in the test above: get_text_ranges (the bold cases), Word's extra empty paragraph in a
-    # control, the new table's paragraph in a cell (CR-016 Q4); each cell's last paragraph accepted is Word's (86
-    # to 95)
-    assert differing == [49, 50, 51, 52, 53, 54, 55, 56, 60, 66, 86, 87]
+    # what differs is listed in the test above: Word's bold filler in an emptied control (13, and 26 accepted;
+    # each paragraph's font compared since CR-016 Phase B), get_text_ranges (the bold cases), Word's extra empty
+    # paragraph in a control, the new table's paragraph in a cell (CR-016 Q4); each cell's last paragraph
+    # accepted is Word's (86 to 95), and every paragraph's font otherwise, as core-ts's
+    assert differing == [13, 26, 49, 50, 51, 52, 53, 54, 55, 56, 60, 66, 86, 87]
 
 
 _IGNORED_KEYS = frozenset({"rsid_r", "rsid_r_pr", "rsid_r_default", "rsid_p", "rsid_del", "para_id", "text_id", "b_cs", "i_cs", "sz_cs", "lang"})

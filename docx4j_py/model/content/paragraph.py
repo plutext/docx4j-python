@@ -58,9 +58,11 @@ from docx4j_py.model.content.text_model import (
     explode_mapped,
     for_writer,
     hidden_runs_of,
+    in_showing_placeholder,
     markup_text,
     office_matches,
     paragraph_mark_pieces,
+    placeholder_control_of,
     refuse_branch_text,
     refuse_equation,
     refuse_mark_replacement,
@@ -187,7 +189,11 @@ class Paragraph:
 
         Setting it replaces the content, every such element with it, hidden runs
         too: ``paragraph.text = paragraph.text`` drops hidden text, as core-ts's
-        does. It writes one paragraph (CR-013 section 11, E2): each of Office JS's
+        does. **A run-level content control showing its placeholder** reads as
+        no text (CR-016 Phase B), so the write would take it and its binding
+        with it: the write is **refused** (``SpanError`` ``range.holds_placeholder``,
+        tracked or not, nothing changed), and the control is written into with
+        :meth:`ContentControl.insert_text` instead (CR-016 section 7, risk 2). It writes one paragraph (CR-013 section 11, E2): each of Office JS's
         characters is written as the element it reads from (Q2;
         :func:`~.text_model.text_items`), ``\\n`` and ``\\r\\n`` a ``w:br``
         and ``\\r`` a ``w:cr``. U+0002 and the other characters XML 1.0 excludes
@@ -202,6 +208,7 @@ class Paragraph:
     @text.setter
     def text(self, value: str) -> None:
         value = drop_unwritable(value)
+        self._refuse_placeholder_controls("Paragraph.text = ...")
         with recording(self.parent_body, "set_text") as change:
             change.text(before=self.text, after=value)
             if self.change_tracker is not None:
@@ -229,6 +236,31 @@ class Paragraph:
             self.element.content[:] = [run]
             link_parents(self.element)
             change.touched(self)
+
+    def _refuse_placeholder_controls(self, operation: str) -> None:
+        """Refuse a write that replaces the whole content where a run-level control shows its placeholder.
+
+        CR-016 Phase B (its section 7, risk 2): such a control reads as no text
+        (core-ts CR-012 section 18), so a write that replaces the paragraph's
+        content would take it, and its binding, with nothing read to say so.
+
+        Raises:
+            SpanError: ``range.holds_placeholder``; nothing has changed.
+        """
+        for run in runs_of(self.element):
+            control = placeholder_control_of(run, self.element)
+            if control is None:
+                continue
+            from docx4j_py.wml.sdt import sdt_property
+
+            tag = getattr(sdt_property(getattr(control, "sdt_pr", None), "tag", WML_NS), "val", None)
+            named = f" (tagged {tag!r})" if tag else ""
+            raise SpanError(
+                f"{operation} refused: this paragraph holds a content control showing its placeholder{named}, "
+                "which reads as no text, and the write would take it (CR-016 Phase B)",
+                code="range.holds_placeholder",
+                hint="write into the control with ContentControl.insert_text, or delete the control first",
+            )
 
     def text_since(self, index: int) -> str:
         """The text of this paragraph and of those a split put in front of it since it stood at `index`. Extension.
@@ -316,8 +348,10 @@ class Paragraph:
     def mark_text(self) -> str:
         """The character Office JS gives this paragraph's mark at the end of its ``'Whole'`` range. Extension.
 
-        ``\\t`` for the last paragraph of a table cell, the cell's end, and
-        ``\\r`` for any other (core-ts check 48; CR-013 Phase A).
+        ``\\t`` for the last paragraph of a table cell, the cell's end,
+        whatever its mark; ``""`` for a mark tracked as deleted, which Word's
+        default view shows as nothing (CR-016 Phase B; core-ts check 58 cases 6
+        to 10); and ``\\r`` for any other (core-ts check 48; CR-013 Phase A).
         """
         from docx4j_py.model.content.story import mark_text_of
 
@@ -720,23 +754,34 @@ class Paragraph:
     def font(self) -> Font:
         """The formatting of the runs (CR-003 section 4: over the runs).
 
-        Reads report the first run's **effective** formatting --- the document
-        defaults, the paragraph style, the run's character style and its direct
+        Reads report the **effective** formatting --- the document defaults,
+        the paragraph style, the run's character style and its direct
         formatting, through
-        :class:`~docx4j_py.model.property_resolver.PropertyResolver` --- as
-        Office JS does; writes go to every run and are direct as they always
-        were. :meth:`get_font` with ``direct=True`` reads the run's own
-        ``w:rPr``. Not the paragraph mark's ``w:pPr/w:rPr``, which is a
-        different thing and is what Word calls the paragraph mark's font.
+        :class:`~docx4j_py.model.property_resolver.PropertyResolver` --- of
+        **every run of the paragraph's text**, as Office JS does (CR-016 Phase
+        B; core-ts ``getFont`` at ``222cc20``, its CR-002 section 59): the runs
+        of ``get_range("Content")``, which are :attr:`text`'s in Word's default
+        view, so no deleted run, no hidden run and no equation's math runs. A
+        property where they differ reads ``None``, ``""`` (the name, the colour,
+        the highlight) or ``"Mixed"`` (the underline). With no such run, the
+        runs of a control showing its placeholder, which Word's font reads
+        though its text doesn't (core-ts check 52 case 13); with none of those,
+        the paragraph mark's run properties (core-ts check 52 case 60). An
+        automatic colour reads ``#000000``. Writes go to every run and are
+        direct as they always were; a read splits nothing. :meth:`get_font`
+        with ``direct=True`` reads the runs' own ``w:rPr`` by the same rule.
         """
         return self.get_font()
 
     def get_font(self, *, direct: bool = False) -> Font:
         """:attr:`font`, or the **direct** formatting when `direct` is given.
 
-        CR-002 section 15.1: a caller reproducing markup wants what the run
-        itself says, which is what these reads were before the resolver landed.
+        CR-002 section 15.1: a caller reproducing markup wants what the runs
+        themselves say, which is what these reads were before the resolver
+        landed.
         """
+        from docx4j_py.model.content.font import mark_run_properties
+
         return Font(
             lambda: runs_of(self.element),
             scope="paragraph",
@@ -745,7 +790,27 @@ class Paragraph:
             context=self.resolution_context,
             direct=direct,
             guard=lambda: self.refuse_whole_text("a font write over the paragraph"),
+            reads=self._font_runs,
+            mark=lambda: mark_run_properties(self.element),
         )
+
+    def _font_runs(self) -> list[Any]:
+        """The runs :attr:`font` reads: its text's, else a placeholder's (core-ts ``getFont``'s ``holders(false)``).
+
+        The runs ``get_range("Content").runs`` gives --- each run holding a
+        segment of :attr:`text`, once, in order, an equation's math runs left
+        out --- read from one walk of the segments.
+        """
+        runs: list[Any] = []
+        seen: set[int] = set()
+        for segment in self.segments():
+            if segment.math or segment.end <= 0 or id(segment.run) in seen:
+                continue
+            seen.add(id(segment.run))
+            runs.append(segment.run)
+        if runs:
+            return runs
+        return [run for run in runs_of(self.element) if in_showing_placeholder(run)]
 
     def resolution_context(self) -> tuple[Any, Any]:
         """The package's property resolver and this paragraph's ``w:pPr``.

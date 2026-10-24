@@ -79,7 +79,8 @@ def test_font_splits_the_runs_at_the_boundaries(new_package):
     assert paragraph.runs[1].r_pr.b_cs is not None, "the complex-script twin too"
 
     assert span.font.bold is True
-    assert paragraph.font.bold is False, "the paragraph's font reads the first run"
+    # every run read, None where they differ (CR-016 Phase B); until then the first run's, False
+    assert paragraph.font.bold is None, "the paragraph's runs differ"
 
     back = reloaded(new_package).body.paragraphs[0]
     assert back.text == "plain bold plain"
