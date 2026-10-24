@@ -234,7 +234,9 @@ cache written beside it.
   or `""`. `Font.to_dict()` gains `theme_color`, `theme_tint` and `theme_shade`, as written. Over
   the 728 documents of `samples/` and `out/cr012-b-corpus/`, 119 of 58,555 effective answers move,
   every one a theme reference meeting a stale cache (or `auto`) beside it; no direct answer
-  moves. The python-docx facade's `ColorFormat` keeps python-docx's semantics (question 3).
+  moves. The python-docx facade's `ColorFormat` keeps python-docx's semantics (question 3). A
+  `w:themeColor` or `w:themeFill` outside `ST_ThemeColor` (`Accent1`) is no reference, as docx4j
+  reads it, so a style's colour beneath shows (CR-009 section 12.10 item 1).
 - **A table cell ends with a paragraph, as Word reads it, after every edit** (CR-016 Phase A,
   core-ts CR-002 section 55, held to Word 365 in check 52's cases 86 to 95). `Paragraph.delete()`,
   `Body.clear()`, `ContentControl.delete(keep_content=False)` and `Body.insert_ooxml(...,

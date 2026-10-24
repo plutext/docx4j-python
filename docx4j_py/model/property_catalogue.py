@@ -35,6 +35,7 @@ from docx4j_py.model.values import (
     highlight,
     is_on,
     states_colour,
+    theme_colour,
     underline,
     vertical_alignment,
 )
@@ -91,8 +92,9 @@ def _attr(source: Any, destination: Any) -> Any:
 
 
 def _empty_theme_colour(value: Any) -> bool:
-    """docx4j ``isEmpty(STThemeColor)``: absent, or ``none``."""
-    return value is None or getattr(value, "value", value) == "none"
+    """docx4j ``isEmpty(STThemeColor)``: absent, ``none``, or outside the enumeration (:func:`theme_colour`)."""
+    member = theme_colour(value)
+    return member is None or member.value == "none"
 
 
 def _stated_fill_or_border(value: Any) -> bool:

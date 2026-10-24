@@ -614,6 +614,28 @@ def test_none_gives_none_and_no_reference_gives_the_written_value() -> None:
         WordColors.of(CTShd(), theme)
 
 
+def test_a_reference_outside_st_theme_color_states_nothing_in_the_merge_so_the_styles_colour_shows() -> None:
+    """``w:themeColor="Accent1"``, kept as its text by the exact parse, is no reference (docx4j: JAXB reads it as null).
+
+    With ``w:val`` rejected too, the run's ``w:color`` states nothing, and the
+    effective read is Heading 1's colour beneath; before, the merge counted the
+    kept text as a stated reference and the run read ``""`` (CR-009 section
+    12.10 item 1). With a valid ``w:val`` beside it, that value stands.
+    """
+    package = create_package()
+    heading = '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:rPr>{}</w:rPr><w:t>x</w:t></w:r></w:p>'
+    with pytest.warns(Warning, match="bogus|Accent1"):  # the exact parse keeps both, warning
+        package.body.insert_xml(
+            heading.format('<w:color w:val="bogus" w:themeColor="Accent1"/>')
+            + heading.format('<w:color w:val="00FF00" w:themeColor="Accent1"/>'),
+            location="End",
+        )
+    rejected, valued = package.body.paragraphs[-2:]
+    assert rejected.font.color == "#0F4761" and rejected.font.to_dict()["theme_color"] == "accent1"
+    assert valued.font.color == "#00FF00" and valued.font.to_dict()["theme_color"] == "Accent1", "as written"
+    assert values.theme_colour("Accent1") is None and values.theme_colour("accent1").value == "accent1"
+
+
 def test_the_cache_rule() -> None:
     """Word's written value where it is within one unit of the computation; two units off, the computation."""
     theme = ThemeColors.of_theme(None, "2023")  # accent1 156082; shaded BF, 0F4761

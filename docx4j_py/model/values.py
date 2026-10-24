@@ -76,6 +76,7 @@ __all__ = [
     "on_off",
     "on_off_normal_form",
     "states_colour",
+    "theme_colour",
     "underline",
     "vertical_alignment",
     "xsd_boolean",
@@ -249,6 +250,18 @@ def vertical_alignment(value: Any) -> Any:
 def emphasis_mark(value: Any) -> Any:
     """``w:em/@w:val`` as Word reads it: an ``STEm`` member, or None for unset."""
     return in_enumeration(value, _enumeration("STEm"))
+
+
+def theme_colour(value: Any) -> Any:
+    """A theme reference (``w:themeColor``, ``w:themeFill``; ``ST_ThemeColor``) as read: an ``STThemeColor`` member, or None.
+
+    A value outside the enumeration (``Accent1``, kept as its text by the exact
+    parse) names nothing, as docx4j reads it (JAXB unmarshals it as null), so
+    it states no reference and a style's colour beneath shows. Word's reading
+    of this attribute is unmeasured; the rule is CR-018's for every
+    enumeration (CR-009 section 12.10 item 1).
+    """
+    return in_enumeration(value, _enumeration("STThemeColor"))
 
 
 # ---------------------------------------------------------------------------
