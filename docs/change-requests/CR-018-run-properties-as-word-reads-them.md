@@ -644,7 +644,7 @@ No new error. A value Word reads is never refused: loading stays lenient, and `L
 - **The fork's stage 13 before A** (section 4.1a), built by the fork session and released as 26.2.3 by the user.
 - **A first here.** It closes the one save that changes meaning, and the `"off"` readings, with nothing from CR-016. Q1 proposes it for 0.2.0, which then waits for 26.2.3 too.
 - **C next.** It needs only A's refresh.
-- **B after CR-016 Phase B**, whose `Font` it changes underneath.
+- **B on today's `Font`** (revised 2026-10-24, under the user's "implement CR-018"; CR-016 is proposed, not decided). B changes the readers and the merge beneath `Font`, not `Font`'s shape, so CR-016 Phase B, when it comes, builds on B's readers rather than the other way round. CR-016 section 4.3 is noted to that effect.
 - **D last.** Its Word check covers A's and B's saves together. Round five can run as soon as it is built, and its answers are needed before B's pins are final.
 
 ## 6. Tests and the gates

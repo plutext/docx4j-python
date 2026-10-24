@@ -348,6 +348,8 @@ Follow core-ts, rule for rule, except where Python convention or a rule decided 
 - **The python-docx facade's `Font`** keeps python-docx's tri-state semantics (CR-003 section 20.3), and is untouched.
 - **The `ChangeReport`** of a font write records the direct value before the write. Where the runs differ, that is now `None`, not the first run's value.
 
+*Note (2026-10-24): CR-018 Phase B lands first, on today's `Font`, changing the readers and the merge beneath it (enumerations outside their enumeration unset, the colour reader, a character style's highlight not drawn). This phase's `Font` reading every run then builds on those readers.*
+
 ### 4.4 Placeholders (Phase B)
 
 - **`hidden_runs_of`** (`text_model.py`) takes a run inside a control with `w:showingPlcHdr` on, block- or run-level, found up the run's parents, as hidden. That is core-ts's `inShowingPlaceholder` inside `hiddenRunsOf`.
