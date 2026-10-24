@@ -25,10 +25,10 @@ JS does (CR-011 Phase F), in Office JS's own characters, which every text writer
 and writes across paragraphs as Office JS's does (CR-013 Phases B and C; Phase C's Word check is
 staged, not yet run). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
 of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
-save. [CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md)'s Phases A and C
-(its Q1) read every on/off value as Word 365 reads it, keep it as written, and write Word's
-reading on save, which closes a save 0.1.0 shared that changed meaning (`w:b w:val=" false"`,
-bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
+save. [CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md)'s Phases A to C
+read every on/off value, enumeration and colour of the run properties as Word 365 reads it, keep
+it as written, and write Word's reading on save, which closes a save 0.1.0 shared that changed
+meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
 
 ### Added
 
@@ -45,6 +45,19 @@ bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
   OMML, the custom XML kinds and the python-docx facade. Held to Word's own saves of the 28
   probes: over 376 markers, every reader's reading of the eleven measured toggles equals its
   reading of Word's save. Public, for a caller who reads the typed tree (Q13).
+- **The enumerations and colour read as Word 365 reads them** (CR-018 Phase B, section
+  [11](docs/change-requests/CR-018-run-properties-as-word-reads-them.md#11-phase-b-and-d-implementation-notes-2026-10-24)),
+  in `docx4j_py.model.values`: `in_enumeration` and `underline`, `highlight`,
+  `vertical_alignment`, `emphasis_mark` (a member only for exactly a member's value, so `SINGLE`,
+  `YELLOW` and `bogus` are unset; `w:u`'s six on/off words read as `none`), and `colour(value)`
+  (six hex digits in any case, trimmed, one `#` allowed, or one of the 140 classic HTML colour
+  names, `NETSCAPE_COLOURS`, as `RRGGBB`; exactly `auto` as `AUTO`; anything else None, which
+  is as if absent in a text or underline colour and an automatic that overrides a style's in a
+  fill or a border). They are in the resolver's merge, so an invalid direct value lets the
+  style's through, and under `Font.underline`, `highlight_color` and `color`, the facade's
+  `underline`, `highlight_color`, `superscript`, `subscript` and `ColorFormat`. A character
+  style's `w:highlight` is never drawn, as in Word. Held to Word's saves of the 33 probes (seven
+  rounds; round seven's from docx4j `5163c2986`): every reader agrees at all 388 markers.
 - **`effective(obj, name)`** (CR-018 Phase C, section 4.4): the one reader of a value the file
   leaves out, the stated value else the schema default typed (the fork's
   `XmlVar.schema_default_value`), in the namespaces whose defaults are audited (`w`, `w14`,
@@ -188,8 +201,19 @@ bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
   what was read. `package.save(normalise=False)`, or `LoadOptions(normalise_on_save=False)`,
   keeps the source's spelling. `scripts/canon.py` tolerates a second category,
   `word-normal-form`, by writing the same normal form into the source before it compares, and
-  `scripts/roundtrip.py` runs both ways (`--normalise`, `--no-normalise`). The enumerations' and
-  colours' rows are CR-018 Phase B's.
+  `scripts/roundtrip.py` runs both ways (`--normalise`, `--no-normalise`). Phase B adds the
+  enumerations' and colours' rows, found in each part's render so the tree is never touched: a
+  colour Word reads is written `RRGGBB` (`red`, `ff0000`, `#FF0000`); a text or underline colour
+  it rejects is dropped (`auto` beside a theme colour); a fill or border colour it rejects is
+  written `auto`; a `w:highlight`, `w:vertAlign` or `w:em` with a missing or invalid value, and a
+  bare `<w:u/>`, are dropped, as Word's repair and save drop them; `w:u`'s on/off words are
+  written `none`; a `w:background` whose colour Word rejects is dropped (no page colour). A colour
+  or an enumeration set in code is written in the form too.
+- **`Font.color` reads a colour as Word draws it** (CR-018 Phase B): a classic HTML name or any
+  hex spelling as `"#RRGGBB"`, and `""` for a value Word rejects (`Auto`, `F00`, `grey`), where
+  it returned the string; `Font.underline` reads an invalid `w:u` as `"None"` (it read
+  `"Mixed"`); setting `Font.color = "red"` writes `FF0000`. The facade's `color.type` is None for
+  a rejected value, as for no `w:color`.
 - **Booleans and enumerations are parsed exactly as written** (CR-018 section 4.1a): every parse
   is `runtime.parser_config()`'s, which sets the fork's `exact_types={bool, Enum}`
   (`runtime.EXACT_TYPES`), so `" false"` and `" yellow"` are kept as their text instead of
@@ -753,6 +777,13 @@ bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
   w:val="off"` on; `w:temporary` and `w:multiLine` read `"FALSE"` off. A bare `<w14:checked/>`
   read unchecked though its schema default is true (Phase C). `w15:done` read through the
   extractor never matched its enumeration member, so a typed comment's `resolved` was false.
+- **Colours, underlines and highlights as Word reads them** (CR-018 Phase B, section 1.2 finding
+  5): a colour name Word draws (`red`, `DarkRed`) came back from `Font.color` as the name and
+  from the facade as None; the facade read five or seven hex digits as `FF0000`, as python-docx's
+  slicing does, where Word draws automatic; `highlight_color` returned `"YELLOW"` and `"bogus"`
+  raw; an invalid direct `w:u`, `w:highlight`, `w:vertAlign`, `w:em` or `w:color` overrode the
+  style's value beneath, which Word shows; `w:u w:val="true"` over an underlining style read as
+  the style's underline, where Word removes it; a character style's highlight was drawn.
 - **The text model's numbering, document dates and table content**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md) section 14, found by the byte check
   against docx4j): a block's `TextNumbering` has its level's `levelText` and `start` (they were

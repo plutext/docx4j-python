@@ -1,6 +1,6 @@
 # CR-018: Run properties read as Word 365 reads them --- on/off values, the enumerations and `w:color`, one reader for each, and `effective()` for a value the file leaves out
 
-**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new. Q5 and Q6 were revised the same day at the user's direction: a save writes Word's reading in a plain normal form by default, with an opt-out that keeps the source's spelling (section 4.7, Q17). **Decided 2026-10-24**, every question as recommended (the user: "CR-018's other questions answered as recommended"). **Implementation started the same day** (the user: "implement CR-018"), with the fork's stage 13 first. **Phases A and C implemented 2026-10-24** (section 10), on docx4j-xsdata 26.2.3 (stage 13, on PyPI the same day; `pyproject.toml`'s floor `>=26.2.3,<26.3`, the coordinator's `ae6e611`): every on/off reader goes through `docx4j_py.model.values` and agrees with Word's saves of the 28 probes on all 376 markers; the parse keeps `" false"` as written; a save writes Word's normal form by default (`normalise=False` to keep the spelling), `canon.py`'s `word-normal-form` the one new tolerated category; `effective()` reads the refreshed defaults. No pre-existing expectation moved; the Word check is staged in `__tmp/python-cr018a/`, not run. Phases B and D are next. **Phases A and C done 2026-10-24**: their Word check in `__tmp/python-cr018a/` passed (the user: "all opened without a repair prompt"; section 10.10). B and D are next.
+**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new. Q5 and Q6 were revised the same day at the user's direction: a save writes Word's reading in a plain normal form by default, with an opt-out that keeps the source's spelling (section 4.7, Q17). **Decided 2026-10-24**, every question as recommended (the user: "CR-018's other questions answered as recommended"). **Implementation started the same day** (the user: "implement CR-018"), with the fork's stage 13 first. **Phases A and C implemented 2026-10-24** (section 10), on docx4j-xsdata 26.2.3 (stage 13, on PyPI the same day; `pyproject.toml`'s floor `>=26.2.3,<26.3`, the coordinator's `ae6e611`): every on/off reader goes through `docx4j_py.model.values` and agrees with Word's saves of the 28 probes on all 376 markers; the parse keeps `" false"` as written; a save writes Word's normal form by default (`normalise=False` to keep the spelling), `canon.py`'s `word-normal-form` the one new tolerated category; `effective()` reads the refreshed defaults. No pre-existing expectation moved; the Word check is staged in `__tmp/python-cr018a/`, not run. Phases B and D are next. **Phases A and C done 2026-10-24**: their Word check in `__tmp/python-cr018a/` passed (the user: "all opened without a repair prompt"; section 10.10). **Phase B implemented 2026-10-24** (section 11), on today's `Font`: `in_enumeration` and `colour()` (the 140 names, docx4j's table) in `values.py`, in the merge and under every reader of an enumeration or a colour; a character style's highlight never drawn; the normal form's enumeration and colour rows, written into the render. Every reader agrees with Word's saves of the 33 probes on all 388 markers (from 55 in the resolver, 161 in `Font` and 69 in the facade); no reader's answer moved over the corpus, and no golden, ratchet row or acceptance artefact. Phase D: the records; the Word check is staged in `__tmp/python-cr018b/`, **not run**.
 - **(a)** one ST_OnOff reader, used by every reader of an on/off value here, with the value kept as written so that Word's rule can be applied to it;
 - **(b)** the enumerations `u`, `highlight`, `vertAlign` and `em` read as unset when the value is outside the enumeration, in the resolver's merge as well as in the readers;
 - **(c)** one `w:color` reader: hex, the classic HTML colour names, and automatic;
@@ -912,6 +912,148 @@ None. Four kept their expectations and changed only how they build a parser, eac
 5. **python-docx 1.2.0's parity** (section 6.1 item 5) needs its throwaway environment (`tests/README.md`); not run.
 6. **`CLAUDE.md`'s round-trip paragraph** gains the category when the user writes it (left to the user, per the brief); the sentence proposed is in the report.
 7. **Section 2.8's grep missed six kinds of reader** (10.4's "new" rows); a reader added later must use `values.py`, which no test enforces beyond the oracle.
+
+## 11. Phase B and D implementation notes (2026-10-24)
+
+Phase B as built, at the user's go ("implement CR-018"), on today's `Font` before CR-016 Phase B (section 5, `b16693c`), and Phase D's Word check staged and its records. docx4j is the oracle: CR-060 phases 2 to 4 (`868a1797b`, `1d1b824a9`) and CR-061 (`aaadd93f9`, `5163c2986`), all on `VERSION_17_3_5`, pushed to `5163c2986` on 2026-10-24.
+
+**Commits.**
+- `0f17426`: round seven's fixtures (11.2).
+- `d1936b4`: Phase B: `values.py`'s enumeration and colour readers, the merge, the resolver's character level, `read_run_options` and the facade, the normal form's enumeration and colour rows, `canon.py` and `roundtrip.py`, the oracle's Phase B half.
+- `a95b732`: two tests: saves in threads keep their own rows, and every probe is docx4j's blob at `5163c2986`.
+- the records, the commit after `a95b732`: this section, the Status line, the index row, the CHANGELOG's 0.2.0 bullets, `tests/README.md`'s map and provenance, and CR-003 section 20.3's item 20.
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the enumerations | `docx4j_py/model/values.py` | `in_enumeration(value, enumeration, aliases=None)`; `UNDERLINE_ALIASES` (`w:u`'s six on/off words as `none`); `underline`, `highlight`, `vertical_alignment`, `emphasis_mark`, each a member or None |
+| colour | the same | `colour(value)`: `"RRGGBB"`, `AUTO` (`"auto"`) or None; `NETSCAPE_COLOURS`, the 140 names; `states_colour(value)`, docx4j's `WordColorValues.stated` |
+| the merge | `model/property_catalogue.py` | `merge_u` and `is_empty_u` read the kind by `underline` and the colour by `states_colour`; `merge_color` and `is_empty_color` by `states_colour`; `w:highlight`, `w:vertAlign` and `w:em` are `_enumerated` leaves, empty unless their reader gives a member, which is what is carried; a fill's, a pattern's and a border's colour stated whatever its value |
+| a character style's highlight | `model/property_resolver.py` | `_character_level(style_id)`: the chain without its `w:highlight`, cached, the level a run's and a mark's character style apply (docx4j's `characterLevel`) |
+| the readers | `wml/builders.py`, `model/content/font.py`, `docx/text.py` | `read_run_options` (under `Font`, `MixedFont`, `span_edits`, `api_script`) and the facade's `underline`, `highlight_color`, `superscript`, `subscript`, `ColorFormat.rgb` and `.type`, all through `values.py`; `apply_run_options` writes a colour `colour` reads as that `RRGGBB` |
+| the normal form | `openpackaging/normalise.py`, `parts/xml_part.py` | `normalise_render(root, part)`, called by `XmlPart._marshal` on every render, does nothing outside a normalising save (a context variable `normalised_package` sets) and inside one writes the enumeration and colour rows into the render; `rendered_rows(root, part)` for a caller that renders itself; `normalise_tree` (for `canon.py`) applies the same rows after the on/off ones; `SaveReport.by_part` |
+| the harness | `scripts/canon.py`, `scripts/roundtrip.py` | a dropped element counted as `word-normal-form` (`element: '<w:highlight w:val="YELLOW"/>' -> None`); `roundtrip.py --normalise` applies `rendered_rows` to its render |
+| the oracle | `tests/content/test_run_property_values.py` | 11.5 |
+
+### 11.2 The fixtures
+
+Round seven, the five probes of `5163c2986` (`colour-pattern`, `colour-background-red`, `-navy`, `-f00`, `-hex`) and Word's saves, copied byte for byte by `git -C ../docx4j show 5163c2986:docx4j-core-tests/src/test/resources/runprops/word365/<file>`, each the same bytes as the share's. **All 66 `.docx` of `tests/fixtures/onoff-fun/` are their git blobs in docx4j's folder at `5163c2986`**, rounds five and six (copied from the share in Phase A) among them; none differs (`test_the_fixtures_are_docx4j_s_at_5163c2986`). `README.txt` is the share's after round seven (`437afae0156e`). 33 probes, 388 markers: 227 in rounds one to four, 149 in five and six, 12 in seven (P1 to P8, and B1 in each page-colour probe). Rounds five and six were already there and were checked (Phase A's oracle reads them).
+
+### 11.3 The rules as built
+
+1. **The enumerations** (section 4.2): a member only for exactly a member's value, case and spacing and all; `""`, a padded member (`" yellow"`, Q15) and anything the parse kept are None, unset. `w:u`'s `true`, `false`, `on`, `off`, `1` and `0` are `none` (round six); `True`, `TRUE`, `yes`, `no` are unset. A bool or an int is None.
+2. **Colour** (section 4.3): exactly `auto` is `AUTO`; otherwise the text --- a parsed hexBinary's source spelling (the fork's `lexical_types` keeps it: `ff0000`, `" FF0000"`), a kept `str`, or plain bytes' hex for a value set in code --- trimmed of XML whitespace, one leading `#` removed, is the colour if six hex digits; else a name in the table, any case; else None. `FF 00 00`, which `bytes.fromhex` binds as three bytes, is None, since its spelling is read.
+3. **What None means, per attribute**: as if absent for `w:color/@w:val` and `w:u/@w:color` (the merge passes over it, so a style's colour shows; exactly `auto` overrides); automatic and overriding for `w:shd`'s fill and pattern colour and a border's colour (any value present is stated, `""` included); no page colour for `w:background`.
+4. **A character style's highlight is never drawn** (round six): left out of the level over a run and a mark, alone, with bold, through `w:basedOn`; a paragraph style's, a direct one and a character style's `w:shd` are drawn; `get_effective_rpr(style_id)` keeps it, as docx4j's own resolution of a style does.
+5. **The readers' vocabulary**: `read_run_options`'s `underline` is `"None"` for an unset value (it read `"Mixed"`), `highlight_color` None for one (it read `"YELLOW"`, `"bogus"`), `color` `"#RRGGBB"` for a name or any hex spelling, `"auto"` for exactly `auto`, `""` for a value Word rejects (it read the string). The facade's `underline` is None for an unset value and False for the six on/off words; `color.rgb` an `RGBColor` for a colour, None for `auto` and a rejected value, whose `color.type` is None, as for no `w:color` (`<w:color/>` read `RGB` before).
+
+### 11.4 The normal form's enumeration and colour rows (section 4.7)
+
+Found by name in each part's render, in the `w` namespace, during a normalising save; the typed tree never changes, so `save(normalise=False)` and `part.xml` outside a save write it as read:
+
+| element (holder) | value | written |
+|---|---|---|
+| `w:color` (`w:rPr`) | a name, hex in another spelling | `RRGGBB` |
+| | rejected, or no `w:val`, no theme attribute | the element dropped |
+| | rejected, beside `w:themeColor`, `w:themeTint` or `w:themeShade` | `w:val="auto"` (a missing one beside a theme attribute is left, as docx4j leaves it) |
+| `w:u` (`w:rPr`) | `w:val` outside the enumeration | dropped; the six on/off words `none` |
+| | `w:color` a name or hex | `RRGGBB`; rejected, dropped |
+| | nothing left on it (a bare `<w:u/>`) | the element dropped, as Word's save drops it |
+| `w:highlight`, `w:vertAlign`, `w:em` (`w:rPr`) | missing or outside the enumeration | the element dropped (Q6, docx4j's D3) |
+| `w:shd` (anywhere) | `w:fill`, `w:color` | `RRGGBB`; rejected, `auto` |
+| a border edge (`w:pBdr`, `w:tblBorders`, `w:tcBorders`, `w:pgBorders`, `w:divBdr`), `w:bdr` (`w:rPr`) | `w:color` | `RRGGBB`; rejected, `auto` |
+| `w:background` (`w:document`, `w:glossaryDocument`) | `w:color` | `RRGGBB`; rejected, the element dropped (round seven), or `auto` where a theme attribute or content is on it |
+
+`w:rPr` is every run-properties element by that name: a run's, a style's, the defaults', a numbering level's, a paragraph mark's, and `w:rPrChange`'s former properties, which Reject All restores. Over the 33 probes the save rewrites 202 values this way (and 45 by Phase A's rows), each in `package.last_save.normalised`, an element dropped recorded by its path alone with the element as read for `before`. The rows cost one `iter` of 20 tags per render: 0.49 ms over `Symbols.docx`'s main part, which has none.
+
+### 11.5 The oracles
+
+**The method** is docx4j's `RunPropertiesWord365Test`'s, extended to Phase B's readers: a marker's reading in the probe equals its reading in Word's save, with `WORD_DREW`'s three (`props-enum-styles` M6, `highlight-char-styles` H7, `colour-elsewhere-styles` U4) taken from the PDFs. A stated automatic counts as no colour, a stated `none` underline as none, since Word's save drops either where nothing beneath needs it. For the **direct** readers a difference is excused where Word's save states nothing for the property and the effective readings agree: Word writes direct formatting relative to the style, so over `CharUnderlineRed` it saves `w:u w:val="single" w:color="Navy"` as `<w:u w:color="000080"/>` (U2 to U4).
+
+| reader, the enumerations and colour | markers that differ from Word's save, of 388: at `b16693c` | now |
+|---|---:|---:|
+| the resolver (docx4j's reading: underline and its colour, highlight, vertical alignment, emphasis mark, text colour, fill, pattern colour, border colour) | 55 | 0 |
+| `read_run_options`, direct (`underline`, `highlight_color`, `color`, `subscript`, `superscript`) | 110 | 0 |
+| `read_run_options`, effective | 161 | 0 |
+| the content API's `Font` over each marker (the same five) | 161 | 0 |
+| the facade (`underline`, `highlight_color`, `superscript`, `subscript`, `color.rgb`, `color.type`) | 69 | 0 |
+| the page colour, `colour(w:background/@w:color)`, of 4 | 0 | 0 |
+
+The `b16693c` column is a scratch script over the same files with that commit's readers and the rule above as the reading of the resolver's output. Phase A's on/off readers stay at 0 over all 388. The tests also hold:
+- `NETSCAPE_COLOURS` equal to docx4j's `ColorTables.HTML` at `868a1797b` and `WordColorValues.HTML` at `5163c2986`, with none of CSS 3's seven extra spellings; every name rounds two to four gave Word (41 written as their hex at 48 markers, 18 dropped); `colour` over 37 spellings and lexical bytes; `underline` over 20 values; `in_enumeration`;
+- over a style: docx4j's `anInvalidValueOverAStyleLeavesTheStyles`; a character style's highlight with bold, through `w:basedOn`, on a mark, its shading drawn; the six on/off words in `w:u` against `True`, `TRUE`, `yes`, `bogus`; a colour by attribute (round six's table);
+- the saves: the rows of each probe (202); Word's drawing of every marker of each normalised save, and its page colour, the probe's; docx4j's `aRejectedValueBesideAThemeColourIsAuto` and `aRevisionsFormerPropertiesToo`; the tree keeping what was read and `normalise=False` the spelling; a value set in code normalised; saves in eight threads keeping their own rows; the facade's colour not python-docx's slicing.
+
+### 11.6 Phase D: the Word check (staged 2026-10-24, not run)
+
+`~/vbShares/Office 2016/__tmp/python-cr018b/`, built by `out/cr018-b-word-check/build.py` at `d1936b4`, each file read back with `LoadOptions(strict=True)` and each normalised save's markers checked against Word's reading of the probe:
+- `cr018b-SOURCE-<name>.docx`: the 24 probes of rounds two to seven holding an enumeration or a colour, unchanged (`props-enum-missing`, `-other` and `-styles` prompt Word's repair, as they did as probes);
+- `cr018b-1` to `24-<name>-normalised.docx`: each saved the default way;
+- `cr018b-25-colour-styles-as-read.docx`: `save(normalise=False)`;
+- `cr018b-26-colour-case-K4-blue-K5-navy.docx`: `Font.color = "#0000FF"` on K4 and `= "navy"` (written `000080`) on K5;
+- `cr018b-27-props-u-other-Y1-none-Y2-single.docx`: the facade's `font.underline = None` over Y1's invalid `w:u`, `= True` over Y2's `"true"`;
+- `cr018b-28-highlight-char-styles-H1-cyan.docx`: `Font.highlight_color = "cyan"` over a character style's highlight.
+
+The `README.txt` (SHA-1 `ba66b898a461`) lists each file's rewrites and what every marker should draw, against `onoff-fun/`'s PDFs. 53 files. **Not run**: it waits for the user. Phases B and D are done when it passes.
+
+### 11.7 Departures and choices, with why
+
+1. **The enumeration and colour rows are found in the render, not through `part.kept`** (section 4.7 has the normaliser walk `part.kept`). A lower-case or padded hex binds as lexical bytes, and a bare `<w:highlight/>`, `<w:color/>` or `<w:u/>` binds as `None`, so none is in `part.kept`; a walk of every typed tree would cost 30 ms over `Symbols.docx`, the render's `iter` 0.49 ms. And `canon.py` applies the very same function to the source, so the save and the canon cannot disagree. Phase A's on/off rows stay typed and kept-triggered.
+2. **So a colour or an enumeration set in code is written in the normal form too** (`el.color(val="navy")` is saved `000080`), where an on/off value set in code keeps today's form (Phase A, 10.7 item 4). docx4j's adapters do the same for every value marshalled.
+3. **`""` in a fill or a border colour is a stated automatic**, which overrides a style's (Word's rule for a rejected value there, round six); docx4j's `statesColour` holds `""` empty. Both engines' saves write it `auto`, so here the reading is the same before and after a save, where docx4j's moves. No fixture holds one.
+4. **A bare `<w:u/>` is dropped**, as Word's own save drops it (`props-u-valid` U1, `props-b-styles` S11); docx4j writes it bare. Both read as no direct underline.
+5. **A rejected `w:background` colour drops the element** (section 3.1d, the user's direction), but only where no theme attribute or content is on it; otherwise `auto`, docx4j's form. Unmeasured with either.
+6. **`<w:color/>` with no value and no theme attribute is dropped** (Word's save drops M4); one with no value beside a theme attribute is left, as docx4j's adapter leaves it.
+7. **The scope is by name and holder**, docx4j's classes: `w:color` under a `w:rPr` (docx4j's `Color`, so not `w15:color` or `w:framesetSplitbar`'s), `w:shd` anywhere in `w`, a border edge under the five border sets.
+8. **A character style's highlight is left out in the resolver**, docx4j's placement (`characterLevel`), not in `style_util`, which has no notion of a style's kind.
+9. **The merge carries Word's reading**: an effective `w:u`'s `val` is the member (`NONE` for `"true"`), and a highlight's, a vertical alignment's and an emphasis mark's too.
+10. **`apply_run_options` writes a colour `colour` reads as its `RRGGBB`**, so `Font.color = "red"` reads back `"#FF0000"` (it wrote `"RED"`, which read as the string); a value it does not read is written as before.
+11. **The facade's `color.type` is None for a rejected value**, as for no `w:color`: python-docx raises there, and Word reads it as absent.
+12. **The report's order**: by part in the order the save wrote them, each part's on/off rows before its enumeration and colour rows.
+13. **Choices for the user**, none taken here against docx4j but item 3, recorded above.
+
+### 11.8 Pre-existing tests whose expectation changed
+
+Four, all in `tests/content/test_run_property_values.py`, by round seven and Phase B's rows: `test_the_fixtures_are_as_copied` (56 `.docx` to 66) and `test_every_probe_has_markers` (round seven's 12), in `0f17426`; `test_a_normalising_save_moves_only_the_kept_values` (only an on/off row's `before` must be a kept value: Phase B's rows rewrite bound values too) and `test_the_on_off_rows` (it reads the on/off rows only: `props-b-styles` also has its bare `<w:u/>` dropped), in `d1936b4`. Nothing else in the suite moved: no golden, no ratchet row, no Word-save comparison, no acceptance artefact.
+
+### 11.9 The gates
+
+| gate | before (`b16693c`) | after (`a95b732`) |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 4,779 passed, 9 skipped, 1,307 deselected, 3 xfailed (2 min 55 s) | 4,910 passed, 8 skipped, 1,307 deselected, 3 failed (2 min 46 s): the 3 pinned goldens, **XPASS(strict)** under docx4j-core-ts's working tree (11.10 item 9); with core-ts's committed goldens they are 3 xfailed, as before |
+| the full suite | 6,086 passed, 9 skipped, 3 xfailed (4 min 32 s) | 6,217 passed, 8 skipped, 3 failed (4 min 2 s), the same 3; with the committed goldens 6,217 passed, 8 skipped, 3 xfailed |
+| (the ninth skip) | `test_api_script.py`'s ruff check, which finds no `.venv-fork/bin/ruff` in a worktree; in the checkout it runs, and `b16693c`'s `docx4j_py/` and tests are `2d37778`'s, at 6,087 passed and 8 skipped (10.9) | --- |
+| the new tests | --- | 130 in `test_run_property_values.py` (147 at `b16693c`, 277 now; round seven adds 15 to Phase A's parametrised tests) |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text`; `test_conformance.py` | 1,212; 24 | 1,212; 24 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `tests/revisions` | 76; 614 | 76; 614 (every comparison at 0 lines) |
+| the parity goldens (properties, numbering, fonts), against docx4j-core-ts's committed goldens (`7976c42`, `test/golden/` by `git archive`) | 274 passed, 3 xfailed: the 8 anchorLock pins | the same 8 pins, nothing else moved (a pinned golden fails on any other difference) |
+| the same against core-ts's working tree, which during this session came to hold an uncommitted regeneration of 503 goldens (its CR-015 under way) | 274 passed, 3 failed: the 3 pinned goldens XPASS(strict) | the same: 274 passed, the same 3 XPASS(strict); nothing else differs either side |
+| `roundtrip.py` over `samples/` | `--normalise` and `--no-normalise`: 50 of 50, 0 differences, 34 `boolean-spelling`, 0 kept, 0 normalised, 0 skipped | the same, both ways |
+| the same over the 33 probes and Word's saves (146 parts) | `--normalise`: 146 of 146, 45 `word-normal-form`, 4 `boolean-spelling`, 225 kept; `--no-normalise`: 146 of 146, 4 `boolean-spelling` | `--normalise`: 146 of 146, 247 `word-normal-form` (45 on/off, 202 enumeration and colour), 4 `boolean-spelling`, 225 kept; `--no-normalise`: 146 of 146, 4 `boolean-spelling` |
+| `codegen/generate.sh --check` | --- | byte identical, 300 modules |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr018b/`, copied first) | a regeneration at `b16693c` equal to the copy: 17 artefacts, 243 entries, 0 differing beyond the dates | 17 artefacts, 243 entries, 0 differing beyond the dates |
+| the readers' audit (`mce_branches.py readers --holding all`, `out/cr012-b-corpus/`, `COMMITS.txt` unchanged) | 422 documents, 4 reader errors (the Strict four) | the same: no reader's answer changed |
+| Phase B's readers over the same corpus (a scratch script: every main-document run's `read_run_options` direct and effective, every paragraph's `Font`, every facade run's `underline`, `highlight_color`, `color`, `superscript`, `subscript`; 419 distinct `.docx`, 19,874 runs, 2,108 with a direct colour, 9,794 paragraphs, 15,204 facade runs) | --- | identical to `b16693c`'s, byte for byte; over the probes the same script moves 45 answers in 18 of the 66 documents |
+| the oracle (11.5) | 55, 110, 161, 161 and 69 markers differ | 0 |
+| `scripts/threads.py` | --- | no configuration lost or altered a document |
+| the cost: `bench_marshal.py` over `samples/`, interleaved, 5 runs each (a marshal outside a save, so the render pass is one context-variable read) | `Symbols.docx` parse 195.5 to 198.9 ms, marshal 248.3 to 252.6 ms; the 14 main parts' parse 240 to 245 ms, marshal 298 to 303 ms | parse 196.8 to 201.0 ms, marshal 248.3 to 254.6 ms; 241 to 247 ms, 298 to 305 ms |
+| the cost: `Symbols.docx` loaded, its main part read and the package saved (the render pass inside), median of 7, interleaved, 5 runs | load and parse 198 to 204 ms, save 261 to 268 ms | 195 to 207 ms, 261 to 270 ms |
+
+The suites' difference is the new tests. The cost is within the runs' noise; the render pass alone is 0.49 ms over `Symbols.docx`'s main part.
+
+### 11.10 Found, and not done
+
+1. **`api_script`'s refusal of a `w:u` it cannot name no longer fires**: `read_run_options` reads an invalid `w:u` as `"None"` now, so a script rebuilds such a run without it, which is Word's direct reading. The check is left; it only fires for `"Mixed"`, which a single run no longer reads.
+2. **python-docx 1.2.0's parity** (section 6.1 item 5) needs its throwaway environment; not run, as in Phase A.
+3. **CR-016 Phase B's font reader** is not built, so the readers' audit has no `Font` reader of its own; 11.9's scratch audit stands in. CR-016 B builds on these readers (section 4.9 item 1).
+4. **`w:effect`**, an enumeration Word may read the same way, is outside the measured four and untouched; so are `w15:color` and the frameset splitbar's colour.
+5. **`span_edits.look_of`** reads the resolver's effective properties, which no longer carry a character style's highlight: a replaced character's look now carries a highlight only where Word draws one. No test pinned the old answer.
+6. **Theme colours**: `colour()` reads `w:val` only; a stated `w:themeColor` is CR-009 Phase B's, which is scheduled after this phase (`70fa0e3`).
+7. **Unmeasured still**: Word's whitespace in an enumeration (Q15; read as outside), the table's 99 names no probe gave Word (Q7), and an invalid `w:background` beside a theme colour or with a fill effect (11.7 item 5).
+8. **`CLAUDE.md`'s round-trip paragraph** should name Phase B's rows (left to the user, per the brief; the sentence proposed is in the report).
+9. **docx4j-core-ts is regenerating its parity goldens** (uncommitted in its working tree, 503 files under `test/golden/`, with its CR-015 source changes), and this repository reads that working tree: there the 8 `w:anchorLock` pins no longer differ, so their 3 goldens XPASS(strict) and fail, at `b16693c` as at `a95b732`, and no other golden differs in either. The pins stay (the brief) until core-ts commits the regeneration; then they come out (`tests/content/goldens.py`'s `PINS`), the regeneration being the 17.3.5 one their reason names.
 
 ## Appendix A. The probes (SHA-1, as on the share on 2026-10-24)
 

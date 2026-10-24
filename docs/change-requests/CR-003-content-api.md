@@ -4185,6 +4185,28 @@ file.
     through `document.paragraphs` and reads its text through
     `document.part.body`. `test_a_facade_edit_can_be_tracked_and_reviewed` pins
     both, and `accept_all()` then puts it in the facade's view.
+20. **Run properties are read as Word 365 reads them, not as python-docx 1.2.0
+    parses them** ([CR-018](CR-018-run-properties-as-word-reads-them.md) Q9,
+    decided 2026-10-24; Phases A and B). python-docx accepts exactly `1`, `0`,
+    `true`, `false`, `on` and `off` for an on/off value and raises
+    `InvalidXmlError` for any other; raises `ValueError` for a `w:u` or a
+    `w:highlight` outside its enumeration, for every colour name, `Auto`,
+    `#FF0000`, `F00` and `""`; and reads five or seven hex digits as `FF0000` and
+    `" FF0000"` as `0FF000`, by slicing. Over the 227 marker reads of the first
+    four probe rounds it raises on 121, and where it answers it differs from Word
+    in those three colours only. The facade reads every one as Word does
+    (`docx4j_py.model.values`), in python-docx's tri-state shape: an on/off value
+    is off only for exactly `false`, `off` or `0` (so `w:val=""` is on); a value
+    outside an enumeration is `None`, unset, for `underline`, `highlight_color`,
+    `superscript` and `subscript`, and `w:u`'s six on/off words are `none`, so
+    `False`; `color.rgb` is the colour Word draws for six hex digits in any
+    spelling or a classic HTML colour name (`red` is `FF0000`), and `None` for
+    `auto` and for a value Word rejects, whose `color.type` is then `None`, as
+    for no `w:color`. So the facade answers where python-docx raises, and departs
+    from python-docx's answer only where python-docx misparses a colour.
+    `test_run_property_values.py` holds each reader to Word's saves of the
+    probes; python-docx's parity test does not run in `.venv-fork`, which has no
+    python-docx.
 
 ### 20.4 The numbers, measured
 
