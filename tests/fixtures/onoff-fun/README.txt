@@ -168,3 +168,31 @@ colour-elsewhere-styles.docx  over character styles that make a shading, a borde
 
 As before, for each file: does Word open it (any repair prompt, and its words); a PDF; a save as
 filename-word365.docx. LibreOffice 26.2 opened all four (PDF export, 24 October).
+
+
+Seventh round, and docx4j's saves: CR-061's Word check, built 24 October 2026 by docx4j-25 (build script build7.py,
+which uses build5.py; the -docx4j files are docx4j's own saves of the earlier probes, made by docx4j at commit
+aaadd93f9). docx4j now writes every colour plainly on save: a name or any hex spelling as upper-case RRGGBB, a value
+Word rejects left out of a text or underline colour and written "auto" in a fill or border colour, and the highlight,
+vertAlign and em Word repairs away left out. The check is that Word reads docx4j's saves exactly as it read the
+probes, and never offers a repair.
+
+<name>-docx4j.docx         docx4j's saves of colour-case, colour-hex, colour-names-css, colour-names-highlight,
+                           colour-table-grey, colour-table-other, colour-styles, colour-auto-styles, colour-elsewhere,
+                           colour-elsewhere-styles, props-enum-missing, props-enum-other, props-enum-styles,
+                           props-u-styles and props-u-onoff-styles (15 files). For each: does Word offer a repair
+                           (it shouldn't, even for props-enum-*, which Word repaired as probes); and a PDF, which
+                           should look the same as Word's PDF of the probe. (The macro also saves a -word365 copy;
+                           that's fine.)
+colour-pattern.docx        a 50% shading pattern's colour (w:shd w:val="pct50" w:color=..., white fill): P1 "red",
+                           P2 "Navy", P3 "F00", P4 "FF0000" and P5 "auto" (the controls); P6 to P8 over the character
+                           style CharPatternRed (a red pattern): alone, with a direct "F00", with a direct "Navy".
+                           For each marker: the pattern's colour (red, navy, black/automatic, or the style's red)?
+colour-background-red.docx, -navy.docx, -f00.docx, -hex.docx
+                           the page colour, w:background w:color = "red", "Navy", "F00", "FF0000" (the control), one
+                           per file (settings turn the page colour on). The page colour may not be in a PDF (Word
+                           prints it only with "Print background colors and images" on); the save shows how Word read
+                           it. If you can, note the page colour on screen (red, navy, white/none).
+
+As before: does Word open each (any repair prompt, and its words); a PDF; a save as filename-word365.docx.
+LibreOffice 26.2 opened all twenty (PDF export, 24 October).

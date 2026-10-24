@@ -3,7 +3,8 @@
 The fixtures are ``tests/fixtures/onoff-fun/`` (``SHA1SUMS``; ``tests/README.md``
 has their provenance): the twenty probes of rounds one to four, as docx4j's
 ``runprops/word365/`` holds them at ``868a1797b``, and the eight of rounds five
-and six from the share, each with Word 365's save of it (``<name>-word365.docx``).
+and six from the share, and the five of round seven from docx4j at ``5163c2986``, each with
+Word 365's save of it (``<name>-word365.docx``).
 
 **The oracle** is docx4j's ``RunPropertiesWord365Test``'s. Word's save of a
 probe holds only Word's own spellings (bare for on, a value dropped where Word
@@ -39,7 +40,7 @@ ONOFF = ROOT / "tests" / "fixtures" / "onoff-fun"
 # the probes hold values no rule converts on purpose ("off", "Navy", "bogus"): each is kept and warned about
 pytestmark = pytest.mark.filterwarnings("ignore::docx4j_xsdata.exceptions.ConverterWarning")
 
-#: Rounds one to four (docx4j's ``RunPropertiesWord365Test.FILES``), then rounds five and six.
+#: Rounds one to four (docx4j's ``RunPropertiesWord365Test.FILES``), then rounds five and six, then round seven.
 PROBES = (
     "onoff-valid",
     "onoff-empty",
@@ -69,6 +70,11 @@ PROBES = (
     "colour-auto-styles",
     "highlight-char-styles",
     "colour-elsewhere-styles",
+    "colour-pattern",
+    "colour-background-red",
+    "colour-background-navy",
+    "colour-background-f00",
+    "colour-background-hex",
 )
 
 #: The on/off run properties the probes measure: (``w:rPr`` field, facade ``Font`` attribute).
@@ -170,7 +176,7 @@ def test_the_fixtures_are_as_copied() -> None:
     for name, digest in listed.items():
         assert hashlib.sha1((ONOFF / name).read_bytes()).hexdigest() == digest, name
     assert sorted(p.name for p in ONOFF.iterdir() if p.name != "SHA1SUMS") == sorted(listed)
-    assert len([n for n in listed if n.endswith(".docx")]) == 2 * len(PROBES) == 56
+    assert len([n for n in listed if n.endswith(".docx")]) == 2 * len(PROBES) == 66
 
 
 def test_every_probe_has_markers(probes: dict[str, Probe]) -> None:
@@ -179,7 +185,8 @@ def test_every_probe_has_markers(probes: dict[str, Probe]) -> None:
     assert counts["props-b-case"] == 10
     assert counts["props-toggles-1"] == counts["props-toggles-2"] == 26  # five values of five properties, and a control
     assert sum(counts[name] for name in PROBES[:20]) == 227  # rounds one to four: CR-018 section 2's 227
-    assert sum(counts[name] for name in PROBES[20:]) == 149  # rounds five and six
+    assert sum(counts[name] for name in PROBES[20:28]) == 149  # rounds five and six
+    assert sum(counts[name] for name in PROBES[28:]) == 12  # round seven: P1 to P8, and B1 in each page colour
 
 
 # ---------------------------------------------------------------------------
