@@ -56,7 +56,7 @@ schemas at the schema copy's commit, with no patch, so VML is typed wherever it 
 defaults); over the 422 documents nothing is newly skipped and no save gains a canonical difference;
 VML's `t`/`f` values are a string enumeration, written as read, and `o:spt` and `o:gfxdata` keep
 their spelling through the fork's stage 12 (`ParserConfig(lexical_types=)`), which joins stages 9 to
-11 in needing a fork release; the readers' audit over 384 documents moved one answer,
+11 in needing a fork release (released as docx4j-xsdata 26.2.2 on 2026-10-22); the readers' audit over 384 documents moved one answer,
 `styles_in_use()` on `vml/textbox.docx`, clearly right by docx4j's traversal (12.8); no corpus
 document reaches an island any more, and the islands stay for a text box below a wildcard node
 (12.9); the import costs about 100 ms more (cold 1.12 s), and the 403-branch document parses about
@@ -93,7 +93,8 @@ the icon does open the embedded document"; 12.16): **Phase C done**.
   stages 9 to 11 in needing a fork release (section 12.6).
 
 docx4j-python cannot release on either fork change before a fork release, as CR-011's Q3 also
-needs (`RELEASING.md`: never against an unreleased fork).
+needs (`RELEASING.md`: never against an unreleased fork). The release came out as docx4j-xsdata
+26.2.2 on 2026-10-22, with stages 9 to 12.
 
 **Counterpart:** docx4j's CR-051
 (`docs/developer/change-requests/CR-051-mc-alternate-content-block-level.md`, accepted, and

@@ -9,34 +9,38 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
-## [0.2.0] --- 2026-10-22
+## [0.2.0] --- 2026-10-24
 
 Still WordprocessingML only; PresentationML and SpreadsheetML remain CR-001 Phase D and CR-002
-Phase C. Three change requests are new, each complete and Word-checked:
-[CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), tracked changes
-listed, accepted and rejected as Word 365 resolves them (`docx4j_py.model.revisions`);
-[CR-011](docs/change-requests/CR-011-one-text-model.md), one text model under every reader of
-text, with Markdown, charts, equations and field switches as docx4j reads them
-(`docx4j_py.model.text`); and [CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md),
-`mc:AlternateContent` kept at every level with its branches typed, VML among them; and the
-Office JS readers (`Paragraph.text`, `get_text`, `search`) read the branch Word shows, as Office
-JS does (CR-011 Phase F), in Office JS's own characters, which every text writer takes back
-([CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md) Phase A), and a `Range` reads
-and writes across paragraphs as Office JS's does (CR-013 Phases B and C; Phase C's Word check is
-staged, not yet run). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
-of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
-save. [CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md)'s Phases A to C
-read every on/off value, enumeration and colour of the run properties as Word 365 reads it, keep
-it as written, and write Word's reading on save, which closes a save 0.1.0 shared that changed
-meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
-[CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md)'s Phase A
-keeps Word's table rule, a cell ends with a paragraph, through every edit, which closes a defect
-0.1.0 shared: eleven edits left a cell Word opens as unreadable content; its Phase B reads
-`Font`, a control showing its placeholder and a deleted paragraph mark as Office JS reads them,
-and writes into a placeholder as Word does; its Phase C matches Word's wildcards across a
-paragraph mark and finds no hit that cuts a grapheme cluster; the three are Word-checked together (Phase D). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
-as Word draws them, so `Font.color` reads a theme colour in the theme's colour rather than the
-cache written beside it.
+Phase C. Six change requests are new and complete, each Word-checked:
+
+- [CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md): tracked changes
+  listed, accepted and rejected as Word 365 resolves them (`docx4j_py.model.revisions`).
+- [CR-011](docs/change-requests/CR-011-one-text-model.md): one text model under every reader of
+  text, with Markdown, charts, equations and field switches as docx4j reads them
+  (`docx4j_py.model.text`). The Office JS readers (`Paragraph.text`, `get_text`, `search`) read the
+  branch Word shows, as Office JS does (Phase F).
+- [CR-012](docs/change-requests/CR-012-type-kept-mc-branches.md): `mc:AlternateContent` kept at
+  every level, with its branches typed, VML among them.
+- [CR-013](docs/change-requests/CR-013-ranges-across-paragraphs.md): Office JS's own characters,
+  which every text writer takes back (Phase A), and a `Range` that reads and writes across
+  paragraphs as Office JS's does (Phases B and C).
+- [CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md): every on/off value,
+  enumeration and colour of the run properties read as Word 365 reads it, kept as written, and
+  written on save as Word reads it. This closes a save 0.1.0 shared that changed meaning
+  (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
+- [CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md): Word's table
+  rule, a cell ends with a paragraph, kept through every edit. This closes a defect 0.1.0 shared:
+  eleven edits left a cell Word opens as unreadable content. `Font`, a control showing its
+  placeholder and a deleted paragraph mark read as Office JS reads them, and a placeholder is
+  written into as Word does. Word's wildcards match across a paragraph mark, and no hit cuts a
+  grapheme cluster.
+
+[CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours as Word
+draws them, so `Font.color` reads a theme colour in the theme's colour rather than the cache written
+beside it. With these come CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002
+section 16's single parse of a part, and a fix to a defect 0.1.0 shipped: an embedded object would
+not open in Word after a save.
 
 ### Added
 

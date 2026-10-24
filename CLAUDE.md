@@ -43,13 +43,13 @@ departure; read them before changing the area they cover. Status, 2026-10-24:
   docx4j's vectors in `tests/fixtures/theme-colors/`); C proposed.
 - **CR-010** (tracked changes as Word resolves them, `model/revisions/`): complete, 2026-10-21.
 - **CR-011** (one text model, `model/text/`): Phases A to D implemented, 2026-10-21. E, the HTML
-  reader, is proposed. Its fork change (stage 10) needs a fork release before a docx4j-python
-  release.
+  reader, is proposed. Its fork change (stage 10) was released in docx4j-xsdata 26.2.2
+  (2026-10-22).
 - **CR-012** (`mc:AlternateContent` kept at every level, its branches typed): decided 2026-10-21;
   Phases A and A2 (docx4j CR-051 phases 1 and 2) implemented and Word-checked; B (docx4j's 61
   root elements typed in a branch) and C (VML in the model, typed wherever it stands, with the
   `w:object` order fix) implemented and Word-checked 2026-10-22. Its fork changes (stages 11 and
-  12) join CR-011's in needing a fork release.
+  12) were released with CR-011's in docx4j-xsdata 26.2.2.
 - **CR-013** (ranges across paragraphs, the port of docx4j-core-ts CR-014 on Office JS's
   characters): complete, 2026-10-23. A, Office JS's characters (`\r` marks, U+000B breaks, Word's
   own writers); B, a `Range` with two ends and the reads; C, the writes (`span_edits.py`,
