@@ -33,7 +33,8 @@ meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdat
 keeps Word's table rule, a cell ends with a paragraph, through every edit, which closes a defect
 0.1.0 shared: eleven edits left a cell Word opens as unreadable content; its Phase B reads
 `Font`, a control showing its placeholder and a deleted paragraph mark as Office JS reads them,
-and writes into a placeholder as Word does (its Phases C and D follow). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
+and writes into a placeholder as Word does; its Phase C matches Word's wildcards across a
+paragraph mark and finds no hit that cuts a grapheme cluster (its Phase D follows). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
 as Word draws them, so `Font.color` reads a theme colour in the theme's colour rather than the
 cache written beside it.
 
@@ -304,6 +305,32 @@ cache written beside it.
   so `search("^p")` no longer matches one. The paragraphs, their offsets and `body.paragraphs` do
   not change, nor does `TrackedChange.text`. In the corpus `get_text()` moves in the 78 documents
   holding a deleted mark and the original view in the 81 holding an inserted one.
+- **Word's wildcards match a paragraph mark where `^p` does** (CR-016 Phase C, section
+  [12](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md#12-phase-c-implementation-notes-2026-10-24);
+  core-ts CR-002 section 32's K7, held to Word 365 by Office JS check 59): with
+  `match_wildcards=True`, `?`, `*` and a class cross a paragraph's own mark and `^13` is one, never
+  a cell's or a row's end, a deleted mark, nor anything across a table's edge. `Paragraph.search`
+  searches its `"Whole"` range, its mark included (`?` over `Q` finds `Q` and `\r`);
+  `Body.search`, and so a block control's and a cell's body's, its `"Content"` range, without the
+  last mark; a range across paragraphs, or holding its mark, its paragraphs' marks, a hit ending
+  with one holding it. Before, no wildcard matched a mark and `^13` was three characters; inside a
+  paragraph it now matches a `w:cr`, and a wildcard pattern is `re.DOTALL`, so `?` takes a line
+  feed held in a `w:t`. `find` still reads a paragraph at a time. In the corpus no reader of the
+  audit moves; its new wildcard reader finds 4,221 hits in 288 documents, each holding a mark.
+- **`replace_text` with wildcards refuses a hit holding a mark** (CR-016 Phase C, Q9):
+  `SpanError` `range.replaces_mark`, before anything changes, where any hit `search` finds holds a
+  paragraph's mark (`body.replace_text("Q?Z", "X", match_wildcards=True)` over the paragraphs `Q`
+  and `Z`; a paragraph's `replace_text("?", ...)`, whose hits now include its mark), as a plain
+  `^p` query is refused. A body's replacement reads its `"Content"` range, so over a body of one
+  paragraph `?` is replaced where that paragraph's own `replace_text("?", ...)` refuses (core-ts's
+  rule). 0.1.0 replaced each paragraph's hits.
+- **No search hit cuts a grapheme cluster** (CR-016 Phase C, Q8; core-ts `ebb218e`): `search`,
+  `find` and `replace_text`, plain or wildcard, drop a hit whose start or end falls inside a
+  cluster (`is_grapheme_boundary`): `cafe` no longer matches inside `cafe` + U+0301, nor `?` an
+  Arabic letter without its fatha, so `?` and `[!a-z ]` over an Arabic word find what Word's do.
+  Text with no code point at or above U+0300 is never filtered, and pays nothing. In the corpus no
+  plain search moves; `?` and `[!a-z ]` lose 4 hits, in one Arabic phrase. A class still matches
+  an emoji whole (a code point), where Word's matches nothing (CR-016 section 4.9).
 - **A save writes Word's reading of a kept value, in a plain normal form** (CR-018 section 4.7,
   Q5 and Q17, the user: "they are entitled to assume we don't write dodgy content"): an on/off
   value the parse kept as its text is written bare where Word reads it as on (`"1"` where the
@@ -894,6 +921,11 @@ cache written beside it.
 - **A `Range.font` read split runs** (CR-016 Q12, found 2026-10-24): reading
   `paragraph.search("TWO")[0].font.bold` split the paragraph's run at the hit's edges, so the next
   save wrote three runs where the source had one. A read now splits nothing; only a write does.
+- **A replacement of a hit inside a grapheme cluster split the character** (CR-016 Phase C, Q8;
+  found building its Word-check file): `replace_text("cafe", "tea")` over `cafe` + U+0301 left the
+  accent on the replacement's last letter (`teá`), and tracked it inserted `tea` before the
+  cluster and deleted nothing, the deletion's split having snapped back to the cluster's start.
+  Such a hit is no longer found (under "Changed").
 - **A tracked `TableCell.value` lost the cell's old content untracked** (CR-016 Q11): it is now a
   tracked deletion, the new paragraph inserted after it, so Reject All gives the cell back
   (`Table.values` and `TableRow.values` with it). The python-docx facade's `_Cell.add_table`
