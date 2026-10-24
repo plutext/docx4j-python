@@ -580,6 +580,25 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > one. The optional `^13`-over-`w:cr` measurement was not made. Acceptance: unchanged since Phase C
 > (no code change).
 
+> **2026-10-25, from the 0.2.0 candidate wheel at `7248ed3`: passed** (the user: "each deletion
+> across paragraphs one deletion except case 11 ... because of the content control otherwise all
+> good"). `scripts/release_check.sh` passed at `7248ed3` (`b9f66c0` and `7248ed3` fixed the check
+> itself: a pipe under `pipefail` that failed on a file the sdist held, and four tests that read the
+> checkout's `docx4j_py/` instead of the package imported). It built the wheel
+> `docx4j-0.2.0-py3-none-any.whl` (SHA-1 `3131106a49ce5b1f8a700f9ec32ef3388a149d22`), installed it
+> into a clean CPython 3.12 virtual environment with `docx4j-xsdata 26.2.3` from PyPI, and ran the
+> fast suite from the sdist against it: 4,416 passed, 51 skipped. Every skip was environmental: 42
+> need `../docx4j` or core-ts's goldens beside the scratch tree, 6 are README fragments, and 3 need
+> python-docx or `ruff`. Against the artefacts built from the checkout: 17 artefacts, 243 entries,
+> 0 differ beyond the dates. Staged in `__tmp/python-0.2.0-wheel/` (17 files, `SHA1SUMS`). Every file
+> opened without a repair prompt. Case 11 of `12-ranges-across-paragraphs-tracked.docx` is two
+> deletions, as CR-013 section 14 built it and its check of 2026-10-23 recorded: the range runs
+> from a body paragraph into a block control, and nothing joins across the control's edge. "11B"
+> is deleted with its paragraph's mark before the control, and "11C" inside it. The staged README's
+> "each deletion across paragraphs one deletion" left that exception out. **0.2.0 is held** for
+> core-ts's CR-002 section 63 and its port (the user, 2026-10-25; CR-016 section 13.5), so the
+> release's own wheel and Word check come after the port.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
