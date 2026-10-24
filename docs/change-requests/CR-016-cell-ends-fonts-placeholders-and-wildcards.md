@@ -1,6 +1,6 @@
 # CR-016: A cell ends with a paragraph; `Font`, placeholders and deleted marks read as Office JS reads them; wildcards across marks --- the port of docx4j-core-ts `222cc20` and `3ba1e68`
 
-**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). Not started.
+**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). **Phase A implemented 2026-10-24** (section 10): `table_rules.py` (docx4j's `ends_with_paragraph` and `end_with_paragraph`, exported); `Paragraph.delete`, `Body.clear`, `ContentControl.delete` and `Body.insert_ooxml("Replace")` keep a cell's end paragraph, emptied, its mark never marked under tracking; a table after it splits it at its end; docx4j's repair elsewhere and in what goes in (D3); nothing on load (D4); a tracked `TableCell.value` a tracked deletion (Q11); the facade's `_Cell.add_table` python-docx's (Q13). Check 52's cases 86 to 95 Word's in the run, the save and Accept All but the new table's paragraph (Q4) and case 94's value; over the corpus's 2,435 cells, no write leaves one without a paragraph end, and `Range.delete()` moved in none. One pre-existing expectation moved. Its Word check is Phase D's (files built, section 10.5). Phases B to D not started.
 1. Word's table rule (core-ts CR-002 section 55): a cell ends with a paragraph.
 2. `Font` reading every run in scope (section 59).
 3. A control showing its placeholder read as no text (core-ts CR-012 section 18).
@@ -8,7 +8,7 @@
 5. The paragraph tracked-change listing kept and pinned (CR-002 section 58.1, K1).
 6. Word's wildcards (CR-002 section 32): K4, and K7 at `3ba1e68`.
 
-Three things core-ts did in the same commits are done here already (section 3.8). Four phases are proposed (section 5): A, the cell rule; B, the readers; C, the wildcards; D, the Word check and the records. They come to 4½ to 5½ days. Fourteen questions wait on the user (section 8). **Nothing has started.**
+Three things core-ts did in the same commits are done here already (section 3.8). Four phases are proposed (section 5): A, the cell rule; B, the readers; C, the wildcards; D, the Word check and the records. They come to 4½ to 5½ days. Fourteen questions, decided 2026-10-24 (section 8). **Phase A is implemented** (section 10); B to D are not started.
 
 *The number:* an earlier, undrafted idea used "CR-016" for a port of docx4j CR-057 (`insert_markdown` reading local image files). That idea now takes CR-017.
 
@@ -620,3 +620,131 @@ CLAUDE.md asks for a Word check after any change to the content API's inserts. P
 | **total** | **4½ to 5½** |
 
 core-ts's own estimates were half a day to a day for section 55, a day for section 59, and half a day each for sections 18 and 19, each with its check. The larger part here is the oracles, as in CR-013: two more snippet ports, held to Word's JSON case for case, and three tests of check 52 run to case 95. Phase B's audit also needs a font reader first. CR-013 took one calendar day for an estimate of 12½ to 13½ (CR-003 section 23.4), so these numbers are the CRs' usual unit, not a forecast of the calendar.
+
+## 10. Phase A implementation notes (2026-10-24)
+
+Phase A as built, at the user's go (CR-016 decided 2026-10-24: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"), on CR-018 complete (`955547c`). The oracles are docx4j-core-ts `222cc20` (its CR-002 section 55 and 55.7, `tableRules.mts`, the content files it changed and `test/table-rules.test.mjs`), read from the commit and never from core-ts's working tree, and docx4j `18a3a31f4` (`TableRules`, `TableRulesTest`). Phases B to D follow in their own briefs; CR-016's Word check is Phase D's, so Phase A's files for it are built and not staged (10.5).
+
+**Commits.**
+- `73ae725`: Phase A: `table_rules.py`, the edits, the facade, `tests/content/test_table_rules.py`, check 52's write tests to case 95, the parity script's cell `add_table`, one pre-existing expectation (10.7).
+- `cfde1db`: `end_cells_with_paragraphs` without a closure, found by the cost measure (10.8).
+- `c37769e` (the coordinator's, not this phase's): the eight `w:anchorLock` pins out of `tests/content/goldens.py`, docx4j-core-ts having committed its golden regeneration (`76fb45d`). It lands between the "before" and "after" columns of 10.8, and is why the after column has no failure.
+- the records, the commit after `cfde1db`: this section, the Status line, the index row, the CHANGELOG's 0.2.0 bullets and `tests/README.md`'s map.
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the rule | `docx4j_py/model/content/table_rules.py` (new; `model/` is in `KEEP` whole) | `ends_with_paragraph(contents)` (a `w:tc` or any block list, docx4j's two overloads) and `end_with_paragraph(tc)` (Word's repair; returns the paragraph appended, None where the rule held, where docx4j returns a boolean), exported from `docx4j_py.model.content`; for the edits `CellEnd`, `paragraph_end_of`, `wrapping_cell_of`, `ends_cell` and `end_cells_with_paragraphs` (D3) |
+| the hub | `body.py`, `Body._insert_element` and `_keep_cell_end` | D3 before the insertion; after it, where the cell no longer ends with a paragraph, `keep_cell_mark_last` when a table went after the cell's end paragraph in the cell's own content, else docx4j's repair, plain under tracking, given a `w14:paraId` |
+| the split | `span_edits.py`, `keep_cell_mark_last` | core-ts's `keepCellMarkLast`: the paragraph keeps its text and its element; its new `w:pPr` is `split._properties_for_head` with the mark in the formatting of the text before the end (`_r_pr_before`), inserted under tracking; its old `w:pPr` on an empty paragraph appended after the table |
+| the deletes | `paragraph.py` (`delete`, `_delete`, `_tracked_delete`, `_ends_its_cell_alone`), `body.py` (`clear`, `_clear_content`), `controls.py` (`ContentControl.delete`), `ooxml.py` (`insert_ooxml_into_body` at `"Replace"`) | section 4.2's rules, core-ts's code for code |
+| `TableCell.value` (Q11) | `table.py` | `body._clear_content(keep_cell_end=False)`, tracked, then `insert_paragraph` |
+| the span edits | `span_edits.py`, `_removable` and `_delete_mark` | "a cell's last" is `ends_cell` (section 4.8 item 1), where it was `mark_text == "\t"` |
+| the facade (Q13) | `docx/table.py` (`_Cell.add_table`), `docx/_base.py` (`_add_table`), `table.py` (`insert_table_into(..., target=)`) | the paragraph first, the table before it |
+| the oracles | `tests/content/test_table_rules.py` (40 tests), `test_ranges.py`, `test_python_docx_parity.py` | 10.3 |
+
+### 10.2 The rules as built
+
+1. **The rule** (docx4j's): the last block among a cell's items, a block being a `w:p`, `w:tbl`, block `w:sdt`, block `w:customXml` or `mc:AlternateContent`, everything else range markup; through a control's content, custom XML's and the branch `block_children_of` reads of a kept `mc:AlternateContent` (`mce_branch`, docx4j's `McMode.READ`), down to a `w:p` (it holds) or a `w:tbl` or nothing (it breaks). An untyped (wildcard) `mc:AlternateContent` reads as breaking it; none is in a cell over the corpus.
+2. **The paragraph a cell ends with** (`ends_cell`): up the parent pointers from the paragraph through the wrappers (a block control, its `w:sdtContent`, custom XML, an `mc:AlternateContent` and its branches) to a `w:tc`, and the rule's paragraph is this one. A paragraph in a text box, a header or the body has no cell.
+3. **`Paragraph.delete()`**: untracked, the paragraph comes out; if its cell then breaks the rule it goes back where it was, its content emptied and its `w:pPr` kept, and the report records the text gone and no shift. Tracked, its text is deleted and its mark left unmarked whenever it is the cell's end paragraph (cases 90 and 91), whether or not a paragraph comes before it; this author's own empty insertion is taken back, as before, unless its cell would break.
+4. **`Body.clear()`**: untracked, everything goes; if the cell then breaks the rule, the paragraph it ended with comes back, emptied, at the end of this body's content (a cell's body: outside any control it was in; a control's body: inside the control), else docx4j's repair. Tracked, every paragraph goes through `_delete`, so the cell's end paragraph keeps its mark. `_clear_content(keep_cell_end=False)` is the old behaviour for `insert_text(..., "Replace")` and `TableCell.value`.
+5. **`ContentControl.delete()`** of a block control in a cell: where the cell then breaks the rule, the paragraph it ended with, emptied, takes the control's place; a cell left ending in a table some other way (a control holding only a table, unwrapped) gets docx4j's repair. Either `keep_content`.
+6. **`Body.insert_ooxml(..., "Replace")`** in a cell or a cell's control: content ending in a table is put before the kept paragraph (case 94); content ending in a paragraph replaces it, as before.
+7. **A table after the cell's end paragraph** in the cell's own list (`insert_table`, `insert_xml`, `insert_ooxml`, `insert_markdown`, `insert_element` at `"End"`, and `Paragraph.insert_xml`, `insert_ooxml`, `insert_markdown`, `Range.insert_ooxml` at `"After"`): `keep_cell_mark_last`. In a control's list instead, docx4j's repair after the control.
+8. **D3**: `end_cells_with_paragraphs` walks what goes in through tables (every row and cell, through row- and cell-level controls and custom XML and every branch of a kept `mc:AlternateContent`), block controls and custom XML, never into a paragraph, nested cells first, before the insertion, so under tracking the repair paragraph is marked inserted with the table (`["TBL+ins", "P[|ins]"]`).
+9. **D4**: nothing runs on load; an untouched part is copied byte for byte; the first edit through `insert_element` into a broken cell repairs it.
+
+### 10.3 The oracles
+
+**Check 52, cases 86 to 95** (`RANGE_CASES` 85 to 95; Word 365's run, its save after the run and its Accept All, `tests/office_js/`):
+
+| test | differing regions of 86 to 95 | why |
+|---|---|---|
+| the run (`run_check_52(..., "run")` against Word's run) | 86, 87 (`paragraphs`); 94 (`result`) | 86 and 87: Word gives the new table's own paragraph the cell paragraph's `w:pPr`, and so its numbering, which is `insert_table`'s wherever it inserts (Q4); 94: this package's `Body.insert_ooxml` returns the views (the table, read `NEWOOXML`), Office JS a `Range` (`NEWOOXML\r\n`). Both core-ts's. Word's `Other` style for the cell's paragraph after a nested table (89, 91, 94) is read as its markup says, List Paragraph (`_other_as_ours`, core-ts's `listParagraphForOther`; CR-013 Q6) |
+| the markup of each region against Word's save | 86 and 87, on line 3 alone, pinned: Word's `    P[ListParagraph/num|u] "NEWCELL"{u}` and `    P[ListParagraph/num|ins,u+change] ins:"NEWCELL"{u}` against this package's `    P[|] "NEWCELL"` and `    P[|ins] ins:"NEWCELL"`, core-ts's lines exactly | Q4. 88, 89, 90, 91, 92, 93, 94 and 95 are Word's line for line; 88, 90, 94 and 95 pinned |
+| Accept All of this package's save against Word's Accept All | 86, 87 | Q4 again; every cell's last paragraph accepted is Word's |
+
+Before Phase A (CR-016 section 2.2) the run differed in eight of the ten, the markup in all ten and Accept All in eight. The tests' other expectations are unchanged: the run's 26 regions differing before case 86, Accept All's 49 to 56, 60 and 66, the markup's 1, 13, 60, 66, 67, 68 and 79 to 85.
+
+**`test_table_rules.py`** (40 tests):
+- docx4j's `TableRulesTest`, its four tests by their names, with its twelve probes and the empty cell, each through the `w:tc` and through its list. core-ts's first two tests are the same four, merged, and are these.
+- core-ts's other five, their strings and shapes kept (`P[style,jc|mark] text`, `TBL+ins`, `SDT{...}`). One answer differs, recorded (10.6 item 1): `Range.insert_ooxml(table, "Replace")` over the cell paragraph's `"Content"` or `"Whole"` range.
+- core-ts's table of insertions at a cell's end, extended from its three verbs to eight, each untracked, tracked, accepted and rejected.
+- This package's own: Q11; a control's delete keeping its content, and a broken cell unwrapped; a control's body cleared or replaced in a cell; a kept `mc:AlternateContent` in a cell (Word's branch read; a `Paragraph.delete()` inside it refused `address.read_only`, CR-011 Phase F's standing departure; an untracked `clear()` keeping the Choice's paragraph, emptied, moved out into the cell; a tracked `clear()` refused); D3 under tracking; the repair plain under tracking; custom XML and range markers; the facade's `_Cell.add_table`; one `ChangeReport` per write and its `dry_run` for seven writes, untracked and tracked (but a control's delete, which is not tracked): 13 cases, the real package's main part unchanged by each dry run, and every cell ending with a paragraph in the trial and after the commit; the exports.
+
+**The facade** (Q13): `test_python_docx_parity.py` gains a script of its own, a cell's text underlined, `cell.add_table(2, 2)` holding `INNER`, then `cell.add_paragraph("AFTER")`, run through both libraries and read back by python-docx 1.2.0: the cell's inner content is the same, `[p "CELL" (no w:pPr, underlined), tbl 2x2, p "" (no w:pPr, no run), p "AFTER"]`. Run in a throwaway environment (`uv venv` in the session's scratchpad, python-docx 1.2.0, docx4j-xsdata 26.2.3 from PyPI, markdown-it-py, pytest; the checkout imported from its `tests/content/conftest.py`): 14 passed at `73ae725`, and 14 at `955547c` with the new test copied in, since `955547c`'s facade added the table at the end before any rule existed. Without Q13's change the new code would split the cell's paragraph and then add python-docx's paragraph too.
+
+### 10.4 The cell sweep (section 6.2)
+
+`out/cr016-a-sweep/cell_sweep.py` (git-ignored, with its two JSONs and `compare.txt`): over `out/cr012-b-corpus/` (`COMMITS.txt` unchanged), its 422 distinct documents by SHA-1 (4 Strict ones fail to load, as in every audit), every one of the **2,435 main-part cells** (every depth, through controls and Word's branch; section 2.1 counted 2,495 another way), given nine writes, each on a fresh load, untracked (`change_tracking_mode` set `"Off"` explicitly, since a document whose settings track revisions loads tracking them) and tracked: `Paragraph.delete()` of the cell's last own paragraph, `body.clear()`, `insert_table(..., "End")`, `insert_xml` and `insert_markdown` of a table at `"End"`, `insert_ooxml(table, "Replace")`, `ContentControl.delete(keep_content=False)` of the last block control of the cell's own list (11 cells have one), `TableCell.value`, and `Range.delete()` of the cell's whole range. Each saved, loaded again and accepted; tracked, also rejected. The cell's shape (every block, each paragraph's style, alignment, numbering, `w:pPrChange`, mark properties and text with its revisions), whether it ends with a paragraph (the script's own reading of docx4j's rule, the same on both codes) and whether its last mark is marked deleted. On `955547c` (in a `git worktree` in the session's scratchpad) and on the code of `73ae725`; 635 s and 647 s on 12 processes.
+
+| write | cells edited (tracked) | before: the cell ending without a paragraph (holding no block) | before, tracked: the cell's last mark marked deleted by the write | after |
+|---|---:|---:|---:|---|
+| `Paragraph.delete()` | 2,427 (2,232) | 2,396 (2,383) | 2,232 | every cell ends with a paragraph, untracked and tracked, accepted and rejected |
+| `body.clear()` | 2,429 (2,427) | 2,429 (2,429) | 2,232, and 195 the source's already | the same |
+| `insert_table`, `insert_xml`, `insert_markdown` at `"End"` | 2,429 each (2,429 tracked) | 2,429 each, tracked too; Accept All 1,908 | --- | the same |
+| `insert_ooxml(table, "Replace")` | 2,429 (2,427) | 2,429, tracked 2,427; Accept All 1,908 and 1,906 | --- | the same |
+| `ContentControl.delete(keep_content=False)` | 11 | 2 (2) | --- | the same |
+| `TableCell.value` | 2,429 (2,427) | 0 | --- | the same |
+| `Range.delete()` of the whole range | 2,427 (2,427) | 0 | --- | **unchanged in every cell**, untracked and tracked |
+
+- **Every row that moved is explained**, mechanically (`compare.txt`, 0 unexplained): the old code left the cell without a paragraph end or without a block (every untracked and tracked insert, `clear`, `insert_ooxml`, `Paragraph.delete`, the 2 control deletes), or marked its last mark deleted (2,232 tracked `clear`s and 2,232 tracked `Paragraph.delete`s; the 195 other cells' last marks the source deletes already); or, for a tracked `TableCell.value`, the old content is now a tracked deletion (2,427, Q11).
+- **The refusals are the same, counted by code**, but for two: a tracked `TableCell.value` over a cell holding a kept `mc:AlternateContent` is now refused `address.read_only` (2 cells), as a tracked `clear()` of it always was, where the old setter removed it untracked. Otherwise `address.read_only` 6 or 8 per write (cells in a kept branch) and `tracking.already_deleted` 195 (a tracked delete of a paragraph whose mark the source already deletes), before and after.
+- **Accept All of the tracked write equals Accept All of the untracked one** in every cell but 25: 13 `Paragraph.delete()`s of a cell's last paragraph after another paragraph (untracked it goes, the cell ending with the one before; tracked its text goes and its mark stays, so Accept All leaves it empty: core-ts's rule, Word unmeasured in this shape), and 4 each of `clear`, `insert_ooxml(..., "Replace")` and `value` in a cell whose content is a block control (a tracked deletion of a control's content leaves the control, CR-003 section 4). Before: 1,905 and 1,906 of `Paragraph.delete` and `clear` differed.
+- **Reject All of the tracked write gives the document's own Reject All** in every cell but: the 3 controls deleted (a control's delete is not tracked); 4 each of the table inserts and 2 `insert_ooxml` Replaces in a cell whose last block is a block control or a kept `mc:AlternateContent` (the table goes after the wrapper and docx4j's repair paragraph after it, plain under tracking, stays when the table is rejected); and 74 tracked `value`s, 72 of them by the restored paragraph's mark properties alone (CR-003 section 16.10's final-mark shift records the `w:pPr` in a `w:pPrChange`, which has no mark properties, so a mark's `w:b` or `w:i` does not come back) and 2 the new paragraph after a cell's control (nothing before it to carry its mark, so it is not marked). Before, a tracked `value` failed to give the cell back in 1,691 cells.
+- **A kept paragraph keeps its `w:pPr`, a deleted mark among it**: 195 cells end with a paragraph whose mark the source already deletes, after every write that keeps or leaves it (196 for `Paragraph.delete`: one cell whose last paragraph went, leaving the one before, whose mark the source deletes). Word reads such a mark at a cell's end as the cell's end (check 58 cases 9 and 10).
+- 195 cells (69 to 195 by write) stand in rows the document's own revisions remove, so Accept All or Reject All of the save has no such cell; they are counted as gone, not compared.
+
+### 10.5 The Word check's files (built, not staged)
+
+`out/cr016-a-word-check/` (git-ignored): `build.py`, its `README.txt` with what Word should show, and `MANIFEST-*.txt` with the SHA-1s and each file's cells breaking the rule, every file read back strictly.
+- **File 1** (`73ae725`'s code): `cr016a-1-untracked.docx` (21 regions: section 2.1's edits on a cell holding a numbered, underlined list item and on one holding a nested table and then that item), `cr016a-1-tracked.docx` (19, a control's delete not being tracked), the engine's `-tracked-accepted.docx` and `-tracked-rejected.docx`, and `cr016a-1-facade.docx` (`_Cell.add_table`). 0 cells breaking the rule in each.
+- **File 0** (Q14, `955547c`'s code, the same script): `cr016a-0-at-955547c-untracked.docx`, 16 cells breaking the rule (every insert at the end, both deletes, `clear`, the Replaces and both control deletes); Word should repair it. The same run's tracked files (10 cells breaking it, its Accept All 10) and facade file are kept beside it for reference.
+- Phase D adds Phase B's placeholder file and stages them together.
+
+### 10.6 Departures and choices, with why
+
+1. **`Range.insert_ooxml(table, "Replace")` over a cell paragraph's range** gives `[TBL, P(emptied, its w:pPr)]` here, core-ts `[P(its text gone, mark u), TBL, P(its w:pPr)]`. This package's `Range.insert_ooxml` deletes the range first and puts the blocks before the paragraph it leaves (CR-013 Phase C); the result keeps the rule and is Word's form for `Body.insertOoxml` (case 94). Unmeasured in Word; asserted as this package's.
+2. **`end_with_paragraph` returns the paragraph**, docx4j a boolean, as core-ts and section 4.2 have it; truthy where docx4j's is true.
+3. **The span edits' test of a cell's last mark is `ends_cell`** (section 4.8 item 1), where it was `mark_text == "\t"`. The two agree in every cell that keeps the rule; in a broken one (the last block a table) `mark_text` still reads the last paragraph as the cell's end, and a span edit can now take its mark, as Word reads it. No corpus cell is broken, and `Range.delete()` moved in none (10.4).
+4. **A tracked delete of a cell's end paragraph never marks its mark**, even with a paragraph before it in the cell, where the untracked delete removes it: core-ts's rule (`trackedDelete(tracker, cellEnd)`), which section 4.2 adopts. Word measured only the paragraph alone at the top of its cell (cases 90, 91). The sweep's 13 cells are this.
+5. **Q11's tracked `TableCell.value`** marks the old paragraph's mark deleted and, by this package's final-mark rule (CR-003 section 16.10), inserted too, the new paragraph keeping the cell's final mark unmarked with a `w:pPrChange` of the old properties; core-ts marks the new paragraph's own mark inserted. Accept All gives the value, Reject All the old content (but a mark's own run properties, 10.4); the Word check reads the form (10.5).
+6. **D3 skips paragraphs**, as core-ts's `endCellsWithParagraphs` does: a table in a text box inside an inserted paragraph is not repaired.
+7. **The facade's `_Cell.add_table`** uses an internal `target` on `insert_table_into`; `Body.insert_table` keeps Office JS's two locations.
+8. **Choices for the user**: none taken against core-ts or docx4j but item 1, recorded.
+
+### 10.7 Pre-existing tests whose expectation changed
+
+One, in `73ae725`: `tests/content/test_word_writers.py::test_the_one_paragraph_writers_write_crlf_as_one_break[TableCell.value-tracked]` allows one more paragraph for a tracked `TableCell.value`: the new table's own empty paragraph stays as a tracked deletion until accepted (Q11), where the setter removed it untracked. In `test_ranges.py` the three write tests now run to case 95 and name 86, 87 and 94 (10.3); nothing they held before 86 moved. No golden, ratchet row, Word-save comparison or acceptance artefact moved.
+
+### 10.8 The gates
+
+| gate | before (`955547c`) | after (`cfde1db`, on `c37769e`) |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 4,910 passed, 8 skipped, 1,307 deselected, 3 failed (2 min 37 s): the 3 goldens whose 8 `w:anchorLock` pins XPASS(strict) under docx4j-core-ts's then uncommitted regeneration ("3 known") | 4,953 passed, 8 skipped, 1,307 deselected, 0 failed (2 min 38 s) |
+| the full suite | 6,217 passed, 8 skipped, 3 failed, the same 3 (4 min 4 s) | 6,260 passed, 8 skipped, 0 failed (4 min 8 s); at `73ae725` the same, 4,953 and 6,260 |
+| the new tests | --- | 40 in `test_table_rules.py`; `test_ranges.py` 37, as before |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text` | 1,212 | 1,212 |
+| `tests/revisions`; CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`) | 614; 76 | 614; 76; `scripts/compare_word_resolution.py` 0 lines either side, on the acceptance copy before and the regeneration after |
+| `roundtrip.py` over `samples/` | `--normalise` and `--no-normalise`: 50 of 50, 0 differences, 34 `boolean-spelling`, 0 kept, 0 normalised, 0 skipped | the same, both ways |
+| `codegen/generate.sh --check` | --- | byte identical, 301 modules; the tree unchanged |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr016a/`, copied first) | a regeneration at `955547c` equal to the copy: 17 artefacts, 243 entries, 0 differing beyond the dates | 17 artefacts, 243 entries, 0 differing beyond the dates: no artefact edits a cell's end |
+| python-docx 1.2.0's parity (10.3) | 13 passed (14 with the new test) | 14 passed |
+| the cell sweep (10.4) | 14 of its 18 writes (nine, untracked and tracked) leave cells without a paragraph end or with their last mark marked deleted: each insert at the end 2,429, untracked and tracked; `clear` 2,429; `insert_ooxml` Replace 2,429 and 2,427 tracked; `Paragraph.delete` 2,396; a control's delete 2, both ways; a tracked `clear` and `Paragraph.delete` the last mark of 2,232 each | 0 cells ending without a paragraph, after any write, Accept All or Reject All |
+| the cost: `out/cr016-a-sweep/bench_cells.py <root>`, three rounds interleaved, the median of 7 runs each (ms) | 2,000 `insert_paragraph` in the body 44.3 to 46.3; 500 in a cell 12.8 to 16.9; 1,000 inserts and 999 `Paragraph.delete`s in the body 141.7 to 145.7; 300 and 300 in a cell 22.7 to 23.2; 300 `insert_xml` of a table in the body 177.2 to 179.3; 100 in a cell 60.8 to 61.2 | 47.6 to 48.6; 14.5 to 15.1; 145.1 to 146.9; 24.0 to 24.6; 176.8 to 180.2; 64.8 to 66.0 |
+
+The suites' difference is the 40 new tests and the 3 goldens `c37769e` released. The cost is about 1.5 µs an insert and 1 µs a delete in the body, within the rounds' noise elsewhere but for a table inserted in a cell: `wrapping_cell_of` (0.3 µs where there is no cell) and `end_cells_with_paragraphs` (0.27 µs over a paragraph, once its closure went, `cfde1db`) on every insert, `ends_cell` on every delete; in a cell, the end paragraph found before the insert and the rule read after it, and a table's D3 walk (about 40 µs more for a table inserted in a cell, the split included).
+
+### 10.9 Found, and not done
+
+1. **A tracked `TableCell.value`'s Reject All loses the old paragraph's mark properties** (72 cells of the sweep): the final-mark shift's `w:pPrChange` records a `PPrBase`, which has no `w:rPr`. CR-003 section 16.10's, not Phase A's; the text, the paragraph properties and the cell come back.
+2. **docx4j's repair under tracking stays after Reject All** where a table went after a cell's last control or kept branch (6 cells of the sweep): plain, as D2 and core-ts have it; marking it inserted would make the cell's final mark an inserted one, which Word cannot reject (CR-003 section 16.10).
+3. **A tracked deletion of a control's content leaves the control** (4 cells of the sweep), so Accept All of a tracked `clear()` keeps an empty control where the untracked one removes it: CR-003 section 4's, standing.
+4. **An own empty insertion holding an empty run is not taken back** by a tracked delete (`_tracked_delete`'s test is "no content"): a tracked `value` on a table this author has just inserted tracked leaves the cell's old empty paragraph as a tracked deletion (10.7). core-ts's test is the same.
+5. **`Paragraph.mark_text` still reads a broken cell's last paragraph as `\t`** (10.6 item 3). No reader moves in Phase A.
+6. **CR-014 phase 2 and CR-011 Phase E**, when they build cells, end them with `end_with_paragraph` (section 4.2); Phase D notes it in both CRs.
+7. During the sweep this session deleted one file of its own outside the scratchpad, `out/cr016-a-sweep/try.json`, a 20-document trial of the sweep it had just written; recorded because the brief allowed deletions in the scratchpad only.
+8. **`CLAUDE.md`** should name Phase A (left to the coordinator, per the brief; the sentence proposed is in the report).

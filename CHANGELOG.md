@@ -29,9 +29,21 @@ save. [CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md)
 read every on/off value, enumeration and colour of the run properties as Word 365 reads it, keep
 it as written, and write Word's reading on save, which closes a save 0.1.0 shared that changed
 meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
+[CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md)'s Phase A
+keeps Word's table rule, a cell ends with a paragraph, through every edit, which closes a defect
+0.1.0 shared: eleven edits left a cell Word opens as unreadable content (its Phases B to D
+follow).
 
 ### Added
 
+- **Word's table rule: `ends_with_paragraph` and `end_with_paragraph`**
+  ([CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md) Phase A,
+  section [10](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md#10-phase-a-implementation-notes-2026-10-24)),
+  exported from `docx4j_py.model.content` (`model/content/table_rules.py`), docx4j's
+  `TableRules` (`18a3a31f4`) as docx4j-core-ts ports it (`222cc20`): whether a cell's last block,
+  as Word reads it (past range markup, through block-level controls, custom XML and the branch
+  Word reads of a kept `mc:AlternateContent`), is a paragraph, for a `w:tc` or its list; and
+  Word's repair, an empty `w:p` appended after any wrapper, returned (None where the rule held).
 - **On/off values read as Word 365 reads them: `docx4j_py.model.values`**
   ([CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md) Phase A, section
   [10](docs/change-requests/CR-018-run-properties-as-word-reads-them.md#10-phase-a-and-c-implementation-notes-2026-10-24)),
@@ -193,6 +205,19 @@ meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdat
 
 ### Changed
 
+- **A table cell ends with a paragraph, as Word reads it, after every edit** (CR-016 Phase A,
+  core-ts CR-002 section 55, held to Word 365 in check 52's cases 86 to 95). `Paragraph.delete()`,
+  `Body.clear()`, `ContentControl.delete(keep_content=False)` and `Body.insert_ooxml(...,
+  location="Replace")` keep the paragraph a cell ends with, emptied, its `w:pPr` kept, where
+  removing it would leave the cell without one (a control's in the control's place, outside it);
+  tracked, its text is deleted and its mark never marked deleted, as Word does. A table put after
+  that paragraph (`insert_table`, `insert_xml`, `insert_ooxml`, `insert_markdown`,
+  `insert_element` at `"End"`, or `"After"` it) splits it at its end: it keeps its text, with a
+  new mark in its last run's formatting (inserted, tracked), and its old `w:pPr` goes on an empty
+  paragraph after the table. Anywhere else an insert leaves a cell ending in a table, docx4j's
+  repair (an empty paragraph after any wrapper, plain under tracking); the cells of what goes in
+  are repaired before it goes in. A file that already breaks the rule is left as read until an
+  edit touches that cell; nothing is repaired on load. No reader moves.
 - **A save writes Word's reading of a kept value, in a plain normal form** (CR-018 section 4.7,
   Q5 and Q17, the user: "they are entitled to assume we don't write dodgy content"): an on/off
   value the parse kept as its text is written bare where Word reads it as on (`"1"` where the
@@ -767,6 +792,19 @@ meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdat
 
 ### Fixed
 
+- **Edits left cells Word repairs** (CR-016 section 2.1, a defect 0.1.0 shared): eleven edits left
+  a cell ending in a table (`insert_table(..., location="End")` in a cell, `insert_xml`,
+  `insert_ooxml` and `insert_markdown` of a table at a cell's end) or holding no block at all
+  (`Paragraph.delete()` of a cell's only paragraph, `body.clear()`, a control's delete), which
+  Word 365 opens as unreadable content; tracked, a cell's last mark was marked deleted, which Word
+  never writes. Over the 422 documents of `out/cr012-b-corpus/` and their 2,435 main-part cells,
+  every cell nine writes edited, untracked and tracked, now ends with a paragraph, and so does
+  every cell after Accept All and Reject All of them (CR-016 section 10.4).
+- **A tracked `TableCell.value` lost the cell's old content untracked** (CR-016 Q11): it is now a
+  tracked deletion, the new paragraph inserted after it, so Reject All gives the cell back
+  (`Table.values` and `TableRow.values` with it). The python-docx facade's `_Cell.add_table`
+  keeps python-docx 1.2.0's result exactly (Q13): the cell's paragraph untouched, the table, one
+  plain `<w:p/>`.
 - **On/off values as Word reads them** (CR-018 Phase A, section 1.2's findings): `w:b
   w:val=" false"` and `"false "` (bold in Word) were trimmed, read off and **saved `0`**, the one
   save over Word's probes that changed meaning; they are kept, read on and saved bare. `"off"`
