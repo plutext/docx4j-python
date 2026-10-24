@@ -799,12 +799,16 @@ class Paragraph:
 
         The runs ``get_range("Content").runs`` gives --- each run holding a
         segment of :attr:`text`, once, in order, an equation's math runs left
-        out --- read from one walk of the segments.
+        out --- read from one walk of the segments, by :attr:`Range.runs`'s
+        rule over ``0`` to the text's end, so an empty run at either end is not
+        one of them.
         """
         runs: list[Any] = []
         seen: set[int] = set()
-        for segment in self.segments():
-            if segment.math or segment.end <= 0 or id(segment.run) in seen:
+        segments = self.segments()
+        end = segments[-1].end if segments else 0
+        for segment in segments:
+            if segment.math or segment.end <= 0 or segment.start >= end or id(segment.run) in seen:
                 continue
             seen.add(id(segment.run))
             runs.append(segment.run)

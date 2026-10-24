@@ -242,6 +242,20 @@ def test_the_mark_read_leaves_out_the_marks_own_revisions_and_a_placeholders_run
     assert shown.font.bold is True
 
 
+def test_a_paragraphs_font_reads_the_runs_of_its_content_range_so_an_empty_run_at_either_end_is_not_read(new_package):
+    """core-ts ``getFont`` reads ``getRange('Content').runs``: an empty run at the start or the end holds none of the text."""
+    body = new_package.body
+    body.insert_xml(
+        '<w:p><w:r><w:t>abc</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t></w:t></w:r></w:p>'
+        '<w:p><w:r><w:rPr><w:b/></w:rPr><w:t></w:t></w:r><w:r><w:t>abc</w:t></w:r></w:p>'
+        '<w:p><w:r><w:t>ab</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t></w:t></w:r><w:r><w:t>c</w:t></w:r></w:p>',
+        location="End",
+    )
+    for p, bold in zip(body.paragraphs[-3:], (False, False, None)):
+        assert p.font.bold is bold
+        assert p.get_range("Content").font.bold is bold
+
+
 def test_a_font_writes_change_report_records_every_runs_direct_value_before_the_write_none_where_they_differ(new_package):
     p = new_package.body.insert_paragraph("plain bold plain")
     p.search("bold")[0].font.bold = True
