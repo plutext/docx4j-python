@@ -1,6 +1,6 @@
 # CR-016: A cell ends with a paragraph; `Font`, placeholders and deleted marks read as Office JS reads them; wildcards across marks --- the port of docx4j-core-ts `222cc20` and `3ba1e68`
 
-**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items:
+**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). Not started.
 1. Word's table rule (core-ts CR-002 section 55): a cell ends with a paragraph.
 2. `Font` reading every run in scope (section 59).
 3. A control showing its placeholder read as no text (core-ts CR-012 section 18).
@@ -585,9 +585,11 @@ CLAUDE.md asks for a Word check after any change to the content API's inserts. P
 7. **The grapheme filter moves plain search.** A hit inside a decomposed accent (`e` before U+0301) goes, in `search`, `find` and `replace_text`. That is core-ts's behaviour and the point of it, but it is a move, and the audit lists it.
 8. **core-ts moves on.** Its `main` is unpushed and live. This CR ports `222cc20` and `3ba1e68`, cited by commit, and records what it ported. A later core-ts change is a later amendment, as CR-013's phase 3 was.
 
-## 8. Questions (open; each with a recommendation)
+## 8. Questions (decided 2026-10-24)
 
-1. **Q1. Does 0.2.0 wait for CR-016?** *Recommended: no.* The subset passes (247 members, section 1), CR-016 changes behaviour and no member, and 0.2.0 is otherwise ready. CR-016 goes in the next release with its own CHANGELOG entry. Phase A alone fixes cells Word repairs, a defect 0.1.0 and 0.2.0 share, so if the user wants it sooner it can go out first as a point release.
+**Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"). **Q1 is decided against its recommendation: 0.2.0 waits for CR-016.** Q2 to Q14 are decided as recommended. Q2's confirmation is given with them: checks 58's and 59's files may be used here under Apache-2.0. The questions stand below as they were asked.
+
+1. **Q1. Does 0.2.0 wait for CR-016?** *Recommended: no.* **Decided: yes, it waits** (the user, 2026-10-24). The subset passes (247 members, section 1), CR-016 changes behaviour and no member, and 0.2.0 is otherwise ready. CR-016 goes in the next release with its own CHANGELOG entry. Phase A alone fixes cells Word repairs, a defect 0.1.0 and 0.2.0 share, so if the user wants it sooner it can go out first as a point release.
 2. **Q2. Check 58's and 59's files here under Apache-2.0.** The files are:
    - the two files Word read, from the share: `58-measures.docx` and `59-wildcard-marks.docx`;
    - Word's save of check 58, from core-ts `222cc20`, where the share holds the same bytes;
