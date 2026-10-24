@@ -205,27 +205,27 @@ def end_cells_with_paragraphs(blocks: list) -> list[P]:
     paragraph. Returns the paragraphs appended.
     """
     appended: list[P] = []
-
-    def visit(items: list | None) -> None:
-        for item in items or ():
-            if isinstance(item, (P, str)):
-                continue
-            if isinstance(item, Tbl):
-                rows: list[Tr] = []
-                _every(item.content, Tr, rows)
-                for row in rows:
-                    cells: list[Tc] = []
-                    _every(row.content, Tc, cells)
-                    for cell in cells:
-                        visit(cell.content)
-                        p = end_with_paragraph(cell)
-                        if p is not None:
-                            appended.append(p)
-            elif is_alternate_content(item):
-                for branch in _branch_lists(item):
-                    visit(branch)
-            else:
-                visit(block_children_of(item))
-
-    visit(blocks)
+    _end_cells(blocks, appended)
     return appended
+
+
+def _end_cells(items: list | None, appended: list[P]) -> None:
+    for item in items or ():
+        if isinstance(item, (P, str)):
+            continue
+        if isinstance(item, Tbl):
+            rows: list[Tr] = []
+            _every(item.content, Tr, rows)
+            for row in rows:
+                cells: list[Tc] = []
+                _every(row.content, Tc, cells)
+                for cell in cells:
+                    _end_cells(cell.content, appended)
+                    p = end_with_paragraph(cell)
+                    if p is not None:
+                        appended.append(p)
+        elif is_alternate_content(item):
+            for branch in _branch_lists(item):
+                _end_cells(branch, appended)
+        else:
+            _end_cells(block_children_of(item), appended)
