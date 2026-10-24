@@ -486,3 +486,22 @@ parity run, which measures the pushed branch, will propose moving these two back
 closes such a PR unmerged. Nothing here depends on it: this repository reads the sibling checkout.
 *2026-10-13:* the branch is pushed with `2e381ef26` in it, so the weekly run now measures the same
 rules.
+
+## 11. docx4j-core-ts has ported the colour resolver: what Phase B now has to follow (2026-10-24)
+
+docx4j-core-ts's session reported it at the user's word: CR-008 phase 2, `27be4a7`, pushed to its `main` at `7976c42` and not released. It covers the ground of this CR's Phase B. Under CR-003 section 23.3's parity, its behaviour is owed here, and Phase B now has a second reading beside docx4j's own.
+- **`Font.color`'s effective view reads a theme colour as Word draws it.**
+  - It takes the effective `w:color`'s `w:themeColor`, with its tint or shade (HSL luminance; tint wins), through the theme and `w:clrSchemeMapping`, over the `w:val` cache.
+  - Word's own value is returned where it is within one unit (a current cache).
+  - Check 53's Heading 1 reads `#0F4761` (it was `#365F91`), as Office JS does.
+  - Automatic still reads `#000000`.
+  - **The direct view** (`get_font(direct=True)` here) keeps the written `w:val`, core-ts's D2 as the user decided it there. That is this CR's question 2's recommendation in effect.
+- **The port** is all of docx4j's `org.docx4j.model.color` as it stands at docx4j `1fffc20a3`: `ResolvedColor`, `ThemeColors` (docx, slides with their masters' maps and overrides, xlsx, charts), `WordColors`, `DrawingMLColors` (`691620fb7`'s luminance rounding), `SpreadsheetColors` and `StyleFill`.
+  - `PropertyResolver` gains `getThemeColors()`, `resolveColor` and the rest.
+  - Only the WordprocessingML half is this package's until CR-001 Phase D and CR-002 Phase C.
+- **The vectors** are docx4j-core-tests' `theme-colors/`, copied into core-ts's `test/theme-colors/` with a SHA-1 manifest. Every probe's tally there equals docx4j's own `ThemeColourProbesTest`, family by family.
+  - The corpus triples come out 76 exact and 41 within one, of 117.
+  - docx4j's javadoc ("119 ... 77 exact") is stale.
+- **A package with no theme** reads the default theme its `fonts.defaultTheme` names; the 2007 and 2013 themes both give `4472C4` (docx4j CR-034 D2).
+
+**For Phase B here:** port docx4j's package as core-ts did, held to the same vectors copied from docx4j's tree with their SHA-1s. `Font.color`'s effective view then moves exactly where 10.7's measurement says a theme reference meets a stale cache. CR-013's check 53 assertion of `font.color` (`#000000` against `""`, listed "CR-009's" in CR-013 section 6.1) and CR-016's `Font` reading every run both take the new answer. When Phase B is scheduled is the user's call, including whether 0.2.0 waits for it.
