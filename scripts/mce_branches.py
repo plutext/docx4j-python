@@ -506,7 +506,51 @@ def reader_answers(path: Path) -> dict[str, Any]:
     read("main.styles_in_use", lambda: sorted(load(path).main_document_part.styles_in_use()))
     for verb in ("accept_all", "reject_all"):
         read(f"revisions.{verb}", lambda verb=verb: _resolved(path, verb))
+    # CR-016 Phase B: Font over every paragraph and every table cell, over a
+    # package of its own and read last, since a range's font read split runs
+    # until that phase (its Q12)
+    read("body.fonts", lambda: _fonts(load(path)))
     return out
+
+
+#: What ``body.fonts`` reads of each font (CR-016 section 6.2).
+FONT_KEYS = ("bold", "italic", "underline", "name", "size", "color", "highlight_color")
+
+
+def _font_of(font: Any) -> dict[str, Any] | str:
+    """The seven properties a font reports, or the error its read raised."""
+    try:
+        return {key: getattr(font, key) for key in FONT_KEYS}
+    except Exception as exc:  # noqa: BLE001 - the error is the answer
+        return f"ERROR {type(exc).__name__}: {exc}"[:200]
+
+
+def _fonts(package: Any) -> dict[str, Any]:
+    """Each paragraph's ``font``, and each table cell's (its body's ``"Whole"`` range's), by address.
+
+    CR-016 section 6.2: the readers' audit read no font until Phase B, which
+    makes ``Font`` read every run in scope. A cell is read through its body's
+    range, so that one paragraph reads a :class:`Font` and several a
+    ``MixedFont``.
+    """
+    body = package.body
+    paragraphs = [[p.address, _font_of(p.font)] for p in body.paragraphs]
+    cells: list[list[Any]] = []
+    for table in body.tables:
+        try:
+            rows = table.rows
+        except Exception as exc:  # noqa: BLE001
+            cells.append([table.address, f"ERROR {type(exc).__name__}"])
+            continue
+        for row in rows:
+            for cell in row.cells:
+                try:
+                    font = cell.body.get_range().font
+                except Exception as exc:  # noqa: BLE001
+                    cells.append([cell.address, f"ERROR {type(exc).__name__}: {exc}"[:200]])
+                    continue
+                cells.append([cell.address, _font_of(font)])
+    return {"paragraphs": paragraphs, "cells": cells}
 
 
 def _office_offsets(package: Any) -> dict[str, Any]:
