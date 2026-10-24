@@ -28,7 +28,7 @@ import re
 from typing import TYPE_CHECKING, Any, Literal
 
 from docx4j_py.model.content.errors import BindingError
-from docx4j_py.model.values import is_on, on_off
+from docx4j_py.model.values import effective, is_on, on_off
 from docx4j_py.wml import el
 from docx4j_py.wml.sdt import CHECKBOX_FONT, W14_NS, W15_NS, W_NS, sdt_property
 
@@ -143,7 +143,8 @@ class CheckboxContentControl(_KindView):
     def is_checked(self) -> bool:
         """Whether the box is ticked. Office JS ``isChecked``."""
         checked = getattr(self.element, "checked", None)
-        return checked is not None and on_off(getattr(checked, "val", None), default=False)
+        # a bare <w14:checked/> is checked: w14:val's schema default is true (CR-018 Phase C)
+        return checked is not None and on_off(effective(checked, "val"))
 
     @is_checked.setter
     def is_checked(self, value: bool) -> None:

@@ -26,7 +26,7 @@ from typing import Any
 from docx4j_py.docx._base import recording
 from docx4j_py.docx.enums import WD_STYLE_TYPE
 from docx4j_py.model.content.styles import display_name_of, style_id_of
-from docx4j_py.model.values import is_on, on_off
+from docx4j_py.model.values import effective, is_on, on_off
 from docx4j_py.wml import Style, StyleNext
 from docx4j_py.wml import Styles as StylesElement
 
@@ -147,7 +147,7 @@ class BaseStyle:
     @property
     def builtin(self) -> bool:
         """True when ``w:customStyle`` is absent or off, as python-docx decides it (and Word reads an on/off value)."""
-        return not on_off(self._style.custom_style, default=False)
+        return not on_off(effective(self._style, "custom_style"))
 
     # -- the on/off attributes --------------------------------------------
 
@@ -428,7 +428,7 @@ class Styles:
             value = getattr(value, "value", value)
             if value is None or str(value) != wanted.xml_value:
                 continue
-            if on_off(style.default, default=False):
+            if on_off(effective(style, "default")):
                 found = style
         return None if found is None else style_factory(found, self._package)
 

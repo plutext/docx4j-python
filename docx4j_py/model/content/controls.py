@@ -50,7 +50,7 @@ from docx4j_py.model.content.text_model import (
     text_of_view,
     text_run,
 )
-from docx4j_py.model.values import is_on, on_off
+from docx4j_py.model.values import effective, is_on, on_off
 from docx4j_py.traversal import element_name, run_items_of, text_of
 from docx4j_py.wml import (
     CTSdtCell,
@@ -936,7 +936,7 @@ class ContentControl:
         text = sdt_property(self.sdt_pr, "text", W_NS)
         if text is None:
             return self.type != "PlainText"
-        return on_off(getattr(text, "multi_line", None), default=False)
+        return on_off(effective(text, "multi_line"))  # absent: single-line (CR-059)
 
     # -- the XML mapping and the typed kinds --------------------------------
 
@@ -1323,7 +1323,7 @@ def plain_text_lines_of(control: ContentControl) -> str | None:
     """
     text = sdt_property(control.sdt_pr, "text", W_NS)
     if text is not None:
-        return "multi" if on_off(getattr(text, "multi_line", None), default=False) else "single"
+        return "multi" if on_off(effective(text, "multi_line")) else "single"
     return "single" if is_bound_block_control(control) else None
 
 

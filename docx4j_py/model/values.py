@@ -31,17 +31,32 @@ same rule by extension, as docx4j's ``OnOffAdapter`` reads all of them
 :func:`on_off_normal_form` is what a save writes for a kept value (section 4.7,
 :mod:`docx4j_py.openpackaging.normalise`).
 
+:func:`effective` (CR-018 Phase C, section 4.4) is the one reader of a value the
+file leaves out: the stated value, else the schema's default, typed. It answers
+**absence**; the readers above answer **a present value's spelling**, so an
+on/off attribute is ``on_off(effective(obj, "fld_lock"))``.
+
 CR-018 Phase B adds the enumerations' reader (``in_enumeration``) and the
-colour reader (``colour``) here; Phase C adds ``effective()``, the one reader of
-a value the file leaves out.
+colour reader (``colour``) here.
 """
 
 from __future__ import annotations
 
+import threading
 from enum import Enum
 from typing import Any
 
-__all__ = ["OFF", "XSD_FALSE", "XSD_TRUE", "is_on", "on_off", "on_off_normal_form", "xsd_boolean"]
+__all__ = [
+    "AUDITED_NAMESPACES",
+    "OFF",
+    "XSD_FALSE",
+    "XSD_TRUE",
+    "effective",
+    "is_on",
+    "on_off",
+    "on_off_normal_form",
+    "xsd_boolean",
+]
 
 #: Rule 1: the only spellings Word reads as off. Exactly these, case-sensitive, untrimmed.
 OFF: frozenset[str] = frozenset({"false", "off", "0"})
@@ -128,3 +143,68 @@ def xsd_boolean(value: Any, default: bool | None = None) -> bool | None:
         return False
     return default
 
+
+# ---------------------------------------------------------------------------
+# effective(): the value the file leaves out (CR-018 Phase C, section 4.4)
+# ---------------------------------------------------------------------------
+
+W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+
+#: The namespaces whose schema defaults have been audited, and only these (CR-018 Q10):
+#: ``w``, by docx4j's #697 and CR-059 and the refresh from ``46c727bf8`` (52 fields, every
+#: one ``true`` or ``false``); ``w14``, whose three are docx4j's own patch of ST_OnOff
+#: (``w14:CT_OnOff``, ``conflictMode`` and ``discardImageEditingData``, default true, which
+#: docx4j's getters answer for a bare element; unmeasured in Word, which always writes
+#: ``w14:val``); and ``w15``, which declares none of its own (its on/off elements take
+#: ``w:val``). Unaudited defaults are how docx4j's getters went wrong (#697, #641, the
+#: autospacing bug, CR-059's ``anchorLock`` regression, the FontEmbedder bug), so anywhere
+#: else :func:`effective` raises until someone audits that namespace.
+AUDITED_NAMESPACES: frozenset[str] = frozenset({W, W14, W15})
+
+_ATTRIBUTES: dict[type, dict[str, Any]] = {}
+_ATTRIBUTES_LOCK = threading.Lock()
+
+
+def _attribute_vars(cls: type) -> dict[str, Any]:
+    """A class's attribute vars by field name, built once per class."""
+    found = _ATTRIBUTES.get(cls)
+    if found is None:
+        from docx4j_py.runtime import context
+
+        found = {var.name: var for var in context().build(cls).get_attribute_vars()}
+        with _ATTRIBUTES_LOCK:
+            _ATTRIBUTES[cls] = found
+    return found
+
+
+def effective(obj: Any, name: str) -> Any:
+    """The value `obj` states for attribute `name`, else the schema's default, typed; else None.
+
+    The stated value wins whatever it is, a kept ``str`` included (``" false"``,
+    ``"red"``): the readers above decide what it means. Absent, it is the
+    fork's ``XmlVar.schema_default_value`` (stage 13, item 31), the schema
+    default converted once as a parse would convert it: ``True`` for
+    ``"true"``, an enumeration's member. The field itself never changes: it
+    stays None when absent, and nothing but this reads the default.
+
+    Raises:
+        LookupError: `name` is not an attribute of `obj`'s class, or the
+            attribute's namespace is not in :data:`AUDITED_NAMESPACES`
+            (CR-018 Q10).
+    """
+    var = _attribute_vars(type(obj)).get(name)
+    if var is None:
+        raise LookupError(f"{type(obj).__name__} has no attribute field {name!r}")
+    qname = var.qname or ""
+    namespace = qname[1:].split("}", 1)[0] if qname.startswith("{") else ""
+    if namespace not in AUDITED_NAMESPACES:
+        raise LookupError(
+            f"{type(obj).__name__}.{name}: the schema defaults of {namespace or 'no namespace'!r} are not audited "
+            "(CR-018 Q10); read the field, which is None when the attribute is absent"
+        )
+    value = getattr(obj, name, None)
+    if value is not None:
+        return value
+    return var.schema_default_value

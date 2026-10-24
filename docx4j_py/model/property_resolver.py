@@ -48,7 +48,7 @@ from docx4j_py.model.style_util import (
     has_direct_formatting_rpr,
     is_cyclic,
 )
-from docx4j_py.model.values import is_on, on_off
+from docx4j_py.model.values import effective, is_on, on_off
 
 __all__ = [
     "WORD_DEFAULT_CELL_MARGIN_TWIPS",
@@ -189,7 +189,7 @@ class PropertyResolver:
         if styles is not None:
             self._scan_styles()
             for style in styles.style or ():
-                if not on_off(style.default, default=False) or style.style_id is None:
+                if not on_off(effective(style, "default")) or style.style_id is None:
                     continue
                 kind = _style_kind(style)
                 if kind == "paragraph" and self.default_paragraph_style_id is None:

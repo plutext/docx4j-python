@@ -89,7 +89,7 @@ from docx4j_py.model.text.result import (
     TextWarning,
 )
 from docx4j_py.model.text.trees import Context, PackageTrees
-from docx4j_py.model.values import is_on, on_off, xsd_boolean
+from docx4j_py.model.values import effective, is_on, on_off, xsd_boolean
 
 __all__ = ["Extractor", "normalize"]
 
@@ -717,7 +717,7 @@ class Extractor:
             settings = self.trees.settings
             protect = getattr(settings, "document_protection", None) if settings is not None else None
             self._forms_protected = (
-                protect is not None and _v(protect.edit) == "forms" and on_off(protect.enforcement, default=False)
+                protect is not None and _v(protect.edit) == "forms" and on_off(effective(protect, "enforcement"))
             )
         return self._forms_protected
 
@@ -1382,10 +1382,11 @@ class Extractor:
             run.note_id = "" if note_id is None else str(note_id)
             run.source = TextRunSource(r, para.p)
             if not (hidden and not self.options.hidden):
-                custom = _attr(item, "customMarkFollows")
-                if not is_any_element(item):
-                    custom = getattr(item, "custom_mark_follows", None)
-                run.note_number = self.context.note_number(run.note_type, run.note_id, on_off(custom, default=False))
+                if is_any_element(item):
+                    custom = on_off(_attr(item, "customMarkFollows"), default=False)
+                else:
+                    custom = on_off(effective(item, "custom_mark_follows"))  # absent: off (CR-059)
+                run.note_number = self.context.note_number(run.note_type, run.note_id, custom)
             para.block.runs.append(run)
             return
         if name in ("footnoteRef", "endnoteRef"):
@@ -2532,9 +2533,14 @@ EMPTY_FORM_FIELD = "\u2002" * 5
 
 
 def _written(item: Any, field_name: str, attribute: str) -> bool:
-    """An on/off attribute as Word reads it (CR-018), false when absent (``w:fldLock``)."""
-    value = (item.attributes or {}).get(f"{_W}{attribute}") if is_any_element(item) else getattr(item, field_name, None)
-    return on_off(value, default=False)
+    """An on/off attribute as Word reads it (CR-018), its schema default when absent (``w:fldLock``: off, docx4j #697).
+
+    A typed element reads through :func:`~docx4j_py.model.values.effective`; a
+    wildcard one, which has no schema behind it here, reads absence as off.
+    """
+    if is_any_element(item):
+        return on_off((item.attributes or {}).get(f"{_W}{attribute}"), default=False)
+    return on_off(effective(item, field_name))
 
 
 def _ff_data(fld_char: Any) -> Any:
