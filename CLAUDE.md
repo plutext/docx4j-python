@@ -59,12 +59,18 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
 - **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058) and **CR-015**
   (Markdown output safety): proposed. **CR-016** (core-ts's cell, font, placeholder and wildcard
   changes): decided 2026-10-24. Phase A (a table cell ends with a paragraph, as Word reads it:
-  `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B to D proposed,
-  and Phase D's Word check covers A.
+  `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B implemented
+  2026-10-24 (`Font` reads every run in scope, `None`/`""`/`"Mixed"` where they differ, a paragraph
+  its text's runs, else a placeholder's, else its mark, an automatic colour `#000000` in the
+  effective view, a read splitting nothing; a run in a control showing its placeholder is no text to
+  every Office JS reader, `hidden_runs_of`; `ContentControl.insert_text` writes in its place and
+  clears the flag; `paragraph.text = ...` over a run-level one is refused, `range.holds_placeholder`;
+  no `\r` after a deleted mark in the default view, none after an inserted one in the original); C
+  and D proposed, and Phase D's Word check covers A and B.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
-  user, 2026-10-24); CR-018 and CR-009 Phase B are done, CR-016 B to D remain.
+  user, 2026-10-24); CR-018 and CR-009 Phase B are done, CR-016 C and D remain.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
