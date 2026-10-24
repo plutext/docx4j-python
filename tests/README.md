@@ -532,6 +532,15 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `word/document.xml` alone, its replacement now the `w:ins` ("second", with the comment over it)
 > before the `w:del` ("first"), Word's order (CR-013 section 13.1 item 7).
 
+> **2026-10-24, CR-018 Phases A and C: passed** (the user: "__tmp/python-cr018a/ done, all opened
+> without a repair prompt"). Phase A reads every on/off value as Word 365 does and, by default,
+> saves each value the exact parse kept in the form Word reads as it read the source (CR-018
+> section 10). Staged in `__tmp/python-cr018a/` (21 files, built by
+> `out/cr018-a-word-check/build.py` at `2d37778`): the nine on/off probes of rounds one and two as
+> sources, each saved normalised; `props-b-case` saved with `normalise=False`; `onoff-valid` with
+> bold set across V4 to V6; `props-b-case` with K5 unbolded. All 21 opened without a repair prompt.
+> Acceptance: 17 artefacts, 243 entries, 0 differ beyond the dates.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
