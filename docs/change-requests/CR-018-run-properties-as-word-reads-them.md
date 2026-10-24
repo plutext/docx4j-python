@@ -530,8 +530,11 @@ Nothing reads the defaults until Phase C, so the refresh changes no answer.
 | a `w:u`, `w:highlight`, `w:vertAlign` or `w:em` value outside its enumeration (or missing) | the `w:val` dropped, and the element with it where nothing else is on it (`w:u` keeps its `w:color`) | as if absent: a style's value shows (rounds five and six) |
 | `w:color/@w:val` or `w:u/@w:color`: a name or a hex in any case, `#`, padding | `RRGGBB`, upper case | that colour |
 | `w:color/@w:val` or `w:u/@w:color` invalid (`Auto`, `F00`, `""`, ...) | the attribute dropped (and an empty `w:color` with it) | as if absent (rounds five and six) |
+| `w:color/@w:val` invalid **beside a `w:themeColor`** | `w:val="auto"`, the theme attributes kept | the theme colour, which wins over `w:val` (CR-009); `w:val` is required, so it is set rather than dropped |
 | `w:shd/@w:fill` or a border colour: a name or hex | `RRGGBB` | that colour |
 | `w:shd/@w:fill` or a border colour invalid | `auto` | automatic, overriding a style (round six) |
+
+**Values that bind as they are** (an exact `true`, `false`, `1`, `0`, an enumeration member, six hex digits as bytes) are not the normaliser's: the serialiser writes them as today, booleans numeric (`"1"`, `"0"`). So "bare" in the table is the form of a rewritten on value only, and an existing `w:val="1"` stays `"1"`. Both mean on to every reader.
 
 **Scope and cost.**
 - **Only parts the save re-marshals.** A part never unmarshalled is still written byte for byte (CLAUDE.md's rule), so the normaliser only touches what the caller read or edited. That is the user's case: a file a caller edited.
