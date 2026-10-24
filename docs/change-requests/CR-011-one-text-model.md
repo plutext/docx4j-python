@@ -2026,3 +2026,26 @@ checked. Refusals write nothing.
   answers are written out in the test.
 - **`tests/README.md`'s Word acceptance record** gains Phase F's entry when the check of 16.7 has
   been run.
+
+## 17. docx4j `VERSION_17_3_5`'s `DOCPROPERTY` changes (2026-10-25)
+
+docx4j-25 told this session of the field changes pushed in docx4j `VERSION_17_3_5` (`5163c2986..ea5461ee9`). Two are
+the resolver's, which section 6 ported, and the user asked for them in 0.2.0 ("fold it into 0.2.0 as a small
+follow-up"):
+- **`ea5461ee9` (#244):** a `DOCPROPERTY` name is matched in any case, as Word 365 matches it. A custom property's
+  name is taken exactly first, else in any case (Java's `equalsIgnoreCase`, `resolvers._same_name`), and the built-in
+  names in any case (`_built_in`).
+- **`f15bce627` (#277), its resolver half:** `Keywords` is a core property, read as `DOCPROPERTY Keywords`.
+
+The probe and Word's save of it are copied from docx4j into `tests/fixtures/docprop-case/` (Apache-2.0, `SHA1SUMS`;
+the git blob ids are docx4j's). Under `fields: update` the text model gives every result Word's save holds but K7's,
+a property that doesn't exist. Word writes its error text there, and the field keeps its cached result here, as
+docx4j's `FieldUpdater` keeps the old one. At `67db0d5`, K2 to K4 and K6 kept their cached `OLD`
+(`tests/text/test_docproperty_case.py`, 5 tests). `tests/text` and the private readers' test, 1,925, pass.
+
+The rest needs nothing here. `d1cd9e74b` (#78), a simple field made complex keeping its result's runs and bookmarks,
+is `split.unfold_simple_field`'s behaviour already, since the field's content is kept whole. `8b64052bd` (`FieldRef`'s
+`setResult`), `92ecdbe75` (`getInstr`, `getFldName`), the `FieldUpdater` half of `f15bce627` and `ee9633883`
+(`VariablePrepare`) have no counterpart in this package, which writes no field results. Its text model computes `AUTHOR`,
+`TITLE` and the other document information fields from the core properties already.
+

@@ -230,6 +230,15 @@ not open in Word after a save.
 
 ### Changed
 
+- **A `DOCPROPERTY` name is matched in any case, and `Keywords` is a core property**, as docx4j
+  `VERSION_17_3_5` reads them (its `ea5461ee9`, #244, measured in Word 365; and `f15bce627`, #277):
+  `DocPropertyResolver` takes a custom property's name exactly first, else in any case, and
+  the built-in names in any case. So under `fields: update` the text model computes
+  `DOCPROPERTY client` from a property named `Client`, and `DOCPROPERTY title` from the title,
+  where 0.1.0 kept the cached result. docx4j's probe and Word's save of it are in
+  `tests/fixtures/docprop-case/`: every result Word's but a missing property's, which keeps its
+  cached result where Word writes its error text, as docx4j keeps the old one
+  (CR-011 section 17).
 - **`Font.color` reads a theme colour as Word draws it** (CR-009 Phase B, question 2): where the
   effective `w:color` has a `w:themeColor`, the effective read reports the theme's colour with its
   tint or shade, through the document's theme and `w:clrSchemeMapping`, where 0.1.0 reported the

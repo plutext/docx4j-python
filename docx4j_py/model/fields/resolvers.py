@@ -3,7 +3,10 @@
 docx4j's ``DocPropertyResolver`` and ``DocVariableResolver`` at
 ``198d015a3``, read without changing the package (each part with
 ``read_contents``). A name with no value raises :class:`FieldValueError`, and
-the field keeps its cached result.
+the field keeps its cached result. Since docx4j ``VERSION_17_3_5``
+(``ea5461ee9``, #244, measured in Word 365), a ``DOCPROPERTY`` name is matched in
+any case, a custom property's exactly first; and ``Keywords`` is a core
+property (``f15bce627``, #277).
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ _CORE = {
     "Author": "creator",
     "Comments": "description",
     "CreateTime": "created",
+    "Keywords": "keywords",
     "LastPrinted": "last_printed",
     "LastSavedBy": "last_modified_by",
     "LastSavedTime": "modified",
@@ -42,6 +46,18 @@ _EXTENDED = {
     "Words": "words",
 }
 _UNSUPPORTED = frozenset({"Bytes"})
+
+
+def _same_name(a: str, b: str) -> bool:
+    """Java's ``equalsIgnoreCase``: the same length, each character the same, or the same in upper or lower case."""
+    if len(a) != len(b):
+        return False
+    return all(x == y or x.upper() == y.upper() or x.lower() == y.lower() for x, y in zip(a, b))
+
+
+def _built_in(names: Any, key: str) -> str | None:
+    """The built-in property's name as the table spells it, `key` matched in any case, as Word matches it; None if none."""
+    return next((name for name in names if _same_name(name, key)), None)
 
 
 def _contents(part: Any) -> Any:
@@ -80,12 +96,19 @@ class DocPropertyResolver:
         """
         value: Any = None
         if self.custom is not None:
-            value = next((p for p in self.custom.property or () if p.name == key), None)
-        if key in _CORE:
-            value = _first(getattr(self.core, _CORE[key], None)) if self.core is not None else None
-        elif key in _EXTENDED:
-            value = getattr(self.extended, _EXTENDED[key], None) if self.extended is not None else None
-        elif key in _UNSUPPORTED:
+            # exactly, else in any case: Word 365 finds a property named Client for client, CLIENT and
+            # "cLiEnT" (docx4j #244, ea5461ee9)
+            properties = self.custom.property or ()
+            value = next((p for p in properties if p.name == key), None)
+            if value is None:
+                value = next((p for p in properties if p.name is not None and _same_name(p.name, key)), None)
+        core = _built_in(_CORE, key)
+        extended = _built_in(_EXTENDED, key)
+        if core is not None:
+            value = _first(getattr(self.core, _CORE[core], None)) if self.core is not None else None
+        elif extended is not None:
+            value = getattr(self.extended, _EXTENDED[extended], None) if self.extended is not None else None
+        elif _built_in(_UNSUPPORTED, key) is not None:
             return None
         if value is None:
             raise FieldValueError(f"No value found for DOCPROPERTY {key}")
