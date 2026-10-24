@@ -31,8 +31,9 @@ it as written, and write Word's reading on save, which closes a save 0.1.0 share
 meaning (`w:b w:val=" false"`, bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
 [CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md)'s Phase A
 keeps Word's table rule, a cell ends with a paragraph, through every edit, which closes a defect
-0.1.0 shared: eleven edits left a cell Word opens as unreadable content (its Phases B to D
-follow). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
+0.1.0 shared: eleven edits left a cell Word opens as unreadable content; its Phase B reads
+`Font`, a control showing its placeholder and a deleted paragraph mark as Office JS reads them,
+and writes into a placeholder as Word does (its Phases C and D follow). [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours
 as Word draws them, so `Font.color` reads a theme colour in the theme's colour rather than the
 cache written beside it.
 
@@ -250,6 +251,59 @@ cache written beside it.
   repair (an empty paragraph after any wrapper, plain under tracking); the cells of what goes in
   are repaired before it goes in. A file that already breaks the rule is left as read until an
   edit touches that cell; nothing is repaired on load. No reader moves.
+- **`Font` reads every run in scope** (CR-016 Phase B, section
+  [11](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md#11-phase-b-implementation-notes-2026-10-24);
+  core-ts CR-002 section 59, held to Word 365 by Office JS checks 52 and 53): `Paragraph.font` and
+  `Range.font` within one paragraph report each run's effective formatting, `None` where the runs
+  differ (`""` for `name`, `color`, `highlight_color` and `style`, `"Mixed"` for `underline`), where
+  0.1.0 reported the first run's, so `font.size + 2` can raise; the getters are typed `bool | None`
+  and `float | None`. A paragraph's font reads the runs of its text (`get_range("Content").runs`: no
+  deleted run, no hidden run, no field-code run), else a placeholder's runs, else its mark's run
+  properties (`w:pPr/w:rPr`), where it read the first run or the paragraph style; a range holding
+  its mark and no run reads the mark; a collapsed range its paragraph's style, as before. A font
+  write's `ChangeReport` gives the runs' direct value before the write, `None` where they differ.
+  A range across paragraphs (`MixedFont`) reads as before. Over the 418 documents of
+  `out/cr012-b-corpus/`, 680 of 85,407 paragraph and cell font answers move to `None`, `""` or
+  `"Mixed"`, 68 to an empty paragraph's mark and 15 to the text's runs (CR-016 section 11.4). The
+  python-docx facade's `Font` keeps python-docx's semantics.
+- **An automatic colour reads `#000000`** (CR-016 Phase B; the user's decision of 2026-10-24, CR-009
+  section 12.9): the effective `Font.color` of a run whose colour is `w:val="auto"`, unstated or a
+  value Word rejects reads `#000000`, as Office JS reads it, where 0.1.0 read `"auto"` or `""`;
+  `get_font(direct=True).color` keeps `"auto"` and `""`. **`Font.to_dict()["color"]` follows the
+  effective reading**, so it is `#000000` for most paragraphs, and `repr()` shows it. It is the
+  API's answer, not the drawn pixel: Word draws automatic text white over a dark shading. 9,349
+  corpus font answers move.
+- **A control showing its placeholder reads as no text** (CR-016 Phase B; core-ts CR-012 section
+  18, held to Word 365 by check 53 cases 34 and 35 and check 58 cases 11 and 12): the runs of a
+  content control whose `w:showingPlcHdr` is on, at any level, are left out of `Paragraph.text`,
+  `Body.text`, `get_text` in both views, `ContentControl.text`, a range's text and offsets,
+  `TableCell.value`, `Table.values` and a comment's content, as hidden text is, and `search` and
+  `find` find nothing in them (K3: Word finds hits reading `""`). `ContentControl.placeholder_text`
+  reads the prompt from the runs (Word, with no glossary part, reads `null`). The text model is
+  unchanged: it reads a placeholder as text, flagged, as docx4j does; its runs there have no
+  `office_offset`, and the runs after them stand where `Paragraph.text` has them. In the corpus
+  14 documents move.
+- **`ContentControl.insert_text` into a control showing its placeholder writes in the placeholder's
+  place** (CR-016 Phase B; check 58 cases 20 to 22, Word 365 at `"End"` as at `"Replace"`): for a
+  block- or run-level control, whatever `location` says, `w:showingPlcHdr` is cleared, the text
+  replaces the prompt, and the `PlaceholderText` character style comes off the runs it leaves, so
+  the control shows the text in the run's own look; a refused write leaves the placeholder. Where
+  0.1.0 wrote beside the prompt and left the control a placeholder (under "Fixed").
+- **`paragraph.text = ...` refuses a paragraph holding a run-level control showing its placeholder**
+  (CR-016 Phase B, section 7's risk 2): `SpanError` `range.holds_placeholder`, tracked or not,
+  before anything changes, since the write would take the control, which reads as no text, and its
+  binding; write into the control with `ContentControl.insert_text`. 0.1.0's setter replaced the
+  content, the control with it, so `paragraph.text = paragraph.text` turned the prompt into plain
+  text.
+- **A deleted paragraph mark reads as nothing in Word's default view** (CR-016 Phase B; core-ts
+  CR-012 section 19, held to Word 365 by check 58 cases 6 to 10): `Body.text`, `get_text()`, a
+  range's text across paragraphs, a `"Whole"` range's text and a block control's, a cell's and a
+  comment's text write no `\r` after a paragraph whose mark is tracked as deleted, and
+  `get_text(view="original")` none after an inserted one, the marks each view's resolution keeps;
+  a cell's last paragraph keeps the cell's `\t`. `Paragraph.mark_text` is `""` for a deleted mark,
+  so `search("^p")` no longer matches one. The paragraphs, their offsets and `body.paragraphs` do
+  not change, nor does `TrackedChange.text`. In the corpus `get_text()` moves in the 78 documents
+  holding a deleted mark and the original view in the 81 holding an inserted one.
 - **A save writes Word's reading of a kept value, in a plain normal form** (CR-018 section 4.7,
   Q5 and Q17, the user: "they are entitled to assume we don't write dodgy content"): an on/off
   value the parse kept as its text is written bare where Word reads it as on (`"1"` where the
@@ -832,6 +886,14 @@ cache written beside it.
   never writes. Over the 422 documents of `out/cr012-b-corpus/` and their 2,435 main-part cells,
   every cell nine writes edited, untracked and tracked, now ends with a paragraph, and so does
   every cell after Accept All and Reject All of them (CR-016 section 10.4).
+- **A value written into a control showing its placeholder stayed a placeholder** (CR-016 section
+  2.4, a defect 0.1.0 shared): `ContentControl.insert_text` left `w:showingPlcHdr` on and the
+  `PlaceholderText` style on its runs, and wrote beside the prompt at `"Start"` and `"End"`, so
+  `update_from_content_controls()` skipped a bound control as holding no value and the value never
+  reached its custom XML. It now writes in the prompt's place and clears both (under "Changed").
+- **A `Range.font` read split runs** (CR-016 Q12, found 2026-10-24): reading
+  `paragraph.search("TWO")[0].font.bold` split the paragraph's run at the hit's edges, so the next
+  save wrote three runs where the source had one. A read now splits nothing; only a write does.
 - **A tracked `TableCell.value` lost the cell's old content untracked** (CR-016 Q11): it is now a
   tracked deletion, the new paragraph inserted after it, so Reject All gives the cell back
   (`Table.values` and `TableRow.values` with it). The python-docx facade's `_Cell.add_table`

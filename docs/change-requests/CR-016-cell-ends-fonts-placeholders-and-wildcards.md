@@ -1,6 +1,6 @@
 # CR-016: A cell ends with a paragraph; `Font`, placeholders and deleted marks read as Office JS reads them; wildcards across marks --- the port of docx4j-core-ts `222cc20` and `3ba1e68`
 
-**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). **Phase A implemented 2026-10-24** (section 10): `table_rules.py` (docx4j's `ends_with_paragraph` and `end_with_paragraph`, exported); `Paragraph.delete`, `Body.clear`, `ContentControl.delete` and `Body.insert_ooxml("Replace")` keep a cell's end paragraph, emptied, its mark never marked under tracking; a table after it splits it at its end; docx4j's repair elsewhere and in what goes in (D3); nothing on load (D4); a tracked `TableCell.value` a tracked deletion (Q11); the facade's `_Cell.add_table` python-docx's (Q13). Check 52's cases 86 to 95 Word's in the run, the save and Accept All but the new table's paragraph (Q4) and case 94's value; over the corpus's 2,435 cells, no write leaves one without a paragraph end, and `Range.delete()` moved in none. One pre-existing expectation moved. Its Word check is Phase D's (files built, section 10.5). Phases B to D not started.
+**Status:** Proposed 2026-10-24, at the user's request ("draft CR-016 now"). It ports to this package the behaviour changes docx4j-core-ts made on its `main` (unpushed) in `222cc20` and `3ba1e68`, which CR-003 sections 23.3 and 23.4 make owed here: member-for-member and behaviour parity with core-ts. CR-003 section 24 took the one member they added (`ContentControl.showing_placeholder_text`) and left the behaviour for this decision. Six items: **Decided 2026-10-24** (the user: "CR-016 Q1 the release will wait for it; the other questions answered as recommended"): 0.2.0 waits for CR-016 (Q1, against its recommendation); every other question as recommended, checks 58's and 59's files Apache-2.0 here (Q2). Phase B builds on CR-018 Phase B's readers (section 4.3's note). **Phase A implemented 2026-10-24** (section 10): `table_rules.py` (docx4j's `ends_with_paragraph` and `end_with_paragraph`, exported); `Paragraph.delete`, `Body.clear`, `ContentControl.delete` and `Body.insert_ooxml("Replace")` keep a cell's end paragraph, emptied, its mark never marked under tracking; a table after it splits it at its end; docx4j's repair elsewhere and in what goes in (D3); nothing on load (D4); a tracked `TableCell.value` a tracked deletion (Q11); the facade's `_Cell.add_table` python-docx's (Q13). Check 52's cases 86 to 95 Word's in the run, the save and Accept All but the new table's paragraph (Q4) and case 94's value; over the corpus's 2,435 cells, no write leaves one without a paragraph end, and `Range.delete()` moved in none. One pre-existing expectation moved. Its Word check is Phase D's (files built, section 10.5). **Phase B implemented 2026-10-24** (section 11): `Font` reads every run in scope, `None`, `""` or `"Mixed"` where they differ, a paragraph its text's runs, else a placeholder's, else its mark, an automatic colour `#000000` (the user's decision, CR-009 section 12.9), a read splitting nothing (Q12), the getters `bool | None` and `float | None` (Q10); a control showing its placeholder read as no text (K3) and written over at any location, its flag cleared and its style dropped, `placeholder_text` from the runs (Q6), `paragraph.text = ...` over a run-level one refused (risk 2, a question); no `\r` after a deleted mark in the default view, none after an inserted one in the original; K1 pinned. Check 58 Word's in 17 of 22 read cases (2 to 4 K1, 12 K3, 13 Phase C's) and 9 of 9 edit cases; no font difference in check 53; check 52's paragraph fonts Word's; the audit's 10 moved readers, 10,112 font answers among them, all explained. Its Word check's file is built (section 11.12). Phases C and D not started.
 1. Word's table rule (core-ts CR-002 section 55): a cell ends with a paragraph.
 2. `Font` reading every run in scope (section 59).
 3. A control showing its placeholder read as no text (core-ts CR-012 section 18).
@@ -8,7 +8,7 @@
 5. The paragraph tracked-change listing kept and pinned (CR-002 section 58.1, K1).
 6. Word's wildcards (CR-002 section 32): K4, and K7 at `3ba1e68`.
 
-Three things core-ts did in the same commits are done here already (section 3.8). Four phases are proposed (section 5): A, the cell rule; B, the readers; C, the wildcards; D, the Word check and the records. They come to 4½ to 5½ days. Fourteen questions, decided 2026-10-24 (section 8). **Phase A is implemented** (section 10); B to D are not started.
+Three things core-ts did in the same commits are done here already (section 3.8). Four phases are proposed (section 5): A, the cell rule; B, the readers; C, the wildcards; D, the Word check and the records. They come to 4½ to 5½ days. Fourteen questions, decided 2026-10-24 (section 8). **Phases A and B are implemented** (sections 10 and 11); C and D are not started.
 
 *The number:* an earlier, undrafted idea used "CR-016" for a port of docx4j CR-057 (`insert_markdown` reading local image files). That idea now takes CR-017.
 
@@ -748,3 +748,183 @@ The suites' difference is the 40 new tests and the 3 goldens `c37769e` released.
 6. **CR-014 phase 2 and CR-011 Phase E**, when they build cells, end them with `end_with_paragraph` (section 4.2); Phase D notes it in both CRs.
 7. During the sweep this session deleted one file of its own outside the scratchpad, `out/cr016-a-sweep/try.json`, a 20-document trial of the sweep it had just written; recorded because the brief allowed deletions in the scratchpad only.
 8. **`CLAUDE.md`** should name Phase A (left to the coordinator, per the brief; the sentence proposed is in the report).
+
+## 11. Phase B implementation notes (2026-10-24)
+
+Phase B as built, on CR-009 Phase B (`c441b67`, `42bd0bc`, `8d13f74`) and CR-018 Phase B's readers. The oracles are docx4j-core-ts `222cc20` (its CR-002 sections 58.1 and 59, CR-012 sections 18 and 19, `Font.mts`, `Paragraph.mts`, `Range.mts`, `story.mts`, `tree.mts`, `ContentControl.mts`, `test/readers.test.mjs`, `test/content.test.mjs`'s font tests, `test/ranges.test.mjs`'s check 52 and 53 tests, `test/fixtures/check58/` and `test/check58/`), read with `git show 222cc20:<path>` and never from core-ts's working tree. `git diff 222cc20..76fb45d` over the files this phase follows changed one rule here: `27be4a7` (CR-008 phase 2) made `readingOf` draw a theme colour through the theme before the `#000000` rule, which CR-009 Phase B had already built here (`Font._read`'s `_drawn`), so the automatic rule sits after it, as at `76fb45d`. `3ba1e68`'s changes to `Body.search`, `Paragraph.search`, `Range.search` and `replaceText` are K7's, Phase C's, and `4837d04`'s to `ResolvedView` and the extractor are CR-010 section 13's, here already. core-ts's `HEAD` is now `dc7e37d`; `b9c5e0c` and `dc7e37d` change only `test/runprops-word365.test.mjs` under `src/` and `test/*.mjs`, so nothing later is owed. The decisions in force: Q2 to Q14 as recommended, and the user's of 2026-10-24 that the effective `Font.color` reads an automatic or unstated colour `#000000` (CR-009 section 12.9).
+
+**Commits.**
+- `05fc33f`: the audit first (section 6.2): `scripts/mce_branches.py readers` gains `body.fonts`.
+- `d62f57e`: Phase B: the readers, the placeholder write, check 58's fixtures and port, the tests.
+- the records, the commit after `d62f57e`: this section, the Status line and the intro, the index row, the CHANGELOG's 0.2.0 bullets and `tests/README.md`'s map and provenance.
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| `Font` | `docx4j_py/model/content/font.py` | every run read (`_readings`, `read_each`), combined by `_combined` (core-ts's `value`), `MixedFont` now `Font`'s rule over its own readings; a `reads` callable (the runs a read takes, splitting nothing) beside `holders` (a write's) and a `mark` callable (the run properties read where no run is); `mark_run_properties` (core-ts's `markHolderOf`); `AUTOMATIC` (`#000000`); the getters `bool \| None` and `float \| None` |
+| a paragraph's font | `paragraph.py`, `get_font` and `_font_runs` | the runs of `get_range("Content").runs`, read from one walk of the segments, else a placeholder's runs, else the mark |
+| a range's font | `range.py`, `get_font` | a read takes `self.runs` and splits nothing (Q12); a range holding its mark and no run reads the mark; across paragraphs `Font.read_each` once per paragraph |
+| the placeholder rule | `text_model.py`, `in_showing_placeholder`, `placeholder_control_of`, `hidden_runs_of` | core-ts's `inShowingPlaceholder` inside `hiddenRunsOf`, first |
+| the placeholder write | `controls.py`, `insert_text`, `_insert_text`, `_take_property`, `_content_runs`, `_drop_placeholder_style`, `placeholder_text`, `_run_span` | section 4.4 |
+| risk 2 | `paragraph.py`, `Paragraph.text`'s setter and `_refuse_placeholder_controls` | 11.6 item 1 |
+| the mark rule | `story.py` (`shown_in_default_view`, `shown_in_original_view`, `MARK_SHOWN`, `story_layout(mark_shown=)`, `mark_text_of`), `body.py` (`_layout_text`) | section 4.5 |
+| check 58 | `tests/office_js/` (five files and `SHA1SUMS`), `tests/office_js/checks.py` (`run_check_58`, `parse_region_58`, `QUERIES_58`, the ops) | 11.3 |
+| the tests | `tests/content/test_readers.py` (21, new), `test_font.py` (5 more), `test_ranges.py`, `test_colors.py`, `test_range.py`, `test_office_js_characters.py`, `tests/revisions/test_content_api.py` | 11.3 and 11.8 |
+| the audit | `scripts/mce_branches.py` (`body.fonts`) | 11.4 |
+
+`model/` is in `codegen/clean.py`'s `KEEP` whole, so nothing is added there; `generate.sh --check` left the tree as committed (11.9).
+
+### 11.2 The rules as built
+
+1. **`Font` reads every run in scope.** A property every run's reading agrees on reads that value; where they differ, `None`, `""` for the name, the colour, the highlight and the style, and `"Mixed"` for the underline; with no reading at all (a range across paragraphs holding no run) the same. One reading is that reading. Each run's reading is its effective `w:rPr`'s, as before: `read_run_options`, the selector's face, a theme colour drawn through the theme (CR-009 Phase B), the theme attributes; the direct view reads the run's own `w:rPr` by the same rule. A `w:rPr` object met twice in one read (None, mostly) is read once.
+2. **What a paragraph's font reads**: each run holding a segment of `Paragraph.text` (so no deleted run, no hidden run, no run of a control showing its placeholder, no equation's math runs, no run holding only a field character, a drawing or a comment reference), once, in order. With none, the runs of a control showing its placeholder (core-ts check 52 case 13); with none of those, the mark: `w:pPr/w:rPr` as a new `w:rPr` over its property elements, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo` and `w:rPrChange` left out, resolved as a run's would be. A paragraph with no mark properties reads its style.
+3. **What a range's font reads** within one paragraph: `Range.runs`, a run partly inside counting; a collapsed range none, so its paragraph's style; a range holding its mark and no run (an empty paragraph's `"Whole"` range) the mark. A write still splits the runs at the span's edges first, and a read splits nothing (Q12). Across paragraphs, every run of every piece, each in its own paragraph (`MixedFont`), as before but for the automatic colour.
+4. **An automatic colour** reads `#000000` in the effective view: where no theme reference resolves (`_drawn` None) and the effective `w:color` reads `""` (none, or a value Word rejects) or `"auto"`. The direct view keeps `""` and `"auto"`. `to_dict()["color"]` and `repr()` follow the reading.
+5. **A write's `ChangeReport`** reads the direct values of the runs a read takes, before and after: `None` where they differ (`bold=None`), where it read the first run's.
+6. **A placeholder is hidden** (`hidden_runs_of`, before the `w:vanish` test): a run inside a content control whose `w:showingPlcHdr` is on, read by `values.is_on` (`w:val="0"` off), at any level up the parents. The run's climb stops at its paragraph; the paragraph's own ancestors are read once per call, for a block, row or cell control around it.
+7. **`ContentControl.insert_text`** into a block- or run-level control showing its placeholder: a run-level one's refusals first (a paragraph break, no paragraph), then `w:showingPlcHdr` taken out (every one; the first put back where it stood if the write raises), the write made at `"Replace"` whatever `location` says, then `PlaceholderText` taken off each run of the control's content, an `w:rPr` left saying nothing removed with it. A run-level control's span is found with each hidden item and object as a place of no text (`segments(objects=True)`), so a control holding only hidden runs is found where it stands. The run path's `write_through()` then writes a bound node, as it always did; a block control's write goes through `Body.insert_text`, as before.
+8. **`placeholder_text`** while the control shows its placeholder: a run-level control's content's text, a block (row, cell) control's paragraphs' `\r` apart, each read with no hidden rule (`text_of_view`); `""` otherwise.
+9. **The mark rule by view.** The accepted view writes no `\r` after a paragraph whose `w:pPr/w:rPr/w:del` is set, the original view none after one whose `w:ins` is; a cell's last paragraph is ended by the cell's `\t` whatever its mark (`story_layout` writes no mark there, as before). `mark_text_of`: `\t` for a cell's last paragraph, else `""` for a deleted mark, else `\r`. Every reader through the layout follows: `Body.text`, `get_text` in both views, a range's text across paragraphs, a `"Whole"` range's text, a block control's, a cell's and a comment's text, `Table.values`, and `^p` (`_search_marks` reads `mark_text == "\r"`). The paragraphs, their offsets and the collection do not change. `TrackedChange.text` keeps its `\r`.
+
+### 11.3 The oracles
+
+**Check 58** (`tests/content/test_readers.py`), on the file Word read (`58-measures.docx`), through core-ts's views (`readers.test.mjs` at `222cc20`: a listing by type; a placeholder without `placeholderText`; the Edit run's resolved change and the changes left, or the fill and the control after):
+
+| | before (`8d13f74`, the port run on that code) | after | core-ts at `222cc20` |
+|---|---|---|---|
+| the Read run against Word's Simple Markup run | 10 of 22 Word's; 2, 3, 4, 6, 7, 8, 11, 12, 13, 20, 21, 22 differ | 17 of 22: **2, 3, 4** (K1), **12** (K3), **13** (wildcards) differ | 2, 3, 4, 12, 13 |
+| the Edit run against Word's Edit run | 7 of 9; 21 and 22 differ (`"End"` wrote after the prompt) | **9 of 9** | 9 of 9 |
+
+- **K1** (Q7), pinned as core-ts pins it: case 2's third and fourth paragraphs list `[["Deleted"], ["Deleted"], ["Deleted"]], [[], [], []]` here and nothing in Word.
+- **K3** (Q5): case 12's placeholder text has no hits in the two placeholders' paragraphs here, where Word finds hits reading `""`; `"PLAIN12A Click"`, a hit from plain text into the run-level placeholder, is Word's `PLAIN12A ` and none here.
+- **Case 13 is Phase C's**, pinned as it stands: `?` takes the surrogate pair whole and `a?b` and `x?y` are Word's (K4, here already), but no wildcard matches the paragraph's mark yet (K7), and with no grapheme filter (Q8) `?` and `[!a-z ]` take the Arabic letters and their fathas apart, where Word's take nothing in the word; `[!a-z ]@` finds the emoji and the word (K6, and the emoji whole in Python, section 4.9).
+- **Cases 6 to 10** are Word's read for read, and **case 11** but `placeholderText` and `showingPlaceholderText`.
+- **Beyond core-ts's test**: cases 20 to 22's markup after the Edit run against Word's save after its three runs (`58-measures-word365.docx`): each control's `w:sdtPr` `alias`, `tag`, `id` and no `w:showingPlcHdr`, one plain run `FILL<n>`, the same in both.
+- The file and snippet agree (the 22 cases `build.mjs` builds, every word a range names and every tag once, six controls, each showing its placeholder), and the three JSONs are of this file and the files are the copies (each SHA-1 the table's in section 6.1; each JSON parses equal to the share's `result-*.txt`, checked when copied).
+
+**Check 53** (`test_ranges.py`): **no font difference remains**, as core-ts's at `76fb45d`. Before this phase 9 of its `font.color` readings and 3 other font reads differed (CR-009 section 12.6): the eight automatic colours (2, 7, 8, 9, 19, 20, 21, 24), case 8's `italic` and case 31's colour and highlight, runs that differ. What differs is core-ts's list: 10 and 12 (Word's `Other`, Q6 of CR-013), 25, 28 and 30 (the listing and a change's text, CR-010's), 32 (`Body.footnotes`), and 34 and 35 in `placeholderText` and `showingPlaceholderText` alone. Case 33, `body.text`'s lengths, is Word's.
+
+**Check 52** (`test_ranges.py`), each paragraph's font now compared as core-ts's are:
+- Word's report after Accept All, through the port on Word's Accept All save: every region Word's, fonts included; cases 13 and 26 need no substitution now (Word's five-space filler marked as its placeholder reads as no text). Of its 1,269 paragraph font reads, 40 differed before (29 regions), as section 2.3 counted, and 0 after.
+- Accept All of Word's save after the run against Word's Accept All: all 95 regions, case 26 included (it differed before).
+- The run against Word's run: case 13 joins the differences, Word's bold filler in an emptied control read bold, where this package's emptied paragraph reads its mark, as core-ts's; a tracked case's fonts are not compared (All Markup).
+- Accept All after the run against Word's Accept All: 13, 26, 49 to 56, 60, 66, 86 and 87, core-ts's list.
+
+**core-ts's tests**, their strings kept: `readers.test.mjs`'s sections 18 and 19 tests and its "Range.font: a read splits no run" test (`test_readers.py`), and `content.test.mjs`'s two font tests (`test_font.py`), every answer core-ts's. This package's own (`test_readers.py`, `test_font.py`): the original view writing no inserted mark; `^p`, a cell's values, the text model in both views and the changes' text unmoved; a block control holding a deleted mark; every location into a block and a run-level placeholder (6, each saved and read back strictly), a run's own look kept; a refused write leaving the placeholder; a bound control written and `update_from_content_controls()` (section 2.4's probe), the node `VALUE` after a reload; `apply_bindings`' placeholder for an empty value reading as no text; the text model's placeholder runs without an `office_offset`, the runs after them where `Paragraph.text` has them; risk 2; the mark read without its revisions; a placeholder's runs read where there is no text; the `ChangeReport`; the getters' types.
+
+### 11.4 The readers' audit (section 6.2)
+
+`scripts/mce_branches.py`'s `reader_answers`, with `body.fonts` added first (`05fc33f`): each paragraph's font and each table cell's (its body's `"Whole"` range's: a `Font` for a cell of one paragraph, a `MixedFont` for more), `bold`, `italic`, `underline`, `name`, `size`, `color` and `highlight_color`, over a package of its own, read last. Over `out/cr012-b-corpus/`, `COMMITS.txt` unchanged (this repository `f1bb1d9`, core-ts `df5b4af`, docx4j `901a922a3`), every distinct document (`--holding all`): 422, the four Strict ones failing to load both times. "Before" ran at `8d13f74` in a `git worktree` in the session's scratchpad with `05fc33f`'s script copied in, "after" on `d62f57e`'s code, each sharded over 10 processes by a wrapper keeping `readers`' keys (`out/cr016-b-audit/run_readers.py`; 14 s and 18 s). `compare-readers` is `out/cr016-b-audit/compare.txt`.
+
+**Every moved answer is explained, 0 unexplained** (`out/cr016-b-audit/explain.py`, `explained.txt`):
+- **The text readers**: each moved document was read again on `d62f57e`'s code with the two rules switched off and on (P, the placeholder rule; M, the mark rule). With both off every text reader of every such document gives the "before" answer; with both on, the "after" answer; the rules that move a reader are its cause.
+
+| reader | documents moved | by the placeholder rule | by the mark rule | by both |
+|---|---:|---:|---:|---:|
+| `body.paragraphs` | 14 | 14 | --- | --- |
+| `body.get_text` | 84 | 6 | 70 | 8 |
+| `body.get_text.original` | 87 | 6 | 73 | 8 |
+| `body.element_at` | 14 | 14 | --- | --- |
+| `body.content_controls` | 14 | 14 | --- | --- |
+| `body.tables` | 1 | --- | 1 (`cr043-tracked.docx`'s cell, its first paragraph's mark deleted) | --- |
+| `body.search`, `body.find` | 14, 6 | 14, 6 (K3) | --- | --- |
+| `text.extract` (`text.office_offsets`) | 14 | 14 | --- | --- |
+
+  So the placeholder rule moves the 14 documents section 2.4 counted, and the mark rule the 78 holding a deleted mark (accepted view) and the 81 an inserted one (original view), section 2.5's counts.
+- **Not moved**, as section 6.2 expects: `text.plain_text`, `text.markdown`, `package.to_markdown`, `body.outline`, `package.describe`, `revisions.tracked_changes`, both resolutions, `docx.*`, `body.inline_pictures`, `main.fonts_in_use` and `main.styles_in_use`; and `body.comments`, which no corpus comment's placeholder or deleted mark reaches.
+- **`body.fonts`**: 417 documents. Of 12,201 font reads (9,805 paragraphs, 2,396 cells), 85,407 answers, **10,112 moved**. For each moved one the old rule (the first run's reading, an automatic colour as written) gives the "before" answer and the new rule the "after", both recomputed, and each moved property is one of:
+
+| cause | paragraphs | cells | total |
+|---|---:|---:|---:|
+| an automatic colour, `""` or `"auto"` to `#000000` | 6,967 | 2,382 | 9,349 |
+| runs that differ, to `None`, `""` or `"Mixed"` (bold 156, name 208, underline 134, italic 90, colour 52, size 37, highlight 3) | 680 | --- | 680 |
+| an empty paragraph read through its mark (size 43, name 7, italic 6, bold 3, colour 1; in cells italic 4, name 2, size 2) | 60 | 8 | 68 |
+| the text's runs: the first run is not one of them (a field's begin, a comment reference, an `mc:AlternateContent`), and the text's runs agree (bold 4, size 5, underline 3, colour 3) | 15 | --- | 15 |
+| a placeholder's runs | 0 | 0 | 0 |
+
+  No cell moved by runs that differ: a cell of several paragraphs read every run before too (`MixedFont`), and no single-paragraph cell's runs differ in the corpus. The fourth cause is section 4.3's first rule (a paragraph's read takes `Paragraph.text`'s runs), not one of section 6.2's five named causes; it is listed apart. Its largest instance, `hl-fields.docx`'s hyperlink fields, reads the field's displayed text (bold, `#467886`, 14 pt, underlined) where 0.2.0 read the field's begin run.
+
+### 11.5 The `office_offset` invariant
+
+0 disagreements before and after over the 418 documents that load (`out/cr016-b-audit/offsets.txt`). **44 runs lose their offset, every one a placeholder's** (22 placeholder runs, each in both views; checked with `in_showing_placeholder` on its source run), in the 14 documents. 10 runs keep an offset that moves: each stands after a placeholder in its paragraph, where `Paragraph.text` now has it; the invariant's agreement and the switch test above (P off gives the old offsets) hold them.
+
+### 11.6 Departures and choices, with why
+
+1. **Risk 2: `paragraph.text = ...` over a paragraph holding a run-level control showing its placeholder is refused**, tracked or not, before anything changes: `SpanError` `range.holds_placeholder` (a new code; section 4.10 proposed none), the hint `ContentControl.insert_text` or deleting the control. core-ts's setter replaces the content and takes the control, and its binding, with it, which nothing read would show; untracked the same happened here, and tracked the splice marked the placeholder's runs deleted inside the control. The CR asked for the control to stay or the write to refuse; refusing is the conservative of the two and keeps one rule for both modes. Once written into, the control holds text and the setter works as before (tested). Question 11.11 item 1.
+2. **A run-level control's span reads hidden items and objects as places of no text** (`_run_span`, `segments(objects=True)`), so a control holding only hidden runs, or only a picture, is found collapsed where it stands, where it was found at offset 0. Needed for `"Replace"` into a run-level placeholder; a picture control's `get_range()` moves to its true place too (no audit reader reads it).
+3. **An `w:rPr` emptied of `PlaceholderText` is removed** with it; core-ts leaves an empty run-properties object. Word's save (check 58 cases 20 to 22) has a plain run, and that is what this writes.
+4. **The placeholder climb** stops at the run's paragraph and reads the paragraph's ancestors once per `hidden_runs_of`; core-ts climbs 32 parents from each run. The same answer where parent pointers are linked; where a run's chain stops short of its paragraph, the paragraph's answer (core-ts's, none).
+5. **The mark read is a new `w:rPr` over the mark's own property elements** (`mark_run_properties`), core-ts an object spread; it is in no tree and is not written.
+6. **`insert_text` into a placeholder records the prompt as `text_before`** in its `ChangeReport` (the flag is cleared before the write, so the report says what the write replaced), where `ContentControl.text` read `""` before the call.
+7. **Extensions** used across modules and named in their `__all__`: `Font.read_each` (a `MixedFont`'s readings, a paragraph at a time), `font.mark_run_properties`, `text_model.in_showing_placeholder` and `placeholder_control_of`, `story.shown_in_default_view`, `shown_in_original_view` and `MARK_SHOWN`. `Font.__init__` gains `reads=` and `mark=`, keyword-only, so every existing caller is unchanged.
+8. **`repr(font)`** shows `#000000` for an automatic colour, as the reading has it.
+9. **The python-docx facade's `Font`** is untouched (CR-003 section 20.3): python-docx's tri-state, the run's own.
+
+### 11.7 Section 7's risks, as they came out
+
+- **Risk 1** (readers move again): the audit lists every move by cause (11.4); the CHANGELOG names each rule.
+- **Risk 2**: refused (11.6 item 1), tested tracked and not.
+- **Risk 3** (`None` in a single paragraph's `Font`): 680 corpus answers are now `None`, `""` or `"Mixed"` (11.4); the typing says so.
+
+### 11.8 Pre-existing tests whose expectation changed
+
+Each is a reader this phase moves, as section 4.1 says it should:
+- `tests/content/test_font.py::test_a_write_reaches_every_run_a_read_only_the_first`, renamed `..._a_read_reads_every_run`: the paragraph's bold `None` (the runs differ), where it read the first run's `False`; `test_repr_says_what_the_font_is`: `#000000` in the effective `repr`.
+- `tests/content/test_range.py::test_font_splits_the_runs_at_the_boundaries`: the paragraph's bold `None`.
+- `tests/content/test_colors.py`: P1's and P2's paragraphs every one Word's drawn colour, the automatic ones `#000000` (core-ts's assertion at `76fb45d`), where those read `""`; the output document's automatic paragraph `#000000`.
+- `tests/content/test_ranges.py`: check 53's differences (11.3); check 52's three tests comparing paragraph fonts (`_without_words` and `_without_text_and_font` where `_without_font` was), case 13 joining the run's differences and 13 and 26 the Accept All after the run's, the report's five-space substitution gone; Accept All of Word's save no longer differing in case 26.
+- `tests/content/test_office_js_characters.py`: `SHA1SUMS` lists 31 files (26), and Word's file and save of check 58 among the share's.
+- `tests/revisions/test_content_api.py::test_get_text_keeps_office_jss_filtered_text`: `core-ts/check22/22-deleted.docx`'s accepted `get_text` is `One.\rThree.\rFour.Five eight.\rNine.\r`, Accept All's, where it was `One.\r\rThree.\rFour.\rFive \reight.\rNine.\r`; the paragraphs stay eight. `DIFFERS` stays, the record of 2026-10-18.
+
+No golden, ratchet row, Word-save comparison or acceptance artefact moved.
+
+### 11.9 The gates
+
+| gate | before (`8d13f74`) | after (`d62f57e`) |
+|---|---|---|
+| the full suite | 6,288 passed, 8 skipped (4 min 3 s) | **6,314 passed, 8 skipped** (4 min 10 s): 21 in `test_readers.py` and 5 in `test_font.py` new |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text`; `tests/revisions` (CR-010's Word-save comparisons among them) | 1,212; 614 | 1,212; 614; `scripts/compare_word_resolution.py` 0 lines either side, on the regeneration before and after |
+| the parity goldens | in the suite, 0 failed | the same |
+| `roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | `--normalise` and `--no-normalise` (`--out out/cr016b-roundtrip-before-*`): 50 of 50, 0 differences, 34 `boolean-spelling`, 0 kept, 0 normalised, 0 skipped | the same, both ways (`out/cr016b-roundtrip-after-*`) |
+| `codegen/generate.sh --check` | --- | byte identical, 307 modules, run on `d62f57e` in a scratch worktree (`TMPDIR` in the scratchpad), whose tree it left as committed |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr016b/`, copied first) | a regeneration at `8d13f74` (`out/cr016b-acceptance-before/`) equal to the copy: 17 artefacts, 243 entries, 0 differing beyond the dates | `out/cr016b-acceptance-after/`: 17 artefacts, 243 entries, 0 differing beyond the dates, against the copy and the regeneration before. No artefact writes into a placeholder or reads a font |
+| `tests/test_readme.py` | --- | no fence changed; in the suite |
+| the readers' audit (11.4) | 422 documents, 4 reader errors (the Strict four) | the same; 10 readers moved, every answer explained |
+| the `office_offset` invariant (11.5) | 0 disagreements | 0; 44 runs without an offset, all placeholders' |
+| check 58 (11.3) | Read 10 of 22, Edit 7 of 9 | Read 17 of 22, Edit 9 of 9 |
+| check 53's fonts; check 52's paragraph fonts on Word's Accept All | 12 cases; 40 of 1,269 | 0; 0 |
+
+### 11.10 The cost
+
+`bench_b.py` (in the session's scratchpad): each measure the median of 7 passes after a warm one, `8d13f74` and `d62f57e` interleaved, two rounds each (ms; the third such run, the first two before `_combined`'s one-reading path and `_font_runs`' one walk):
+
+| | before (`8d13f74`) | after (`d62f57e`) |
+|---|---|---|
+| `Symbols.docx`, 160 paragraphs of 3,902 runs: every `paragraph.font.color` | 7.9 | 175.5 to 177.3 |
+| the same, every `get_range("Content").font.color` | 86.5 to 87.8 | 175.9 to 176.6 |
+| 1,000 paragraphs of one plain run: `paragraph.font.color` | 27.3 to 27.6 | 41.1 to 41.7 |
+| the same, `get_range("Content").font.color` | 77.7 to 77.8 | 43.2 to 43.8 |
+| 300 paragraphs of ten runs, alternately bold: `paragraph.font.color` | 8.8 | 91.1 to 91.3 |
+| 1,000 Heading 1 paragraphs (theme-coloured): `paragraph.font.color` | 54.9 to 55.5 | 68.1 to 68.4 |
+| `Paragraph.text`: `Symbols.docx`; 1,000 one-run paragraphs; 300 ten-run ones | 12.0 to 12.2; 5.0 to 5.1; 9.5 to 9.6 | 12.9 to 13.0; 5.9 to 6.1; 10.2 to 10.3 |
+
+- **A font read costs a run's resolution per run** (about 45 µs, almost all of it `PropertyResolver.get_effective_rpr`), where it cost one: a paragraph of ten runs about 300 µs, of one run about 41 µs (27 before; the walk of its segments, one, and the combining are the rest). That is core-ts's rule; each property read re-reads, as before. A `bold` read costs what a `color` read does.
+- **A range's read is cheaper within a paragraph of one run** (about 43 µs, from 78): it no longer splits runs.
+- **A theme-coloured run** adds CR-009's 3 µs as before (Heading 1: 68 µs against 41).
+- **The placeholder test** costs `Paragraph.text` about 1 µs a paragraph of one run and 2.3 µs one of ten: a climb from each run to its paragraph, and from the paragraph once.
+
+### 11.11 Found, and not done
+
+1. **Question: risk 2's rule.** `Paragraph.text = ...` refuses over a run-level placeholder control (11.6 item 1); the alternatives are core-ts's (the control goes) or keeping the control. The user's call; the refusal is the conservative one and needs a new error code, `range.holds_placeholder`.
+2. **A write into a block control's placeholder other than `ContentControl.insert_text`** --- `Paragraph.text = ...` on its paragraph, `insert_paragraph`, a range's write --- leaves `w:showingPlcHdr` on, so the text written reads as nothing. core-ts's other writers do the same. A later rule (clear the flag on any write into the control's content) would need its own decision.
+3. **`Paragraph.font` costs a resolution per run** (11.10). A memo of effective run properties by content, in the resolver, would bring it back near 0.2.0's; not built.
+4. **Case 13 of check 58** waits for Phase C (K7's marks, Q8's grapheme filter); K6 and `[!a-z ]` over the emoji stay departures after it (section 4.9).
+5. **The audit's fourth font cause** (11.4): a paragraph whose first run holds no text (a field's begin) now reads its text's runs. It moves `to_dict()` for such paragraphs too; no `describe()` reads a font (CR-009 section 12.10 item 3).
+6. **CR-003 section 24's line and the CR-014 and CR-011 notes** are Phase D's, as is the Word check (11.12).
+7. **`CLAUDE.md`** should name Phase B (left to the coordinator; the sentence proposed is in the report).
+
+### 11.12 The Word check's file (built, not staged)
+
+`out/cr016-b-word-check/` (git-ignored): `build.py`, `README.txt` with what Word should show, and `MANIFEST-cr016b-2.txt` with the SHA-1 (`87a4ac887876ac05d796f3357cf03d47731a8ed5`) and each control read back with `LoadOptions(strict=True)`. **File 2** (`cr016b-2-placeholders.docx`, `d62f57e`'s code): a block-level and a run-level control showing a placeholder, each written into at `"End"`, `"Start"` and `"Replace"` (regions 1 to 6); a run-level one whose placeholder run is bold too, at `"End"` (7); one of each left showing its placeholder (8); a bound plain-text control written at `"Replace"` and then `update_from_content_controls()` (9), its node `VALUE`; a bound one left empty (10). Read back, 1 to 7 and 9 show their text with no `w:showingPlcHdr` and no `PlaceholderText` run; 8 and 10 still show the prompt. **Expected**: no repair prompt; each written control shows its text in the run's own look, not as a placeholder, 7 bold; the bound control `VALUE`, its custom XML too. Phase D stages it with Phase A's files.
