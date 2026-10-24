@@ -54,7 +54,11 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   (keep parity). Each phase that changed output is Word-checked. The Office JS subset is read from
   core-ts's committed `HEAD` (246 members).
 - **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058) and **CR-015**
-  (Markdown output safety): proposed.
+  (Markdown output safety): proposed. **CR-016** (core-ts's cell, font, placeholder and wildcard
+  changes): proposed.
+- **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
+  CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
+  C implemented, their Word check staged; B and D next.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -260,7 +264,18 @@ section 12.3.
   `boolean-spelling` (`1` against `true`). Every other difference category must be zero. The one
   exception is a load in `LoadOptions(mc_load_mode="word")` (CR-012 section 4.1 item 3): a part
   holding a block-, row- or cell-level `mc:AlternateContent` is saved as Word's own save writes it,
-  the branches Word does not read gone. The default, `preserve`, keeps the rule.
+  the branches Word does not read gone. The default, `preserve`, keeps the rule. Since CR-018 Phase A
+  a second category is tolerated, `word-normal-form`: the parse is exact (`runtime.parser_config()`
+  sets the fork's `exact_types={bool, Enum}`, so a value not exactly a lexical form is kept as its
+  text and listed in `part.kept`), and a save normalises by default (`package.save(normalise=True)`,
+  `LoadOptions(normalise_on_save=...)`), writing each kept value in the form Word reads as it read
+  the source (an on/off value Word reads as on bare, one it reads as off `0`), recorded in
+  `package.last_save.normalised`. `canon.compare(..., normalise=True)` writes the same normal form
+  into the source before comparing, so every other category must still be zero;
+  `save(normalise=False)` keeps the source's spelling and is held to `boolean-spelling` alone. Every
+  `ParserConfig` in the tree is `parser_config()`'s (`tests/test_parser_configs.py`), and every
+  on/off reader goes through `docx4j_py/model/values.py` (Word's rule: off for exactly `false`,
+  `off` or `0`).
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
   `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. Empty is
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
