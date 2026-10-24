@@ -1,4 +1,4 @@
-"""docx4j-core-ts's Office JS checks 52 to 58, ported to the content API: CR-013's and CR-016's oracles.
+"""docx4j-core-ts's Office JS checks 52 to 59, ported to the content API: CR-013's and CR-016's oracles.
 
 CR-013 section 6.1. Word 365 ran each check's Script Lab snippet on the file in
 this directory and wrote JSON (``52-ranges-word365-run.json``,
@@ -22,6 +22,10 @@ step for step, onto the content API, and give the same JSON shape with the same
 * :func:`run_check_58` is ``CHECK58.runCheck`` (``check58-script-lab.js`` at
   ``222cc20``; CR-016 Phase B) in its ``read`` and ``edit`` modes, with its
   ``QUERIES`` (:data:`QUERIES_58`).
+* :func:`run_check_59` is ``CHECK59.runCheck`` (``check59-script-lab.js`` at
+  ``222cc20``, unchanged at ``3ba1e68``; CR-016 Phase C), read only, with its
+  ``REGION_QUERIES`` and ``PART_QUERIES`` (:data:`REGION_QUERIES_59`,
+  :data:`PART_QUERIES_59`).
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -50,11 +54,13 @@ __all__ = [
     "parse_region_54",
     "parse_region_57",
     "parse_region_58",
+    "parse_region_59",
     "run_check_52",
     "run_check_53",
     "run_check_54",
     "run_check_57",
     "run_check_58",
+    "run_check_59",
     "vis",
 ]
 
@@ -1224,4 +1230,78 @@ def run_check_58(package: Any, label: str, mode: str = "read") -> dict[str, Any]
         else:
             entry["reads"] = attempt(lambda op=op, region=region: op(body, region["args"], region["n"], mode))
         result["cases"].append(entry)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# check 59 (core-ts check59-script-lab.js at 222cc20 and 3ba1e68; CR-016 Phase C)
+# ---------------------------------------------------------------------------
+
+_BEGIN_59 = re.compile(r"^BEGIN(\d+) ([\w-]+)$")
+
+#: Across the region's content: a mark between two letters, Word's paragraph mark code alone.
+REGION_QUERIES_59 = ("Q?Z", "Q^13Z", "Q*Z", "^13")
+
+#: Within a paragraph, a cell's body, a control: every character, every one but a capital, the mark code.
+PART_QUERIES_59 = ("?", "[!A-Z]", "^13")
+
+
+def parse_region_59(text: str) -> dict[str, Any] | None:
+    """A BEGIN paragraph's text as a case, ``{n, shape}``, or None (the snippet's ``parseRegion``)."""
+    match = _BEGIN_59.match(text.strip())
+    if match is None:
+        return None
+    return {"n": int(match.group(1)), "shape": match.group(2)}
+
+
+def region_of_59(body: Any, n: int) -> Any:
+    """The region's range: its BEGIN paragraph's whole range expanded to its END paragraph's (the snippet's ``regionOf``)."""
+    return region_of_58(body, n)
+
+
+def searched_59(scope: Any, queries: tuple[str, ...] | list[str]) -> dict[str, Any]:
+    """Each query's hits in a scope, as their text, each searched alone with wildcards (the snippet's ``searched``)."""
+    return {
+        vis(query): attempt(lambda query=query: [vis(hit.text) for hit in scope.search(query, **WILD)])
+        for query in queries
+    }
+
+
+def _read_59(body: Any, n: int) -> dict[str, Any]:
+    """One region read: its range's searches, each content paragraph's, the first table's first cell's body and whole range's, the first control's."""
+    region = region_of_59(body, n)
+    out: dict[str, Any] = {"region": searched_59(region, REGION_QUERIES_59)}
+    out["paragraphs"] = attempt(
+        lambda: [{"text": vis(p.text), "hits": searched_59(p, PART_QUERIES_59)} for p in region.paragraphs[1:-1]]
+    )
+    tables = region.tables
+    controls = region.content_controls
+    if tables:
+        out["cell"] = attempt(lambda: searched_59(tables[0].cell(0, 0).body, PART_QUERIES_59))
+        out["table"] = attempt(lambda: searched_59(tables[0].get_range("Whole"), [*PART_QUERIES_59, "Q?Z", "Q*Z"]))
+    if controls:
+        out["control"] = attempt(lambda: searched_59(controls[0], [*PART_QUERIES_59, "Q?Z", "Q*Z"]))
+    return out
+
+
+def run_check_59(package: Any, label: str) -> dict[str, Any]:
+    """``CHECK59.runCheck`` on a loaded package; `label` names the view. Read only: nothing changes.
+
+    Each case is a region ``BEGIN<n> <shape>`` ... ``END<n>`` searched with
+    wildcards in four scopes: the region's range, each content paragraph, the
+    first table's first cell's body and the table's ``"Whole"`` range, and
+    the first content control (the snippet at core-ts ``222cc20``, byte for
+    byte the share's ``check59-script-lab.js``, ``abd3bfa5...``).
+    """
+    body = package.body
+    result: dict[str, Any] = {"check": 59, "label": label, "host": None, "cases": []}
+    regions = [region for p in body.paragraphs if (region := parse_region_59(p.text)) is not None]
+    for region in regions:
+        result["cases"].append(
+            {
+                "n": region["n"],
+                "shape": region["shape"],
+                "reads": attempt(lambda region=region: _read_59(body, region["n"])),
+            }
+        )
     return result

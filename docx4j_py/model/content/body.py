@@ -1153,6 +1153,9 @@ class Body(Sequence):
         for code; this returns
         :class:`~docx4j_py.model.content.reports.SearchHit`\\ s for tools, so a
         server shows an agent *where* the matches are without a call per hit.
+        A hit is one paragraph's, at an address: so a wildcard query matches no
+        paragraph mark here, where ``search()`` matches Word's (CR-016 Phase C),
+        as ``^p`` is ``search()``'s alone (CR-013 Phase C).
 
         Args:
             text: what to look for.
@@ -1222,27 +1225,38 @@ class Body(Sequence):
         A match is found on each paragraph's whole text, so it **spans runs**
         freely; only formatting one splits them (CR-003 section 8).
 
+        **With wildcards** (CR-016 Phase C; core-ts check 59, its K7) the
+        body's ``"Content"`` range is searched, across its paragraphs' marks
+        but the last's, as Word's search of a control's range leaves its last
+        mark out (check 59 case 5): ``?`` over a body of ``Q`` and ``Z`` finds
+        ``Q``, ``\\r`` and ``Z``, and ``Q?Z`` finds ``Q\\rZ``; never a cell's or a
+        row's end, nor across a table's edge (:meth:`Range.search`). So a
+        block control's search, and a cell's body's, read the same.
+
         Args:
             text: what to look for.
             **options: ``match_case`` (default False, which is
                 ``re.IGNORECASE``), ``match_whole_word`` (Unicode word
                 boundaries), ``match_wildcards`` (Word's ``?`` and ``*``, and
-                ``[]``, ``<``, ``>``, ``@``, ``{}``), and ``limit``.
+                ``[]``, ``<``, ``>``, ``@``, ``{}``, ``^13``), and ``limit``.
         """
         from docx4j_py.model.content.text_model import paragraph_mark_pieces
 
-        if not options.get("match_wildcards") and paragraph_mark_pieces(text) is not None:
+        wildcards = bool(options.get("match_wildcards"))
+        if wildcards or paragraph_mark_pieces(text) is not None:
             # Word's paragraph mark, ^p, is searched across the body's whole range (CR-013
-            # Phase C; core-ts CR-014 phase 3); a body over several stories (a notes part's)
-            # a paragraph at a time, each its own mark
+            # Phase C; core-ts CR-014 phase 3), and a wildcard query across its content
+            # range, which Word's wildcards read without the last mark (CR-016 Phase C;
+            # core-ts check 59 case 5); a body over several stories (a notes part's) a
+            # paragraph at a time, each its own mark
             first = next(self.iter_paragraphs(), None)
             if first is not None:
                 try:
-                    whole = self.get_range("Whole")
+                    scope = self.get_range("Content" if wildcards else "Whole")
                 except SpanError:
-                    whole = None
-                if whole is not None:
-                    return whole.search(text, **options)
+                    scope = None
+                if scope is not None:
+                    return scope.search(text, **options)
         limit = options.pop("limit", None)
         out: list[Range] = []
         for paragraph in self.iter_paragraphs():
@@ -1263,6 +1277,12 @@ class Body(Sequence):
         (``text_before`` is `find`, ``text_after`` is `replace`) rather than the
         text either side, which would be meaningless for many matches.
 
+        **With wildcards** (CR-016 Phase C, Q9) every hit is found first, as
+        :meth:`search` finds it over the body's ``"Content"`` range; where any
+        holds a paragraph's mark (core-ts check 59: ``Q?Z`` over the paragraphs
+        ``Q`` and ``Z``) the call is refused before anything changes. The rest
+        replace a paragraph at a time, as before.
+
         Args:
             find: what to look for.
             replace: what to put there.
@@ -1274,24 +1294,31 @@ class Body(Sequence):
 
         Raises:
             SpanError: ``range.replaces_mark``, a query holding ``^p``, Word's
-                paragraph mark, whose replacement is unmeasured (CR-013 Phase C).
+                paragraph mark, whose replacement is unmeasured (CR-013 Phase C),
+                or a wildcard query a hit of which holds a mark (CR-016 Phase C).
         """
-        from docx4j_py.model.content.text_model import refuse_mark_replacement
+        from docx4j_py.model.content.text_model import (
+            refuse_mark_replacement,
+            refuse_wildcard_mark_replacement,
+        )
 
         refuse_mark_replacement("Body", find, options)
+        if options.get("match_wildcards"):
+            unlimited = {name: value for name, value in options.items() if name != "limit"}
+            refuse_wildcard_mark_replacement("Body", self.search(find, **unlimited))
         replace = drop_unwritable(replace)
         with recording(self, "replace_text") as change:
             change.text(before=find)
             # every match checked before the first is replaced (CR-011 Phase F),
             # a paragraph break's split among the checks (CR-013 section 11, E1)
             for paragraph in self.paragraphs:
-                for match in paragraph.search(find, **options):
+                for match in paragraph._matches(find, options):
                     match.refuse_branch_text("replace_text")
                     paragraph.refuse_equation(match.start, match.end)
                     paragraph.refuse_paragraph_breaks(match.start, match.end, replace, "replace_text")
             count = 0
             for paragraph in self.paragraphs:
-                count += paragraph.replace_text(find, replace, **options)
+                count += paragraph._replace_text(find, replace, options)
             change.text(after=replace)
             return count
 

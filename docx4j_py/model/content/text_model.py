@@ -115,6 +115,8 @@ __all__ = [
     "TEXT_ITEM_NAMES",
     "VIEWS",
     "WRITTEN_AS",
+    "MarkedMatch",
+    "MarkedSegments",
     "Reading",
     "Segment",
     "block_children_of",
@@ -145,6 +147,7 @@ __all__ = [
     "refuse_equation",
     "refuse_mark_replacement",
     "refuse_tracked_equation",
+    "refuse_wildcard_mark_replacement",
     "require_view",
     "rows_of",
     "runs_of",
@@ -159,6 +162,7 @@ __all__ = [
     "text_run",
     "touches_branch_text",
     "unwritable",
+    "wildcard_matches_across",
 ]
 
 
@@ -1903,7 +1907,19 @@ def search_pattern(
         match_wildcards: Word's wildcards --- ``?`` one character, ``*`` any
             run, ``[a-z]`` a class, ``[!x]`` a negated one, ``<`` and ``>`` the
             start and end of a word, ``@`` one or more of what precedes,
-            ``{n,m}`` a repeat, and ``\\`` to escape any of them.
+            ``{n,m}`` a repeat, ``^13`` a paragraph's mark, and ``\\`` to
+            escape any of them.
+
+    **Wildcards across a mark** (CR-016 Phase C; core-ts ``searchPattern`` at
+    ``3ba1e68``, its CR-002 section 32's K7, held to Word 365 by check 59):
+    ``^13`` is ``\\r``, Word's wildcard code for a paragraph's mark, and the
+    pattern is compiled with ``re.DOTALL``, so that ``?``, ``*`` and a class
+    cross a mark where a search reads one
+    (:func:`wildcard_matches_across`), as core-ts's ``[\\s\\S]`` does. ``.``
+    crosses ``\\r`` in Python without it, but not ``\\n``; no wildcard search
+    reads a row's ``\\r\\n``, since no hit crosses a cell, so ``DOTALL`` is for
+    clarity, and a test pins it. ``?`` is a code point, so it takes an emoji
+    whole, as Word's does (core-ts's K4; check 58 case 13).
     """
     if match_wildcards:
         out: list[str] = []
@@ -1914,6 +1930,10 @@ def search_pattern(
                 out.append(".")
             elif char == "*":
                 out.append(".*?")
+            elif char == "^" and text.startswith("13", index + 1):
+                # ^13, Word's wildcard code for a paragraph mark (core-ts check 59)
+                out.append(r"\r")
+                index += 2
             elif char == "<":
                 out.append(r"\b(?=\w)")
             elif char == ">":
@@ -1948,11 +1968,33 @@ def search_pattern(
         source = re.escape(text)
     if match_whole_word:
         source = rf"(?<!\w){source}(?!\w)"
-    return re.compile(source, 0 if match_case else re.IGNORECASE)
+    flags = 0 if match_case else re.IGNORECASE
+    if match_wildcards:
+        flags |= re.DOTALL
+    return re.compile(source, flags)
+
+
+#: A code point at or above U+0300: below it every code point is a grapheme
+#: cluster of its own, so a text without one is never filtered (core-ts's guard).
+_CLUSTERING = re.compile(r"[^\x00-\u02ff]")
 
 
 def find_all(text: str, pattern: re.Pattern[str]) -> list[tuple[int, int]]:
-    """Every ``[start, end)`` match of a pattern, empty matches skipped."""
+    """Every ``[start, end)`` match of a pattern, empty matches skipped, and none that cuts a grapheme cluster.
+
+    **The grapheme filter** (CR-016 Phase C, Q8; docx4j-core-ts's
+    ``matchesOf`` since ``ebb218e``, its CR-002 section 32 item 1): a match
+    whose start or end is not a grapheme boundary (:func:`is_grapheme_boundary`)
+    is dropped --- an Arabic letter without the fatha on it, an ``e`` without
+    the U+0301 after it. Such a range is no text a person can see, and
+    replacing it would split a character. The matches are found first and
+    filtered after, so a dropped one moves no other. The boundaries are read
+    only for a text holding a code point at or above U+0300, below which every
+    code point is a cluster of its own, so Latin text pays nothing: an ASCII
+    text is passed by ``str.isascii()``, which CPython answers without a scan,
+    and any other by one scan for such a code point (core-ts's guard). Every
+    search, ``find`` and ``replace_text`` goes through here.
+    """
     out: list[tuple[int, int]] = []
     position = 0
     while position <= len(text):
@@ -1964,6 +2006,8 @@ def find_all(text: str, pattern: re.Pattern[str]) -> list[tuple[int, int]]:
             continue
         out.append((match.start(), match.end()))
         position = match.end()
+    if out and not text.isascii() and _CLUSTERING.search(text) is not None:
+        out = [(a, b) for a, b in out if is_grapheme_boundary(text, a) and is_grapheme_boundary(text, b)]
     return out
 
 
@@ -2076,6 +2120,32 @@ def refuse_mark_replacement(owner: str, find: str, options: dict[str, Any] | Non
     )
 
 
+def refuse_wildcard_mark_replacement(owner: str, hits: list[Any]) -> None:
+    """Refuse a wildcard replacement where a hit holds a paragraph mark (core-ts's ``refuseWildcardMarkReplacement``).
+
+    CR-016 Phase C (Q9; core-ts ``3ba1e68``, its CR-002 section 32's K7):
+    ``search`` with wildcards finds a hit holding a mark, as Word's does
+    (check 59), but what replacing one leaves isn't measured, as for a plain
+    ``^p`` query (:func:`refuse_mark_replacement`). `hits` are the search's,
+    every one found before anything changes (CR-013 section 4.9 item 3's rule);
+    a hit holds a mark where it spans paragraphs or holds its end mark.
+
+    Raises:
+        SpanError: ``range.replaces_mark``.
+    """
+    if not any(hit.spans_paragraphs or hit.holds_end_mark for hit in hits):
+        return
+    from docx4j_py.model.content.errors import SpanError
+
+    raise SpanError(
+        f"{owner}.replace_text refused: a hit holds a paragraph mark, which Word's wildcards match "
+        "(core-ts check 59), and what replacing one does isn't measured (CR-016 Phase C; "
+        "docx4j-core-ts CR-002 section 32)",
+        code="range.replaces_mark",
+        hint="search for the hits (search(..., match_wildcards=True)) and edit their ranges",
+    )
+
+
 def office_matches(
     segments: list[Segment],
     query: str,
@@ -2168,3 +2238,135 @@ def office_matches(
             continue
         out.append((starts[a], ends[b - 1]))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Word's wildcards across a paragraph's mark (CR-016 Phase C; core-ts K7)
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class MarkedSegments:
+    """A paragraph's part in a wildcard search across its marks (core-ts's ``MarkedSegments`` at ``3ba1e68``)."""
+
+    segments: list[Segment]
+    """The paragraph's, with its objects and hidden items (``segments_of(objects=True)``)."""
+    start: int
+    """Where the text read begins, in ``Paragraph.text``."""
+    end: int
+    """Where it ends."""
+    length: int
+    """The length of ``Paragraph.text``: where the mark stands."""
+    mark: bool
+    """The paragraph's mark follows its text, as a hit may hold it."""
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class MarkedMatch:
+    """A hit of a wildcard search across marks (core-ts's ``MarkedMatch``): from `start` in piece `first` to `end` in piece `last`."""
+
+    first: int
+    start: int
+    last: int
+    end: int
+    mark: bool
+    """The hit ends with piece `last`'s mark, which it holds."""
+
+
+@dataclasses.dataclass(slots=True)
+class _Placed:
+    """Where a piece's characters stand in the text a wildcard search reads."""
+
+    base: int
+    piece: int
+    low: int
+    count: int
+    length: int
+    starts: list[int] | None
+    ends: list[int] | None
+
+
+def wildcard_matches_across(
+    pieces: list[MarkedSegments],
+    query: str,
+    *,
+    match_case: bool = False,
+    match_whole_word: bool = False,
+    match_wildcards: bool = True,
+) -> list[MarkedMatch]:
+    """A wildcard query's hits over consecutive paragraphs, each followed by its mark where it says so.
+
+    CR-016 Phase C, the port of docx4j-core-ts's ``wildcardMatchesAcross``
+    (``search.mts`` at ``3ba1e68``, its CR-002 section 32's K7), held to Word
+    365 by core-ts check 59: Word's wildcards match a paragraph's mark exactly
+    where ``^p`` does, so ``?``, ``*`` and a class cross one and ``^13`` is
+    one. The text read in each paragraph is :func:`office_matches`' for
+    wildcards (hidden text left out, a picture U+FFFC, only ``[start, end)``),
+    and each mark that follows is ``\\r``. The caller gives only paragraphs a
+    hit may span (one cell's, or none's) and only the marks it may hold (a
+    paragraph's own, never a cell's or a row's end, never a deleted one).
+    Every hit is filtered by :func:`find_all`'s grapheme rule over that text.
+
+    Returns:
+        The hits, each from offset `start` in piece `first` to `end` in piece
+        `last`, holding that piece's mark where `mark`.
+    """
+    from bisect import bisect_right
+
+    pattern = search_pattern(query, match_case=match_case, match_whole_word=match_whole_word, match_wildcards=True)
+    chunks: list[str] = []
+    placed: list[_Placed] = []
+    position = 0
+    for k, piece in enumerate(pieces):
+        starts: list[int] | None = None
+        ends: list[int] | None = None
+        if all(not segment.object for segment in piece.segments):
+            # the usual paragraph: nothing but text, each offset itself
+            whole = "".join(segment.text for segment in piece.segments)
+            low = max(0, piece.start)
+            chars = whole[low : max(low, min(len(whole), piece.end))]
+        else:
+            low = 0
+            out: list[str] = []
+            starts, ends = [], []
+            for segment in piece.segments:
+                if segment.hidden:
+                    continue
+                if segment.object:
+                    if piece.start < segment.start < piece.end:
+                        out.append(OBJECT_REPLACEMENT)
+                        starts.append(segment.start)
+                        ends.append(segment.start)
+                    continue
+                for offset, char in enumerate(segment.text):
+                    at = segment.start + offset
+                    if piece.start <= at < piece.end:
+                        out.append(char)
+                        starts.append(at)
+                        ends.append(at + 1)
+            chars = "".join(out)
+        placed.append(_Placed(position, k, low, len(chars), piece.length, starts, ends))
+        chunks.append(chars)
+        position += len(chars)
+        if piece.mark:
+            chunks.append("\r")
+            position += 1
+    text = "".join(chunks)
+    bases = [entry.base for entry in placed]
+
+    def place(index: int) -> tuple[int, int, int, bool]:
+        """The piece, the start and end offsets, and whether it is the mark, of the character at `index`."""
+        entry = placed[bisect_right(bases, index) - 1]
+        j = index - entry.base
+        if j == entry.count:
+            return entry.piece, entry.length, entry.length, True
+        if entry.starts is None or entry.ends is None:
+            return entry.piece, entry.low + j, entry.low + j + 1, False
+        return entry.piece, entry.starts[j], entry.ends[j], False
+
+    hits: list[MarkedMatch] = []
+    for a, b in find_all(text, pattern):
+        first, start, _end, _mark = place(a)
+        last, _start, end, mark = place(b - 1)
+        hits.append(MarkedMatch(first, start, last, end, mark))
+    return hits

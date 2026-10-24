@@ -61,16 +61,19 @@ from docx4j_py.model.content.styles import built_in_of, style_name_of
 from docx4j_py.model.content.text_model import (
     PARAGRAPH_BREAKS,
     RUN_HOLDER_NAMES,
+    MarkedSegments,
     canonical_view,
     drop_unwritable,
     office_matches,
     paragraph_mark_pieces,
     refuse_mark_replacement,
+    refuse_wildcard_mark_replacement,
     require_view,
+    wildcard_matches_across,
 )
 from docx4j_py.model.content.tracking import REVISION_NAMES
 from docx4j_py.traversal import element_name
-from docx4j_py.wml import to_xml
+from docx4j_py.wml import Tc, to_xml
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.paragraph import Paragraph
@@ -1248,11 +1251,23 @@ class Range:
         table's edge; ``^p^p`` is an empty paragraph's mark after another
         mark, and ``^^`` stays a caret. Wildcards read ``^p`` as the two
         characters, as they did.
+
+        **Wildcards across marks** (CR-016 Phase C; core-ts ``3ba1e68``, its
+        CR-002 section 32's K7, held to Word 365 by check 59): a range across
+        paragraphs, or one holding its mark, is searched across its
+        paragraphs' marks, where ``^p`` matches one: ``?``, ``*`` and a class
+        cross a paragraph's own mark the range holds and ``^13`` is one, never
+        a cell's or a row's end, a deleted mark, or anything across a table's
+        edge (:meth:`_search_wildcards`). A hit ending with a mark holds it
+        (``\\r`` alone is a range of the mark).
         """
         limit = options.pop("limit", None)
         pieces = None if options.get("match_wildcards") else paragraph_mark_pieces(text)
         if pieces is not None:
             out = self._search_marks(pieces, options)
+            return out if limit is None else out[:limit]
+        if options.get("match_wildcards") and (self.spans_paragraphs or self.holds_end_mark):
+            out = self._search_wildcards(text, options)
             return out if limit is None else out[:limit]
         if self.spans_paragraphs:
             out = [hit for piece in self._pieces() for hit in piece.search(text, **options)]
@@ -1331,6 +1346,118 @@ class Range:
             )
         return out
 
+    def _search_wildcards(self, query: str, options: dict[str, Any]) -> list[Range]:
+        """A wildcard query's hits across the paragraphs' marks, as Word's wildcards match them (core-ts's ``searchWildcards``).
+
+        CR-016 Phase C (core-ts ``Range.mts`` at ``3ba1e68``; check 59): where
+        ``^p`` matches one (:meth:`_search_marks`), a paragraph's own mark the
+        range holds (:attr:`Paragraph.mark_text` ``\\r``: never a cell's or a
+        row's end, nor a deleted mark, which Word's default view shows as
+        nothing), and never across a table's edge, so the paragraphs a hit
+        spans are in one cell or in none: the range's paragraphs are taken in
+        runs of consecutive ones in one cell (the ``w:tc`` nearest above each,
+        the one :attr:`Paragraph.parent_table_cell` views) or in none, and each
+        run's text is joined by the marks it may hold
+        (:func:`~.text_model.wildcard_matches_across`). The last paragraph's
+        mark counts only where the range holds it.
+        """
+        read = self._paragraphs_read()
+        paragraphs = [paragraph for paragraph, _segments in read]
+        last = len(paragraphs) - 1
+        lengths = [sum(len(segment.text) for segment in segments) for _paragraph, segments in read]
+        holds_end = self.mark and self.end >= lengths[last]
+
+        def cell(paragraph: Paragraph) -> int | None:
+            node = getattr(paragraph.element, "parent", None)
+            for _ in range(256):
+                if node is None or isinstance(node, Tc):
+                    break
+                node = getattr(node, "parent", None)
+            return None if node is None else id(node)
+
+        # runs of consecutive paragraphs in one cell, or in none
+        groups: list[list[int]] = []
+        previous: Any = object()
+        for j, paragraph in enumerate(paragraphs):
+            scope = cell(paragraph)
+            if groups and scope == previous:
+                groups[-1].append(j)
+            else:
+                groups.append([j])
+            previous = scope
+        out: list[Range] = []
+        for group in groups:
+            pieces = []
+            for j in group:
+                paragraph, segments = read[j]
+                pieces.append(
+                    MarkedSegments(
+                        segments=segments,
+                        start=self.start if j == 0 else 0,
+                        end=self.end if j == last else lengths[j],
+                        length=lengths[j],
+                        mark=(j < last or holds_end) and paragraph.mark_text == "\r",
+                    )
+                )
+            for hit in wildcard_matches_across(pieces, query, **options):
+                first = paragraphs[group[hit.first]]
+                end = paragraphs[group[hit.last]]
+                out.append(
+                    Range(
+                        first,
+                        hit.start,
+                        hit.end,
+                        end_paragraph=None if end.element is first.element else end,
+                        mark=hit.mark,
+                    )
+                )
+        return out
+
+    def _paragraphs_read(self) -> list[tuple[Paragraph, list[Any]]]:
+        """:attr:`paragraphs`, each with its segments (objects and hidden items listed), read once from the story's layout."""
+        if not self.spans_paragraphs:
+            return [(self.paragraph, self.paragraph.segments(objects=True))]
+        items, _owner, low, high = self._slice()
+        read: dict[int, tuple[Paragraph, list[Any]]] = {}
+
+        def text_of(element: Any, container: list) -> str:
+            view = self._view_of(element, container)
+            segments = view.segments(objects=True)
+            read[id(element)] = (view, segments)
+            # Paragraph.text: an object's or a hidden item's segment holds no text
+            return "".join(segment.text for segment in segments)
+
+        layout = story_layout(items, text_of, start=low, stop=high + 1)
+        first = layout.index_of(self.paragraph.element)
+        last = layout.index_of(self.end_paragraph.element)
+        if first < 0 or last < 0:
+            raise ContentError(
+                "this range's paragraphs are not in one story as a reader reads it",
+                code="range.stale",
+                hint="take the range again",
+            )
+        return [read[id(place.element)] for place in layout.places[first : last + 1]]
+
+    def _matches(self, text: str, options: dict[str, Any]) -> list[Range]:
+        """The hits a replacement takes: each paragraph's own, a paragraph at a time, none holding a mark.
+
+        core-ts's ``officeMatches`` over each piece (``Range.replaceText`` at
+        ``3ba1e68``): what :meth:`search` finds but for ``^p``'s and the
+        wildcards' hits across marks, which a replacement refuses first.
+        """
+        limit = None
+        if "limit" in options:
+            options = dict(options)
+            limit = options.pop("limit")
+        if self.spans_paragraphs:
+            out = [hit for piece in self._pieces() for hit in piece._matches(text, options)]
+        else:
+            hits = office_matches(
+                self.paragraph.segments(objects=True), text, start=self.start, end=self.end, **options
+            )
+            out = [Range(self.paragraph, start, end) for start, end in hits]
+        return out if limit is None else out[:limit]
+
     def replace_text(self, find: str, replace: str, **options: Any) -> int:
         """Replace every match within the span, last first; returns the count.
 
@@ -1342,20 +1469,28 @@ class Range:
         replaced (CR-011 Phase F's rule; core-ts refuses paragraph by
         paragraph).
 
+        **With wildcards** (CR-016 Phase C, Q9) every hit is found first, as
+        :meth:`search` finds it; where any holds a paragraph's mark (Word's
+        wildcards match one, core-ts check 59) the call is refused before
+        anything changes. The rest replace a paragraph at a time.
+
         Raises:
             SpanError: ``range.replaces_mark``, a query holding ``^p``, Word's
-                paragraph mark: the hits are found, but what Word's replacement
-                of a mark leaves isn't measured (core-ts CR-014 section 11.3).
+                paragraph mark, or a wildcard query a hit of which holds a mark:
+                the hits are found, but what Word's replacement of a mark leaves
+                isn't measured (core-ts CR-014 section 11.3, CR-002 section 32).
         """
         from docx4j_py.model.content.paragraph import replace_matches
 
         refuse_mark_replacement("Range", find, options)
+        if options.get("match_wildcards"):
+            refuse_wildcard_mark_replacement("Range", self.search(find, **_unlimited(options)))
         replace = drop_unwritable(replace)
         if self.spans_paragraphs:
             self._refuse_read_only("replace_text")
         with recording(self.paragraph.parent_body, "replace_text") as change:
             change.text(before=find)
-            matches = self.search(find, **options)
+            matches = self._matches(find, options)
             for match in matches:  # every match checked before the first is replaced (CR-011 Phase F)
                 match.refuse_branch_text("replace_text")
                 match.paragraph.refuse_equation(match.start, match.end)
@@ -1800,6 +1935,11 @@ class Range:
             out["end_address"] = self.end_paragraph.address
             out["mark"] = self.mark
         return out
+
+
+def _unlimited(options: dict[str, Any]) -> dict[str, Any]:
+    """A search's options without ``limit``: a replacement's refusal reads every hit (CR-016 Phase C)."""
+    return {name: value for name, value in options.items() if name != "limit"}
 
 
 def _trimmed(paragraph: Paragraph, start: int, end: int) -> Any:

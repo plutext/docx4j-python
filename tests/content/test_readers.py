@@ -1,4 +1,4 @@
-"""The readers as Office JS reads them: CR-016 Phase B (a placeholder is no text, a deleted mark is nothing, K1 pinned).
+"""The readers as Office JS reads them: CR-016 Phases B and C (a placeholder is no text, a deleted mark is nothing, K1 pinned, wildcards across marks).
 
     .venv-fork/bin/python -m pytest tests/content/test_readers.py
 
@@ -6,12 +6,16 @@ The port of docx4j-core-ts's ``test/readers.test.mjs`` at ``222cc20`` for its
 CR-012 sections 18 and 19 and its check 58, test for test, its strings kept:
 check 58's file and snippet agreeing, its three JSONs and Word's save, the
 snippet through the port held to Word 365's Simple Markup run and its Edit run
-but for the differences listed (K1, K3, and case 13's wildcards, Phase C's),
+but for the differences listed (K1, K3, and case 13's two classes, K6),
 a deleted mark read as nothing in Word's default view, and a control showing
 its placeholder read as no text and written into in the placeholder's place.
 core-ts runs check 58's Script Lab snippet through its Office JS shim; this
 package has none, so ``tests/office_js/checks.py`` ports it
-(:func:`run_check_58`), with the same JSON shape and ``vis()``.
+(:func:`run_check_58`), with the same JSON shape and ``vis()``. And, at
+``3ba1e68`` (CR-016 Phase C), its check 59: the file and snippet agreeing, the
+JSON and the file as copied, the snippet through the port
+(:func:`run_check_59`) Word 365's run in every scope, and the refusals of a
+wildcard replacement holding a mark.
 
 Then this package's own: cases 20 to 22's markup against Word's save, a bound
 control written into and its node, the text model unmoved, a placeholder's
@@ -197,8 +201,9 @@ def test_check_58s_snippet_through_the_port_held_to_word_365s_simple_markup_run_
                 differing.append(f"{mode} {case['n']}")
     # K1: Word lists nothing in two deleted paragraphs in a row (2, and 3, whose region lists only the first author's
     # deletion), nor in a paragraph whose text alone is deleted (4); this package lists each in its paragraph. K3: Word's
-    # search finds the placeholder's text, reading each hit as '' (12). Case 13, Word's wildcards over a surrogate pair
-    # and an Arabic word: Phase C's (below)
+    # search finds the placeholder's text, reading each hit as '' (12). K6: Word's classes match nothing in the emoji or
+    # the Arabic word, where [!a-z ]@ finds them here, and [!a-z ] the emoji, a code point to Python (13); its mark, as
+    # Word's since CR-016 Phase C (K7)
     assert differing == ["read 2", "read 3", "read 4", "read 12", "read 13"]
 
     def reads(n: int) -> Any:
@@ -208,15 +213,16 @@ def test_check_58s_snippet_through_the_port_held_to_word_365s_simple_markup_run_
     assert _listing(theirs["read"]["cases"][1]["reads"])["paragraphs"][2:4] == [[[], [], []], [[], [], []]]
     assert reads(12)["Click or tap here to enter text."] == [[], [], ["Click or tap here to enter text."]]
     assert theirs["read"]["cases"][11]["reads"]["Click or tap here to enter text."] == [[""], [""], ["Click or tap here to enter text."]]
-    # case 13, pinned as Phase C's (CR-016 section 4.7): ? a code point, the pair whole (K4, here already), and
-    # a? b and x?y Word's; but no wildcard matches the paragraph's mark yet (K7), and with no grapheme filter (Q8) ?
-    # and [!a-z ] take the Arabic letters and their fathas apart, which Word's don't
+    # case 13 (CR-016 Phase C): every query Word's but the two classes. ? a code point, the pair whole (K4), the
+    # Arabic letters with their fathas never cut (the grapheme filter, Q8), and the paragraph's mark (K7); a?b and x?y.
+    # [!a-z ] finds the emoji, a code point here where core-ts's UTF-16 halves are dropped (section 4.9), and its mark,
+    # as Word's; [!a-z ]@ the emoji and the Arabic word too (K6, core-ts's own answer), and its mark
     measured_13 = theirs["read"]["cases"][12]["reads"]
-    assert {q: reads(13)[q] for q in ("a?b", "x?y")} == {q: measured_13[q] for q in ("a?b", "x?y")}
-    assert reads(13)["?"][0][:8] == measured_13["?"][0][:8]
-    assert reads(13)["?"] == [["x", "\\ud83d\\ude00", "y", " ", "a", "\\ud83d\\ude00", "b", " ", "\\u0643", "\\u064e", "\\u062a", "\\u064e", "\\u0628", "\\u064e", " ", "z"]]
-    assert reads(13)["[!a-z ]"] == [["\\ud83d\\ude00", "\\ud83d\\ude00", "\\u0643", "\\u064e", "\\u062a", "\\u064e", "\\u0628", "\\u064e"]]
-    assert reads(13)["[!a-z ]@"] == [["\\ud83d\\ude00", "\\ud83d\\ude00", "\\u0643\\u064e\\u062a\\u064e\\u0628\\u064e"]]
+    classes = ("[!a-z ]", "[!a-z ]@")
+    assert {q: v for q, v in reads(13).items() if q not in classes} == {q: v for q, v in measured_13.items() if q not in classes}
+    assert reads(13)["?"] == [["x", "\\ud83d\\ude00", "y", " ", "a", "\\ud83d\\ude00", "b", " ", " ", "z", "\\u000d"]]
+    assert reads(13)["[!a-z ]"] == [["\\ud83d\\ude00", "\\ud83d\\ude00", "\\u000d"]]
+    assert reads(13)["[!a-z ]@"] == [["\\ud83d\\ude00", "\\ud83d\\ude00", "\\u0643\\u064e\\u062a\\u064e\\u0628\\u064e", "\\u000d"]]
     assert measured_13["[!a-z ]"] == measured_13["[!a-z ]@"] == [["\\u000d"]]
     # the deleted marks (6 to 10) are Word's, every read; the placeholder (11) every read but placeholderText,
     # which reads the runs here (Q6), and showingPlaceholderText, which Word gave undefined
@@ -252,6 +258,94 @@ def test_check_58s_edit_run_leaves_cases_20_to_22_as_words_save_after_its_runs_n
     for n in (20, 21, 22):
         control = checks.control_by_tag(saved.body, f"c58-{n}")
         assert (control.text, control.is_showing_placeholder) == (f"FILL{n}", False)
+
+
+# ---------------------------------------------------------------------------
+# check 59 (2026-10-23): where Word's wildcards match a paragraph mark (core-ts CR-002 section 32's K5, K7)
+# ---------------------------------------------------------------------------
+
+#: Check 59's cases as ``build.mjs`` at core-ts ``222cc20`` builds them (``check59Cases``): ``(n, shape)``.
+CASES_59 = [(1, "body"), (2, "cell-only"), (3, "cell-two"), (4, "cells-rows"), (5, "control")]
+
+#: Each case's content as ``build.mjs`` builds it: the region's paragraphs between BEGIN and END, each table's
+#: cells' paragraphs by row, each control's tag, id, alias and paragraphs.
+CONTENT_59 = {
+    1: (["Q", "Z"], [], []),
+    2: (["Q", "Z"], [[[["Q"]]]], []),
+    3: (["Q", "Z", "W"], [[[["Q", "Z"]]]], []),
+    4: (["Q", "Z", "W", "X", "Y"], [[[["Q"], ["Z"]], [["W"], ["X"]]]], []),
+    5: (["Q", "Z", "W"], [], [("c59-59000", 59000, "Check 59", ["Q", "Z"])]),
+}
+
+#: The file Word 365 read and its JSON, as CR-016 section 6.1 has them (the JSON core-ts ``222cc20``'s, unchanged at ``3ba1e68``).
+SHA1_59 = {
+    "59-wildcard-marks.docx": "30e8d448f10639f6fa27fb0bb7c00c920ac70117",
+    "59-wildcard-marks-word365.json": "400556cd1cdb419f70ed448b6ff15f04f77bd20d",
+}
+
+
+def test_check_59s_file_and_snippet_agree_every_case_parses_to_the_shape_it_was_built_as_each_token_once():
+    body = load(OFFICE_JS / "59-wildcard-marks.docx").body
+    regions = [r for p in body.paragraphs if (r := checks.parse_region_59(p.text)) is not None]
+    assert [(r["n"], r["shape"]) for r in regions] == CASES_59
+    for n, _shape in CASES_59:
+        for token in (f"BEGIN{n}", f"END{n}"):
+            assert len(body.search(token, match_case=True, match_whole_word=True)) == 1, token
+        region = checks.region_of_59(body, n)
+        tables = [
+            [[[p.text for p in table.cell(i, j).body.paragraphs] for j in range(len(row.cells))] for i, row in enumerate(table.rows)]
+            for table in region.tables
+        ]
+        controls = [(c.tag, c.id, c.title, [p.text for p in c.body().paragraphs]) for c in region.content_controls]
+        assert ([p.text for p in region.paragraphs[1:-1]], tables, controls) == CONTENT_59[n], n
+    # the queries are the snippet's, and its one control's tag is there once
+    assert checks.REGION_QUERIES_59 == ("Q?Z", "Q^13Z", "Q*Z", "^13")
+    assert checks.PART_QUERIES_59 == ("?", "[!A-Z]", "^13")
+    assert [c.tag for c in body.content_controls] == ["c59-59000"]
+
+
+def test_check_59s_json_word_365_2026_10_23_is_of_this_file_and_the_files_are_as_copied():
+    measured = word("59-wildcard-marks-word365.json")
+    assert [measured["check"], measured["label"]] == [59, "Simple Markup"]
+    assert measured["host"] == {"host": "Word", "version": "16.0.20326.20232", "platform": "PC"}
+    assert [(c["n"], c["shape"]) for c in measured["cases"]] == CASES_59
+    for name, digest in SHA1_59.items():
+        assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
+
+
+def test_check_59s_snippet_through_the_port_is_word_365s_run_wildcards_match_a_mark_where_p_does_k7():
+    """core-ts: "check 59's file and snippet agree, and the snippet through the Word shim is Word 365's run: wildcards
+    match a mark where ^p does (K7)", the agreement test above and this one."""
+    package = load(OFFICE_JS / "59-wildcard-marks.docx")
+    body = package.body
+    result = checks.run_check_59(package, "docx4j-python")
+    assert len(result["cases"]) == 5
+    assert "error: " not in json.dumps(result)
+    # Word 365's run (2026-10-23), scope for scope: a paragraph's mark matched, never a cell's or a row's end, nor across a
+    # table's edge, as `^p`'s; a control's range without its last paragraph's mark
+    measured = word("59-wildcard-marks-word365.json")
+    assert [c["shape"] for c in measured["cases"]] == [c["shape"] for c in result["cases"]]
+    for index, case in enumerate(measured["cases"]):
+        assert result["cases"][index]["reads"] == case["reads"], case["shape"]
+    assert measured["cases"][1]["reads"]["cell"]["?"] == ["Q"], "a cell's end: no mark"
+    assert measured["cases"][3]["reads"]["table"]["?"] == ["Q", "Z", "W", "X"], "cells' and rows' ends: no mark"
+    assert measured["cases"][4]["reads"]["control"]["?"] == ["Q", "\\u000d", "Z"], (
+        "inside a control: its paragraphs' marks but the last, which its range doesn't hold"
+    )
+    # a replacement where a hit holds a mark is refused before anything changes, as a plain ^p's (Q9: SpanError
+    # range.replaces_mark, where core-ts throws NotSupportedError)
+    before = body.get_xml()
+    with pytest.raises(SpanError, match="holds a paragraph mark") as refused:
+        body.replace_text("Q?Z", "X", match_wildcards=True)
+    assert refused.value.code == "range.replaces_mark"
+    with pytest.raises(SpanError, match="holds a paragraph mark") as refused:
+        body.paragraphs[2].replace_text("?", "X", match_wildcards=True)
+    assert refused.value.code == "range.replaces_mark"
+    assert body.get_xml() == before
+    paragraph = body.paragraphs[2]
+    assert [paragraph.text, paragraph.replace_text("Q", "X", match_wildcards=True), paragraph.text] == ["Q", 1, "X"], (
+        "a hit holding no mark is replaced"
+    )
 
 
 # ---------------------------------------------------------------------------

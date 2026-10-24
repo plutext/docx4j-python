@@ -66,6 +66,7 @@ from docx4j_py.model.content.text_model import (
     refuse_branch_text,
     refuse_equation,
     refuse_mark_replacement,
+    refuse_wildcard_mark_replacement,
     require_view,
     runs_of,
     segments_of,
@@ -1286,18 +1287,37 @@ class Paragraph:
         Word's Find codes ``^f ^e ^l ^m ^t ^~ ^- ^g ^^``; a plain ``-`` matches
         a non-breaking hyphen too.
 
+        **With wildcards** the paragraph's ``"Whole"`` range is searched, its
+        own mark included, as Word's ``?`` or class matches it (CR-016 Phase C;
+        core-ts check 59, its K7): ``?`` over ``Q`` finds ``Q`` and ``\\r``, but
+        a cell's last paragraph's mark is the cell's end, which no wildcard
+        matches. A hit that would cut a grapheme cluster is never found
+        (:func:`~.text_model.find_all`).
+
         Args:
             text: what to look for.
             **options: ``match_case``, ``match_whole_word``, ``match_wildcards``
                 and ``limit``, as :meth:`Body.search`.
         """
+        if options.get("match_wildcards") or paragraph_mark_pieces(text) is not None:
+            # Word's paragraph mark, ^p, is searched in the paragraph's whole range, which
+            # holds its mark (CR-013 Phase C; core-ts CR-014 phase 3), and so is a wildcard
+            # query, whose ? or class matches the mark too (CR-016 Phase C; core-ts check 59)
+            return self.get_range("Whole").search(text, **options)
+        return self._matches(text, options)
+
+    def _matches(self, text: str, options: dict[str, Any]) -> list[Range]:
+        """Every match within this paragraph's text, none holding its mark (core-ts's ``searchMatches``).
+
+        What a replacement takes, its query's ``^p`` or wildcard hits across
+        the mark refused first (CR-016 Phase C).
+        """
         from docx4j_py.model.content.range import Range
 
-        if not options.get("match_wildcards") and paragraph_mark_pieces(text) is not None:
-            # Word's paragraph mark, ^p, is searched in the paragraph's whole range, which
-            # holds its mark (CR-013 Phase C; core-ts CR-014 phase 3)
-            return self.get_range("Whole").search(text, **options)
-        limit = options.pop("limit", None)
+        limit = None
+        if "limit" in options:
+            options = dict(options)
+            limit = options.pop("limit")
         hits = office_matches(self.segments(objects=True), text, **options)
         if limit is not None:
             hits = hits[:limit]
@@ -1316,6 +1336,12 @@ class Paragraph:
         :meth:`insert_text` does (CR-013 section 11, E1); every match's split is
         checked with the rest before the first replacement.
 
+        **With wildcards** every hit is found first, the paragraph's mark
+        among them as :meth:`search` finds it; where any holds the mark the
+        call is refused before anything changes (CR-016 Phase C, Q9: core-ts
+        check 59's ``replaceText('?', ...)``), and ``replace_text("Q", "X",
+        match_wildcards=True)`` replaces as before.
+
         Args:
             find: what to look for.
             replace: what to put there.
@@ -1327,13 +1353,21 @@ class Paragraph:
 
         Raises:
             SpanError: ``range.replaces_mark``, a query holding ``^p``, Word's
-                paragraph mark, whose replacement is unmeasured (CR-013 Phase C).
+                paragraph mark, whose replacement is unmeasured (CR-013 Phase C),
+                or a wildcard query a hit of which holds the mark (CR-016 Phase C).
         """
         refuse_mark_replacement("Paragraph", find, options)
+        if options.get("match_wildcards"):
+            unlimited = {name: value for name, value in options.items() if name != "limit"}
+            refuse_wildcard_mark_replacement("Paragraph", self.search(find, **unlimited))
+        return self._replace_text(find, replace, options)
+
+    def _replace_text(self, find: str, replace: str, options: dict[str, Any]) -> int:
+        """:meth:`replace_text` after its refusals: each of :meth:`_matches`' hits, last first."""
         replace = drop_unwritable(replace)
         with recording(self.parent_body, "replace_text") as change:
             change.text(before=find)
-            matches = self.search(find, **options)
+            matches = self._matches(find, options)
             # every match checked before the first is replaced (CR-011 Phase F),
             # a paragraph break's split among the checks (CR-013 section 11, E1)
             segments = self.segments()
