@@ -36,8 +36,21 @@ file leaves out: the stated value, else the schema's default, typed. It answers
 **absence**; the readers above answer **a present value's spelling**, so an
 on/off attribute is ``on_off(effective(obj, "fld_lock"))``.
 
-CR-018 Phase B adds the enumerations' reader (``in_enumeration``) and the
-colour reader (``colour``) here.
+**The enumerations** (CR-018 Phase B, section 4.2; rule 2). :func:`in_enumeration`
+reads an enumerated ``w:val`` as Word does: a member only for exactly a
+member's value, case and spacing and all, so anything else is unset, as if
+absent. ``w:u``'s six on/off words read as ``none`` (round six,
+:data:`UNDERLINE_ALIASES`). :func:`underline`, :func:`highlight`,
+:func:`vertical_alignment` and :func:`emphasis_mark` are it for the four run
+properties Word measured.
+
+**Colour** (section 4.3; rule 3, rounds two to seven). :func:`colour` reads an
+ST_HexColor value: ``"RRGGBB"`` for six hex digits in any case (trimmed, one
+leading ``#`` allowed) or one of the 140 classic HTML names
+(:data:`NETSCAPE_COLOURS`), :data:`AUTO` for exactly ``auto``, and None for
+anything else. What None means is the attribute's: as if absent in a text or
+underline colour (:func:`states_colour`), automatic in a fill or a border, no
+page colour in ``w:background``.
 """
 
 from __future__ import annotations
@@ -48,13 +61,23 @@ from typing import Any
 
 __all__ = [
     "AUDITED_NAMESPACES",
+    "AUTO",
+    "NETSCAPE_COLOURS",
     "OFF",
+    "UNDERLINE_ALIASES",
     "XSD_FALSE",
     "XSD_TRUE",
+    "colour",
     "effective",
+    "emphasis_mark",
+    "highlight",
+    "in_enumeration",
     "is_on",
     "on_off",
     "on_off_normal_form",
+    "states_colour",
+    "underline",
+    "vertical_alignment",
     "xsd_boolean",
 ]
 
@@ -142,6 +165,193 @@ def xsd_boolean(value: Any, default: bool | None = None) -> bool | None:
     if text in XSD_FALSE:
         return False
     return default
+
+
+# ---------------------------------------------------------------------------
+# the enumerations (CR-018 Phase B, section 4.2)
+# ---------------------------------------------------------------------------
+
+#: ``w:u w:val``'s six on/off words, each read as ``none`` (round six, docx4j's
+#: ``UnderlineValueAdapter``, ``1d1b824a9``): exactly these, case-sensitive and
+#: untrimmed. Over an underlining style each removes the underline, ``true`` as
+#: much as ``false``, and Word saves ``w:val="none"``. ``True``, ``TRUE``, ``yes``
+#: and ``no`` are outside the enumeration, so unset.
+UNDERLINE_ALIASES: dict[str, str] = {word: "none" for word in ("true", "false", "on", "off", "1", "0")}
+
+
+def in_enumeration(value: Any, enumeration: type[Enum], aliases: dict[str, str] | None = None) -> Any:
+    """A member of `enumeration`, or None: Word's reading of an enumerated ``w:val`` (rule 2).
+
+    A member is itself. A ``str`` is the member whose value it is **exactly**,
+    case, spacing and all (``"SINGLE"``, ``"Yellow"``, ``" yellow"`` and
+    ``"bogus"`` are none, and so are ``""`` and anything else the exact parse
+    kept as its text); else the member `aliases` names for it (``w:u``'s
+    :data:`UNDERLINE_ALIASES`). None, and anything else, is None: the value is
+    unset, as if absent, so a style's value beneath shows (rounds two, five and
+    six). Word repairs a missing or invalid ``highlight``, ``vertAlign`` or
+    ``em``, dropping the element; an invalid ``w:u`` it opens without a prompt.
+
+    A padded member (``" yellow"``) is read as outside the enumeration until a
+    probe measures Word's whitespace there (CR-018 Q15): Word is case-exact for
+    the enumerations and untrimmed for on/off.
+    """
+    if value is None:
+        return None
+    if isinstance(value, enumeration):
+        return value
+    if isinstance(value, Enum):  # a member of another enumeration: its value read as text
+        value = value.value
+    if not isinstance(value, str):
+        return None
+    try:
+        return enumeration(value)
+    except ValueError:
+        pass
+    if aliases is not None:
+        alias = aliases.get(value)
+        if alias is not None:
+            return enumeration(alias)
+    return None
+
+
+_ENUMERATIONS: dict[str, type[Enum]] = {}
+
+
+def _enumeration(name: str) -> type[Enum]:
+    """A ``wml`` enumeration by name, imported on first use: this module imports no model class at import."""
+    found = _ENUMERATIONS.get(name)
+    if found is None:
+        from docx4j_py import wml
+
+        found = _ENUMERATIONS[name] = getattr(wml, name)
+    return found
+
+
+def underline(value: Any) -> Any:
+    """``w:u/@w:val`` as Word reads it: an ``UnderlineEnumeration`` member, or None for unset.
+
+    :func:`in_enumeration` with :data:`UNDERLINE_ALIASES`: the six on/off words
+    are ``NONE``; anything else outside the enumeration is None.
+    """
+    return in_enumeration(value, _enumeration("UnderlineEnumeration"), UNDERLINE_ALIASES)
+
+
+def highlight(value: Any) -> Any:
+    """``w:highlight/@w:val`` as Word reads it: a ``HighlightVal`` member, or None for unset (case-exact)."""
+    return in_enumeration(value, _enumeration("HighlightVal"))
+
+
+def vertical_alignment(value: Any) -> Any:
+    """``w:vertAlign/@w:val`` as Word reads it: an ``STVerticalAlignRun`` member, or None for unset."""
+    return in_enumeration(value, _enumeration("STVerticalAlignRun"))
+
+
+def emphasis_mark(value: Any) -> Any:
+    """``w:em/@w:val`` as Word reads it: an ``STEm`` member, or None for unset."""
+    return in_enumeration(value, _enumeration("STEm"))
+
+
+# ---------------------------------------------------------------------------
+# colour (CR-018 Phase B, section 4.3)
+# ---------------------------------------------------------------------------
+
+#: What :func:`colour` answers for a stated automatic colour: exactly ``auto``.
+AUTO = "auto"
+
+#: The classic HTML (Netscape) colour names Word 365 reads in a colour, lower case, to
+#: their ``RRGGBB``: 140 names, docx4j's ``ColorTables.HTML`` (``868a1797b``; since CR-061,
+#: ``WordColorValues.HTML``), which is CSS 3's 147 keywords less ``grey``, its five other
+#: ``grey`` spellings and ``lightgray`` (rule 3; CR-018 Q7, docx4j's D5). Round four probed
+#: all seven, and Word dropped each; 41 of the 140 are measured, each saved as this hex.
+NETSCAPE_COLOURS: dict[str, str] = {
+    "aliceblue": "F0F8FF", "antiquewhite": "FAEBD7", "aqua": "00FFFF", "aquamarine": "7FFFD4", "azure": "F0FFFF",
+    "beige": "F5F5DC", "bisque": "FFE4C4", "black": "000000", "blanchedalmond": "FFEBCD", "blue": "0000FF",
+    "blueviolet": "8A2BE2", "brown": "A52A2A", "burlywood": "DEB887", "cadetblue": "5F9EA0",
+    "chartreuse": "7FFF00", "chocolate": "D2691E", "coral": "FF7F50", "cornflowerblue": "6495ED",
+    "cornsilk": "FFF8DC", "crimson": "DC143C", "cyan": "00FFFF", "darkblue": "00008B", "darkcyan": "008B8B",
+    "darkgoldenrod": "B8860B", "darkgray": "A9A9A9", "darkgreen": "006400", "darkkhaki": "BDB76B",
+    "darkmagenta": "8B008B", "darkolivegreen": "556B2F", "darkorange": "FF8C00", "darkorchid": "9932CC",
+    "darkred": "8B0000", "darksalmon": "E9967A", "darkseagreen": "8FBC8F", "darkslateblue": "483D8B",
+    "darkslategray": "2F4F4F", "darkturquoise": "00CED1", "darkviolet": "9400D3", "deeppink": "FF1493",
+    "deepskyblue": "00BFFF", "dimgray": "696969", "dodgerblue": "1E90FF", "firebrick": "B22222",
+    "floralwhite": "FFFAF0", "forestgreen": "228B22", "fuchsia": "FF00FF", "gainsboro": "DCDCDC",
+    "ghostwhite": "F8F8FF", "gold": "FFD700", "goldenrod": "DAA520", "gray": "808080", "green": "008000",
+    "greenyellow": "ADFF2F", "honeydew": "F0FFF0", "hotpink": "FF69B4", "indianred": "CD5C5C", "indigo": "4B0082",
+    "ivory": "FFFFF0", "khaki": "F0E68C", "lavender": "E6E6FA", "lavenderblush": "FFF0F5", "lawngreen": "7CFC00",
+    "lemonchiffon": "FFFACD", "lightblue": "ADD8E6", "lightcoral": "F08080", "lightcyan": "E0FFFF",
+    "lightgoldenrodyellow": "FAFAD2", "lightgreen": "90EE90", "lightgrey": "D3D3D3", "lightpink": "FFB6C1",
+    "lightsalmon": "FFA07A", "lightseagreen": "20B2AA", "lightskyblue": "87CEFA", "lightslategray": "778899",
+    "lightsteelblue": "B0C4DE", "lightyellow": "FFFFE0", "lime": "00FF00", "limegreen": "32CD32",
+    "linen": "FAF0E6", "magenta": "FF00FF", "maroon": "800000", "mediumaquamarine": "66CDAA",
+    "mediumblue": "0000CD", "mediumorchid": "BA55D3", "mediumpurple": "9370DB", "mediumseagreen": "3CB371",
+    "mediumslateblue": "7B68EE", "mediumspringgreen": "00FA9A", "mediumturquoise": "48D1CC",
+    "mediumvioletred": "C71585", "midnightblue": "191970", "mintcream": "F5FFFA", "mistyrose": "FFE4E1",
+    "moccasin": "FFE4B5", "navajowhite": "FFDEAD", "navy": "000080", "oldlace": "FDF5E6", "olive": "808000",
+    "olivedrab": "6B8E23", "orange": "FFA500", "orangered": "FF4500", "orchid": "DA70D6",
+    "palegoldenrod": "EEE8AA", "palegreen": "98FB98", "paleturquoise": "AFEEEE", "palevioletred": "DB7093",
+    "papayawhip": "FFEFD5", "peachpuff": "FFDAB9", "peru": "CD853F", "pink": "FFC0CB", "plum": "DDA0DD",
+    "powderblue": "B0E0E6", "purple": "800080", "red": "FF0000", "rosybrown": "BC8F8F", "royalblue": "4169E1",
+    "saddlebrown": "8B4513", "salmon": "FA8072", "sandybrown": "F4A460", "seagreen": "2E8B57",
+    "seashell": "FFF5EE", "sienna": "A0522D", "silver": "C0C0C0", "skyblue": "87CEEB", "slateblue": "6A5ACD",
+    "slategray": "708090", "snow": "FFFAFA", "springgreen": "00FF7F", "steelblue": "4682B4", "tan": "D2B48C",
+    "teal": "008080", "thistle": "D8BFD8", "tomato": "FF6347", "turquoise": "40E0D0", "violet": "EE82EE",
+    "wheat": "F5DEB3", "white": "FFFFFF", "whitesmoke": "F5F5F5", "yellow": "FFFF00", "yellowgreen": "9ACD32",
+}
+
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
+#: XML's whitespace, which is what Word trims from a colour (``" FF0000"``, ``"FF0000 "``).
+_XML_SPACE = " \t\r\n"
+
+
+def colour(value: Any) -> str | None:
+    """An ST_HexColor value as Word 365 reads it: ``"RRGGBB"`` upper case, :data:`AUTO`, or None.
+
+    * **exactly** ``auto`` (the ``STHexColorAuto`` member, or the text) is
+      :data:`AUTO`, a stated automatic (round six: ``Auto``, ``AUTO``,
+      ``" auto"``, ``"auto "`` and ``#auto`` are not);
+    * otherwise the text (a parsed hexBinary's source spelling, which the fork's
+      ``lexical_types`` keeps; a kept ``str``) is trimmed of whitespace, loses
+      one leading ``#``, and is the colour if it is six hex digits in any case;
+    * else a name in :data:`NETSCAPE_COLOURS`, in any case (``red``, ``DarkRed``);
+    * anything else is None: ``F00``, ``0xFF0000``, five or seven digits,
+      ``GG0000``, ``""``, a name outside the table (``grey``, ``rebeccapurple``,
+      ``windowtext``, ``dark red``).
+
+    **What None means is the attribute's** (rounds five, six and seven): as if
+    absent for ``w:color/@w:val`` and ``w:u/@w:color``, so a style's colour
+    beneath shows; automatic, and overriding a style's, for ``w:shd/@w:fill``,
+    ``w:shd/@w:color`` and a border's ``w:color``; no page colour for
+    ``w:background/@w:color``. A stated ``w:themeColor`` is CR-009 Phase B's and
+    wins over ``w:val`` as Word reads it; this reads ``w:val`` only.
+    """
+    if value is None:
+        return None
+    if isinstance(value, Enum):
+        value = value.value
+    if isinstance(value, (bytes, bytearray)):
+        lexical = getattr(value, "lexical", None)
+        if lexical is None:  # bytes set in code, or the converter's own spelling: the value itself
+            return value.hex().upper() if len(value) == 3 else None
+        value = lexical
+    text = str(value)
+    if text == AUTO:
+        return AUTO
+    trimmed = text.strip(_XML_SPACE)
+    digits = trimmed.removeprefix("#")
+    if len(digits) == 6 and all(c in _HEX_DIGITS for c in digits):
+        return digits.upper()
+    return NETSCAPE_COLOURS.get(trimmed.lower())
+
+
+def states_colour(value: Any) -> bool:
+    """Whether a ``w:color/@w:val`` or ``w:u/@w:color`` value states a colour, as Word reads it.
+
+    docx4j's ``WordColorValues.stated``: one :func:`colour` reads, exactly
+    ``auto`` included. Any other value is as if absent, so the merge passes it
+    over and a style's colour shows (rounds five and six). A fill's and a
+    border's are read otherwise: there an invalid value is a stated automatic.
+    """
+    return colour(value) is not None
 
 
 # ---------------------------------------------------------------------------

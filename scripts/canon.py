@@ -275,7 +275,8 @@ def compare(orig: bytes, new: bytes, *, unordered_root: bool = False, normalise:
         from docx4j_py.openpackaging.normalise import normalise_tree
 
         for path, attribute, before, after in normalise_tree(a):
-            rep.add("word-normal-form", path, f"{_q(attribute)}: {before!r} -> {after!r}")
+            # attribute None: an element dropped (CR-018 Phase B's rows), `before` the element as read
+            rep.add("word-normal-form", path, f"{_q(attribute) if attribute else 'element'}: {before!r} -> {after!r}")
     if unordered_root:
         sort_children(a)
         sort_children(b)

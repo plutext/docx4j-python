@@ -42,7 +42,14 @@ from typing import Any
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
 from docx4j_py.model.content.errors import BuilderError
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import (
+    AUTO,
+    colour,
+    highlight,
+    is_on,
+    underline,
+    vertical_alignment,
+)
 from docx4j_py.wml import (
     RT,
     P,
@@ -276,8 +283,12 @@ def apply_run_options(r_pr: RPr, **options: Any) -> RPr:
     color = options.get("color")
     if color is not None:
         hex_value = color[1:] if color.startswith("#") else color
+        read = colour(color)
         if hex_value == "":
             r_pr.color = None
+        elif read is not None:
+            # a classic HTML name or a hex spelling Word reads is written as the RRGGBB it reads (CR-018)
+            r_pr.color = el.color(val=read)
         else:
             r_pr.color = el.color(val="auto" if hex_value.lower() == "auto" else hex_value.upper())
 
@@ -308,28 +319,28 @@ def read_run_options(r_pr: RPr | None) -> dict[str, Any]:
     ``builders/wml.mts``'s ``readRunOptions`` returns: every option present,
     ``underline`` narrowed to a name, ``name``/``color``/``style`` empty strings
     and ``size`` zero where the run says nothing.
+
+    Each value as Word 365 reads it (CR-018, :mod:`docx4j_py.model.values`):
+    an on/off value by rule 1; ``underline``, ``highlight_color``, ``subscript``
+    and ``superscript`` by rule 2, so a value outside the enumeration reads as
+    unset (``"None"``, None, False) and ``w:u``'s six on/off words as
+    ``"None"``; ``color`` by rule 3, ``"#RRGGBB"`` for six hex digits in any
+    spelling or a classic HTML name, ``"auto"`` for exactly ``auto``, and ``""``
+    for a value Word rejects, which it reads as absent.
     """
     fonts = getattr(r_pr, "r_fonts", None)
-    underline_value = getattr(getattr(r_pr, "u", None), "val", None)
-    underline_value = getattr(underline_value, "value", underline_value)
-    color_value = getattr(getattr(r_pr, "color", None), "val", None)
-    # ``ST_HexColor`` is a union of ``auto`` and ``xsd:hexBinary``, so a parsed
-    # ``w:color`` is ``bytes`` and a built one is the ``str`` this module wrote
-    # (CR-003 Phase B: both have to read back as ``'#RRGGBB'``).
-    if isinstance(color_value, bytes):
-        color_value = color_value.hex().upper()
-    color_value = getattr(color_value, "value", color_value)
-    highlight = getattr(getattr(r_pr, "highlight", None), "val", None)
-    highlight = getattr(highlight, "value", highlight)
-    vert = getattr(getattr(r_pr, "vert_align", None), "val", None)
-    vert = getattr(vert, "value", vert)
+    underline_value = underline(getattr(getattr(r_pr, "u", None), "val", None))
+    underline_value = None if underline_value is None else underline_value.value
+    # ``ST_HexColor`` is a union of ``auto`` and ``xsd:hexBinary``: a parsed ``w:color`` is
+    # ``bytes`` (with its source's spelling), a built one the ``str`` this module wrote, and one
+    # no rule converts the text it was read with; :func:`colour` reads all three as Word does.
+    color_value = colour(getattr(getattr(r_pr, "color", None), "val", None))
+    highlight_value = highlight(getattr(getattr(r_pr, "highlight", None), "val", None))
+    highlight_value = None if highlight_value is None else highlight_value.value
+    vert = vertical_alignment(getattr(getattr(r_pr, "vert_align", None), "val", None))
+    vert = None if vert is None else vert.value
     size = getattr(getattr(r_pr, "sz", None), "val", None)
 
-    is_hex = (
-        isinstance(color_value, str)
-        and len(color_value) == 6
-        and all(c in "0123456789abcdefABCDEF" for c in color_value)
-    )
     return {
         "bold": _on(getattr(r_pr, "b", None)),
         "italic": _on(getattr(r_pr, "i", None)),
@@ -344,15 +355,9 @@ def read_run_options(r_pr: RPr | None) -> dict[str, Any]:
         "superscript": vert == "superscript",
         "name": (fonts.ascii or fonts.h_ansi or "") if fonts is not None else "",
         "size": 0 if size is None else size / 2,
-        "color": (
-            ""
-            if color_value is None
-            else f"#{color_value.upper()}"
-            if is_hex
-            else str(color_value)
-        ),
+        "color": "" if color_value is None else AUTO if color_value == AUTO else f"#{color_value}",
         "highlight_color": (
-            None if highlight in (None, "none") else (highlight_hex_value(highlight) or highlight)
+            None if highlight_value in (None, "none") else highlight_hex_value(highlight_value)
         ),
         "style": getattr(getattr(r_pr, "r_style", None), "val", None) or "",
     }

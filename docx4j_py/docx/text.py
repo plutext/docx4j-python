@@ -49,7 +49,14 @@ from docx4j_py.docx.enums import (
 )
 from docx4j_py.docx.shared import Emu, Length, Pt, RGBColor, Twips, points_of, twips_of
 from docx4j_py.model.content.paragraph import Paragraph as ContentParagraph
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import (
+    AUTO,
+    colour,
+    highlight,
+    is_on,
+    underline,
+    vertical_alignment,
+)
 from docx4j_py.wml import CTTabStop, P, PPr, R, RPr, el
 from docx4j_py.wml import r as r_builder
 
@@ -252,22 +259,24 @@ class ColorFormat:
 
     @staticmethod
     def _val(color: Any) -> str | None:
-        value = getattr(color, "val", None)
-        if isinstance(value, bytes):
-            return value.hex().upper()
-        value = getattr(value, "value", value)
-        return None if value is None else str(value)
+        """``w:val`` as Word 365 reads it (CR-018 Q9): ``"RRGGBB"``, ``"auto"``, or None for a value Word rejects."""
+        return colour(getattr(color, "val", None))
 
     @property
     def rgb(self) -> RGBColor | None:
-        """The colour as an :class:`~docx4j_py.docx.shared.RGBColor`, or None."""
+        """The colour as an :class:`~docx4j_py.docx.shared.RGBColor`, or None.
+
+        As Word reads ``w:val`` (CR-018 Q9, a departure from python-docx 1.2.0
+        recorded in CR-003 section 20.3): six hex digits in any spelling, a
+        leading ``#`` and surrounding spaces allowed, or a classic HTML colour
+        name (``red`` is ``FF0000``); None for ``auto`` and for any value Word
+        rejects (``F00``, five or seven digits, which python-docx misreads by
+        slicing as ``FF0000``).
+        """
         value = self._val(self._color)
-        if value is None or value.lower() == "auto":
+        if value is None or value == AUTO:
             return None
-        try:
-            return RGBColor.from_string(value)
-        except (ValueError, IndexError):
-            return None
+        return RGBColor.from_string(value)
 
     @rgb.setter
     def rgb(self, value: RGBColor | None) -> None:
@@ -313,14 +322,22 @@ class ColorFormat:
 
     @property
     def type(self) -> Any:
-        """``MSO_COLOR_TYPE.RGB``, ``.THEME``, ``.AUTO`` or None."""
+        """``MSO_COLOR_TYPE.RGB``, ``.THEME``, ``.AUTO`` or None.
+
+        ``THEME`` where a ``w:themeColor`` is stated; else as Word reads
+        ``w:val`` (CR-018 Q9): ``AUTO`` for exactly ``auto``, ``RGB`` for a
+        colour, and None, as for no ``w:color``, for a value Word rejects, which
+        it reads as absent (``Auto``, ``F00``, a name outside its table).
+        """
         color = self._color
         if color is None:
             return None
         if getattr(color, "theme_color", None) is not None:
             return MSO_COLOR_TYPE.THEME
         value = self._val(color)
-        if value is not None and value.lower() == "auto":
+        if value is None:
+            return None
+        if value == AUTO:
             return MSO_COLOR_TYPE.AUTO
         return MSO_COLOR_TYPE.RGB
 
@@ -610,10 +627,10 @@ class Font:
     # -- sub- and superscript ---------------------------------------------
 
     def _vert_align(self) -> str | None:
+        """``w:vertAlign/@w:val`` as Word reads it (CR-018 Q9): None where absent or outside the enumeration."""
         r_pr = _r_pr(self._holder, create=False)
-        value = getattr(getattr(r_pr, "vert_align", None), "val", None)
-        value = getattr(value, "value", value)
-        return None if value is None else str(value)
+        value = vertical_alignment(getattr(getattr(r_pr, "vert_align", None), "val", None))
+        return None if value is None else value.value
 
     def _set_vert_align(self, wanted: str, value: bool | None) -> None:
         current = self._vert_align()
@@ -662,13 +679,16 @@ class Font:
 
     @property
     def highlight_color(self) -> Any:
-        """``w:highlight`` as a ``WD_COLOR_INDEX`` member, or None."""
+        """``w:highlight`` as a ``WD_COLOR_INDEX`` member, or None.
+
+        None also for a value outside the enumeration (``YELLOW``, ``bogus``),
+        which Word reads as unset (CR-018 Q9), where python-docx raises.
+        """
         r_pr = _r_pr(self._holder, create=False)
-        value = getattr(getattr(r_pr, "highlight", None), "val", None)
-        value = getattr(value, "value", value)
+        value = highlight(getattr(getattr(r_pr, "highlight", None), "val", None))
         if value is None:
             return None
-        return _HIGHLIGHT_BY_XML.get(str(value))
+        return _HIGHLIGHT_BY_XML.get(value.value)
 
     @highlight_color.setter
     def highlight_color(self, value: Any) -> None:
@@ -735,17 +755,22 @@ class Font:
 
     @property
     def underline(self) -> bool | WD_UNDERLINE | None:
-        """True, False, None or a ``WD_UNDERLINE`` member, as python-docx reports it."""
+        """True, False, None or a ``WD_UNDERLINE`` member, as python-docx reports it.
+
+        The value as Word reads it (CR-018 Q9): one outside the enumeration
+        (``SINGLE``, ``bogus``, ``""``) is None, unset, where python-docx raises;
+        ``w:u``'s six on/off words (``true``, ``false``, ``on``, ``off``, ``1``,
+        ``0``) are ``none``, so False.
+        """
         r_pr = _r_pr(self._holder, create=False)
         u = getattr(r_pr, "u", None) if r_pr is not None else None
         if u is None:
             return None
-        value = getattr(u, "val", None)
-        value = getattr(value, "value", value)
+        value = underline(getattr(u, "val", None))
         if value is None:
             return None
         try:
-            member = WD_UNDERLINE.from_xml(str(value))
+            member = WD_UNDERLINE.from_xml(value.value)
         except ValueError:
             return None
         if member is WD_UNDERLINE.SINGLE:

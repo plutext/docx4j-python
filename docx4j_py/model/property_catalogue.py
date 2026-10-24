@@ -30,7 +30,14 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
 from docx4j_py.child import deep_copy
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import (
+    emphasis_mark,
+    highlight,
+    is_on,
+    states_colour,
+    underline,
+    vertical_alignment,
+)
 
 __all__ = [
     "CELL",
@@ -88,14 +95,30 @@ def _empty_theme_colour(value: Any) -> bool:
     return value is None or getattr(value, "value", value) == "none"
 
 
-def _states_colour(value: Any, theme_colour: Any) -> bool:
+def _stated_fill_or_border(value: Any) -> bool:
+    """Whether a fill's or a border's colour value is stated: any value at all (CR-018 Phase B).
+
+    Word reads one it rejects (``F00``, ``bogus``, ``""``) as **automatic**, and
+    that overrides a style's colour (round six: Word saves ``w:fill="auto"``,
+    ``w:color="auto"``), so every value present is stated. docx4j's
+    ``statesColour`` holds ``""`` empty; here it is the automatic Word reads, as
+    the normal form writes it (``auto``; CR-018 section 11.7).
+    """
+    return value is not None
+
+
+def _states_colour(value: Any, theme_colour: Any, stated: Callable[[Any], bool] = _stated_fill_or_border) -> bool:
     """docx4j ``StyleUtil.statesColour``: whether a colour's value or theme reference is stated.
 
     Where it is, the colour inherits as one (:func:`_merge_colour`). ``auto`` ---
     the ``STHexColorAuto`` member --- is a stated value, as it is a non-empty
     ``String`` to docx4j; a theme reference of ``none`` is not a stated reference.
+    `stated` reads the value: for a text or underline colour
+    :func:`~docx4j_py.model.values.states_colour`, under which a value Word
+    rejects is as if absent (docx4j's ``statesWordColour``, CR-060 phase 4); for
+    a fill's or a border's, any value (:func:`_stated_fill_or_border`).
     """
-    return not _empty_scalar(value) or not _empty_theme_colour(theme_colour)
+    return stated(value) or not _empty_theme_colour(theme_colour)
 
 
 # ---------------------------------------------------------------- emptiness
@@ -115,6 +138,22 @@ def is_true(value: Any) -> bool:
 def is_empty_val(value: Any) -> bool:
     """A leaf whose only content is ``w:val``: absent, or with no value."""
     return value is None or _empty_scalar(value.val)
+
+
+def _is_empty_enumerated(read: Callable[[Any], Any]) -> Callable[[Any], bool]:
+    """A ``w:val`` leaf whose value is an enumeration: empty unless `read` (Word's reading) gives a member.
+
+    CR-018 Phase B, rule 2: a ``w:highlight``, ``w:vertAlign`` or ``w:em`` whose
+    value is missing or outside its enumeration (``YELLOW``, ``Superscript``,
+    ``DOT``, ``bogus``, ``""``) is unset, as if absent, so a style's value
+    beneath shows (round five). docx4j has it from JAXB, which reads such a value
+    as null, and for ``w:highlight`` from ``WordRepairs.isHighlightColor``.
+    """
+
+    def is_empty(value: Any) -> bool:
+        return value is None or read(value.val) is None
+
+    return is_empty
 
 
 def is_null(value: Any) -> bool:
@@ -142,10 +181,12 @@ def is_empty_color(value: Any) -> bool:
     A ``w:color`` stating only a theme colour is not empty, so a style's
     ``w:themeColor="accent1"`` with no ``w:val`` is inherited, where before
     docx4j's CR-034 only ``w:val`` counted and it was dropped. As in the Java,
-    the reference counts when it is present at all, ``none`` included.
+    the reference counts when it is present at all, ``none`` included. A value
+    Word rejects (``F00``, ``bogus``, ``Auto``, ``""``) is no value (CR-018 Phase
+    B; docx4j 17.3.5, ``WordColors.stated``), so a style's colour beneath shows.
     """
     return value is None or (
-        _empty_scalar(value.val)
+        not states_colour(value.val)
         and value.theme_color is None
         and _empty_scalar(value.theme_tint)
         and _empty_scalar(value.theme_shade)
@@ -153,10 +194,16 @@ def is_empty_color(value: Any) -> bool:
 
 
 def is_empty_u(value: Any) -> bool:
-    """docx4j ``isEmpty(U)``: neither a kind nor a colour, the theme attributes counted (17.3.3)."""
+    """docx4j ``isEmpty(U)``: neither a kind nor a colour, the theme attributes counted (17.3.3).
+
+    The kind and the colour as Word reads them (CR-018 Phase B): a ``w:val``
+    outside the enumeration is no kind (the six on/off words are ``none``,
+    :func:`~docx4j_py.model.values.underline`), and a colour Word rejects is no
+    colour (:func:`~docx4j_py.model.values.states_colour`).
+    """
     return value is None or (
-        value.val is None
-        and _empty_scalar(value.color)
+        underline(value.val) is None
+        and not states_colour(value.color)
         and value.theme_color is None
         and _empty_scalar(value.theme_tint)
         and _empty_scalar(value.theme_shade)
@@ -176,12 +223,12 @@ def is_empty_lang(value: Any) -> bool:
 
 
 def is_empty_shd(value: Any) -> bool:
-    """docx4j ``isEmpty(CTShd)``."""
+    """docx4j ``isEmpty(CTShd)``; a colour or a fill counts whatever its value (:func:`_stated_fill_or_border`)."""
     return value is None or (
-        _empty_scalar(value.color)
+        value.color is None
         and _empty_scalar(value.theme_tint)
         and _empty_scalar(value.theme_shade)
-        and _empty_scalar(value.fill)
+        and value.fill is None
         and _empty_scalar(value.theme_fill_tint)
         and _empty_scalar(value.theme_fill_shade)
         and value.theme_color is None
@@ -191,9 +238,9 @@ def is_empty_shd(value: Any) -> bool:
 
 
 def is_empty_border(value: Any) -> bool:
-    """docx4j ``isEmpty(CTBorder)``."""
+    """docx4j ``isEmpty(CTBorder)``; a colour counts whatever its value (:func:`_stated_fill_or_border`)."""
     return value is None or (
-        _empty_scalar(value.color)
+        value.color is None
         and value.space is None
         and value.sz is None
         and value.theme_color is None
@@ -399,14 +446,20 @@ def _not_carried(_source: Any, destination: Any) -> Any:
     return destination
 
 
-def _merge_val(cls: type, is_empty: Callable[[Any], bool]) -> Callable[[Any, Any], Any]:
-    """A leaf whose only content is ``w:val``, taken whole when the source states it."""
+def _merge_val(
+    cls: type, is_empty: Callable[[Any], bool], read: Callable[[Any], Any] | None = None
+) -> Callable[[Any, Any], Any]:
+    """A leaf whose only content is ``w:val``, taken whole when the source states it.
+
+    `read`, where given, is what the value is carried as: an enumeration's
+    member, as Word reads it (CR-018 Phase B).
+    """
 
     def merge(source: Any, destination: Any) -> Any:
         if source is None or is_empty(source):
             return destination
         out = cls() if destination is None else destination
-        out.val = source.val
+        out.val = source.val if read is None else read(source.val)
         return out
 
     return merge
@@ -468,7 +521,12 @@ _COLOR_ATTRIBUTE = ("color", "theme_color", "theme_tint", "theme_shade")
 _FILL = ("fill", "theme_fill", "theme_fill_tint", "theme_fill_shade")
 
 
-def _merge_colour(source: Any, destination: Any, names: tuple[str, str, str, str]) -> None:
+def _merge_colour(
+    source: Any,
+    destination: Any,
+    names: tuple[str, str, str, str],
+    stated: Callable[[Any], bool] = _stated_fill_or_border,
+) -> None:
     """A colour inherits **as one** (docx4j 17.3.3, its CR-034).
 
     Where the source states a value or a theme reference (:func:`_states_colour`),
@@ -482,10 +540,12 @@ def _merge_colour(source: Any, destination: Any, names: tuple[str, str, str, str
     plain accent.
 
     ``names`` is the colour's four attribute names, value first: :data:`_COLOR`,
-    :data:`_COLOR_ATTRIBUTE` or :data:`_FILL`.
+    :data:`_COLOR_ATTRIBUTE` or :data:`_FILL`. ``stated`` reads the value
+    (:func:`_states_colour`): a text or underline colour Word rejects is passed
+    over, a fill's or a border's is a stated automatic (CR-018 Phase B).
     """
     value, theme_colour, tint, shade = names
-    if _states_colour(getattr(source, value), getattr(source, theme_colour)):
+    if _states_colour(getattr(source, value), getattr(source, theme_colour), stated):
         for name in names:
             setattr(destination, name, getattr(source, name))
     else:
@@ -500,19 +560,26 @@ def merge_color(source: Any, destination: Any) -> Any:
     if is_empty_color(source):
         return destination
     out = Color() if destination is None else destination
-    _merge_colour(source, out, _COLOR)
+    _merge_colour(source, out, _COLOR, states_colour)
     return out
 
 
 def merge_u(source: Any, destination: Any) -> Any:
-    """docx4j ``apply(U, U)``: the kind inherits on its own, the colour as one."""
+    """docx4j ``apply(U, U)``: the kind inherits on its own, the colour as one.
+
+    Both as Word reads them (CR-018 Phase B): the kind is
+    :func:`~docx4j_py.model.values.underline`'s member, so a ``w:val`` outside
+    the enumeration leaves the inherited kind (round five; S11 is the missing
+    one) and the six on/off words are ``none``, which removes it (round six);
+    a colour Word rejects leaves the inherited colour.
+    """
     from docx4j_py.wml import U
 
     if is_empty_u(source):
         return destination
     out = U() if destination is None else destination
-    out.val = _attr(source.val, out.val)
-    _merge_colour(source, out, _COLOR_ATTRIBUTE)
+    out.val = _attr(underline(source.val), out.val)
+    _merge_colour(source, out, _COLOR_ATTRIBUTE, states_colour)
     return out
 
 
@@ -914,11 +981,27 @@ def _val(name: str, xml_name: str, cls_name: str, **kwargs: Any) -> Property:
     return _prop(name, xml_name, _lazy_merge_val(cls_name), is_empty_val, **kwargs)
 
 
-def _lazy_merge_val(cls_name: str) -> Callable[[Any, Any], Any]:
+def _enumerated(name: str, xml_name: str, cls_name: str, read: Callable[[Any], Any]) -> Property:
+    """A ``w:val`` leaf whose value is an enumeration Word reads exactly (CR-018 Phase B, rule 2).
+
+    Empty unless `read` gives a member (:func:`_is_empty_enumerated`), so a
+    value outside the enumeration does not override a style's; the member is
+    what is carried.
+    """
+    is_empty = _is_empty_enumerated(read)
+    return _prop(name, xml_name, _lazy_merge_val(cls_name, is_empty, read), is_empty)
+
+
+def _lazy_merge_val(
+    cls_name: str,
+    is_empty: Callable[[Any], bool] = is_empty_val,
+    read: Callable[[Any], Any] | None = None,
+) -> Callable[[Any, Any], Any]:
     """``_merge_val`` over a class named now and imported on first use.
 
     The model is not imported at import time: :mod:`docx4j_py.model` must not
-    cost the whole object model to import (CR-001 section 14).
+    cost the whole object model to import (CR-001 section 14). `read`, where
+    given, is what the value is carried as (an enumeration's member).
     """
     merger: list[Callable[[Any, Any], Any]] = []
 
@@ -926,7 +1009,7 @@ def _lazy_merge_val(cls_name: str) -> Callable[[Any, Any], Any]:
         if not merger:
             from docx4j_py import wml
 
-            merger.append(_merge_val(getattr(wml, cls_name), is_empty_val))
+            merger.append(_merge_val(getattr(wml, cls_name), is_empty, read))
         return merger[0](source, destination)
 
     return merge
@@ -962,16 +1045,16 @@ RUN: tuple[Property, ...] = (
     _val("position", "position", "CTSignedHpsMeasure"),
     _val("sz", "sz", "HpsMeasure"),
     _val("sz_cs", "szCs", "HpsMeasure"),
-    _val("highlight", "highlight", "Highlight"),
+    _enumerated("highlight", "highlight", "Highlight", highlight),
     _prop("u", "u", merge_u, is_empty_u),
     _val("effect", "effect", "CTTextEffect"),
     _prop("bdr", "bdr", merge_border, is_empty_border),
     _prop("shd", "shd", merge_shd, is_empty_shd),
     _prop("fit_text", "fitText", merge_replace, is_null),
-    _val("vert_align", "vertAlign", "CTVerticalAlignRun"),
+    _enumerated("vert_align", "vertAlign", "CTVerticalAlignRun", vertical_alignment),
     _bool("rtl"),
     _bool("cs"),
-    _val("em", "em", "CTEm"),
+    _enumerated("em", "em", "CTEm", emphasis_mark),
     _prop("lang", "lang", merge_lang, is_empty_lang),
     _prop("east_asian_layout", "eastAsianLayout", merge_replace, is_null),
     _bool("spec_vanish", "specVanish"),

@@ -9,10 +9,11 @@
 With the fork runtime the parse is the engine's (``docx4j_py.runtime.parser_config``:
 the exact booleans and enumerations of CR-018, the hooks) and so is the
 serialiser's configuration. ``--normalise`` (the default there, as
-``package.save()``'s) writes each value the parse kept as its text in Word's
-normal form (CR-018 section 4.7) and compares with ``canon.compare(...,
-normalise=True)``, which counts those as ``word-normal-form``;
-``--no-normalise`` writes them as read. The upstream runtime (``--runtime
+``package.save()``'s) writes the values CR-018 section 4.7 covers in Word's
+normal form --- each on/off value the parse kept as its text, and (Phase B)
+every enumeration and colour Word reads otherwise than it is written --- and
+compares with ``canon.compare(..., normalise=True)``, which counts those as
+``word-normal-form``; ``--no-normalise`` writes them as read. The upstream runtime (``--runtime
 xsdata``, the pre-Phase-B baseline) has neither, and builds its own config.
 
 Writes per-part artefacts to out/<docx>/<part>/{orig.xml,rt.xml,diff.txt}
@@ -287,14 +288,22 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
             ns_map = src or dict(NS_MAP)
         else:
             ns_map = dict(NS_MAP)
-        if normalise and kept:
-            # CR-018 section 4.7: the save's normal form, written for the
-            # render and taken back out, as package.save() does it
-            from docx4j_py.openpackaging.normalise import normalised_tree
+        if normalise:
+            # CR-018 section 4.7: the save's normal form, as package.save()
+            # writes it: the on/off rows written into the typed tree for the
+            # render and taken back out, then the enumeration and colour rows
+            # written into the render (Phase B)
+            from lxml import etree as _et
+
+            from docx4j_py.openpackaging.normalise import normalised_tree, rendered_rows
 
             with normalised_tree(obj, part=part) as rewrites:
                 out = serializer.render(obj, ns_map=ns_map)
-            res.normalised = [(n.path, n.before, n.after) for n in rewrites]
+            rendered = _et.fromstring(out.encode("utf-8"))
+            more = rendered_rows(rendered, part)
+            if more:
+                out = _et.tostring(rendered, encoding="unicode")
+            res.normalised = [(n.path, n.before, n.after) for n in (*rewrites, *more)]
         else:
             out = serializer.render(obj, ns_map=ns_map)
         res.ser_ms = (time.perf_counter() - t) * 1000

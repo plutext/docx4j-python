@@ -215,8 +215,12 @@ class Font:
     def underline(self) -> UnderlineValue:
         """``w:u``, as an Office JS ``Word.UnderlineType`` name.
 
-        ``"None"`` when there is none, ``"Mixed"`` for a ``w:u`` value Office JS
-        has no name for. Setting ``"None"`` removes the element.
+        ``"None"`` when there is none. The value as Word reads it (CR-018 Phase
+        B): one outside the enumeration (``SINGLE``, ``bogus``, ``""``) is no
+        underline of the run's own, so ``"None"`` here and the style's beneath
+        in the effective read, where until 0.2.0 it read ``"Mixed"``; ``w:u``'s
+        six on/off words are ``none``. ``"Mixed"`` is a range whose runs differ
+        (:class:`MixedFont`). Setting ``"None"`` removes the element.
         """
         return self._read()["underline"]  # type: ignore[return-value]
 
@@ -260,9 +264,14 @@ class Font:
     def color(self) -> str:
         """``w:color`` as ``"#RRGGBB"``, which is what Office JS reports.
 
-        A value that is not a hex triple (``auto``, a theme colour) comes back
-        as it stands; ``""`` when the run sets none. Setting accepts both
-        ``"#FF0000"`` and ``"FF0000"``.
+        As Word reads ``w:val`` (CR-018 Phase B, rule 3): six hex digits in any
+        case, with a leading ``#`` or surrounding spaces, or a classic HTML
+        colour name (``red``, ``DarkRed``), as ``"#RRGGBB"``; exactly ``auto`` as
+        ``"auto"``; ``""`` when the run sets none, and for a value Word rejects
+        (``Auto``, ``F00``, ``grey``), which it reads as absent --- the effective
+        read then gives the style's colour beneath. A theme colour is read by
+        its ``w:val`` (CR-009 Phase B's). Setting accepts ``"#FF0000"``,
+        ``"FF0000"`` and a name, which is written as its ``RRGGBB``.
         """
         return self._read()["color"]
 
@@ -274,6 +283,10 @@ class Font:
     def highlight_color(self) -> str | None:
         """``w:highlight`` as ``"#RRGGBB"``, or None when there is none.
 
+        As Word reads it (CR-018 Phase B): a value outside the enumeration
+        (``YELLOW``, ``bogus``) is None, as is ``none``; and the effective read
+        never takes a character style's highlight, which Word does not draw
+        (round six), where a paragraph style's and the run's own are drawn.
         Setting takes a highlight name (``"yellow"``) or one of its ``#RRGGBB``
         values; None removes it.
         """

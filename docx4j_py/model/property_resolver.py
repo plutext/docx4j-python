@@ -107,6 +107,7 @@ class PropertyResolver:
         "_any_vanish_count",
         "_chain_ppr",
         "_chain_rpr",
+        "_character_level_rpr",
         "_default_character_style_id",
         "_default_table_style_id",
         "_document_default_ppr",
@@ -131,6 +132,9 @@ class PropertyResolver:
         self._styles_are_private = False
         self._chain_ppr: dict[str, Any] = {}
         self._chain_rpr: dict[str, Any] = {}
+        #: A character style's chain as a level over a run or a mark, where it differs from
+        #: ``_chain_rpr``: without its highlight (:meth:`_character_level`).
+        self._character_level_rpr: dict[str, Any] = {}
         self._effective_ppr_by_style: dict[str, Any] = {}
         self._effective_rpr_by_style: dict[str, Any] = {}
         self._live_styles: dict[str, Any] = {}
@@ -237,6 +241,7 @@ class PropertyResolver:
         """
         self._chain_ppr.clear()
         self._chain_rpr.clear()
+        self._character_level_rpr.clear()
         self._effective_ppr_by_style.clear()
         self._effective_rpr_by_style.clear()
         self._missing_logged.clear()
@@ -396,6 +401,30 @@ class PropertyResolver:
             apply_rpr(style.r_pr, chain, RPr)
         self._chain_rpr[style_id] = chain
         return chain
+
+    def _character_level(self, style_id: str) -> Any:
+        """A character style's chain as a level over a run or a paragraph mark: :meth:`get_chain_rpr` without its highlight.
+
+        Word draws no highlight from a character style (CR-018 section 3.1c item
+        3, round six): alone, with bold, or through ``w:basedOn``, with no repair
+        involved, and its save writes ``w:highlight w:val="none"`` on such a run.
+        A paragraph style's highlight and a run's own are drawn, and so is a
+        character style's ``w:shd``. docx4j's ``PropertyResolver.characterLevel``
+        (CR-060 phase 4, ``1d1b824a9``). A character style's own resolution
+        (``get_effective_rpr(style_id)``) keeps it, as docx4j's does. Cached;
+        live: copy it before changing it.
+        """
+        from docx4j_py.child import deep_copy
+
+        chain = self.get_chain_rpr(style_id)
+        if getattr(chain, "highlight", None) is None:
+            return chain
+        level = self._character_level_rpr.get(style_id)
+        if level is None:
+            level = deep_copy(chain)
+            level.highlight = None
+            self._character_level_rpr[style_id] = level
+        return level
 
     def _heading_layer(self, style: Any) -> Any:
         """A style's own ``w:pPr`` as a layer of its chain.
@@ -601,7 +630,7 @@ class PropertyResolver:
                 self._log_missing(run_style_id)
             else:
                 apply_style_level(
-                    self.get_chain_rpr(run_style_id), effective, self._document_default_rpr
+                    self._character_level(run_style_id), effective, self._document_default_rpr
                 )
         if has_direct_formatting_rpr(r_pr):
             apply_rpr(r_pr, effective, RPr)
@@ -640,7 +669,7 @@ class PropertyResolver:
                 self._log_missing(run_style_id)
             else:
                 apply_style_level(
-                    self.get_chain_rpr(run_style_id), effective, self._document_default_rpr
+                    self._character_level(run_style_id), effective, self._document_default_rpr
                 )
         apply_rpr(mark, effective, RPr)
 
@@ -776,6 +805,7 @@ class PropertyResolver:
         # resolution of this style, and of anything based on it, has to be redone
         self._chain_ppr.clear()
         self._chain_rpr.clear()
+        self._character_level_rpr.clear()
         self._effective_ppr_by_style.clear()
         self._effective_rpr_by_style.clear()
         self._vanish.clear()

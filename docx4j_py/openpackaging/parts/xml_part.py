@@ -415,6 +415,7 @@ class XmlPart(Part, Generic[T]):
         namespace map --- 42% of a marshal of a 771 KB part.
         """
         from docx4j_py import mc_declarations
+        from docx4j_py.openpackaging.normalise import normalise_render
         from docx4j_py.runtime import tree_serializer
 
         ns_map = _NS_MAP
@@ -428,6 +429,11 @@ class XmlPart(Part, Generic[T]):
             # The namespace is declared on the root already: every prefix of the
             # table is, before the cleanup below, so the rename keeps its prefix.
             root.tag = wanted
+
+        # A normalising save writes the enumerations and colours in Word's normal
+        # form (CR-018 section 4.7, Phase B), found by name in the render, so that
+        # the tree keeps what was read; outside such a save this does nothing.
+        normalise_render(root, str(self.part_name))
 
         # Drop what the tree does not use, then put back the prefixes
         # mc:Ignorable names --- they must be declared even though nothing in
