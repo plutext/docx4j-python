@@ -57,18 +57,26 @@ def _calls(path: Path) -> list[tuple[str, str, int, ast.Call]]:
     return out
 
 
-def _sources() -> list[Path]:
-    out = []
-    for folder in ("docx4j_py", "scripts", "tests"):
-        out.extend(sorted((ROOT / folder).rglob("*.py")))
-    return [path for path in out if "__pycache__" not in path.parts]
+def _sources() -> list[tuple[Path, str]]:
+    """Each file and its path as :data:`ALLOWED` names it: the package imported (the checkout's, or
+    the installed wheel's under scripts/release_check.sh), then ``scripts/`` and ``tests/``."""
+    import docx4j_py
+
+    package = Path(docx4j_py.__file__).parent
+    out = [
+        (path, f"docx4j_py/{path.relative_to(package).as_posix()}")
+        for path in sorted(package.rglob("*.py"))
+    ]
+    for folder in ("scripts", "tests"):
+        for path in sorted((ROOT / folder).rglob("*.py")):
+            out.append((path, path.relative_to(ROOT).as_posix()))
+    return [(path, relative) for path, relative in out if "__pycache__" not in path.parts]
 
 
 def test_every_parser_config_is_runtime_s() -> None:
     offenders = []
     used = set()
-    for path in _sources():
-        relative = path.relative_to(ROOT).as_posix()
+    for path, relative in _sources():
         for name, function, line, call in _calls(path):
             if name == "ParserConfig":
                 key = (relative, function)

@@ -168,7 +168,12 @@ def test_no_engine_module_imports_a_model_class_at_module_level():
     names a model class at import time, so the engine costs the model plus
     milliseconds and never the other way round.
     """
-    engine = ROOT / "docx4j_py" / "openpackaging"
+    import docx4j_py
+
+    # the package imported: the checkout's, or the installed wheel's under scripts/release_check.sh
+    package = Path(docx4j_py.__file__).parent
+    engine = package / "openpackaging"
+    assert engine.is_dir()
     offenders = []
     for path in sorted(engine.rglob("*.py")):
         for number, line in enumerate(path.read_text().splitlines(), 1):
@@ -178,7 +183,9 @@ def test_no_engine_module_imports_a_model_class_at_module_level():
                 r"(from|import)\s+docx4j_py\.(wml|dml|docprops|relationships|w15|wne|mce)\b",
                 line,
             ):
-                offenders.append(f"{path.relative_to(ROOT)}:{number}: {line}")
+                offenders.append(
+                    f"docx4j_py/{path.relative_to(package)}:{number}: {line}"
+                )
     assert offenders == []
 
 

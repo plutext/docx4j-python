@@ -13,6 +13,7 @@ Phase B can hold them.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from conformance import PHASE0, ROOT, SUITE
@@ -46,7 +47,10 @@ def probe():
 
 def test_the_understood_list_is_docx4js_verbatim():
     """The package's copy is the suite's, which is docx4j's at 198d015a3, and the sibling's where it is checked out."""
-    resource = ROOT / "docx4j_py" / "resources" / "understood-namespaces.txt"
+    import docx4j_py
+
+    # the package imported: the checkout's, or the installed wheel's under scripts/release_check.sh
+    resource = Path(docx4j_py.__file__).parent / "resources" / "understood-namespaces.txt"
     assert resource.read_bytes() == (SUITE / "understood-namespaces.txt").read_bytes()
     if SIBLING_LIST.is_file():
         assert resource.read_bytes() == SIBLING_LIST.read_bytes()

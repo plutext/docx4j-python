@@ -74,6 +74,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
+import docx4j_py
 from docx4j_py import load
 from docx4j_py.child import Child, ChildList
 from docx4j_py.model import style_util
@@ -92,6 +93,8 @@ from docx4j_py.openpackaging import XmlPart
 from docx4j_py.traversal import iter_nodes, text_of
 from docx4j_py.wml import P, PPr, R, RPr, Style, Tbl, TblPr
 
+#: The package imported: the checkout's, or the installed wheel's under scripts/release_check.sh.
+PACKAGE = Path(docx4j_py.__file__).parent
 SAMPLES = ROOT / "samples"
 FIXTURES = ROOT / "tests" / "fixtures"
 TEXT_EXTRACTION = FIXTURES / "text-extraction"
@@ -533,7 +536,7 @@ _DEFINITIONS = frozenset(
 
 
 def _callers_in_source() -> set[str]:
-    package = ROOT / "docx4j_py"
+    package = PACKAGE
     found: set[str] = set()
     for path in sorted(package.rglob("*.py")):
         source = path.read_text(encoding="utf-8")
@@ -566,7 +569,7 @@ def test_every_read_contents_caller_is_listed() -> None:
 
 def _reached(sources: list[Path | str]) -> set[str]:
     """The callers the readers reach over `sources`, by the frame that called ``read_contents``."""
-    package = ROOT / "docx4j_py"
+    package = PACKAGE
     reached: set[str] = set()
     original = XmlPart.read_contents
 
