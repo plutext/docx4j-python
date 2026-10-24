@@ -56,6 +56,14 @@ from docx4j_py.model.content.reports import (
     recording,
 )
 from docx4j_py.model.content.table import Table, insert_table_into
+from docx4j_py.model.content.table_rules import (
+    CellEnd,
+    end_cells_with_paragraphs,
+    end_with_paragraph,
+    ends_with_paragraph,
+    paragraph_end_of,
+    wrapping_cell_of,
+)
 from docx4j_py.model.content.text_model import (
     PARAGRAPH_BREAKS,
     block_children_of,
@@ -566,7 +574,8 @@ class Body(Sequence):
             if location == "Replace" or not paragraphs:
                 if location == "Replace":
                     change.text(before=self.text)
-                    self.clear()
+                    # its own paragraph ends a cell, so the cell's last one goes too (CR-016 Phase A)
+                    self._clear_content(keep_cell_end=False)
                 if PARAGRAPH_BREAKS.search(text):
                     # a paragraph of the text, then its breaks made paragraphs by the splice (E1)
                     out = self.insert_paragraph("").insert_text(text, location="End")
@@ -764,7 +773,10 @@ class Body(Sequence):
         Args:
             ooxml: the ``pkg:package`` document, or the fragment.
             location: ``"Start"``, ``"End"`` (the default), ``"Before"``,
-                ``"After"`` or ``"Replace"``, which clears this body first.
+                ``"After"`` or ``"Replace"``, which clears this body first; in
+                a table cell, content ending in a table goes in before the
+                paragraph the cell ends with, which stays, emptied, as Word
+                keeps it (CR-016 Phase A; check 52 case 94).
             target: the paragraph or block to insert relative to.
 
         Returns:
@@ -901,6 +913,18 @@ class Body(Sequence):
         --- so the error names what was passed and what the container takes,
         rather than guessing from a list written here.
 
+        **A table cell ends with a paragraph**, as Word reads it (CR-016 Phase
+        A; :mod:`~docx4j_py.model.content.table_rules`): every cell of what goes
+        in, at any depth, is given docx4j's repair before it goes in (D3), so
+        that under change tracking the repair is part of the insertion. Where
+        the insert leaves a cell ending in a table, a table put after the
+        paragraph the cell ended with, in the cell's own content, splits that
+        paragraph at its end and the cell's mark stays last, after the table,
+        as Word's ``insertTable`` does (check 52 cases 86 and 87;
+        :func:`~docx4j_py.model.content.span_edits.keep_cell_mark_last`);
+        anywhere else docx4j's repair, an empty paragraph after any wrapper,
+        plain under tracking.
+
         Args:
             element: one element or a list of them.
             location: ``"Start"``, ``"End"`` (the default), ``"Before"`` or
@@ -957,6 +981,11 @@ class Body(Sequence):
             )
 
         self._check(elements, owner)
+        # a cell ends with a paragraph, as Word reads it: the cells of what goes in (D3), and the
+        # cell it goes in (CR-016 Phase A)
+        end_cells_with_paragraphs(elements)
+        cell = wrapping_cell_of(owner)
+        end = paragraph_end_of(cell) if cell is not None else None
         tracker = self.change_tracker
         for offset, item in enumerate(elements):
             container.insert(index + offset, item)
@@ -972,6 +1001,8 @@ class Body(Sequence):
             from docx4j_py.model.content.tracking import track_inserted_blocks
 
             track_inserted_blocks(tracker, elements, container)
+        if cell is not None:
+            self._keep_cell_end(cell, end, container, change)
         if change.active:
             # the address is known: this call chose the index. Asking
             # ``address_of`` for it instead would scan the container, which is
@@ -986,6 +1017,27 @@ class Body(Sequence):
                 )
             change.shifted(moved_by_insert(self, container, index, len(elements)))
         return self.view_for(elements[0], container)
+
+    def _keep_cell_end(self, cell: Any, end: CellEnd | None, container: list, change: Any) -> None:
+        """After an insert into a cell: the cell still ends with a paragraph, as Word reads it (CR-016 Phase A).
+
+        core-ts's ``keepCellEnd`` (``Body.mts`` at ``222cc20``). Where a table
+        went in after the paragraph the cell ended with, in the cell's own
+        content, Word's form: that paragraph split at its end, the cell's mark
+        last after the table, the first half's mark the inserted one under
+        tracking (check 52 cases 86 and 87). Anywhere else docx4j's repair.
+        """
+        content = cell.content
+        if ends_with_paragraph(content):
+            return
+        if end is not None and end.container is content and container is content:
+            from docx4j_py.model.content.span_edits import keep_cell_mark_last
+
+            keep_cell_mark_last(Paragraph(end.element, content, self), content)
+            return
+        appended = end_with_paragraph(cell)
+        if appended is not None:
+            change.created(assign_para_id(self, appended))
 
     def _check(self, elements: list, owner: Any) -> None:
         """Refuse an element the owner's block list cannot hold."""
@@ -1238,6 +1290,23 @@ class Body(Sequence):
         a ``w:trPr/w:del`` and every paragraph is deleted as
         :meth:`Paragraph.delete` deletes one, so the document still shows what
         was there until the changes are accepted (CR-003 section 4).
+
+        **In a table cell** the paragraph the cell ends with stays, emptied, its
+        properties kept, outside any control it was in, as Word keeps a cell's
+        last paragraph (CR-016 Phase A; check 52 case 92); tracked, only its
+        text is deleted, its mark never marked (case 93).
+        """
+        self._clear_content(keep_cell_end=True)
+
+    def _clear_content(self, *, keep_cell_end: bool) -> None:
+        """:meth:`clear`; with `keep_cell_end` False a cell's last paragraph goes as well.
+
+        core-ts's ``clearContent`` (``Body.mts`` at ``222cc20``): for
+        ``insert_text(..., location="Replace")`` and ``TableCell.value``, which
+        put a paragraph of their own in next. Tracked, every paragraph is
+        deleted, the cell's last mark marked deleted with the rest, as before
+        (CR-016 Q11: a tracked ``TableCell.value`` deletes the old content as a
+        tracked change, where it removed it untracked).
         """
         if self.change_tracker is not None:
             # tracked, every row and paragraph is marked deleted: not those of one
@@ -1254,7 +1323,19 @@ class Body(Sequence):
             change.touched(self.prefix)
             tracker = self.change_tracker
             if tracker is None:
+                cell = wrapping_cell_of(self.container) if keep_cell_end else None
+                end = paragraph_end_of(cell) if cell is not None else None
                 self.content.clear()
+                if cell is not None and not ends_with_paragraph(cell):
+                    if end is not None:
+                        # the paragraph the cell ended with, emptied, its properties kept (case 92)
+                        end.element.content.clear()
+                        self.content.append(end.element)
+                        end.element.parent = self._owner()
+                    else:
+                        appended = end_with_paragraph(cell)
+                        if appended is not None:
+                            change.created(assign_para_id(self, appended))
                 return
             from docx4j_py.model.content.tracking import mark_deleted, track_deleted_row
 
@@ -1269,7 +1350,7 @@ class Body(Sequence):
                         del holder[index]
             for paragraph in self.paragraphs:
                 if not mark_deleted(paragraph.element):
-                    paragraph.delete()
+                    paragraph._delete(keep_cell_end=keep_cell_end)
 
     def _tidy_runs(self) -> int:
         """Join the runs a tracked edit split apart; returns how many went.

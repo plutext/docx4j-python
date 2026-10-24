@@ -171,14 +171,22 @@ class BlockItemContainer:
         later; the content API refuses a table with no rows, so one is built
         and then removed.
         """
+        return self._add_table(rows, cols, width)
+
+    def _add_table(self, rows: int, cols: int, width: Any = None, before: Any = None) -> Any:
+        """:meth:`add_table`, the table at the end or, given `before` (a content API paragraph), in front of it."""
         from docx4j_py.docx.shared import twips_of
         from docx4j_py.docx.table import Table
+        from docx4j_py.model.content.table import insert_table_into
 
         if cols < 1:
             raise ValueError(f"a table needs at least one column, not {cols}")
         body = self._content_body
         with recording(body, "docx.add_table"):
-            view = body.insert_table(max(rows, 1), cols)
+            if before is None:
+                view = body.insert_table(max(rows, 1), cols)
+            else:
+                view = insert_table_into(body, max(rows, 1), cols, location="Before", target=before)
             table = Table(view.element, self._story)
             if width is not None:
                 table._set_column_widths(_even(twips_of(width) or 0, cols))

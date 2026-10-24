@@ -55,6 +55,12 @@ tracked, a mark's ``w:pPr/w:rPr/w:rPrChange``.
 **A paragraph** (:func:`insert_paragraph_at`): at the range's start or end,
 splitting the paragraph there (check 52 cases 57 to 70; within one paragraph
 too, check 54 cases 1 to 3).
+
+**A table after a cell's last paragraph** (:func:`keep_cell_mark_last`,
+CR-016 Phase A; core-ts's ``keepCellMarkLast`` at ``222cc20``): that
+paragraph split at its end, the table between the halves, so that the cell's
+mark stays last (check 52 cases 86 and 87). Which mark can go is Word's table
+rule (:func:`~.table_rules.ends_cell`).
 """
 
 from __future__ import annotations
@@ -66,6 +72,7 @@ from typing import TYPE_CHECKING, Any
 from docx4j_py.child import ChildList, deep_copy, link_parents
 from docx4j_py.model.content.errors import ContentError, SpanError
 from docx4j_py.model.content.story import first_and_last_paragraph, story_of
+from docx4j_py.model.content.table_rules import ends_cell
 from docx4j_py.model.content.text_model import (
     PARAGRAPH_BREAKS,
     W_P,
@@ -92,6 +99,7 @@ __all__ = [
     "format_span",
     "insert_paragraph_at",
     "is_range_marker",
+    "keep_cell_mark_last",
     "look_of",
     "place_replacement",
     "queue_comment_removal",
@@ -626,8 +634,13 @@ def _next_paragraph(paragraph: Paragraph) -> bool:
 
 
 def _removable(paragraph: Paragraph) -> bool:
-    """A paragraph whose mark can go: not a cell's last, not its story's last, not its list's only block."""
-    if paragraph.mark_text == "\t":
+    """A paragraph whose mark can go: not a cell's last, not its story's last, not its list's only block.
+
+    A cell's last is Word's table rule's (:func:`~.table_rules.ends_cell`,
+    CR-016 Phase A), the paragraph the cell ends with as Word reads it, so that
+    one rule serves the span edits and the other verbs.
+    """
+    if ends_cell(paragraph.element):
         return False
     items = _list_of(paragraph)
     blocks = [item for item in items if not is_range_marker(item)]
@@ -800,7 +813,7 @@ def _delete_mark(paragraph: Paragraph, tracker: Any) -> None:
     """
     from docx4j_py.model.content.tracking import mark_deleted
 
-    if mark_deleted(paragraph.element) or paragraph.mark_text == "\t" or _is_story_last(paragraph):
+    if mark_deleted(paragraph.element) or ends_cell(paragraph.element) or _is_story_last(paragraph):
         return
     tracker.mark_paragraph_deleted(paragraph.element)
 
@@ -1001,6 +1014,54 @@ def _r_pr_before(paragraph: Paragraph, offset: int) -> Any:
     """The run properties of the text just before `offset`, which a split there gives its new marks (check 52 case 63)."""
     before = [s for s in paragraph.segments() if s.start < offset and s.text and not s.math]
     return getattr(before[-1].run, "r_pr", None) if before else None
+
+
+def keep_cell_mark_last(paragraph: Paragraph, cell_content: list) -> Paragraph:
+    """Word's form of a table put after the paragraph a table cell ends with: that paragraph split at its end.
+
+    CR-016 Phase A, core-ts's ``keepCellMarkLast`` (``spanEdits.mts`` at
+    ``222cc20``; its CR-002 section 55.6, check 52 cases 86 and 87). The split
+    is a paragraph break's at the paragraph's end (:func:`~.split.split_paragraph`'s
+    rule, core-ts's ``splitAtEnd``), the table between the halves, so that the
+    cell's mark stays last:
+
+    * the paragraph keeps its text and becomes the first half, so that a view
+      of it (a :class:`~docx4j_py.model.content.range.Range`) still holds it;
+      its new mark takes the formatting of the text before it (case 86's
+      ``w:u``) and, tracked, is the inserted one (case 87);
+    * its properties as they were go after the table, at the end of
+      `cell_content`, in an empty paragraph, unmarked, with a ``w14:paraId`` of
+      its own where the package assigns them.
+
+    Word also gives the new table's own paragraph the cell paragraph's
+    properties, which is ``insert_table``'s wherever it inserts and is not
+    followed (CR-016 Q4). Returns the view of the paragraph after the table.
+    """
+    from docx4j_py.model.content.addresses import assign_para_id
+    from docx4j_py.model.content.paragraph import Paragraph as ParagraphView
+    from docx4j_py.model.content.reports import current_recorder
+    from docx4j_py.model.content.split import _properties_for_head
+    from docx4j_py.wml import P
+
+    element = paragraph.element
+    body = paragraph.parent_body
+    mark = P(content=ChildList())
+    if element.p_pr is not None:
+        mark.p_pr = deep_copy(element.p_pr)
+    link_parents(mark)
+    p_pr = _properties_for_head(element, _r_pr_before(paragraph, len(paragraph.text)))
+    element.p_pr = p_pr
+    if p_pr is not None:
+        p_pr.parent = element
+    cell_content.append(mark)
+    change = current_recorder(getattr(body, "package", None))
+    change.created(assign_para_id(body, mark))
+    tracker = paragraph.change_tracker
+    if tracker is not None:
+        tracker.mark_paragraph_inserted(element)
+    view = ParagraphView(mark, cell_content, body)
+    change.touched(view)
+    return view
 
 
 # ---------------------------------------------------------------------------

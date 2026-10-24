@@ -1045,6 +1045,11 @@ class TableCell:
         reads from (CR-013 Q2): a ``\\r`` in it is a ``w:cr``, not a paragraph
         mark, and ``\\r\\n`` one ``w:br`` (section 11, E2). U+0002 and the other
         characters XML 1.0 excludes are dropped (section 11, E3).
+
+        **While the package tracks changes** the old content is deleted as a
+        tracked change, and the new paragraph inserted, so that Reject All gives
+        the cell back (CR-016 Q11, core-ts's setter at ``222cc20``); 0.1.0
+        removed it untracked.
         """
         return self.text
 
@@ -1054,7 +1059,8 @@ class TableCell:
         with recording(self._parent_body, "set_value") as change:
             change.text(before=self.text)
             body = self.body
-            body.content.clear()
+            # its own paragraph ends the cell, so the cell's last one goes too (CR-016 Phase A)
+            body._clear_content(keep_cell_end=False)
             body.insert_paragraph(text)
             change.touched(self.address)
             change.text(after=text)
@@ -1170,8 +1176,15 @@ def insert_table_into(
     location: BodyLocation = "End",
     values: list[list[str]] | None = None,
     style: str | None = None,
+    target: Any = None,
 ) -> Table:
-    """What :meth:`Body.insert_table` is. See its docstring."""
+    """What :meth:`Body.insert_table` is. See its docstring.
+
+    `target`, with ``location="Before"``, is the paragraph the table goes in
+    front of: not Office JS's, and what the python-docx facade's
+    ``_Cell.add_table`` puts its table before its own paragraph with (CR-016
+    Q13).
+    """
     if row_count < 1 or column_count < 1:
         raise InvalidTargetError(
             f"a table needs at least one row and one column, not {row_count} by {column_count}",
@@ -1194,8 +1207,8 @@ def insert_table_into(
             tbl_pr = element.tbl_pr
             tbl_pr.tbl_style = el.tblStyle(val=resolved)
             tbl_pr.tbl_style.parent = tbl_pr
-        body.insert_element(element, location=location)
-        view = Table(element, body.content, body)
+        body.insert_element(element, location=location, target=target)
+        view = Table(element, getattr(target, "container", None) or body.content, body)
         change.touched(view.address)
         change.text(after="\n".join("\t".join(row) for row in rows))
         return view

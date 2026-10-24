@@ -111,6 +111,8 @@ __all__ = [
     "body_of",
     "built_in_of",
     "cells_of",
+    "end_with_paragraph",
+    "ends_with_paragraph",
     "grapheme_clusters",
     "rows_of",
     "script_blocks",
@@ -155,6 +157,9 @@ _LAZY: dict[str, str] = {
     "TableCell": "docx4j_py.model.content.table",
     "rows_of": "docx4j_py.model.content.text_model",
     "cells_of": "docx4j_py.model.content.text_model",
+    # CR-016 Phase A, Word's table rule (docx4j's TableRules)
+    "ends_with_paragraph": "docx4j_py.model.content.table_rules",
+    "end_with_paragraph": "docx4j_py.model.content.table_rules",
     "InlinePicture": "docx4j_py.model.content.picture",
     "ContentControl": "docx4j_py.model.content.controls",
     # CR-003 Phase H, the lists

@@ -767,12 +767,18 @@ class _Cell(BlockItemContainer):
             self.paragraphs[0].add_run(text)
 
     def add_table(self, rows: int, cols: int) -> Table:
-        """A table in this cell, followed by the empty paragraph Word requires."""
+        """A table in this cell, followed by the empty paragraph Word requires.
+
+        python-docx 1.2.0's result exactly (CR-016 Q13): the cell's own
+        paragraphs untouched, the table, then one plain ``<w:p/>``. The
+        paragraph goes in first and the table before it, so that the content
+        API's rule for a table at a cell's end, which splits the cell's last
+        paragraph (CR-016 Phase A), never runs and the two don't stack.
+        """
         width = self.width if self.width is not None else Inches(1)
         with recording(self._story.body, "docx.cell.add_table"):
-            table = super().add_table(rows, cols, width)
-            self.add_paragraph()
-            return table
+            paragraph = self._content_body.insert_paragraph("")
+            return self._add_table(rows, cols, width, before=paragraph)
 
     # -- properties --------------------------------------------------------
 

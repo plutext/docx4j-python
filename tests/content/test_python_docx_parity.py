@@ -37,6 +37,7 @@ import docx.enum.section
 import docx.enum.table
 import docx.enum.text
 import docx.shared
+import docx.text.paragraph
 
 import docx4j_py.docx as facade
 
@@ -313,3 +314,44 @@ def test_the_tab_stops_read_back_the_same(built):
 
     assert stops(built["ours"]) == stops(built["theirs"])
     assert len(stops(built["ours"])) == 2
+
+
+def build_cell_table(api: Api, target: Path) -> None:
+    """``_Cell.add_table`` (CR-016 Q13): a cell's text, then a table added in the cell, then a paragraph after it."""
+    document = api.Document()
+    cell = document.add_table(rows=1, cols=1).cell(0, 0)
+    cell.text = "CELL"
+    cell.paragraphs[0].runs[0].underline = True
+    inner = cell.add_table(rows=2, cols=2)
+    inner.cell(0, 0).text = "INNER"
+    cell.add_paragraph("AFTER")
+    document.save(str(target))
+
+
+@pytest.fixture(scope="module")
+def cell_tables(tmp_path_factory) -> dict[str, Any]:
+    """Both files of :func:`build_cell_table`, opened by **python-docx**."""
+    directory = tmp_path_factory.mktemp("cell-table")
+    ours, theirs = directory / "docx4j.docx", directory / "pydocx.docx"
+    build_cell_table(DOCX4J, ours)
+    build_cell_table(PYTHON_DOCX, theirs)
+    return {"ours": docx.Document(str(ours)), "theirs": docx.Document(str(theirs))}
+
+
+def test_a_cells_add_table_is_python_docxs_the_cells_paragraph_untouched_the_table_then_one_plain_paragraph(cell_tables):
+    """CR-016 Q13: python-docx 1.2.0's one ``<w:p/>`` after the table, and no split of the cell's paragraph stacked on it."""
+
+    def cell_content(document: Any) -> list[Any]:
+        cell = document.tables[0].cell(0, 0)
+        out = []
+        for item in cell.iter_inner_content():
+            if isinstance(item, docx.text.paragraph.Paragraph):
+                p_pr = item._p.pPr
+                out.append(("p", item.text, None if p_pr is None else p_pr.xml.count("<w:"), [r.underline for r in item.runs]))
+            else:
+                out.append(("tbl", len(item.rows), len(item.columns), item.cell(0, 0).text))
+        return out
+
+    ours, theirs = cell_content(cell_tables["ours"]), cell_content(cell_tables["theirs"])
+    assert ours == theirs
+    assert theirs == [("p", "CELL", None, [True]), ("tbl", 2, 2, "INNER"), ("p", "", None, []), ("p", "AFTER", None, [None])]

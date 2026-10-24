@@ -722,7 +722,10 @@ def test_the_one_paragraph_writers_write_crlf_as_one_break(writer, tracked):
     assert xml.count("<w:br/>") == 2 and xml.count("<w:cr/>") == 1, "\\r\\n one w:br, \\r a w:cr, \\n a w:br"
     texts = [p.text for p in package.body.iter_paragraphs()]
     assert "a\x0bb\rc\x0bd" in texts
-    assert len(package.body.paragraphs) <= before + 1, "one paragraph"
+    # tracked, a cell's value deletes the cell's old paragraph as a tracked change and puts its own after it
+    # (CR-016 Q11; it removed the old one untracked), so the new table's empty paragraph stays until accepted
+    kept = 1 if writer == "TableCell.value" and tracked else 0
+    assert len(package.body.paragraphs) <= before + 1 + kept, "one paragraph"
     strict_reload(package)
 
 

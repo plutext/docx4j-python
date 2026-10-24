@@ -666,21 +666,45 @@ class ContentControl:
         was, as Word's "remove content control" does; False removes them with
         it. Deleting a content control is **not** a tracked change (CR-003
         section 4), and this phase writes no revision markup at all.
+
+        **In a table cell**, where the block control held the paragraph the cell
+        ends with, that paragraph stays in the control's place, emptied, its
+        properties kept, outside any control, as Word keeps a cell's last
+        paragraph (CR-016 Phase A; check 52 case 95). A cell left ending in a
+        table any other way is given docx4j's repair.
         """
+        from docx4j_py.model.content.addresses import assign_para_id
+        from docx4j_py.model.content.table_rules import (
+            end_with_paragraph,
+            ends_with_paragraph,
+            paragraph_end_of,
+            wrapping_cell_of,
+        )
+
         with recording(self.parent_body, "delete") as change:
             index = self.index
             if index < 0:
                 return
             change.touched(self.address)
             change.text(before=self.text, after="" if not keep_content else self.text)
+            owner = getattr(self.container, "owner", None)
+            cell = wrapping_cell_of(owner) if self.form == "block" else None
+            end = paragraph_end_of(cell) if cell is not None else None
             items = list(self.content) if keep_content else []
             self.container[index : index + 1] = items
             if items:
-                owner = getattr(self.container, "owner", None)
                 for item in items:
                     link_parents(item)
                     if owner is not None:
                         item.parent = owner
+            if cell is not None and not ends_with_paragraph(cell):
+                if end is not None:
+                    end.element.content.clear()
+                    self.container.insert(index, end.element)
+                    if owner is not None:
+                        end.element.parent = owner
+                else:
+                    change.created(assign_para_id(self.parent_body, end_with_paragraph(cell)))
 
     # -- the w:sdtPr properties (CR-003 section 3.7, Phase E) ---------------
 

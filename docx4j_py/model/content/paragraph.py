@@ -1358,27 +1358,55 @@ class Paragraph:
         accepted --- unless the whole paragraph was this author's own
         insertion, which Word simply takes back.
 
+        **The paragraph a table cell ends with**, as Word reads it, stays where
+        removing it would leave the cell without one: emptied, its properties
+        kept, and no block shifts (CR-016 Phase A; check 52 cases 88 and 89).
+        Tracked, its text is deleted and its mark is never marked deleted, as
+        Word keeps a cell's last paragraph (cases 90 and 91).
+
         Raises:
             TrackedChangeError: tracked, and this paragraph's mark is already
                 marked deleted.
         """
+        self._delete(keep_cell_end=True)
+
+    def _delete(self, *, keep_cell_end: bool) -> None:
+        """:meth:`delete`; with `keep_cell_end` False a cell's last paragraph goes as any other.
+
+        For ``Body.clear``'s callers that put their own paragraph in next
+        (core-ts's ``remove``, ``Paragraph.mts`` at ``222cc20``).
+        """
+        from docx4j_py.model.content.table_rules import (
+            ends_cell,
+            ends_with_paragraph,
+            wrapping_cell_of,
+        )
+
         with recording(self.parent_body, "delete") as change:
             index = self.index
             if index < 0:
                 return
+            cell_end = keep_cell_end and ends_cell(self.element)
             tracker = self.change_tracker
             if tracker is not None:
                 change.touched(self)
                 change.text(before=self.text, after="")
-                self._tracked_delete(tracker)
+                self._tracked_delete(tracker, cell_end=cell_end)
                 return
             change.touched(self)
             change.text(before=self.text, after="")
-            change.shifted(moved_by_delete(self.parent_body, self.container, index))
+            moved = moved_by_delete(self.parent_body, self.container, index)
+            cell = wrapping_cell_of(getattr(self.element, "parent", None)) if cell_end else None
             del self.container[index]
+            if cell is not None and not ends_with_paragraph(cell):
+                # the cell's last paragraph, emptied, where it was (check 52 cases 88 and 89)
+                self.element.content.clear()
+                self.container.insert(index, self.element)
+                return
+            change.shifted(moved)
 
-    def _tracked_delete(self, tracker: Any) -> None:
-        """The tracked half of :meth:`delete`: the content, then the mark."""
+    def _tracked_delete(self, tracker: Any, *, cell_end: bool = False) -> None:
+        """The tracked half of :meth:`delete`: the content, then the mark; a cell's last mark never marked."""
         from docx4j_py.model.content.tracking import (
             mark_deleted,
             prune_paragraph_properties,
@@ -1405,6 +1433,9 @@ class Paragraph:
             and (mark is self.element or tracker.inserted(self.element))
         )
         if ours and not self.element.content:
+            if cell_end and self._ends_its_cell_alone():
+                # a cell's last paragraph stays, whoever inserted it (CR-016 Phase A)
+                return
             # our own insertion, taken back whole: the paragraph simply goes, and
             # so does the mark that recorded it --- which is the **previous**
             # paragraph's when this one is the last of its container (16.10)
@@ -1418,7 +1449,28 @@ class Paragraph:
             if index >= 0:
                 del self.container[index]
             return
+        if cell_end:
+            # a cell's last mark: Word deletes the paragraph's text and never marks the mark (check 52
+            # cases 90 and 91)
+            return
         tracker.mark_paragraph_deleted(self.element)
+
+    def _ends_its_cell_alone(self) -> bool:
+        """Whether this paragraph's cell, without it, would end with no paragraph, as Word reads it."""
+        from docx4j_py.model.content.table_rules import (
+            ends_with_paragraph,
+            wrapping_cell_of,
+        )
+
+        cell = wrapping_cell_of(getattr(self.element, "parent", None))
+        index = self.index
+        if cell is None or index < 0:
+            return False
+        del self.container[index]
+        try:
+            return not ends_with_paragraph(cell)
+        finally:
+            self.container.insert(index, self.element)
 
     def get_xml(self) -> str:
         """The paragraph as XML, with docx4j's prefixes. Extension."""

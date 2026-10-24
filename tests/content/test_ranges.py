@@ -600,9 +600,22 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
 # phase 2, the writes (core-ts 53db5bc, as 87bbb38 rewrote them): CR-013 Phase C
 # ---------------------------------------------------------------------------
 
-#: Cases 86 to 95 are core-ts CR-002 section 55's (Word's table rule), which is not implemented here either:
-#: phase 2's tests stop at 85.
-RANGE_CASES = 85
+#: Every case of check 52 since CR-016 Phase A: 86 to 95 are core-ts CR-002 section 55's, Word's table rule
+#: (a cell ends with a paragraph), which phase 2's tests stopped short of at 85 until then.
+RANGE_CASES = 95
+
+
+def _other_as_ours(n: int, paragraphs: list[dict]) -> list[dict]:
+    """Word reads a cell's paragraph after a nested table as style ``''`` (``'Other'``) in cases 89, 91 and 94, where
+    its save has it List Paragraph, as this package reads it: Word's reading taken as its markup says (core-ts's
+    ``listParagraphForOther``; its CR-002 section 57, CR-013 Q6's departure here)."""
+    out = []
+    for entry in paragraphs:
+        if entry.get("styleBuiltIn") == "Other":
+            assert n in (89, 91, 94), n
+            entry = {**entry, "style": "List Paragraph", "styleBuiltIn": "ListParagraph"}
+        out.append(entry)
+    return out
 
 
 @functools.cache
@@ -656,12 +669,16 @@ def _run_view(case: dict, *, links: bool = False) -> dict:
     return json.loads(json.dumps(out))
 
 
-def _differing(ours: dict, measured: dict, *, limit: int, links: bool = False) -> dict[int, list[str]]:
+def _differing(
+    ours: dict, measured: dict, *, limit: int, links: bool = False, other: bool = False
+) -> dict[int, list[str]]:
     differing: dict[int, list[str]] = {}
     for index, theirs in enumerate(measured["cases"]):
         if theirs["n"] > limit:
             break
         a, b = _run_view(ours["cases"][index], links=links), _run_view(theirs, links=links)
+        if other and isinstance(b.get("paragraphs"), list):
+            b["paragraphs"] = _other_as_ours(theirs["n"], b["paragraphs"])
         if isinstance(a.get("paragraphs"), list) and isinstance(b.get("paragraphs"), list):
             _alignment_as_ours(b["paragraphs"], a["paragraphs"], theirs["n"])
         keys = sorted(k for k in set(a) | set(b) if json.dumps(a.get(k), sort_keys=True) != json.dumps(b.get(k), sort_keys=True))
@@ -679,7 +696,7 @@ def test_cr_014_phase_2_check_52s_writes_run_through_the_port_on_the_same_file_l
     measured = word("52-ranges-word365-run.json")
     # a paragraph's font reads its first run here (CR-002); Word's 'Left' is this package's "Unknown" where no
     # w:jc says otherwise (CR-002 section 15)
-    assert _differing(ours, measured, limit=RANGE_CASES) == {
+    assert _differing(ours, measured, limit=RANGE_CASES, other=True) == {
         # Word's refusals are this package's, under this package's code: range.partial_table for Office JS's
         # GeneralException (CR-013 section 4.9 item 1)
         **each([9, 10, 22, 23, 34, 35, 44, 45], ["error"]),
@@ -696,6 +713,13 @@ def test_cr_014_phase_2_check_52s_writes_run_through_the_port_on_the_same_file_l
         **each([60, 66], ["paragraphs", "text", "controls"]),
         # insert_comment (core-ts's phase 3): the comments, their ranges and what the snippet reads back are
         # Word's, 79 to 85 among them; core-ts's differ in the snippet's own error, its result asynchronous there
+        # a table at a cell's end (CR-016 Phase A): Word gives the new table's paragraph the cell paragraph's
+        # properties, and so its numbering, which is insert_table's wherever it inserts and not followed (Q4; the
+        # markup test below); the cell's own paragraphs are Word's
+        **each([86, 87], ["paragraphs"]),
+        # Office JS's Body.insertOoxml returns a Range; this package's the views of what went in (CR-003 section 4),
+        # whose first is the table, read without Word's row end
+        94: ["result"],
     }
     refused = [c["n"] for c in ours["cases"] if c.get("error") == "error: range.partial_table"]
     assert refused == [9, 10, 22, 23, 34, 35, 44, 45]
@@ -728,12 +752,14 @@ def test_cr_014_phase_2_accept_all_after_check_52s_writes_through_the_port_gives
         a, b = view(ours["cases"][index]["region"]), view(theirs["region"])
         if isinstance(a.get("paragraphs"), list) and isinstance(b.get("paragraphs"), list):
             _alignment_as_ours(b["paragraphs"], a["paragraphs"], theirs["n"])
+            b["paragraphs"] = _other_as_ours(theirs["n"], b["paragraphs"])
         if json.dumps(a, sort_keys=True) != json.dumps(b, sort_keys=True):
             differing.append(theirs["n"])
     # every tracked deletion and replacement, accepted, is Word's, and every comment across paragraphs (phase 3);
     # what differs is listed in the test above: get_text_ranges (the bold cases), Word's extra empty paragraph in a
-    # control
-    assert differing == [49, 50, 51, 52, 53, 54, 55, 56, 60, 66]
+    # control, the new table's paragraph in a cell (CR-016 Q4); each cell's last paragraph accepted is Word's (86
+    # to 95)
+    assert differing == [49, 50, 51, 52, 53, 54, 55, 56, 60, 66, 86, 87]
 
 
 _IGNORED_KEYS = frozenset({"rsid_r", "rsid_r_pr", "rsid_r_default", "rsid_p", "rsid_del", "para_id", "text_id", "b_cs", "i_cs", "sz_cs", "lang"})
@@ -873,8 +899,9 @@ def test_cr_014_phase_2_the_markup_check_52s_writes_leave_through_the_port_is_wo
     # an emptied control, a bold run of five spaces (core-ts CR-014 section 9.4); 60 and 66: Word's extra empty
     # paragraph in a control; 67 and 68: Word gives a paragraph's mark its last run's formatting (italic) when
     # insert_paragraph("After") goes after it, not followed (core-ts CR-014 section 10); 79 to 85: insert_comment
-    # (phase 3), whose markers are Word's but for the two differences below
-    assert differing == [1, 13, 60, 66, 67, 68, 79, 80, 81, 82, 83, 84, 85]
+    # (phase 3), whose markers are Word's but for the two differences below; 86 and 87: the new table's paragraph
+    # (below)
+    assert differing == [1, 13, 60, 66, 67, 68, 79, 80, 81, 82, 83, 84, 85, 86, 87]
     # the comments across paragraphs (phase 3): the start marker before the range's first character, the end and
     # the reference run after its last, in its last paragraph, as Word's. Word gives the reference run the text's
     # size and, where text follows it, that text's italic, over the CommentReference style; this package's
@@ -895,6 +922,23 @@ def test_cr_014_phase_2_the_markup_check_52s_writes_leave_through_the_port_is_wo
     assert mine[13] == ["SDT", "  P[ListParagraph/num|] "]
     for n in (67, 68):
         assert [re.sub(r'^P\[center\|\] "BODY', 'P[center|i] "BODY', line) for line in mine[n]] == measured[n], f"case {n}"
+    # a table at a cell's end (CR-016 Phase A, core-ts CR-002 section 55.6): the cell's paragraph split at its end,
+    # the first half's mark in its last run's formatting and, tracked, inserted; the cell's own mark last, after the
+    # table, unmarked. Word gives the new table's paragraph the cell paragraph's properties too, which is
+    # insert_table's and not followed (Q4)
+    for n in (86, 87):
+        beside_the_table = [line for k, line in enumerate(mine[n]) if k != 3]
+        assert beside_the_table == [line for k, line in enumerate(measured[n]) if k != 3], f"case {n}"
+    assert [measured[86][3], mine[86][3]] == ['    P[ListParagraph/num|u] "NEWCELL"{u}', '    P[|] "NEWCELL"']
+    assert [measured[87][3], mine[87][3]] == ['    P[ListParagraph/num|ins,u+change] ins:"NEWCELL"{u}', '    P[|ins] ins:"NEWCELL"']
+    # what Word wrote for the rest of the cell rule, which this package now writes: a cell's last paragraph deleted
+    # or cleared, emptied, its w:pPr kept (88, 89, 92); tracked, its text deleted and its mark never marked (90, 91,
+    # 93); a table put in place of the cell's content before that paragraph (94); a control holding it deleted, the
+    # paragraph left outside it (95)
+    assert measured[88] == mine[88] == ["TR ", "  P[ListParagraph/num|] ", '  P[|] "T88R1C2A T88R1C2B"']
+    assert measured[90] == mine[90] == ["TR ", '  P[ListParagraph/num|] del:"LIST90A LIST90B"{u}', '  P[|] "T90R1C2A T90R1C2B"']
+    assert measured[94] == mine[94] == ["TR ", "  TR ", '    P[|] "NEWOOXML"', "  P[ListParagraph/num|] ", '  P[|] "T94R1C2A T94R1C2B"']
+    assert measured[95] == mine[95] == ["TR ", "  P[ListParagraph/num|] ", '  P[|] "T95R1C2A T95R1C2B"']
     # what Word wrote, which this package now writes: a tracked deletion across paragraphs marks every mark but the
     # last deleted, with no w:pPrChange (case 16); a tracked Replace puts its w:ins before the w:del (case 39); an
     # untracked one gives its text the heading's look in a body paragraph (case 29); bold skips the heading's runs

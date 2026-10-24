@@ -422,9 +422,24 @@ def insert_ooxml_into_body(
         if not elements:
             return []
         if location == "Replace":
+            from docx4j_py.model.content.paragraph import Paragraph
+            from docx4j_py.model.content.table_rules import (
+                ends_with_paragraph,
+                paragraph_end_of,
+                wrapping_cell_of,
+            )
+
             change.text(before=body.text)
-            body.clear()
-            body.insert_element(elements, location="End")
+            # in a cell, what ends with a table goes in before the cell's last paragraph, which stays,
+            # emptied, as Word keeps it (check 52 case 94; CR-016 Phase A); what ends with a paragraph
+            # replaces it, as before
+            cell = None if ends_with_paragraph(elements) else wrapping_cell_of(body.container)
+            body._clear_content(keep_cell_end=cell is not None)
+            end = paragraph_end_of(cell) if cell is not None else None
+            if end is not None and end.container is body.content:
+                body.insert_element(elements, location="Before", target=Paragraph(end.element, end.container, body))
+            else:
+                body.insert_element(elements, location="End")
         else:
             body.insert_element(elements, location=location, target=target)
         views = [body.view_for(element) for element in elements]
