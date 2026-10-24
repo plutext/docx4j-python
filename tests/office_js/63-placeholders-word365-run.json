@@ -1,0 +1,1369 @@
+{
+ "check": 63,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 1,
+   "op": "control-text-replace",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW1"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW1"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 control-text-replace block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 1\"/><w:tag w:val=\"c63-1\"/><w:id w:val=\"63001\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW1</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW1",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW1"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 2,
+   "op": "control-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW2"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW2"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 control-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 2\"/><w:tag w:val=\"c63-2\"/><w:id w:val=\"63002\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/></w:rPr><w:t>NEW2</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW2",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW2"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 3,
+   "op": "control-paragraph-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": ""
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 control-paragraph-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 3\"/><w:tag w:val=\"c63-3\"/><w:id w:val=\"63003\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW3</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 4,
+   "op": "content-text-replace",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW4"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW4"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 content-text-replace block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 4\"/><w:tag w:val=\"c63-4\"/><w:id w:val=\"63004\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW4</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW4",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW4"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 5,
+   "op": "content-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW5"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW5"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 content-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 5\"/><w:tag w:val=\"c63-5\"/><w:id w:val=\"63005\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW5</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW5",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW5"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 6,
+   "op": "content-delete",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 content-delete block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 6\"/><w:tag w:val=\"c63-6\"/><w:id w:val=\"63006\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 7,
+   "op": "paragraph-text-replace",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW7"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW7"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN7 paragraph-text-replace block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 7\"/><w:tag w:val=\"c63-7\"/><w:id w:val=\"63007\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW7</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW7",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW7"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 8,
+   "op": "paragraph-text-start",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW8"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW8"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN8 paragraph-text-start block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 8\"/><w:tag w:val=\"c63-8\"/><w:id w:val=\"63008\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/></w:rPr><w:t>NEW8</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW8",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW8"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 9,
+   "op": "paragraph-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW9"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW9"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 paragraph-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 9\"/><w:tag w:val=\"c63-9\"/><w:id w:val=\"63009\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/></w:rPr><w:t>NEW9</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW9",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW9"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 10,
+   "op": "paragraph-after",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW10"
+   },
+   "after": {
+    "paragraphs": [
+     "",
+     "NEW10"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN10 paragraph-after block untracked</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 10\"/><w:tag w:val=\"c63-10\"/><w:id w:val=\"63010\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt></w:p><w:p><w:r><w:t>NEW10</w:t></w:r></w:p><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 11,
+   "op": "paragraph-before",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW11"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW11",
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN11 paragraph-before block untracked</w:t></w:r></w:p><w:p><w:r><w:t>NEW11</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 11\"/><w:tag w:val=\"c63-11\"/><w:id w:val=\"63011\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt></w:p><w:p><w:r><w:t>END11</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 12,
+   "op": "paragraph-content-delete",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN12 paragraph-content-delete block untracked</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>END12</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 13,
+   "op": "control-text-replace",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW13"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN13A NEW13 PLAIN13B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN13 control-text-replace run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN13A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 13\"/><w:tag w:val=\"c63-13\"/><w:id w:val=\"63013\"/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW13</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN13B</w:t></w:r></w:p><w:p><w:r><w:t>END13</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW13",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN13A NEW13 PLAIN13B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 14,
+   "op": "control-text-end",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW14"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN14A NEW14 PLAIN14B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN14 control-text-end run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN14A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 14\"/><w:tag w:val=\"c63-14\"/><w:id w:val=\"63014\"/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/></w:rPr><w:t>NEW14</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN14B</w:t></w:r></w:p><w:p><w:r><w:t>END14</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW14",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN14A NEW14 PLAIN14B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 15,
+   "op": "content-text-replace",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW15"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN15A NEW15 PLAIN15B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN15 content-text-replace run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN15A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 15\"/><w:tag w:val=\"c63-15\"/><w:id w:val=\"63015\"/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW15</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN15B</w:t></w:r></w:p><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW15",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN15A NEW15 PLAIN15B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 16,
+   "op": "content-text-end",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW16"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN16A NEW16 PLAIN16B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN16 content-text-end run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN16A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 16\"/><w:tag w:val=\"c63-16\"/><w:id w:val=\"63016\"/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW16</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN16B</w:t></w:r></w:p><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW16",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN16A NEW16 PLAIN16B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 17,
+   "op": "content-delete",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN17A  PLAIN17B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN17 content-delete run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN17A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 17\"/><w:tag w:val=\"c63-17\"/><w:id w:val=\"63017\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent/></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN17B</w:t></w:r></w:p><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN17A  PLAIN17B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 18,
+   "op": "whole-text-replace",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW18"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN18A NEW18 PLAIN18B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN18 whole-text-replace run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN18A NEW18 PLAIN18B</w:t></w:r></w:p><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 19,
+   "op": "paragraph-text-replace",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW19"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW19"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN19 paragraph-text-replace run untracked</w:t></w:r></w:p><w:p><w:r><w:t>NEW19</w:t></w:r></w:p><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 20,
+   "op": "paragraph-content-delete",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN20 paragraph-content-delete run untracked</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 21,
+   "op": "control-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW21"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW21"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN21 control-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 21\"/><w:tag w:val=\"c63-21\"/><w:id w:val=\"63021\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value21[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW21</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW21",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW21"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 22,
+   "op": "content-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW22"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW22"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN22 content-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 22\"/><w:tag w:val=\"c63-22\"/><w:id w:val=\"63022\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value22[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW22</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END22</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW22",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW22"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 23,
+   "op": "paragraph-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW23"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW23"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN23 paragraph-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 23\"/><w:tag w:val=\"c63-23\"/><w:id w:val=\"63023\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value23[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW23</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END23</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW23",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW23"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 24,
+   "op": "control-text-replace",
+   "shape": "run-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW24"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN24A NEW24 PLAIN24B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN24 control-text-replace run-bound untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN24A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 24\"/><w:tag w:val=\"c63-24\"/><w:id w:val=\"63024\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value24[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW24</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN24B</w:t></w:r></w:p><w:p><w:r><w:t>END24</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW24",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN24A NEW24 PLAIN24B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 25,
+   "op": "content-text-replace",
+   "shape": "run-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW25"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN25A NEW25 PLAIN25B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN25 content-text-replace run-bound untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN25A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 25\"/><w:tag w:val=\"c63-25\"/><w:id w:val=\"63025\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value25[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW25</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN25B</w:t></w:r></w:p><w:p><w:r><w:t>END25</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW25",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN25A NEW25 PLAIN25B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 26,
+   "op": "paragraph-text-replace",
+   "shape": "run-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW26"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW26"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN26 paragraph-text-replace run-bound untracked</w:t></w:r></w:p><w:p><w:r><w:t>NEW26</w:t></w:r></w:p><w:p><w:r><w:t>END26</w:t></w:r></w:p><w:p/>",
+    "control": null,
+    "node": ""
+   }
+  },
+  {
+   "n": 27,
+   "op": "control-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW27"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW27"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN27 control-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 27\"/><w:tag w:val=\"c63-27\"/><w:id w:val=\"63027\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW27</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END27</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW27",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW27"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 28,
+   "op": "control-text-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW28"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW28"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN28 control-text-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 28\"/><w:tag w:val=\"c63-28\"/><w:id w:val=\"63028\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW28</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END28</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW28",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW28"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 29,
+   "op": "control-paragraph-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": ""
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN29 control-paragraph-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 29\"/><w:tag w:val=\"c63-29\"/><w:id w:val=\"63029\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW29</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END29</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 30,
+   "op": "content-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW30"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW30"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN30 content-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 30\"/><w:tag w:val=\"c63-30\"/><w:id w:val=\"63030\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW30</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END30</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW30",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW30"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 31,
+   "op": "content-text-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW31"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW31"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN31 content-text-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 31\"/><w:tag w:val=\"c63-31\"/><w:id w:val=\"63031\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW31</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END31</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW31",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW31"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 32,
+   "op": "content-delete",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN32 content-delete block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 32\"/><w:tag w:val=\"c63-32\"/><w:id w:val=\"63032\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END32</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 33,
+   "op": "paragraph-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW33"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW33"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN33 paragraph-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 33\"/><w:tag w:val=\"c63-33\"/><w:id w:val=\"63033\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW33</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END33</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW33",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW33"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 34,
+   "op": "paragraph-text-start",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW34"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW34"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN34 paragraph-text-start block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 34\"/><w:tag w:val=\"c63-34\"/><w:id w:val=\"63034\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW34</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END34</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW34",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW34"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 35,
+   "op": "paragraph-text-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW35"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW35"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN35 paragraph-text-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 35\"/><w:tag w:val=\"c63-35\"/><w:id w:val=\"63035\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW35</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END35</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW35",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW35"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 36,
+   "op": "paragraph-after",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW36"
+   },
+   "after": {
+    "paragraphs": [
+     "",
+     "NEW36"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN36 paragraph-after block tracked</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"/></w:rPr></w:pPr><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 36\"/><w:tag w:val=\"c63-36\"/><w:id w:val=\"63036\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt></w:p><w:p><w:ins w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:t>NEW36</w:t></w:r></w:ins></w:p><w:p><w:r><w:t>END36</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 37,
+   "op": "paragraph-before",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW37"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW37",
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN37 paragraph-before block tracked</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"/></w:rPr></w:pPr><w:ins w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:t>NEW37</w:t></w:r></w:ins></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 37\"/><w:tag w:val=\"c63-37\"/><w:id w:val=\"63037\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt></w:p><w:p><w:r><w:t>END37</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 38,
+   "op": "paragraph-content-delete",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN38 paragraph-content-delete block tracked</w:t></w:r></w:p><w:customXmlDelRangeStart w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 38\"/><w:tag w:val=\"c63-38\"/><w:id w:val=\"63038\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd w:id=\"0\"/><w:p><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p><w:customXmlDelRangeStart w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd w:id=\"2\"/><w:p><w:r><w:t>END38</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 39,
+   "op": "control-text-replace",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW39"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN39A NEW39 PLAIN39B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN39 control-text-replace run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN39A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 39\"/><w:tag w:val=\"c63-39\"/><w:id w:val=\"63039\"/></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW39</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN39B</w:t></w:r></w:p><w:p><w:r><w:t>END39</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW39",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN39A NEW39 PLAIN39B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 40,
+   "op": "control-text-end",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW40"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN40A NEW40 PLAIN40B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN40 control-text-end run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN40A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 40\"/><w:tag w:val=\"c63-40\"/><w:id w:val=\"63040\"/></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:color w:val=\"auto\"/><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW40</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN40B</w:t></w:r></w:p><w:p><w:r><w:t>END40</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW40",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN40A NEW40 PLAIN40B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 41,
+   "op": "content-text-replace",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW41"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN41A NEW41 PLAIN41B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN41 content-text-replace run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN41A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 41\"/><w:tag w:val=\"c63-41\"/><w:id w:val=\"63041\"/></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW41</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN41B</w:t></w:r></w:p><w:p><w:r><w:t>END41</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW41",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN41A NEW41 PLAIN41B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 42,
+   "op": "content-text-end",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW42"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN42A NEW42 PLAIN42B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN42 content-text-end run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN42A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 42\"/><w:tag w:val=\"c63-42\"/><w:id w:val=\"63042\"/></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>NEW42</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN42B</w:t></w:r></w:p><w:p><w:r><w:t>END42</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW42",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN42A NEW42 PLAIN42B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 43,
+   "op": "content-delete",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN43A  PLAIN43B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN43 content-delete run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN43A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 43\"/><w:tag w:val=\"c63-43\"/><w:id w:val=\"63043\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN43B</w:t></w:r></w:p><w:p><w:r><w:t>END43</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN43A  PLAIN43B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 44,
+   "op": "whole-text-replace",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW44"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN44A NEW44 PLAIN44B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN44 whole-text-replace run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN44A </w:t></w:r><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:t>NEW44</w:t></w:r></w:ins><w:customXmlDelRangeStart w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 44\"/><w:tag w:val=\"c63-44\"/><w:id w:val=\"63044\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd w:id=\"1\"/><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd w:id=\"3\"/><w:r><w:t xml:space=\"preserve\"> PLAIN44B</w:t></w:r></w:p><w:p><w:r><w:t>END44</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN44A NEW44 PLAIN44B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 45,
+   "op": "paragraph-text-replace",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW45"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW45"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN45 paragraph-text-replace run tracked</w:t></w:r></w:p><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:t>NEW45</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:delText xml:space=\"preserve\">PLAIN45A </w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 45\"/><w:tag w:val=\"c63-45\"/><w:id w:val=\"63045\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd w:id=\"2\"/><w:del w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"4\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd w:id=\"4\"/><w:del w:id=\"5\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:delText xml:space=\"preserve\"> PLAIN45B</w:delText></w:r></w:del></w:p><w:p><w:r><w:t>END45</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW45"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 46,
+   "op": "paragraph-content-delete",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN46 paragraph-content-delete run tracked</w:t></w:r></w:p><w:p><w:del w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:delText xml:space=\"preserve\">PLAIN46A </w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 46\"/><w:tag w:val=\"c63-46\"/><w:id w:val=\"63046\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd w:id=\"1\"/><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd w:id=\"3\"/><w:del w:id=\"4\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:delText xml:space=\"preserve\"> PLAIN46B</w:delText></w:r></w:del></w:p><w:p><w:r><w:t>END46</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 47,
+   "op": "control-text-replace",
+   "shape": "block-bound",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW47"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW47"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN47 control-text-replace block-bound tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 47\"/><w:tag w:val=\"c63-47\"/><w:id w:val=\"63047\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value47[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW47</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END47</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW47",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW47"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 48,
+   "op": "content-text-replace",
+   "shape": "block-bound",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW48"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW48"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN48 content-text-replace block-bound tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 48\"/><w:tag w:val=\"c63-48\"/><w:id w:val=\"63048\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value48[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW48</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END48</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW48",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW48"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 49,
+   "op": "paragraph-text-replace",
+   "shape": "block-bound",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW49"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW49"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN49 paragraph-text-replace block-bound tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 49\"/><w:tag w:val=\"c63-49\"/><w:id w:val=\"63049\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value49[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW49</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END49</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW49",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW49"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 50,
+   "op": "control-text-replace",
+   "shape": "run-bound",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW50"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN50A NEW50 PLAIN50B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN50 control-text-replace run-bound tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN50A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 50\"/><w:tag w:val=\"c63-50\"/><w:id w:val=\"63050\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value50[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW50</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN50B</w:t></w:r></w:p><w:p><w:r><w:t>END50</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW50",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN50A NEW50 PLAIN50B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 51,
+   "op": "content-text-replace",
+   "shape": "run-bound",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW51"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN51A NEW51 PLAIN51B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN51 content-text-replace run-bound tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN51A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 51\"/><w:tag w:val=\"c63-51\"/><w:id w:val=\"63051\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value51[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:t>NEW51</w:t></w:r></w:ins><w:del w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rPrChange w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr></w:rPrChange></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN51B</w:t></w:r></w:p><w:p><w:r><w:t>END51</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW51",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN51A NEW51 PLAIN51B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 52,
+   "op": "paragraph-text-replace",
+   "shape": "run-bound",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW52"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW52"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN52 paragraph-text-replace run-bound tracked</w:t></w:r></w:p><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:t>NEW52</w:t></w:r></w:ins><w:del w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:delText xml:space=\"preserve\">PLAIN52A </w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"2\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 52\"/><w:tag w:val=\"c63-52\"/><w:id w:val=\"63052\"/><w:showingPlcHdr/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check63'\" w:xpath=\"/ns0:check63[1]/ns0:value52[1]\" w:storeItemID=\"{63636363-6363-4636-8636-636363636363}\"/><w:text/></w:sdtPr><w:sdtContent><w:customXmlDelRangeEnd w:id=\"2\"/><w:del w:id=\"3\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:delText>Click or tap here to enter text.</w:delText></w:r></w:del><w:customXmlDelRangeStart w:id=\"4\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\"/></w:sdtContent></w:sdt><w:customXmlDelRangeEnd w:id=\"4\"/><w:del w:id=\"5\" w:author=\"Author A\" w:date=\"2026-10-24T21:37:00Z\" w16du:dateUtc=\"2026-10-24T10:37:00Z\"><w:r><w:delText xml:space=\"preserve\"> PLAIN52B</w:delText></w:r></w:del></w:p><w:p><w:r><w:t>END52</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW52"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 53,
+   "op": "open",
+   "shape": "run-empty",
+   "after": {
+    "paragraphs": [
+     "PLAIN53A  PLAIN53B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN53 open run-empty</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN53A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 53\"/><w:tag w:val=\"c63-53\"/><w:id w:val=\"63053\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent/></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN53B</w:t></w:r></w:p><w:p><w:r><w:t>END53</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN53A  PLAIN53B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 54,
+   "op": "open",
+   "shape": "block-empty",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN54 open block-empty</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 63 control 54\"/><w:tag w:val=\"c63-54\"/><w:id w:val=\"63054\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt><w:p><w:r><w:t>END54</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  }
+ ],
+ "caseCount": 54
+}

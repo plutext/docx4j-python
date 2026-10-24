@@ -87,7 +87,7 @@ _PREVIEW = 30
 class Range:
     """A subset of Office JS ``Word.Range``: ``[start, end)`` from one paragraph to the same or a later one of its story."""
 
-    __slots__ = ("_end_paragraph", "end", "end_mark", "mark", "paragraph", "start", "whole")
+    __slots__ = ("_end_paragraph", "end", "end_mark", "mark", "of_control", "paragraph", "start", "whole")
 
     def __init__(
         self,
@@ -138,6 +138,11 @@ class Range:
         self.end_mark = end_mark
         #: The range holds its paragraphs' whole content (core-ts's ``whole``). Extension.
         self.whole = whole
+        #: ``(control, "Content" | "Whole")`` for a content control's own range, else None (CR-019
+        #: section 4.4; core-ts's internal ``ofControl``): a run-level control showing its placeholder,
+        #: or holding nothing, has no width, so its own range is where its writes go in, not its
+        #: offset, which the text either side of it shares. Set by :meth:`ContentControl.get_range`.
+        self.of_control: tuple[Any, str] | None = None
         self._end_paragraph = (
             end_paragraph
             if end_paragraph is not None and end_paragraph.element is not paragraph.element
@@ -961,6 +966,13 @@ class Range:
         text at the range's first character, ``"End"`` and ``"After"`` after
         its last, before a last mark it holds.
 
+        **A content control's own range** (CR-019 section 4.4, core-ts's D4)
+        asks its control first: into a control showing its placeholder the
+        text goes in the placeholder's place (:meth:`ContentControl.insert_text`'s
+        write), into an empty run-level control inside it, and at ``"Start"``
+        or ``"Before"`` of a run-level control holding text before its text,
+        inside it (CR-019 Q4).
+
         Returns:
             The range of the inserted text; where it made paragraphs, a range
             across them, as Office JS's is (core-ts check 55: ``x\\ry``; CR-013
@@ -984,6 +996,13 @@ class Range:
                 code="location.invalid",
                 hint="Replace is the default; Before and After put text around the span",
             )
+        if self.of_control is not None:
+            # a control's own range: into a control showing its placeholder, or an empty run-level one,
+            # its writes go inside it (CR-019 section 4.4, core-ts's D4)
+            control, part = self.of_control
+            written = control._write_through(part, text, location)
+            if written is not None:
+                return written
         if location == "Replace" and (
             self.spans_paragraphs or self.end_mark is not None or self.paragraph.change_tracker is not None
         ):

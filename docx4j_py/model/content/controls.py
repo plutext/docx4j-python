@@ -75,6 +75,7 @@ __all__ = [
     "ContentControl",
     "ContentControlForm",
     "block_control_of",
+    "control_view_of",
     "controls_in",
     "controls_in_paragraph",
     "controls_of_types",
@@ -188,6 +189,22 @@ def _placeholder_run(text: str, run_properties: Any) -> Any:
     properties = deep_copy(run_properties) if run_properties is not None else el.rPr()
     properties.r_style = el.rStyle(val=PLACEHOLDER_STYLE)
     return R(r_pr=properties, content=ChildList([text_element(text)]))
+
+
+#: A tracked insertion's inner start marker, before which text into an empty run control goes.
+_CUSTOM_XML_INS_RANGE_START = f"{{{W_NS}}}customXmlInsRangeStart"
+
+
+@dataclasses.dataclass(slots=True)
+class _Taken:
+    """A placeholder's runs taken out of a control, and the list and object that held them (CR-019)."""
+
+    #: The runs, in document order.
+    runs: list
+    #: The live list they came out of: a run-level control's content, a block control's first paragraph's.
+    holder: list
+    #: The object whose list `holder` is, for a parent pointer.
+    owner: Any
 
 
 class ContentControl:
@@ -468,10 +485,26 @@ class ContentControl:
         paragraph's start and ``"End"`` the last one's end; ``"After"`` is
         after the range's end.
 
+        Its own ``"Content"`` and ``"Whole"`` ranges, of a block- or run-level
+        control, know the control (CR-019 section 4.4, core-ts's D4): a write
+        through one asks the control first (:meth:`_write_through`), since a
+        run-level control showing its placeholder, or holding nothing, has no
+        width of its own. A range made from one (``expand_to``,
+        ``get_range``) is an ordinary range.
+
         Raises:
             ContentError: a run-level control that is in no paragraph, or a
                 control that holds no paragraph at all.
         """
+        found = self._range_of(location)
+        if location in ("Content", "Whole") and self.form in ("run", "block"):
+            # its own 'Content' and 'Whole' ranges know the control, for a write into one with no width
+            # (CR-019 section 4.4, core-ts's D4 and Range.ofControl)
+            found.of_control = (self, location)
+        return found
+
+    def _range_of(self, location: RangeLocation) -> Range:
+        """:meth:`get_range`'s range, before it is told its control."""
         from docx4j_py.model.content.range import Range
 
         if self.form == "run":
@@ -538,14 +571,15 @@ class ContentControl:
 
         **A control showing its placeholder** (``w:showingPlcHdr``), block- or
         run-level, takes the text in the placeholder's place whatever
-        `location` says, as Word's does (core-ts check 58 cases 20 to 22, Word
-        365 at ``"End"`` as at ``"Replace"``; CR-016 Phase B, core-ts
-        ``insertText`` at ``222cc20``): ``w:showingPlcHdr`` is cleared, the
-        write goes the ``"Replace"`` way, and the ``PlaceholderText``
-        character style comes off the runs it leaves, so the control shows the
-        text in the run's own style. A bound control then holds a value, which
-        :meth:`write_through` and ``update_from_content_controls()`` write to
-        its node. A refusal below leaves the control showing its placeholder.
+        `location` says, as Word's does (core-ts check 58 cases 20 to 22, check
+        63 cases 1, 2, 13 and 14, check 64 cases 1 to 3 and 10 to 12; CR-016
+        Phase B, CR-019 section 4.2): the write is :meth:`_write_placeholder`'s,
+        which clears ``w:showingPlcHdr``, writes the text in the placeholder's
+        runs' place, in one paragraph tracked or not, and writes a bound
+        control's node. In Word's form (:attr:`placeholder_entry`) the text is
+        plain; in the bare form it takes the placeholder run's look, the
+        ``PlaceholderText`` style left off. A refusal below leaves the control
+        showing its placeholder.
 
         ``\\n``, ``\\r`` and ``\\r\\n`` make a paragraph each in a block,
         row or cell control, as every writer through ``Paragraph.splice`` makes
@@ -557,7 +591,8 @@ class ContentControl:
         run-level control a paragraph break is refused (core-ts's F4), and a
         single-line one drops a line break, its node following it (F3, check
         55b case 8). U+0002 and the other characters XML 1.0 excludes are
-        dropped (section 11, E3).
+        dropped (section 11, E3). A bound control's node takes the text, block
+        or run (CR-019 section 4.7, core-ts's D7).
 
         Raises:
             InvalidTargetError: a row- or cell-level control asked to
@@ -571,21 +606,10 @@ class ContentControl:
                 f"a {form}-level content control", "replace the text of its cells instead"
             )
         text = drop_unwritable(text)
-        if not (self.is_showing_placeholder and form in ("block", "run")):
-            return self._insert_text(text, location, form)
-        if form == "run":
-            # the refusals first, so that a refused write leaves the placeholder showing
-            self._refuse_run_text(text)
-        flag = self._take_property("showingPlcHdr", W_NS)
-        try:
-            out = self._insert_text(text, "Replace", form)
-        except Exception:
-            if flag is not None:
-                self.properties().insert(*flag)
-            raise
-        for run in self._content_runs():
-            _drop_placeholder_style(run)
-        return out
+        if self.shows_placeholder_content:
+            # the text in the placeholder's place, wherever it is put (CR-019 section 4.2)
+            return self._write_placeholder(text)
+        return self._insert_text(text, location, form)
 
     def _refuse_run_text(self, text: str) -> None:
         """A run-level control's refusals of :meth:`insert_text`, before anything changes."""
@@ -627,7 +651,11 @@ class ContentControl:
     def _insert_text(self, text: str, location: TextLocation, form: str) -> Range:
         """:meth:`insert_text` once the placeholder rule has run."""
         if form != "run":
-            return self.body().insert_text(text, location=location)
+            out = self.body().insert_text(text, location=location)
+            # every text write into a bound control writes its node (CR-019 section 4.7, core-ts's D7),
+            # a block control's too, as core-ts's insertText does
+            self.write_through()
+            return out
         if PARAGRAPH_BREAKS.search(text):
             # Word, given one, moved a bound plain-text control to block level (core-ts
             # check 55b, cases 3 and 4); core-ts's F4 refuses it, and so does this
@@ -719,7 +747,10 @@ class ContentControl:
 
         ``"Start"`` and ``"End"`` put it inside a block control; ``"Before"``
         and ``"After"`` beside it, which is the only thing a run-level control
-        offers.
+        offers. Into a block control **showing its placeholder** in Word's
+        form (CR-019 section 4.2, core-ts's D1) the placeholder goes, its
+        paragraph left empty, the flag cleared, and the new paragraph follows
+        it (core-ts check 64 cases 6 and 27).
 
         Raises:
             InvalidTargetError: a row- or cell-level control asked for
@@ -733,6 +764,16 @@ class ContentControl:
                 "insert into a cell's body",
             )
         text = drop_unwritable(text)  # CR-013 section 11, E3
+        if (
+            location in ("Start", "End")
+            and form == "block"
+            and self.is_showing_placeholder
+            and self.placeholder_entry is not None
+        ):
+            # in Word's form the placeholder goes, its paragraph left empty, the flag cleared, and the
+            # new paragraph follows (core-ts check 64 cases 6 and 27; CR-019 section 4.2, its D1)
+            self._take_placeholder_runs(form)
+            self.remove_property("showingPlcHdr", W_NS)
         if form == "run" or location in ("Before", "After"):
             where = "Before" if location == "Before" else "After"
             paragraph = self.parent_paragraph()
@@ -793,6 +834,243 @@ class ContentControl:
                 else:
                     change.created(assign_para_id(self.parent_body, end_with_paragraph(cell)))
 
+    # -- writing into a control showing its placeholder (CR-019 Phase A) ----
+
+    @property
+    def placeholder_entry(self) -> str | None:
+        """The glossary entry the control's ``w:placeholder`` names; None where it has none. Extension.
+
+        CR-019 section 4.1 (core-ts ``placeholderEntry`` at ``020c039``, its
+        CR-002 section 63.9): ``w:placeholder/w:docPart/@w:val``, ``""`` for a
+        ``w:placeholder`` naming none. With any entry, present in the glossary
+        or not, the control is in **Word's form**, whose placeholder Word reads
+        as no content (core-ts checks 64 and 65); with None, in the **bare
+        form**, docx4j's binding's, whose placeholder runs Word takes for the
+        control's content (check 63). Every placeholder write goes by this
+        alone.
+        """
+        item = sdt_property(self.sdt_pr, "placeholder", W_NS)
+        if item is None:
+            return None
+        value = getattr(getattr(item, "doc_part", None), "val", None)
+        return "" if value is None else str(value)
+
+    @property
+    def shows_placeholder_content(self) -> bool:
+        """Whether a text write into this control replaces its placeholder: a block or run control showing it. Extension.
+
+        core-ts ``showsPlaceholderContent`` (CR-019 section 4.2). A row or cell
+        control's placeholder is left to the writes of its cells.
+        """
+        return self.is_showing_placeholder and self.form in ("block", "run")
+
+    def _write_placeholder(self, text: str, *, breaks: str = "paragraph") -> Range:
+        """Text written into this control while it shows its placeholder, by any route (CR-019 section 4.2).
+
+        core-ts ``writePlaceholder`` (``020c039``; its D1, D2 and D5). The
+        routes: :meth:`insert_text`, its ``"Content"`` range's ``insert_text``
+        (:meth:`_write_through`), and a block control's paragraph's
+        ``insert_text``, ``text = ...`` and ``splice``. The placeholder's runs
+        come out (a block control's other paragraphs go), the text takes their
+        place in the first paragraph, and ``w:showingPlcHdr`` is cleared:
+
+        * **Word's form** (:attr:`placeholder_entry`; core-ts check 64): the
+          placeholder is no content. Its runs go untracked and the text is
+          plain; under tracking only the insertion is recorded.
+        * **The bare form** (core-ts checks 58, 63 and 67): the text takes the
+          first placeholder run's look, the ``PlaceholderText`` style left off
+          (:meth:`_dress_as_placeholder`); under tracking only the insertion
+          is recorded, as in Word's form.
+
+        One paragraph, tracked as untracked (D5, core-ts's F1 and F3): the flag
+        is cleared, so the tracked write reads as text. A run-level control's
+        refusals come first, before anything changes. `breaks` is
+        :meth:`Paragraph.splice`'s, ``"line"`` for the one-paragraph writers.
+        A bound control's node takes the text (D7). Section 4.2's ``colour``
+        column, check 63's ``w:color auto``, is not written: checks 58 and 67
+        contradict it (CR-019 Q1).
+
+        Raises:
+            SpanError: ``range.splits_control``, a paragraph break into a
+                run-level control; nothing has changed.
+            ContentError: ``control.no_paragraph``, a run-level control in no
+                paragraph.
+        """
+        form = self.form
+        text = drop_unwritable(text)
+        with recording(self.parent_body, "insert_text") as change:
+            if form == "run":
+                # refused before anything changes: a paragraph break into a run-level control (F4)
+                self._refuse_run_text(text)
+            # the report says what the write replaced: the prompt (CR-016 section 11.6 item 6)
+            change.text(before=self._shown_text())
+            bare = self.placeholder_entry is None
+            taken = self._take_placeholder_runs(form)
+            self.remove_property("showingPlcHdr", W_NS)
+            if form == "run":
+                paragraph = self.parent_paragraph()
+                assert paragraph is not None  # _refuse_run_text refused one in no paragraph
+                out = self._insert_into_empty(paragraph, text)
+                change.touched(paragraph)
+            else:
+                first = self._first_paragraph()
+                out = first.splice(0, 0, text, breaks=breaks)
+                change.touched(out.paragraph, out.end_paragraph)
+            if bare:
+                self._dress_as_placeholder(taken)
+            change.text(after=text)
+            self.write_through()
+            return out
+
+    def _shown_text(self) -> str:
+        """The text the control's runs show, deleted runs and the placeholder rule aside: a block's paragraphs ``\\r`` apart."""
+        if self.form == "run":
+            inner = getattr(self.element, "sdt_content", None)
+            return text_of_view(inner) if inner is not None else ""
+        return "\r".join(text_of_view(paragraph.element) for paragraph in self.paragraphs)
+
+    def _run_content(self) -> Any:
+        """A run-level control's ``w:sdtContent``, made where it has none."""
+        from docx4j_py.wml import CTSdtContentRun
+
+        inner = getattr(self.element, "sdt_content", None)
+        if inner is None:
+            inner = CTSdtContentRun(content=ChildList([]))
+            self.element.sdt_content = inner
+            inner.parent = self.element
+        return inner
+
+    def _first_paragraph(self) -> Paragraph:
+        """A block control's first paragraph, made where its content holds none (core-ts ``firstParagraph``)."""
+        content = self.content
+        first = next((item for item in content if isinstance(item, P)), None)
+        if first is None:
+            first = P(content=ChildList([]))
+            content.append(first)
+            link_parents(first)
+            first.parent = getattr(content, "owner", None) or getattr(self.element, "sdt_content", None)
+        return self.body().paragraph_for(first)
+
+    def _take_placeholder_runs(self, form: str) -> _Taken:
+        """The placeholder's runs taken out of the content (core-ts ``takePlaceholderRuns``).
+
+        A run-level control's, or a block control's paragraphs', the first
+        paragraph kept, emptied, and any other going. What held them is kept,
+        for a deletion to go back into.
+        """
+        from docx4j_py.wml import R
+
+        def take(items: list) -> list:
+            runs = [item for item in items if isinstance(item, R)]
+            for run in runs:
+                del items[next(i for i, item in enumerate(items) if item is run)]
+            return runs
+
+        if form == "run":
+            owner = self._run_content()
+            holder = run_items_of(owner)
+            assert holder is not None  # a w:sdtContent's own list
+            return _Taken(take(holder), holder, owner)
+        content = self.content
+        paragraphs = [item for item in content if isinstance(item, P)]
+        runs = [run for paragraph in paragraphs for run in take(paragraph.content)]
+        for paragraph in paragraphs[1:]:
+            del content[next(i for i, item in enumerate(content) if item is paragraph)]
+        first = paragraphs[0] if paragraphs else self._first_paragraph().element
+        return _Taken(runs, first.content, first)
+
+    def _dress_as_placeholder(self, taken: _Taken) -> None:
+        """The bare form's look for the text written: the first placeholder run's (CR-019 section 4.2, Q1).
+
+        The text written takes the first placeholder run's run properties, its
+        ``w:rPrChange`` left out and the ``PlaceholderText`` style dropped, as
+        CR-016 Phase B wrote it: a plain run, as Word's saves of core-ts checks
+        58 (cases 20 to 22) and 67 (all 72 bare-form writes) have it. Check
+        63's save keeps the style in a rich text control and adds ``w:color
+        auto`` at an end (core-ts's D2 (a)); checks 58 and 67 contradict it,
+        so neither is written.
+        """
+        from docx4j_py.model.content.tracking import copy_r_pr
+
+        original = taken.runs[0].r_pr if taken.runs else None
+        for run in self._content_runs():
+            look = copy_r_pr(original)
+            run.r_pr = look
+            if look is not None:
+                look.parent = run
+                _drop_placeholder_style(run)
+
+    def _insert_into_empty(self, paragraph: Paragraph, text: str) -> Range:
+        """Text into a run-level control holding no run: a new run in its content (core-ts ``insertIntoEmpty``).
+
+        In a ``w:ins`` under tracking (Word: check 30, new-control-typed),
+        placed before the control's trailing ``w:customXmlInsRangeStart`` where
+        the control is itself an insertion. A single-line plain-text control
+        drops a line break (F3).
+        """
+        from docx4j_py.model.content.range import Range
+
+        if plain_text_lines_of(self) == "single":
+            text = for_writer(text, "single-line")
+        owner = self._run_content()
+        items = run_items_of(owner)
+        assert items is not None  # a w:sdtContent's own list
+        tracker = paragraph.change_tracker
+        run = text_run(text)
+        link_parents(run)
+        item = tracker.ins([run]) if tracker is not None else run
+        at = next((i for i, x in enumerate(items) if element_name(x) == _CUSTOM_XML_INS_RANGE_START), len(items))
+        items.insert(at, item)
+        item.parent = owner
+        span = self._run_span()
+        start, end = (span[1], span[2]) if span is not None else (0, len(text))
+        return Range(paragraph, start, end)
+
+    def _write_through(self, part: str, text: str, location: str) -> Range | None:
+        """A write through the control's own ``"Content"`` range that the control takes (CR-019 section 4.4).
+
+        core-ts ``writeThrough`` (its D4, F2):
+
+        * the control showing its placeholder: :meth:`_write_placeholder`
+          (core-ts check 63 cases 4, 5, 15 and 16; check 64 cases 4, 5, 13 and
+          14);
+        * an empty run-level control: the text inside it (check 64 cases 21
+          and 42);
+        * at ``"Start"`` or ``"Before"``, a run-level control holding text:
+          inside it, before its text, as core-ts writes it, where the range's
+          own write joins the run before (CR-019 Q4; unmeasured).
+
+        None where the range's own write applies, a ``"Whole"`` range's among
+        them.
+        """
+        if part != "Content":
+            return None
+        if self.shows_placeholder_content:
+            return self._write_placeholder(text)
+        if self.form != "run":
+            return None
+        place = self._run_place()
+        if place is None:
+            return None
+        paragraph, start, _end, empty = place
+        if not empty and location not in ("Start", "Before"):
+            return None
+        text = drop_unwritable(text)
+        with recording(self.parent_body, "insert_text") as change:
+            self._refuse_run_text(text)
+            change.text(before=self.text)
+            if empty:
+                out = self._insert_into_empty(paragraph, text)
+            elif paragraph.change_tracker is not None:
+                # the w:ins before the control's first run, inside it, in its look (Paragraph.splice's prefer)
+                out = paragraph.splice(start, start, text, prefer="after")
+            else:
+                out = self._extend(paragraph, text, at_start=True)
+            change.touched(paragraph)
+            change.text(after=text)
+            self.write_through()
+            return out
+
     # -- the w:sdtPr properties (CR-003 section 3.7, Phase E) ---------------
 
     @property
@@ -818,10 +1096,7 @@ class ContentControl:
         """
         if not self.is_showing_placeholder:
             return ""
-        if self.form == "run":
-            inner = getattr(self.element, "sdt_content", None)
-            return text_of_view(inner) if inner is not None else ""
-        return "\r".join(text_of_view(paragraph.element) for paragraph in self.paragraphs)
+        return self._shown_text()
 
     @placeholder_text.setter
     def placeholder_text(self, value: str) -> None:
@@ -1269,24 +1544,41 @@ class ContentControl:
 
     def _run_span(self) -> tuple[Paragraph, int, int] | None:
         """The offsets a run-level control covers in its paragraph."""
+        found = self._run_place()
+        return None if found is None else found[:3]
+
+    def _run_place(self) -> tuple[Paragraph, int, int, bool] | None:
+        """:meth:`_run_span`, and whether the control holds nothing the walk reads (core-ts ``runSpan``'s ``empty``)."""
+        from docx4j_py.model.content.text_model import segments_of
+
         paragraph = self.parent_paragraph()
         if paragraph is None:
             return None
+
+        element = self.element
+        at = 0
+
+        def visit(item: Any, offset: int, *_rest: Any) -> None:
+            nonlocal at
+            if item is element:
+                at = offset
 
         start: int | None = None
         end = 0
         # each hidden run's item and each object as a place of no text (``objects``), so that a
         # control holding only those --- one showing its placeholder (CR-016 Phase B), a picture
-        # control --- is found where it stands, collapsed
-        for segment in paragraph.segments(objects=True):
+        # control --- is found where it stands, collapsed; a control holding nothing at all stands
+        # where the walk passes it, after the text before it (core-ts's runSpan; CR-019 section 4.4),
+        # where it was found at 0
+        for segment in segments_of(paragraph.element, hidden=paragraph.hidden_runs(), objects=True, visit=visit):
             if not self._inside(segment.run):
                 continue
             if start is None:
                 start = segment.start
             end = segment.end
         if start is None:
-            return paragraph, 0, 0
-        return paragraph, start, end
+            return paragraph, at, at, True
+        return paragraph, start, end, False
 
 
 # ---------------------------------------------------------------------------
@@ -1496,6 +1788,17 @@ def _node_holds_flat_opc(control: ContentControl) -> bool:
         return False
     text = getattr(node, "text", None) if node is not None else None
     return bool(text) and (_FLAT_OPC_NS in text or "pkg:package" in text)
+
+
+def control_view_of(element: Any, body: Body) -> ContentControl | None:
+    """The view of a ``w:sdt`` in the live list holding it, found from its parent pointer; None where it is in none."""
+    parent = getattr(element, "parent", None)
+    if parent is None:
+        return None
+    for container in (block_children_of(parent), run_items_of(parent)):
+        if container is not None and any(item is element for item in container):
+            return ContentControl(element, container, body)
+    return None
 
 
 def parent_control_of(element: Any, body: Body) -> ContentControl | None:

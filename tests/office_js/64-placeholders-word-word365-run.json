@@ -1,0 +1,1434 @@
+{
+ "check": 64,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "cases": [
+  {
+   "n": 1,
+   "op": "control-text-replace",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW1"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW1"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 control-text-replace block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 1\"/><w:tag w:val=\"c64-1\"/><w:id w:val=\"64001\"/><w:placeholder><w:docPart w:val=\"81FC678BDBF24EE38135218FB4F7BBE7\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW1</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW1",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW1"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 2,
+   "op": "control-text-start",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW2"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW2"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 control-text-start block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 2\"/><w:tag w:val=\"c64-2\"/><w:id w:val=\"64002\"/><w:placeholder><w:docPart w:val=\"0163DC2A277E446A84945D5E46FB5793\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW2</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW2",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW2"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 3,
+   "op": "control-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW3"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW3"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 control-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 3\"/><w:tag w:val=\"c64-3\"/><w:id w:val=\"64003\"/><w:placeholder><w:docPart w:val=\"3AE307393AA543BC8A7ED1375D2A23C4\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW3</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW3",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW3"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 4,
+   "op": "content-text-replace",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW4"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW4"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 content-text-replace block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 4\"/><w:tag w:val=\"c64-4\"/><w:id w:val=\"64004\"/><w:placeholder><w:docPart w:val=\"1A2F81D8BA004AE194552412BFFDA602\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW4</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW4",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW4"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 5,
+   "op": "content-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW5"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW5"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 content-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 5\"/><w:tag w:val=\"c64-5\"/><w:id w:val=\"64005\"/><w:placeholder><w:docPart w:val=\"46935F27DA964E24BDAA5876FE649364\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW5</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW5",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW5"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 6,
+   "op": "control-paragraph-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW6"
+   },
+   "after": {
+    "paragraphs": [
+     "",
+     "NEW6"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 control-paragraph-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 6\"/><w:tag w:val=\"c64-6\"/><w:id w:val=\"64006\"/><w:placeholder><w:docPart w:val=\"014DCE886141427781A03EDB8CDD2DD9\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p/><w:p><w:r><w:t>NEW6</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "\\u000dNEW6",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "",
+      "NEW6"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 7,
+   "op": "paragraph-text-replace",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW7"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW7"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN7 paragraph-text-replace block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 7\"/><w:tag w:val=\"c64-7\"/><w:id w:val=\"64007\"/><w:placeholder><w:docPart w:val=\"F8F350DEEE7C461386E341E46F5FA555\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW7</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW7",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW7"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 8,
+   "op": "paragraph-text-start",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW8"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW8"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN8 paragraph-text-start block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 8\"/><w:tag w:val=\"c64-8\"/><w:id w:val=\"64008\"/><w:placeholder><w:docPart w:val=\"7A8F74E2210B4CE2B112D04B67522F12\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW8</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW8",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW8"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 9,
+   "op": "paragraph-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW9"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW9"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 paragraph-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 9\"/><w:tag w:val=\"c64-9\"/><w:id w:val=\"64009\"/><w:placeholder><w:docPart w:val=\"E5BB8FB0F4B14728A7C752C0F7908F56\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW9</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW9",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW9"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 10,
+   "op": "control-text-replace",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW10"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN10A NEW10 PLAIN10B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN10 control-text-replace run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN10A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 10\"/><w:tag w:val=\"c64-10\"/><w:id w:val=\"64010\"/><w:placeholder><w:docPart w:val=\"F1E68334AE6440D4B995A5025A24077F\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW10</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN10B</w:t></w:r></w:p><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW10",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN10A NEW10 PLAIN10B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 11,
+   "op": "control-text-start",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW11"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN11A NEW11 PLAIN11B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN11 control-text-start run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN11A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 11\"/><w:tag w:val=\"c64-11\"/><w:id w:val=\"64011\"/><w:placeholder><w:docPart w:val=\"425C1FF45C6C4DC7AE46FBDAE308A079\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW11</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN11B</w:t></w:r></w:p><w:p><w:r><w:t>END11</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW11",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN11A NEW11 PLAIN11B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 12,
+   "op": "control-text-end",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW12"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN12A NEW12 PLAIN12B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN12 control-text-end run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN12A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 12\"/><w:tag w:val=\"c64-12\"/><w:id w:val=\"64012\"/><w:placeholder><w:docPart w:val=\"1530A4E549514E5FA18F9CBBDB295187\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW12</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN12B</w:t></w:r></w:p><w:p><w:r><w:t>END12</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW12",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN12A NEW12 PLAIN12B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 13,
+   "op": "content-text-replace",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW13"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN13A NEW13 PLAIN13B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN13 content-text-replace run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN13A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 13\"/><w:tag w:val=\"c64-13\"/><w:id w:val=\"64013\"/><w:placeholder><w:docPart w:val=\"71970D6C54D0467D8F4966D25F945A25\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW13</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN13B</w:t></w:r></w:p><w:p><w:r><w:t>END13</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW13",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN13A NEW13 PLAIN13B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 14,
+   "op": "content-text-end",
+   "shape": "run",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW14"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN14A NEW14 PLAIN14B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN14 content-text-end run untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN14A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 14\"/><w:tag w:val=\"c64-14\"/><w:id w:val=\"64014\"/><w:placeholder><w:docPart w:val=\"AC190B30EA8541A2825BDA8D4C87E13D\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW14</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN14B</w:t></w:r></w:p><w:p><w:r><w:t>END14</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW14",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN14A NEW14 PLAIN14B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 15,
+   "op": "control-text-replace",
+   "shape": "made-block",
+   "mode": "untracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN15 control-text-replace made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-15\"/><w:id w:val=\"-1187901703\"/><w:placeholder><w:docPart w:val=\"DE3A6F4DE7AD4118B3E08B3DC0562C8C\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW15"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW15"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN15 control-text-replace made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-15\"/><w:id w:val=\"-1187901703\"/><w:placeholder><w:docPart w:val=\"93B57A35A7A84D21821BCB4CDB6B4F8E\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW15</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW15",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW15"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 16,
+   "op": "control-text-end",
+   "shape": "made-block",
+   "mode": "untracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN16 control-text-end made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-16\"/><w:id w:val=\"1253158679\"/><w:placeholder><w:docPart w:val=\"854D6486D30C431BB17F58FFAF077466\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW16"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW16"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN16 control-text-end made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-16\"/><w:id w:val=\"1253158679\"/><w:placeholder><w:docPart w:val=\"72DADA49B139406B9206C3A4351648E0\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW16</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW16",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW16"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 17,
+   "op": "content-text-replace",
+   "shape": "made-block",
+   "mode": "untracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN17 content-text-replace made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-17\"/><w:id w:val=\"317010968\"/><w:placeholder><w:docPart w:val=\"FDEB54BED7954D2AA72A16D3FE304ADE\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW17"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW17"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN17 content-text-replace made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-17\"/><w:id w:val=\"317010968\"/><w:placeholder><w:docPart w:val=\"448D28EDEF374B31B08DE4B5DF3EF6AA\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW17</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW17",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW17"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 18,
+   "op": "paragraph-text-end",
+   "shape": "made-block",
+   "mode": "untracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN18 paragraph-text-end made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-18\"/><w:id w:val=\"-513921228\"/><w:placeholder><w:docPart w:val=\"B681A77CDED24B8A8DBD9ABFD518F551\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW18"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW18"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN18 paragraph-text-end made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-18\"/><w:id w:val=\"-513921228\"/><w:placeholder><w:docPart w:val=\"EA15585DB6C64892B31E0F43732B133E\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW18</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW18",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW18"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 19,
+   "op": "control-text-replace",
+   "shape": "made-run",
+   "mode": "untracked",
+   "made": {
+    "at": "After",
+    "ooxml": "<w:p><w:r><w:t>BEGIN19 control-text-replace made-run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN19A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-19\"/><w:id w:val=\"-265080928\"/><w:placeholder><w:docPart w:val=\"F6DD912219764519BC903ADF32AB0363\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN19B</w:t></w:r></w:p><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW19"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN19ANEW19  PLAIN19B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN19 control-text-replace made-run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN19A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-19\"/><w:id w:val=\"-265080928\"/><w:placeholder><w:docPart w:val=\"1C76AC92AEAC41BD9284A2227F182F63\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW19</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN19B</w:t></w:r></w:p><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW19",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN19ANEW19  PLAIN19B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 20,
+   "op": "control-text-end",
+   "shape": "made-run",
+   "mode": "untracked",
+   "made": {
+    "at": "After",
+    "ooxml": "<w:p><w:r><w:t>BEGIN20 control-text-end made-run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN20A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-20\"/><w:id w:val=\"-762687609\"/><w:placeholder><w:docPart w:val=\"48C3DD5365E849FFADB2ABC79533839F\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN20B</w:t></w:r></w:p><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW20"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN20ANEW20  PLAIN20B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN20 control-text-end made-run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN20A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-20\"/><w:id w:val=\"-762687609\"/><w:placeholder><w:docPart w:val=\"89786EDF7B9343898CC245E33689D9D6\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW20</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN20B</w:t></w:r></w:p><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW20",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN20ANEW20  PLAIN20B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 21,
+   "op": "content-text-replace",
+   "shape": "made-run",
+   "mode": "untracked",
+   "made": {
+    "at": "After",
+    "ooxml": "<w:p><w:r><w:t>BEGIN21 content-text-replace made-run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN21A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-21\"/><w:id w:val=\"-599785374\"/><w:placeholder><w:docPart w:val=\"E52CABCA2BBA48CE8F518C814D877662\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN21B</w:t></w:r></w:p><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW21"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN21ANEW21  PLAIN21B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN21 content-text-replace made-run untracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN21A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-21\"/><w:id w:val=\"-599785374\"/><w:placeholder><w:docPart w:val=\"10D263C9C75A410DA10ECE1F288E1503\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:t>NEW21</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN21B</w:t></w:r></w:p><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW21",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN21ANEW21  PLAIN21B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 22,
+   "op": "control-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW22"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW22"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN22 control-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 22\"/><w:tag w:val=\"c64-22\"/><w:id w:val=\"64022\"/><w:placeholder><w:docPart w:val=\"F675ECC1B0114A14A6CAA8A8439AFCFF\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW22</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END22</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW22",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW22"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 23,
+   "op": "control-text-start",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW23"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW23"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN23 control-text-start block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 23\"/><w:tag w:val=\"c64-23\"/><w:id w:val=\"64023\"/><w:placeholder><w:docPart w:val=\"CB3CF6D9813942FC9ABFAA15CE9CCCCE\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW23</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END23</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW23",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW23"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 24,
+   "op": "control-text-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW24"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW24"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN24 control-text-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 24\"/><w:tag w:val=\"c64-24\"/><w:id w:val=\"64024\"/><w:placeholder><w:docPart w:val=\"86E33874286A4A8B9051CA86A2870D97\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW24</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END24</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW24",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW24"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 25,
+   "op": "content-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW25"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW25"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN25 content-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 25\"/><w:tag w:val=\"c64-25\"/><w:id w:val=\"64025\"/><w:placeholder><w:docPart w:val=\"B6B115FF9A5F40FB984BAFFCF77517D4\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW25</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END25</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW25",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW25"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 26,
+   "op": "content-text-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW26"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW26"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN26 content-text-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 26\"/><w:tag w:val=\"c64-26\"/><w:id w:val=\"64026\"/><w:placeholder><w:docPart w:val=\"C0285EDCB18A49C9B701B2115D6CE997\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW26</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END26</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW26",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW26"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 27,
+   "op": "control-paragraph-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW27"
+   },
+   "after": {
+    "paragraphs": [
+     "",
+     "NEW27"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN27 control-paragraph-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 27\"/><w:tag w:val=\"c64-27\"/><w:id w:val=\"64027\"/><w:placeholder><w:docPart w:val=\"F9B485F345C74DA4863D53A93BF94379\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:pPr><w:rPr><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"/></w:rPr></w:pPr></w:p><w:p><w:ins w:id=\"1\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW27</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END27</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "\\u000dNEW27",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "",
+      "NEW27"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 28,
+   "op": "paragraph-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW28"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW28"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN28 paragraph-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 28\"/><w:tag w:val=\"c64-28\"/><w:id w:val=\"64028\"/><w:placeholder><w:docPart w:val=\"483422422B0E4707A6BD3645B1AE43DB\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW28</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END28</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW28",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW28"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 29,
+   "op": "paragraph-text-start",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW29"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW29"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN29 paragraph-text-start block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 29\"/><w:tag w:val=\"c64-29\"/><w:id w:val=\"64029\"/><w:placeholder><w:docPart w:val=\"E04BA80A60814032A01780915226145E\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW29</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END29</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW29",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW29"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 30,
+   "op": "paragraph-text-end",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW30"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW30"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN30 paragraph-text-end block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 30\"/><w:tag w:val=\"c64-30\"/><w:id w:val=\"64030\"/><w:placeholder><w:docPart w:val=\"7C96C8FA985647AA849B129A385535E0\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW30</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END30</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW30",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW30"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 31,
+   "op": "control-text-replace",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW31"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN31A NEW31 PLAIN31B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN31 control-text-replace run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN31A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 31\"/><w:tag w:val=\"c64-31\"/><w:id w:val=\"64031\"/><w:placeholder><w:docPart w:val=\"23BB6D067C1F4B18BBD4116C9AB37DC4\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW31</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN31B</w:t></w:r></w:p><w:p><w:r><w:t>END31</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW31",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN31A NEW31 PLAIN31B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 32,
+   "op": "control-text-start",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW32"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN32A NEW32 PLAIN32B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN32 control-text-start run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN32A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 32\"/><w:tag w:val=\"c64-32\"/><w:id w:val=\"64032\"/><w:placeholder><w:docPart w:val=\"646375FC45FA4BF9BB0028CBBCF7EC57\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW32</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN32B</w:t></w:r></w:p><w:p><w:r><w:t>END32</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW32",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN32A NEW32 PLAIN32B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 33,
+   "op": "control-text-end",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW33"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN33A NEW33 PLAIN33B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN33 control-text-end run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN33A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 33\"/><w:tag w:val=\"c64-33\"/><w:id w:val=\"64033\"/><w:placeholder><w:docPart w:val=\"E2AB4E8A451140838956FE9CA36DDD36\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW33</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN33B</w:t></w:r></w:p><w:p><w:r><w:t>END33</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW33",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN33A NEW33 PLAIN33B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 34,
+   "op": "content-text-replace",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW34"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN34A NEW34 PLAIN34B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN34 content-text-replace run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN34A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 34\"/><w:tag w:val=\"c64-34\"/><w:id w:val=\"64034\"/><w:placeholder><w:docPart w:val=\"C36076D8945548D5ACBB5F6BF0A8EF8A\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW34</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN34B</w:t></w:r></w:p><w:p><w:r><w:t>END34</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW34",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN34A NEW34 PLAIN34B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 35,
+   "op": "content-text-end",
+   "shape": "run",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW35"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN35A NEW35 PLAIN35B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN35 content-text-end run tracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN35A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 35\"/><w:tag w:val=\"c64-35\"/><w:id w:val=\"64035\"/><w:placeholder><w:docPart w:val=\"603924DF35EB4E899935FAE5364C6FFF\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW35</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN35B</w:t></w:r></w:p><w:p><w:r><w:t>END35</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW35",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN35A NEW35 PLAIN35B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 36,
+   "op": "control-text-replace",
+   "shape": "made-block",
+   "mode": "tracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN36 control-text-replace made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-36\"/><w:id w:val=\"2032913946\"/><w:placeholder><w:docPart w:val=\"94DFF8F95017498C9B20928AE4C3B461\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END36</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW36"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW36"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN36 control-text-replace made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-36\"/><w:id w:val=\"2032913946\"/><w:placeholder><w:docPart w:val=\"B6FB6BE00E1B4AFC856290C7787E9CF6\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW36</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END36</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW36",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW36"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 37,
+   "op": "control-text-end",
+   "shape": "made-block",
+   "mode": "tracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN37 control-text-end made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-37\"/><w:id w:val=\"-1086689748\"/><w:placeholder><w:docPart w:val=\"5AAC80CDC87C406EB879A7D578CA46B2\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END37</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW37"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW37"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN37 control-text-end made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-37\"/><w:id w:val=\"-1086689748\"/><w:placeholder><w:docPart w:val=\"B8B1349422AC419382DCC3EC03D02086\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW37</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END37</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW37",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW37"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 38,
+   "op": "content-text-replace",
+   "shape": "made-block",
+   "mode": "tracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN38 content-text-replace made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-38\"/><w:id w:val=\"1845440985\"/><w:placeholder><w:docPart w:val=\"709F4DE5EC9146DABCA2D25C905B0D2E\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END38</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW38"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW38"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN38 content-text-replace made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-38\"/><w:id w:val=\"1845440985\"/><w:placeholder><w:docPart w:val=\"327E47EC16054435B1EF90D3B7156336\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW38</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END38</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW38",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW38"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 39,
+   "op": "paragraph-text-end",
+   "shape": "made-block",
+   "mode": "tracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN39 paragraph-text-end made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-39\"/><w:id w:val=\"-746106071\"/><w:placeholder><w:docPart w:val=\"EEE80CC850FE4AF99B0496622302FE0E\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END39</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW39"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW39"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN39 paragraph-text-end made-block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c64-39\"/><w:id w:val=\"-746106071\"/><w:placeholder><w:docPart w:val=\"44A777180CD34FABAF766F9F111823BA\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW39</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END39</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW39",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW39"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 40,
+   "op": "control-text-replace",
+   "shape": "made-run",
+   "mode": "tracked",
+   "made": {
+    "at": "After",
+    "ooxml": "<w:p><w:r><w:t>BEGIN40 control-text-replace made-run tracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN40A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-40\"/><w:id w:val=\"84658850\"/><w:placeholder><w:docPart w:val=\"FD1E912C71894BA095CA7E5B8AA696CF\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN40B</w:t></w:r></w:p><w:p><w:r><w:t>END40</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW40"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN40ANEW40  PLAIN40B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN40 control-text-replace made-run tracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN40A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-40\"/><w:id w:val=\"84658850\"/><w:placeholder><w:docPart w:val=\"0AB884B2EA74439BA7EC866829CE238F\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW40</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN40B</w:t></w:r></w:p><w:p><w:r><w:t>END40</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW40",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN40ANEW40  PLAIN40B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 41,
+   "op": "control-text-end",
+   "shape": "made-run",
+   "mode": "tracked",
+   "made": {
+    "at": "After",
+    "ooxml": "<w:p><w:r><w:t>BEGIN41 control-text-end made-run tracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN41A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-41\"/><w:id w:val=\"824010798\"/><w:placeholder><w:docPart w:val=\"203A55FDD09D42E5A7D9C4C408DBF5C8\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN41B</w:t></w:r></w:p><w:p><w:r><w:t>END41</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW41"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN41ANEW41  PLAIN41B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN41 control-text-end made-run tracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN41A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-41\"/><w:id w:val=\"824010798\"/><w:placeholder><w:docPart w:val=\"83ABF80AD59349D485C5378CC302C13C\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW41</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN41B</w:t></w:r></w:p><w:p><w:r><w:t>END41</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW41",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN41ANEW41  PLAIN41B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 42,
+   "op": "content-text-replace",
+   "shape": "made-run",
+   "mode": "tracked",
+   "made": {
+    "at": "After",
+    "ooxml": "<w:p><w:r><w:t>BEGIN42 content-text-replace made-run tracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN42A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-42\"/><w:id w:val=\"2107144937\"/><w:placeholder><w:docPart w:val=\"475B29EABADA4D51B56F47A51D37379E\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN42B</w:t></w:r></w:p><w:p><w:r><w:t>END42</w:t></w:r></w:p><w:p/>"
+   },
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW42"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN42ANEW42  PLAIN42B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN42 content-text-replace made-run tracked</w:t></w:r></w:p><w:p><w:r><w:t>PLAIN42A</w:t></w:r><w:sdt><w:sdtPr><w:tag w:val=\"c64-42\"/><w:id w:val=\"2107144937\"/><w:placeholder><w:docPart w:val=\"5C90877EA8FB47A0A53B6BC159AA36F9\"/></w:placeholder></w:sdtPr><w:sdtContent><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-24T22:01:00Z\" w16du:dateUtc=\"2026-10-24T11:01:00Z\"><w:r><w:t>NEW42</w:t></w:r></w:ins></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\">  PLAIN42B</w:t></w:r></w:p><w:p><w:r><w:t>END42</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW42",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN42ANEW42  PLAIN42B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 43,
+   "op": "control-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW43"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW43"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN43 control-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 43\"/><w:tag w:val=\"c64-43\"/><w:id w:val=\"64043\"/><w:placeholder><w:docPart w:val=\"C539DAE299BB40FBAB33CE671FE9E9E8\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value43[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW43</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END43</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW43",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW43"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW43"
+   }
+  },
+  {
+   "n": 44,
+   "op": "content-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW44"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW44"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN44 content-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 44\"/><w:tag w:val=\"c64-44\"/><w:id w:val=\"64044\"/><w:placeholder><w:docPart w:val=\"4079E43366F845FDA366BB20F9F143B7\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value44[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW44</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END44</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW44",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW44"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW44"
+   }
+  },
+  {
+   "n": 45,
+   "op": "paragraph-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW45"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW45"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN45 paragraph-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 45\"/><w:tag w:val=\"c64-45\"/><w:id w:val=\"64045\"/><w:placeholder><w:docPart w:val=\"71093AA98E114641B662D634EEAFEAF5\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value45[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW45</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END45</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW45",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW45"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW45"
+   }
+  },
+  {
+   "n": 46,
+   "op": "control-text-replace",
+   "shape": "block-value",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW46"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW46"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN46 control-text-replace block-value untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 46\"/><w:tag w:val=\"c64-46\"/><w:id w:val=\"64046\"/><w:placeholder><w:docPart w:val=\"620EE06DE1C74B7C825F12A141042F3C\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value46[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW46</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END46</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW46",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW46"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW46"
+   }
+  },
+  {
+   "n": 47,
+   "op": "content-text-replace",
+   "shape": "block-value",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW47"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW47"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN47 content-text-replace block-value untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 47\"/><w:tag w:val=\"c64-47\"/><w:id w:val=\"64047\"/><w:placeholder><w:docPart w:val=\"D3909CF7484E4A4CA219A5645A5714E6\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value47[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW47</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END47</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW47",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW47"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW47"
+   }
+  },
+  {
+   "n": 48,
+   "op": "paragraph-text-replace",
+   "shape": "block-value",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW48"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW48"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN48 paragraph-text-replace block-value untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 48\"/><w:tag w:val=\"c64-48\"/><w:id w:val=\"64048\"/><w:placeholder><w:docPart w:val=\"CAF2E88BBA4D489DA5D483FD853DDFAB\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value48[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW48</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END48</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW48",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "NEW48"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW48"
+   }
+  },
+  {
+   "n": 49,
+   "op": "control-text-replace",
+   "shape": "run-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW49"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN49A NEW49 PLAIN49B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN49 control-text-replace run-bound untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN49A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 49\"/><w:tag w:val=\"c64-49\"/><w:id w:val=\"64049\"/><w:placeholder><w:docPart w:val=\"0AB482E33E744500A7822F669DFE61F1\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value49[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW49</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN49B</w:t></w:r></w:p><w:p><w:r><w:t>END49</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW49",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN49A NEW49 PLAIN49B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW49"
+   }
+  },
+  {
+   "n": 50,
+   "op": "content-text-replace",
+   "shape": "run-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW50"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN50A NEW50 PLAIN50B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN50 content-text-replace run-bound untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN50A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 50\"/><w:tag w:val=\"c64-50\"/><w:id w:val=\"64050\"/><w:placeholder><w:docPart w:val=\"92F26CAB3D2A4912A4F9E7F0C698B8CE\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value50[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW50</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN50B</w:t></w:r></w:p><w:p><w:r><w:t>END50</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW50",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN50A NEW50 PLAIN50B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW50"
+   }
+  },
+  {
+   "n": 51,
+   "op": "control-text-replace",
+   "shape": "run-value",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW51"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN51A NEW51 PLAIN51B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN51 control-text-replace run-value untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN51A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 51\"/><w:tag w:val=\"c64-51\"/><w:id w:val=\"64051\"/><w:placeholder><w:docPart w:val=\"4AAD569F4D1E491D8F7C232E2671F36D\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value51[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW51</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN51B</w:t></w:r></w:p><w:p><w:r><w:t>END51</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW51",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN51A NEW51 PLAIN51B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW51"
+   }
+  },
+  {
+   "n": 52,
+   "op": "content-text-replace",
+   "shape": "run-value",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW52"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN52A NEW52 PLAIN52B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN52 content-text-replace run-value untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN52A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 64 control 52\"/><w:tag w:val=\"c64-52\"/><w:id w:val=\"64052\"/><w:placeholder><w:docPart w:val=\"9BBC2B0020F24FE797CC7398868275C4\"/></w:placeholder><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check64'\" w:xpath=\"/ns0:check64[1]/ns0:value52[1]\" w:storeItemID=\"{64646464-6464-4646-8646-646464646464}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW52</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN52B</w:t></w:r></w:p><w:p><w:r><w:t>END52</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW52",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN52A NEW52 PLAIN52B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW52"
+   }
+  }
+ ],
+ "caseCount": 52
+}

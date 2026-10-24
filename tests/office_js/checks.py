@@ -1,4 +1,4 @@
-"""docx4j-core-ts's Office JS checks 52 to 59, ported to the content API: CR-013's and CR-016's oracles.
+"""docx4j-core-ts's Office JS checks 52 to 64, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
 
 CR-013 section 6.1. Word 365 ran each check's Script Lab snippet on the file in
 this directory and wrote JSON (``52-ranges-word365-run.json``,
@@ -26,6 +26,11 @@ step for step, onto the content API, and give the same JSON shape with the same
   ``222cc20``, unchanged at ``3ba1e68``; CR-016 Phase C), read only, with its
   ``REGION_QUERIES`` and ``PART_QUERIES`` (:data:`REGION_QUERIES_59`,
   :data:`PART_QUERIES_59`).
+* :func:`run_check_63` and :func:`run_check_64` are ``CHECK63.runCheck`` and
+  ``CHECK64.runCheck`` (``check63-script-lab.js`` and
+  ``check64-script-lab.js`` at ``020c039``; CR-019 Phase A) in their ``run``
+  and ``report`` modes: each case's one write into a content control showing
+  its placeholder, in the bare form (63) and in Word's (64), then the region.
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -55,12 +60,16 @@ __all__ = [
     "parse_region_57",
     "parse_region_58",
     "parse_region_59",
+    "parse_region_63",
+    "parse_region_64",
     "run_check_52",
     "run_check_53",
     "run_check_54",
     "run_check_57",
     "run_check_58",
     "run_check_59",
+    "run_check_63",
+    "run_check_64",
     "vis",
 ]
 
@@ -1304,4 +1313,279 @@ def run_check_59(package: Any, label: str) -> dict[str, Any]:
                 "reads": attempt(lambda region=region: _read_59(body, region["n"])),
             }
         )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# checks 63 and 64 (core-ts check63-script-lab.js and check64-script-lab.js at 020c039; CR-019 Phase A)
+# ---------------------------------------------------------------------------
+
+_BEGIN_63 = re.compile(r"^BEGIN(\d+) ([\w-]+) ([\w-]+)(?: (untracked|tracked))?$")
+_BEGIN_64 = re.compile(r"^BEGIN(\d+) ([\w-]+) ([\w-]+) (untracked|tracked)$")
+
+#: Each check's custom XML part's namespace and its controls' tags (the snippets' ``DATA_NS`` and ``tagOf``).
+DATA_NS_63 = "urn:check63"
+DATA_NS_64 = "urn:check64"
+
+
+def parse_region_63(text: str) -> dict[str, Any] | None:
+    """A check 63 BEGIN paragraph's text as a case, ``{n, op, shape[, mode]}``, or None (the snippet's ``parseRegion``)."""
+    match = _BEGIN_63.match(text.strip())
+    if match is None:
+        return None
+    region: dict[str, Any] = {"n": int(match.group(1)), "op": match.group(2), "shape": match.group(3)}
+    if match.group(4):
+        region["mode"] = match.group(4)
+    return region
+
+
+def parse_region_64(text: str) -> dict[str, Any] | None:
+    """A check 64 BEGIN paragraph's text as a case, ``{n, op, shape, mode}``, or None (the snippet's ``parseRegion``)."""
+    match = _BEGIN_64.match(text.strip())
+    if match is None:
+        return None
+    return {"n": int(match.group(1)), "op": match.group(2), "shape": match.group(3), "mode": match.group(4)}
+
+
+def _paragraph_of_63(body: Any, token: str) -> Any:
+    """The paragraph holding a token (the snippets' ``paragraphOf``)."""
+    return find(body, token).paragraphs[0]
+
+
+def region_of_63(body: Any, n: int) -> Any:
+    """The region from its BEGIN paragraph to its END paragraph, both whole (the snippets' ``regionOf``)."""
+    return (
+        _paragraph_of_63(body, f"BEGIN{n}")
+        .get_range("Whole")
+        .expand_to(_paragraph_of_63(body, f"END{n}").get_range("Whole"))
+    )
+
+
+def _content_paragraphs_63(body: Any, n: int) -> list[Any]:
+    """The region's paragraphs between its BEGIN and END paragraphs (the snippets' ``contentParagraphs``)."""
+    return region_of_63(body, n).paragraphs[1:-1]
+
+
+def _control_of_63(body: Any, tag: str) -> dict[str, Any] | None:
+    """The case's control, ``{control, via}``, through ``body.getContentControls()``, the snippets' first way; or None.
+
+    Their second way, ``body.contentControls``, is this package's
+    :attr:`~docx4j_py.model.content.Body.content_controls`, which lists every
+    kind (CR-013 section 11, G1), so the first way finds whatever it would.
+    """
+    mine = [control for control in body.get_content_controls() if control.tag == tag]
+    return {"control": mine[0], "via": "body.getContentControls()"} if mine else None
+
+
+def _paragraph_for_63(body: Any, region: dict[str, Any], control: Any, *, block: bool) -> Any:
+    """The paragraph a case's paragraph op writes: the control's first (block) or the one holding it (run)."""
+    if block:
+        return control.paragraphs[0]
+    return _paragraph_of_63(body, f"PLAIN{region['n']}A")
+
+
+def _apply_63(body: Any, region: dict[str, Any], tag: str, *, block: bool) -> dict[str, Any]:
+    """The case's write; what its result reads (the snippets' ``apply``)."""
+    found = _control_of_63(body, tag)
+    if found is None:
+        raise LookupError(f"not found: {tag}")
+    c = found["control"]
+    via = found["via"]
+    text = f"NEW{region['n']}"
+
+    def read(r: Any) -> dict[str, Any]:
+        return {"via": via, "returned": vis(r.text)}
+
+    op = region["op"]
+    if op == "control-text-replace":
+        return read(c.insert_text(text, location="Replace"))
+    if op == "control-text-start":
+        return read(c.insert_text(text, location="Start"))
+    if op == "control-text-end":
+        return read(c.insert_text(text, location="End"))
+    if op == "control-paragraph-end":
+        return read(c.insert_paragraph(text, location="End"))
+    if op == "content-text-replace":
+        return read(c.get_range("Content").insert_text(text, location="Replace"))
+    if op == "content-text-end":
+        return read(c.get_range("Content").insert_text(text, location="End"))
+    if op == "content-delete":
+        c.get_range("Content").delete()
+        return {"via": via}
+    if op == "whole-text-replace":
+        return read(c.get_range("Whole").insert_text(text, location="Replace"))
+    paragraph = _paragraph_for_63(body, region, c, block=block) if op.startswith("paragraph-") else None
+    if op == "paragraph-text-replace":
+        return read(paragraph.insert_text(text, location="Replace"))
+    if op == "paragraph-text-start":
+        return read(paragraph.insert_text(text, location="Start"))
+    if op == "paragraph-text-end":
+        return read(paragraph.insert_text(text, location="End"))
+    if op == "paragraph-after":
+        return read(paragraph.insert_paragraph(text, location="After"))
+    if op == "paragraph-before":
+        return read(paragraph.insert_paragraph(text, location="Before"))
+    if op == "paragraph-content-delete":
+        paragraph.get_range("Content").delete()
+        return {"via": via}
+    raise ValueError(f"no operation {op}")
+
+
+def node_of_63(xml: str, n: int) -> Any:
+    """``value<n>``'s content in the custom XML part's XML, as it stands there (not parsed); None if it isn't there."""
+    name = rf"(?:[\w.-]+:)?value{n}"
+    match = re.search(rf"<{name}(?:\s[^>]*)?(?:/>|>([\s\S]*?)</{name}>)", xml)
+    if match is None:
+        return None
+    return vis("" if match.group(1) is None else match.group(1))
+
+
+def _report_63(
+    package: Any, body: Any, region: dict[str, Any], tag: str, data_ns: str, *, node: bool
+) -> dict[str, Any]:
+    """The region as it stands: its paragraphs' text, its OOXML, the control's reads, and a bound control's node."""
+    n = region["n"]
+    out: dict[str, Any] = {}
+    out["paragraphs"] = attempt_57(lambda: [vis(p.text) for p in _content_paragraphs_63(body, n)])
+    out["ooxml"] = attempt_57(lambda: body_of_57(region_of_63(body, n).get_xml()))
+    try:
+        found = _control_of_63(body, tag)
+    except Exception:  # noqa: BLE001 - the snippet's controlOf(...).catch(() => null)
+        found = None
+    if found is None:
+        out["control"] = None
+    else:
+
+        def control() -> dict[str, Any]:
+            c = found["control"]
+            return {
+                "via": found["via"],
+                "type": c.type,
+                "text": vis(c.text),
+                "placeholderText": vis(c.placeholder_text),
+                "paragraphs": [vis(p.text) for p in c.paragraphs],
+            }
+
+        out["control"] = attempt_57(control)
+        out["showingPlaceholderText"] = attempt_57(lambda: found["control"].showing_placeholder_text)
+    if node:
+
+        def read_node() -> Any:
+            parts = package.custom_xml_parts.get_by_namespace(data_ns)
+            return node_of_63(parts[0].get_xml(), n)
+
+        out["node"] = attempt_57(read_node)
+    return out
+
+
+def _track_63(package: Any, on: bool) -> None:
+    """Change tracking on or off, as a case's mode says (the snippets' ``track``)."""
+    package.change_tracking_mode = "TrackAll" if on else "Off"
+
+
+def run_check_63(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK63.runCheck`` in its ``run`` or ``report`` mode, on a loaded package (the snippet at core-ts ``020c039``).
+
+    ``report`` reads every region and changes nothing; ``run`` gives each case
+    its one write, ``NEW<n>``, with change tracking on for a ``tracked`` case and
+    off otherwise, then reads the region: its paragraphs' text, its OOXML (this
+    package's ``Range.get_xml``, where Office JS's ``getOoxml`` is a flat OPC
+    package: the body's blocks either way, tidied alike), the control's reads,
+    and a bound control's node. What Office JS refuses fails alone, as
+    ``'error: ' + code + ': ' + message`` (check 57's ``failed``, the snippet's).
+    """
+    if mode not in ("run", "report"):
+        raise ValueError(f"check 63 has no {mode!r} mode")
+    body = package.body
+    result: dict[str, Any] = {"check": 63, "mode": mode, "host": None, "cases": []}
+    regions = [region for p in body.paragraphs if (region := parse_region_63(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    try:
+        for region in regions:
+            tag = f"c63-{region['n']}"
+            block = region["shape"].startswith("block")
+            entry = dict(region)
+            if mode == "run" and region["op"] != "open":
+                try:
+                    _track_63(package, region.get("mode") == "tracked")
+                    entry["result"] = _apply_63(body, region, tag, block=block)
+                except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+                    entry["error"] = failed_57(error)
+                _track_63(package, False)
+            entry["after"] = _report_63(package, body, region, tag, DATA_NS_63, node=region["shape"].endswith("-bound"))
+            result["cases"].append(entry)
+    finally:
+        _track_63(package, False)
+    return result
+
+
+def _make_64(body: Any, region: dict[str, Any], tag: str) -> dict[str, Any]:
+    """A ``made-`` case's control, made with ``insert_content_control``: around the region's empty paragraph, or at the
+    point after ``PLAIN<n>A`` (the end of that word if ``"After"`` is refused), tagged (the snippet's ``make``)."""
+    from docx4j_py.wml import el
+
+    n = region["n"]
+    out: dict[str, Any] = {}
+    if region["shape"] == "made-block":
+        control = _content_paragraphs_63(body, n)[0].insert_content_control()
+        # control.tag = ...: this package's tag is read-only and put_property writes it (CR-003 section 17.9 item 3)
+        control.put_property(el.tag(val=tag))
+        out["at"] = "paragraph"
+    else:
+        hit = find(body, f"PLAIN{n}A")
+        for where in ("After", "End"):
+            try:
+                control = hit.get_range(where).insert_content_control()
+                control.put_property(el.tag(val=tag))
+                out["at"] = where
+                break
+            except Exception as error:  # noqa: BLE001 - the snippet tries the next
+                out[f"getRange({where})"] = failed_57(error)
+        if "at" not in out:
+            raise LookupError(f"no control made: {out}")
+    out["ooxml"] = attempt_57(lambda: body_of_57(region_of_63(body, n).get_xml()))
+    return out
+
+
+def run_check_64(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK64.runCheck`` in its ``run`` or ``report`` mode, on a loaded package (the snippet at core-ts ``020c039``).
+
+    Check 63's run, on controls in Word's form (``w:placeholder`` naming
+    ``DefaultPlaceholder_-1854013440`` and Word's glossary), with
+    ``control-text-start``; a ``made-`` case's region holds no control, and the
+    run makes one first, tracking off (:func:`_make_64`), then writes. A bound
+    control's node is read for the ``-bound`` and ``-value`` shapes.
+    """
+    if mode not in ("run", "report"):
+        raise ValueError(f"check 64 has no {mode!r} mode")
+    body = package.body
+    result: dict[str, Any] = {"check": 64, "mode": mode, "host": None, "cases": []}
+    regions = [region for p in body.paragraphs if (region := parse_region_64(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    try:
+        for region in regions:
+            tag = f"c64-{region['n']}"
+            shape = region["shape"]
+            # the snippet's paragraphFor: a run's paragraph for a shape naming "run", else the control's first
+            block = re.search(r"(^|-)run(-|$)", shape) is None
+            entry = dict(region)
+            if mode == "run" and shape.startswith("made-"):
+                try:
+                    _track_63(package, False)
+                    entry["made"] = _make_64(body, region, tag)
+                except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
+                    entry["made"] = failed_57(error)
+            if mode == "run" and not isinstance(entry.get("made"), str):
+                try:
+                    _track_63(package, region["mode"] == "tracked")
+                    entry["result"] = _apply_63(body, region, tag, block=block)
+                except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+                    entry["error"] = failed_57(error)
+                _track_63(package, False)
+            entry["after"] = _report_63(
+                package, body, region, tag, DATA_NS_64, node=re.search(r"-(bound|value)$", shape) is not None
+            )
+            result["cases"].append(entry)
+    finally:
+        _track_63(package, False)
     return result

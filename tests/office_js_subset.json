@@ -403,7 +403,8 @@
         "readonly": false,
         "phase": "E",
         "extension": false,
-        "implemented": true
+        "implemented": true,
+        "note": "`string` in @types/office-js; Word reads `null` where the glossary lacks the entry (CR-002 section 63, checks 63 and 65)."
       },
       {
         "office_js": "showingPlaceholderText",

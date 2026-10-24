@@ -78,7 +78,21 @@ from docx4j_py.model.content.text_model import (
 from docx4j_py.model.property_resolver import resolver_of
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
-from docx4j_py.wml import P, R, br, el, t, to_xml, wml
+from docx4j_py.wml import (
+    CTSdtCell,
+    CTSdtRow,
+    P,
+    R,
+    SdtBlock,
+    SdtContentBlock,
+    SdtRun,
+    br,
+    el,
+    t,
+    to_xml,
+    wml,
+)
+from docx4j_py.wml.sdt import sdt_property
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
@@ -190,7 +204,10 @@ class Paragraph:
 
         Setting it replaces the content, every such element with it, hidden runs
         too: ``paragraph.text = paragraph.text`` drops hidden text, as core-ts's
-        does. **A run-level content control showing its placeholder** reads as
+        does. In a block content control showing its placeholder the text goes
+        in the placeholder's place and the control shows it
+        (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2). **A
+        run-level content control showing its placeholder** reads as
         no text (CR-016 Phase B), so the write would take it and its binding
         with it: the write is **refused** (``SpanError`` ``range.holds_placeholder``,
         tracked or not, nothing changed), and the control is written into with
@@ -209,6 +226,14 @@ class Paragraph:
     @text.setter
     def text(self, value: str) -> None:
         value = drop_unwritable(value)
+        placeholder = self._placeholder_control
+        if placeholder is not None:
+            # in a block control showing its placeholder, the text in the placeholder's place (CR-019
+            # section 4.2); one paragraph, as the setter writes one (E2)
+            with recording(self.parent_body, "set_text") as change:
+                placeholder._write_placeholder(value, breaks="line")
+                change.touched(self)
+            return
         self._refuse_placeholder_controls("Paragraph.text = ...")
         with recording(self.parent_body, "set_text") as change:
             change.text(before=self.text, after=value)
@@ -262,6 +287,61 @@ class Paragraph:
                 code="range.holds_placeholder",
                 hint="write into the control with ContentControl.insert_text, or delete the control first",
             )
+
+    @property
+    def _placeholder_control(self) -> Any:
+        """The block content control holding this paragraph directly while it shows its placeholder, or None.
+
+        core-ts ``placeholderControl`` (CR-019 section 4.2): a text write into
+        this paragraph is :meth:`ContentControl._write_placeholder`'s.
+        """
+        if not isinstance(getattr(self.element, "parent", None), SdtContentBlock):
+            return None
+        from docx4j_py.model.content.controls import block_control_of
+
+        control = block_control_of(self)
+        return control if control is not None and control.shows_placeholder_content else None
+
+    def _bound_controls_at(self, start: int, end: int) -> list[Any]:
+        """The controls bound by ``w:dataBinding`` that ``[start, end]`` is in (core-ts ``boundControlsAt``).
+
+        Those holding this paragraph, and the run-level ones holding text
+        there, each once: the controls whose node a write through
+        :meth:`splice` writes (CR-019 section 4.7).
+        """
+        from docx4j_py.model.content.controls import control_view_of
+
+        out: list[Any] = []
+        seen: set[int] = set()
+
+        def add(element: Any) -> None:
+            if not isinstance(element, _SDT_TYPES) or id(element) in seen:
+                return
+            seen.add(id(element))
+            if sdt_property(getattr(element, "sdt_pr", None), "dataBinding") is None:
+                return
+            view = control_view_of(element, self.parent_body)
+            if view is not None:
+                out.append(view)
+
+        current = getattr(self.element, "parent", None)
+        for _ in range(64):
+            if current is None:
+                break
+            add(current)
+            current = getattr(current, "parent", None)
+        if not _holds_bound_run_control(self.element):
+            return out
+        for segment in self.segments(objects=True):
+            if segment.end < start or segment.start > end:
+                continue
+            current = getattr(segment.run, "parent", None)
+            for _ in range(64):
+                if current is None or current is self.element:
+                    break
+                add(current)
+                current = getattr(current, "parent", None)
+        return out
 
     def text_since(self, index: int) -> str:
         """The text of this paragraph and of those a split put in front of it since it stood at `index`. Extension.
@@ -1045,7 +1125,10 @@ class Paragraph:
         Word's ``insertText`` does (CR-013 section 11, E1; :meth:`splice`): this
         view goes on viewing the paragraph that keeps the mark, the last.
         Tracked, a ``"Replace"`` writes the ``w:ins`` first and the ``w:del``
-        after it, as Word does (CR-013 Phase C; :meth:`Range.insert_text`).
+        after it, as Word does (CR-013 Phase C; :meth:`Range.insert_text`). In
+        a block content control showing its placeholder the text goes in the
+        placeholder's place at any location, and the control shows it
+        (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2).
 
         Args:
             text: what to insert.
@@ -1057,6 +1140,14 @@ class Paragraph:
             Phase B).
         """
         with recording(self.parent_body, "insert_text") as change:
+            placeholder = self._placeholder_control if location in ("Start", "End", "Replace") else None
+            if placeholder is not None:
+                # in a block control showing its placeholder the text takes the placeholder's place,
+                # wherever it is put (CR-019 section 4.2; core-ts check 63 cases 7 to 9 and 33 to 35,
+                # check 64 cases 7 to 9 and 28 to 30)
+                out = placeholder._write_placeholder(text)
+                change.touched(self)
+                return out
             before = self.text
             length = len(before)
             if location in ("Start", "End", "Replace"):
@@ -1728,12 +1819,44 @@ class Paragraph:
         there: a tracked replacement's ``w:ins`` goes before the text it
         replaces (CR-013 Phase C).
 
+        **In a block content control showing its placeholder** the text goes
+        in the placeholder's place, wherever it is put
+        (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2). **A
+        bound control's node** takes the write, for every control bound by
+        ``w:dataBinding`` around the span: those holding this paragraph, and
+        the run-level ones holding text in it, after the edit and outside the
+        tracked branch (CR-019 section 4.7, core-ts's D7).
+
         Returns:
             The range of the new text; where it made paragraphs, a range across
             them, from the first new paragraph to this ``w:p``, as Office JS's
             is (core-ts check 55: ``x\\ry``; CR-013 Phase B).
         """
         text = drop_unwritable(text)
+        # text into a block control showing its placeholder takes the placeholder's place (CR-019 section 4.2)
+        placeholder = self._placeholder_control if text else None
+        if placeholder is not None:
+            return placeholder._write_placeholder(text, breaks=breaks)
+        # every text write into a bound control writes its node, after the edit and outside the tracked
+        # branch (CR-019 section 4.7, core-ts's D7), as ContentControl.write_through always did
+        bound = self._bound_controls_at(start, end)
+        out = self._splice_write(start, end, text, whole=whole, breaks=breaks, edge=edge, prefer=prefer)
+        for control in bound:
+            control.write_through()
+        return out
+
+    def _splice_write(
+        self,
+        start: int,
+        end: int,
+        text: str,
+        *,
+        whole: bool | tuple[bool, bool],
+        breaks: str,
+        edge: str | None,
+        prefer: str,
+    ) -> Range:
+        """:meth:`splice`'s write, once the placeholder rule has run."""
         if LINE_CHARACTERS.search(text):
             lines = self._lines_at(start, end, edge)
             if lines is not None:
@@ -2595,6 +2718,22 @@ def _hidden_edge(listed: list[Any], start: int, end: int, edge: str | None) -> t
         leading = [s for s in hidden if s.start == 0]
         return (leading[0], "before") if leading else None
     return None
+
+
+#: The four ``w:sdt`` classes: block, run, row and cell.
+_SDT_TYPES: tuple[type, ...] = (SdtBlock, SdtRun, CTSdtRow, CTSdtCell)
+
+
+def _holds_bound_run_control(holder: Any) -> bool:
+    """Whether a run holder holds a run-level control bound by ``w:dataBinding``, at any depth among its runs."""
+    for item in run_items_of(holder) or ():
+        if isinstance(item, (str, R)):
+            continue
+        if isinstance(item, _SDT_TYPES) and sdt_property(getattr(item, "sdt_pr", None), "dataBinding") is not None:
+            return True
+        if _holds_bound_run_control(item):
+            return True
+    return False
 
 
 def _refuse_run_control_break(operation: str = "this write") -> None:
