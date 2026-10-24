@@ -37,7 +37,10 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
   `docx4j-xsdata[lxml]>=26.2.1,<26.3`; `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
   the PyPI page, every fence executed by `tests/test_readme.py`.
 - **CR-008** (table conditional formatting): proposed. **CR-009** (theme colours): Phase A
-  implemented; B and C proposed.
+  implemented; B implemented 2026-10-24 (`model/color/`, the WordprocessingML half of docx4j's
+  `org.docx4j.model.color` at `a9e0303ff`; `PropertyResolver.theme_colors` and `resolve_color`;
+  `Font.color`'s effective view reads a theme colour as Word draws it, the direct view `w:val`;
+  docx4j's vectors in `tests/fixtures/theme-colors/`); C proposed.
 - **CR-010** (tracked changes as Word resolves them, `model/revisions/`): complete, 2026-10-21.
 - **CR-011** (one text model, `model/text/`): Phases A to D implemented, 2026-10-21. E, the HTML
   reader, is proposed. Its fork change (stage 10) needs a fork release before a docx4j-python
@@ -61,7 +64,7 @@ departure; read them before changing the area they cover. Status, 2026-10-23:
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
-  user, 2026-10-24).
+  user, 2026-10-24); CR-018 and CR-009 Phase B are done, CR-016 B to D remain.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -166,7 +169,10 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `model/text/` (`extract`, `TextOptions`, `TextResult`, `plain_text`, `markdown`, the
   commonmark-java renderer port), with Phase C's `model/chart/` (a chart as a table and a
   description), `model/math/` (OMML to LaTeX), `model/fields/` (field formatting switches) and
-  `model/java_text.py` (Java's `DecimalFormat` and `SimpleDateFormat`, for those two)
+  `model/java_text.py` (Java's `DecimalFormat` and `SimpleDateFormat`, for those two); CR-009's
+  `model/color/` (`ResolvedColor`, `ThemeColors`, `WordColors`, whose `normalise` and `stated` are
+  `values.py`'s; `theme_colors._slot_colour` is Phase C's seam for `DrawingMLColors`); and
+  CR-018's `model/values.py` (Word's on/off, enumeration and colour readers)
 - `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
   `understood-namespaces.txt` (docx4j's published understood list, copied at `198d015a3`; CR-011),
   and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office
