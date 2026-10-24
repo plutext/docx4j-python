@@ -282,6 +282,21 @@ docx4j's session handed it off the same day. The commits are on `VERSION_17_3_5`
   - This CR's Q6 keeps them on save.
 - **docx4j's inspector** (`InspectXml.on`) ignored case; it now uses the same rule.
 
+**Later the same day** (docx4j's session; both commits unpushed, checked in `../docx4j`):
+- **CR-060 phase 4** (`1d1b824a9`) builds rounds five and six in docx4j:
+  - `w:u`'s on/off words are read and saved as `none`;
+  - an invalid text or underline colour is absent, and only exactly `auto` is automatic;
+  - no highlight is taken from a character style;
+  - names work in fills and border colours, where an invalid value is automatic.
+- **CR-061, "Colours written plainly on save"** (proposed, `c6a2c6b47`, D1 to D6 with the user), adopts this CR's section 4.7 normal form for colours:
+  - an accepted value is upper-case `RRGGBB`;
+  - a rejected `w:color` is dropped, or `w:val="auto"` beside a theme colour;
+  - a rejected `w:u/@w:color` is dropped;
+  - a rejected fill or border colour is `auto`;
+  - `w:rPrChange`'s former properties are included;
+  - it is opt-out and applies on marshal only, leaving the object in memory unchanged.
+  - **On/off stays `true`/`false` in docx4j** (the user: "No need to switch on/off to bare or 0"), so the two engines' saves differ in the spelling of on/off only: `true`/`false` there, bare and `"0"` here for a rewritten value (section 4.10 item 2).
+
 ### 3.1b Round five, run 2026-10-24 (docx4j CR-060 section 12)
 
 The portfolio built the probes and the user ran them in Word 365 the same day: `props-u-styles`, `colour-styles`, `props-enum-styles` and `colour-elsewhere` in `~/vbShares/Office 2016/onoff-fun/`, with the README's round-5 section. docx4j's session reported the results; its CR-060 section 12 has each marker.
