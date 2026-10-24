@@ -1,6 +1,6 @@
 # CR-018: Run properties read as Word 365 reads them --- on/off values, the enumerations and `w:color`, one reader for each, and `effective()` for a value the file leaves out
 
-**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new. Q5 and Q6 were revised the same day at the user's direction: a save writes Word's reading in a plain normal form by default, with an opt-out that keeps the source's spelling (section 4.7, Q17). **Decided 2026-10-24**, every question as recommended (the user: "CR-018's other questions answered as recommended"). **Implementation started the same day** (the user: "implement CR-018"), with the fork's stage 13 first.
+**Status:** Proposed 2026-10-24, at the user's request through the portfolio session ("yes please", to "Shall I ask docx4j-25, the TypeScript session and the Python session each to draft its CR now, giving them these rules and the probes?"). **Nothing has started.** docx4j (CR-060) and docx4j-core-ts (its CR-015) drafted theirs the same day against the same rules; docx4j's was accepted that morning and is being implemented (section 3.1). Word's rules come from four rounds of probes the user ran in Word 365 on 2026-10-24 (section 1.1). Five things are proposed: **Revised the same day** (the user: "assume we will do a fork release. review the rest of the CR on the basis that anything better done in the fork can be done there"): the parse's exactness for `bool` and enumerations, a record of the values it keeps, and the typed schema default move into the fork's stage 13, released as 26.2.3 (section 4.1a, Q2, Q3, Q16), as the fork session sketched them. The reading rules stay in `docx4j_py`. Round five's answers are folded in (section 3.1b), and Q14 to Q16 are new. Q5 and Q6 were revised the same day at the user's direction: a save writes Word's reading in a plain normal form by default, with an opt-out that keeps the source's spelling (section 4.7, Q17). **Decided 2026-10-24**, every question as recommended (the user: "CR-018's other questions answered as recommended"). **Implementation started the same day** (the user: "implement CR-018"), with the fork's stage 13 first. **Phases A and C implemented 2026-10-24** (section 10), on docx4j-xsdata 26.2.3 (stage 13, on PyPI the same day; `pyproject.toml`'s floor `>=26.2.3,<26.3`, the coordinator's `ae6e611`): every on/off reader goes through `docx4j_py.model.values` and agrees with Word's saves of the 28 probes on all 376 markers; the parse keeps `" false"` as written; a save writes Word's normal form by default (`normalise=False` to keep the spelling), `canon.py`'s `word-normal-form` the one new tolerated category; `effective()` reads the refreshed defaults. No pre-existing expectation moved; the Word check is staged in `__tmp/python-cr018a/`, not run. Phases B and D are next.
 - **(a)** one ST_OnOff reader, used by every reader of an on/off value here, with the value kept as written so that Word's rule can be applied to it;
 - **(b)** the enumerations `u`, `highlight`, `vertAlign` and `em` read as unset when the value is outside the enumeration, in the resolver's merge as well as in the readers;
 - **(c)** one `w:color` reader: hex, the classic HTML colour names, and automatic;
@@ -748,6 +748,153 @@ CLAUDE.md asks for a Word check after any change to marshalling. Phase A changes
 | **total** | **4 to 6**, the fork's included |
 
 docx4j's own estimate was a day and a half for the same ground (CR-060 section 5). The larger part here is the readers: section 2.8's twenty rows, in some twenty modules, where docx4j's adapter reaches them all by type, and each is tested against Word's saves. Phase A's audit and the corpus round trip are the other part. As in CR-016, these are the CRs' usual unit, not a forecast of the calendar.
+
+## 10. Phase A and C implementation notes (2026-10-24)
+
+Phases A and C as built, at the user's go ("implement CR-018"), on the fork's stage 13: item 29 `64d5a70a` (`ParserConfig(exact_types=)`), item 30 `0ad7517b` (`SkippedReport.kept`) and item 31 `85ba15b4` (`XmlVar.schema_default_value`), released as docx4j-xsdata 26.2.3 (`3933ee6d`, tag `docx4j-v26.2.3`, on PyPI 2026-10-24). Phases B (the enumerations and colour) and D (the Word check of A and B together, and the records left) follow in a later brief; `docx4j_py/model/values.py` and `docx4j_py/openpackaging/normalise.py` are laid out so that B's readers and rows slot in beside A's.
+
+**Commits.**
+- `dd36c1b`: section 4.5's refresh, the regeneration, `schemas/PATCHES.md`'s section and `tests/test_schema_defaults.py`.
+- `18a3701`: the fixtures (Q11, Q14), `tests/fixtures/onoff-fun/` with its `SHA1SUMS`.
+- `46bc013`: Phase A: `values.py`, every reader switched, the exact parse, `part.kept`, the normaliser, `canon.py`'s `word-normal-form`, `roundtrip.py` both ways, `tests/test_parser_configs.py` and `tests/content/test_run_property_values.py`.
+- `2d37778`: Phase C: `effective()`, the attribute readers through it, `tests/content/test_effective.py`.
+- `ae6e611` (the coordinator's, not this phase's): `pyproject.toml`'s floor raised to `docx4j-xsdata[lxml]>=26.2.3,<26.3` in both places once 26.2.3 was on PyPI, and `.venv-fork`'s editable install refreshed to 26.2.3.
+- The commit adding this section: this section, the Status line, the index row, the CHANGELOG's 0.2.0 bullets and `tests/README.md`'s map and provenance.
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the refresh | `schemas/wml/wml.xsd`, `docx4j_py/wml/__init__.py`, `schemas/PATCHES.md` | section 4.5, as 10.2 says |
+| the readers | `docx4j_py/model/values.py` (new; `model/` is `KEEP` whole) | `OFF`, `on_off(value, default=True)`, `is_on(element)`, `xsd_boolean(value, default=None)`, `on_off_normal_form(value, absent_is_on)`; Phase C's `effective(obj, name)` and `AUDITED_NAMESPACES` |
+| the exact parse | `docx4j_py/runtime.py` | `EXACT_TYPES = frozenset({bool, Enum})`; `parser_config()` sets `exact_types` with `setdefault`, as it does `lexical_types` |
+| the record | `parts/xml_part.py`, `packages/opc_package.py`, `model/content/describe.py` | `part.kept` (the fork's `KeptValue`s, set by each parse, private ones included, and cleared by `set_bytes`); `package.kept` (`(part name, KeptValue)`, as `package.skipped`); `describe().kept`, a count by reason (`{"exact": 2, "invalid": 6}`), and `"kept"` in `to_dict()` |
+| the normaliser | `docx4j_py/openpackaging/normalise.py` (new; `openpackaging/` is `KEEP` whole), `save.py`, `load.py`, `opc_package.py` | `save_package(..., normalise=None)`, `package.save(target, *, normalise=None)` and `save_to(sink, *, normalise=None)`, None meaning `load_options.normalise_on_save` (`LoadOptions(normalise_on_save=True)` by default); `package.last_save`, a `SaveReport(normalise, normalised)` of `Normalised(part, path, before, after)`; `normalised_tree(root)` for a caller that serialises a tree itself; `normalise_tree(lxml_root)`, the same rows over a source, for `canon.py` |
+| the canon | `scripts/canon.py` | `compare(orig, new, *, normalise=False)`; with `normalise=True` the source is normalised first and each rewrite counted as `word-normal-form`, which joins `boolean-spelling` in `DiffReport.BENIGN` |
+| the harness | `scripts/roundtrip.py` | the fork runtime parses with `runtime.parser_config()` and serialises with `runtime.serializer_config()` (10.7 item 6); `--normalise` (the default there) and `--no-normalise`; the verdict counts kept and normalised values; the upstream baseline's own `ParserConfig` is `_upstream_configs`' |
+| every config the engine's | `scripts/parents.py`, `tests/test_child.py`, `tests/test_performance.py`, `tests/test_skipped_report.py` | `parser_config(on_bind=None, skipped_report=False)` where a test or script wants the parse without the post-bind hook |
+| the oracles | `tests/content/test_run_property_values.py`, `tests/content/test_effective.py`, `tests/test_parser_configs.py`, `tests/test_schema_defaults.py` | 10.5 |
+
+### 10.2 The refresh (section 4.5)
+
+`git -C ../docx4j diff 2853b7280 46c727bf8 -- xsd/wml/wml.xsd | patch -p3`: 29 hunks, clean, at offsets of 31 to 66 lines. The copy now differs from docx4j's blob at `46c727bf8` by exactly the lines it differed by at `2853b7280` (both `diff`s, line numbers aside, compared equal): the 17 markers of `wml.xsd` and their hunks. `46c727bf8` itself changes no schema (CR-059 phase 2, its hand-offs); the two commits that change `wml.xsd` in the range are `77ba784d6` (#697) and `ac97b56c5` (CR-059 phases 0 and 1). Regenerated, only `docx4j_py/wml/__init__.py`'s `schema_default` metadata moved: 36 fields (counted with the classes that inherit them) `"true"` to `"false"`, 8 `"true"` and 2 `"false"` gone, 76 lines; the `wml` fields declaring a default go from 62 to 52. No type, name or `el` table changed. docx4j's later `wml.xsd` commits, `893658f68` (CR-060 phase 1) and `1d1b824a9` (phase 4), add 47 `annox` annotations binding its `OnOffAdapter` and `UnderlineValueAdapter`, and comments; they change no type and no default, and are not taken (the reading is this package's, in `docx4j_py`). `tests/test_schema_defaults.py` holds the model's `w` defaults to the copy's (by schema type for 41 of the 52, the named complex types and the anonymous types of elements; by attribute name for all) and the copy's to docx4j's at `46c727bf8`, read with `git -C ../docx4j show`; checked to fail on `531efcf`'s model.
+
+### 10.3 The rules as built
+
+1. **On/off** (rule 1): `on_off(value, default=True)` is `default` for None, the value for a `bool`, an enumeration member's value read the same way (`w14`'s and `w15`'s `StOnOff`, the shared `StOnOff` of `w:tblLook`, OMML's `m:val`), and otherwise `str(value) not in {"false", "off", "0"}`: case-sensitive, untrimmed, so `0` the int is off and `00` is on. `is_on(element)` is False for no element and `on_off(element.val)` for one; a wildcard element reads its `w:val` attribute. `xsd_boolean` collapses whitespace and reads XSD's four literals, else `default`.
+2. **The exact parse** (section 4.1a): `exact_types={bool, Enum}` on every parse. `" false"` and `"false "` are kept as their text on purpose (reason `"exact"`, no warning); `"off"`, `"on"`, `""`, `"TRUE"` are kept as before with a `ConverterWarning` (reason `"invalid"`). Both are in `part.kept`, neither is skipped content, and `LoadOptions(strict=True)` raises on neither: no parse of the engine's sets `fail_on_converter_warnings`, under which the fork raises for both (a strict load is lenient with the skipped report, and `wml(...)` raises on skipped content only), so the CR's rule that a value Word reads is never refused (section 4.11) holds. A padded enumeration (`" yellow"`, `" auto"`) is kept the same way; reading it is Phase B's (Q15).
+3. **The normal form, on/off rows** (section 4.7): a kept ST_OnOff value (an attribute whose one type is `bool`, in `w`, `w14` or `w15`) that is not exactly a literal is written as `on_off_normal_form` says. On is **bare** (the attribute dropped) where its absence is on, that is a `w` attribute whose typed default is `True` (an element's `w:val`; `w:cols/@w:equalWidth`); elsewhere `"1"`. Off is `"0"`, the element kept. A value that bound as a `bool` is the serialiser's, as before (`1`, `0`). A `str` that is exactly a literal (`checked.val = "1"`, as `CheckboxContentControl.is_checked`'s setter writes it) is code's and left alone.
+4. **The normaliser's scope**: only parts holding a live tree whose parse kept a value; the walk covers every `mc` branch (`iter_nodes(mce="all")`), so a kept value an edit copied (a run copied, `w:rPrChange`'s old properties) is normalised too. The values are written into the tree for the save and taken back out in a `finally`, so the tree keeps what was read, as docx4j's marshal-only adapters leave it (its CR-060 D3, CR-061).
+5. **`effective(obj, name)`** (section 4.4): the stated value, a kept `str` included, else `XmlVar.schema_default_value`; `LookupError` for a field that is not an attribute, or an attribute outside `AUDITED_NAMESPACES` (`w`, `w14`, `w15`; Q10). The vars are cached per class.
+
+### 10.4 The readers (section 2.8, and what its grep missed)
+
+| # | reader | now |
+|---|---|---|
+| 1 | `wml/builders.py` `_on` (under `read_run_options`: `Font`, `span_edits._reads`, `api_script._run_format`) | `is_on` |
+| 2 | `property_catalogue.is_true` (under `StyleUtil.toggle`) | `is_on` |
+| 3 | `PropertyResolver.is_vanished_by_styles` | `is_on` |
+| 4 | `text_model._on` (`hidden_runs_of`) | `is_on` |
+| 5 | the extractor's `_on` and `_on_of` | `is_on` |
+| 6 | `run_font_selector.is_on` | `values.is_on` |
+| 7 | `omml_to_latex._on` (a math run's `w:b`, `w:i`) | `is_on` |
+| 8 | `ContentControl.is_showing_placeholder` | `is_on` |
+| 9 | `TableRow.is_header` | `is_on` |
+| 10, 11 | tracking's `_track_revisions_in` (tree and lxml), `describe()`'s `_tracking_on` | `is_on`, `on_off` |
+| 12 | `remove_when_edited`, `is_multi_line`, `plain_text_lines_of` | `is_on`; `on_off(effective(text, "multi_line"))` |
+| 13 | `allow_insert_delete_section` | `not is_on(flag)` |
+| 14 | `CheckboxContentControl.is_checked` | `on_off(effective(checked, "val"))` (Phase C) |
+| 15 | the extractor's `w:enforcement` | `on_off(effective(protect, "enforcement"))` |
+| 16 | the extractor's `_written` (`w:fldLock`) | `on_off(effective(...))`; a wildcard's attribute `on_off(..., default=False)` |
+| 17 | `listnumbering/definitions._on` (lxml) | `on_off` |
+| 18 | `math_text._on` (`m:` on/off) | `on_off` of the member's value |
+| 19 | the facade: `Font._get_bool`, `ParagraphFormat._get_toggle`, `Section.different_first_page_header_footer`, `Settings.odd_and_even_pages_header_footer`, `BaseStyle._toggle`, `Table.table_direction` | `is_on` |
+| 20 | `tests/revisions/description.py` | `is_on` |
+| new | `w:style/@w:default`: `PropertyResolver`'s default styles, the emulator (lxml), the facade's `Styles.default` | `on_off(effective(style, "default"))`; the emulator `on_off(..., default=False)` |
+| new | `w:customStyle`: `describe()`'s `built_in` (lxml), the facade's `BaseStyle.builtin` | `on_off(..., default=False)`; `on_off(effective(style, "custom_style"))` |
+| new | `w15:done`: `Comment.resolved` and the extractor's `TextComment.resolved` | `on_off(..., default=False)`; the extractor's compared the `StOnOff` member with `(True, 1, "1", "true")` and so read every typed comment unresolved (10.11 item 1) |
+| new | the extractor's `customMarkFollows` | `on_off(effective(item, "custom_mark_follows"))` |
+| new | `api_script._has_header` (`w:tblHeader`, read by presence) | `is_on` |
+| new | `chart/model._bool`, `chartex._true`, the extractor's `_decorative` (`adec:`) | `xsd_boolean`, since the exact parse no longer trims a DrawingML boolean |
+
+### 10.5 The oracles
+
+**The probes** (`tests/fixtures/onoff-fun/`, 57 files): rounds one to four copied from docx4j at `868a1797b` by `git show`, each its git blob there and byte-identical to the share's and to Appendix A's SHA-1s; rounds five and six from the share, each the same blob as docx4j's at `1d1b824a9`; the share's `README.txt` as it stands after round six (`e576f245458ef18ad7be44bebe55d418f3c2cb0e`; Appendix A's `2af2a57b` is its earlier state). 376 markers: 227 in rounds one to four, as section 2 counted, and 149 in five and six.
+
+**The method** is docx4j's `RunPropertiesWord365Test`: a marker's reading in the probe equals its reading in Word's save. `WORD_DREW` states docx4j's three markers whose save changes what Word drew (`props-enum-styles` M6, `highlight-char-styles` H7, `colour-elsewhere-styles` U4; docx4j's phase 4 adds M6 to section 3.1c item 5's two). None is an on/off reading, so Phase A compares the saves throughout and B takes them up.
+
+| reader (the eleven measured toggles unless named) | markers that differ from Word's save, of 376: at `531efcf` | now |
+|---|---:|---:|
+| the resolver's effective toggles (`is_true`, `StyleUtil.toggle`) | 14 | 0 |
+| `read_run_options`, direct (`Font`'s four) | 7 | 0 |
+| the text model's runs (bold, italic, strike, hidden) | 7 | 0 |
+| Markdown, the marker's line | 4 | 0 |
+| the facade's `Font`, all eleven | 25 | 0 |
+| `Paragraph.text` | 1 (T10) | 0 |
+
+The `531efcf` column is a script over the same files with that commit's readers (its `is_true`, its exact-mode-off parse); section 2.5's table counted Markdown by another method (7). The tests also hold `read_run_options` over the effective properties, the content API's `Font` over a search hit, `search` over T10 (`"t10 vanish off"` found once), `range.font.bold = True` from V4 to V6 (V5's `"off"` replaced by `w:b`, and the hit reads bold), `StyleUtil.toggle` with a style level's `"off"` (a stated false: bold stays bold), and the rule tables. python-docx 1.2.0 is not installed in `.venv-fork`, so the facade's parity test against it (section 6.1 item 5) did not run here.
+
+**The saves.** Over the 28 probes, every WordprocessingML part read and saved: with `normalise=False` each is canonically identical to its source, `boolean-spelling` aside (4 over the 121 parts, section 2.7's second row; `" false"` and `"false "` written as read); normalising, each differs only by `word-normal-form`, 45 rewrites in all (rounds one and two's 9 on/off probes: onoff-valid 2, onoff-empty, onoff-space, onoff-TRUE and onoff-yes 1 each, props-b-case 8, props-b-styles 1, the toggles 15 and 15), and Word's reading of each normalised save, through the resolver, is its reading of Word's own save. `roundtrip.py --samples tests/fixtures/onoff-fun`: 121 of 121 identical both ways, 217 kept values (the colours' and enumerations' 172 are Phase B's), 45 normalised; at `531efcf` the harness found 11 differences there (10.7 item 6).
+
+### 10.6 Phase C's oracle
+
+`tests/content/test_effective.py`: the 52 `w` defaults typed, every one a `bool`; `w14`'s three (`CTOnOff.val`, `ConflictMode.val`, `DiscardImageEditingData.val`, all `True`, docx4j's patch; Word always writes `w14:val`, so absence is unmeasured there); `w15` declares none in its own namespace (its on/off elements take `w:val`); a stated value wins and the field stays None; `LookupError` for DrawingML's `CTNumericRule.val` (a `NaN` default; the 67 `""` defaults are DrawingML's and `customXml`'s too, so no hazard is in scope) and for a field that is not an attribute; a bare `<w14:checked/>` reads checked, `w14:val="off"` unchecked.
+
+### 10.7 Departures and choices, with why
+
+1. **On where absence is off is written `"1"`, not bare** (section 4.7's first row says bare). Dropping `w:fldLock=" false"` would make it off. Bare is therefore for a `w` attribute whose typed default is true only; everywhere else an on value is written `1`, which every reader reads as on.
+2. **`w14` and `w15` values are never dropped**: `w14`'s defaults are docx4j's patch and unmeasured in Word, so `"1"` is written.
+3. **The tree keeps what was read** (section 4.7 leaves it open): the save writes the normal form and takes it back out, so a later `save(normalise=False)` still writes the source's spelling, as docx4j's CR-060 D3 and CR-061 apply on marshal only.
+4. **The trigger is `part.kept`**: a part whose parse kept nothing is not walked (the cost of a save with nothing odd in it is one list test per part). A `str` set in code into a part that kept nothing is written as set, and one that is exactly a literal is never rewritten.
+5. **`canon.py` finds the values by name**, through a table built once from the model: every element name bound to a class (a field of another class, or a root) and that class's ST_OnOff attributes, 361 `(element, attribute)` pairs (357 `w`, 4 `w14`), an attribute that one binding of a name types `bool` and another does not left out. Two implementations of "where", one rule of "what"; `roundtrip.py` over the probes and the suite's save tests prove they agree.
+6. **`roundtrip.py` measures the engine**: for the fork runtime it now takes `runtime.parser_config()` (the hooks and `lexical_types` included) and `runtime.serializer_config()` (the branch-name hook the typed branches need), where it built a plain `ParserConfig` with neither. Over `samples/` nothing moves (50 of 50, 34 `boolean-spelling`, before and after); over the probes its old config wrote `ff0000` as `FF0000` (no `lexical_types`) and trimmed `" auto"` to `auto`, 11 differences at `531efcf` against 0 now.
+7. **`describe()` gains `"kept"`**, additive to its JSON (CR-006's server reads it).
+8. **The readers the CR's grep missed** (10.4's "new" rows) are switched by the same rule, Q4's "every reader".
+9. **An off value is `"0"` even where nothing overrides it**, as the table has it: the save looks no style up.
+10. **The refresh is at `46c727bf8`**, not docx4j's `HEAD`, whose `wml.xsd` adds only JAXB annotations (10.2).
+
+### 10.8 Pre-existing tests whose expectation changed
+
+None. Four kept their expectations and changed only how they build a parser, each now `runtime.parser_config()`'s (`tests/test_parser_configs.py`): `test_child.py`'s `parser` fixture and `test_performance.py`'s two parse tests (`on_bind=None`, so that `link_parents` is still measured apart), `test_skipped_report.py`'s `lenient_parser` (`skipped_report=SkippedReport(log=False)`). `tests/revisions/description.py`'s helper reads a toggle through `is_on`. No golden, no ratchet row and no Word-save comparison moved.
+
+### 10.9 The gates
+
+| gate | before (`531efcf`) | after (`2d37778`) |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 4,620 passed, 8 skipped, 1,307 deselected, 3 xfailed (2 min 25 s) | 4,780 passed, 8 skipped, 1,307 deselected, 3 xfailed (2 min 50 s) |
+| the full suite | 5,927 passed, 8 skipped, 3 xfailed (3 min 48 s) | 6,087 passed, 8 skipped, 3 xfailed (4 min 1 s) |
+| the new tests | --- | 160: `test_run_property_values.py` 147, `test_effective.py` 5, `test_parser_configs.py` 4, `test_schema_defaults.py` 4 |
+| CR-011's ratchet (`tests/text/conformance.py`) | 1,291 passed, 0 failed, 293 pending of 1,584; goldens 12 of 12 | the same; `conformance.tsv` byte for byte |
+| `tests/text`; `test_conformance.py` | 1,212; 24 | 1,212; 24 |
+| CR-010's Word-save comparisons (`test_word_saves.py`, `test_compare_word_resolution.py`); `tests/revisions` | 76; 614 | 76; 614 (every comparison at 0 lines) |
+| the parity goldens (properties, numbering, fonts) | 274 passed, 3 xfailed: the 8 pins of `82c64bf14` (`6f0d592`) | the same 8 pins, nothing else moved |
+| `scripts/roundtrip.py` over `samples/` | 50 of 50, 0 differences, 34 `boolean-spelling`, 0 skipped | `--normalise`: 50 of 50, 0 differences, 34 `boolean-spelling`, 0 `word-normal-form`, 0 kept, 0 skipped; `--no-normalise`: the same |
+| the same over the 28 probes and Word's saves (121 parts) | 117 of 121, 11 `attribute-value`, 4 `boolean-spelling` | `--normalise`: 121 of 121, 45 `word-normal-form`, 4 `boolean-spelling`; `--no-normalise`: 121 of 121, 4 `boolean-spelling` |
+| `codegen/generate.sh --check` | --- | byte identical (after the refresh, and at `2d37778`) |
+| acceptance (`compare_acceptance.py` against `out/acceptance-before-cr018a/`) | copied first; canonically equal to a regeneration at `531efcf` (17 artefacts, 243 entries) | 17 artefacts, 243 entries, 0 differing beyond the dates |
+| the readers' audit (`mce_branches.py readers --holding all`, `out/cr012-b-corpus/`, `COMMITS.txt` unchanged) | 422 documents, 4 reader errors (the Strict four) | the same; only `package.describe` moved, in the 418 that load, and only by the new `"kept"` key, non-empty in one: core-ts's `onoff/pandoc-code.docx`, `{"invalid": 2}` (its `w:tblHeader w:val="on"` and `w:wordWrap w:val="off"`, section 2.10). No other reader moved |
+| the corpus survey (`mce_branches.py survey`, the same corpus, saves without normalising) | 2,746 parts of 422 documents, 2,716 saves identical to the source, 24 parts with a skipped report | identical output |
+| the oracle (10.5) | 14, 7, 7, 4, 25 and 1 markers differ | 0 |
+| `scripts/threads.py` | --- | no configuration lost or altered a document |
+| the cost: `bench_marshal.py` over `samples/`, interleaved, 5 runs each | `Symbols.docx` parse 194 to 207 ms, marshal 248 to 263 ms; the 14 main parts' parse 238 to 250 ms, marshal 298 to 316 ms | parse 197 to 201 ms, marshal 246 to 258 ms; 241 to 246 ms, 296 to 309 ms |
+| the cost: `Symbols.docx` loaded, its main part read and the package saved, median of 7, interleaved, 5 runs | load and parse 195 to 204 ms, save 259 to 265 ms | 197 to 212 ms, 258 to 271 ms |
+
+- **The suites' difference** is the 160 new tests. The cost is within the runs' noise, as the fork session measured (192 to 199 ms in every mode).
+- **No acceptance artefact changed**, since none holds an odd value. What a save writes changed for files that do; 10.10 stages that.
+
+### 10.10 The Word check, staged
+
+`~/vbShares/Office 2016/__tmp/python-cr018a/`, built by `out/cr018-a-word-check/build.py` at `2d37778`, each file read back with `LoadOptions(strict=True)`: the nine on/off probes of rounds one and two as `cr018a-SOURCE-<name>.docx`; each saved normalised (files 1 to 9); `props-b-case` saved with `normalise=False` (10); `onoff-valid` with `range.font.bold = True` from V4 to V6 (11); `props-b-case` with K5 unbolded (12). The `README.txt` lists every rewrite and what each marker should draw against `onoff-fun/`'s PNGs and PDFs (K5 and K6 bold in 6 and 10; T10's `"off"` text shown in 9). **Not run**: it waits for the user, with Phase D's.
+
+### 10.11 Found, and not done
+
+1. **`w15:done` read through the extractor never matched**: it compared the `StOnOff` member with `(True, 1, "1", "true")`, so every typed comment read unresolved (`extraction-probe.docx`'s comment 2, `done="1"`, read False). `on_off` reads the member's value, so it reads True now. Nothing pinned the old answer: the ratchet and the text goldens did not move.
+2. **`omml_to_latex` reads `m:degHide`, `m:subHide` and `m:supHide` by presence**, as docx4j's `OmmlToLatex` does; `m:val="off"` would hide what Word shows. Left as docx4j's port; unmeasured.
+3. **inkml's `MappingType` has no metadata** (`NameError: name 'Math' is not defined`: it names MathML's `Math`, which no module defines). `normalise._lxml_table` skips it; a generator matter for CR-001.
+4. **A kept enumeration** (`" center"`, `" auto"`, `"Yellow"`) is saved as read and read as its `str`. Before this phase the enumeration trim wrote `" auto"` as `auto`, which overrides a style's colour where `" auto"` does not (round six), so that save no longer changes meaning; Phase B's rows decide what a normalising save writes.
+5. **python-docx 1.2.0's parity** (section 6.1 item 5) needs its throwaway environment (`tests/README.md`); not run.
+6. **`CLAUDE.md`'s round-trip paragraph** gains the category when the user writes it (left to the user, per the brief); the sentence proposed is in the report.
+7. **Section 2.8's grep missed six kinds of reader** (10.4's "new" rows); a reader added later must use `values.py`, which no test enforces beyond the oracle.
 
 ## Appendix A. The probes (SHA-1, as on the share on 2026-10-24)
 

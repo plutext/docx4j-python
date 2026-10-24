@@ -25,9 +25,36 @@ JS does (CR-011 Phase F), in Office JS's own characters, which every text writer
 and writes across paragraphs as Office JS's does (CR-013 Phases B and C; Phase C's Word check is
 staged, not yet run). With them, CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002 section 16's single parse
 of a part, and a fix to a defect 0.1.0 shipped: an embedded object would not open in Word after a
-save. It needs docx4j-xsdata 26.2.2.
+save. [CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md)'s Phases A and C
+(its Q1) read every on/off value as Word 365 reads it, keep it as written, and write Word's
+reading on save, which closes a save 0.1.0 shared that changed meaning (`w:b w:val=" false"`,
+bold in Word, written `0`). It needs docx4j-xsdata 26.2.3.
 
 ### Added
+
+- **On/off values read as Word 365 reads them: `docx4j_py.model.values`**
+  ([CR-018](docs/change-requests/CR-018-run-properties-as-word-reads-them.md) Phase A, section
+  [10](docs/change-requests/CR-018-run-properties-as-word-reads-them.md#10-phase-a-and-c-implementation-notes-2026-10-24)),
+  against the user's six rounds of Word 365 probes (2026-10-24), copied into
+  `tests/fixtures/onoff-fun/`. `on_off(value, default=True)`: an ST_OnOff value is **off for
+  exactly `false`, `off` or `0`**, case-sensitive and untrimmed, and **on for anything else**
+  (`on`, `""`, `" false"`, `TRUE`, `yes`, ...); `is_on(element)` for a `w:b`-like element;
+  `xsd_boolean` for DrawingML's `xsd:boolean`. Every reader of an on/off value goes through them:
+  the resolver's toggles and `StyleUtil.toggle`, `Font`, the text model and Markdown, hidden
+  text, the font selector, content controls, table header rows, `w:trackRevisions`, numbering,
+  OMML, the custom XML kinds and the python-docx facade. Held to Word's own saves of the 28
+  probes: over 376 markers, every reader's reading of the eleven measured toggles equals its
+  reading of Word's save. Public, for a caller who reads the typed tree (Q13).
+- **`effective(obj, name)`** (CR-018 Phase C, section 4.4): the one reader of a value the file
+  leaves out, the stated value else the schema default typed (the fork's
+  `XmlVar.schema_default_value`), in the namespaces whose defaults are audited (`w`, `w14`,
+  `w15`; `LookupError` elsewhere). The model's fields never change. `w:fldLock`,
+  `w:documentProtection/@w:enforcement`, `customMarkFollows`, `w:style/@w:default`,
+  `w:customStyle`, `w:multiLine` and `w14:checked` read through it.
+- **`part.kept` and `package.kept`** (CR-018 Q16): the values the parse kept as their text, the
+  fork's `KeptValue`s, `"exact"` (kept on purpose, `w:val=" false"`) or `"invalid"` (`"off"`,
+  `"Yellow"`); `describe()` counts them by reason (`"kept"`). Not skipped content:
+  `LoadOptions(strict=True)` does not raise on them.
 
 - **Tracked changes listed, accepted and rejected as Word resolves them**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), Phases A to C,
@@ -152,6 +179,24 @@ save. It needs docx4j-xsdata 26.2.2.
   19 `mc-fun` probes and Word 365's saves of 14 of them, copied into `tests/fixtures/mc-fun/`.
 
 ### Changed
+
+- **A save writes Word's reading of a kept value, in a plain normal form** (CR-018 section 4.7,
+  Q5 and Q17, the user: "they are entitled to assume we don't write dodgy content"): an on/off
+  value the parse kept as its text is written bare where Word reads it as on (`"1"` where the
+  attribute's absence is off), and `0` where Word reads it as off. Only the parts a save
+  re-marshals, only kept values, each listed in `package.last_save.normalised`; the tree keeps
+  what was read. `package.save(normalise=False)`, or `LoadOptions(normalise_on_save=False)`,
+  keeps the source's spelling. `scripts/canon.py` tolerates a second category,
+  `word-normal-form`, by writing the same normal form into the source before it compares, and
+  `scripts/roundtrip.py` runs both ways (`--normalise`, `--no-normalise`). The enumerations' and
+  colours' rows are CR-018 Phase B's.
+- **Booleans and enumerations are parsed exactly as written** (CR-018 section 4.1a): every parse
+  is `runtime.parser_config()`'s, which sets the fork's `exact_types={bool, Enum}`
+  (`runtime.EXACT_TYPES`), so `" false"` and `" yellow"` are kept as their text instead of
+  trimmed; `tests/test_parser_configs.py` holds every `ParserConfig` in the tree to it.
+- **`wml.xsd` refreshed from docx4j `46c727bf8`** (CR-018 section 4.5): docx4j's #697 and CR-059
+  corrected the on/off attribute defaults (36 field defaults `true` to `false`, 10 gone, in the
+  `schema_default` metadata only; `schemas/PATCHES.md`).
 
 - **`to_markdown` is the text model's** ([CR-011](docs/change-requests/CR-011-one-text-model.md)
   section [14](docs/change-requests/CR-011-one-text-model.md#14-phase-d-implementation-notes-2026-10-21),
@@ -698,6 +743,16 @@ save. It needs docx4j-xsdata 26.2.2.
 
 ### Fixed
 
+- **On/off values as Word reads them** (CR-018 Phase A, section 1.2's findings): `w:b
+  w:val=" false"` and `"false "` (bold in Word) were trimmed, read off and **saved `0`**, the one
+  save over Word's probes that changed meaning; they are kept, read on and saved bare. `"off"`
+  read on in every reader (CharBold with a direct `"off"` read bold), so `w:vanish w:val="off"`
+  hid text Word shows (from `Paragraph.text`, `search`, the text model and Markdown), and
+  `range.font.bold = True` across paragraphs left an `"off"` run unbold; it reads off now. The
+  facade read `w:val=""` off; `describe()` and the change tracker read `w:trackRevisions
+  w:val="off"` on; `w:temporary` and `w:multiLine` read `"FALSE"` off. A bare `<w14:checked/>`
+  read unchecked though its schema default is true (Phase C). `w15:done` read through the
+  extractor never matched its enumeration member, so a typed comment's `resolved` was false.
 - **The text model's numbering, document dates and table content**
   ([CR-011](docs/change-requests/CR-011-one-text-model.md) section 14, found by the byte check
   against docx4j): a block's `TextNumbering` has its level's `levelText` and `start` (they were
@@ -834,7 +889,11 @@ save. It needs docx4j-xsdata 26.2.2.
 
 ### Dependencies
 
-- `docx4j-xsdata[lxml] >=26.2.2,<26.3` (was `>=26.2.1`): the fork's release 2,
+- `docx4j-xsdata[lxml] >=26.2.3,<26.3`: the fork's release 3,
+  [docx4j-xsdata 26.2.3](https://pypi.org/project/docx4j-xsdata/26.2.3/), published 2026-10-24
+  (its `docs/fork/CHANGES.md` stage 13, items 29 to 31): `ParserConfig(exact_types=)`,
+  `SkippedReport.kept` and `XmlVar.schema_default_value`, which CR-018 Phases A and C need.
+- Before it, `docx4j-xsdata[lxml] >=26.2.2,<26.3` (was `>=26.2.1`): the fork's release 2,
   [docx4j-xsdata 26.2.2](https://pypi.org/project/docx4j-xsdata/26.2.2/), published 2026-10-22
   (its `docs/fork/CHANGES.md` stages 9 to 12, items 22 to 28). This release needs all four: stage 9's
   unknown attribute on a simple-typed element in the skipped report, stage 10's namespaces in
