@@ -98,6 +98,9 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   `release_check.sh` built at `21a60d9`, whose artefacts were Word-checked (`tests/README.md`).
 - **CR-020** (content refused where it does not belong: a check on every typed list as code adds to it, derived from the
   model, with the parse unchecked, and a validator walk): proposed 2026-10-26; nine questions open.
+- **CR-021** (integer attributes read as Word reads them, docx4j CR-065's rule: a decimal truncated toward zero, the
+  empty string 0, any other form refused; one `values.integer`, the normaliser's integer rows, the fork's `int` made exact):
+  proposed 2026-10-26; eight questions open.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
