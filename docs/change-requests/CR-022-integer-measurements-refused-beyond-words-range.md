@@ -1,6 +1,6 @@
 # CR-022: Integer measurements refused beyond Word's range as code sets them --- the write-side guard, after Word's 16-bit wrap
 
-**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. The user's Word run is awaited. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Six questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Six questions wait on the user (section 8).
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -72,15 +72,43 @@ The generated fields carry neither the schema's simple type nor its facets: `CtP
 - **Wider, and not to be caught:** comment and bookmark ids and `w:numId` are 32-bit decimal numbers, and DrawingML's EMU sizes are 64-bit. A per-type table that wrongly lists them would refuse legitimate values.
 - **Word's user interface stops sooner than 16 bits for some measures:** page size goes to 22 in (55.9 cm, 31,680 twips), where 16 bits signed reaches 57.8 cm and unsigned 115.6 cm.
 
+### 3.1 Round 5, measured (docx4j CR-066 section 3.1; the user's run, 2026-10-26)
+
+No value was refused or repaired. A negative in a schema-unsigned attribute is accepted everywhere, and read as its two's complement. What Word keeps is the width of the field in Word's binary document structures: `dyaBefore` unsigned, `dyaTop` signed, `dyaRowHeight` and `lspd.dyaLine` signed with the sign as the rule, `brc` in 8 and 5 bits. docx4j-25 expects that to be stable across Word versions. Checked here in Word's saves of groups P, B and R (for example `w:before` 65535 → "-1", 65536 → 0, 1205003 → 25355; a border's `w:sz` 256 → 0, 32767 → 255; `w:sz` 3277 kept, 65536 → 0).
+
+| Attribute | What Word does | Read faithfully |
+|---|---|---|
+| `w:ind/@w:left`; `w:spacing/@w:line` with `lineRule="auto"` (negatives written); `w:rPr/w:spacing/@w:val` (31681 kept); `w:position/@w:val` (3169 kept); `@w:w` of `w:tblW`, `w:tcW` and `w:tblInd`, in `dxa` and in `pct` (5001 and 32767 kept); `w:pgMar/@w:top` (unsigned in the schema; 32768 → -32768, -1 kept) | signed 16 bits, wraps; no interface clamp | -32,768 to 32,767 |
+| `w:spacing/@w:before` (32768 kept, 65536 → 0, 1205003 → 25355; 0xFFFF is written as "-1", so 65535 and -1 both come back as "-1"); `w:sz/@w:val` (3277, 32768 and 65535 kept; 65536 → 0; -1 → 65535); text scale `w:w/@w:val` (601 and 65535 kept, past the schema's 600; 65536 → 0; -1 → 65535) | unsigned 16 bits, wraps | 0 to 65,535 |
+| `w:pgSz/@w:h` | unsigned 16 bits, with a minimum of 144 and no maximum (65535 kept, 65536 → 144) | 144 to 65,535 |
+| `w:tab/@w:pos` | signed 16 bits, then clamped to ±31,680 (32767 → 31680, 32768 → -31680, -32769 → 31680) | -31,680 to 31,680 |
+| `w:pgSz/@w:w` | unsigned 16 bits, then clamped to 144 to 31,681 (32767, 65535 and -1 → 31681; 65536 → 144; 1205003 → 25355) | 144 to 31,681 |
+| `w:trHeight/@w:val` | signed 16 bits, the sign carrying the rule: negative means `exact` (32768 → `exact` 32768; 65535 and -1 → `exact` 1; 65536 dropped; 65537 → `atLeast` 1) | 0 to 32,767 |
+| `w:spacing/@w:line` with `lineRule="exact"` | stored as the negative, so after the wrap the sign re-derives the rule (exact 65535 → `atLeast` 1; exact -32768 → exact 32768; exact 7205001 → `atLeast` 3959) | 0 to 32,767 |
+| a border's `@w:sz` | 8 bits, mod 256 (256 → 0, 32767 → 255, -1 → 255) | 0 to 255 |
+| a border's `@w:space` | 5 bits, mod 32 (32 → 0, 255 → 31, -1 → 31); no clamp at the interface's 6 pt | 0 to 31 |
+| `w:pgNumType/@w:start` | signed 32 bits, wraps (2147483648 → -2147483648; 4294967295 → -1; 4294967296 → 0) | -2,147,483,648 to 2,147,483,647 |
+
+**Unmeasured:**
+- the other 26 `ST_TwipsMeasure` attributes (`gridCol`, the other margins, `hanging`, `firstLine`, the distances);
+- `w:spacing/@w:after`, assumed as `before`;
+- the other border edges, assumed as `top`.
+
+**Word's interface limits are mostly not enforced:**
+- 1,638 pt fonts (3,276 half-points), the 600% scale, the 6 pt border space and the 22 in page are all kept past their limits;
+- the exceptions are the tab stop's and the page width's clamps, and the page's minimum of 144 twips.
+
+So the "faithful" column is the guard's range: inside it, what code sets is what Word reads.
+
 ## 4. Design
 
 ### 4.1 The limits table (D1)
 
-There are two inputs, both committed:
-- **(class, attribute) to simple type,** derived mechanically from `schemas/` by a script, the way `codegen/derive_names.py` derives the name tables, and checked by a test against the model's integer fields;
-- **simple type to (minimum, maximum),** hand-written from round 5, with each row citing its probe case. A type round 5 doesn't measure has no row and isn't checked.
+One committed table, keyed by attribute: (element, attribute), with the context where the range depends on it (`w:spacing/@w:line` by `lineRule`). Each row gives the faithful range of section 3.1 and cites its round 5 cases. It's hand-written from round 5 and lives under `docx4j_py/resources/`, which `KEEP` already holds.
 
-Both live under `docx4j_py/resources/`, which `KEEP` already holds.
+An attribute round 5 didn't measure has no row and isn't checked (Q3). A row's element name has to match every class that element name binds, as CR-021's canon table does. That's checked by a test against the model's integer fields, so a per-holder class can't slip past.
+
+A per-type table, derived from `schemas/`, was the draft's design. It's dropped: round 5 shows one schema type (`ST_TwipsMeasure`) holding attributes of five different widths.
 
 ### 4.2 One check (D2)
 
@@ -92,7 +120,9 @@ Every write of section 2.2: the content API's setters, the facade's (at the poin
 
 ### 4.4 Which limit (D4, Q1)
 
-Either Word's storage limit, where Word starts misreading, or its user-interface limit, where Word wouldn't let a person go. Round 5 shows whether anything happens between the two.
+The faithful range of section 3.1, per attribute. That's Word's storage width, narrowed where Word clamps: the tab stop's ±31,680, the page width's 144 to 31,681, the page height's minimum of 144. Word's other interface limits aren't enforced by Word itself (section 3.1), so refusing at them would refuse values Word reads as written.
+
+A negative in an unsigned attribute is refused: Word reads `w:before="-1"` as 65,535 twips.
 
 ### 4.5 The read side is CR-020's (D5)
 
@@ -100,7 +130,7 @@ A value already out of range in a file, or assigned straight to a field, is repo
 
 ## 5. Tests and oracles
 
-- **Round 5's cases as fixtures** (`tests/fixtures/integer-limits/`, with Word's saves). For each measured type, the boundary is accepted and one past it refused, through every setter that writes that type.
+- **Round 5's cases as fixtures** (`tests/fixtures/integer-limits/`: the six groups and Word's saves, read-only from `vbShares/Office 2016/__tmp/cr066/`). For each measured attribute, both ends of the faithful range are accepted and one past each is refused, through every setter that writes that attribute. The test's expectations come from Word's saves.
 - **The census of D3.**
 - **The examples of section 2.1** are refused, each with its code and hint.
 - **A test that no 32-bit or 64-bit type is in the table:** the ids, `numId`, the EMUs.
@@ -110,7 +140,7 @@ A value already out of range in a file, or assigned straight to a field, is repo
 
 | Phase | What | Effort |
 |---|---|---|
-| 0 | Round 5, docx4j CR-066's phase 0, shared: built by docx4j-25, run by the user | (docx4j-25's and the user's) |
+| 0 | Round 5, docx4j CR-066's phase 0, shared: built by docx4j-25, run by the user. **Done 2026-10-26** (section 3.1) | (docx4j-25's and the user's) |
 | A | D1 to D4: the two tables, `measure_in_range`, every setter through it, the census, the fixtures | 1 day |
 | B | The records: CHANGELOG ("Changed": a refusal of a value that was accepted), the README and `docs/pypi-readme.md` where they name the setters, CLAUDE.md, the index; CR-020 Phase B told the table is ready | ¼ to ½ day |
 
@@ -124,9 +154,9 @@ A value already out of range in a file, or assigned straight to a field, is repo
 
 | Q | Question | Recommendation |
 |---|---|---|
-| Q1 | Refuse at Word's storage limit (16 bits, where Word misreads) or at its user-interface limit (22 in for a page)? | The storage limit, unless round 5 shows Word misbehaving between the two. Everything below it is read faithfully. |
+| Q1 | Refuse beyond the faithful range per attribute (section 3.1: the storage width, narrowed where Word clamps), or at Word's interface limits (22 in for a page, 1,638 pt for a font)? | The faithful range. Round 5 shows Word keeps values past most interface limits, so refusing there would refuse what Word reads as written. |
 | Q2 | The error: a new `MeasureRangeError(ContentError, ValueError)` with code `value.out_of_range`? | Yes. |
-| Q3 | Which types: only those round 5 measures, or every integer type by its schema width? | Only those measured. A type without a row isn't checked. |
+| Q3 | Which attributes: only those round 5 measured (with `w:spacing/@w:after` and the other border edges by analogy), or every integer attribute by an assumed width? | Only those measured, plus the two analogies, which docx4j-25 also assumes. An attribute without a row isn't checked. |
 | Q4 | The python-docx facade refuses too, though python-docx itself accepts any `Length`? | Yes. python-docx writes the same broken file; the facade's promise is python-docx's names and semantics, and a refusal is a better semantics for a value Word misreads. |
 | Q5 | The builders (`p(..., size=...)`, `r(..., size=...)`) refuse too? | Yes, through the same check. |
 | Q6 | The hint in the caller's units (points, cm, `Length`) as well as twips? | Yes: the caller set points or a `Length`, and twips alone would not tell them what to change. |
