@@ -1,6 +1,6 @@
 # CR-022: Integer measurements refused beyond Word's range as code sets them --- the write-side guard, after Word's 16-bit wrap
 
-**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Six questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Seven questions wait on the user (section 8).
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -122,7 +122,7 @@ Every write of section 2.2: the content API's setters, the facade's (at the poin
 
 The faithful range of section 3.1, per attribute. That's Word's storage width, narrowed where Word clamps: the tab stop's ±31,680, the page width's 144 to 31,681, the page height's minimum of 144. Word's other interface limits aren't enforced by Word itself (section 3.1), so refusing at them would refuse values Word reads as written.
 
-A negative in an unsigned attribute is refused: Word reads `w:before="-1"` as 65,535 twips.
+"Unsigned" here means Word's storage (section 3.1's unsigned rows), not the schema's. `w:pgMar/@w:top` is unsigned in the schema but signed in Word, and a negative top margin is Word's exact top margin, so a negative there is accepted. A negative in an attribute Word stores unsigned is refused as a caller's mistake (Q7). Word keeps `w:before="-1"` as 0xFFFF, the same stored value as 65,535, and writes it back as "-1"; what it shows on screen is unmeasured. docx4j CR-066 only reports these, which is the read side's position; this CR's is the write side's.
 
 ### 4.5 The read side is CR-020's (D5)
 
@@ -160,6 +160,7 @@ A value already out of range in a file, or assigned straight to a field, is repo
 | Q4 | The python-docx facade refuses too, though python-docx itself accepts any `Length`? | Yes. python-docx writes the same broken file; the facade's promise is python-docx's names and semantics, and a refusal is a better semantics for a value Word misreads. |
 | Q5 | The builders (`p(..., size=...)`, `r(..., size=...)`) refuse too? | Yes, through the same check. |
 | Q6 | The hint in the caller's units (points, cm, `Length`) as well as twips? | Yes: the caller set points or a `Length`, and twips alone would not tell them what to change. |
+| Q7 | A negative in an attribute Word stores unsigned (`w:before`, `w:sz`, the text scale, the page size): refuse it at the setters, or allow it, since Word accepts it and keeps it as a large positive value (docx4j only reports it)? | Refuse it: no caller setting a negative space before or font size means a large positive one. A negative in a Word-signed attribute (`w:pgMar/@w:top`, the indents) stays accepted. |
 
 ## 9. Effort
 
