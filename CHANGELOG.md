@@ -9,6 +9,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The PyPI page's figures** ([`docs/pypi-readme.md`](docs/pypi-readme.md)): 0.2.0's page still
+  described 0.1.0 ("What is and is not in 0.1", 45 parity goldens, a 1 MB wheel of 238 modules,
+  6 MB installed, a 0.6 s import, and 148,000 lines of generated code, which was the whole
+  package's source at 0.1.0). It now gives 0.2.0's: 46 goldens, a 1.5 MB wheel of 308 modules,
+  7.5 MB installed, a 0.7 s import and 112,000 lines of generated code (the files outside
+  `codegen/clean.py`'s `KEEP`), under "What is and is not in 0.x".
+
 ## [0.2.0] --- 2026-10-25
 
 Still WordprocessingML only; PresentationML and SpreadsheetML remain CR-001 Phase D and CR-002

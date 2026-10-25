@@ -175,7 +175,7 @@ print(to_xml(el.p(content=[el.r(content=[el.t("Hello World")])]), pretty=True))
 Under `docx4j_py.openpackaging`: `OpcPackage`, `WordprocessingMLPackage`, `PartName`,
 `ContentTypeManager`, `RelationshipsPart`, the typed WordprocessingML parts, `PartStore` and
 `PartSink` (zip, directory, memory, flat OPC); `docx4j_py.model` has docx4j's `PropertyResolver`,
-`StyleUtil`, numbering emulator and font selection, with zero differences on docx4j's 45 parity
+`StyleUtil`, numbering emulator and font selection, with zero differences on docx4j's 46 parity
 goldens.
 
 ```python
@@ -189,7 +189,7 @@ with load("in.docx", options=LoadOptions(strict=True)) as pkg:
     pkg.save_to(MemoryPartSink())
 ```
 
-## What is and is not in 0.1
+## What is and is not in 0.x
 
 **WordprocessingML only.** `.pptx` and `.xlsx` load and save through the generic OPC path (every
 part byte for byte), but nothing in them is typed: PresentationML and SpreadsheetML are
@@ -198,10 +198,10 @@ part byte for byte), but nothing in them is typed: PresentationML and Spreadshee
 [CR-002 Phase C](https://github.com/plutext/docx4j-python/blob/main/docs/change-requests/CR-002-engine.md)
 (the engine), and their content APIs are CR-004 and CR-005. Everything is synchronous.
 
-**The wheel is large for pure Python** --- about 1 MB compressed, 238 modules, 6 MB installed
---- because it is the whole of WordprocessingML and what it embeds (DrawingML, OMML, VML, the
-`w14` to `w16` extensions) as typed classes, 148,000 lines of generated code. Importing
-`docx4j_py` imports all of it, about 0.6 s once per process; a long-running process is the
+**The wheel is large for pure Python** --- about 1.5 MB compressed, 308 modules, 7.5 MB
+installed --- because it is the whole of WordprocessingML and what it embeds (DrawingML, OMML,
+VML, the `w14` to `w16` extensions) as typed classes, 112,000 lines of generated code. Importing
+`docx4j_py` imports all of it, about 0.7 s once per process; a long-running process is the
 intended host.
 
 What `0.x` promises, surface by surface:
