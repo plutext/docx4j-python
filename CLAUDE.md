@@ -96,6 +96,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   file: section 14.5); D (`971612a`, checks 69 and 70) done 2026-10-25, Word-checked:
   complete. **0.2.0 released 2026-10-25** (tag `v0.2.0` on `9e153b3`): PyPI's wheel is byte for byte the one
   `release_check.sh` built at `21a60d9`, whose artefacts were Word-checked (`tests/README.md`).
+- **CR-020** (content refused where it does not belong: a check on every typed list as code adds to it, derived from the
+  model, with the parse unchecked, and a validator walk): proposed 2026-10-26; nine questions open.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
