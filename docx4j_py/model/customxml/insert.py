@@ -17,10 +17,12 @@ Three levels, three shapes:
     ``RepeatingSection``, which Word has no run-level form of. A collapsed
     range makes an empty control **at its point**, the run there split.
 
-A rich text or plain text control made around an empty paragraph, or at a
-point, shows Word's default placeholder, as Word's made controls do (CR-019
-section 4.8, D8; core-ts check 64): it names ``DefaultPlaceholder_-1854013440``,
-whose entry the save writes into the glossary where it lacks it.
+A rich text, plain text, date picker, drop-down list or combo box control made
+around an empty paragraph, or at a point, shows its kind's default placeholder,
+as Word's made controls do (CR-019 section 4.8, D8; core-ts check 64 and its
+``b12e0c5``): a text control names ``DefaultPlaceholder_-1854013440``, a date
+picker ``-1854013437``, a list ``-1854013438``, whose entry the save writes into
+the glossary where it lacks it.
 ``Body.insert_content_control`` and a range across paragraphs make controls as
 before, with no placeholder (core-ts's unmeasured choice, CR-019 section 4.10).
 

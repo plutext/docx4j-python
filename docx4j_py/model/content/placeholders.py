@@ -53,13 +53,16 @@ if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.controls import ContentControl
 
 __all__ = [
+    "DEFAULT_ENTRIES",
     "DEFAULT_PLACEHOLDER_ENTRY",
     "DEFAULT_PLACEHOLDER_TEXT",
     "GLOSSARY_DOCUMENT_NAME",
     "GLOSSARY_STYLES_NAME",
     "PLACEHOLDER_STYLE",
+    "DefaultEntry",
     "GlossaryEntries",
     "GlossaryEntry",
+    "default_entry_for",
     "default_paragraph_font",
     "doc_part_of",
     "ensure_glossary_styles",
@@ -82,6 +85,32 @@ DEFAULT_PLACEHOLDER_ENTRY = "DefaultPlaceholder_-1854013440"
 DEFAULT_PLACEHOLDER_TEXT = "Click or tap here to enter text."
 #: The character style a placeholder's runs name.
 PLACEHOLDER_STYLE = "PlaceholderText"
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class DefaultEntry:
+    """A default placeholder entry: its name and its text."""
+
+    name: str
+    text: str
+
+
+#: Word's default placeholder entry for each kind of control that has one (core-ts ``DEFAULT_ENTRIES`` at ``b12e0c5``,
+#: its CR-002 section 63.22, as docx4j's CR-063 D8 has it): as Word 365 makes one of each from the Developer tab (the
+#: user's ``placeholders.docx``, 2026-10-25, ``tests/office_js/placeholders-word365.docx``), each in the glossary with
+#: the default entry's ``w:docPartPr``, its body one run in the Placeholder Text style. A picture, a check box and a
+#: repeating section have none; the group, citation, equation, bibliography and ``w:docPartObj`` kinds are unmeasured.
+DEFAULT_ENTRIES: dict[str, DefaultEntry] = {
+    "text": DefaultEntry("DefaultPlaceholder_-1854013440", "Click or tap here to enter text."),
+    "date": DefaultEntry("DefaultPlaceholder_-1854013437", "Click or tap to enter a date."),
+    "list": DefaultEntry("DefaultPlaceholder_-1854013438", "Choose an item."),
+    "building_block": DefaultEntry("DefaultPlaceholder_-1854013436", "Choose a building block."),
+    "repeating_section_item": DefaultEntry(
+        "DefaultPlaceholder_-1854013435",
+        "Enter any content that you want to repeat, including other content controls. "
+        "You can also insert this control around table rows in order to repeat parts of a table.",
+    ),
+}
 #: Where a save makes the glossary document part, and its styles part.
 GLOSSARY_DOCUMENT_NAME = "/word/glossary/document.xml"
 GLOSSARY_STYLES_NAME = "/word/glossary/styles.xml"
@@ -90,7 +119,7 @@ GLOSSARY_STYLES_NAME = "/word/glossary/styles.xml"
 _LEFT_OUT = frozenset({f"{{{W_NS}}}proofErr", f"{{{W_NS}}}bookmarkStart", f"{{{W_NS}}}bookmarkEnd"})
 
 #: The control kinds a made control shows Word's default placeholder for (core-ts ``showsPlaceholderWhenMade``).
-_MADE_SHOWING = frozenset({"RichText", "PlainText"})
+_MADE_SHOWING = frozenset({"RichText", "PlainText", "DatePicker", "DropDownList", "ComboBox"})
 
 
 # ---------------------------------------------------------------------------
@@ -141,11 +170,36 @@ def new_entry_name(package: Any = None) -> str:
     return _new_uuid(package).hex.upper()
 
 
-def shows_placeholder_when_made(kind: str | None) -> bool:
-    """Whether a control of this kind made on an empty range shows Word's default placeholder, as Word's does.
+def default_entry_for(sdt_pr: Any) -> DefaultEntry | None:
+    """The default entry Word gives a control of this kind (:data:`DEFAULT_ENTRIES`); None for a kind it gives none.
 
-    core-ts ``showsPlaceholderWhenMade`` (D8; check 64): a rich text or plain
-    text control. Word's other kinds have entries of their own, unmeasured.
+    core-ts ``defaultEntryFor`` (``b12e0c5``): the text kinds, the date
+    picker, the two lists, a building block gallery of ``w:docPartList`` (not
+    ``w:docPartObj``) and a repeating section item.
+    """
+    from docx4j_py.wml.sdt import sdt_kind_of
+
+    kind = sdt_kind_of(sdt_pr)
+    if kind in ("RichText", "PlainText"):
+        return DEFAULT_ENTRIES["text"]
+    if kind == "DatePicker":
+        return DEFAULT_ENTRIES["date"]
+    if kind in ("DropDownList", "ComboBox"):
+        return DEFAULT_ENTRIES["list"]
+    if kind == "BuildingBlockGallery":
+        return DEFAULT_ENTRIES["building_block"] if sdt_property(sdt_pr, "docPartList", W_NS) is not None else None
+    if kind == "RepeatingSectionItem":
+        return DEFAULT_ENTRIES["repeating_section_item"]
+    return None
+
+
+def shows_placeholder_when_made(kind: str | None) -> bool:
+    """Whether a control of this kind made on an empty range shows its default placeholder, as Word's does.
+
+    core-ts ``showsPlaceholderWhenMade`` (D8; check 64; the user's
+    ``placeholders.docx``, its section 63.22 at ``b12e0c5``): a text control,
+    a date picker, a drop-down list or a combo box. The building block and
+    repeating section kinds are made as before.
     """
     return kind is None or str(kind) in _MADE_SHOWING
 

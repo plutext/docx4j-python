@@ -848,26 +848,31 @@ class ContentControl:
         return placeholder_entry_of(self.sdt_pr)
 
     @property
-    def is_text_control(self) -> bool:
-        """Whether the control is a text control, rich or plain text, whose placeholder is Word's default entry. Extension.
+    def default_placeholder_entry(self) -> Any:
+        """Word's default placeholder entry for this control's kind, a :class:`~.placeholders.DefaultEntry`, or None. Extension.
 
-        core-ts ``isTextControl`` (``aefc41f``, its section 63.18; docx4j
-        CR-063's D3): :attr:`type` ``"RichText"`` (a control naming no kind
-        among them) or ``"PlainText"``.
+        core-ts ``defaultPlaceholderEntry`` (``b12e0c5``, its section 63.22;
+        docx4j CR-063's D8): the text kinds' ``DefaultPlaceholder_-1854013440``,
+        the date picker's, the lists', a building block gallery's and a
+        repeating section item's (:data:`~.placeholders.DEFAULT_ENTRIES`); None
+        for a picture, a check box, a repeating section and the kinds Word was
+        not measured making.
         """
-        return self.type in ("RichText", "PlainText")
+        from docx4j_py.model.content.placeholders import default_entry_for
+
+        return default_entry_for(self.sdt_pr)
 
     @property
     def shows_words_form_placeholder(self) -> bool:
         """Whether an empty control shows a placeholder in Word's form. Extension.
 
-        core-ts ``showsWordsFormPlaceholder`` (``aefc41f``; D8, docx4j CR-063's
-        D3): a text control (:attr:`is_text_control`), or one of another kind
-        naming an entry the glossary holds. The binding pass gives an empty
-        value such a control's placeholder (:meth:`show_placeholder`), and any
-        other docx4j's run.
+        core-ts ``showsWordsFormPlaceholder`` (``b12e0c5``; D8, docx4j CR-063's
+        D3 and D8): a kind Word gives a default entry
+        (:attr:`default_placeholder_entry`), or one naming an entry the
+        glossary holds. The binding pass gives an empty value such a control's
+        placeholder (:meth:`show_placeholder`), and any other docx4j's run.
         """
-        if self.is_text_control:
+        if self.default_placeholder_entry is not None:
             return True
         name = self.placeholder_entry
         glossary = self._glossary
@@ -892,16 +897,20 @@ class ContentControl:
     def show_placeholder(self) -> None:
         """Show the control's placeholder: a copy of its glossary entry's content, with ``w:showingPlcHdr``. Extension.
 
-        core-ts ``showPlaceholder`` at ``aefc41f`` (its CR-002 sections 63.12
-        and 63.18; CR-019 section 4.8, D8). The entry is the one
+        core-ts ``showPlaceholder`` at ``b12e0c5`` (its CR-002 sections 63.12,
+        63.18, 63.21 and 63.22; CR-019 section 4.8, D8). The entry is the one
         ``w:placeholder`` names (:attr:`placeholder_entry`). A control naming
-        none, or a **text control** (:attr:`is_text_control`) naming one the
-        glossary lacks, is made to name Word's default entry,
-        ``DefaultPlaceholder_-1854013440``, which is written into the glossary
-        on save where it lacks it (D9), and nothing is written under the
-        missing name, as docx4j's CR-063 has it (Word's save drops a reference
-        no entry holds, core-ts check 65). A control of another kind keeps the
-        name it has, and shows Word's default text.
+        none, or one the glossary lacks, is made to name **Word's default entry
+        for its kind** (:attr:`default_placeholder_entry`: the text kinds'
+        ``DefaultPlaceholder_-1854013440``, a date picker's "Click or tap to
+        enter a date.", a list's "Choose an item."), which is written into the
+        glossary on save where it lacks it (D9), and nothing is written under
+        the missing name, as docx4j's CR-063 has it (Word's save drops a
+        reference no entry holds, core-ts check 65). A kind Word gives no
+        default entry (a picture, a check box) keeps the name it has, and with
+        no entry to show, docx4j's run (``PLACEHOLDER_TEXT`` in the
+        ``PlaceholderText`` style over the control's run properties), with no
+        reference.
 
         What the control shows is a copy of each of the entry's paragraphs'
         run content (:func:`~.placeholders.entry_content_of`), every run as the
@@ -918,33 +927,38 @@ class ContentControl:
         """
         from docx4j_py.child import deep_copy
         from docx4j_py.model.content.placeholders import (
-            DEFAULT_PLACEHOLDER_ENTRY,
-            DEFAULT_PLACEHOLDER_TEXT,
             entry_content_of,
             name_placeholder_entry,
         )
 
         with recording(self.parent_body, "show_placeholder") as change:
             glossary = self._glossary
+            fallback = self.default_placeholder_entry
             name = self.placeholder_entry or ""
-            # Word's default entry is its text controls' (docx4j CR-063's D3); a glossary is read on first use, so
-            # core-ts's "until the glossary is read, a name is kept" does not arise here
+            # a kind's default entry where it names none or one the glossary lacks (docx4j CR-063's D8); a glossary is
+            # read on first use, so core-ts's "until the glossary is read, a name is kept" does not arise here
             missing = name == "" or (glossary is not None and not glossary.has(name))
-            if missing and (self.is_text_control or name == ""):
-                name = DEFAULT_PLACEHOLDER_ENTRY
+            if missing and fallback is not None:
+                name = fallback.name
                 name_placeholder_entry(self, name)
             if (
-                name == DEFAULT_PLACEHOLDER_ENTRY
+                fallback is not None
+                and name == fallback.name
                 and glossary is not None
-                and glossary.require(name, DEFAULT_PLACEHOLDER_TEXT)
+                and glossary.require(name, fallback.text)
             ):
                 change.part(self._glossary_part_name())
-            body = glossary.body_of(name) if glossary is not None else None
+            body = glossary.body_of(name) if glossary is not None and name else None
             if body is not None:
                 paragraphs = entry_content_of(body)
+            elif fallback is not None:
+                # the kind's default text as its entry holds it, the control's run properties not under it (check 68)
+                paragraphs = [[_placeholder_run(fallback.text, None)]]
             else:
-                # the entry's run as the glossary will hold it, the control's run properties not under it (check 68)
-                paragraphs = [[_placeholder_run(DEFAULT_PLACEHOLDER_TEXT, None)]]
+                # no entry to show: docx4j's run, over the control's run properties (CR-063's D8 (a))
+                from docx4j_py.model.customxml.bindings import PLACEHOLDER_TEXT
+
+                paragraphs = [[_placeholder_run(PLACEHOLDER_TEXT, self.run_properties)]]
             change.text(before=self._shown_text(), after="")
             self.set_bound_content(paragraphs[0] if paragraphs else [], True)
             change.touched(self.address)
@@ -1142,16 +1156,19 @@ class ContentControl:
         core-ts ``showEmptied`` (``aefc41f``, its D10 (a) and section 63.18).
         A block or run control not showing its placeholder whose text is now
         ``""``: in Word's form it shows its entry again
-        (:meth:`show_placeholder`; core-ts check 66 case 3), a text control
-        naming an entry the glossary lacks Word's default; in the bare form,
-        and for a control of another kind naming an entry the glossary lacks,
-        Word's filler (:meth:`_show_filler`; core-ts check 52 case 13).
+        (:meth:`show_placeholder`; core-ts check 66 case 3), one naming an
+        entry the glossary lacks its kind's default (``b12e0c5``); in the bare
+        form, and for a control of a kind Word gives no default entry naming
+        one the glossary lacks, Word's filler (:meth:`_show_filler`; core-ts
+        check 52 case 13).
         """
         if self.is_showing_placeholder or self.form not in ("block", "run") or self.text != "":
             return
         name = self.placeholder_entry
         glossary = self._glossary
-        if name is not None and (self.is_text_control or (glossary is not None and glossary.has(name))):
+        if name is not None and (
+            self.default_placeholder_entry is not None or (glossary is not None and glossary.has(name))
+        ):
             # Word's form shows its glossary entry again (core-ts check 66 case 3; CR-019 section 4.8)
             self.show_placeholder()
             return
@@ -1345,9 +1362,11 @@ class ContentControl:
         CR-019 Phase B this read the control's runs, and ``""`` where it was not
         showing its placeholder.
 
-        **Written:** Word's default text, ``"Click or tap here to enter
-        text."``, or ``""``, names Word's default entry,
-        ``DefaultPlaceholder_-1854013440``; any other text a new entry of its
+        **Written:** the control's kind's default text
+        (:attr:`default_placeholder_entry`; ``"Click or tap here to enter
+        text."`` for a text control, and for a kind with none), or ``""``,
+        names that kind's default entry (``DefaultPlaceholder_-1854013440``
+        for text; core-ts ``b12e0c5``); any other text a new entry of its
         own, named as Word names one (32 upper-case hex digits), which the save
         writes into the glossary, making the glossary where the file has none
         (D9). The entry named before stays in the glossary. A control showing
@@ -1366,22 +1385,24 @@ class ContentControl:
     def placeholder_text(self, value: str) -> None:
         """Name an entry holding the text; a control showing its placeholder, or holding nothing, shows it."""
         from docx4j_py.model.content.placeholders import (
-            DEFAULT_PLACEHOLDER_ENTRY,
-            DEFAULT_PLACEHOLDER_TEXT,
+            DEFAULT_ENTRIES,
             name_placeholder_entry,
             new_entry_name,
         )
 
-        own = value not in ("", DEFAULT_PLACEHOLDER_TEXT)
+        # the kind's default text, or "", names its default entry (core-ts b12e0c5, section 63.22); any other text a
+        # new entry of its own
+        fallback = self.default_placeholder_entry or DEFAULT_ENTRIES["text"]
+        own = value not in ("", fallback.text)
         glossary = self._glossary
-        name = DEFAULT_PLACEHOLDER_ENTRY
+        name = fallback.name
         if own:
             # a name the glossary holds no entry of: a trial's generator starts where the real package's did
             package = getattr(self.parent_body, "package", None)
             name = new_entry_name(package)
             while glossary is not None and glossary.has(name):
                 name = new_entry_name(package)
-        shown = value if own else DEFAULT_PLACEHOLDER_TEXT
+        shown = value if own else fallback.text
         with recording(self.parent_body, "placeholder_text") as change:
             change.touched(self.address)
             empty = self.is_showing_placeholder or self.text == ""

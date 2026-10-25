@@ -26,14 +26,15 @@ Everything else is docx4j's: the value is trimmed, the run properties come from
 ``w:showingPlcHdr``, ``xml:space="preserve"`` is written only for a leading or
 trailing space, and a multiline ``w:text`` control turns newlines into ``w:br``.
 
-**But an empty value in a text control, or in any control naming an entry the
+**But an empty value in a control of a kind Word gives a default entry (the
+text kinds, a date picker, the lists), or in any control naming an entry the
 glossary holds, shows its placeholder in Word's form** (CR-019 section 4.8,
-Q3; core-ts ``aefc41f``):
+Q3; core-ts ``aefc41f`` and ``b12e0c5``):
 :meth:`~docx4j_py.model.content.ContentControl.show_placeholder`, the entry
-``w:placeholder`` names, else Word's default entry, written into the glossary
-on save. docx4j's binder still writes the bare form (its CR-063 proposes the
-same change); a control of another kind naming no entry keeps docx4j's run,
-:data:`PLACEHOLDER_TEXT`.
+``w:placeholder`` names, else the kind's default entry, written into the
+glossary on save. docx4j's binder writes the entries as it binds (its CR-063);
+a control of a kind with no default naming no entry keeps docx4j's run,
+:data:`PLACEHOLDER_TEXT`, Word 365's words since docx4j's CR-063 D5.
 """
 
 from __future__ import annotations
@@ -68,10 +69,12 @@ __all__ = [
     "write_control_to_node",
 ]
 
-#: docx4j's placeholder: the style and the words it writes for an empty value, kept for a control of a kind other
-#: than text naming no entry (CR-019 section 4.8); a text control shows Word's default entry instead.
+#: docx4j's placeholder: the style and the words it writes for an empty value, kept for a control of a kind Word gives
+#: no default entry, naming none (CR-019 section 4.8; core-ts b12e0c5); any other shows its kind's default entry. The
+#: words are Word 365's since docx4j's CR-063 D5 (core-ts section 63.22), where they were Word 2010's "Click here to
+#: enter text.".
 PLACEHOLDER_STYLE = "PlaceholderText"
-PLACEHOLDER_TEXT = "Click here to enter text."
+PLACEHOLDER_TEXT = "Click or tap here to enter text."
 
 #: The kinds that hold other controls rather than a value of their own.
 CONTAINER_KINDS: frozenset[str] = frozenset(
@@ -367,10 +370,10 @@ def apply_binding_to(control: ContentControl) -> tuple[bool, str, str, str]:
                 )
 
     if display == "" and control.shows_words_form_placeholder:
-        # an empty value shows the control's placeholder in Word's form: the entry its w:placeholder names, else
-        # Word's default entry for a text control, written into the glossary on save (CR-019 section 4.8, Q3; core-ts
-        # aefc41f, its D8 and section 63.18; docx4j CR-063's D2 and D3), where docx4j's binder writes the bare form.
-        # Another kind naming no entry, or one the glossary lacks, keeps docx4j's run
+        # an empty value shows the control's placeholder in Word's form: the entry its w:placeholder names, else the
+        # kind's default entry, written into the glossary on save (CR-019 section 4.8, Q3; core-ts aefc41f and b12e0c5,
+        # its D8 and sections 63.18 and 63.22; docx4j CR-063's D2, D3 and D8). A kind Word gives no default entry,
+        # naming none or one the glossary lacks, keeps docx4j's run
         control.show_placeholder()
         return True, display, "", ""
     control.set_bound_content(

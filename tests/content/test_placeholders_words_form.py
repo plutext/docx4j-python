@@ -152,8 +152,12 @@ def run(check: int, name: str, mode: str = "run") -> tuple[Any, dict[str, Any]]:
 
 
 def _parts(data: bytes) -> dict[str, str]:
+    """Each part's text: XML as UTF-8, anything else (an image) byte for byte as Latin-1."""
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        return {name: archive.read(name).decode("utf-8") for name in archive.namelist()}
+        return {
+            name: archive.read(name).decode("utf-8" if name.endswith((".xml", ".rels")) else "latin-1")
+            for name in archive.namelist()
+        }
 
 
 def _save(name: str) -> dict[str, str]:
@@ -831,7 +835,7 @@ def test_sections_63_18_and_63_21_a_control_shows_a_copy_of_its_entrys_content_a
     ]
 
 
-def test_section_63_18_a_text_control_naming_a_missing_entry_is_given_words_default_and_a_date_control_keeps_its_name():
+def test_section_63_18_a_control_naming_a_missing_entry_is_given_its_kinds_default_entry_nothing_under_the_name():
     package = load(OFFICE_JS / "65b-minimal-glossary.docx")
     control = next(c for c in package.body.content_controls if c.placeholder_entry == MISSING_ENTRY)
     assert control.placeholder_text is None
@@ -845,8 +849,8 @@ def test_section_63_18_a_text_control_naming_a_missing_entry_is_given_words_defa
     ]
     glossary = _parts(package.save())["word/glossary/document.xml"]
     assert re.findall(r'<w:docPartPr><w:name w:val="([^"]+)"', glossary) == [DEFAULT_ENTRY, CUSTOM_ENTRY]
-    # Word's default entry is its text controls': a date control naming a missing entry keeps the name, and an empty
-    # bound value leaves it docx4j's run (docx4j CR-063's D3)
+    # a date control naming a missing entry is given its own kind's default entry (core-ts b12e0c5, section 63.22;
+    # docx4j CR-063's D8): at aefc41f only the text kinds had one, and the date control kept the missing name
     out = io.BytesIO()
     with zipfile.ZipFile(OFFICE_JS / "65b-minimal-glossary.docx") as source, zipfile.ZipFile(out, "w") as target:
         for info in source.infolist():
@@ -863,9 +867,17 @@ def test_section_63_18_a_text_control_naming_a_missing_entry_is_given_words_defa
             target.writestr(info, data)
     dated = load(io.BytesIO(out.getvalue()))
     (date,) = _tagged(dated, "date")
-    assert [date.type, date.is_text_control, date.shows_words_form_placeholder] == ["DatePicker", False, False]
+    assert [date.type, date.default_placeholder_entry.name, date.shows_words_form_placeholder] == [
+        "DatePicker",
+        "DefaultPlaceholder_-1854013437",
+        True,
+    ]
     date.show_placeholder()
-    assert date.placeholder_entry == MISSING_ENTRY
+    assert [date.placeholder_entry, date.placeholder_text, date.is_showing_placeholder] == [
+        "DefaultPlaceholder_-1854013437",
+        "Click or tap to enter a date.",
+        True,
+    ]
 
 
 def test_the_glossary_is_read_on_first_use_where_no_body_has_read_it_yet():
@@ -1022,3 +1034,135 @@ def test_check_68s_saved_controls_are_words_save_after_the_run():
     ours = _parts(package.save())["word/document.xml"]
     sdts = {int(re.search(r'c68-(\d+)', sdt).group(1)): sdt for sdt in re.findall(r"<w:sdt>[\s\S]*?</w:sdt>", ours)}
     assert [look_68({"n": n, "after": {"ooxml": sdts[n]}}) for n in range(1, 25)] == WORD_RUN_68
+
+
+# ---------------------------------------------------------------------------
+# core-ts b12e0c5 (its section 63.22): Word's default placeholder entry for each kind (the user's placeholders.docx;
+# docx4j CR-063's D8)
+# ---------------------------------------------------------------------------
+
+#: The user's ``placeholders.docx`` (Word 365 16.0.20326.20232, one control of each kind from the Developer tab, saved;
+#: its settings carry w:formsDesign, which bears on edits into a placeholder, not on what Word makes), as core-ts's
+#: test/placeholder-defaults/manifest.json has it.
+DEFAULTS_SHA1 = "9cd6fb70e5af3b6d52eab2e95bd13acfbcf3c2c8"
+REPEAT = (
+    "Enter any content that you want to repeat, including other content controls. "
+    "You can also insert this control around table rows in order to repeat parts of a table."
+)
+#: Each kind Word made: its type, the entry it names and that entry's text, and this package's default for the kind.
+WORD_DEFAULTS = [
+    ("RichText", DEFAULT_ENTRY, PLACEHOLDER),
+    ("PlainText", DEFAULT_ENTRY, PLACEHOLDER),
+    ("Picture", None, None),
+    ("BuildingBlockGallery", "DefaultPlaceholder_-1854013436", "Choose a building block."),
+    ("CheckBox", None, None),
+    ("ComboBox", "DefaultPlaceholder_-1854013438", "Choose an item."),
+    ("DropDownList", "DefaultPlaceholder_-1854013438", "Choose an item."),
+    ("DatePicker", "DefaultPlaceholder_-1854013437", "Click or tap to enter a date."),
+    ("RepeatingSection", None, None),
+    ("RepeatingSectionItem", "DefaultPlaceholder_-1854013435", REPEAT),
+]
+
+
+def test_section_63_22_words_default_entry_for_each_kind_as_word_365_made_one_of_each_is_this_packages():
+    path = OFFICE_JS / "placeholders-word365.docx"
+    manifest = dict(
+        reversed(line.split("  ", 1))
+        for line in (OFFICE_JS / "SHA1SUMS").read_text(encoding="utf-8").splitlines()
+        if line
+    )
+    assert manifest["placeholders-word365.docx"] == DEFAULTS_SHA1 == hashlib.sha1(path.read_bytes()).hexdigest()
+    package = load(path)
+    controls = package.body.content_controls
+    ours = [
+        (
+            c.type,
+            c.placeholder_entry,
+            c.placeholder_text,
+            getattr(c.default_placeholder_entry, "name", None),
+            getattr(c.default_placeholder_entry, "text", None),
+        )
+        for c in controls
+    ]
+    assert ours == [(kind, entry, text, entry, text) for kind, entry, text in WORD_DEFAULTS]
+    # each control Word made shows its entry in Placeholder Text, with the flag; the picture shows the flag over a stock
+    # picture
+    for control in controls:
+        if control.placeholder_entry:
+            assert [control.is_showing_placeholder, control.text] == [True, ""], control.type
+    # each entry is in Word's glossary with the default entry's docPartPr and a w:guid of its own, one run in the style
+    glossary = _parts(path.read_bytes())["word/glossary/document.xml"]
+    for _kind, entry, text in WORD_DEFAULTS:
+        if entry is None:
+            continue
+        assert re.search(
+            rf'<w:name w:val="{entry}"/><w:category><w:name w:val="General"/><w:gallery w:val="placeholder"/>'
+            r'</w:category><w:types><w:type w:val="bbPlcHdr"/></w:types><w:behaviors><w:behavior w:val="content"/>'
+            r'</w:behaviors><w:guid w:val="\{[0-9A-F-]{36}\}"/></w:docPartPr><w:docPartBody><w:p [^>]*><w:r [^>]*>'
+            rf'<w:rPr><w:rStyle w:val="PlaceholderText"/></w:rPr><w:t>{re.escape(text)}</w:t>',
+            glossary,
+        ), entry
+
+
+def test_section_63_22_a_date_picker_a_list_and_a_text_control_each_show_their_kinds_entry_made_or_emptied_written_on_save():
+    package = create_package()
+    body = package.body
+    made = {kind: body.insert_paragraph("").insert_content_control(kind) for kind in ("DatePicker", "DropDownList", "ComboBox", "PlainText", "CheckBox")}
+    assert [(kind, c.is_showing_placeholder, c.placeholder_entry, c.placeholder_text) for kind, c in made.items()] == [
+        ("DatePicker", True, "DefaultPlaceholder_-1854013437", "Click or tap to enter a date."),
+        ("DropDownList", True, "DefaultPlaceholder_-1854013438", "Choose an item."),
+        ("ComboBox", True, "DefaultPlaceholder_-1854013438", "Choose an item."),
+        ("PlainText", True, DEFAULT_ENTRY, PLACEHOLDER),
+        ("CheckBox", False, None, None),
+    ]
+    assert re.search(
+        r'<w:rStyle w:val="PlaceholderText"/></w:rPr><w:t>Click or tap to enter a date\.</w:t>', made["DatePicker"].get_xml()
+    )
+    # a date written, then its content deleted: the date picker's entry back (as Word's form does, check 66 case 3)
+    date = made["DatePicker"]
+    date.insert_text("25/10/2026", location="Replace")
+    assert [date.is_showing_placeholder, date.text] == [False, "25/10/2026"]
+    date.get_range("Content").delete()
+    assert [date.is_showing_placeholder, date.text, date.placeholder_text] == [True, "", "Click or tap to enter a date."]
+    assert "<w:t>Click or tap to enter a date.</w:t>" in date.get_xml()
+    # setting a date picker's placeholder to its default text names its default entry
+    date.placeholder_text = "Click or tap to enter a date."
+    assert date.placeholder_entry == "DefaultPlaceholder_-1854013437"
+    glossary = _parts(package.save())["word/glossary/document.xml"]
+    assert sorted(re.findall(r'<w:docPartPr><w:name w:val="([^"]+)"', glossary)) == [
+        "DefaultPlaceholder_-1854013437",
+        "DefaultPlaceholder_-1854013438",
+        DEFAULT_ENTRY,
+    ]
+    assert re.search(r'<w:name w:val="DefaultPlaceholder_-1854013437"/>[\s\S]*?<w:t>Click or tap to enter a date\.</w:t>', glossary)
+    # a kind Word gives no entry, naming none, shows docx4j's run, Word 365's words since docx4j's CR-063 D5, with no
+    # reference
+    picture = body.insert_paragraph("").insert_content_control("Picture")
+    picture.show_placeholder()
+    assert [picture.placeholder_entry, picture.is_showing_placeholder] == [None, True]
+    assert "<w:t>Click or tap here to enter text.</w:t>" in picture.get_xml()
+
+
+def test_section_63_22_an_empty_bound_value_shows_its_kinds_default_and_a_kind_with_none_keeps_docx4js_run():
+    """The binding pass (Q3): a date picker's empty value its entry, a picture's docx4j's run (PLACEHOLDER_TEXT, D5)."""
+    from docx4j_py.model.customxml import PLACEHOLDER_TEXT
+
+    assert PLACEHOLDER_TEXT == "Click or tap here to enter text."
+    package = create_package()
+    package.body.insert_xml(
+        '<w:p><w:sdt><w:sdtPr><w:tag w:val="date"/><w:id w:val="7"/><w:date/></w:sdtPr><w:sdtContent><w:r><w:t>old</w:t>'
+        '</w:r></w:sdtContent></w:sdt></w:p><w:p><w:sdt><w:sdtPr><w:tag w:val="group"/><w:id w:val="8"/><w:text/>'
+        "</w:sdtPr><w:sdtContent><w:r><w:t>old</w:t></w:r></w:sdtContent></w:sdt></w:p>",
+        location="End",
+    )
+    part = package.custom_xml_parts.add('<g xmlns="urn:g"><a></a><b></b></g>')
+    date, text = _tagged(package, "date", "group")
+    date.xml_mapping.set_mapping("/ns0:g[1]/ns0:a[1]", "xmlns:ns0='urn:g'", part)
+    text.xml_mapping.set_mapping("/ns0:g[1]/ns0:b[1]", "xmlns:ns0='urn:g'", part)
+    package.custom_xml_parts.apply_bindings()
+    assert [date.placeholder_entry, date.placeholder_text, date.is_showing_placeholder] == [
+        "DefaultPlaceholder_-1854013437",
+        "Click or tap to enter a date.",
+        True,
+    ]
+    assert [text.placeholder_entry, text.placeholder_text] == [DEFAULT_ENTRY, PLACEHOLDER]
