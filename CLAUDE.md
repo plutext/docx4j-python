@@ -30,11 +30,12 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   members of `tests/python_docx_subset.json`.
 - **CR-004** (PresentationML, a python-pptx facade), **CR-005** (SpreadsheetML, an openpyxl
   facade) and **CR-006** (the MCP server's contract; code in `../docx4j-mcp-py`): proposed.
-- **CR-007** (PyPI): closed 2026-09-20. `docx4j 0.1.0` (import name `docx4j_py`) is on PyPI over
-  `docx4j-xsdata 26.2.1`, both published by trusted publishing from a GitHub release
-  (`RELEASING.md`; the fork's is its `REBASING.md` "Releasing"). The gates are
+- **CR-007** (PyPI): closed 2026-09-20. `docx4j` (import name `docx4j_py`) is on PyPI: 0.1.0 over
+  `docx4j-xsdata 26.2.1`, and 0.2.0 (2026-10-25) over `docx4j-xsdata 26.2.3`, each published by
+  trusted publishing from a GitHub release (`RELEASING.md`; the fork's is its `REBASING.md`
+  "Releasing"). The gates are
   `scripts/release_check.sh` plus the Word check. `pyproject.toml` depends on
-  `docx4j-xsdata[lxml]>=26.2.1,<26.3`; `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
+  `docx4j-xsdata[lxml]>=26.2.3,<26.3`; `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
   the PyPI page, every fence executed by `tests/test_readme.py`.
 - **CR-008** (table conditional formatting): proposed. **CR-009** (theme colours): Phase A
   implemented; B implemented 2026-10-24 (`model/color/`, the WordprocessingML half of docx4j's
@@ -72,8 +73,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   time); D done 2026-10-24 (the records, and the Word check of A to C together, passed): complete.
 - **CR-018** (run properties read as Word 365 reads them, the counterpart of docx4j CR-060 and
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
-  C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
-  user, 2026-10-24); all three are done. **It also waits for core-ts's CR-002 section 63** (Word's writes into a
+  C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waited for CR-016, CR-018 and CR-009 Phase B** (the
+  user, 2026-10-24); all three are done. **It also waited for core-ts's CR-002 section 63** (Word's writes into a
   control showing its placeholder, checks 63 and 64) **and its port here** (the user, 2026-10-25; CR-016 section 13.5).
 - **CR-019** (writing into a content control showing its placeholder, and placeholders written in Word's form: the
   port of core-ts CR-002 section 63, `020c039` to `09dc3d2`, after Word checks 63 to 70; docx4j CR-063 is the binder's
@@ -93,8 +94,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   (`dfb05fa`, `0dc354a`, `a3a9571`) implemented 2026-10-25, held to Word's runs of checks 63 to 68; C (the records and
   the Word check) done 2026-10-25, Word-checked (a glossary reshuffle in Word's first save was Word's session, not the
   file: section 14.5); D (`971612a`, checks 69 and 70) done 2026-10-25, Word-checked:
-  complete. **0.2.0's gates passed 2026-10-25**: `release_check.sh` at `21a60d9` and the wheel's Word check
-  (`tests/README.md`); pushing, the TestPyPI dry run, the tag `v0.2.0` and the GitHub release are the user's.
+  complete. **0.2.0 released 2026-10-25** (tag `v0.2.0` on `9e153b3`): PyPI's wheel is byte for byte the one
+  `release_check.sh` built at `21a60d9`, whose artefacts were Word-checked (`tests/README.md`).
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.

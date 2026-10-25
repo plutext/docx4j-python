@@ -659,6 +659,10 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > names Word's default placeholder entry, with the glossary part and the main document's Placeholder
 > Text style it needs (CR-019 Phase B). Every file opened without a repair prompt, and deleting
 > "Grace Hopper" in Word showed the entry's grey "Click or tap here to enter text.".
+> **Published 2026-10-25** as `docx4j 0.2.0` (tag `v0.2.0` on `9e153b3`; `publish.yml` run
+> 40177130778, after the TestPyPI dry run 40176787012): PyPI's wheel (SHA-256 `47a0f75b74b7cfa1…`)
+> is byte for byte the `dist/` wheel above, and it installs into a clean CPython 3.12 virtual
+> environment with `docx4j-xsdata 26.2.3` from PyPI, then saves and reloads a document.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
