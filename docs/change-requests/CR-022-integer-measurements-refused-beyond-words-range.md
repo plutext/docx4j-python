@@ -1,12 +1,12 @@
 # CR-022: Integer measurements refused beyond Word's range as code sets them --- the write-side guard, after Word's 16-bit wrap
 
-**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of docx4j CR-065's Word probe is the shared phase 0: docx4j-25 proposes it, and the user runs it. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Six questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. The user's Word run is awaited. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Six questions wait on the user (section 8).
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
 **Depends on:**
-- **docx4j CR-065's probe, round 5** (to be proposed by docx4j-25): the boundaries 32,767, 32,768, 65,535, 65,536, -32,768 and -32,769, and one past each, in a signed and an unsigned twips field and in each other integer family. It gives this CR's limits table.
-- **Counterparts:** a new docx4j CR for the write side (the portfolio's recommendation; separate from CR-065, which reads), core-ts's content API setters (it is asked what Office JS does with the same values), and docx4j-generated-objects-ts's builders, whose CR-015 table of 178 attributes may give the per-type table.
+- **Round 5 of the shared probe, docx4j CR-066's phase 0**, for this CR's limits table. Per attribute type it holds 32,767, 32,768, 65,535, 65,536 and 65,537; the signed ends -1, -32,768 and -32,769; the wrap controls 7,205,001 and 1,205,003; and each type's user-interface or schema limit and the value past it. Its `cases.txt` gives, for each case, the value if Word wraps at 16 bits and the value if it clamps. The question per family is wrap, clamp, keep or refuse.
+- **Counterparts:** docx4j CR-066, the write side (its recommendations, awaiting the user: a WARN at marshal and unmarshal with the value Word will read, never a throw at save and never a rewrite on read; a hard guard where docx4j computes twips from units, `TblFactory`), core-ts's content API setters (it is asked what Office JS does with the same values), and docx4j-generated-objects-ts's builders, whose CR-015 table of 178 attributes may give the per-type table.
 - **This repository:** CR-020 Phase B reports an out-of-range value already in a tree. That's the read side, and the user added it to CR-020 the same day; it uses this CR's table. CR-021 reads decimals and the other forms in such attributes, and its Q7 recommends not emulating the wrap on read.
 
 ## 1. Why
@@ -110,7 +110,7 @@ A value already out of range in a file, or assigned straight to a field, is repo
 
 | Phase | What | Effort |
 |---|---|---|
-| 0 | CR-065's round 5, shared: docx4j-25 builds it, the user runs it | (docx4j-25's and the user's) |
+| 0 | Round 5, docx4j CR-066's phase 0, shared: built by docx4j-25, run by the user | (docx4j-25's and the user's) |
 | A | D1 to D4: the two tables, `measure_in_range`, every setter through it, the census, the fixtures | 1 day |
 | B | The records: CHANGELOG ("Changed": a refusal of a value that was accepted), the README and `docs/pypi-readme.md` where they name the setters, CLAUDE.md, the index; CR-020 Phase B told the table is ready | ¼ to ½ day |
 
