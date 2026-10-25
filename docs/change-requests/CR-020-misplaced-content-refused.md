@@ -1,6 +1,6 @@
 # CR-020: Content refused where it does not belong --- a check on every typed list as code adds to it, derived from the model, and a validator for what gets past
 
-**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Nothing has started.** Three phases (section 6), 2 to 3 days. Nine questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Nothing has started.** Three phases (section 6), 2 to 3 days. Nine questions wait on the user (section 8).
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
@@ -167,6 +167,8 @@ The message names the holder's field and the item, both the class and the elemen
 
 `misplaced(root)` walks a tree, a part or a package and returns every finding: the holder, the field, the item, what the field takes, and the address where the content API has one. It applies D2 to every list and checks every single-valued field's class as well, which the add-time check can't see (section 2.6). It also carries the completeness rules, starting with CR-016's "a table cell ends with a paragraph" (`table_rules`). Ordering rules belong here too if any are added; the add-time check carries none.
 
+**Out-of-range measurements** (added 2026-10-26, the user). An integer measurement beyond Word's range for its type is reported: an indent, spacing, a page size or a width that Word stores in 16 bits and wraps (CR-022 section 1: 7205001 in a signed twips field read as -3959). The limits are CR-022's table, from docx4j CR-065's probe round 5, and a type without a row isn't checked. A finding names the attribute, the value, Word's range and, where it's known, what Word will show. **The value is never rewritten:** CR-021 Q7 recommends against emulating the wrap. This is the read side of CR-022. It also covers what CR-022's write-side check can't see: a value already in a file, or one assigned straight to a field. This part of Phase B waits for CR-022's table; the rest of Phase B doesn't.
+
 It would serve the inspector, the MCP server and tests. Optionally a save runs it: off by default, and turned on for the whole test suite by `conftest`, so every save the engine's own edits make is held to it (Q5).
 
 ### 4.8 The engine's own sites (D8)
@@ -205,7 +207,7 @@ Every generated namespace: all 509 checkable pairs, not only WordprocessingML (Q
 | Phase | What | Effort |
 |---|---|---|
 | A | D1 to D6, D8 to D10: the table, the rule, the check in `ChildList`, the parse unchecked, the error and its messages, the engine's sites and the two tests, `unchecked()`, measured against the corpus, `Symbols.docx` and `scripts/threads.py` | 1 to 1½ days |
-| B | D7: the validator, single fields and the cell rule, the save option, `conftest` turning it on | ½ to 1 day |
+| B | D7: the validator, single fields and the cell rule, the out-of-range report (with CR-022's table), the save option, `conftest` turning it on | ½ to 1 day, and ¼ day for the report once CR-022's table exists |
 | C | The records: CHANGELOG (a "Changed" entry: a refusal of invalid input is a behaviour change), the README and `docs/pypi-readme.md`, CLAUDE.md, and the hand-off to docx4j through the portfolio (Q9) | ¼ day |
 
 ## 7. Risks

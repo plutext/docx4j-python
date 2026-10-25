@@ -1,6 +1,6 @@
 # CR-021: Integer attributes read as Word reads them --- a decimal truncated toward zero, the empty string 0, every other form refused; the port of docx4j CR-065's rule
 
-**Status:** Proposed 2026-10-26, at the user's request ("yes please draft the CR"). The portfolio session had relayed the user's request the same day: propose a fix for a decimal in a WordprocessingML integer attribute, which docx4j repairs on load and this package saves back. The rule comes from docx4j CR-065's phase 0: one Word probe shared by the three ports, 65 cases over four rounds, run by the user in Word 365 on 2026-10-26 and checked here against Word's own saves (section 3). **Nothing has started.** Four phases (section 6): 0, the fork's stage 14 (Q2); A, the reader; B, the save; C, the records and a Word check. 2 to 3 days here, plus half a day in the fork. Eight questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("yes please draft the CR"). The portfolio session had relayed the user's request the same day: propose a fix for a decimal in a WordprocessingML integer attribute, which docx4j repairs on load and this package saves back. The rule comes from docx4j CR-065's phase 0: one Word probe shared by the three ports, 65 cases over four rounds, run by the user in Word 365 on 2026-10-26 and checked here against Word's own saves (section 3). Four phases (section 6): 0, the fork's stage 14 (Q2); A, the reader; B, the save; C, the records and a Word check. 2 to 3 days here, plus half a day in the fork. **Decided 2026-10-26** (the user: "CR-021 Q1 to Q6 and Q8 as recommended; Q7 discussed separately"; section 8). Q7 was discussed separately. Its outcome so far is CR-022, the write-side guard, and an out-of-range report added to CR-020 Phase B. This CR doesn't emulate the wrap, as recommended, unless that discussion decides otherwise. **Nothing has started.**
 
 *The number:* CR-020 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -181,7 +181,9 @@ A and B don't wait for phase 0. Only the tests of section 2.2's forms do.
 - **Phase 0 changes how every integer in the model parses.** D5 keeps the output outside `w` exactly as it is today, and the corpus round trip is the gate.
 - **Dropping a refused form in a required attribute** leaves an element the schema calls incomplete. Word refuses such a source anyway, and the Word check (Q4) says whether it opens the result.
 
-## 8. Questions
+## 8. Questions (decided 2026-10-26)
+
+The user, 2026-10-26: "CR-021 Q1 to Q6 and Q8 as recommended; Q7 discussed separately".
 
 | Q | Question | Recommendation |
 |---|---|---|
@@ -191,7 +193,7 @@ A and B don't wait for phase 0. Only the tests of section 2.2's forms do.
 | Q4 | A refused form in a required attribute: drop it, or write 0? | Drop it, as docx4j does, with the Word check confirming Word opens the result. |
 | Q5 | The canon's lxml table: an attribute typed `int` in every class that declares it, or in every class the element name binds (the on/off rule)? | Every class that declares it, which settles 25 of section 2.5's 28 pairs; the canon leaves the other three to the typed path. |
 | Q6 | The empty rsid: drop it at save? | Yes, as Word's save drops it. |
-| Q7 | Word's 16-bit wrap: emulate it? | No. Only a value beyond 16 bits would show it: 32,767 twips signed (about 58 cm) or 65,535 unsigned (about 116 cm). Record it as a known difference. |
+| Q7 | Word's 16-bit wrap: emulate it? | No. Only a value beyond 16 bits would show it: 32,767 twips signed (about 58 cm) or 65,535 unsigned (about 116 cm). Record it as a known difference. **Discussed separately (2026-10-26):** the user chose a guard where code sets a measurement (CR-022) and a report of an out-of-range value in a tree (CR-020 Phase B). This CR doesn't emulate the wrap on read unless that discussion decides otherwise. |
 | Q8 | A Word check in phase C, with the unmeasured edges (`"2.9999999999999999"`, `"."`, `"+"`, a dropped required attribute)? | Yes: saved output changes, and those four cases are cheap to add. |
 
 ## 9. Effort
