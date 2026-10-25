@@ -13,7 +13,7 @@ departure.
 
 The design lives in `docs/change-requests/`, indexed in its `README.md`. Each CR's
 implementation-notes sections record what was actually built, the numbers and every deliberate
-departure; read them before changing the area they cover. Status, 2026-10-24:
+departure; read them before changing the area they cover. Status, 2026-10-25:
 
 - **CR-001** (the object model): Phases A to C implemented; D (PML and SML) proposed.
 - **CR-002** (the engine): Phases A and B implemented. B (section 15) is `PropertyResolver` and
@@ -63,9 +63,8 @@ departure; read them before changing the area they cover. Status, 2026-10-24:
   2026-10-24 (`Font` reads every run in scope, `None`/`""`/`"Mixed"` where they differ, a paragraph
   its text's runs, else a placeholder's, else its mark, an automatic colour `#000000` in the
   effective view, a read splitting nothing; a run in a control showing its placeholder is no text to
-  every Office JS reader, `hidden_runs_of`; `ContentControl.insert_text` writes in its place and
-  clears the flag; `paragraph.text = ...` over a run-level one is refused, `range.holds_placeholder`;
-  no `\r` after a deleted mark in the default view, none after an inserted one in the original); C
+  every Office JS reader, `hidden_runs_of`; its writes are CR-019's since, which superseded B's
+  refusal of `paragraph.text = ...` over a run-level one before release; no `\r` after a deleted mark in the default view, none after an inserted one in the original); C
   implemented 2026-10-24 (Word's wildcards match a paragraph's mark where `^p` does, `^13` is one
   and a wildcard pattern `re.DOTALL`; a paragraph searches its `"Whole"` range, a body or block
   control its `"Content"`; a wildcard `replace_text` refuses a hit holding a mark,
@@ -75,8 +74,22 @@ departure; read them before changing the area they cover. Status, 2026-10-24:
   CR-061; the fork's stage 13, released as docx4j-xsdata 26.2.3): decided 2026-10-24; Phases A and
   C done (Word-checked); B and D done 2026-10-24 (Word-checked): complete. **0.2.0 waits for CR-016, CR-018 and CR-009 Phase B** (the
   user, 2026-10-24); all three are done. **It also waits for core-ts's CR-002 section 63** (Word's writes into a
-  control showing its placeholder, checks 63 and 64) **and its port here** (the user, 2026-10-25; CR-016 section 13.5). core-ts implemented it at `020c039`; the port is
-  **CR-019** (proposed 2026-10-25: A the writes, B placeholders in Word's form and the glossary, C the records and the Word check).
+  control showing its placeholder, checks 63 and 64) **and its port here** (the user, 2026-10-25; CR-016 section 13.5).
+- **CR-019** (writing into a content control showing its placeholder, and placeholders written in Word's form: the
+  port of core-ts CR-002 section 63, `020c039` to `b12e0c5`, after Word checks 63 to 68; docx4j CR-063 is the binder's
+  counterpart): decided 2026-10-25. Every text write into such a control replaces it, by any route and in both forms
+  (`ContentControl._write_placeholder`): the flag cleared, a copy of the control's `w:sdtPr/w:rPr` and nothing of the
+  placeholder's (D11, check 68), only the insertion tracked; a Replace or delete over a whole control takes it (D3);
+  a control's own ranges write inside it (D4); a `"Content"` delete leaves Word's five-space filler under the flag in
+  the bare form (D10); every write into a bound control writes its node (D7). Placeholders are written in Word's form
+  (`w:placeholder` naming a glossary entry): `placeholder_text` reads the entry, `str | None`; `show_placeholder()`;
+  each kind's default entry (`default_placeholder_entry`); the binding pass's empty value and made controls show it;
+  `package.glossary_entries` (`model/content/placeholders.py`) reads the glossary privately and the save writes new
+  entries through `OpcPackage.save_hooks`, making the glossary document and styles parts where a file has none.
+  Phases A (`b17bbab`, `dc027fd`), A2 (check 63's run 2, `dbce995`; run 1 had been made in Design Mode) and B
+  (`dfb05fa`, `0dc354a`, `a3a9571`) implemented 2026-10-25, held to Word's runs of checks 63 to 68; C (the records and
+  the Word check) in progress. **0.2.0 follows CR-019 C**, with a new wheel, `release_check.sh` and the wheel's Word
+  check.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
