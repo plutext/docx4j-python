@@ -87,7 +87,7 @@ _PREVIEW = 30
 class Range:
     """A subset of Office JS ``Word.Range``: ``[start, end)`` from one paragraph to the same or a later one of its story."""
 
-    __slots__ = ("_end_paragraph", "end", "end_mark", "mark", "of_control", "paragraph", "start", "whole")
+    __slots__ = ("_end_paragraph", "end", "end_mark", "end_of", "mark", "of_control", "paragraph", "start", "whole")
 
     def __init__(
         self,
@@ -143,6 +143,12 @@ class Range:
         #: or holding nothing, has no width, so its own range is where its writes go in, not its
         #: offset, which the text either side of it shares. Set by :meth:`ContentControl.get_range`.
         self.of_control: tuple[Any, str] | None = None
+        #: ``"End"`` or ``"Content"`` for a paragraph's own range of that name, else None (CR-019 Phase D;
+        #: core-ts's internal ``endOf`` at ``09dc3d2``): while it still ends at its paragraph's end, text the
+        #: ``"End"`` range puts at any location, and the ``"Content"`` range at ``"End"`` or ``"After"``, goes
+        #: after everything the paragraph holds (:meth:`Paragraph._write_at_end`). Set by
+        #: :meth:`Paragraph.get_range`; a range made from one, or a search hit ending there, is an ordinary range.
+        self.end_of: str | None = None
         self._end_paragraph = (
             end_paragraph
             if end_paragraph is not None and end_paragraph.element is not paragraph.element
@@ -973,6 +979,15 @@ class Range:
         or ``"Before"`` of a run-level control holding text before its text,
         inside it (CR-019 Q4).
 
+        **A paragraph's own ``"End"`` range**, at any location, and its
+        ``"Content"`` range at ``"End"`` and ``"After"``, while it still ends
+        at the paragraph's end (:attr:`end_of`), write after everything the
+        paragraph holds, as Word 365 writes there (CR-019 Phase D, core-ts's
+        D12 to D14, checks 69 and 70; :meth:`Paragraph._write_at_end`): into no
+        trailing control, link, revision, field, marker or text box, in the
+        last run's look only where that is a run holding text, and at
+        ``"After"`` in none. A search hit ending there writes as before.
+
         Returns:
             The range of the inserted text; where it made paragraphs, a range
             across them, as Office JS's is (core-ts check 55: ``x\\ry``; CR-013
@@ -1003,6 +1018,10 @@ class Range:
             written = control._write_through(part, text, location)
             if written is not None:
                 return written
+        if self._writes_at_paragraph_end(location):
+            # a paragraph's End range at any location, and its Content range's End and After: after everything
+            # the paragraph holds, as Word 365 writes there (CR-019 Phase D; core-ts's D12 to D14, checks 69 and 70)
+            return self._insert_at_paragraph_end(text, location)
         if location == "Replace" and (
             self.spans_paragraphs or self.end_mark is not None or self.paragraph.change_tracker is not None
         ):
@@ -1038,6 +1057,42 @@ class Range:
                     from docx4j_py.model.content.paragraph import Paragraph
 
                     self.paragraph = Paragraph(container[index], container, paragraph.parent_body)
+            change.text(after=text)
+            return out
+
+    def _writes_at_paragraph_end(self, location: str) -> bool:
+        """Whether text put at `location` is written at the paragraph's end (core-ts's ``writesAtParagraphEnd``, ``09dc3d2``).
+
+        A paragraph's ``"End"`` range, still collapsed at its end, at any
+        location; its ``"Content"`` range, still ending there, at ``"End"`` and
+        ``"After"`` (:attr:`end_of`).
+        """
+        kind = self.end_of
+        if kind is None or self.spans_paragraphs or self.end != len(self.paragraph.text):
+            return False
+        return self.start == self.end if kind == "End" else location in ("End", "After")
+
+    def _insert_at_paragraph_end(self, text: str, location: str) -> Range:
+        """``insert_text`` through :meth:`Paragraph._write_at_end`, the ``"After"`` in no run's look (D14)."""
+        from docx4j_py.model.content.paragraph import Paragraph
+
+        text = drop_unwritable(text)
+        paragraph = self.paragraph
+        with recording(paragraph.parent_body, "insert_text") as change:
+            change.touched(paragraph)
+            change.text(before=self.text)
+            container = paragraph.container
+            index = next((i for i, item in enumerate(container) if item is paragraph.element), -1)
+            out = paragraph._write_at_end(text, plain=location == "After")
+            if location == "Replace":
+                # the range covers the new text, across the paragraphs it made (CR-013 Phase B)
+                self._cover(out)
+            elif location in ("Before", "Start"):
+                # an End range: collapsed after the text, in the paragraph keeping the mark (E1)
+                self._land_at(out.end_paragraph, out.end)
+            elif 0 <= index < len(container) and container[index] is not paragraph.element:
+                # the span is before the text: in the first paragraph the split made
+                self.paragraph = Paragraph(container[index], container, paragraph.parent_body)
             change.text(after=text)
             return out
 

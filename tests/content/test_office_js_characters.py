@@ -78,6 +78,9 @@ SHARE_SHA1 = {
     "58-measures-word365.docx": "0e5184c5ad383c67c68dd08d16ed26fe58e41a8c",
     # CR-016 Phase C (Q2): check 59's file (read only, so Word saved nothing)
     "59-wildcard-marks.docx": "30e8d448f10639f6fa27fb0bb7c00c920ac70117",
+    # CR-019 Phase D: checks 69's and 70's files, the share's __tmp/69/ and __tmp/70/ copies (core-ts 09dc3d2's build)
+    "69-paragraph-end.docx": "7d34ddc02421749705da4fc0927f8410164a1acc",
+    "70-paragraph-endings.docx": "5be28b67e17be98f0822d366ac244fba51f0f024",
 }
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -148,8 +151,8 @@ def test_every_fixture_is_the_manifests_and_the_files_word_read():
     # Word's three JSONs and its six saves, 2bafbcb's); and Phase B's twenty-five (checks 65 and 66: each check's two
     # files, Word's four JSONs, and Word's five and eight saves, aefc41f's); and check 68's five (its file, Word's two
     # JSONs and its two saves, c275a2a's); and the user's placeholders-word365.docx, Word's default entry for each kind
-    # (b12e0c5's)
-    assert len(manifest) == 90
+    # (b12e0c5's); and Phase D's ten (checks 69 and 70: each file, Word's two JSONs and its two saves, 09dc3d2's)
+    assert len(manifest) == 100
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():

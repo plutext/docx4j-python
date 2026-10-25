@@ -1,4 +1,4 @@
-"""docx4j-core-ts's Office JS checks 52 to 68, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
+"""docx4j-core-ts's Office JS checks 52 to 70, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
 
 CR-013 section 6.1. Word 365 ran each check's Script Lab snippet on the file in
 this directory and wrote JSON (``52-ranges-word365-run.json``,
@@ -53,6 +53,13 @@ step for step, onto the content API, and give the same JSON shape with the same
   ``2bafbcb``, unchanged at ``d84f3da``; CR-019 Phase A2) in its ``report``
   step and its four phases: check 58's three writes into a control in the
   bare form, each through both of the snippet's lookups.
+* :func:`run_check_69` and :func:`run_check_70` are ``CHECK69.runCheck`` and
+  ``CHECK70.runCheck`` (``check69-script-lab.js`` and
+  ``check70-script-lab.js`` at ``09dc3d2``; CR-019 Phase D) in their ``run``
+  and ``report`` modes: ``NEW<n>`` written at a paragraph's end by eight
+  routes (nine in check 69, with the document body's), change tracking off,
+  the paragraph ending in a run-level control, a hidden run, a bookmark, a
+  comment's markers, a revision, a field or a text box.
 
 Each read is attempted alone, as the snippets sync each read alone, so that
 what fails fails alone, as ``'error: ' + (code or message)``. A member this
@@ -87,6 +94,7 @@ __all__ = [
     "parse_region_65",
     "parse_region_67",
     "parse_region_68",
+    "parse_region_69",
     "run_check_52",
     "run_check_53",
     "run_check_54",
@@ -99,6 +107,8 @@ __all__ = [
     "run_check_66",
     "run_check_67",
     "run_check_68",
+    "run_check_69",
+    "run_check_70",
     "vis",
 ]
 
@@ -1916,3 +1926,176 @@ def run_check_68(package: Any, mode: str) -> dict[str, Any]:
     finally:
         _track_63(package, False)
     return result
+
+
+# ---------------------------------------------------------------------------
+# checks 69 and 70 (core-ts check69-script-lab.js and check70-script-lab.js at 09dc3d2; CR-019 Phase D)
+# ---------------------------------------------------------------------------
+
+_BEGIN_69 = re.compile(r"^BEGIN(\d+) ([\w-]+) ([\w-]+)$")
+
+
+def parse_region_69(text: str) -> dict[str, Any] | None:
+    """A check 69 or 70 BEGIN paragraph's text as a case, ``{n, op, shape}``, or None (the snippets' ``parseRegion``)."""
+    match = _BEGIN_69.match(text.strip())
+    return {"n": int(match.group(1)), "op": match.group(2), "shape": match.group(3)} if match else None
+
+
+def _find_or_none(body: Any, token: str) -> Any:
+    """``body.search(token, TOKEN).getFirstOrNullObject()``: the first hit, or None (the snippets' ``findOrNull``)."""
+    hits = body.search(token, **TOKEN)
+    return hits[0] if hits else None
+
+
+def _region_of_69(body: Any, n: int) -> tuple[Any, bool]:
+    """The region from its BEGIN paragraph to its END paragraph, both whole, and whether it has one (``regionOf``).
+
+    The last case's, ``body-end``, which has no END paragraph, runs to the
+    document's last paragraph.
+    """
+    begin = _paragraph_of_63(body, f"BEGIN{n}").get_range("Whole")
+    end = _find_or_none(body, f"END{n}")
+    last = body.paragraphs[-1] if end is None else end.paragraphs[0]
+    return begin.expand_to(last.get_range("Whole")), end is not None
+
+
+def _target_of_69(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's paragraph (``targetOf``): the one-cell table's cell's last for ``cell-body-end``, with the cell;
+    else the region's last paragraph between BEGIN and END."""
+    if region["op"] == "cell-body-end":
+        cell = _region_of_69(body, region["n"])[0].tables[0].cell(0, 0)
+        return {"paragraph": cell.body.paragraphs[-1], "cell": cell}
+    found, closed = _region_of_69(body, region["n"])
+    paragraphs = found.paragraphs
+    inner = paragraphs[1:-1] if closed else paragraphs[1:]
+    return {"paragraph": inner[-1]}
+
+
+def _target_of_70(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's paragraph, the one holding ``TEXT<n>`` (a text box holds a paragraph of its own), and for
+    ``cell-body-end`` the region's table's cell (check 70's ``targetOf``)."""
+    paragraph = _paragraph_of_63(body, f"TEXT{region['n']}")
+    if region["op"] != "cell-body-end":
+        return {"paragraph": paragraph}
+    return {"paragraph": paragraph, "cell": region_of_63(body, region["n"]).tables[0].cell(0, 0)}
+
+
+def _apply_69(body: Any, region: dict[str, Any], target_of: Callable[[Any, dict[str, Any]], dict[str, Any]]) -> dict[str, Any]:
+    """The case's write, ``NEW<n>`` at the paragraph's end by the case's route; what its result reads (``apply``)."""
+    text = f"NEW{region['n']}"
+
+    def read(r: Any) -> dict[str, Any]:
+        return {"returned": vis(r.text)}
+
+    op = region["op"]
+    if op == "body-end":
+        return read(body.insert_text(text, location="End"))
+    target = target_of(body, region)
+    p = target["paragraph"]
+    if op == "paragraph-end":
+        return read(p.insert_text(text, location="End"))
+    if op.startswith("end-"):
+        location = {"before": "Before", "after": "After", "start": "Start", "end": "End", "replace": "Replace"}[op[4:]]
+        return read(p.get_range("End").insert_text(text, location=location))
+    if op == "content-end":
+        return read(p.get_range("Content").insert_text(text, location="End"))
+    if op == "cell-body-end":
+        return read(target["cell"].body.insert_text(text, location="End"))
+    raise ValueError(f"no operation {op}")
+
+
+def _report_69(
+    body: Any,
+    region: dict[str, Any],
+    tag: str,
+    target_of: Callable[[Any, dict[str, Any]], dict[str, Any]],
+    region_of: Callable[[Any, int], Any],
+) -> dict[str, Any]:
+    """The region as it stands: its paragraph's text, the region's OOXML and the control's reads (``report``)."""
+    out: dict[str, Any] = {}
+    out["paragraph"] = attempt_57(lambda: vis(target_of(body, region)["paragraph"].text))
+    out["ooxml"] = attempt_57(lambda: body_of_57(region_of(body, region["n"]).get_xml()))
+    try:
+        found = _control_of_63(body, tag)
+    except Exception:  # noqa: BLE001 - the snippets' controlOf(...).catch(() => null)
+        found = None
+    if found is None:
+        out["control"] = None
+        return out
+
+    def control() -> dict[str, Any]:
+        c = found["control"]
+        return {"via": found["via"], "type": c.type, "text": vis(c.text)}
+
+    out["control"] = attempt_57(control)
+    out["showingPlaceholderText"] = attempt_57(lambda: found["control"].showing_placeholder_text)
+    return out
+
+
+def _run_check_69(
+    package: Any,
+    mode: str,
+    check: int,
+    target_of: Callable[[Any, dict[str, Any]], dict[str, Any]],
+    region_of: Callable[[Any, int], Any],
+) -> dict[str, Any]:
+    """``CHECK69.runCheck`` or ``CHECK70.runCheck``: the two snippets, which differ in their names, ``targetOf`` and
+    ``regionOf``."""
+    if mode not in ("run", "report"):
+        raise ValueError(f"check {check} has no {mode!r} mode")
+    body = package.body
+    paragraphs = body.paragraphs
+    result: dict[str, Any] = {
+        "check": check,
+        "mode": mode,
+        "host": None,
+        "title": paragraphs[0].text if paragraphs else None,
+        "cases": [],
+    }
+    regions = [region for p in paragraphs if (region := parse_region_69(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    try:
+        for region in regions:
+            entry = dict(region)
+            if mode == "run":
+                try:
+                    # the snippets' untracked(): every case is written with change tracking off
+                    _track_63(package, False)
+                    entry["result"] = _apply_69(body, region, target_of)
+                except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+                    entry["error"] = failed_57(error)
+            try:
+                entry["after"] = _report_69(body, region, f"c{check}-{region['n']}", target_of, region_of)
+            except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
+                entry["after"] = failed_57(error)
+            result["cases"].append(entry)
+    finally:
+        _track_63(package, False)
+    return result
+
+
+def run_check_69(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK69.runCheck`` in its ``run`` or ``report`` mode, on a loaded package (the snippet at core-ts ``09dc3d2``).
+
+    Each case's paragraph ends in something of no width (a run-level control
+    showing its placeholder, in Word's form or the bare form; a hidden run), a
+    control holding text, or nothing more; ``run`` writes ``NEW<n>`` at its end
+    by the case's route, change tracking off: ``insert_text(..., "End")``, its
+    ``"End"`` range at each location, its ``"Content"`` range's ``"End"``, a
+    one-cell table's cell body's ``insert_text(..., "End")``, and for the last
+    case the document body's. Then the region: the paragraph's text, the
+    region's OOXML (from its BEGIN paragraph to its END, the last case's to the
+    document's last paragraph) and the control's reads.
+    """
+    return _run_check_69(package, mode, 69, _target_of_69, lambda body, n: _region_of_69(body, n)[0])
+
+
+def run_check_70(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK70.runCheck`` in its ``run`` or ``report`` mode (the snippet at core-ts ``09dc3d2``): check 69's, renamed.
+
+    Each case's paragraph, found by its ``TEXT<n>``, ends in a bookmark, a
+    comment's markers, a tracked deletion or insertion, a complex or simple
+    field, a text box, or a control after a bold run or holding bold text;
+    check 69's routes but the document body's.
+    """
+    return _run_check_69(package, mode, 70, _target_of_70, region_of_63)

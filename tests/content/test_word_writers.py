@@ -801,16 +801,28 @@ def _new_run_order(p) -> list[str]:
 
 
 @pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
-def test_text_into_an_all_hidden_paragraph_is_seen_mapped_and_at_the_end(tracked):
-    """Measured at e79a8e8: it landed before the hidden run, took its w:vanish and escaped the map."""
+def test_text_at_the_end_of_an_all_hidden_paragraph_is_mapped_after_the_hidden_run_hidden_as_word_writes_it(tracked):
+    """Measured at e79a8e8: it landed before the hidden run, took its w:vanish and escaped the map.
+
+    CR-013 section 11's item 1 then wrote it visible after the hidden run, in no
+    run's look. Since CR-019 Phase D it is Word's (core-ts's D13, its check 69
+    cases 25, 26 and 28 to 32): after a trailing hidden run the text takes its
+    look, hidden, the range returned reading nothing; still after it, and mapped.
+    A paragraph break in it is written visible, core-ts's choice (its section
+    63.27).
+    """
     package, p = one(HIDDEN, tracked=tracked)
     assert p.text == ""
     out = p.insert_text("VIS\x0bIBLE", location="End")
-    assert p.text == "VIS\x0bIBLE", "seen: no w:vanish copied"
-    assert _new_run_order(p) == ["HIDDEN(hidden)", "VISIBLE"], "after the hidden run"
+    assert (p.text, out.text) == ("", ""), "hidden, as Word writes after a hidden run (D13)"
+    order = _new_run_order(p)
+    assert order == (["HIDDEN(hidden)", "VISIBLE(hidden)"] if tracked else ["HIDDENVISIBLE(hidden)"]), "after it, in its look"
     assert "<w:br/>" in to_xml(p.element), "the map: U+000B a w:br"
-    assert out.text == "VIS\x0bIBLE"
-    assert strict_reload(package).body.paragraphs[0].text == "VIS\x0bIBLE"
+    assert strict_reload(package).body.paragraphs[0].text == ""
+    package, p = one(HIDDEN, tracked=tracked)
+    out = p.insert_text("VIS\nIBLE", location="End")
+    assert ([q.text for q in package.body.paragraphs], out.text) == (["VIS", "IBLE"], "VIS\rIBLE"), "broken, visible"
+    strict_reload(package)
 
 
 @pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
@@ -820,7 +832,11 @@ def test_the_other_writers_into_a_hidden_paragraph(tracked):
     assert _new_run_order(p) == ["S", "HIDDEN(hidden)"], "Start: before the hidden run"
     package, p = one(HIDDEN, tracked=tracked)
     p.get_range("End").insert_text("R")
-    assert _new_run_order(p) == ["HIDDEN(hidden)", "R"], "a collapsed range in a paragraph of no visible text: at the end"
+    # the paragraph's End range: after the hidden run, hidden (CR-019 Phase D, D13), where it was written visible
+    assert _new_run_order(p) == (["HIDDEN(hidden)", "R(hidden)"] if tracked else ["HIDDENR(hidden)"])
+    package, p = one(HIDDEN, tracked=tracked)
+    p.get_range("End").insert_text("R", location="After")
+    assert _new_run_order(p) == ["HIDDEN(hidden)", "R"], "its After in no run's look (D14): at the end, seen"
     package, p = one(HIDDEN, tracked=tracked)
     p.get_range("Start").insert_text("B", location="Before")
     assert _new_run_order(p) == ["B", "HIDDEN(hidden)"]
@@ -834,7 +850,8 @@ def test_the_other_writers_into_a_hidden_paragraph(tracked):
     assert p.text == "SET"
     package, p = one(HIDDEN, tracked=tracked)
     package.body.insert_text("BODY", location="End")
-    assert package.body.paragraphs[-1].text == "BODY"
+    # the last paragraph's End: after the hidden run, hidden (D13)
+    assert (package.body.paragraphs[-1].text, _new_run_order(p)[-1]) == ("", "BODY(hidden)" if tracked else "HIDDENBODY(hidden)")
     assert p.replace_text("HIDDEN", "x") == 0, "hidden text is not found"
     strict_reload(package)
 
@@ -843,11 +860,13 @@ def test_the_other_writers_into_a_hidden_paragraph(tracked):
 def test_at_the_hidden_edge_of_a_partly_hidden_paragraph(tracked):
     package, p = one('<w:r><w:rPr><w:b/></w:rPr><w:t>AB</w:t></w:r>' + HIDDEN, tracked=tracked)
     p.insert_text("X", location="End")
-    assert p.text == "ABX"
+    # End is after the trailing hidden run, in its look, hidden, as Word writes it (CR-019 Phase D, core-ts's D13,
+    # check 69 case 25), where CR-013 section 11's item 1 wrote it in the visible text's look, bold
+    assert p.text == "AB"
     order = _new_run_order(p)
-    assert order.index("X") > order.index("HIDDEN(hidden)"), "End is after the trailing hidden run"
-    added = next(run for run in p.runs if any(getattr(i, "value", None) == "X" for i in run.content))
-    assert added.r_pr is not None and added.r_pr.b is not None and added.r_pr.vanish is None, "the visible text's look"
+    assert order[-1] == ("X(hidden)" if tracked else "HIDDENX(hidden)"), "End is after the trailing hidden run"
+    added = next(run for run in p.runs if any(str(getattr(i, "value", "")).endswith("X") for i in run.content))
+    assert added.r_pr is not None and added.r_pr.vanish is not None and added.r_pr.b is None, "the hidden run's look"
     package, p = one(HIDDEN + '<w:r><w:t>CD</w:t></w:r>', tracked=tracked)
     p.insert_text("Y", location="Start")
     assert p.text == "YCD"

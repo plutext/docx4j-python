@@ -1,0 +1,815 @@
+{
+ "check": 69,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "title": "Check 69: where a paragraph's End is, when the paragraph ends in something with no width. The last case ends the document.",
+ "cases": [
+  {
+   "n": 1,
+   "op": "paragraph-end",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW1"
+   },
+   "after": {
+    "paragraph": "TEXT1 NEW1",
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 paragraph-end plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT1 NEW1</w:t></w:r></w:p><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 2,
+   "op": "end-before",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW2"
+   },
+   "after": {
+    "paragraph": "TEXT2 NEW2",
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 end-before plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT2 NEW2</w:t></w:r></w:p><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 3,
+   "op": "end-after",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW3"
+   },
+   "after": {
+    "paragraph": "TEXT3 NEW3",
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 end-after plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT3 NEW3</w:t></w:r></w:p><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 4,
+   "op": "end-start",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW4"
+   },
+   "after": {
+    "paragraph": "TEXT4 NEW4",
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 end-start plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT4 NEW4</w:t></w:r></w:p><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 5,
+   "op": "end-end",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW5"
+   },
+   "after": {
+    "paragraph": "TEXT5 NEW5",
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 end-end plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT5 NEW5</w:t></w:r></w:p><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 6,
+   "op": "end-replace",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW6"
+   },
+   "after": {
+    "paragraph": "TEXT6 NEW6",
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 end-replace plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT6 NEW6</w:t></w:r></w:p><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 7,
+   "op": "content-end",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW7"
+   },
+   "after": {
+    "paragraph": "TEXT7 NEW7",
+    "ooxml": "<w:p><w:r><w:t>BEGIN7 content-end plain</w:t></w:r></w:p><w:p><w:r><w:t>TEXT7 NEW7</w:t></w:r></w:p><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 8,
+   "op": "cell-body-end",
+   "shape": "plain",
+   "result": {
+    "returned": "NEW8"
+   },
+   "after": {
+    "paragraph": "TEXT8 NEW8",
+    "ooxml": "<w:p><w:r><w:t>BEGIN8 cell-body-end plain</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/></w:tblBorders><w:tblLook w:val=\"04A0\" w:firstRow=\"1\" w:lastRow=\"0\" w:firstColumn=\"1\" w:lastColumn=\"0\" w:noHBand=\"0\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"7200\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"7200\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t>TEXT8 NEW8</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 9,
+   "op": "paragraph-end",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW9"
+   },
+   "after": {
+    "paragraph": "TEXT9 NEW9",
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 paragraph-end ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT9 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 9\"/><w:tag w:val=\"c69-9\"/><w:id w:val=\"69009\"/><w:placeholder><w:docPart w:val=\"5185F734D9D349AEBCFCE3DD09AA17C4\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW9</w:t></w:r></w:p><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 10,
+   "op": "end-before",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW10"
+   },
+   "after": {
+    "paragraph": "TEXT10 NEW10",
+    "ooxml": "<w:p><w:r><w:t>BEGIN10 end-before ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT10 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 10\"/><w:tag w:val=\"c69-10\"/><w:id w:val=\"69010\"/><w:placeholder><w:docPart w:val=\"DD39A37CA0BA442DB2A7658658385782\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW10</w:t></w:r></w:p><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 11,
+   "op": "end-after",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW11"
+   },
+   "after": {
+    "paragraph": "TEXT11 NEW11",
+    "ooxml": "<w:p><w:r><w:t>BEGIN11 end-after ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT11 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 11\"/><w:tag w:val=\"c69-11\"/><w:id w:val=\"69011\"/><w:placeholder><w:docPart w:val=\"8E1FC26060914E948DF08D472F10E28D\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW11</w:t></w:r></w:p><w:p><w:r><w:t>END11</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 12,
+   "op": "end-start",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW12"
+   },
+   "after": {
+    "paragraph": "TEXT12 NEW12",
+    "ooxml": "<w:p><w:r><w:t>BEGIN12 end-start ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT12 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 12\"/><w:tag w:val=\"c69-12\"/><w:id w:val=\"69012\"/><w:placeholder><w:docPart w:val=\"F955F8848AE24C519500851200A3D166\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW12</w:t></w:r></w:p><w:p><w:r><w:t>END12</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 13,
+   "op": "end-end",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW13"
+   },
+   "after": {
+    "paragraph": "TEXT13 NEW13",
+    "ooxml": "<w:p><w:r><w:t>BEGIN13 end-end ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT13 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 13\"/><w:tag w:val=\"c69-13\"/><w:id w:val=\"69013\"/><w:placeholder><w:docPart w:val=\"0E64628399414F399300AE270A047525\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW13</w:t></w:r></w:p><w:p><w:r><w:t>END13</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 14,
+   "op": "end-replace",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW14"
+   },
+   "after": {
+    "paragraph": "TEXT14 NEW14",
+    "ooxml": "<w:p><w:r><w:t>BEGIN14 end-replace ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT14 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 14\"/><w:tag w:val=\"c69-14\"/><w:id w:val=\"69014\"/><w:placeholder><w:docPart w:val=\"9F19F97AB120490887D8D8D2F571FB96\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW14</w:t></w:r></w:p><w:p><w:r><w:t>END14</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 15,
+   "op": "content-end",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW15"
+   },
+   "after": {
+    "paragraph": "TEXT15 NEW15",
+    "ooxml": "<w:p><w:r><w:t>BEGIN15 content-end ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT15 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 15\"/><w:tag w:val=\"c69-15\"/><w:id w:val=\"69015\"/><w:placeholder><w:docPart w:val=\"77651E8D35A64644B7BAAF0B98832D49\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW15</w:t></w:r></w:p><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 16,
+   "op": "cell-body-end",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW16"
+   },
+   "after": {
+    "paragraph": "TEXT16 NEW16",
+    "ooxml": "<w:p><w:r><w:t>BEGIN16 cell-body-end ph-word</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/></w:tblBorders><w:tblLook w:val=\"04A0\" w:firstRow=\"1\" w:lastRow=\"0\" w:firstColumn=\"1\" w:lastColumn=\"0\" w:noHBand=\"0\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"7200\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"7200\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t xml:space=\"preserve\">TEXT16 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 16\"/><w:tag w:val=\"c69-16\"/><w:id w:val=\"69016\"/><w:placeholder><w:docPart w:val=\"E77B4C3A111F41CBA55FF7105252296F\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW16</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 17,
+   "op": "paragraph-end",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW17"
+   },
+   "after": {
+    "paragraph": "TEXT17 NEW17",
+    "ooxml": "<w:p><w:r><w:t>BEGIN17 paragraph-end ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT17 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 17\"/><w:tag w:val=\"c69-17\"/><w:id w:val=\"69017\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW17</w:t></w:r></w:p><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 18,
+   "op": "end-before",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW18"
+   },
+   "after": {
+    "paragraph": "TEXT18 NEW18",
+    "ooxml": "<w:p><w:r><w:t>BEGIN18 end-before ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT18 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 18\"/><w:tag w:val=\"c69-18\"/><w:id w:val=\"69018\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW18</w:t></w:r></w:p><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 19,
+   "op": "end-after",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW19"
+   },
+   "after": {
+    "paragraph": "TEXT19 NEW19",
+    "ooxml": "<w:p><w:r><w:t>BEGIN19 end-after ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT19 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 19\"/><w:tag w:val=\"c69-19\"/><w:id w:val=\"69019\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW19</w:t></w:r></w:p><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 20,
+   "op": "end-start",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW20"
+   },
+   "after": {
+    "paragraph": "TEXT20 NEW20",
+    "ooxml": "<w:p><w:r><w:t>BEGIN20 end-start ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT20 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 20\"/><w:tag w:val=\"c69-20\"/><w:id w:val=\"69020\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW20</w:t></w:r></w:p><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 21,
+   "op": "end-end",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW21"
+   },
+   "after": {
+    "paragraph": "TEXT21 NEW21",
+    "ooxml": "<w:p><w:r><w:t>BEGIN21 end-end ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT21 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 21\"/><w:tag w:val=\"c69-21\"/><w:id w:val=\"69021\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW21</w:t></w:r></w:p><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 22,
+   "op": "end-replace",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW22"
+   },
+   "after": {
+    "paragraph": "TEXT22 NEW22",
+    "ooxml": "<w:p><w:r><w:t>BEGIN22 end-replace ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT22 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 22\"/><w:tag w:val=\"c69-22\"/><w:id w:val=\"69022\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW22</w:t></w:r></w:p><w:p><w:r><w:t>END22</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 23,
+   "op": "content-end",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW23"
+   },
+   "after": {
+    "paragraph": "TEXT23 NEW23",
+    "ooxml": "<w:p><w:r><w:t>BEGIN23 content-end ph-bare</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT23 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 23\"/><w:tag w:val=\"c69-23\"/><w:id w:val=\"69023\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW23</w:t></w:r></w:p><w:p><w:r><w:t>END23</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 24,
+   "op": "cell-body-end",
+   "shape": "ph-bare",
+   "result": {
+    "returned": "NEW24"
+   },
+   "after": {
+    "paragraph": "TEXT24 NEW24",
+    "ooxml": "<w:p><w:r><w:t>BEGIN24 cell-body-end ph-bare</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/></w:tblBorders><w:tblLook w:val=\"04A0\" w:firstRow=\"1\" w:lastRow=\"0\" w:firstColumn=\"1\" w:lastColumn=\"0\" w:noHBand=\"0\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"7200\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"7200\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t xml:space=\"preserve\">TEXT24 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 24\"/><w:tag w:val=\"c69-24\"/><w:id w:val=\"69024\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW24</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>END24</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 25,
+   "op": "paragraph-end",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT25 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN25 paragraph-end hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT25 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN25NEW25</w:t></w:r></w:p><w:p><w:r><w:t>END25</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 26,
+   "op": "end-before",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT26 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN26 end-before hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT26 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN26NEW26</w:t></w:r></w:p><w:p><w:r><w:t>END26</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 27,
+   "op": "end-after",
+   "shape": "hidden",
+   "result": {
+    "returned": "NEW27"
+   },
+   "after": {
+    "paragraph": "TEXT27 NEW27",
+    "ooxml": "<w:p><w:r><w:t>BEGIN27 end-after hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT27 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN27</w:t></w:r><w:r><w:t>NEW27</w:t></w:r></w:p><w:p><w:r><w:t>END27</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 28,
+   "op": "end-start",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT28 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN28 end-start hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT28 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN28NEW28</w:t></w:r></w:p><w:p><w:r><w:t>END28</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 29,
+   "op": "end-end",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT29 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN29 end-end hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT29 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN29NEW29</w:t></w:r></w:p><w:p><w:r><w:t>END29</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 30,
+   "op": "end-replace",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT30 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN30 end-replace hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT30 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN30NEW30</w:t></w:r></w:p><w:p><w:r><w:t>END30</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 31,
+   "op": "content-end",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT31 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN31 content-end hidden</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT31 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN31NEW31</w:t></w:r></w:p><w:p><w:r><w:t>END31</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 32,
+   "op": "cell-body-end",
+   "shape": "hidden",
+   "result": {
+    "returned": ""
+   },
+   "after": {
+    "paragraph": "TEXT32 ",
+    "ooxml": "<w:p><w:r><w:t>BEGIN32 cell-body-end hidden</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/></w:tblBorders><w:tblLook w:val=\"04A0\" w:firstRow=\"1\" w:lastRow=\"0\" w:firstColumn=\"1\" w:lastColumn=\"0\" w:noHBand=\"0\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"7200\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"7200\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t xml:space=\"preserve\">TEXT32 </w:t></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>HIDDEN32NEW32</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>END32</w:t></w:r></w:p><w:p/>",
+    "control": null
+   }
+  },
+  {
+   "n": 33,
+   "op": "paragraph-end",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW33"
+   },
+   "after": {
+    "paragraph": "TEXT33 VALUE33NEW33",
+    "ooxml": "<w:p><w:r><w:t>BEGIN33 paragraph-end control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT33 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 33\"/><w:tag w:val=\"c69-33\"/><w:id w:val=\"69033\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE33</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW33</w:t></w:r></w:p><w:p><w:r><w:t>END33</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE33"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 34,
+   "op": "end-before",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW34"
+   },
+   "after": {
+    "paragraph": "TEXT34 VALUE34NEW34",
+    "ooxml": "<w:p><w:r><w:t>BEGIN34 end-before control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT34 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 34\"/><w:tag w:val=\"c69-34\"/><w:id w:val=\"69034\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE34</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW34</w:t></w:r></w:p><w:p><w:r><w:t>END34</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE34"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 35,
+   "op": "end-after",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW35"
+   },
+   "after": {
+    "paragraph": "TEXT35 VALUE35NEW35",
+    "ooxml": "<w:p><w:r><w:t>BEGIN35 end-after control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT35 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 35\"/><w:tag w:val=\"c69-35\"/><w:id w:val=\"69035\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE35</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW35</w:t></w:r></w:p><w:p><w:r><w:t>END35</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE35"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 36,
+   "op": "end-start",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW36"
+   },
+   "after": {
+    "paragraph": "TEXT36 VALUE36NEW36",
+    "ooxml": "<w:p><w:r><w:t>BEGIN36 end-start control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT36 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 36\"/><w:tag w:val=\"c69-36\"/><w:id w:val=\"69036\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE36</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW36</w:t></w:r></w:p><w:p><w:r><w:t>END36</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE36"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 37,
+   "op": "end-end",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW37"
+   },
+   "after": {
+    "paragraph": "TEXT37 VALUE37NEW37",
+    "ooxml": "<w:p><w:r><w:t>BEGIN37 end-end control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT37 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 37\"/><w:tag w:val=\"c69-37\"/><w:id w:val=\"69037\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE37</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW37</w:t></w:r></w:p><w:p><w:r><w:t>END37</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE37"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 38,
+   "op": "end-replace",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW38"
+   },
+   "after": {
+    "paragraph": "TEXT38 VALUE38NEW38",
+    "ooxml": "<w:p><w:r><w:t>BEGIN38 end-replace control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT38 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 38\"/><w:tag w:val=\"c69-38\"/><w:id w:val=\"69038\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE38</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW38</w:t></w:r></w:p><w:p><w:r><w:t>END38</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE38"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 39,
+   "op": "content-end",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW39"
+   },
+   "after": {
+    "paragraph": "TEXT39 VALUE39NEW39",
+    "ooxml": "<w:p><w:r><w:t>BEGIN39 content-end control-text</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT39 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 39\"/><w:tag w:val=\"c69-39\"/><w:id w:val=\"69039\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE39</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW39</w:t></w:r></w:p><w:p><w:r><w:t>END39</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE39"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 40,
+   "op": "cell-body-end",
+   "shape": "control-text",
+   "result": {
+    "returned": "NEW40"
+   },
+   "after": {
+    "paragraph": "TEXT40 VALUE40NEW40",
+    "ooxml": "<w:p><w:r><w:t>BEGIN40 cell-body-end control-text</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/></w:tblBorders><w:tblLook w:val=\"04A0\" w:firstRow=\"1\" w:lastRow=\"0\" w:firstColumn=\"1\" w:lastColumn=\"0\" w:noHBand=\"0\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"7200\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"7200\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t xml:space=\"preserve\">TEXT40 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 40\"/><w:tag w:val=\"c69-40\"/><w:id w:val=\"69040\"/></w:sdtPr><w:sdtContent><w:r><w:t>VALUE40</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW40</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>END40</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE40"
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 41,
+   "op": "paragraph-end",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW41"
+   },
+   "after": {
+    "paragraph": "NEW41",
+    "ooxml": "<w:p><w:r><w:t>BEGIN41 paragraph-end ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 41\"/><w:tag w:val=\"c69-41\"/><w:id w:val=\"69041\"/><w:placeholder><w:docPart w:val=\"94C825D957A642549D4B2975CC9BF3CE\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW41</w:t></w:r></w:p><w:p><w:r><w:t>END41</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 42,
+   "op": "end-before",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW42"
+   },
+   "after": {
+    "paragraph": "NEW42",
+    "ooxml": "<w:p><w:r><w:t>BEGIN42 end-before ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 42\"/><w:tag w:val=\"c69-42\"/><w:id w:val=\"69042\"/><w:placeholder><w:docPart w:val=\"64A1A738F552429FAF72C87C0B522DF6\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW42</w:t></w:r></w:p><w:p><w:r><w:t>END42</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 43,
+   "op": "end-after",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW43"
+   },
+   "after": {
+    "paragraph": "NEW43",
+    "ooxml": "<w:p><w:r><w:t>BEGIN43 end-after ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 43\"/><w:tag w:val=\"c69-43\"/><w:id w:val=\"69043\"/><w:placeholder><w:docPart w:val=\"D956BFCA8A1A4D80B49666EC1451E218\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW43</w:t></w:r></w:p><w:p><w:r><w:t>END43</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 44,
+   "op": "end-start",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW44"
+   },
+   "after": {
+    "paragraph": "NEW44",
+    "ooxml": "<w:p><w:r><w:t>BEGIN44 end-start ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 44\"/><w:tag w:val=\"c69-44\"/><w:id w:val=\"69044\"/><w:placeholder><w:docPart w:val=\"8E082068535B4503B3A745A8800A0C9B\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW44</w:t></w:r></w:p><w:p><w:r><w:t>END44</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 45,
+   "op": "end-end",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW45"
+   },
+   "after": {
+    "paragraph": "NEW45",
+    "ooxml": "<w:p><w:r><w:t>BEGIN45 end-end ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 45\"/><w:tag w:val=\"c69-45\"/><w:id w:val=\"69045\"/><w:placeholder><w:docPart w:val=\"E096B5506F8B450CB1AE7CC3452B5B95\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW45</w:t></w:r></w:p><w:p><w:r><w:t>END45</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 46,
+   "op": "end-replace",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW46"
+   },
+   "after": {
+    "paragraph": "NEW46",
+    "ooxml": "<w:p><w:r><w:t>BEGIN46 end-replace ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 46\"/><w:tag w:val=\"c69-46\"/><w:id w:val=\"69046\"/><w:placeholder><w:docPart w:val=\"A0CA6001A67441F780B8552BE8A09F69\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW46</w:t></w:r></w:p><w:p><w:r><w:t>END46</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 47,
+   "op": "content-end",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW47"
+   },
+   "after": {
+    "paragraph": "NEW47",
+    "ooxml": "<w:p><w:r><w:t>BEGIN47 content-end ph-only</w:t></w:r></w:p><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 47\"/><w:tag w:val=\"c69-47\"/><w:id w:val=\"69047\"/><w:placeholder><w:docPart w:val=\"18D1B499EB8C44A98B312F5AAE39163F\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW47</w:t></w:r></w:p><w:p><w:r><w:t>END47</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 48,
+   "op": "cell-body-end",
+   "shape": "ph-only",
+   "result": {
+    "returned": "NEW48"
+   },
+   "after": {
+    "paragraph": "NEW48",
+    "ooxml": "<w:p><w:r><w:t>BEGIN48 cell-body-end ph-only</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"auto\"/></w:tblBorders><w:tblLook w:val=\"04A0\" w:firstRow=\"1\" w:lastRow=\"0\" w:firstColumn=\"1\" w:lastColumn=\"0\" w:noHBand=\"0\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"7200\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"7200\" w:type=\"dxa\"/></w:tcPr><w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 48\"/><w:tag w:val=\"c69-48\"/><w:id w:val=\"69048\"/><w:placeholder><w:docPart w:val=\"2E351173857740DA8CC5A543A55CCCE7\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW48</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>END48</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 49,
+   "op": "body-end",
+   "shape": "ph-word",
+   "result": {
+    "returned": "NEW49"
+   },
+   "after": {
+    "paragraph": "TEXT49 NEW49",
+    "ooxml": "<w:p><w:r><w:t>BEGIN49 body-end ph-word</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">TEXT49 </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 69 control 49\"/><w:tag w:val=\"c69-49\"/><w:id w:val=\"69049\"/><w:placeholder><w:docPart w:val=\"6C8DABE715754392B643C03E5B74BCC7\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t>NEW49</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": ""
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  }
+ ],
+ "caseCount": 49
+}

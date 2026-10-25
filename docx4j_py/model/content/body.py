@@ -572,7 +572,10 @@ class Body(Sequence):
 
         ``\\n``, ``\\r`` and ``\\r\\n`` make a new paragraph each, as Word's
         ``insertText`` does (CR-013 section 11, E1; :meth:`Paragraph.splice`);
-        U+0002 and the other characters XML 1.0 excludes are dropped (E3).
+        U+0002 and the other characters XML 1.0 excludes are dropped (E3). At
+        ``"End"`` the text goes after everything the last paragraph holds, as
+        Word 365 writes there (:meth:`Paragraph.insert_text`; CR-019 Phase D,
+        core-ts's checks 69 and 70), a cell body's too.
 
         Returns:
             The :class:`~docx4j_py.model.content.Range` of the inserted text; where

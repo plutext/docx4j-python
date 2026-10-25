@@ -276,12 +276,14 @@ class Paragraph:
         control = block_control_of(self)
         return control if control is not None and control.shows_placeholder_content else None
 
-    def _bound_controls_at(self, start: int, end: int) -> list[Any]:
+    def _bound_controls_at(self, start: int, end: int, *, ancestors_only: bool = False) -> list[Any]:
         """The controls bound by ``w:dataBinding`` that ``[start, end]`` is in (core-ts ``boundControlsAt``).
 
         Those holding this paragraph, and the run-level ones holding text
         there, each once: the controls whose node a write through
-        :meth:`splice` writes (CR-019 section 4.7).
+        :meth:`splice` writes (CR-019 section 4.7). With `ancestors_only`
+        those holding the paragraph alone: a write at its end goes into no
+        run-level control (:meth:`_write_at_end`; core-ts ``09dc3d2``).
         """
         from docx4j_py.model.content.controls import control_view_of
 
@@ -304,7 +306,7 @@ class Paragraph:
                 break
             add(current)
             current = getattr(current, "parent", None)
-        if not _holds_bound_run_control(self.element):
+        if ancestors_only or not _holds_bound_run_control(self.element):
             return out
         for segment in self.segments(objects=True):
             if segment.end < start or segment.start > end:
@@ -1129,7 +1131,12 @@ class Paragraph:
         (:meth:`ContentControl.insert_text`'s write; CR-019 section 4.2). A
         ``"Replace"`` takes a run-level control showing its placeholder whole
         (CR-019 section 4.3, core-ts's D3; check 63 cases 19, 26, 45 and 52),
-        and, tracked, deletes an equation in Word's form.
+        and, tracked, deletes an equation in Word's form. **At ``"End"``** the
+        text goes after everything the paragraph holds, into none of it: after
+        a trailing run-level control, link, revision, field, bookmark or comment
+        marker, or text box, in the last run's look only where that is a run
+        holding text, so after a hidden run it is hidden (CR-019 Phase D,
+        core-ts's D12 and D13, checks 69 and 70; :meth:`_write_at_end`).
 
         Args:
             text: what to insert.
@@ -1168,9 +1175,13 @@ class Paragraph:
                 elif location == "Replace":
                     # the whole content: its hidden runs and pictures with it (core-ts's WHOLE)
                     out = self.splice(start, end, text, whole=True)
+                elif location == "End":
+                    # after everything the paragraph holds, into none of it, as Word 365 writes there
+                    # (CR-019 Phase D; core-ts's D12 to D14, checks 69 and 70)
+                    out = self._write_at_end(text)
                 else:
-                    # the paragraph's own edge: before its leading hidden runs, after its trailing ones
-                    out = self.splice(start, end, text, edge="start" if location == "Start" else "end")
+                    # the paragraph's own edge: before its leading hidden runs
+                    out = self.splice(start, end, text, edge="start")
                 change.touched(self)
                 change.text(before=before, after=self.text_since(index))
                 return out
@@ -1543,6 +1554,13 @@ class Paragraph:
         works on the text before it. Both hold the paragraph's whole content
         (:attr:`Range.whole`, core-ts's ``whole``; CR-013 Phase B).
         ``"After"`` is collapsed at the start of the paragraph after it.
+
+        Its ``"End"`` and ``"Content"`` ranges know they are this paragraph's
+        (:attr:`Range.end_of`, core-ts's ``atEndOf`` at ``09dc3d2``): text
+        the ``"End"`` range puts at any location, and the ``"Content"`` range
+        at ``"End"`` or ``"After"``, goes after everything the paragraph holds,
+        as Word 365 writes there (CR-019 Phase D, core-ts's D12 to D14;
+        :meth:`insert_text`).
         """
         from docx4j_py.model.content.range import Range
 
@@ -1550,10 +1568,15 @@ class Paragraph:
         if location == "Start":
             return Range(self, 0, 0)
         if location == "End":
-            return Range(self, length, length)
+            out = Range(self, length, length)
+            out.end_of = "End"
+            return out
         if location == "After":
             return Range(self, 0, length, mark=True).get_range("After")
-        return Range(self, 0, length, mark=location == "Whole", whole=True)
+        out = Range(self, 0, length, mark=location == "Whole", whole=True)
+        if location == "Content":
+            out.end_of = "Content"
+        return out
 
     def delete(self) -> None:
         """Remove the paragraph from its container.
@@ -1857,6 +1880,136 @@ class Paragraph:
             control.write_through()
         return out
 
+    def _write_at_end(self, text: str, *, plain: bool = False) -> Range:
+        """Text written at the paragraph's end by Office JS's routes there, as Word 365 writes it (CR-019 Phase D).
+
+        core-ts's ``writeAtEnd`` (``Paragraph.mts`` at ``09dc3d2``; its CR-002
+        sections 63.24 to 63.27, the user's D12 to D14, held to Word 365 by its
+        checks 69 and 70). The routes: :meth:`insert_text` at ``"End"``, this
+        paragraph's ``"End"`` range at any location and its ``"Content"``
+        range at ``"End"`` and ``"After"`` (:attr:`Range.end_of`), and through
+        them a body's and a cell's ``insert_text(..., "End")``.
+
+        * **D12:** after the paragraph's last item, into none of the items: not
+          a run-level content control (whatever it shows, its flag and its
+          prompt left as they were), a hyperlink, a ``w:ins`` or ``w:del``, a
+          field (complex or ``w:fldSimple``), a bookmark's or a comment's
+          markers, or a text box. Word's proofing marks, ``w:proofErr``, are no
+          item (core-ts's choice: Word redoes them).
+        * **D13:** the text takes the last item's run properties only where
+          that item is a ``w:r`` holding a ``w:t``, extending its last ``w:t``,
+          so after a hidden run it is hidden and the range returned reads
+          ``""``; otherwise it is a new run with none. Word's ``w:noProof``
+          after a text box (check 70, four routes) is left out, the decided
+          departure.
+        * **D14:** with `plain` (the ``"End"`` range's ``"After"``, and the
+          ``"Content"`` range's, unmeasured) a new run with none.
+
+        core-ts's choices, unmeasured: tracked, the text is a ``w:ins`` after
+        everything, or joins this author's own ``w:ins`` that ends the
+        paragraph, in its last run's look; a line break makes paragraphs, as
+        every writer through :meth:`splice` makes them (CR-013 section 11, E1),
+        and text so broken after a hidden run is written visible; a bound
+        block control holding the paragraph has its node written, a trailing
+        run-level control's not, since nothing went into it. In a block control
+        showing its placeholder the text takes the placeholder's place
+        (:meth:`ContentControl._write_placeholder`; CR-019 section 4.2), and in
+        a ``w:text`` control, or a bound block one Word reads as plain text, a
+        break is a ``w:br`` or nothing (:func:`~.controls.paragraph_lines_of`).
+
+        Raises:
+            SpanError: ``range.splits_field``, a text holding a paragraph break
+                at the end of a paragraph that ends inside a field's
+                instruction; nothing has changed.
+        """
+        from docx4j_py.model.content.controls import paragraph_lines_of
+        from docx4j_py.model.content.range import Range
+        from docx4j_py.model.content.reports import current_recorder
+        from docx4j_py.model.content.split import (
+            _refuse_field,
+            field_depths,
+            split_paragraph,
+        )
+        from docx4j_py.model.content.tracking import Revision, copy_r_pr
+
+        placeholder = self._placeholder_control
+        if placeholder is not None:
+            return placeholder._write_placeholder(text)
+        length = len(self.text)
+        text = drop_unwritable(text)
+        if not text:
+            return Range(self, length, length)
+        lines = paragraph_lines_of(self)
+        mode = {"multi": "multi-line", "single": "single-line"}.get(lines or "", "paragraphs")
+        text = for_writer(text, mode)
+        broken = PARAGRAPH_BREAKS.split(text) if mode == "paragraphs" and PARAGRAPH_BREAKS.search(text) else None
+        joined = "".join(broken) if broken is not None else text
+        if not joined and broken is None:
+            return Range(self, length, length)
+        verb = getattr(current_recorder(getattr(self.parent_body, "package", None)), "operation", None) or "this edit"
+        if broken is not None and field_depths(self.element).closing:
+            # the text would stand in a field's instruction, which a break can't cut (CR-013 section 13.7, D1)
+            _refuse_field(verb)
+        bound = self._bound_controls_at(length, length, ancestors_only=True)
+        content = self.element.content
+        at = len(content)
+        while at > 0 and element_name(content[at - 1]) == _W_PROOF_ERR:
+            at -= 1
+        last = content[at - 1] if at > 0 else None
+        hidden = self.hidden_runs()
+        # the run whose look the text takes, and which it extends: the last item, where it is a run holding text
+        source = None if plain else _text_run_of(last)
+        if source is not None and broken is not None and hidden(source):
+            source = None
+        items = text_items(joined)
+        tracker = self.change_tracker
+        own = (
+            tracker is not None
+            and last is not None
+            and element_name(last) == _W_INS
+            and tracker.own_insertion(
+                Revision(kind="ins", element=last, owner=content, items=run_items_of(last) or [], parent=self.element)
+            )
+        )
+        written: Any = None
+        if not items:
+            pass  # nothing but line breaks: only the paragraphs they make
+        elif own:
+            # this author's own insertion ends the paragraph: the text joins it, after its last run, in that run's look
+            holder = run_items_of(last)
+            inner = None if plain or not holder else _text_run_of(holder[-1])
+            if inner is not None and broken is not None and hidden(inner):
+                inner = None
+            written = _append_at_end(holder, inner, items, last)
+        elif tracker is not None:
+            written = _run_items(items, copy_r_pr(getattr(source, "r_pr", None)))
+            wrapper = tracker.ins([written])
+            content.insert(at, wrapper)
+            wrapper.parent = self.element
+        else:
+            written = _append_at_end(content, source, items, self.element, at)
+        for control in bound:
+            control.write_through()
+        if broken is not None:
+            # each break a split after its piece, as _splice_paragraphs makes them (E1); the range across the paragraphs
+            container = self.container
+            index = _index_of(container, self.element)
+            edge = length + len(joined)
+            position = length
+            consumed = 0
+            for piece in broken[:-1]:
+                position += len(piece)
+                keep = "tail" if joined and position == edge else "head"
+                split_paragraph(self, position - consumed, keep=keep, operation=verb)
+                consumed = position
+            if 0 <= index < len(container) and container[index] is not self.element:
+                first = Paragraph(container[index], container, self.parent_body)
+                return Range(first, length, len(broken[-1]), end_paragraph=self)
+            return Range(self, 0, len(broken[-1]))
+        if written is not None and hidden(written):
+            return Range(self, length, length)
+        return Range(self, length, length + len(joined))
+
     def _splice_write(
         self,
         start: int,
@@ -2062,10 +2215,14 @@ class Paragraph:
         """:meth:`splice` of a text the paragraph breaks have been taken out of.
 
         `edge` ``"start"`` or ``"end"`` is the paragraph's own edge (its
-        ``insert_text`` at ``"Start"`` or ``"End"``): text put there goes before
-        the hidden runs at the start, or after those at the end, not into them
-        (CR-013 section 11, the review's item 1). A drawn object in the span goes
-        with it, as a hidden run does (core-ts CR-002 section 48).
+        ``insert_text`` at ``"Start"``, a range's write at the paragraph's start
+        or end): text put there goes before the hidden runs at the start, or
+        after those at the end, not into them (CR-013 section 11, the review's
+        item 1). Its ``insert_text`` at ``"End"``, and its own ``"End"`` and
+        ``"Content"`` ranges there, write as Word does instead, after everything
+        the paragraph holds (CR-019 Phase D; :meth:`_write_at_end`). A drawn
+        object in the span goes with it, as a hidden run does (core-ts CR-002
+        section 48).
         """
         from docx4j_py.model.content.range import Range
 
@@ -2279,7 +2436,11 @@ class Paragraph:
         paragraph with no visible text an insertion goes at the end. The new run
         takes the look of the visible text beside it, or none, never a hidden
         run's. Beside a revision the run goes beside the revision, as typed text
-        does. Returns whether it placed the text.
+        does. Returns whether it placed the text. Since CR-019 Phase D the
+        paragraph's own routes to its end don't come here: after a trailing
+        hidden run they write in its look, hidden, as Word 365 does
+        (:meth:`_write_at_end`, core-ts's D13); a range's write at the end that
+        is no such route (a ``"Whole"`` range's, a search hit's) still does.
         """
         from docx4j_py.model.content.tracking import copy_r_pr, revision_of
 
@@ -2891,6 +3052,9 @@ def _edges_of(whole: bool | tuple[bool, bool], start: int, end: int, length: int
 
 #: A comment's reference, ``w:commentReference``.
 _W_COMMENT_REFERENCE = f"{{{WML_NS}}}commentReference"
+_W_T = f"{{{WML_NS}}}t"
+_W_INS = f"{{{WML_NS}}}ins"
+_W_PROOF_ERR = f"{{{WML_NS}}}proofErr"
 
 
 def _run_order(element: Any) -> dict[int, int]:
@@ -2957,6 +3121,35 @@ def _run_items(items: list, r_pr: Any = None) -> R:
         run.r_pr = r_pr
     link_parents(run)
     return run
+
+
+def _text_run_of(item: Any) -> Any:
+    """`item` where it is a ``w:r`` holding a ``w:t``, else None: what a write at a paragraph's end takes the look of (D13)."""
+    if not isinstance(item, R):
+        return None
+    return item if any(element_name(child) == _W_T for child in item.content or ()) else None
+
+
+def _append_at_end(owner: list, run: Any, items: list, parent: Any, at: int | None = None) -> R:
+    """`items` put at `at` in `owner` (its end by default), as core-ts's ``appendTo`` (``09dc3d2``) puts them.
+
+    Onto the end of `run`, which stands in `owner` just before `at`, its last
+    ``w:t`` extended where the text begins with one; or, where `run` is None,
+    as a new run with no properties. Returns the run written.
+    """
+    if run is not None:
+        own = run.content
+        tail = own[-1] if own else None
+        if tail is not None and items and element_name(tail) == _W_T and element_name(items[0]) == _W_T:
+            set_text(tail, (tail.value or "") + (items[0].value or ""))
+            items = items[1:]
+        own.extend(items)
+        link_parents(run)
+        return run
+    added = _run_items(items)
+    owner.insert(len(owner) if at is None else at, added)
+    added.parent = parent
+    return added
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
