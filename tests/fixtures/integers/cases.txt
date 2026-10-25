@@ -1,0 +1,65 @@
+A	A01 w:spacing/@w:before="120.5"
+A	A02 w:spacing/@w:before="120.4"
+A	A03 w:spacing/@w:before="121.5"
+A	A04 w:spacing/@w:before="122.5"
+A	A05 w:spacing/@w:before="240.0"
+A	A06 w:spacing/@w:before="141.99999999999994"
+A	A07 w:spacing/@w:before="240."
+A	A08 w:spacing/@w:before=".5"
+A	A09 w:spacing/@w:before="+240"
+A	A10 w:spacing/@w:before="+240.5"
+A	A11 w:spacing/@w:before=" 240.5 "
+A	A12 w:spacing/@w:before="240,5"
+A	A13 w:spacing/@w:before="0x10"
+A	A14 w:spacing/@w:before="1.5e2"
+A	A15 w:spacing/@w:before="2.5e0"
+A	A16 w:spacing/@w:before="1e3"
+A	A17 w:spacing/@w:before=""
+A	A18 w:spacing/@w:before="abc"
+A	A19 w:spacing/@w:before=" 240 "
+B	B20 w:ind/@w:left="720.5"
+B	B21 w:ind/@w:left="720.4"
+B	B22 w:ind/@w:left="721.5"
+B	B23 w:ind/@w:left="-120.5"
+B	B24 w:ind/@w:left="-121.5"
+B	B25 w:ind/@w:left="-0.5"
+B	B26 w:ind/@w:left="-1.5"
+B	B27 w:ind/@w:left="10206.0"
+C	C28 w:spacing/@w:after="141.5" (listed)
+C	C29 w:spacing/@w:after="120.5" (listed)
+C	C30 w:spacing/@w:line="259.2" lineRule=auto (listed; 240ths)
+C	C31 w:spacing/@w:line="240.5" lineRule=auto (listed; 240ths)
+C	C32 w:spacing/@w:line="241.5" lineRule=auto (listed; 240ths)
+C	C33 w:ind/@w:hanging="141.99999999999994" (listed)
+C	C34 w:ind/@w:firstLine="12.5" (listed)
+D	D35 w:pBdr/w:top/@w:sz="7.5"
+D	D36 w:pBdr/w:top/@w:space="1.8" (listed)
+D	D37 w:pBdr/w:bottom/@w:space="7.2" (listed)
+D	D38 w:pBdr/w:between/@w:space="1.8" (not listed)
+E	E39 w:tab/@w:pos="1440.5"
+E	E40 w:tab/@w:pos="720.5"
+F	F41 w:rPr/w:sz/@w:val="22.5" (half-points)
+F	F42 w:rPr/w:w/@w:val="90.5" (text scale, percent)
+F	F43 w:rPr/w:spacing/@w:val="20.5" (signed twips)
+F	F44 w:rPr/w:position/@w:val="6.5" (signed half-points)
+G	G45 w:tblW/@w:w="9000.5" type=dxa (listed)
+G	G46 w:tblW/@w:w="9001.5" type=dxa (listed)
+G	G47 w:tblW/@w:w="10206.0" type=dxa (listed)
+G	G48 w:tblW/@w:w="100.5" type=dxa (listed)
+G	G49 w:tblInd/@w:w="10.5" type=dxa (listed)
+G	G50 w:gridCol/@w:w="4500.5" and "5705.5" (listed)
+G	G51 w:gridCol/@w:w="1234.5" (listed)
+G	G52 w:trHeight/@w:val="400.7" (listed)
+G	G53 w:trHeight/@w:val="300.4" (listed)
+G	G54 w:tcW/@w:w="50.5" type=pct (not listed)
+G	G55 w:tblW/@w:w="50.5" type=pct (not listed)
+H	H56 w:pgSz w:w="11907.0" w:h="16839.0" (Google Docs 2015; listed)
+H	H57 w:pgSz w:w="11907.5" w:h="16838.5" (listed)
+H	H58 w:pgMar/@w:top="1133.5" (not listed)
+H	H59 w:pgMar/@w:top="1440.5" (not listed)
+H	H60 SSRS 2012: sectPr rsid*="" and pgMar header="" footer="" gutter=""
+H	H61 w:pgMar/@w:top="" alone (docx4j: Zero length BigInteger)
+I	I62 paragraph in style ProbeStyle, whose w:ind/@w:left="720.5" is in styles.xml
+I	I63 settings.xml w:defaultTabStop/@w:val="720.5" (this paragraph: TAB	TAB	TAB)
+I	I64 header.xml: the header's paragraph has w:spacing/@w:before="120.5"
+Z	Z65 control: w:spacing/@w:before="120" (integer)
