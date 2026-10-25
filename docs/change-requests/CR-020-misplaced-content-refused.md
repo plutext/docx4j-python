@@ -1,6 +1,6 @@
 # CR-020: Content refused where it does not belong --- a check on every typed list as code adds to it, derived from the model, and a validator for what gets past
 
-**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Nothing has started.** Three phases (section 6), 2 to 3 days. Nine questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Nothing has started.** Three phases (section 6), 2 to 3 days.
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
@@ -217,7 +217,9 @@ Every generated namespace: all 509 checkable pairs, not only WordprocessingML (Q
 - **Code that built invalid trees on purpose breaks.** `unchecked()` is the way out, and the CHANGELOG says so.
 - **The first check of each (class, field) builds its table.** It's lazy, so a program pays only for the lists it touches.
 
-## 8. Questions
+## 8. Questions (decided 2026-10-26)
+
+The user, 2026-10-26: "CR-020 Q1 to Q9 answered as recommended". So the check allows what the model allows (by class, or by element name and shape) and raises from the first release, the parse is unchecked through the `class_factory` (subject to Phase A's measurement), single-field and whole-list assignment are the validator's, the validator is `misplaced(root)` and `package.misplaced()` with `save(check=False)` by default and on in the test suite, the code is `target.misplaced`, every namespace is covered, the messages are hand-written for the common cases and derived for the rest, and the approach goes to docx4j through the portfolio after Phase A.
 
 | Q | Question | Recommendation |
 |---|---|---|

@@ -97,8 +97,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   complete. **0.2.0 released 2026-10-25** (tag `v0.2.0` on `9e153b3`): PyPI's wheel is byte for byte the one
   `release_check.sh` built at `21a60d9`, whose artefacts were Word-checked (`tests/README.md`).
 - **CR-020** (content refused where it does not belong: a check on every typed list as code adds to it, derived from the
-  model, with the parse unchecked, and a validator walk, which also reports an out-of-range measurement): proposed
-  2026-10-26; nine questions open.
+  model, with the parse unchecked, and a validator walk, which also reports an out-of-range measurement): decided
+  2026-10-26 (Q1 to Q9 as recommended); nothing started.
 - **CR-021** (integer attributes read as Word reads them, docx4j CR-065's rule: a decimal truncated toward zero, the
   empty string 0, any other form refused; one `values.integer`, the normaliser's integer rows, the fork's `int` made exact):
   decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately); nothing started.
