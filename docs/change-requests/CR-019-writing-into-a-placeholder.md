@@ -810,3 +810,81 @@ None is expected to prompt a repair: each file opens strictly here, and checks 6
 | the Word check's build | every assertion of 13.2 |
 
 Records only, so the round trip, `generate.sh --check` and `compare_word_resolution.py` are Phase B's (section 12.8); the acceptance run is the build's (13.2).
+
+## 14. The Word check's run, and a reshuffle Word made (2026-10-25)
+
+### 14.1 The run: passed
+
+The user ran `__tmp/python-cr019/` (section 13.2) in Word 365 with Design Mode off: "CR-019 everything opened cleanly and
+displayed as described." Every file opened without a repair prompt, and every region showed what `README.txt` describes.
+That covers this package's saves after its runs of checks 63 to 68, artefact 9, and Part 2's three looks at
+`cr019-placeholders-written.docx` (as opened, its save reopened, and its second save reopened). The run record is in
+`tests/README.md`.
+
+The user's two saves (`cr019-placeholders-written-word365-1.docx` and `-2.docx`, SHA-1s `8b963006…` and `e62ef677…`), read here:
+- **Every placeholder Word kept grey and as written** through both saves: A, B's date picker and list, C, D, E and G. F's
+  "Filled" stays bold, D11's look.
+- **The typed values reached their nodes:** Word's second save holds `<d>TYPED-D</d><e>TYPED-E</e>`. D and E show the values
+  with their flags cleared, the bare form's E as much as Word's form's D.
+- **Not every reference was kept,** which section 13.2 asked of the markup. On the first save, with nothing typed, Word moved
+  six of the eight controls (A, B1, B2, D, E and G) onto new entries named with 32 hex digits, holding the same text.
+  - It dropped the `-1854013437` and `-1854013438` entries.
+  - Each new entry's paragraph names a paragraph style of the entry's own name, which Word added to the glossary's styles,
+    holding the main document's `w:docDefaults` where they differ from Word's own. C's own entry kept its name but gained
+    such a style.
+  - F, which names the default entry but holds content, kept its reference.
+
+  Nothing visible changed. core-ts saw the same in check 65's 65b, reopened.
+
+### 14.2 The cause: not yet known
+
+**A first explanation was wrong and is withdrawn.** It said the glossary's styles part, which has no `w:docDefaults`, made Word
+read the entries against its own defaults, and that check 66a and docx4j's 65c had no main `w:docDefaults`. They have the same
+main `w:docDefaults` as this file. The coordinator's single-line `grep -o` missed them in those files' pretty-printed XML, and
+core-ts and docx4j-25 pointed it out. A fix built on it was discarded, never committed, and the user's decision on it
+("Fix now; Word-check with D") went with it.
+
+What is known, comparing this file with check 66a (Word kept its four references through every save) and docx4j's 65c (every
+reference kept through three saves):
+- **The same in all three:**
+  - the main document's `w:docDefaults`;
+  - the glossary styles part's two styles, with no `w:docDefaults`;
+  - what Word wrote into the glossary's styles on save;
+  - `compatibilityMode` 15.
+- **The controls' markup isn't it:** D, bound and in Word's form, has the markup of check 66a's `c66-2`, ids and alias aside.
+  Word moved D and kept `c66-2`. So the cause looks document-wide.
+- **Not, alone:**
+  - new default-entry GUIDs: 65c has them too;
+  - the glossary root's namespace declarations: 66a's declares `w` alone, as this file's does;
+  - Placeholder Text in the main styles: 66a has it.
+- **Left:**
+  - the drop-down list, written with no list items, where Word's own has one;
+  - the date picker, though 65c has one too;
+  - four entries, against 66a's one and 65c's three;
+  - Word's GUID, which 66a's default entry carries and this file's doesn't;
+  - one compatibility setting, `useWord2013TrackBottomHyphenation`, 0 here and 1 in 66a;
+  - the application name in `docProps/app.xml`, and dates.
+
+### 14.3 The bisect (the user, 2026-10-25: "Bisect now, alone")
+
+`out/cr019-bisect/build.py` builds six variants by editing the staged file's parts directly, each differing from it in one thing,
+every other part byte for byte the original's. They are staged in `__tmp/python-cr019-bisect/` with `README.txt` and `SHA1SUMS`:
+
+| file | the one change |
+|---|---|
+| `bisect-0-as-staged.docx` | none: the staged file, byte for byte (SHA-1 `8f73462b…`), the control |
+| `bisect-1-no-dropdown.docx` | B's drop-down list and its entry removed |
+| `bisect-2-no-date-no-list.docx` | B's date picker and drop-down list and their entries removed |
+| `bisect-3-only-control-A.docx` | only control A and its one entry |
+| `bisect-4-words-guid.docx` | the default text entry carries Word's GUID, `{7D21F9BC-12A3-463E-B08F-7DD4FFC77A03}` (core-ts's suggestion) |
+| `bisect-5-66a-settings.docx` | `useWord2013TrackBottomHyphenation` 1, as check 66a has it |
+
+Each is opened and saved once, nothing typed, and the saves are read here for which kept their references. Every variant loads
+strictly here. No code changes until a cause is found.
+
+### 14.4 Also decided
+
+- **0.2.0 waits for core-ts's check 70 too** (the user, 2026-10-25: "Wait for 70"). It covers a paragraph's `"End"` before a
+  trailing bookmark, comment marker, tracked change, field or text box, and D13's run-property cases. Phase D ports checks 69
+  and 70 together.
+

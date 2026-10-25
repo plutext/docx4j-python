@@ -619,6 +619,16 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > core-ts's CR-002 section 63 and its port (the user, 2026-10-25; CR-016 section 13.5), so the
 > release's own wheel and Word check come after the port.
 
+> **2026-10-25, CR-019 (the files built at `65959f6`, `__tmp/python-cr019/`): passed** (the user: "CR-019
+> everything opened cleanly and displayed as described"). This package's saves after its runs of
+> core-ts's checks 63 to 68 and acceptance artefact 9 opened without a repair prompt, every region
+> as `README.txt` describes; `cr019-placeholders-written.docx` kept every prompt grey and F's
+> "Filled" bold through two Word saves, and the values typed into D and E reached their nodes
+> (`<d>TYPED-D</d><e>TYPED-E</e>`). Not asked of the user, found in the saves' markup: on the
+> first save Word moved six of the eight controls (A, B1, B2, D, E, G) onto entries of its own
+> holding the same text, which check 66a and docx4j's 65c did not; cause not yet known (CR-019
+> section 14), a bisect staged in `__tmp/python-cr019-bisect/`.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
