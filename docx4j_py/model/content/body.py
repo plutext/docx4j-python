@@ -1628,6 +1628,12 @@ def body_of(target: Any) -> Body:
             hint="body is on the document, header, footer, footnotes, endnotes and comments parts",
         )
     package = getattr(target, "package", None)
+    if package is not None:
+        # a control's placeholder_text reads the glossary's entries, read privately when a body is first read, as
+        # core-ts's getBody reads them (CR-019 section 4.9); again only where the glossary part is another
+        from docx4j_py.model.content.placeholders import load_glossary_entries
+
+        load_glossary_entries(package)
     return Body(target, container, prefix_for_part(target), package)
 
 

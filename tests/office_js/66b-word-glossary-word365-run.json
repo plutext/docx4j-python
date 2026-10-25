@@ -1,0 +1,158 @@
+{
+ "check": 66,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "title": "Check 66b: controls naming the default placeholder entry, with Word's glossary of six parts.",
+ "cases": [
+  {
+   "n": 1,
+   "op": "open",
+   "shape": "block",
+   "mode": "untracked",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 open block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 66 control 1\"/><w:tag w:val=\"c66-1\"/><w:id w:val=\"66001\"/><w:placeholder><w:docPart w:val=\"742A6BFB2D334DF9AEB1E9B2720F02BE\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 2,
+   "op": "type",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 type block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 66 control 2\"/><w:tag w:val=\"c66-2\"/><w:id w:val=\"66002\"/><w:placeholder><w:docPart w:val=\"115D6871772D478D87BAD3BD06097406\"/></w:placeholder><w:showingPlcHdr/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check66'\" w:xpath=\"/ns0:check66[1]/ns0:value2[1]\" w:storeItemID=\"{66666666-6666-4666-8666-666666666666}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 3,
+   "op": "content-delete",
+   "shape": "block-value",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 content-delete block-value untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 66 control 3\"/><w:tag w:val=\"c66-3\"/><w:id w:val=\"66003\"/><w:placeholder><w:docPart w:val=\"A48EBFE2A4624ADD9B55F5B4A34D2B47\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 4,
+   "op": "make",
+   "shape": "made-block",
+   "mode": "untracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 make made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c66-4\"/><w:id w:val=\"-1577280909\"/><w:placeholder><w:docPart w:val=\"8BDD05F889DD43FB9F71DCD5392A7914\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 make made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c66-4\"/><w:id w:val=\"-1577280909\"/><w:placeholder><w:docPart w:val=\"0997C8AE3DE84E868F993F6A2CDDF610\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 5,
+   "op": "set-placeholder-text",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "placeholderText": "Enter the name 5."
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 set-placeholder-text block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 66 control 5\"/><w:tag w:val=\"c66-5\"/><w:id w:val=\"66005\"/><w:placeholder><w:docPart w:val=\"3A789F5AB7BE48DCB2410D407CA23702\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Enter the name 5.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Enter the name 5.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 6,
+   "op": "type",
+   "shape": "bare-bound",
+   "mode": "untracked",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 type bare-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 66 control 6\"/><w:tag w:val=\"c66-6\"/><w:id w:val=\"66006\"/><w:showingPlcHdr/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check66'\" w:xpath=\"/ns0:check66[1]/ns0:value6[1]\" w:storeItemID=\"{66666666-6666-4666-8666-666666666666}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  }
+ ],
+ "caseCount": 6
+}

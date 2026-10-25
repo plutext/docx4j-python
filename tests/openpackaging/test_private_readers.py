@@ -37,6 +37,10 @@ reached over the documents.
   properties parts and the settings; ``model/fields/formatting.py``,
   ``_decimal_symbol``: the settings (all three ``fields: update``). The text
   model.
+- ``model/content/placeholders.py``, ``GlossaryEntries.load``: the glossary
+  document, read when a body is first read; ``has_placeholder_styles``: a
+  styles part, the glossary's before a save completes it (CR-019 Phase B).
+  The placeholders, and every reader that reads a body.
 
 The numbering emulator reads ``/word/numbering.xml`` and the styles' numbering
 with lxml from ``get_xml()``, and ``describe()`` reads every part with lxml
@@ -359,6 +363,21 @@ def read_describe(pkg: Any) -> None:
     pkg.describe()
 
 
+def read_placeholders(pkg: Any) -> None:
+    """Every control's placeholder, read from the glossary (CR-019 Phase B), and the placeholder styles' check."""
+    from docx4j_py.model.content.placeholders import has_placeholder_styles
+
+    for body in pkg.bodies():
+        for control in body.content_controls:
+            control.placeholder_text  # noqa: B018 - read for its effect
+            control.shows_words_form_placeholder  # noqa: B018
+    main = pkg.main_document_part
+    glossary = main.glossary_document_part
+    for part in (main.style_definitions_part, getattr(glossary, "style_definitions_part", None)):
+        if part is not None:
+            has_placeholder_styles(part)
+
+
 READERS: dict[str, Callable[[Any], None]] = {
     "resolver": read_resolver,
     "numbering": read_numbering,
@@ -369,6 +388,7 @@ READERS: dict[str, Callable[[Any], None]] = {
     "markdown": read_markdown,
     "outline": read_outline,
     "describe": read_describe,
+    "placeholders": read_placeholders,
 }
 
 
@@ -523,6 +543,8 @@ CALLERS: frozenset[str] = frozenset(
         "model/text/field_values.py::FieldValues._keywords",
         "model/fields/resolvers.py::_contents",
         "model/fields/formatting.py::_decimal_symbol",
+        "model/content/placeholders.py::GlossaryEntries.load",
+        "model/content/placeholders.py::has_placeholder_styles",
     }
 )
 

@@ -13,6 +13,7 @@ not only of the value through the view that wrote it (CR-003 section 16.11).
 from __future__ import annotations
 
 import datetime
+import re
 
 import pytest
 from conftest import reloaded, sample
@@ -175,31 +176,39 @@ def test_an_unknown_appearance_is_refused(new_package):
     assert control.color == ""
 
 
-def test_placeholder_text_is_written_and_refused_over_content(new_package):
+def test_placeholder_text_names_a_glossary_entry_and_a_control_holding_content_keeps_it(new_package):
+    """CR-019 section 4.8 (D8, Q2; core-ts's customxml.test.mjs at ``aefc41f``).
+
+    A control made around an empty paragraph shows Word's default entry; the
+    setter names an entry of its own (32 upper-case hex digits), and a control
+    holding content keeps it, only its reference changing. Until CR-019 Phase B
+    the setter refused over content (``binding.holds_content``) and the read
+    was the runs'.
+    """
     body = new_package.body
     empty = body.insert_paragraph("").insert_content_control("PlainText")
     full = body.insert_paragraph("Ada Lovelace").insert_content_control("PlainText")
 
-    assert empty.placeholder_text == ""
+    assert empty.placeholder_text == "Click or tap here to enter text."
+    assert empty.placeholder_entry == "DefaultPlaceholder_-1854013440"
     empty.placeholder_text = "Your name"
 
     assert empty.is_showing_placeholder is True
     assert empty.placeholder_text == "Your name"
+    assert re.fullmatch(r"[0-9A-F]{32}", empty.placeholder_entry)
     xml = empty.get_xml()
     assert "<w:showingPlcHdr/>" in xml
     assert '<w:rStyle w:val="PlaceholderText"/>' in xml
     assert "Your name" in xml
 
-    with pytest.raises(BindingError) as error:
-        full.placeholder_text = "Your name"
-    assert error.value.code == "binding.holds_content"
-    assert "Ada Lovelace" in error.value.message
-    assert full.text == "Ada Lovelace"
+    full.placeholder_text = "Your name"
+    assert (full.text, full.is_showing_placeholder, full.placeholder_text) == ("Ada Lovelace", False, "Your name")
 
     saved = reloaded(new_package)
-    again = saved.body.content_controls[0]
+    again, kept = saved.body.content_controls
     assert again.is_showing_placeholder is True
     assert again.placeholder_text == "Your name"
+    assert (kept.text, kept.placeholder_text) == ("Ada Lovelace", "Your name")
 
 
 def test_showing_placeholder_text_is_office_js_s_name_for_the_flag(new_package):
@@ -208,17 +217,18 @@ def test_showing_placeholder_text_is_office_js_s_name_for_the_flag(new_package):
     empty = body.insert_paragraph("").insert_content_control("PlainText")
     full = body.insert_paragraph("Ada Lovelace").insert_content_control("PlainText")
 
-    assert empty.showing_placeholder_text is False
+    # a control made around an empty paragraph shows Word's default placeholder (CR-019 section 4.8)
+    assert empty.showing_placeholder_text is True
     empty.placeholder_text = "Your name"
     assert empty.showing_placeholder_text is True
     assert full.showing_placeholder_text is False
     assert reloaded(new_package).body.content_controls[0].showing_placeholder_text is True
 
-    # an on/off property: w:val="0" turns it off, as core-ts reads it
+    # an on/off property: w:val="0" turns it off, as core-ts reads it; placeholder_text reads the entry all the same
     sdt_property(empty.sdt_pr, "showingPlcHdr").val = False
     assert empty.showing_placeholder_text is False
     assert empty.is_showing_placeholder is False
-    assert empty.placeholder_text == ""
+    assert empty.placeholder_text == "Your name"
 
 
 # ---------------------------------------------------------------------------

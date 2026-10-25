@@ -479,3 +479,43 @@ def test_a_relationships_part_has_no_relationships_part_of_its_own():
         rels = pkg.relationships_part
         assert isinstance(rels, RelationshipsPart)
         assert rels.get_relationships_part(True) is None
+
+
+# ---------------------------------------------------------------------------
+# the save's hooks (CR-019 section 4.9)
+# ---------------------------------------------------------------------------
+
+
+def test_a_saves_hooks_run_in_order_before_anything_is_written_and_last_save_lists_the_parts_they_added():
+    """What the content API keeps for the save reaches the package through ``save_hooks``; this layer imports nothing."""
+    from docx4j_py.openpackaging import create_package
+    from docx4j_py.openpackaging.parts.wml import GlossaryDocumentPart
+
+    package = create_package()
+    seen: list[str] = []
+
+    def first(pkg: OpcPackage) -> list[str]:
+        seen.append("first")
+        assert pkg is package
+        part = GlossaryDocumentPart()
+        part.set_bytes(
+            b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            b'<w:glossaryDocument xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>'
+        )
+        pkg.main_document_part.add_target_part(part)
+        return [str(part.part_name)]
+
+    def second(pkg: OpcPackage) -> None:
+        seen.append("second")
+
+    package.save_hooks.extend([first, second])
+    data = package.save()
+    assert seen == ["first", "second"]
+    assert package.last_save.added == ["/word/glossary/document.xml"]
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        assert "word/glossary/document.xml" in archive.namelist()
+        assert "/word/glossary/document.xml" in archive.read("[Content_Types].xml").decode()
+    # a hook runs on every save; a package with none adds nothing
+    package.save_hooks.clear()
+    package.save()
+    assert package.last_save.added == []

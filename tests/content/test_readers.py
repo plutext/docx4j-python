@@ -159,10 +159,12 @@ def _listing(reads: Any) -> Any:
 
 
 def _placeholder(reads: dict) -> dict:
-    """placeholderText reads the shown runs here, where Word, with no glossary part, reads null (CR-016 Q6); and Word's
-    showingPlaceholderText came back undefined, which JSON leaves out."""
-    control = reads["control"]
-    return {"control": {k: v for k, v in control.items() if k != "placeholderText"} if isinstance(control, dict) else control}
+    """The control's reads; Word's showingPlaceholderText came back undefined, which JSON leaves out.
+
+    placeholderText reads null, as Word's, with no glossary part (CR-019 section 4.8, Q2; core-ts's readers.test.mjs
+    at ``020c039``); until CR-019 Phase B it read the shown runs (CR-016 Q6) and was left out here.
+    """
+    return {"control": reads["control"]}
 
 
 def _read_view(case: dict) -> Any:
@@ -224,13 +226,14 @@ def test_check_58s_snippet_through_the_port_held_to_word_365s_simple_markup_run_
     assert reads(13)["[!a-z ]"] == [["\\ud83d\\ude00", "\\ud83d\\ude00", "\\u000d"]]
     assert reads(13)["[!a-z ]@"] == [["\\ud83d\\ude00", "\\ud83d\\ude00", "\\u0643\\u064e\\u062a\\u064e\\u0628\\u064e", "\\u000d"]]
     assert measured_13["[!a-z ]"] == measured_13["[!a-z ]@"] == [["\\u000d"]]
-    # the deleted marks (6 to 10) are Word's, every read; the placeholder (11) every read but placeholderText,
-    # which reads the runs here (Q6), and showingPlaceholderText, which Word gave undefined
+    # the deleted marks (6 to 10) are Word's, every read; the placeholder (11) every read, placeholderText null as
+    # Word's (CR-019 Q2; it read the runs until Phase B), but showingPlaceholderText, which Word gave undefined
     for n in (6, 7, 8, 9, 10):
         assert reads(n) == theirs["read"]["cases"][n - 1]["reads"], n
     assert reads(7)["range"]["text"] == "TWO7ATWO7B"
     assert reads(9)["cell"]["whole"] == "CELL9A\\u0009"
-    assert reads(11)["control"] == {**theirs["read"]["cases"][10]["reads"]["control"], "placeholderText": "Click or tap here to enter text."}
+    assert reads(11)["control"] == theirs["read"]["cases"][10]["reads"]["control"]
+    assert reads(11)["control"]["placeholderText"] is None
     assert reads(11)["showingPlaceholderText"] is True and "showingPlaceholderText" not in theirs["read"]["cases"][10]["reads"]
 
 
@@ -442,7 +445,8 @@ def test_cr_012_section_18_a_control_showing_its_placeholder_reads_as_no_text_is
     body = package.body
     block, run = body.content_controls
     assert [block.text, run.text, body.paragraphs[1].text] == ["", "", "A  B"]
-    assert [block.placeholder_text, run.placeholder_text] == ["Click here.", "Click here."], "read from the runs (Word: null, from the glossary)"
+    # null, as Word reads a control naming no glossary entry (CR-019 section 4.8, Q2; until Phase B the runs were read)
+    assert [block.placeholder_text, run.placeholder_text] == [None, None]
     assert len(body.search("Click")) == 0, "K3: no text to search"
     assert body.text == "\rA  B"
     # text goes in the placeholder's place, at 'End' as at 'Replace'; the control shows it, not the placeholder style
@@ -466,7 +470,8 @@ def test_every_location_writes_in_the_placeholders_place_the_flag_cleared_the_st
     control = package.body.content_controls[0]
     returned = control.insert_text("VALUE", location=location)
     assert returned.text == "VALUE"
-    assert (control.text, control.is_showing_placeholder, control.placeholder_text) == ("VALUE", False, "")
+    # the bare form names no entry, so placeholder_text reads None (CR-019 Q2; "" until Phase B)
+    assert (control.text, control.is_showing_placeholder, control.placeholder_text) == ("VALUE", False, None)
     xml = to_xml(control.element)
     assert "showingPlcHdr" not in xml and "PlaceholderText" not in xml and "Click here." not in xml
     if form == "run":
@@ -482,8 +487,10 @@ def test_a_refused_write_leaves_the_control_showing_its_placeholder():
     with pytest.raises(SpanError) as raised:
         run.insert_text("one\ntwo", location="End")
     assert raised.value.code == "range.splits_control"
-    assert run.is_showing_placeholder and run.placeholder_text == "Click here."
-    assert "PlaceholderText" in to_xml(run.element)
+    # still showing its placeholder, its runs untouched; placeholder_text reads None, the bare form naming no entry
+    # (CR-019 Q2; until Phase B it read the runs)
+    assert run.is_showing_placeholder and run.placeholder_text is None
+    assert "PlaceholderText" in to_xml(run.element) and "Click here." in to_xml(run.element)
 
 
 def test_a_bound_control_showing_its_placeholder_written_into_holds_a_value_its_node_takes_cr_016_section_2_4():
@@ -508,7 +515,9 @@ def test_a_bound_control_showing_its_placeholder_written_into_holds_a_value_its_
     assert again.body.content_controls[0].text == "VALUE"
 
 
-def test_apply_bindings_writes_docx4js_placeholder_for_an_empty_value_which_reads_as_no_text():
+def test_apply_bindings_shows_words_default_placeholder_for_an_empty_value_in_a_text_control_which_reads_as_no_text():
+    # CR-019 section 4.8 (Q3; core-ts aefc41f): Word's form, the default entry named and shown, where docx4j's binder
+    # writes its own run, "Click here to enter text.", in the bare form (until Phase B, here too)
     package = create_package()
     package.body.insert_xml(
         '<w:p><w:sdt><w:sdtPr><w:id w:val="6"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>old</w:t></w:r></w:sdtContent></w:sdt></w:p>',
@@ -520,7 +529,10 @@ def test_apply_bindings_writes_docx4js_placeholder_for_an_empty_value_which_read
     package.custom_xml_parts.apply_bindings()
     assert control.is_showing_placeholder
     assert control.text == ""
-    assert control.placeholder_text == "Click here to enter text."
+    assert control.placeholder_entry == "DefaultPlaceholder_-1854013440"
+    assert control.placeholder_text == "Click or tap here to enter text."
+    again = reloaded(package).body.content_controls[0]
+    assert (again.placeholder_entry, again.placeholder_text) == ("DefaultPlaceholder_-1854013440", "Click or tap here to enter text.")
 
 
 def test_the_text_model_reads_a_placeholder_as_text_and_its_runs_have_no_office_offset():

@@ -137,10 +137,14 @@ class SaveReport:
     Attributes:
         normalise: whether the normal form was written (``save(normalise=)``).
         normalised: each value written in it, in part and document order.
+        added: the names of the parts the save's hooks added
+            (:func:`~docx4j_py.openpackaging.save.run_save_hooks`; CR-019
+            section 4.9: a glossary a placeholder needed), in the order added.
     """
 
     normalise: bool = True
     normalised: list[Normalised] = dataclasses.field(default_factory=list)
+    added: list[str] = dataclasses.field(default_factory=list)
 
     def by_part(self, order: list[str]) -> None:
         """Put :attr:`normalised` in the order the save wrote the parts, each part's rows in their own order."""

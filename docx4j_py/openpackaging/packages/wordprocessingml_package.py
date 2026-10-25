@@ -90,6 +90,7 @@ class WordprocessingMLPackage(OpcPackage):
 
     __slots__ = (
         "_font_mapper",
+        "_glossary_entries",
         "_property_resolver",
         "_run_font_selector",
         "default_theme",
@@ -110,6 +111,13 @@ class WordprocessingMLPackage(OpcPackage):
         #: is per package here, because a server may hold several at once
         #: (CR-002 section 15.3). None takes the process-wide setting.
         self.default_theme: str | None = None
+        # CR-019 section 4.9: the glossary's placeholder entries, read privately
+        # and with those written since waiting for the save
+        # (``docx4j_py.model.content.placeholders``), made on first use. A plain
+        # container: the ``glossary_entries`` property is installed by
+        # ``docx4j_py.model.content.register()``, and this layer imports nothing
+        # from the content API.
+        self._glossary_entries: Any = None
 
     # -- the resolution utilities (CR-002 section 6) -----------------------
 

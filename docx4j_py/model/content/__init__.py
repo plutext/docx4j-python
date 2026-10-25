@@ -502,6 +502,19 @@ def _package_custom_xml_parts(self: object) -> object:
     return custom_xml_parts_of(self)
 
 
+def _package_glossary_entries(self: object) -> object:
+    """The glossary's placeholder entries, and those a placeholder written since names (CR-019 section 4.9). Extension.
+
+    core-ts ``pkg.glossaryEntries``: read privately, so that an untouched
+    glossary is saved byte for byte; an entry the glossary lacks waits for the
+    save, which writes it, making the glossary document part and its styles
+    part where the file has none (:mod:`docx4j_py.model.content.placeholders`).
+    """
+    from docx4j_py.model.content.placeholders import glossary_entries_of
+
+    return glossary_entries_of(self)
+
+
 def _package_dry_run(self: object) -> object:
     """``with pkg.dry_run() as trial:`` --- edits on a copy, then thrown away."""
     from docx4j_py.model.content.trial import dry_run
@@ -550,6 +563,10 @@ _PACKAGE_PROPERTIES: dict[str, property] = {
     # CR-003 Phase E, section 3.7
     "custom_xml_parts": property(
         _package_custom_xml_parts, doc=_package_custom_xml_parts.__doc__
+    ),
+    # CR-019 Phase B, section 4.9
+    "glossary_entries": property(
+        _package_glossary_entries, doc=_package_glossary_entries.__doc__
     ),
 }
 

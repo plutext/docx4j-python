@@ -26,9 +26,11 @@ them).
 * **Check 67** is check 58's three bare-form writes in three files, four phases
   and through two lookups: all 72 a plain run.
 
-What still differs is pinned, with its reason: the controls
-``insert_content_control`` makes (Phase B's, D8), and in Word's saves D6 (b)'s
-level and Word's run boundaries. Then core-ts's tests that are no replay: D3's
+What still differs is pinned, with its reason: in Word's saves D6 (b)'s
+level, Word's run boundaries, and the ``w:id`` Word gives a control it makes.
+The controls ``insert_content_control`` makes show Word's default
+placeholder since CR-019 Phase B (D8), as Word's do, and check 64's run is
+Word's in all 52 writes. Then core-ts's tests that are no replay: D3's
 markup, accepted and rejected; D6's level; D7's nodes in both forms; D10's
 filler. And this package's own: every route, the control's own ranges, Q4, the
 nodes, the filler's readings.
@@ -49,7 +51,8 @@ from conftest import ROOT
 from lxml import etree
 
 from docx4j_py import create_package, load
-from docx4j_py.wml import to_xml
+from docx4j_py.traversal import iter_nodes, text_of
+from docx4j_py.wml import R, to_xml
 
 OFFICE_JS = ROOT / "tests" / "office_js"
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -225,7 +228,8 @@ def view(case: dict[str, Any]) -> dict[str, Any]:
 
     ``placeholderText`` and ``showingPlaceholderText`` are left out, as core-ts
     leaves them: Word gives null or the glossary's text and no
-    ``showingPlaceholderText``, and the reading is Phase B's (CR-019 Q2).
+    ``showingPlaceholderText``. ``placeholderText`` is held on its own since
+    CR-019 Phase B, which reads it from the glossary as Word does (Q2).
     """
     after = case.get("after") if isinstance(case.get("after"), dict) else {}
     control = after.get("control")
@@ -420,43 +424,9 @@ WORD_RUN_64 = [
 ]
 
 
-#: Why a case differs from Word's.
-MADE = "a control insert_content_control made, which shows no placeholder here: Phase B's (CR-019 section 4.8, D8)"
-
-#: Check 64's writes whose run differs from Word's: the controls made with insert_content_control, Phase B's.
-DIFFERS_64: dict[int, tuple[str, str, dict[str, Any] | None]] = {
-    19: (
-        MADE,
-        "19 C-- in NEW19 PLAIN19B",
-        {"control": {"type": "RichText", "text": "NEW19", "paragraphs": ["NEW19 PLAIN19B"]}},
-    ),
-    20: (
-        MADE,
-        "20 C-- in PLAIN20A NEW20 PLAIN20B",
-        {"control": {"type": "RichText", "text": "PLAIN20A NEW20", "paragraphs": ["PLAIN20A NEW20 PLAIN20B"]}},
-    ),
-    21: (
-        MADE,
-        "21 C-- in NEW21 PLAIN21B",
-        {"control": {"type": "RichText", "text": "NEW21", "paragraphs": ["NEW21 PLAIN21B"]}},
-    ),
-    36: (MADE, "36 C-- in |NEW36", {"control": {"type": "RichText", "text": "NEW36", "paragraphs": ["", "NEW36"]}}),
-    40: (
-        MADE,
-        "40 C-- in NEW40 PLAIN40B",
-        {"control": {"type": "RichText", "text": "NEW40", "paragraphs": ["NEW40 PLAIN40B"]}},
-    ),
-    41: (
-        MADE,
-        "41 C-- in PLAIN41A NEW41 PLAIN41B",
-        {"control": {"type": "RichText", "text": "PLAIN41A NEW41", "paragraphs": ["PLAIN41A NEW41 PLAIN41B"]}},
-    ),
-    42: (
-        MADE,
-        "42 C-- in NEW42 PLAIN42B",
-        {"control": {"type": "RichText", "text": "NEW42", "paragraphs": ["NEW42 PLAIN42B"]}},
-    ),
-}
+#: Check 64's writes whose run differs from Word's: none since CR-019 Phase B. Until then the seven made controls
+#: (19 to 21, 36, 40 to 42) showed no placeholder, and the made-run ones wrapped the run around their point.
+DIFFERS_64: dict[int, tuple[str, str, dict[str, Any] | None]] = {}
 
 
 def run_63(mode: str = "run") -> tuple[Any, dict[str, Any]]:
@@ -673,6 +643,12 @@ def test_check_63s_run_is_word_365s_run_2_in_every_write():
     # and the markup where it tells: plain runs, only insertions tracked, nothing marked inside a taken control
     for n in (1, 2, 13, 14, 27, 28, 39, 40):
         assert not re.search(r'PlaceholderText|w:color w:val="auto"|<w:del ', ours["cases"][n - 1]["after"]["ooxml"]), n
+    # placeholderText reads null in the bare form, as Word's, in every region the control is left in (CR-019 Phase B,
+    # Q2; until then it read the runs, the prompt where the flag was on)
+    for theirs, mine in zip(word("63-placeholders-word365-run2-run.json")["cases"], ours["cases"], strict=True):
+        control = theirs["after"].get("control")
+        if isinstance(control, dict):
+            assert control["placeholderText"] is None and mine["after"]["control"]["placeholderText"] is None
 
 
 def test_check_63s_run_differs_from_run_1_in_design_modes_31_writes():
@@ -688,22 +664,20 @@ def test_check_63s_run_differs_from_run_1_in_design_modes_31_writes():
     assert [c["n"] for c, other in zip(run_1, run_2, strict=True) if view(c) != view(other)] == RUN_1_DIFFERS
 
 
-def test_check_64s_run_is_word_365s_but_for_the_controls_insert_content_control_made():
+def test_check_64s_run_is_word_365s_in_every_write():
     _package, ours = run_64()
     assert not [c for c in ours["cases"] if c.get("error")]
     agreeing = _held(word("64-placeholders-word-word365-run.json")["cases"], ours["cases"], DIFFERS_64)
-    # before CR-019, 20 of the 52 writes
-    assert len(agreeing) == 45
-    assert {why for why, _digest, _rest in DIFFERS_64.values()} == {MADE}
-    assert set(DIFFERS_64) == {c["n"] for c in CASES_64 if c["shape"].startswith("made-")} - {
-        15,
-        16,
-        17,
-        18,
-        37,
-        38,
-        39,
-    }
+    # before CR-019, 20 of the 52 writes; after Phase A, 45, the seven made controls Phase B's (CR-019 section 4.8,
+    # D8): a control made around an empty paragraph or at a point now shows Word's default entry, and one made at a
+    # point stands there, the run around it split (section 10.9 item 1)
+    assert len(agreeing) == 52
+    # and placeholder_text reads the glossary's entry, as Word's (CR-019 Q2), in every region, made controls too
+    measured = word("64-placeholders-word-word365-run.json")["cases"]
+    for theirs, mine in zip(measured, ours["cases"], strict=True):
+        control = theirs["after"].get("control")
+        if isinstance(control, dict):
+            assert mine["after"]["control"]["placeholderText"] == control["placeholderText"], theirs["n"]
 
 
 def test_d7_every_text_write_into_a_bound_control_writes_its_node_in_both_forms():
@@ -817,9 +791,19 @@ SAVES_63: dict[int, tuple[str, tuple[Any, ...] | None]] = {
     18: (RUNS, (_runs_joined,)),
 }
 
-#: Check 64's regions whose saved markup differs from Word's: the controls insert_content_control made.
+def _no_control_id(region: str) -> str:
+    """A control's ``w:id`` left out: Word gives a control it makes an id of its own choosing."""
+    return re.sub(r'(<w:sdtPr>(?:(?!</w:sdtPr>)[\s\S])*?)<w:id w:val="-?\d+"/>', r"\1", region)
+
+
+WORD_ID = "Word gives a control it makes a random w:id, where this package's is the next free one (CR-019 4.11)"
+
+#: Check 64's regions whose saved markup differs from Word's: the controls insert_content_control made, by their
+#: w:id alone (block, 15 to 18 and 36 to 39) and, made at a point (19 to 21, 40 to 42), Word's save joining the run
+#: the point split off with the run after it. Until CR-019 Phase B they showed no placeholder (D8) and named no entry.
 SAVES_64: dict[int, tuple[str, tuple[Any, ...] | None]] = {
-    n: (MADE, None) for n in (15, 16, 17, 18, 19, 20, 21, 36, 37, 38, 39, 40, 41, 42)
+    **{n: (WORD_ID, (_no_control_id,)) for n in (15, 16, 17, 18, 36, 37, 38, 39)},
+    **{n: (WORD_ID + "; " + RUNS, (_no_control_id, _runs_joined)) for n in (19, 20, 21, 40, 41, 42)},
 }
 
 
@@ -853,11 +837,13 @@ def test_check_63s_saved_markup_is_words_save_after_run_2_but_for_d6_b_and_a_run
     assert sorted(set(range(1, 55)) - set(same)) == sorted(SAVES_63)
 
 
-def test_check_64s_saved_markup_is_words_save_after_the_run_but_for_the_controls_insert_content_control_made():
+def test_check_64s_saved_markup_is_words_save_after_the_run_the_made_controls_but_for_words_ids_and_a_run_boundary():
     package, _ours = run_64()
     same = _held_to_save(_saved_regions(package), _words_regions("64-run-word365.docx"), SAVES_64)
-    # Word's form: every write the placeholder away and the text plain, tracked as an insertion alone
+    # Word's form: every write the placeholder away and the text plain, tracked as an insertion alone; the 14 regions
+    # whose control insert_content_control made are Word's through the forms (until Phase B, differing)
     assert len(same) == 38
+    assert sorted(set(range(1, 53)) - set(same)) == sorted(SAVES_64)
 
 
 # ---------------------------------------------------------------------------
@@ -1006,14 +992,35 @@ def test_d10_a_control_holding_text_emptied_by_its_content_range_untracked_shows
         assert _filler(control) == [("     ", to_xml(control.run_properties))], xml
         if form == "block":
             assert len(control.paragraphs) == 1
-    # in Word's form the emptied control shows its entry again (core-ts check 66 case 3): Phase B's show_placeholder,
-    # so here it is left empty, the flag off, until then
-    _package, control = _run_control(
-        "<w:r><w:t>VAL</w:t></w:r>",
-        run_properties=f'<w:placeholder><w:docPart w:val="{DEFAULT_ENTRY}"/></w:placeholder>',
-    )
+
+
+@pytest.mark.parametrize("form", ["block", "run"])
+def test_a_words_form_control_emptied_by_its_content_range_untracked_shows_its_entry_again_check_66_case_3(form):
+    # core-ts's showEmptied at aefc41f (CR-019 section 4.8, D8): Word brought the entry back, grey, with the flag on
+    # (check 66 case 3); until Phase B it was left empty, the flag off. A created package has no glossary, so the
+    # default entry is shown and waits for the save
+    placeholder = f'<w:placeholder><w:docPart w:val="{DEFAULT_ENTRY}"/></w:placeholder>'
+    if form == "block":
+        package = create_package()
+        package.body.insert_xml(
+            f'<w:sdt><w:sdtPr><w:id w:val="4"/>{placeholder}</w:sdtPr><w:sdtContent>'
+            "<w:p><w:r><w:t>VAL</w:t></w:r></w:p></w:sdtContent></w:sdt>",
+            location="End",
+        )
+        control = package.body.content_controls[0]
+    else:
+        package, control = _run_control("<w:r><w:t>VAL</w:t></w:r>", run_properties=placeholder)
     control.get_range("Content").delete()
-    assert (control.text, control.is_showing_placeholder, _filler(control)) == ("", False, [])
+    assert (control.text, control.is_showing_placeholder, control.placeholder_text) == ("", True, PLACEHOLDER)
+    runs = [r for r in iter_nodes(control.element) if isinstance(r, R)]
+    assert [(text_of(r), r.r_pr.r_style.val) for r in runs] == [(PLACEHOLDER, "PlaceholderText")]
+    assert package.glossary_entries.pending == {DEFAULT_ENTRY: PLACEHOLDER}
+    # tracked, the text is a deletion and nothing more, as for the bare form
+    if form == "run":
+        package, control = _run_control("<w:r><w:t>VAL</w:t></w:r>", run_properties=placeholder)
+        package.change_tracking_mode = "TrackAll"
+        control.get_range("Content").delete()
+        assert not control.is_showing_placeholder and "<w:delText>" in to_xml(control.element)
 
 
 def test_a_run_level_controls_whole_range_deleted_takes_it_as_its_replace_does():

@@ -25,6 +25,15 @@ Everything else is docx4j's: the value is trimmed, the run properties come from
 ``w:sdtPr/w:rPr``, an empty value becomes the placeholder run and
 ``w:showingPlcHdr``, ``xml:space="preserve"`` is written only for a leading or
 trailing space, and a multiline ``w:text`` control turns newlines into ``w:br``.
+
+**But an empty value in a text control, or in any control naming an entry the
+glossary holds, shows its placeholder in Word's form** (CR-019 section 4.8,
+Q3; core-ts ``aefc41f``):
+:meth:`~docx4j_py.model.content.ContentControl.show_placeholder`, the entry
+``w:placeholder`` names, else Word's default entry, written into the glossary
+on save. docx4j's binder still writes the bare form (its CR-063 proposes the
+same change); a control of another kind naming no entry keeps docx4j's run,
+:data:`PLACEHOLDER_TEXT`.
 """
 
 from __future__ import annotations
@@ -59,7 +68,8 @@ __all__ = [
     "write_control_to_node",
 ]
 
-#: docx4j's placeholder: the style and the words it writes for an empty value.
+#: docx4j's placeholder: the style and the words it writes for an empty value, kept for a control of a kind other
+#: than text naming no entry (CR-019 section 4.8); a text control shows Word's default entry instead.
 PLACEHOLDER_STYLE = "PlaceholderText"
 PLACEHOLDER_TEXT = "Click here to enter text."
 
@@ -356,6 +366,13 @@ def apply_binding_to(control: ContentControl) -> tuple[bool, str, str, str]:
                     date_view.date_display_locale or "en-US",
                 )
 
+    if display == "" and control.shows_words_form_placeholder:
+        # an empty value shows the control's placeholder in Word's form: the entry its w:placeholder names, else
+        # Word's default entry for a text control, written into the glossary on save (CR-019 section 4.8, Q3; core-ts
+        # aefc41f, its D8 and section 63.18; docx4j CR-063's D2 and D3), where docx4j's binder writes the bare form.
+        # Another kind naming no entry, or one the glossary lacks, keeps docx4j's run
+        control.show_placeholder()
+        return True, display, "", ""
     control.set_bound_content(
         runs_for_value(display, control.run_properties, control.is_multi_line),
         display == "",

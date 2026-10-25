@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import IO, Any
 
@@ -91,6 +92,7 @@ class OpcPackage:
         "load_options",
         "parts",
         "relationships_part",
+        "save_hooks",
         "source_part_store",
         "was_strict",
     )
@@ -187,6 +189,13 @@ class OpcPackage:
         # write ends through the revisions engine's ``Removals``. A plain
         # container again: the content API puts it here and settles it.
         self._pending_removals: Any = None
+        #: What a save runs before it writes anything (CR-019 section 4.9): each
+        #: callable is given the package and returns the names of the parts it
+        #: added, or None. The content API registers one where it has writes
+        #: that wait for the save (a glossary entry a placeholder names), so this
+        #: layer runs them without importing it. A plain list, in the order they
+        #: were registered; ``package.last_save.added`` lists what they added.
+        self.save_hooks: list[Callable[[OpcPackage], Iterable[str] | None]] = []
 
     # -- markup compatibility at block level (CR-012 Phase A) -------------
 

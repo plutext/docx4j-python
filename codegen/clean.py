@@ -30,6 +30,7 @@ KEEP = {
     "wml/sdt.py",  # CR-003 Phase A: the w:sdt family
     "openpackaging",  # CR-002: the engine, all of it hand written
     "model",  # CR-003: the content API, all hand written; CR-010: model/revisions/, the revisions engine
+    "model/content/placeholders.py",  # CR-019 Phase B: the glossary's placeholder entries (inside "model" too)
     "docx",  # CR-003 Phase J: the python-docx facade, all hand written
 }
 

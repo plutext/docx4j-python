@@ -43,7 +43,10 @@ What it copies and what it does not:
   :meth:`TrialPackage.discard_added_relationships`, with the relationships part
   itself when the call created it, and the part's id allocator put back so that
   the commit after a trial allocates the id the trial reported.
-* ``trial.save()`` is refused: a trial is not a document.
+* ``trial.save()`` is refused: a trial is not a document. So a glossary entry
+  a placeholder in a trial names (CR-019 section 4.9) waits in the trial's own
+  ``glossary_entries``, which start with the real package's waiting ones, and
+  goes with it.
 """
 
 from __future__ import annotations
@@ -212,6 +215,7 @@ class TrialPackage:
         "_compatibility_mode",
         "_current_change",
         "_custom_xml_parts",
+        "_glossary_entries",
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
@@ -231,6 +235,10 @@ class TrialPackage:
         self._parts: dict[int, TrialPart] = {}
         #: The trial's own custom XML collection, over its copies (Phase E).
         self._custom_xml_parts: Any = None
+        #: The trial's own glossary entries (CR-019 section 4.9): the real
+        #: package's waiting ones copied in, those the trial names thrown away
+        #: with it, the glossary read as the real package's.
+        self._glossary_entries: Any = None
         self._added: list[tuple[Any, Any, Any, bool]] = []
         self._added_relationships: list[tuple[Any, Any, bool, int | None]] = []
         self._changes: list[Any] = []
@@ -497,6 +505,18 @@ class TrialPackage:
         from docx4j_py.model.customxml.parts import custom_xml_parts_of
 
         return custom_xml_parts_of(self)
+
+    @property
+    def glossary_entries(self) -> Any:
+        """The trial's own glossary entries (CR-019 section 4.9).
+
+        Spelled out rather than left to ``__getattr__``, which would hand the
+        trial the real package's, and a placeholder the trial writes would then
+        put its entry into the real document's glossary on its next save.
+        """
+        from docx4j_py.model.content.placeholders import glossary_entries_of
+
+        return glossary_entries_of(self)
 
     def dry_run(self) -> Any:
         """A trial of a trial. Allowed, and as cheap as the first."""

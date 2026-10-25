@@ -851,14 +851,126 @@ class ContentControl:
         64 and 65); with None, in the **bare form**, docx4j's binding's. Writes
         are the same in both forms (core-ts check 63's run 2, CR-019 section
         11): the form decides only what a control emptied shows (its entry, or
-        Word's five-space filler, :meth:`_show_emptied`) and, in Phase B, what
-        ``placeholder_text`` reads.
+        Word's five-space filler, :meth:`_show_emptied`) and what
+        :attr:`placeholder_text` reads (CR-019 Phase B).
         """
-        item = sdt_property(self.sdt_pr, "placeholder", W_NS)
-        if item is None:
-            return None
-        value = getattr(getattr(item, "doc_part", None), "val", None)
-        return "" if value is None else str(value)
+        from docx4j_py.model.content.placeholders import placeholder_entry_of
+
+        return placeholder_entry_of(self.sdt_pr)
+
+    @property
+    def is_text_control(self) -> bool:
+        """Whether the control is a text control, rich or plain text, whose placeholder is Word's default entry. Extension.
+
+        core-ts ``isTextControl`` (``aefc41f``, its section 63.18; docx4j
+        CR-063's D3): :attr:`type` ``"RichText"`` (a control naming no kind
+        among them) or ``"PlainText"``.
+        """
+        return self.type in ("RichText", "PlainText")
+
+    @property
+    def shows_words_form_placeholder(self) -> bool:
+        """Whether an empty control shows a placeholder in Word's form. Extension.
+
+        core-ts ``showsWordsFormPlaceholder`` (``aefc41f``; D8, docx4j CR-063's
+        D3): a text control (:attr:`is_text_control`), or one of another kind
+        naming an entry the glossary holds. The binding pass gives an empty
+        value such a control's placeholder (:meth:`show_placeholder`), and any
+        other docx4j's run.
+        """
+        if self.is_text_control:
+            return True
+        name = self.placeholder_entry
+        glossary = self._glossary
+        return bool(name) and glossary is not None and glossary.has(name)
+
+    @property
+    def _glossary(self) -> Any:
+        """The package's :class:`~.placeholders.GlossaryEntries`, where the control is in a package (a trial's its own)."""
+        from docx4j_py.model.content.placeholders import glossary_entries_of
+
+        return glossary_entries_of(getattr(self.parent_body, "package", None))
+
+    def _glossary_part_name(self) -> str:
+        """The glossary document part's name, as a report names it: the package's, or the one a save would make."""
+        from docx4j_py.model.content.placeholders import GLOSSARY_DOCUMENT_NAME
+
+        package = getattr(self.parent_body, "package", None)
+        main = getattr(package, "main_document_part", None) if package is not None else None
+        part = getattr(main, "glossary_document_part", None) if main is not None else None
+        return str(part.part_name) if part is not None else GLOSSARY_DOCUMENT_NAME
+
+    def show_placeholder(self) -> None:
+        """Show the control's placeholder: a copy of its glossary entry's content, with ``w:showingPlcHdr``. Extension.
+
+        core-ts ``showPlaceholder`` at ``aefc41f`` (its CR-002 sections 63.12
+        and 63.18; CR-019 section 4.8, D8). The entry is the one
+        ``w:placeholder`` names (:attr:`placeholder_entry`). A control naming
+        none, or a **text control** (:attr:`is_text_control`) naming one the
+        glossary lacks, is made to name Word's default entry,
+        ``DefaultPlaceholder_-1854013440``, which is written into the glossary
+        on save where it lacks it (D9), and nothing is written under the
+        missing name, as docx4j's CR-063 has it (Word's save drops a reference
+        no entry holds, core-ts check 65). A control of another kind keeps the
+        name it has, and shows Word's default text.
+
+        What the control shows is a copy of each of the entry's paragraphs'
+        run content (:func:`~.placeholders.entry_content_of`), every run as the
+        glossary holds it with the control's own ``w:sdtPr/w:rPr`` combined
+        with its properties (:func:`~.placeholders.entry_run_properties`; core-ts
+        check 68 has since found Word does not combine them, CR-019 section
+        12). A block control takes every paragraph, but a bound one
+        (:func:`is_bound_block_control`) only the first; the further paragraphs
+        take a copy of the control's first paragraph's ``w:pPr``, as docx4j's
+        binding gives them. A run-level control takes the first paragraph's
+        runs. The entry's own paragraph properties stay in the glossary.
+        """
+        from docx4j_py.child import deep_copy
+        from docx4j_py.model.content.placeholders import (
+            DEFAULT_PLACEHOLDER_ENTRY,
+            DEFAULT_PLACEHOLDER_TEXT,
+            entry_content_of,
+            name_placeholder_entry,
+        )
+
+        with recording(self.parent_body, "show_placeholder") as change:
+            glossary = self._glossary
+            name = self.placeholder_entry or ""
+            # Word's default entry is its text controls' (docx4j CR-063's D3); a glossary is read on first use, so
+            # core-ts's "until the glossary is read, a name is kept" does not arise here
+            missing = name == "" or (glossary is not None and not glossary.has(name))
+            if missing and (self.is_text_control or name == ""):
+                name = DEFAULT_PLACEHOLDER_ENTRY
+                name_placeholder_entry(self, name)
+            if (
+                name == DEFAULT_PLACEHOLDER_ENTRY
+                and glossary is not None
+                and glossary.require(name, DEFAULT_PLACEHOLDER_TEXT)
+            ):
+                change.part(self._glossary_part_name())
+            body = glossary.body_of(name) if glossary is not None else None
+            properties = self.run_properties
+            if body is not None:
+                paragraphs = entry_content_of(body, properties)
+            else:
+                paragraphs = [[_placeholder_run(DEFAULT_PLACEHOLDER_TEXT, properties)]]
+            change.text(before=self._shown_text(), after="")
+            self.set_bound_content(paragraphs[0] if paragraphs else [], True)
+            change.touched(self.address)
+            # a block control shows an entry's further paragraphs too, where it may hold more than one
+            if self.form != "block" or len(paragraphs) < 2 or is_bound_block_control(self):
+                return
+            content = self.content
+            first = next((item for item in content if isinstance(item, P)), None)
+            at = (next(i for i, item in enumerate(content) if item is first) + 1) if first is not None else len(content)
+            p_pr = first.p_pr if first is not None else None
+            owner = getattr(content, "owner", None) or getattr(self.element, "sdt_content", None)
+            for runs in paragraphs[1:]:
+                paragraph = P(p_pr=deep_copy(p_pr) if p_pr is not None else None, content=ChildList(runs))
+                link_parents(paragraph)
+                content.insert(at, paragraph)
+                paragraph.parent = owner
+                at += 1
 
     @property
     def shows_placeholder_content(self) -> bool:
@@ -1038,17 +1150,21 @@ class ContentControl:
     def _show_emptied(self) -> None:
         """After an untracked ``"Content"`` delete that left the control holding no text (CR-019 section 11).
 
-        core-ts ``showEmptied`` (``d84f3da``, its D10 (a)). A block or run
-        control not showing its placeholder whose text is now ``""``: in the
-        bare form it shows Word's filler (:meth:`_show_filler`; core-ts check
-        52 case 13); in Word's form Word shows its entry again (core-ts check
-        66 case 3), which is Phase B's ``show_placeholder`` (CR-019 section
-        4.8), so here it is left empty until then.
+        core-ts ``showEmptied`` (``aefc41f``, its D10 (a) and section 63.18).
+        A block or run control not showing its placeholder whose text is now
+        ``""``: in Word's form it shows its entry again
+        (:meth:`show_placeholder`; core-ts check 66 case 3), a text control
+        naming an entry the glossary lacks Word's default; in the bare form,
+        and for a control of another kind naming an entry the glossary lacks,
+        Word's filler (:meth:`_show_filler`; core-ts check 52 case 13).
         """
         if self.is_showing_placeholder or self.form not in ("block", "run") or self.text != "":
             return
-        if self.placeholder_entry is not None:
-            # Phase B's seam: Word's form shows its glossary entry again (show_placeholder, CR-019 section 4.8)
+        name = self.placeholder_entry
+        glossary = self._glossary
+        if name is not None and (self.is_text_control or (glossary is not None and glossary.has(name))):
+            # Word's form shows its glossary entry again (core-ts check 66 case 3; CR-019 section 4.8)
+            self.show_placeholder()
             return
         self._show_filler()
 
@@ -1227,46 +1343,59 @@ class ContentControl:
     # -- the w:sdtPr properties (CR-003 section 3.7, Phase E) ---------------
 
     @property
-    def placeholder_text(self) -> str:
-        """The greyed-out prompt the control shows while it is empty.
+    def placeholder_text(self) -> str | None:
+        """The placeholder Word shows for the empty control: its glossary entry's text, or None.
 
-        Office JS ``placeholderText``. Read: the text of the control's runs
-        while ``w:showingPlcHdr`` is set --- a run-level control's content, a
-        block control's paragraphs ``\\r`` apart --- and ``""`` otherwise.
-        :attr:`text` reads no placeholder (CR-016 Phase B), so this reads the
-        runs themselves, where Word, with no glossary part to read, reads
-        ``null`` (core-ts check 58): a departure that keeps the setter's text
-        readable (CR-016 Q6; core-ts ``placeholderText`` at ``222cc20``). Written: the text
-        becomes the control's content, styled ``PlaceholderText``, and
-        ``w:showingPlcHdr`` goes on --- but **only on a control that holds
-        nothing**, because overwriting real content with a prompt is silent data
-        loss (CR-003 section 4). Word keeps placeholder text in a glossary
-        document part, which this phase does not create; ``w:placeholder`` is
-        left exactly as it was.
+        Office JS ``placeholderText`` (CR-019 section 4.8, Q2; core-ts at
+        ``aefc41f``, its D8). **Read:** the text of the glossary entry the
+        control's ``w:placeholder`` names (:attr:`placeholder_entry`), its
+        paragraphs ``\r`` apart, as Word reads it (core-ts check 65); None in
+        the bare form (no ``w:placeholder``) or where the glossary lacks the
+        entry, as Word's ``null``. The glossary is read privately
+        (``pkg.glossary_entries``), so reading leaves it byte for byte. Until
+        CR-019 Phase B this read the control's runs, and ``""`` where it was not
+        showing its placeholder.
 
-        Raises:
-            BindingError: the control already holds content.
+        **Written:** Word's default text, ``"Click or tap here to enter
+        text."``, or ``""``, names Word's default entry,
+        ``DefaultPlaceholder_-1854013440``; any other text a new entry of its
+        own, named as Word names one (32 upper-case hex digits), which the save
+        writes into the glossary, making the glossary where the file has none
+        (D9). The entry named before stays in the glossary. A control showing
+        its placeholder, or holding nothing, shows the text, in the
+        ``PlaceholderText`` style over the control's own run properties, with
+        ``w:showingPlcHdr``; a control holding content keeps it, and only its
+        reference changes (until Phase B it refused, ``binding.holds_content``).
         """
-        if not self.is_showing_placeholder:
-            return ""
-        return self._shown_text()
+        name = self.placeholder_entry
+        if name is None:
+            return None
+        glossary = self._glossary
+        return glossary.text_of(name) if glossary is not None else None
 
     @placeholder_text.setter
     def placeholder_text(self, value: str) -> None:
-        """Set the prompt; refuses over content."""
-        from docx4j_py.model.content.errors import BindingError
+        """Name an entry holding the text; a control showing its placeholder, or holding nothing, shows it."""
+        from docx4j_py.model.content.placeholders import (
+            DEFAULT_PLACEHOLDER_ENTRY,
+            DEFAULT_PLACEHOLDER_TEXT,
+            name_placeholder_entry,
+            new_entry_name,
+        )
 
-        if self.text.strip() and not self.is_showing_placeholder:
-            raise BindingError(
-                f"this content control holds content ({self.text[:30]!r}), "
-                "so its placeholder cannot be set over it",
-                code="binding.holds_content",
-                hint="clear the control first, or set its text with insert_text()",
-            )
+        own = value not in ("", DEFAULT_PLACEHOLDER_TEXT)
+        name = new_entry_name() if own else DEFAULT_PLACEHOLDER_ENTRY
+        shown = value if own else DEFAULT_PLACEHOLDER_TEXT
         with recording(self.parent_body, "placeholder_text") as change:
             change.touched(self.address)
-            self.set_bound_content([_placeholder_run(value, self.run_properties)], True)
-            change.text(after=value)
+            empty = self.is_showing_placeholder or self.text == ""
+            name_placeholder_entry(self, name)
+            glossary = self._glossary
+            if glossary is not None and glossary.require(name, shown):
+                change.part(self._glossary_part_name())
+            if empty:
+                self.set_bound_content([_placeholder_run(shown, self.run_properties)], True)
+            change.text(after=shown)
 
     @property
     def is_showing_placeholder(self) -> bool:
@@ -1562,6 +1691,11 @@ class ContentControl:
         link_parents(self.element)
         if showing_placeholder:
             self.put_property(el.showingPlcHdr())
+            # the placeholder run names PlaceholderText, which a document made here lacks: defined in the main
+            # document's styles, as core-ts's setBoundContent requires it (CR-019 section 12)
+            from docx4j_py.model.content.placeholders import require_placeholder_style
+
+            require_placeholder_style(getattr(self.parent_body, "package", None))
         else:
             self.remove_property("showingPlcHdr", W_NS)
 

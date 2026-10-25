@@ -1,0 +1,267 @@
+{
+ "check": 65,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "title": "heck 65a: controls naming a placeholder entry, with no glossary part.",
+ "cases": [
+  {
+   "n": 1,
+   "op": "control-text-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW1"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW1"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 control-text-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 1\"/><w:tag w:val=\"c65-1\"/><w:id w:val=\"65001\"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW1</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW1",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW1"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 2,
+   "op": "control-paragraph-end",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW2"
+   },
+   "after": {
+    "paragraphs": [
+     "",
+     "NEW2"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 control-paragraph-end block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 2\"/><w:tag w:val=\"c65-2\"/><w:id w:val=\"65002\"/></w:sdtPr><w:sdtContent><w:p/><w:p><w:r><w:t>NEW2</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "\\u000dNEW2",
+     "placeholderText": null,
+     "paragraphs": [
+      "",
+      "NEW2"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 3,
+   "op": "control-text-replace",
+   "shape": "block",
+   "mode": "tracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW3"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW3"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 control-text-replace block tracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 3\"/><w:tag w:val=\"c65-3\"/><w:id w:val=\"65003\"/></w:sdtPr><w:sdtContent><w:p><w:ins w:id=\"0\" w:author=\"Author A\" w:date=\"2026-10-25T05:19:00Z\" w16du:dateUtc=\"2026-10-24T18:19:00Z\"><w:r><w:t>NEW3</w:t></w:r></w:ins></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "NEW3",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW3"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 4,
+   "op": "control-text-replace",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW4"
+   },
+   "after": {
+    "paragraphs": [
+     "NEW4"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 control-text-replace block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 4\"/><w:tag w:val=\"c65-4\"/><w:id w:val=\"65004\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check65'\" w:xpath=\"/ns0:check65[1]/ns0:value4[1]\" w:storeItemID=\"{65656565-6565-4656-8656-656565656565}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>NEW4</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW4",
+     "placeholderText": null,
+     "paragraphs": [
+      "NEW4"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW4"
+   }
+  },
+  {
+   "n": 5,
+   "op": "content-text-replace",
+   "shape": "run-bound",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "returned": "NEW5"
+   },
+   "after": {
+    "paragraphs": [
+     "PLAIN5A NEW5 PLAIN5B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 content-text-replace run-bound untracked</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN5A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 5\"/><w:tag w:val=\"c65-5\"/><w:id w:val=\"65005\"/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check65'\" w:xpath=\"/ns0:check65[1]/ns0:value5[1]\" w:storeItemID=\"{65656565-6565-4656-8656-656565656565}\"/><w:text/></w:sdtPr><w:sdtContent><w:r><w:t>NEW5</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN5B</w:t></w:r></w:p><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "NEW5",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN5A NEW5 PLAIN5B"
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": "NEW5"
+   }
+  },
+  {
+   "n": 6,
+   "op": "set-placeholder-text",
+   "shape": "block",
+   "mode": "untracked",
+   "result": {
+    "via": "body.getContentControls()",
+    "placeholderText": "Enter the name 6."
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 set-placeholder-text block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 6\"/><w:tag w:val=\"c65-6\"/><w:id w:val=\"65006\"/><w:placeholder><w:docPart w:val=\"5DEC34B9F77A481AB63E46A8296EB5C7\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Enter the name 6.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Enter the name 6.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 7,
+   "op": "open",
+   "shape": "block",
+   "mode": "untracked",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN7 open block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 7\"/><w:tag w:val=\"c65-7\"/><w:id w:val=\"65007\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 8,
+   "op": "open",
+   "shape": "block-bound",
+   "mode": "untracked",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN8 open block-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 8\"/><w:tag w:val=\"c65-8\"/><w:id w:val=\"65008\"/><w:showingPlcHdr/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check65'\" w:xpath=\"/ns0:check65[1]/ns0:value8[1]\" w:storeItemID=\"{65656565-6565-4656-8656-656565656565}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  },
+  {
+   "n": 9,
+   "op": "make",
+   "shape": "made-block",
+   "mode": "untracked",
+   "made": {
+    "at": "paragraph",
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 make made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c65-9\"/><w:id w:val=\"-513234161\"/><w:placeholder><w:docPart w:val=\"B862166DFEF14DD8B8228B0A26CBF2CC\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>"
+   },
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 make made-block untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val=\"c65-9\"/><w:id w:val=\"-513234161\"/><w:placeholder><w:docPart w:val=\"CA3021AC39B9404885E9D861B0E0E968\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 10,
+   "op": "type",
+   "shape": "bare-bound",
+   "mode": "untracked",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN10 type bare-bound untracked</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 65 control 10\"/><w:tag w:val=\"c65-10\"/><w:id w:val=\"65010\"/><w:showingPlcHdr/><w:dataBinding w:prefixMappings=\"xmlns:ns0='urn:check65'\" w:xpath=\"/ns0:check65[1]/ns0:value10[1]\" w:storeItemID=\"{65656565-6565-4656-8656-656565656565}\"/><w:text/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "PlainText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined",
+    "node": ""
+   }
+  }
+ ],
+ "caseCount": 10
+}

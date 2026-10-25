@@ -555,9 +555,10 @@ def test_check_53_word_365_simple_markup_the_snippet_through_the_port_reads_as_w
         ]
 
     # a control showing its placeholder reads as empty, as Word's (CR-016 Phase B, core-ts CR-012 section 18);
-    # its placeholder_text reads the runs here, where Word, with no glossary part, reads null (Q6); and Word's
-    # showingPlaceholderText came back undefined, where this package reads True (CR-003 section 24)
-    placeholder = ["control.placeholderText", "showingPlaceholderText"]
+    # its placeholder_text reads null, as Word's, with no glossary part (CR-019 section 4.8, Q2; until Phase B it
+    # read the runs, core-ts's ranges.test.mjs at 020c039); and Word's showingPlaceholderText came back undefined,
+    # where this package reads True (CR-003 section 24)
+    placeholder = ["showingPlaceholderText"]
     style_other = ["paragraph.style", "paragraph.styleBuiltIn", "whole.style", "whole.styleBuiltIn"]
     # every font read is Word's since CR-016 Phase B, as core-ts's at 76fb45d: every run read, '' or None where
     # they differ (8, 31), an automatic colour #000000 (2, 7, 8, 9, 19, 20, 21, 24), and Heading 1's theme colour

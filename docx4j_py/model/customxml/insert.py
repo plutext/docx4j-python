@@ -14,7 +14,15 @@ Three levels, three shapes:
     wraps the runs the span covers, **splitting them at the boundaries** as
     ``Range.font`` does, giving a run-level ``w:sdt``. It refuses a span that
     crosses a run holder (``Range.require_one_holder``), and refuses
-    ``RepeatingSection``, which Word has no run-level form of.
+    ``RepeatingSection``, which Word has no run-level form of. A collapsed
+    range makes an empty control **at its point**, the run there split.
+
+A rich text or plain text control made around an empty paragraph, or at a
+point, shows Word's default placeholder, as Word's made controls do (CR-019
+section 4.8, D8; core-ts check 64): it names ``DefaultPlaceholder_-1854013440``,
+whose entry the save writes into the glossary where it lacks it.
+``Body.insert_content_control`` and a range across paragraphs make controls as
+before, with no placeholder (core-ts's unmeasured choice, CR-019 section 4.10).
 
 The ``w:id`` comes from :func:`~docx4j_py.wml.sdt.next_sdt_id` over the part's
 whole tree --- not from the change tracker and not from the comment allocator,
@@ -43,6 +51,7 @@ from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import link_parents
 from docx4j_py.model.content.errors import BindingError, ContentError
+from docx4j_py.model.content.placeholders import shows_placeholder_when_made
 from docx4j_py.model.content.reports import recording
 from docx4j_py.traversal import element_name
 from docx4j_py.wml.sdt import next_sdt_id, sdt
@@ -134,11 +143,16 @@ def insert_content_control_in_paragraph(paragraph: Any, kind: str = "RichText") 
                 hint="read it again from body.paragraphs",
             )
         _warn_if_w15(body, kind, change)
+        # around an empty paragraph, a control showing Word's default placeholder, as Word's (CR-019 section 4.8, D8;
+        # core-ts check 64): nothing at all in it, no text and no drawn object
+        empty = not paragraph.segments(objects=True)
         identifier = next_sdt_id(_root_of(body))
         control = sdt([paragraph.element], kind=kind, id=identifier, form="block")
         container[index] = control
         link_parents(control)
         view = _control(body, control, container)
+        if empty and shows_placeholder_when_made(kind):
+            view.show_placeholder()
         change.touched(view.address)
         change.text(after=view.text)
         return view
@@ -172,9 +186,23 @@ def insert_content_control_in_range(span: Any, kind: str = "RichText") -> Conten
     paragraph = span.paragraph
     body = paragraph.parent_body
     with recording(body, "insert_content_control") as change:
-        if span.start != span.end:
-            span.start = paragraph.split_at(span.start, prefer="back")
-            span.end = paragraph.split_at(span.end, prefer="forward")
+        if span.start == span.end:
+            # at a point: an empty control there, the run around it split (until CR-019 Phase B it wrapped that
+            # run, section 10.9 item 1), showing Word's default placeholder, as Word's made at a point (CR-019
+            # section 4.8, D8; core-ts check 64 cases 19 to 21 and 40 to 42, Range.insertContentControl)
+            from docx4j_py.model.content.controls import control_view_of
+
+            element = sdt([], kind=kind, id=next_sdt_id(_root_of(body)), form="run")
+            _insert_at_point(paragraph, span.start, element)
+            view = control_view_of(element, body)
+            assert view is not None  # insert_items_at put it in a run holder
+            if shows_placeholder_when_made(kind):
+                view.show_placeholder()
+            change.touched(paragraph)
+            change.text(after=view.text)
+            return view
+        span.start = paragraph.split_at(span.start, prefer="back")
+        span.end = paragraph.split_at(span.end, prefer="forward")
         runs = span.runs
         holder = runs[0].parent if runs else paragraph.element
         items = run_items_of(holder)
@@ -312,6 +340,47 @@ def _position(items: list, element: Any) -> int:
         if item is element:
             return position
     raise ValueError("the element is not in this list")  # pragma: no cover - found through it
+
+
+def _insert_at_point(paragraph: Any, offset: int, element: Any) -> None:
+    """Put a run-level item at a text offset, the run there split, as Word makes a control at a point.
+
+    :meth:`~docx4j_py.model.content.Paragraph.insert_items_at`'s placing (its
+    refusals, and beside the run, or the kept element its text is read from,
+    in the holder that run is in), but after a run ending at the point it goes
+    past anything sitting there that carries no text in the paragraph's
+    segments, as :func:`_offset_index` does --- a control made there a moment
+    ago, showing its placeholder, a bookmark --- so that two controls asked for
+    at the same point come out in the order they were asked for.
+    """
+    paragraph.refuse_branch_text(offset, offset, "insert_content_control")
+    paragraph.refuse_equation(offset, offset)
+    offset = paragraph.split_at(offset)
+    segments = paragraph.segments()
+    # what carries text: every item a segment's run is, or is inside (a control showing its placeholder carries none)
+    carrying: set[int] = set()
+    for segment in segments:
+        node = segment.run
+        while node is not None and node is not paragraph.element:
+            carrying.add(id(node))
+            node = getattr(node, "parent", None)
+    after = next((s for s in segments if s.start >= offset), None)
+    before = next((s for s in reversed(segments) if s.end <= offset), None)
+    if after is not None:
+        item, target, at = after.site()
+        owner = getattr(item, "parent", None) or paragraph.element
+    else:
+        if before is not None:
+            item, target, at = before.site()
+            owner = getattr(item, "parent", None) or paragraph.element
+            at += 1
+        else:
+            target, at, owner = paragraph.element.content, 0, paragraph.element
+        while at < len(target) and id(target[at]) not in carrying:
+            at += 1
+    target.insert(at, element)
+    link_parents(element)
+    element.parent = owner
 
 
 def _offset_index(items: list, paragraph: Any, offset: int) -> int:

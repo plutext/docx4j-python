@@ -34,6 +34,15 @@ step for step, onto the content API, and give the same JSON shape with the same
   Check 63 was run twice by Word: run 1 in Developer > Design Mode, run 2
   with it off (core-ts ``d84f3da``; CR-019 section 11); the snippet is the
   same for both.
+* :func:`run_check_65` and :func:`run_check_66` are ``CHECK65.runCheck`` and
+  ``CHECK66.runCheck`` (``check65-script-lab.js`` and ``check66-script-lab.js``
+  at ``aefc41f``, unchanged since ``ae9215f`` and ``2d080d4``; CR-019 Phase B)
+  in their ``run`` and ``report`` modes: check 64's telling writes on controls
+  naming a glossary entry, with no glossary part (65a), a glossary of the
+  document part alone (65b), one of the document and styles parts (66a) and
+  Word's six parts (66b); ``set-placeholder-text``, made controls, and an
+  ``open`` or ``type`` case left unwritten. The two snippets differ only in
+  their names (``c65-``/``urn:check65`` and ``c66-``/``urn:check66``).
 * :func:`run_check_67` is ``CHECK67.runCheck`` (``check67-script-lab.js`` at
   ``2bafbcb``, unchanged at ``d84f3da``; CR-019 Phase A2) in its ``report``
   step and its four phases: check 58's three writes into a control in the
@@ -69,6 +78,7 @@ __all__ = [
     "parse_region_59",
     "parse_region_63",
     "parse_region_64",
+    "parse_region_65",
     "parse_region_67",
     "run_check_52",
     "run_check_53",
@@ -78,6 +88,8 @@ __all__ = [
     "run_check_59",
     "run_check_63",
     "run_check_64",
+    "run_check_65",
+    "run_check_66",
     "run_check_67",
     "vis",
 ]
@@ -1598,6 +1610,108 @@ def run_check_64(package: Any, mode: str) -> dict[str, Any]:
     finally:
         _track_63(package, False)
     return result
+
+
+# ---------------------------------------------------------------------------
+# checks 65 and 66 (core-ts check65-script-lab.js and check66-script-lab.js at aefc41f; CR-019 Phase B)
+# ---------------------------------------------------------------------------
+
+#: The case ops a run leaves unwritten (the snippets' ``['open', 'make', 'type']``): a made case's control is
+#: made and nothing more, and a ``type`` case is typed into by hand, after the run.
+_UNWRITTEN_65 = ("open", "make", "type")
+
+
+def parse_region_65(text: str) -> dict[str, Any] | None:
+    """A check 65 or 66 BEGIN paragraph's text as a case, ``{n, op, shape, mode}``, or None (the snippets' ``parseRegion``)."""
+    return parse_region_64(text)
+
+
+def _apply_65(body: Any, region: dict[str, Any], tag: str) -> dict[str, Any]:
+    """The case's write (the snippets' ``apply``): check 63's ops, and ``set-placeholder-text``.
+
+    ``c.placeholderText = 'Enter the name <n>.'``, then the property read back,
+    as the snippet syncs and loads it.
+    """
+    if region["op"] == "set-placeholder-text":
+        found = _control_of_63(body, tag)
+        if found is None:
+            raise LookupError(f"not found: {tag}")
+        control = found["control"]
+        control.placeholder_text = f"Enter the name {region['n']}."
+        return {"via": found["via"], "placeholderText": vis(control.placeholder_text)}
+    # the snippets' paragraphFor: a run's paragraph for a shape naming "run", else the control's first
+    block = re.search(r"(^|-)run(-|$)", region["shape"]) is None
+    return _apply_63(body, region, tag, block=block)
+
+
+def _run_check_65(package: Any, mode: str, check: int) -> dict[str, Any]:
+    """``CHECK65.runCheck`` or ``CHECK66.runCheck``: the two snippets, whose only difference is their names."""
+    if mode not in ("run", "report"):
+        raise ValueError(f"check {check} has no {mode!r} mode")
+    body = package.body
+    paragraphs = body.paragraphs
+    result: dict[str, Any] = {
+        "check": check,
+        "mode": mode,
+        "host": None,
+        "title": paragraphs[0].text if paragraphs else None,
+        "cases": [],
+    }
+    regions = [region for p in paragraphs if (region := parse_region_65(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    data_ns = f"urn:check{check}"
+    try:
+        for region in regions:
+            tag = f"c{check}-{region['n']}"
+            entry = dict(region)
+            if mode == "run" and region["shape"].startswith("made-"):
+                try:
+                    _track_63(package, False)
+                    entry["made"] = _make_64(body, region, tag)
+                except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
+                    entry["made"] = failed_57(error)
+            if mode == "run" and region["op"] not in _UNWRITTEN_65 and not isinstance(entry.get("made"), str):
+                try:
+                    _track_63(package, region["mode"] == "tracked")
+                    entry["result"] = _apply_65(body, region, tag)
+                except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+                    entry["error"] = failed_57(error)
+                _track_63(package, False)
+            try:
+                entry["after"] = _report_63(
+                    package, body, region, tag, data_ns, node=region["shape"].endswith("-bound")
+                )
+            except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
+                entry["after"] = failed_57(error)
+            result["cases"].append(entry)
+    finally:
+        _track_63(package, False)
+    return result
+
+
+def run_check_65(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK65.runCheck`` in its ``run`` or ``report`` mode, on a loaded package (the snippet at core-ts ``aefc41f``).
+
+    Check 64's run on controls naming a glossary entry: ``65a-reference-only``
+    has no glossary part, ``65b-minimal-glossary`` one of the document part
+    alone, its own entry ``Enter the name.`` among the default's, and a control
+    naming an entry it lacks. ``set-placeholder-text`` sets ``placeholderText``
+    and reads it back; a ``made-`` case's control is made first, tracking off
+    (:func:`_make_64`); an ``open``, ``make`` or ``type`` case gets no write. A
+    bound control's node is read for the ``-bound`` shapes. The result names the
+    file by its title paragraph.
+    """
+    return _run_check_65(package, mode, 65)
+
+
+def run_check_66(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK66.runCheck`` in its ``run`` or ``report`` mode (the snippet at core-ts ``aefc41f``): check 65's, renamed.
+
+    ``66a-glossary-with-styles`` has the glossary document part and a styles
+    part holding Placeholder Text (D9 (a)), ``66b-word-glossary`` check 34's
+    six parts (D9 (b)); the same six cases in each.
+    """
+    return _run_check_65(package, mode, 66)
 
 
 # ---------------------------------------------------------------------------
