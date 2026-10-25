@@ -92,8 +92,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   Phases A (`b17bbab`, `dc027fd`), A2 (check 63's run 2, `dbce995`; run 1 had been made in Design Mode) and B
   (`dfb05fa`, `0dc354a`, `a3a9571`) implemented 2026-10-25, held to Word's runs of checks 63 to 68; C (the records and
   the Word check) done 2026-10-25, Word-checked (a glossary reshuffle in Word's first save was Word's session, not the
-  file: section 14.5); D (`971612a`, checks 69 and 70) implemented 2026-10-25, its Word check not yet run.
-  **0.2.0 follows CR-019 D**, with a new wheel, `release_check.sh` and the wheel's Word check.
+  file: section 14.5); D (`971612a`, checks 69 and 70) done 2026-10-25, Word-checked:
+  complete. **0.2.0 is next**, with a new wheel, `release_check.sh` and the wheel's Word check.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.

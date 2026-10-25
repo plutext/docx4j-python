@@ -640,6 +640,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > byte, kept all eight, so the reshuffle came from the state of Word's session in the first run, not
 > from the file. No code change.
 
+> **2026-10-25, CR-019 Phase D (the files built at `9088be9`, `__tmp/python-cr019d/`): passed** (the
+> user: "cr019d-69-run.docx and cr019d-70-run.docx both opened cleanly; every region as described").
+> This package's saves after its runs of core-ts's checks 69 and 70 opened without a repair prompt,
+> and in every region `NEW<n>` stood where `README.txt` says: after a trailing control (outside it,
+> the prompt kept), bookmark, comment, tracked change, field or text box, plain, and hidden after a
+> hidden run but by the End range's `"After"` (CR-019 section 15).
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
