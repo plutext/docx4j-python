@@ -1,0 +1,589 @@
+{
+ "check": 68,
+ "mode": "report",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "title": "Check 68: the run properties a write into a placeholder takes, and a glossary entry under a control's own run properties.",
+ "cases": [
+  {
+   "n": 1,
+   "op": "control-text-replace",
+   "shape": "block",
+   "form": "bare",
+   "run": "i",
+   "control": "none",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN1 control-text-replace block bare run-i control-none</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 68 control 1\"/><w:tag w:val=\"c68-1\"/><w:id w:val=\"68001\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:i/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END1</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 2,
+   "op": "control-text-end",
+   "shape": "block",
+   "form": "bare",
+   "run": "i",
+   "control": "none",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN2 control-text-end block bare run-i control-none</w:t></w:r></w:p><w:sdt><w:sdtPr><w:alias w:val=\"Check 68 control 2\"/><w:tag w:val=\"c68-2\"/><w:id w:val=\"68002\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:i/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END2</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 3,
+   "op": "control-text-replace",
+   "shape": "run",
+   "form": "bare",
+   "run": "i",
+   "control": "none",
+   "after": {
+    "paragraphs": [
+     "PLAIN3A  PLAIN3B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN3 control-text-replace run bare run-i control-none</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN3A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 68 control 3\"/><w:tag w:val=\"c68-3\"/><w:id w:val=\"68003\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:i/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN3B</w:t></w:r></w:p><w:p><w:r><w:t>END3</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN3A  PLAIN3B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 4,
+   "op": "control-text-end",
+   "shape": "run",
+   "form": "bare",
+   "run": "i",
+   "control": "none",
+   "after": {
+    "paragraphs": [
+     "PLAIN4A  PLAIN4B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN4 control-text-end run bare run-i control-none</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN4A </w:t></w:r><w:sdt><w:sdtPr><w:alias w:val=\"Check 68 control 4\"/><w:tag w:val=\"c68-4\"/><w:id w:val=\"68004\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:i/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN4B</w:t></w:r></w:p><w:p><w:r><w:t>END4</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN4A  PLAIN4B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 5,
+   "op": "control-text-replace",
+   "shape": "block",
+   "form": "bare",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN5 control-text-replace block bare run-none control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 5\"/><w:tag w:val=\"c68-5\"/><w:id w:val=\"68005\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END5</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 6,
+   "op": "control-text-end",
+   "shape": "block",
+   "form": "bare",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN6 control-text-end block bare run-none control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 6\"/><w:tag w:val=\"c68-6\"/><w:id w:val=\"68006\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END6</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 7,
+   "op": "control-text-replace",
+   "shape": "run",
+   "form": "bare",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN7A  PLAIN7B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN7 control-text-replace run bare run-none control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN7A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 7\"/><w:tag w:val=\"c68-7\"/><w:id w:val=\"68007\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN7B</w:t></w:r></w:p><w:p><w:r><w:t>END7</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN7A  PLAIN7B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 8,
+   "op": "control-text-end",
+   "shape": "run",
+   "form": "bare",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN8A  PLAIN8B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN8 control-text-end run bare run-none control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN8A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 8\"/><w:tag w:val=\"c68-8\"/><w:id w:val=\"68008\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN8B</w:t></w:r></w:p><w:p><w:r><w:t>END8</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN8A  PLAIN8B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 9,
+   "op": "control-text-replace",
+   "shape": "block",
+   "form": "bare",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN9 control-text-replace block bare run-b control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 9\"/><w:tag w:val=\"c68-9\"/><w:id w:val=\"68009\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END9</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 10,
+   "op": "control-text-end",
+   "shape": "block",
+   "form": "bare",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN10 control-text-end block bare run-b control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 10\"/><w:tag w:val=\"c68-10\"/><w:id w:val=\"68010\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END10</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 11,
+   "op": "control-text-replace",
+   "shape": "run",
+   "form": "bare",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN11A  PLAIN11B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN11 control-text-replace run bare run-b control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN11A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 11\"/><w:tag w:val=\"c68-11\"/><w:id w:val=\"68011\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN11B</w:t></w:r></w:p><w:p><w:r><w:t>END11</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN11A  PLAIN11B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 12,
+   "op": "control-text-end",
+   "shape": "run",
+   "form": "bare",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN12A  PLAIN12B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN12 control-text-end run bare run-b control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN12A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 12\"/><w:tag w:val=\"c68-12\"/><w:id w:val=\"68012\"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN12B</w:t></w:r></w:p><w:p><w:r><w:t>END12</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": null,
+     "paragraphs": [
+      "PLAIN12A  PLAIN12B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 13,
+   "op": "control-text-replace",
+   "shape": "block",
+   "form": "word",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN13 control-text-replace block word run-none control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 13\"/><w:tag w:val=\"c68-13\"/><w:id w:val=\"68013\"/><w:placeholder><w:docPart w:val=\"379AF4EE5BE54C398645E6C91ACF5936\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END13</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 14,
+   "op": "control-text-end",
+   "shape": "block",
+   "form": "word",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN14 control-text-end block word run-none control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 14\"/><w:tag w:val=\"c68-14\"/><w:id w:val=\"68014\"/><w:placeholder><w:docPart w:val=\"83E8CEC8A47A4C7EB56C8D30C25985E9\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END14</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 15,
+   "op": "control-text-replace",
+   "shape": "run",
+   "form": "word",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN15A  PLAIN15B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN15 control-text-replace run word run-none control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN15A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 15\"/><w:tag w:val=\"c68-15\"/><w:id w:val=\"68015\"/><w:placeholder><w:docPart w:val=\"DF2D8893DC984E3E94BF5F34E761986A\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN15B</w:t></w:r></w:p><w:p><w:r><w:t>END15</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN15A  PLAIN15B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 16,
+   "op": "control-text-end",
+   "shape": "run",
+   "form": "word",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN16A  PLAIN16B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN16 control-text-end run word run-none control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN16A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 16\"/><w:tag w:val=\"c68-16\"/><w:id w:val=\"68016\"/><w:placeholder><w:docPart w:val=\"F99579A30FE348B289F8F6D3B8A85D7A\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN16B</w:t></w:r></w:p><w:p><w:r><w:t>END16</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN16A  PLAIN16B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 17,
+   "op": "control-text-replace",
+   "shape": "block",
+   "form": "word",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN17 control-text-replace block word run-b control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 17\"/><w:tag w:val=\"c68-17\"/><w:id w:val=\"68017\"/><w:placeholder><w:docPart w:val=\"5EE1769429ED49809077B486A2935D1C\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END17</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 18,
+   "op": "control-text-end",
+   "shape": "block",
+   "form": "word",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     ""
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN18 control-text-end block word run-b control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 18\"/><w:tag w:val=\"c68-18\"/><w:id w:val=\"68018\"/><w:placeholder><w:docPart w:val=\"9AD866EBC22B4DE39E1EDE38D1106469\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END18</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      ""
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 19,
+   "op": "control-text-replace",
+   "shape": "run",
+   "form": "word",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN19A  PLAIN19B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN19 control-text-replace run word run-b control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN19A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 19\"/><w:tag w:val=\"c68-19\"/><w:id w:val=\"68019\"/><w:placeholder><w:docPart w:val=\"F733F057A88E4905AF25590D3E247767\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN19B</w:t></w:r></w:p><w:p><w:r><w:t>END19</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN19A  PLAIN19B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 20,
+   "op": "control-text-end",
+   "shape": "run",
+   "form": "word",
+   "run": "b",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN20A  PLAIN20B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN20 control-text-end run word run-b control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN20A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 20\"/><w:tag w:val=\"c68-20\"/><w:id w:val=\"68020\"/><w:placeholder><w:docPart w:val=\"B148059CCC694953AB085A3B893F1BBC\"/></w:placeholder><w:showingPlcHdr/></w:sdtPr><w:sdtContent><w:r><w:rPr><w:rStyle w:val=\"PlaceholderText\"/><w:b/></w:rPr><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN20B</w:t></w:r></w:p><w:p><w:r><w:t>END20</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN20A  PLAIN20B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 21,
+   "op": "content-delete",
+   "shape": "block",
+   "form": "value",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "VALUE21"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN21 content-delete block value run-none control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 21\"/><w:tag w:val=\"c68-21\"/><w:id w:val=\"68021\"/><w:placeholder><w:docPart w:val=\"BF959A1602644817A24A70E1C05FA2D4\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>VALUE21</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END21</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE21",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "VALUE21"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 22,
+   "op": "content-delete",
+   "shape": "run",
+   "form": "value",
+   "run": "none",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN22A VALUE22 PLAIN22B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN22 content-delete run value run-none control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN22A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 22\"/><w:tag w:val=\"c68-22\"/><w:id w:val=\"68022\"/><w:placeholder><w:docPart w:val=\"14471A69108E4230A9596800C20DD921\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:rPr><w:b/></w:rPr><w:t>VALUE22</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN22B</w:t></w:r></w:p><w:p><w:r><w:t>END22</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE22",
+     "placeholderText": "Click or tap here to enter text.",
+     "paragraphs": [
+      "PLAIN22A VALUE22 PLAIN22B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 23,
+   "op": "content-delete",
+   "shape": "block",
+   "form": "value",
+   "run": "i",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "VALUE23"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN23 content-delete block value run-i control-b</w:t></w:r></w:p><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 23\"/><w:tag w:val=\"c68-23\"/><w:id w:val=\"68023\"/><w:placeholder><w:docPart w:val=\"6F32B97EECEB4C1D8EDA7D00C5794A6F\"/></w:placeholder></w:sdtPr><w:sdtContent><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>VALUE23</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>END23</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE23",
+     "placeholderText": "Enter the name.",
+     "paragraphs": [
+      "VALUE23"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  },
+  {
+   "n": 24,
+   "op": "content-delete",
+   "shape": "run",
+   "form": "value",
+   "run": "i",
+   "control": "b",
+   "after": {
+    "paragraphs": [
+     "PLAIN24A VALUE24 PLAIN24B"
+    ],
+    "ooxml": "<w:p><w:r><w:t>BEGIN24 content-delete run value run-i control-b</w:t></w:r></w:p><w:p><w:r><w:t xml:space=\"preserve\">PLAIN24A </w:t></w:r><w:sdt><w:sdtPr><w:rPr><w:b/></w:rPr><w:alias w:val=\"Check 68 control 24\"/><w:tag w:val=\"c68-24\"/><w:id w:val=\"68024\"/><w:placeholder><w:docPart w:val=\"ED9B5976F0314AF993451AF657DB406F\"/></w:placeholder></w:sdtPr><w:sdtContent><w:r><w:rPr><w:b/></w:rPr><w:t>VALUE24</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t xml:space=\"preserve\"> PLAIN24B</w:t></w:r></w:p><w:p><w:r><w:t>END24</w:t></w:r></w:p><w:p/>",
+    "control": {
+     "via": "body.getContentControls()",
+     "type": "RichText",
+     "text": "VALUE24",
+     "placeholderText": "Enter the name.",
+     "paragraphs": [
+      "PLAIN24A VALUE24 PLAIN24B"
+     ]
+    },
+    "showingPlaceholderText": "undefined"
+   }
+  }
+ ],
+ "caseCount": 24
+}

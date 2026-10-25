@@ -460,7 +460,7 @@ def test_cr_012_section_18_a_control_showing_its_placeholder_reads_as_no_text_is
 
 @pytest.mark.parametrize("location", ["Start", "End", "Replace"])
 @pytest.mark.parametrize("form", ["block", "run"])
-def test_every_location_writes_in_the_placeholders_place_the_flag_cleared_the_style_gone_the_runs_own_look_kept(form, location):
+def test_every_location_writes_in_the_placeholders_place_the_flag_cleared_nothing_of_the_placeholder_runs_look_taken(form, location):
     package = create_package()
     look = '<w:r><w:rPr><w:rStyle w:val="PlaceholderText"/><w:b/></w:rPr><w:t>Click here.</w:t></w:r>'
     if form == "block":
@@ -474,9 +474,10 @@ def test_every_location_writes_in_the_placeholders_place_the_flag_cleared_the_st
     assert (control.text, control.is_showing_placeholder, control.placeholder_text) == ("VALUE", False, None)
     xml = to_xml(control.element)
     assert "showingPlcHdr" not in xml and "PlaceholderText" not in xml and "Click here." not in xml
-    if form == "run":
-        # the placeholder's run takes the text, its own properties but the style kept: the run's own look
-        assert "<w:b/>" in xml
+    # nothing of the placeholder run's look is taken, its bold too, the control having no run properties of its own
+    # (CR-019's port of core-ts c275a2a, D11; check 68 cases 1 to 4); until then CR-016 Phase B's rule kept the run's
+    # own properties but the style, bold here, which CR-016's Word check (file 2, region 7) saw bold
+    assert "<w:b/>" not in xml and "w:rPr" not in xml
     again = load(io.BytesIO(package.save()), options=LoadOptions(strict=True)).body.content_controls[0]
     assert (again.text, again.is_showing_placeholder) == ("VALUE", False)
 

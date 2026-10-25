@@ -1,4 +1,4 @@
-"""docx4j-core-ts's Office JS checks 52 to 67, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
+"""docx4j-core-ts's Office JS checks 52 to 68, ported to the content API: CR-013's, CR-016's and CR-019's oracles.
 
 CR-013 section 6.1. Word 365 ran each check's Script Lab snippet on the file in
 this directory and wrote JSON (``52-ranges-word365-run.json``,
@@ -43,6 +43,12 @@ step for step, onto the content API, and give the same JSON shape with the same
   Word's six parts (66b); ``set-placeholder-text``, made controls, and an
   ``open`` or ``type`` case left unwritten. The two snippets differ only in
   their names (``c65-``/``urn:check65`` and ``c66-``/``urn:check66``).
+* :func:`run_check_68` is ``CHECK68.runCheck`` (``check68-script-lab.js`` at
+  ``c275a2a``; CR-019 Phase B, core-ts's D11 and section 63.21) in its ``run``
+  and ``report`` modes: check 66's snippet with check 68's ops, writes into a
+  control showing its placeholder whose run (or entry) is italic and whose
+  ``w:sdtPr/w:rPr`` is bold, and Word's-form controls holding a bold value
+  emptied.
 * :func:`run_check_67` is ``CHECK67.runCheck`` (``check67-script-lab.js`` at
   ``2bafbcb``, unchanged at ``d84f3da``; CR-019 Phase A2) in its ``report``
   step and its four phases: check 58's three writes into a control in the
@@ -80,6 +86,7 @@ __all__ = [
     "parse_region_64",
     "parse_region_65",
     "parse_region_67",
+    "parse_region_68",
     "run_check_52",
     "run_check_53",
     "run_check_54",
@@ -91,6 +98,7 @@ __all__ = [
     "run_check_65",
     "run_check_66",
     "run_check_67",
+    "run_check_68",
     "vis",
 ]
 
@@ -1825,4 +1833,86 @@ def run_check_67(package: Any, step: str) -> dict[str, Any]:
         except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
             entry["after"] = failed_57(error)
         result["cases"].append(entry)
+    return result
+# ---------------------------------------------------------------------------
+# check 68 (core-ts check68-script-lab.js at c275a2a; CR-019 Phase B, core-ts's D11 and section 63.18 revised)
+# ---------------------------------------------------------------------------
+
+_BEGIN_68 = re.compile(r"^BEGIN(\d+) ([\w-]+) (block|run) (bare|word|value) run-(\w+) control-(\w+)$")
+
+
+def parse_region_68(text: str) -> dict[str, Any] | None:
+    """A check 68 BEGIN paragraph's text as a case, ``{n, op, shape, form, run, control}``, or None (``parseRegion``)."""
+    match = _BEGIN_68.match(text.strip())
+    if match is None:
+        return None
+    return {
+        "n": int(match.group(1)),
+        "op": match.group(2),
+        "shape": match.group(3),
+        "form": match.group(4),
+        "run": match.group(5),
+        "control": match.group(6),
+    }
+
+
+def _apply_68(body: Any, region: dict[str, Any]) -> dict[str, Any]:
+    """The case's write (the snippet's ``apply``): ``NEW<n>`` at ``"Replace"`` or ``"End"``, or the content deleted."""
+    tag = f"c68-{region['n']}"
+    found = _control_of_63(body, tag)
+    if found is None:
+        raise LookupError(f"not found: {tag}")
+    control = found["control"]
+    text = f"NEW{region['n']}"
+    op = region["op"]
+    if op == "control-text-replace":
+        return {"via": found["via"], "returned": vis(control.insert_text(text, location="Replace").text)}
+    if op == "control-text-end":
+        return {"via": found["via"], "returned": vis(control.insert_text(text, location="End").text)}
+    if op == "content-delete":
+        control.get_range("Content").delete()
+        return {"via": found["via"]}
+    raise ValueError(f"no operation {op}")
+
+
+def run_check_68(package: Any, mode: str) -> dict[str, Any]:
+    """``CHECK68.runCheck`` in its ``run`` or ``report`` mode, on a loaded package (the snippet at core-ts ``c275a2a``).
+
+    Check 66's snippet with check 68's names and ops: each case's write with
+    change tracking off (``control-text-replace``, ``control-text-end``, or a
+    value control's ``content-delete``), then the region: its paragraphs'
+    text, its OOXML and the control's reads. The placeholder run (or entry)
+    carries italic and the control's ``w:sdtPr/w:rPr`` bold, so a result shows
+    where each property came from.
+    """
+    if mode not in ("run", "report"):
+        raise ValueError(f"check 68 has no {mode!r} mode")
+    body = package.body
+    paragraphs = body.paragraphs
+    result: dict[str, Any] = {
+        "check": 68,
+        "mode": mode,
+        "host": None,
+        "title": paragraphs[0].text if paragraphs else None,
+        "cases": [],
+    }
+    regions = [region for p in paragraphs if (region := parse_region_68(p.text)) is not None]
+    result["caseCount"] = len(regions)
+    try:
+        for region in regions:
+            entry = dict(region)
+            if mode == "run":
+                try:
+                    _track_63(package, False)
+                    entry["result"] = _apply_68(body, region)
+                except Exception as error:  # noqa: BLE001 - what Office JS refuses fails alone, as in the snippet
+                    entry["error"] = failed_57(error)
+                _track_63(package, False)
+            try:
+                entry["after"] = _report_63(package, body, region, f"c68-{region['n']}", "", node=False)
+            except Exception as error:  # noqa: BLE001 - the snippet's .catch(failed)
+                entry["after"] = failed_57(error)
+            result["cases"].append(entry)
+    finally:
+        _track_63(package, False)
     return result

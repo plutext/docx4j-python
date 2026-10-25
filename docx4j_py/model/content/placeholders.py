@@ -32,10 +32,10 @@ holds (check 65).
 * a trial (``dry_run``) has entries of its own, the real package's pending ones
   copied in, and thrown away with it.
 
-What a control shows of an entry (section 63.18, as docx4j's CR-063 D2 has
-it): a copy of its paragraphs' run content, the control's own
-``w:sdtPr/w:rPr`` combined with each run's properties
-(:func:`entry_run_properties`, the one place the combination is made).
+What a control shows of an entry (section 63.18, as revised by 63.21 at
+``c275a2a``): a copy of its paragraphs' run content as the glossary holds it
+(:func:`entry_content_of`), the control's own ``w:sdtPr/w:rPr`` not over it, as
+Word brings an entry back (core-ts check 68).
 """
 
 from __future__ import annotations
@@ -65,7 +65,6 @@ __all__ = [
     "ensure_glossary_styles",
     "entries_of",
     "entry_content_of",
-    "entry_run_properties",
     "glossary_entries_of",
     "has_placeholder_styles",
     "load_glossary_entries",
@@ -119,9 +118,27 @@ def name_placeholder_entry(control: ContentControl, entry: str) -> None:
     control.put_property(el.placeholder(doc_part=CtPlaceholderDocPart(val=entry)))
 
 
-def new_entry_name() -> str:
-    """A new entry's name, as Word names one: 32 upper-case hex digits, a new GUID's (core-ts check 65)."""
-    return uuid.uuid4().hex.upper()
+def _new_uuid(package: Any) -> uuid.UUID:
+    """A version 4 UUID from the package's seeded generator, as a custom XML part's id is (CR-003 section 3.4).
+
+    So the same document and the same calls make the same bytes, where core-ts
+    draws a random one; a package-like object with no generator gets a random
+    one.
+    """
+    generator = getattr(package, "id_generator", None) if package is not None else None
+    if generator is None:
+        return uuid.uuid4()
+    rng = generator(derive_from=("glossary",))
+    return uuid.UUID(int=rng.getrandbits(128), version=4)
+
+
+def new_entry_name(package: Any = None) -> str:
+    """A new entry's name, as Word names one: 32 upper-case hex digits, a new GUID's (core-ts check 65).
+
+    Drawn from `package`'s seeded generator (:func:`_new_uuid`), so a seeded
+    package names the same entries every time.
+    """
+    return _new_uuid(package).hex.upper()
 
 
 def shows_placeholder_when_made(kind: str | None) -> bool:
@@ -290,7 +307,7 @@ class GlossaryEntries:
         for name, text in self._pending.items():
             if name in present:
                 continue
-            document.doc_parts.doc_part.append(doc_part_of(name, text))
+            document.doc_parts.doc_part.append(doc_part_of(name, text, package))
         self._pending.clear()
         self._source = glossary
         added.extend(ensure_glossary_styles(glossary))
@@ -358,55 +375,25 @@ def entries_of(document: Any) -> dict[str, GlossaryEntry]:
 # ---------------------------------------------------------------------------
 
 
-def entry_run_properties(entry: Any, control: Any) -> Any:
-    """An entry run's properties as a control shows them: the control's ``w:sdtPr/w:rPr`` over the run's own.
-
-    core-ts ``entryContentOf``'s rule at ``aefc41f`` (its section 63.18, as
-    docx4j's ``createPlaceholder`` applies them; docx4j CR-063 D2): each
-    property the control's run properties state replaces the run's, the rest
-    kept; with no control properties, the run's own. **The one place the
-    combination is made**, for core-ts's check 68 (CR-019 section 12): Word
-    brought an entry back as the glossary holds it, without the control's
-    properties over it, and core-ts has proposed revising the rule.
-
-    Returns:
-        A new ``w:rPr``, or None where neither states anything.
-    """
-    from docx4j_py.wml import RPr
-
-    if control is None:
-        return deep_copy(entry) if entry is not None else None
-    out = deep_copy(entry) if entry is not None else RPr()
-    for field in dataclasses.fields(control):
-        value = getattr(control, field.name)
-        if value is None or (isinstance(value, (list, dict)) and not value):
-            continue
-        setattr(out, field.name, deep_copy(value))
-    link_parents(out)
-    return out
-
-
-def entry_content_of(body: tuple[Any, ...] | list[Any], run_properties: Any) -> list[list[Any]]:
+def entry_content_of(body: tuple[Any, ...] | list[Any]) -> list[list[Any]]:
     """What a control shows of an entry: a copy of each of its paragraphs' run content, a list per paragraph.
 
-    core-ts ``entryContentOf`` (section 63.18): every item as the glossary
-    holds it but a proof error and a bookmark's ends, each run's properties
-    :func:`entry_run_properties` with the control's `run_properties`. The
-    paragraphs' properties stay in the glossary, whose styles they name.
+    core-ts ``entryContentOf`` (its section 63.18 as revised by 63.21, at
+    ``c275a2a``): every item as the glossary holds it but a proof error and a
+    bookmark's ends. Word brought an entry back so, the control's own run
+    properties not over it (check 68, cases 21 to 24), and doesn't restyle it
+    (check 65's 65b, case 9). The paragraphs' properties stay in the glossary,
+    whose styles they name. Until CR-019's port of ``c275a2a`` the control's
+    ``w:sdtPr/w:rPr`` went over each run, as docx4j's ``createPlaceholder``
+    puts it (``aefc41f``'s rule, ``entry_run_properties``).
     """
-    from docx4j_py.wml import P, R
+    from docx4j_py.wml import P
 
     out: list[list[Any]] = []
     for block in body:
         if not isinstance(block, P):
             continue
-        copies = [deep_copy(item) for item in (block.content or ()) if element_name(item) not in _LEFT_OUT]
-        for item in copies:
-            if isinstance(item, R):
-                item.r_pr = entry_run_properties(item.r_pr, run_properties)
-                if item.r_pr is not None:
-                    item.r_pr.parent = item
-        out.append(copies)
+        out.append([deep_copy(item) for item in (block.content or ()) if element_name(item) not in _LEFT_OUT])
     return out
 
 
@@ -417,17 +404,17 @@ def entry_content_of(body: tuple[Any, ...] | list[Any], run_properties: Any) -> 
 _W_DECLARATION = f'xmlns:w="{W_NS}"'
 
 
-def doc_part_of(name: str, text: str) -> Any:
+def doc_part_of(name: str, text: str, package: Any = None) -> Any:
     """A placeholder entry as Word writes one (core-ts check 65; ``docPartOf``).
 
     The default entry's ``w:docPartPr`` (category General, gallery
     placeholder, type ``bbPlcHdr``, behaviour content) with a ``w:guid`` of its
-    own, and a body of one paragraph, one run of the text in the Placeholder
-    Text style.
+    own, drawn from `package`'s seeded generator (:func:`_new_uuid`), and a
+    body of one paragraph, one run of the text in the Placeholder Text style.
     """
     from docx4j_py.fragments import wml
 
-    guid = "{" + str(uuid.uuid4()).upper() + "}"
+    guid = "{" + str(_new_uuid(package)).upper() + "}"
     space = ' xml:space="preserve"' if text != text.strip(" ") else ""
     xml = (
         f'<w:docPart {_W_DECLARATION}><w:docPartPr><w:name w:val="{escape(name, {chr(34): "&quot;"})}"/>'

@@ -861,22 +861,25 @@ def _control_xml(identifier: int, content: str, *, entry: str | None = None, ext
     )
 
 
-def _block_placeholder(entry: str | None = None, *, tracked: bool = False) -> tuple[Any, Any]:
+def _block_placeholder(entry: str | None = None, *, tracked: bool = False, italic: bool = False) -> tuple[Any, Any]:
     package = create_package()
-    package.body.insert_xml(_control_xml(1, f"<w:p>{_PLACEHOLDER_RUN}</w:p>", entry=entry), location="End")
+    # the control's own run properties italic, where asked: what a write takes (D11, core-ts check 68)
+    extra = "<w:rPr><w:i/></w:rPr>" if italic else ""
+    package.body.insert_xml(_control_xml(1, f"<w:p>{_PLACEHOLDER_RUN}</w:p>", entry=entry, extra=extra), location="End")
     if tracked:
         package.change_tracking_mode = "TrackAll"
     return package, package.body.content_controls[0]
 
 
+@pytest.mark.parametrize("italic", [False, True])
 @pytest.mark.parametrize("entry", [None, DEFAULT_ENTRY])
 @pytest.mark.parametrize("tracked", [False, True])
 @pytest.mark.parametrize(
     "route",
     ["control.insert_text", "content.insert_text", "paragraph.insert_text", "paragraph.text", "paragraph.splice"],
 )
-def test_every_route_into_a_block_placeholder_writes_one_paragraph_in_its_place_the_flag_cleared(route, tracked, entry):
-    package, control = _block_placeholder(entry, tracked=tracked)
+def test_every_route_into_a_block_placeholder_writes_one_paragraph_in_its_place_the_flag_cleared(route, tracked, entry, italic):
+    package, control = _block_placeholder(entry, tracked=tracked, italic=italic)
     paragraph = control.paragraphs[0]
     if route == "control.insert_text":
         control.insert_text("VALUE", location="End")
@@ -893,10 +896,11 @@ def test_every_route_into_a_block_placeholder_writes_one_paragraph_in_its_place_
     # what the control shows, its deleted runs aside
     shown = re.sub(r"<w:del [\s\S]*?</w:del>", "", xml)
     assert "PlaceholderText" not in shown and PLACEHOLDER not in shown, xml
-    # the bare form's text takes the placeholder run's own look but the style, CR-016 Phase B's (a plain run for every
-    # placeholder Word measured, whose run had the style alone); Word's form's is plain (check 64). core-ts at d84f3da
-    # writes plain in both forms, the bold dropped too: unmeasured, CR-019 section 11.4
-    assert ("<w:b/>" in shown) == (entry is None), xml
+    # the text takes the control's own run properties and nothing of the placeholder run's, in both forms (D11, core-ts
+    # c275a2a; check 68 cases 1 to 20): the placeholder's bold not taken, the control's italic taken where it has it.
+    # Until then the bare form's text took the placeholder run's look less its style (CR-016 Phase B's rule)
+    assert "<w:b/>" not in shown, xml
+    assert ("<w:i/>" in shown) == italic, xml
     # tracked, only the insertion is recorded, in either form: the placeholder goes unmarked (check 64, check 63's run 2;
     # core-ts's D5 at d84f3da), where Phase A put the bare form's placeholder back in a w:del (run 1, Design Mode's)
     assert ("<w:ins " in xml) == tracked and "<w:del " not in xml and "<w:delText>" not in xml, xml

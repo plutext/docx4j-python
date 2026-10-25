@@ -170,17 +170,6 @@ def _position_for(items: list, name: str) -> int:
 PLACEHOLDER_STYLE = "PlaceholderText"
 
 
-def _drop_placeholder_style(run: Any) -> None:
-    """Take a ``PlaceholderText`` ``w:rStyle`` off a run; an ``w:rPr`` left saying nothing goes too (CR-016 Phase B)."""
-    r_pr = getattr(run, "r_pr", None)
-    style = getattr(r_pr, "r_style", None) if r_pr is not None else None
-    if style is None or getattr(style, "val", None) != PLACEHOLDER_STYLE:
-        return
-    r_pr.r_style = None
-    if all(getattr(r_pr, field.name) is None for field in dataclasses.fields(r_pr)):
-        run.r_pr = None
-
-
 def _placeholder_run(text: str, run_properties: Any) -> Any:
     """docx4j's placeholder run: the prompt, styled ``PlaceholderText``."""
     from docx4j_py.child import deep_copy
@@ -916,10 +905,12 @@ class ContentControl:
 
         What the control shows is a copy of each of the entry's paragraphs'
         run content (:func:`~.placeholders.entry_content_of`), every run as the
-        glossary holds it with the control's own ``w:sdtPr/w:rPr`` combined
-        with its properties (:func:`~.placeholders.entry_run_properties`; core-ts
-        check 68 has since found Word does not combine them, CR-019 section
-        12). A block control takes every paragraph, but a bound one
+        glossary holds it, the control's own ``w:sdtPr/w:rPr`` not over it, as
+        Word brings an entry back (core-ts check 68 cases 21 to 24, its section
+        63.21; until CR-019's port of ``c275a2a`` the control's properties went
+        over each run, docx4j's ``createPlaceholder`` order). Where no glossary
+        entry is there to copy, the default text's run alone, in the
+        ``PlaceholderText`` style. A block control takes every paragraph, but a bound one
         (:func:`is_bound_block_control`) only the first; the further paragraphs
         take a copy of the control's first paragraph's ``w:pPr``, as docx4j's
         binding gives them. A run-level control takes the first paragraph's
@@ -949,11 +940,11 @@ class ContentControl:
             ):
                 change.part(self._glossary_part_name())
             body = glossary.body_of(name) if glossary is not None else None
-            properties = self.run_properties
             if body is not None:
-                paragraphs = entry_content_of(body, properties)
+                paragraphs = entry_content_of(body)
             else:
-                paragraphs = [[_placeholder_run(DEFAULT_PLACEHOLDER_TEXT, properties)]]
+                # the entry's run as the glossary will hold it, the control's run properties not under it (check 68)
+                paragraphs = [[_placeholder_run(DEFAULT_PLACEHOLDER_TEXT, None)]]
             change.text(before=self._shown_text(), after="")
             self.set_bound_content(paragraphs[0] if paragraphs else [], True)
             change.touched(self.address)
@@ -984,21 +975,22 @@ class ContentControl:
     def _write_placeholder(self, text: str, *, breaks: str = "paragraph") -> Range:
         """Text written into this control while it shows its placeholder, by any route (CR-019 sections 4.2 and 11).
 
-        core-ts ``writePlaceholder`` (``d84f3da``; its D1, D2 (b) and D5). The
-        routes: :meth:`insert_text`, its ``"Content"`` range's ``insert_text``
-        (:meth:`_write_through`), and a block control's paragraph's
-        ``insert_text``, ``text = ...`` and ``splice``. **One rule for both
-        forms**: the placeholder is no content (core-ts checks 64 and 67,
-        check 63's run 2). Its runs come out untracked (a block control's
-        other paragraphs go), the text takes their place, plain, in the first
+        core-ts ``writePlaceholder`` (``c275a2a``; its D1, D2 (b), D5 and
+        D11). The routes: :meth:`insert_text`, its ``"Content"`` range's
+        ``insert_text`` (:meth:`_write_through`), and a block control's
+        paragraph's ``insert_text``, ``text = ...`` and ``splice``. **One rule
+        for both forms**: the placeholder is no content (core-ts checks 64 and
+        67, check 63's run 2). Its runs come out untracked (a block control's
+        other paragraphs go), the text takes their place in the first
         paragraph, ``w:showingPlcHdr`` is cleared, and under tracking only the
-        insertion is recorded. In the bare form "plain" is CR-016 Phase B's
-        and Phase A's: the first placeholder run's own properties, the
-        ``PlaceholderText`` style left off (:meth:`_dress_as_placeholder`),
-        which is no properties at all for every placeholder Word measured
-        (core-ts checks 58, 63 and 67); core-ts at ``d84f3da`` drops a
-        placeholder run's other properties too, unmeasured (CR-019 section
-        11.4).
+        insertion is recorded. **The text takes the control's own run
+        properties, and nothing of the placeholder's** (D11, core-ts check 68
+        cases 1 to 20; :meth:`_take_control_properties`): each run the write
+        leaves in the control a copy of ``w:sdtPr/w:rPr``, and plain where the
+        control has none. Until CR-019 Phase B's port of ``c275a2a`` the bare
+        form's text took the first placeholder run's properties less the
+        ``PlaceholderText`` style (CR-016 Phase B's rule), which check 68's
+        italic placeholder (cases 1 to 4) showed is not Word's.
 
         One paragraph, tracked as untracked (D5, core-ts's F1 and F3): the flag
         is cleared, so the tracked write reads as text. A run-level control's
@@ -1021,7 +1013,7 @@ class ContentControl:
                 self._refuse_run_text(text)
             # the report says what the write replaced: the prompt (CR-016 section 11.6 item 6)
             change.text(before=self._shown_text())
-            taken = self._take_placeholder_runs(form)
+            self._take_placeholder_runs(form)
             self.remove_property("showingPlcHdr", W_NS)
             if form == "run":
                 paragraph = self.parent_paragraph()
@@ -1032,8 +1024,7 @@ class ContentControl:
                 first = self._first_paragraph()
                 out = first.splice(0, 0, text, breaks=breaks)
                 change.touched(out.paragraph, out.end_paragraph)
-            if self.placeholder_entry is None:
-                self._dress_as_placeholder(taken)
+            self._take_control_properties()
             change.text(after=text)
             self.write_through()
             return out
@@ -1095,27 +1086,25 @@ class ContentControl:
         first = paragraphs[0] if paragraphs else self._first_paragraph().element
         return _Taken(runs, first.content, first)
 
-    def _dress_as_placeholder(self, taken: _Taken) -> None:
-        """The bare form's text in the first placeholder run's own look, the ``PlaceholderText`` style left off (CR-016 Phase B).
+    def _take_control_properties(self) -> None:
+        """Every run a write into the placeholder left in the control takes a copy of its ``w:sdtPr/w:rPr`` (D11).
 
-        The text written takes the first placeholder run's run properties, its
-        ``w:rPrChange`` left out and the ``PlaceholderText`` style dropped, as
-        CR-016 Phase B wrote it: a plain run where the placeholder run had the
-        style alone, as Word's saves of core-ts checks 58 (cases 20 to 22), 63
-        (run 2) and 67 have it, its bold kept where it was bold too
-        (unmeasured). Under tracking nothing more is recorded: only the
-        insertion, as in Word's form (core-ts's D5 at ``d84f3da``; check 63's
-        run 2).
+        core-ts ``writePlaceholder``'s last step at ``c275a2a`` (its CR-002
+        sections 63.20 and 63.21; check 68 cases 1 to 20, Word 365 with Design
+        Mode off): the control's own run properties, in both forms and at
+        every location, the placeholder run's not taken (its italic, cases 1 to
+        4); where the control has none, the runs are left as the write made
+        them, plain. Every run in the content is the write's: the placeholder's
+        went first.
         """
-        from docx4j_py.model.content.tracking import copy_r_pr
+        from docx4j_py.child import deep_copy
 
-        original = taken.runs[0].r_pr if taken.runs else None
+        properties = self.run_properties
+        if properties is None:
+            return
         for run in self._content_runs():
-            look = copy_r_pr(original)
-            run.r_pr = look
-            if look is not None:
-                look.parent = run
-                _drop_placeholder_style(run)
+            run.r_pr = deep_copy(properties)
+            run.r_pr.parent = run
 
     def _show_filler(self) -> None:
         """Word's filler for a control emptied in the bare form: the flag on over a run of five spaces (CR-019 section 11).
@@ -1362,9 +1351,9 @@ class ContentControl:
         own, named as Word names one (32 upper-case hex digits), which the save
         writes into the glossary, making the glossary where the file has none
         (D9). The entry named before stays in the glossary. A control showing
-        its placeholder, or holding nothing, shows the text, in the
-        ``PlaceholderText`` style over the control's own run properties, with
-        ``w:showingPlcHdr``; a control holding content keeps it, and only its
+        its placeholder, or holding nothing, shows the text as the entry holds
+        it, one run in the ``PlaceholderText`` style (the control's own run
+        properties not under it, check 68), with ``w:showingPlcHdr``; a control holding content keeps it, and only its
         reference changes (until Phase B it refused, ``binding.holds_content``).
         """
         name = self.placeholder_entry
@@ -1384,17 +1373,25 @@ class ContentControl:
         )
 
         own = value not in ("", DEFAULT_PLACEHOLDER_TEXT)
-        name = new_entry_name() if own else DEFAULT_PLACEHOLDER_ENTRY
+        glossary = self._glossary
+        name = DEFAULT_PLACEHOLDER_ENTRY
+        if own:
+            # a name the glossary holds no entry of: a trial's generator starts where the real package's did
+            package = getattr(self.parent_body, "package", None)
+            name = new_entry_name(package)
+            while glossary is not None and glossary.has(name):
+                name = new_entry_name(package)
         shown = value if own else DEFAULT_PLACEHOLDER_TEXT
         with recording(self.parent_body, "placeholder_text") as change:
             change.touched(self.address)
             empty = self.is_showing_placeholder or self.text == ""
             name_placeholder_entry(self, name)
-            glossary = self._glossary
             if glossary is not None and glossary.require(name, shown):
                 change.part(self._glossary_part_name())
             if empty:
-                self.set_bound_content([_placeholder_run(shown, self.run_properties)], True)
+                # the entry's run, as the glossary will hold it: the control's run properties aren't under it (check
+                # 68; core-ts c275a2a)
+                self.set_bound_content([_placeholder_run(shown, None)], True)
             change.text(after=shown)
 
     @property

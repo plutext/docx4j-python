@@ -44,7 +44,7 @@ from docx4j_py.model.content.placeholders import (
     DEFAULT_PLACEHOLDER_ENTRY,
     DEFAULT_PLACEHOLDER_TEXT,
     GlossaryEntries,
-    entry_run_properties,
+    entry_content_of,
 )
 from docx4j_py.traversal import text_of
 from docx4j_py.wml import to_xml
@@ -701,6 +701,23 @@ def test_d9_the_content_apis_save_holds_words_form_reopened_and_read_back_and_ro
         assert result.identical and not result.counts, (name, result.counts)
 
 
+def test_the_same_calls_make_the_same_glossary_the_names_and_guids_from_the_packages_seeded_generator():
+    """CR-003 section 3.4's rule, as a custom XML part's id keeps it: core-ts draws random ones (CR-019 section 12)."""
+
+    def build(seed: int) -> tuple[str, dict[str, str]]:
+        package = create_package()
+        package.id_seed = seed
+        package.body.insert_paragraph("").insert_content_control()
+        own = package.body.insert_paragraph("").insert_content_control("PlainText")
+        own.placeholder_text = "Enter the name."
+        return own.placeholder_entry, _parts(package.save())
+
+    first, second, other = build(19), build(19), build(20)
+    assert first[0] == second[0] != other[0] and re.fullmatch(r"[0-9A-F]{32}", first[0])
+    assert first[1]["word/glossary/document.xml"] == second[1]["word/glossary/document.xml"]
+    assert first[1]["word/glossary/document.xml"] != other[1]["word/glossary/document.xml"]
+
+
 def test_a_trial_has_its_own_entries_thrown_away_with_it():
     package = _check_63()
     (block,) = _tagged(package, "c63-1")
@@ -764,34 +781,36 @@ def _colour(r_pr: Any) -> str | None:
     return value.hex().upper() if isinstance(value, bytes) else value
 
 
-def test_section_63_18_the_combination_a_control_shows_a_copy_of_its_entrys_content_the_controls_run_properties_over_it():
-    """The tests that pin how an entry's runs and a control's ``w:sdtPr/w:rPr`` combine, together (core-ts ``aefc41f``).
+def test_sections_63_18_and_63_21_a_control_shows_a_copy_of_its_entrys_content_as_the_glossary_holds_it():
+    """How an entry's runs and a control's ``w:sdtPr/w:rPr`` combine: they don't (core-ts ``c275a2a``, its section 63.21).
 
-    core-ts's check 68 has since found that Word brings an entry back as the
-    glossary holds it, without the control's properties over it (CR-019
-    section 12); these move together when that is ported.
+    Word brought an emptied control's entry back as the glossary holds it, the
+    control's bold not over it (core-ts check 68, cases 21 to 24). At
+    ``aefc41f`` (section 63.18, docx4j's ``createPlaceholder`` order) the
+    control's properties went over each run: these runs read ``off`` and
+    ``FF0000``, and the run-level control's first run lost nothing, the
+    control having no properties of its own. The tests pinning the
+    combination are these, together (CR-019 section 12).
     """
     package, name = _with_entry_of_two_paragraphs()
     block, run_control = _tagged(package, "block", "run")
     assert block.placeholder_text == "Enter the name,\rthen the date."
     block.show_placeholder()
     run_control.show_placeholder()
-    # the block control: both paragraphs, each run as the entry holds it with the control's properties over it (its
-    # w:b off over the entry's bold), the second paragraph with a copy of the control's paragraph's properties
-    runs = [
-        [(text_of(r), r.r_pr.r_style.val, _bold(r.r_pr), _colour(r.r_pr)) for r in p.runs]
-        for p in block.paragraphs
-    ]
+    # the block control: both paragraphs, each run as the entry holds it, the control's w:b off and red not over it,
+    # the second paragraph with a copy of the control's paragraph's properties (docx4j's binding)
+    runs = [[(text_of(r), r.r_pr.r_style.val, _bold(r.r_pr), _colour(r.r_pr)) for r in p.runs] for p in block.paragraphs]
     assert runs == [
-        [("Enter ", "PlaceholderText", "off", "FF0000"), ("the name,", "PlaceholderText", "off", "FF0000")],
-        [("then the date.", "PlaceholderText", "off", "FF0000")],
+        [("Enter ", "PlaceholderText", "on", None), ("the name,", "PlaceholderText", "unset", None)],
+        [("then the date.", "PlaceholderText", "unset", None)],
     ]
     assert [getattr(getattr(getattr(p.element.p_pr, "jc", None), "val", None), "value", None) for p in block.paragraphs] == [
         "center",
         "center",
     ]
+    # no placeholder text reads (a placeholder of two paragraphs reads its mark between them, '\r'; unmeasured)
     assert [block.is_showing_placeholder, block.text.replace("\r", ""), block.placeholder_entry] == [True, "", name]
-    # the run-level control, no run properties of its own: the first paragraph's runs as the entry holds them
+    # the run-level control: the first paragraph's runs as the entry holds them
     assert re.search(
         r'<w:sdtContent><w:r><w:rPr><w:rStyle w:val="PlaceholderText"/><w:b/></w:rPr><w:t xml:space="preserve">Enter </w:t>'
         r'</w:r><w:r><w:rPr><w:rStyle w:val="PlaceholderText"/></w:rPr><w:t>the name,</w:t></w:r></w:sdtContent>',
@@ -800,14 +819,16 @@ def test_section_63_18_the_combination_a_control_shows_a_copy_of_its_entrys_cont
     assert [run_control.is_showing_placeholder, run_control.text, run_control.placeholder_entry] == [True, "", name]
     # the entry itself is left as it was
     assert f'<w:name w:val="{name}"/>' in _parts(package.save())["word/glossary/document.xml"]
-    # the one helper the combination is made in: the control's properties over the run's, the run's alone without
-    from docx4j_py.wml import RPr, el
-
-    run_r_pr = RPr(r_style=el.rStyle(val="PlaceholderText"), b=el.b())
-    combined = entry_run_properties(run_r_pr, RPr(b=el.b(val=False), color=el.color(val="FF0000")))
-    assert (combined.r_style.val, _bold(combined), _colour(combined)) == ("PlaceholderText", "off", "FF0000")
-    alone = entry_run_properties(run_r_pr, None)
-    assert alone is not run_r_pr and (alone.r_style.val, _bold(alone), alone.color) == ("PlaceholderText", "on", None)
+    # entry_content_of copies, as the glossary holds them: the copies are not the entry's runs
+    body = package.glossary_entries.body_of(name)
+    copied = entry_content_of(body)
+    assert [[text_of(r) for r in runs] for runs in copied] == [["Enter ", "the name,"], ["then the date."]]
+    assert copied[0][0] is not body[0].content[0] and copied[0][0] == body[0].content[0]
+    # the setter's and the default's run is the entry's run alone, the control's bold not under it (check 68)
+    block.placeholder_text = "Something new."
+    assert [(text_of(r), r.r_pr.r_style.val, _bold(r.r_pr), _colour(r.r_pr)) for r in block.paragraphs[0].runs] == [
+        ("Something new.", "PlaceholderText", "unset", None)
+    ]
 
 
 def test_section_63_18_a_text_control_naming_a_missing_entry_is_given_words_default_and_a_date_control_keeps_its_name():
@@ -860,3 +881,144 @@ def test_the_glossary_is_read_on_first_use_where_no_body_has_read_it_yet():
     fresh = load(OFFICE_JS / "65b-minimal-glossary.docx")
     fresh.body  # noqa: B018 - read for its effect
     assert fresh.glossary_entries.loaded
+
+
+# ---------------------------------------------------------------------------
+# check 68 (core-ts c275a2a, its sections 63.19 to 63.21): the run properties a write into a placeholder takes (D11),
+# and an entry Word brings back under a control's own run properties (section 63.18 revised)
+# ---------------------------------------------------------------------------
+
+#: Check 68's files, as core-ts c275a2a has them: its file (git-ignored there, written by build.mjs at 10:25 on
+#: 2026-10-25, before Word's run at 10:32), Word's two JSONs and its two saves (test/check68/manifest.json's SHA-1s).
+SHA1_68 = {
+    "68-placeholder-run-properties.docx": "067900bb591700fc516b4d93498a368ddb6fd827",
+    "68-placeholder-run-properties-word365-report.json": "4addee02c1bfedac16ad87ec82ed36d4d68a4565",
+    "68-placeholder-run-properties-word365-run.json": "52444d95efdec07196e42fc81e51559c6ce1b749",
+    "68-opened-word365.docx": "6be5ed8f64f6e9ecb0ab497874d6665a20072ed6",
+    "68-run-word365.docx": "17e75303cdb859c89ec2f5b9a3b38a45d582facd",
+}
+CUSTOM_ENTRY_68 = "68686868686846868686868686868686"
+
+
+def _cases_68() -> list[dict[str, Any]]:
+    """Check 68's cases as ``build.mjs`` at core-ts ``c275a2a`` builds them (``check68Cases``)."""
+    out: list[dict[str, Any]] = []
+
+    def add(op: str, shape: str, form: str, run: str, control: str) -> None:
+        out.append({"n": len(out) + 1, "op": op, "shape": shape, "form": form, "run": run, "control": control})
+
+    for run_, control in (("i", "none"), ("none", "b"), ("b", "b")):
+        for shape in ("block", "run"):
+            for op in ("control-text-replace", "control-text-end"):
+                add(op, shape, "bare", run_, control)
+    for run_ in ("none", "b"):
+        for shape in ("block", "run"):
+            for op in ("control-text-replace", "control-text-end"):
+                add(op, shape, "word", run_, "b")
+    for run_ in ("none", "i"):
+        for shape in ("block", "run"):
+            add("content-delete", shape, "value", run_, "b")
+    return out
+
+
+def look_68(case: dict[str, Any]) -> str:
+    """A region's control after a case of check 68: ``<n> <flag> <run>{<S style><b><i><c colour>} ...`` (core-ts ``look68``)."""
+    sdt = re.search(r"<w:sdt>([\s\S]*?)</w:sdt>", case["after"]["ooxml"])
+    content = re.search(r"<w:sdtContent>([\s\S]*?)</w:sdtContent>", sdt.group(1) if sdt else "")
+    runs = []
+    for match in re.finditer(r"<w:r>(?:<w:rPr>([\s\S]*?)</w:rPr>)?<w:t[^>]*>([^<]*)</w:t></w:r>", content.group(1) if content else ""):
+        p = match.group(1) or ""
+        flags = ("S" if "PlaceholderText" in p else "") + ("b" if "<w:b/>" in p else "") + ("i" if "<w:i/>" in p else "")
+        runs.append(f"{match.group(2)}{{{flags}{'c' if 'w:color' in p else ''}}}")
+    return f"{case['n']} {'P' if sdt and 'showingPlcHdr' in sdt.group(1) else '-'} {' '.join(runs)}"
+
+
+#: Word 365's answers (core-ts's section 63.20): a write takes the control's run properties and nothing of the
+#: placeholder's; an emptied control's entry comes back as the glossary holds it, the control's bold not over it.
+WORD_RUN_68 = [
+    # the bare form, the placeholder italic, the control with no properties: plain, the italic not taken
+    *(f"{n} - NEW{n}{{}}" for n in range(1, 5)),
+    # the control bold, in the bare form (its placeholder plain, or bold as docx4j's binder writes it) and Word's: bold
+    *(f"{n} - NEW{n}{{b}}" for n in range(5, 21)),
+    # emptied, the entry in its own look, the control's bold not over it (the user: "placeholders in 21 to 24 do NOT")
+    f"21 P {PLACEHOLDER}{{S}}",
+    f"22 P {PLACEHOLDER}{{S}}",
+    "23 P Enter the name.{Si}",
+    "24 P Enter the name.{Si}",
+]
+
+
+def test_check_68s_files_are_core_tss_as_copied_its_jsons_are_of_its_cases_and_word_ran_with_design_mode_off():
+    manifest = dict(
+        reversed(line.split("  ", 1))
+        for line in (OFFICE_JS / "SHA1SUMS").read_text(encoding="utf-8").splitlines()
+        if line
+    )
+    for name, sha1 in SHA1_68.items():
+        assert manifest[name] == sha1, name
+        assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == sha1, name
+    for mode in ("report", "run"):
+        measured = word(f"68-placeholder-run-properties-word365-{mode}.json")
+        assert [measured["check"], measured["mode"], measured["host"]["version"], measured["caseCount"]] == [
+            68,
+            mode,
+            "16.0.20326.20232",
+            24,
+        ]
+        assert [{k: c[k] for k in ("n", "op", "shape", "form", "run", "control")} for c in measured["cases"]] == _cases_68()
+    for name in ("68-opened-word365.docx", "68-run-word365.docx"):
+        assert "formsDesign" not in _save(name)["word/settings.xml"], name
+
+
+def test_check_68s_file_and_snippet_agree_the_bare_and_words_forms_the_run_and_control_properties_as_built():
+    package = load(OFFICE_JS / "68-placeholder-run-properties.docx")
+    body = package.body
+    cases = _cases_68()
+    assert [r for p in body.paragraphs if (r := checks.parse_region_68(p.text)) is not None] == cases
+    controls = body.content_controls
+    assert [c.tag for c in controls] == [f"c68-{c['n']}" for c in cases]
+    assert [c.placeholder_entry for c in controls] == [
+        None if c["form"] == "bare" else CUSTOM_ENTRY_68 if c["form"] == "value" and c["run"] == "i" else DEFAULT_ENTRY
+        for c in cases
+    ]
+    assert [c.is_showing_placeholder for c in controls] == [c["form"] != "value" for c in cases]
+    assert [getattr(c.run_properties, "b", None) is not None for c in controls] == [c["control"] == "b" for c in cases]
+
+
+def test_word_365s_answers_check_68_a_write_takes_the_controls_run_properties_an_entry_comes_back_as_the_glossary_holds_it():
+    run_ = word("68-placeholder-run-properties-word365-run.json")
+    assert not [c for c in run_["cases"] if c.get("error")], "Office JS refused nothing"
+    assert [look_68(c) for c in run_["cases"]] == WORD_RUN_68
+    # Word's save holds the same, each bold control's w:sdtPr/w:rPr kept
+    saved = re.sub(r' (w:rsid\w*|w14:paraId|w14:textId)="[^"]*"', "", _save("68-run-word365.docx")["word/document.xml"])
+    sdts = {int(re.search(r'c68-(\d+)', sdt).group(1)): sdt for sdt in re.findall(r"<w:sdt>[\s\S]*?</w:sdt>", saved)}
+    assert [look_68({"n": n, "after": {"ooxml": sdts[n]}}) for n in range(1, 25)] == WORD_RUN_68
+    for case in run_["cases"]:
+        if case["control"] == "b":
+            assert re.search(r"<w:sdtPr><w:rPr><w:b/></w:rPr>", sdts[case["n"]]), case["n"]
+
+
+@pytest.mark.parametrize("mode", ["report", "run"])
+def test_check_68s_run_through_the_port_is_word_365s_in_every_case(mode):
+    package = load(OFFICE_JS / "68-placeholder-run-properties.docx")
+    ours = checks.run_check_68(package, mode)
+    measured = word(f"68-placeholder-run-properties-word365-{mode}.json")
+    assert ours["caseCount"] == 24 and not [c for c in ours["cases"] if c.get("error")]
+    # at caff8cf's code, and at aefc41f's port, 4 of the 24 writes agreed (9 to 12, where the placeholder run and the
+    # control were both bold): the bare form took the run's look, Word's form wrote plain, and an emptied control showed
+    # nothing (caff8cf) or its entry under the control's bold (aefc41f)
+    assert [look_68(c) for c in ours["cases"]] == [look_68(c) for c in measured["cases"]]
+    for theirs, mine in zip(measured["cases"], ours["cases"], strict=True):
+        assert view(mine) == view(theirs), theirs["n"]
+        control = theirs["after"].get("control")
+        if isinstance(control, dict):
+            assert mine["after"]["control"]["placeholderText"] == control["placeholderText"], theirs["n"]
+
+
+def test_check_68s_saved_controls_are_words_save_after_the_run():
+    package = load(OFFICE_JS / "68-placeholder-run-properties.docx")
+    checks.run_check_68(package, "report")
+    checks.run_check_68(package, "run")
+    ours = _parts(package.save())["word/document.xml"]
+    sdts = {int(re.search(r'c68-(\d+)', sdt).group(1)): sdt for sdt in re.findall(r"<w:sdt>[\s\S]*?</w:sdt>", ours)}
+    assert [look_68({"n": n, "after": {"ooxml": sdts[n]}}) for n in range(1, 25)] == WORD_RUN_68
