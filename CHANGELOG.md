@@ -12,7 +12,7 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 ## [0.2.0] --- 2026-10-24
 
 Still WordprocessingML only; PresentationML and SpreadsheetML remain CR-001 Phase D and CR-002
-Phase C. Six change requests are new and complete, each Word-checked:
+Phase C. Seven change requests are new and complete, each Word-checked:
 
 - [CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md): tracked changes
   listed, accepted and rejected as Word 365 resolves them (`docx4j_py.model.revisions`).
@@ -32,9 +32,13 @@ Phase C. Six change requests are new and complete, each Word-checked:
 - [CR-016](docs/change-requests/CR-016-cell-ends-fonts-placeholders-and-wildcards.md): Word's table
   rule, a cell ends with a paragraph, kept through every edit. This closes a defect 0.1.0 shared:
   eleven edits left a cell Word opens as unreadable content. `Font`, a control showing its
-  placeholder and a deleted paragraph mark read as Office JS reads them, and a placeholder is
-  written into as Word does. Word's wildcards match across a paragraph mark, and no hit cuts a
-  grapheme cluster.
+  placeholder and a deleted paragraph mark read as Office JS reads them. Word's wildcards match
+  across a paragraph mark, and no hit cuts a grapheme cluster.
+- [CR-019](docs/change-requests/CR-019-writing-into-a-placeholder.md): every write into a content
+  control showing its placeholder replaces it as Word 365 does, by every route, and placeholders
+  are written in Word's own form, naming a glossary entry, the glossary written on save where a
+  file has none. This closes a defect 0.1.0 shared: a value written into a control showing its
+  placeholder, by any route, left the control a placeholder.
 
 [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours as Word
 draws them, so `Font.color` reads a theme colour in the theme's colour rather than the cache written
@@ -105,6 +109,36 @@ not open in Word after a save.
   fork's `KeptValue`s, `"exact"` (kept on purpose, `w:val=" false"`) or `"invalid"` (`"off"`,
   `"Yellow"`); `describe()` counts them by reason (`"kept"`). Not skipped content:
   `LoadOptions(strict=True)` does not raise on them.
+- **Placeholders in Word's form: `ContentControl.placeholder_entry`, `show_placeholder()`,
+  `default_placeholder_entry` and `shows_words_form_placeholder`**
+  ([CR-019](docs/change-requests/CR-019-writing-into-a-placeholder.md) Phase B, section
+  [12](docs/change-requests/CR-019-writing-into-a-placeholder.md#12-phase-b-implementation-notes-2026-10-25);
+  extensions, core-ts's `placeholderEntry`, `showPlaceholder`, `defaultPlaceholderEntry` and
+  `showsWordsFormPlaceholder` at `aefc41f` and `b12e0c5`): `placeholder_entry` is the entry
+  `w:placeholder/w:docPart/@w:val` names (`""` for a `w:placeholder` naming none, None without one),
+  which decides the control's form; `show_placeholder()` shows a copy of that entry's content as the
+  glossary holds it (core-ts check 68), with `w:showingPlcHdr`, a control naming none, or an entry
+  the glossary lacks, made to name its kind's default (core-ts section 63.18, docx4j CR-063's D8);
+  `default_placeholder_entry` is Word's default entry for the control's kind, a `DefaultEntry` (its
+  name and text), None for a picture, a check box or a repeating section;
+  `shows_words_form_placeholder` is whether an empty control shows a placeholder in Word's form, as
+  the binding pass asks. With them, from Phase A, `shows_placeholder_content`: whether a text write
+  replaces the placeholder (a block or run control showing it).
+- **`package.glossary_entries`** (CR-019 section 4.9, D9; core-ts's `pkg.glossaryEntries`): the
+  glossary's entries, read privately (`GlossaryEntries`: `text_of`, `body_of`, `has`, `pending`),
+  and the entries the writes name, kept until the save writes them in Word's form; a `dry_run` has
+  its own, dropped with it. `docx4j_py.model.content.placeholders` holds it, with
+  `DEFAULT_ENTRIES`, `default_entry_for` and `DEFAULT_PLACEHOLDER_ENTRY`.
+- **`OpcPackage.save_hooks` and `package.last_save.added`** (CR-019 section 12.5 item 4): callables
+  the save runs before it writes anything, each given the package and returning the names of the
+  parts it added, which `last_save.added` lists. The content API registers the glossary's there;
+  the engine imports no model class.
+- **Word 365's runs of core-ts's checks 63 to 68, and Word's default placeholders**
+  (`tests/office_js/`, Apache-2.0 here; CR-019 sections 10.3, 11.4.1, 12.1 and 12.10): each check's
+  file, Word's JSONs and Word's saves, check 63's run 2 (Design Mode off) beside its first run, kept
+  as the record of what Design Mode did; `tests/office_js/checks.py`'s ports of the six Script Lab
+  snippets (`run_check_63` to `run_check_68`); and `placeholders-word365.docx`, the user's Word 365
+  file of one control of each kind, the oracle of each kind's default entry.
 
 - **Tracked changes listed, accepted and rejected as Word resolves them**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), Phases A to C,
@@ -293,22 +327,104 @@ not open in Word after a save.
   `Body.text`, `get_text` in both views, `ContentControl.text`, a range's text and offsets,
   `TableCell.value`, `Table.values` and a comment's content, as hidden text is, and `search` and
   `find` find nothing in them (K3: Word finds hits reading `""`). `ContentControl.placeholder_text`
-  reads the prompt from the runs (Word, with no glossary part, reads `null`). The text model is
+  reads the glossary entry since CR-019 (below). The text model is
   unchanged: it reads a placeholder as text, flagged, as docx4j does; its runs there have no
   `office_offset`, and the runs after them stand where `Paragraph.text` has them. In the corpus
   14 documents move.
-- **`ContentControl.insert_text` into a control showing its placeholder writes in the placeholder's
-  place** (CR-016 Phase B; check 58 cases 20 to 22, Word 365 at `"End"` as at `"Replace"`): for a
-  block- or run-level control, whatever `location` says, `w:showingPlcHdr` is cleared, the text
-  replaces the prompt, and the `PlaceholderText` character style comes off the runs it leaves, so
-  the control shows the text in the run's own look; a refused write leaves the placeholder. Where
-  0.1.0 wrote beside the prompt and left the control a placeholder (under "Fixed").
-- **`paragraph.text = ...` refuses a paragraph holding a run-level control showing its placeholder**
-  (CR-016 Phase B, section 7's risk 2): `SpanError` `range.holds_placeholder`, tracked or not,
-  before anything changes, since the write would take the control, which reads as no text, and its
-  binding; write into the control with `ContentControl.insert_text`. 0.1.0's setter replaced the
-  content, the control with it, so `paragraph.text = paragraph.text` turned the prompt into plain
-  text.
+- **Every text write into a control showing its placeholder writes in its place, as Word 365 does**
+  (CR-016 Phase B for `ContentControl.insert_text`, check 58 cases 20 to 22;
+  [CR-019](docs/change-requests/CR-019-writing-into-a-placeholder.md) Phases A and A2, sections
+  [10](docs/change-requests/CR-019-writing-into-a-placeholder.md#10-phase-a-implementation-notes-2026-10-25)
+  and [11.4](docs/change-requests/CR-019-writing-into-a-placeholder.md#114-phase-a2-implementation-notes-2026-10-25),
+  for every route; the port of docx4j-core-ts CR-002 section 63 at `020c039` and `d84f3da`, held to
+  Word 365 by core-ts's checks 63 (run 2, Design Mode off), 64 and 67): the control's `insert_text`
+  at any location, its `"Content"` range's `insert_text`, and a block control's paragraph's
+  `insert_text`, `text = ...` and `splice` take the placeholder's runs out, clear `w:showingPlcHdr`
+  and write the text in one paragraph, in either form (a `w:placeholder` naming a glossary entry,
+  Word's, or none, the bare form docx4j's binder writes). The text takes a copy of the control's own
+  `w:sdtPr/w:rPr` and nothing of the placeholder run's, plain where the control has none (D11,
+  core-ts check 68 and `c275a2a`). Tracked, only the insertion is recorded. The control's
+  `insert_paragraph("Start" | "End")` empties the placeholder's paragraph, clears the flag and puts
+  the new paragraph after it. 0.1.0 left the flag on in every route, and wrote beside the prompt at
+  `"Start"` and `"End"` (under "Fixed").
+- **A Replace or delete over a whole control showing its placeholder takes it** (CR-019 D3, check 63
+  cases 12, 18 to 20, 26, 38, 44 to 46 and 52): `paragraph.text = ...`, a paragraph's
+  `insert_text(..., "Replace")` or `"Content"` delete holding a run-level placeholder control, that
+  control's `"Whole"` Replace or delete, and a paragraph's `"Content"` delete over a block control's
+  only paragraph. Untracked the control goes, a block control leaving its paragraph emptied;
+  tracked it is marked deleted between Word's `w:customXmlDelRange` markers, nothing inside it
+  marked and its flag cleared, a Replace's insertion first, and the revisions engine resolves it as
+  Word does. 0.1.0's `paragraph.text = ...` took the control too, reading its prompt as text; its
+  span edits kept the control, emptied, as they still do for a run-level control holding text.
+  With it **a tracked `Paragraph.insert_text(..., "Replace")` over an equation goes ahead**, the
+  equation deleted in Word's form, where CR-013 kept that one refusal (`tracking.equation`; core-ts
+  dropped it at `020c039`).
+- **A content control's own ranges are inside it** (CR-019 D4 and Q4; core-ts's F2, check 64 cases 21
+  and 42): a run-level control's `get_range("Content")` writes inside the control at every
+  location, at `"Start"` with text showing too, where 0.1.0 wrote into the run before it; an empty
+  run-level control's range stands where the control does, not at offset 0. A range made from one
+  (`expand_to`, `get_range(...)`) is an ordinary range.
+- **A paragraph inserted beside a block control's only paragraph goes outside the control** (CR-019
+  D6 (b), check 63 cases 10, 11, 36 and 37): `Paragraph.insert_paragraph(..., "Before" | "After")`
+  on the only paragraph of a block control showing its placeholder puts the new paragraph beside
+  the control, which stays block-level (Word's save makes it run-level, which no reader here
+  needs). 0.1.0 put it inside.
+- **Every write into a bound control writes its node** (CR-019 D7; checks 63's run 2 and 64, where
+  Word's writes reached the node in both forms): `Paragraph.splice`, and so every text writer,
+  writes the custom XML node of each bound control around the span, after the edit and outside the
+  tracked branch, where only a run-level control's `insert_text` did (`write_through`); a block
+  control's `insert_text` writes it too. About 0.1 ms more a write into a bound control (CR-019
+  section 10.8).
+- **A `"Content"` delete of a bare-form control showing its placeholder shows Word's filler**
+  (CR-019 D10 (a), check 63's run 2 cases 6, 17, 32 and 43; Word's filler of check 52's cases 13 and
+  26): five spaces in one run, in a copy of the control's `w:sdtPr/w:rPr`, under the flag, tracked
+  or not, nothing marked; so does an untracked `"Content"` delete that empties a bare-form control
+  holding text. The Office JS readers read it as no text, the text model as the placeholder run it
+  is. In Word's form the delete changes nothing, and a control holding text, emptied untracked,
+  shows its entry again (check 66 case 3). 0.1.0 left a run-level control an empty `w:sdtContent`
+  under the flag (under "Fixed").
+- **`ContentControl.placeholder_text` reads the glossary entry, and is `str | None`** (CR-019 Q2,
+  section
+  [12](docs/change-requests/CR-019-writing-into-a-placeholder.md#12-phase-b-implementation-notes-2026-10-25);
+  core-ts `aefc41f`'s D8, held to Word 365 by check 65): the text of the entry `w:placeholder`
+  names, its paragraphs `\r` apart, the glossary read privately so it is saved byte for byte; None
+  in the bare form or where the glossary lacks the entry, as Office JS reads it. 0.1.0 read the
+  control's runs while the flag was on, else `""`, so a caller testing for `""`, or reading docx4j's
+  prompt from a bound control, now reads None. **Setting it names an entry**: the kind's default
+  text, or `""`, names Word's default entry for the kind, any other text a new entry of 32
+  upper-case hex digits, written into the glossary on save; a control showing its placeholder, or
+  holding nothing, shows the text in `PlaceholderText` with the flag, and one holding content keeps
+  it. **`BindingError` `binding.holds_content`, which 0.1.0's setter raised over content, is gone**:
+  the setter no longer refuses.
+- **The binding pass gives an empty value Word's placeholder** (CR-019 Q3; core-ts `aefc41f` and
+  `b12e0c5`, docx4j CR-063's D8, from the user's Word 365 file of one control of each kind,
+  `tests/office_js/placeholders-word365.docx`): `apply_bindings` over an empty node shows the
+  control's placeholder in Word's form (`show_placeholder()`), the entry it names where the glossary
+  holds it, else Word's default entry for its kind: `DefaultPlaceholder_-1854013440` "Click or tap
+  here to enter text." for rich and plain text, `-1854013437` "Click or tap to enter a date." for a
+  date picker, `-1854013438` "Choose an item." for a drop-down list or a combo box, and a building
+  block gallery's and a repeating section item's. A kind with none (a picture, a check box) keeps
+  docx4j's run, whose words are Word 365's now: `bindings.PLACEHOLDER_TEXT` is "Click or tap here to
+  enter text." (docx4j's D5; it was "Click here to enter text."). 0.1.0 wrote docx4j's run, in the
+  bare form, for every kind; docx4j's binder still does, until its CR-063 lands.
+- **A control made on an empty paragraph, or at a point, shows its kind's placeholder** (CR-019 D8,
+  check 64 cases 15 to 21 and 36 to 42): `Paragraph.insert_content_control` on a paragraph holding
+  nothing, and `Range.insert_content_control` on a collapsed range, make a rich text, plain text,
+  date picker, drop-down list or combo box control showing Word's default entry for it, as Word's
+  made controls do. `Body.insert_content_control` and a range across paragraphs make controls as
+  before. 0.1.0 made an empty control on an empty paragraph, and wrapped the run at a point (under
+  "Fixed").
+- **A file that comes to show a placeholder gains a glossary** (CR-019 D9 (a), check 66; section 7's
+  risk 3): where a control comes to name an entry the file lacks, the save writes the entry into the
+  glossary in Word's form, making the glossary document part (`/word/glossary/document.xml`, its
+  relationship from the main document part and its content type) where the file has none, and the
+  glossary's styles part, with Default Paragraph Font and Placeholder Text, where those are missing
+  (`package.last_save.added` lists the parts made). The main document's styles part gains Placeholder
+  Text, Word 365's definition, where a placeholder is shown and it lacks the style, as a hyperlink's
+  style is added (core-ts's `requireStyles`; CR-019 section 12.5 item 3). Entry names and `w:guid`s
+  come from the package's seeded generator. An untouched glossary is saved byte for byte, and a file
+  that shows no new placeholder is unchanged. Acceptance artefact 9's control, made at a point,
+  gives that file a glossary.
 - **A deleted paragraph mark reads as nothing in Word's default view** (CR-016 Phase B; core-ts
   CR-012 section 19, held to Word 365 by check 58 cases 6 to 10): `Body.text`, `get_text()`, a
   range's text across paragraphs, a `"Whole"` range's text and a block control's, a cell's and a
@@ -639,7 +755,8 @@ not open in Word after a save.
   field was refused (`range.splits_field`), which stays for a field's instruction.
 - **A tracked deletion taking an equation whole is made in Word's form** (D2, check 57 cases 7 to 10):
   a `w:del` in each `m:r` and each structure's `m:ctrlPr`; it was refused (`tracking.equation`),
-  which stays for a tracked `Paragraph.insert_text(..., "Replace")` taking one. Accept All drops an
+  and since CR-019 a tracked `Paragraph.insert_text(..., "Replace")` taking one is not refused
+  either (above). Accept All drops an
   `m:oMath` it empties and an `m:oMathPara` left with none, docx4j's rule since its `ebb21c990` (F1),
   Reject All of a whole inserted equation too; the readers leave out a structure whose own revision
   the view hides (F2).
@@ -931,10 +1048,27 @@ not open in Word after a save.
   check's edits as written before the fix, adding a paragraph to exactly the 16 cells this release
   ends with one, and opens them as written now without a repair prompt (CR-016 section 13).
 - **A value written into a control showing its placeholder stayed a placeholder** (CR-016 section
-  2.4, a defect 0.1.0 shared): `ContentControl.insert_text` left `w:showingPlcHdr` on and the
-  `PlaceholderText` style on its runs, and wrote beside the prompt at `"Start"` and `"End"`, so
-  `update_from_content_controls()` skipped a bound control as holding no value and the value never
-  reached its custom XML. It now writes in the prompt's place and clears both (under "Changed").
+  2.4 and CR-019 section 3, a defect 0.1.0 shared): every write left `w:showingPlcHdr` on, so the
+  control stayed a placeholder: `update_from_content_controls()` skipped a bound one as holding no
+  value, and this release's readers, which read a placeholder as no text, would not read the text
+  at all. `ContentControl.insert_text` also left the `PlaceholderText` style on its runs and wrote
+  beside the prompt at `"Start"` and `"End"`, and a block control's paragraph wrote into the
+  prompt's own run. Every route now writes in the prompt's place and clears the flag (CR-016 Phase
+  B for `insert_text`, CR-019 for the rest; under "Changed").
+- **A collapsed range's `insert_content_control` wrapped the run around its point** (CR-019 section
+  10.9 item 1, a defect 0.1.0 shared): a control made at the point after `ONE` in a paragraph
+  `ONE TWO` held `ONE TWO`. It is now made empty at the point, the run split there, showing its
+  kind's placeholder (check 64 cases 19 to 21 and 40 to 42), and two controls made at one point
+  keep their order.
+- **A run-level control's `"Content"` range wrote outside it at `"Start"`** (CR-019 D4 and Q4, a
+  defect 0.1.0 shared): its `"Start"` wrote into the run before the control, whether the control
+  held text or showed its placeholder. Its writes now land inside at every location (under
+  "Changed").
+- **A `"Content"` delete left an empty run-level placeholder that Word won't leave Design Mode over**
+  (CR-019 section 11.1, core-ts check 63's run 2, control 53; a defect 0.1.0 shared): the delete
+  left a run-level control showing its placeholder over an empty `w:sdtContent`, over which Word 365
+  refused to switch Developer > Design Mode off. It now shows Word's own five-space filler (D10 (a),
+  under "Changed").
 - **A `Range.font` read split runs** (CR-016 Q12, found 2026-10-24): reading
   `paragraph.search("TWO")[0].font.bold` split the paragraph's run at the hit's edges, so the next
   save wrote three runs where the source had one. A read now splits nothing; only a write does.
