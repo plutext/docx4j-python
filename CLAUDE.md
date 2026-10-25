@@ -76,7 +76,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   user, 2026-10-24); all three are done. **It also waits for core-ts's CR-002 section 63** (Word's writes into a
   control showing its placeholder, checks 63 and 64) **and its port here** (the user, 2026-10-25; CR-016 section 13.5).
 - **CR-019** (writing into a content control showing its placeholder, and placeholders written in Word's form: the
-  port of core-ts CR-002 section 63, `020c039` to `b12e0c5`, after Word checks 63 to 68; docx4j CR-063 is the binder's
+  port of core-ts CR-002 section 63, `020c039` to `09dc3d2`, after Word checks 63 to 70; docx4j CR-063 is the binder's
   counterpart): decided 2026-10-25. Every text write into such a control replaces it, by any route and in both forms
   (`ContentControl._write_placeholder`): the flag cleared, a copy of the control's `w:sdtPr/w:rPr` and nothing of the
   placeholder's (D11, check 68), only the insertion tracked; a Replace or delete over a whole control takes it (D3);
@@ -85,11 +85,15 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   (`w:placeholder` naming a glossary entry): `placeholder_text` reads the entry, `str | None`; `show_placeholder()`;
   each kind's default entry (`default_placeholder_entry`); the binding pass's empty value and made controls show it;
   `package.glossary_entries` (`model/content/placeholders.py`) reads the glossary privately and the save writes new
-  entries through `OpcPackage.save_hooks`, making the glossary document and styles parts where a file has none.
+  entries through `OpcPackage.save_hooks`, making the glossary document and styles parts where a file has none. A
+  write at a paragraph's end (`insert_text(..., "End")`, its `"End"` range, its `"Content"` range at `"End"` and
+  `"After"`) goes after everything the paragraph holds, into none of it, in the last item's look only where that is a
+  run holding text (D12 to D14, `Paragraph._write_at_end`).
   Phases A (`b17bbab`, `dc027fd`), A2 (check 63's run 2, `dbce995`; run 1 had been made in Design Mode) and B
   (`dfb05fa`, `0dc354a`, `a3a9571`) implemented 2026-10-25, held to Word's runs of checks 63 to 68; C (the records and
-  the Word check) in progress. **0.2.0 follows CR-019 C**, with a new wheel, `release_check.sh` and the wheel's Word
-  check.
+  the Word check) done 2026-10-25, Word-checked (a glossary reshuffle in Word's first save was Word's session, not the
+  file: section 14.5); D (`971612a`, checks 69 and 70) implemented 2026-10-25, its Word check not yet run.
+  **0.2.0 follows CR-019 D**, with a new wheel, `release_check.sh` and the wheel's Word check.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.

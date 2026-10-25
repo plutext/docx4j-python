@@ -1047,6 +1047,7 @@ Section 11's paragraph "Decided after core-ts's consistency review" (`5e82775`; 
 - the new run takes the look of the visible text beside it, or the first visible run's, and never a hidden run's (core-ts's `visibleFirstRunRPr`; `Paragraph._visible_first_run`), so it reads as text;
 - the writers' map reaches it, so a U+000B is a `w:br`;
 - `insert_text(..., "End")` goes after the trailing hidden runs, and `"Start"` before the leading ones (`_place_at_hidden_edge`, mirrored in `_landing`). core-ts still puts it before the hidden run (`spliceText`'s `start === 0`); landing at the end is this section's decision.
+- *Superseded at a paragraph's end by CR-019 Phase D (its section 15, 2026-10-25; core-ts's D13, Word's check 69 cases 25, 26 and 28 to 32):* `insert_text(..., "End")`, the paragraph's `"End"` range and its `"Content"` range at `"End"` write after a trailing hidden run in that run's look, hidden, as Word 365 does (and as 0.1.0 did); the `"End"` range's `"After"` writes visible after it, and a paragraph break makes the text visible. `"Start"`, `Paragraph.text = ...`, `"Replace"` and every other range keep this section's rules; `test_word_writers.py`'s three hidden-paragraph tests moved with it.
 
 Checked, untracked and tracked:
 - **a range at the paragraph's edges:** `Before` or `Start` at 0 goes before the leading hidden runs, and `After` or `End` at the text's end after the trailing ones. A collapsed range in a paragraph with no visible text lands at the end;
@@ -1110,7 +1111,7 @@ The one failure is the known `test_the_script_would_write_what_is_committed`, bo
 - `README.txt` names what each case's markup holds, says "unmeasured" where Word's display isn't known (an inserted mark, a deleted picture, what Word shows of a bound control after refreshing it from its node), and tells the user to view file 2 in **All Markup**. This package's own Reject All of file 2 gives the SOURCE's text but for case 7, where it rejects the SOURCE's own insertion by Other Author too, and its Accept All gives file 1's text; the README says so.
 
 **Found, and not done:**
-- `insert_text(..., "End")` on a paragraph ending with a picture still puts the text before the picture (the target rule extends the last `w:t`); the edge rule covers hidden runs only, and core-ts's is the same. Which side Word puts it is unmeasured.
+- `insert_text(..., "End")` on a paragraph ending with a picture still puts the text before the picture (the target rule extends the last `w:t`); the edge rule covers hidden runs only, and core-ts's is the same. Which side Word puts it is unmeasured. *Settled by CR-019 Phase D (its section 15): after it, as Word writes after a trailing text box (core-ts's check 70, D12); a picture itself is unmeasured.*
 - The tracked insertion strictly inside another author's insertion (11.1.9) is unchanged.
 
 ### 11.2 The Word check of section 11, run 2026-10-23

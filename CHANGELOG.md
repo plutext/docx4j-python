@@ -133,12 +133,12 @@ not open in Word after a save.
   the save runs before it writes anything, each given the package and returning the names of the
   parts it added, which `last_save.added` lists. The content API registers the glossary's there;
   the engine imports no model class.
-- **Word 365's runs of core-ts's checks 63 to 68, and Word's default placeholders**
-  (`tests/office_js/`, Apache-2.0 here; CR-019 sections 10.3, 11.4.1, 12.1 and 12.10): each check's
-  file, Word's JSONs and Word's saves, check 63's run 2 (Design Mode off) beside its first run, kept
-  as the record of what Design Mode did; `tests/office_js/checks.py`'s ports of the six Script Lab
-  snippets (`run_check_63` to `run_check_68`); and `placeholders-word365.docx`, the user's Word 365
-  file of one control of each kind, the oracle of each kind's default entry.
+- **Word 365's runs of core-ts's checks 63 to 70, and Word's default placeholders**
+  (`tests/office_js/`, Apache-2.0 here; CR-019 sections 10.3, 11.4.1, 12.1, 12.10 and 15.1): each
+  check's file, Word's JSONs and Word's saves, check 63's run 2 (Design Mode off) beside its first
+  run, kept as the record of what Design Mode did; `tests/office_js/checks.py`'s ports of the eight
+  Script Lab snippets (`run_check_63` to `run_check_70`); and `placeholders-word365.docx`, the user's
+  Word 365 file of one control of each kind, the oracle of each kind's default entry.
 
 - **Tracked changes listed, accepted and rejected as Word resolves them**
   ([CR-010](docs/change-requests/CR-010-tracked-changes-as-word-resolves-them.md), Phases A to C,
@@ -425,6 +425,27 @@ not open in Word after a save.
   come from the package's seeded generator. An untouched glossary is saved byte for byte, and a file
   that shows no new placeholder is unchanged. Acceptance artefact 9's control, made at a point,
   gives that file a glossary.
+- **A write at a paragraph's end goes after everything the paragraph holds, as Word 365 writes it**
+  (CR-019 Phase D, section
+  [15](docs/change-requests/CR-019-writing-into-a-placeholder.md#15-phase-d-implementation-notes-2026-10-25);
+  the port of docx4j-core-ts CR-002 sections 63.24 to 63.27 at `09dc3d2`, held to Word 365 by
+  core-ts's checks 69 and 70, the user's D12 to D14): `Paragraph.insert_text(..., "End")`, a
+  paragraph's `get_range("End")` at any location and its `get_range("Content")` at `"End"` and
+  `"After"`, and through them `Body.insert_text(..., "End")` and a cell's, write after the
+  paragraph's last item, into none of the items: not a trailing run-level content control (one
+  showing its placeholder keeps its prompt and flag), a hyperlink, a tracked insertion or deletion,
+  a field, a bookmark's or a comment's markers, or a text box (D12). The text takes the last item's
+  run properties only where that item is a run holding text, extending it, so after a hidden run it
+  is hidden and the range returned reads `""`; after anything else it is a run with no properties,
+  whatever runs are around a control (D13; Word's `w:noProof` after a text box is left out). The
+  End range's `"After"`, and the Content range's, write a run with no properties (D14). Tracked, the
+  text is a `w:ins` after everything, or joins this author's own insertion that ends the paragraph;
+  a paragraph break in it makes paragraphs, written visible after a hidden run. A search hit or a
+  `"Whole"` range ending at the paragraph's end writes as before. 0.1.0 extended the last run
+  holding text: into a trailing control, a field's result or another author's insertion, inside a
+  bookmark or a comment's range, before a point bookmark, a deletion, a text box or a picture
+  (under "Fixed"), and into a trailing hidden run, hidden, as Word does, which CR-013 (below, never
+  released) had made visible.
 - **A deleted paragraph mark reads as nothing in Word's default view** (CR-016 Phase B; core-ts
   CR-012 section 19, held to Word 365 by check 58 cases 6 to 10): `Body.text`, `get_text()`, a
   range's text across paragraphs, a `"Whole"` range's text and a block control's, a cell's and a
@@ -607,9 +628,10 @@ not open in Word after a save.
       and 56). In a run-level control a `\n` or `\r` is refused (`range.splits_control`). 0.1.0
       wrote `\n` and `\r` raw into the `w:t`.
     - **Text written into a paragraph whose text is hidden** takes no hidden run's look, so it reads
-      as text and its characters reach the map, and `insert_text("End")` puts it after the trailing
-      hidden runs (`"Start"` before the leading ones). 0.1.0 wrote it into the hidden run's own
-      `w:t`, so Word hid it.
+      as text and its characters reach the map, and `"Start"` puts it before the leading hidden runs.
+      At the paragraph's end, since CR-019 Phase D (above), text after a trailing hidden run is in
+      that run's look, hidden, as Word 365 writes it, and as 0.1.0 wrote it into the hidden run's own
+      `w:t`; its characters reach the map, and a paragraph break in it is written visible.
     - **A bound control's custom XML node** takes a non-breaking hyphen as `-`, as Word writes it;
       an optional hyphen stays U+00AD.
     - **`insert_paragraph` and `Paragraph.text = ...` write one paragraph**: `\n` and `\r\n` a
@@ -1069,6 +1091,22 @@ not open in Word after a save.
   left a run-level control showing its placeholder over an empty `w:sdtContent`, over which Word 365
   refused to switch Developer > Design Mode off. It now shows Word's own five-space filler (D10 (a),
   under "Changed").
+- **A write at a paragraph's end before a trailing control showing its placeholder went into the
+  control** (CR-019 section 13.4 item 1, fixed by Phase D, section
+  [15](docs/change-requests/CR-019-writing-into-a-placeholder.md#15-phase-d-implementation-notes-2026-10-25);
+  core-ts's check 69 cases 9 to 24 and 41 to 49, and check 70's 65 to 72; a defect 0.1.0 shared):
+  `insert_text(..., "End")`, the paragraph's End range at any location and
+  `Body.insert_text(..., "End")` extended the prompt's own run, so 0.1.0 wrote the text grey, in
+  Placeholder Text, inside a control still flagged as showing its placeholder (`X Click here.Y`),
+  and this release's readers, which read a placeholder as no text, would not have read it at all.
+  It now goes after the control, outside it, plain, and the control keeps its prompt (under
+  "Changed").
+- **A write at a paragraph's end went into a trailing control holding text** (CR-019 Phase D;
+  core-ts's check 69 cases 33 to 40, check 70's 73 to 88; a defect 0.1.0 shared): the text joined
+  the control's value (`X VALY`). It went into a trailing field's result too, which a field update
+  replaces (check 70's cases 41 to 56), and into another author's tracked insertion, untracked,
+  where it read as theirs (check 70's 33 to 40). It now goes after each, outside it (under
+  "Changed").
 - **A `Range.font` read split runs** (CR-016 Q12, found 2026-10-24): reading
   `paragraph.search("TWO")[0].font.bold` split the paragraph's run at the hit's edges, so the next
   save wrote three runs where the source had one. A read now splits nothing; only a write does.

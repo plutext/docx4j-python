@@ -554,9 +554,9 @@ def test_check_69s_run_through_the_port_is_word_365s_in_every_case():
     measured = word("69-paragraph-end-word365-run.json")
     assert not [c for c in ours["cases"] if c.get("error")]
     # at 81cbe45 (CR-019 Phase C) 40 of the 49 differed: the text went inside a trailing placeholder control, behind
-    # the prompt with the flag on (9, 11 to 17, 19 to 24, 41 and 43 to 49: read as nothing), or before it (the End
-    # range's "Before", 10, 18 and 42); after a hidden run plain (25, 26, 28 to 32), before it by "Before"; inside a
-    # trailing control holding text (33 to 40). Only the plain paragraphs and case 27 were Word's
+    # the prompt with the flag on, read as nothing, or before it by the End range's "Before", "Start" and "Replace"
+    # (10, 12, 14, 18, 20, 22; inside before the prompt in 42 and 44); after a hidden run visible, or before it by
+    # those three; inside a trailing control holding text (33 to 40). Only the plain paragraphs and case 27 were Word's
     assert [look_69(c) for c in ours["cases"]] == [look_69(c) for c in measured["cases"]]
     assert [c["result"]["returned"] for c in ours["cases"]] == [c["result"]["returned"] for c in measured["cases"]]
     for theirs, mine in zip(measured["cases"], ours["cases"], strict=True):
@@ -702,8 +702,8 @@ def test_check_70s_run_through_the_port_is_written_where_word_365_wrote_in_every
     # after every ending, by every route, plain (D12, D13); at 81cbe45 (CR-019 Phase C) every one of the 88 differed:
     # the text went inside a spanning bookmark, a comment's range, a field's result (both forms), another author's
     # tracked insertion, and a control holding text; before a point bookmark, a deletion and a text box; and after a
-    # bold run before a placeholder control into the control, bold, behind the prompt (65, 67 to 72), or before it by
-    # the End range's "Before" (66)
+    # bold run before a placeholder control into the control, bold, behind the prompt (65, 67, 69, 71, 72), or bold
+    # before it by the End range's "Before", "Start" and "Replace" (66, 68, 70)
     assert [look_70(c) for c in ours["cases"]] == [ours_70(c) for c in cases_70()]
     assert [c["result"]["returned"] for c in ours["cases"]] == [f"NEW{c['n']}" for c in cases_70()]
     # where NEW<n> went is Word's in all 88

@@ -1,6 +1,6 @@
 # CR-019: Writing into a content control showing its placeholder, and placeholders written in Word's form --- the port of docx4j-core-ts CR-002 section 63 (`020c039`)
 
-**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A implemented 2026-10-25** (section 10), in two commits: the rules check 64 measured (`b17bbab`: Word's form, every route, D4, D7) and those resting on check 63 alone (`dc027fd`: the bare form's tracked deletion and `insert_paragraph`, a control's `"Content"` delete, D3 with risk 2's and the equation refusals gone, D6 (b)), held to Word's runs of checks 63 and 64 but for the bare form's look, settled plain by core-ts's check 67 (Q1, so no D2 (a)), and the controls Phase B makes. **Then check 63 was run again with Design Mode off** (section 11): its first run had been made in Design Mode, and with it off the bare form writes as Word's form does. The user decided core-ts's revised rules there (D1, D2 (b), D3's tracked markup, D5 and a new D10); **Phase A2 implemented 2026-10-25** (section 11.4, `dbce995`): it ports them, correcting `dc027fd`, so this package's run of check 63 gives run 2's answer in all 52 writes and core-ts's check 67 Word's in all 72; the bare form's look stays Phase A's, which differs from core-ts's `d84f3da` only for a placeholder run carrying more than its style, unmeasured: **decided 2026-10-25** (the user: "Measure; keep ours meanwhile"), core-ts asked for a check 68 (section 11.5). **Phase B implemented 2026-10-25** (section 12), the ports of core-ts `aefc41f` (`dfb05fa`: `placeholder_text` read from the glossary, `show_placeholder`, the binding pass and made controls in Word's form, `package.glossary_entries` and the save hook; checks 65 and 66 Word's in every write but 65b's case 9, check 64 now in all 52), `c275a2a` (`0dc354a`: check 68, decided there, a write takes the control's run properties and an entry is shown as the glossary holds it; check 68 Word's in all 24 writes, 4 before) and `b12e0c5` (`a3a9571`: each kind's default entry, from the user's Word 365 file). **Phase C's records done 2026-10-25** (section 13): the CHANGELOG with CR-016 Phase B's placeholder lines rewritten, `tests/README.md`, CR-016 section 13.5, CR-014 section 4, CR-003 section 25 and the index; and the Word check's files (Q5) built in `out/cr019-word-check/` for the coordinator to stage. **The Word check is not yet run.** Five phases (sections 6, 11 and 13.4): A, the writes; A2, run 2's answers; B, placeholders in Word's form; C, the records and the Word check; D, a paragraph's end before trailing zero-width items, after core-ts's check 69 (the user, 2026-10-25: 0.2.0 waits for it). 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check.
+**Status:** Proposed 2026-10-25. On 2026-10-25 the user decided that 0.2.0 waits for core-ts to implement its CR-002 section 63 and for the port here ("Wait for core-ts"; CR-016 section 13.5). core-ts implemented it on 2026-10-25 at `020c039` (`main`, unpushed, unreleased), and this CR is that port. Five questions, **decided 2026-10-25** (the user, section 8): Q1 (c), the bare form's styling held for core-ts's check 67, with core-ts's D2 (a) the fallback if no answer comes by the end of Phase A; Q2 to Q5 as recommended. **Phase A implemented 2026-10-25** (section 10), in two commits: the rules check 64 measured (`b17bbab`: Word's form, every route, D4, D7) and those resting on check 63 alone (`dc027fd`: the bare form's tracked deletion and `insert_paragraph`, a control's `"Content"` delete, D3 with risk 2's and the equation refusals gone, D6 (b)), held to Word's runs of checks 63 and 64 but for the bare form's look, settled plain by core-ts's check 67 (Q1, so no D2 (a)), and the controls Phase B makes. **Then check 63 was run again with Design Mode off** (section 11): its first run had been made in Design Mode, and with it off the bare form writes as Word's form does. The user decided core-ts's revised rules there (D1, D2 (b), D3's tracked markup, D5 and a new D10); **Phase A2 implemented 2026-10-25** (section 11.4, `dbce995`): it ports them, correcting `dc027fd`, so this package's run of check 63 gives run 2's answer in all 52 writes and core-ts's check 67 Word's in all 72; the bare form's look stays Phase A's, which differs from core-ts's `d84f3da` only for a placeholder run carrying more than its style, unmeasured: **decided 2026-10-25** (the user: "Measure; keep ours meanwhile"), core-ts asked for a check 68 (section 11.5). **Phase B implemented 2026-10-25** (section 12), the ports of core-ts `aefc41f` (`dfb05fa`: `placeholder_text` read from the glossary, `show_placeholder`, the binding pass and made controls in Word's form, `package.glossary_entries` and the save hook; checks 65 and 66 Word's in every write but 65b's case 9, check 64 now in all 52), `c275a2a` (`0dc354a`: check 68, decided there, a write takes the control's run properties and an entry is shown as the glossary holds it; check 68 Word's in all 24 writes, 4 before) and `b12e0c5` (`a3a9571`: each kind's default entry, from the user's Word 365 file). **Phase C's records done 2026-10-25** (section 13): the CHANGELOG with CR-016 Phase B's placeholder lines rewritten, `tests/README.md`, CR-016 section 13.5, CR-014 section 4, CR-003 section 25 and the index; and the Word check's files (Q5) built in `out/cr019-word-check/` for the coordinator to stage. **The Word check passed 2026-10-25** (section 14); a reshuffle of glossary entries found in Word's first save was bisected to Word's session, not the file (section 14.5), and changes no code. Five phases (sections 6, 11 and 13.4): A, the writes; A2, run 2's answers; B, placeholders in Word's form; C, the records and the Word check; D, a paragraph's end before trailing zero-width items, after core-ts's check 69 (the user, 2026-10-25: 0.2.0 waits for it). 0.2.0 follows C, with a new wheel, `release_check.sh` and the wheel's Word check. **Phase D implemented 2026-10-25** (section 15, `971612a`, the port of core-ts `09dc3d2`'s D12 to D14): a write at a paragraph's end goes after everything the paragraph holds, as Word 365 wrote it in core-ts's checks 69 and 70, so this package's runs give Word's answer in all 49 of check 69's cases and Word's placement in all 88 of check 70's; its Word check is built in `out/cr019-d-word-check/` and not yet run.
 
 **Depends on:**
 - **docx4j-core-ts** `020c039`: CR-002 sections 63 to 63.12; its `src/model/content/placeholders.mts`, `ContentControl.mts`, `Paragraph.mts` and `Range.mts`, and `src/model/customxml/bindings.mts`; `test/placeholders.test.mjs` (25 tests); Word checks 63 to 66, with their files, Word's JSONs and Word's saves (`test/fixtures/check63/` to `check66/`, `test/check63/` to `check66/`). Checks 63 to 66 were written and run at `2070694`, `ae9215f` and `2d080d4`. Check 67 and check 63's run 2 (Design Mode off), and the revision to run 2, at `2bafbcb` and `d84f3da` (section 11).
@@ -888,3 +888,162 @@ strictly here. No code changes until a cause is found.
   trailing bookmark, comment marker, tracked change, field or text box, and D13's run-property cases. Phase D ports checks 69
   and 70 together.
 
+### 14.5 The bisect's result: Word's session, not the file
+
+The user's six saves (`__tmp/python-cr019-bisect/*-word365.docx`, Word 365, `AppVersion` 16.0000, each opened and saved
+once with nothing typed; no save carries `w:formsDesign`), read here with lxml: in every save each control names the entry
+it named in its source, and each name is an entry of the save's glossary. No save made an entry of its own.
+
+| file | controls | references kept | glossary entries, source and save |
+|---|---|---|---|
+| `bisect-0-as-staged.docx` | 8 | 8 | 4, 4 |
+| `bisect-1-no-dropdown.docx` | 7 | 7 | 3, 3 |
+| `bisect-2-no-date-no-list.docx` | 6 | 6 | 2, 2 |
+| `bisect-3-only-control-A.docx` | 1 | 1 | 1, 1 |
+| `bisect-4-words-guid.docx` | 8 | 8 | 4, 4 |
+| `bisect-5-66a-settings.docx` | 8 | 8 | 4, 4 |
+
+`bisect-0` is the file section 14.1's first save reshuffled, byte for byte (SHA-1 `8f73462b2ec99094e9dfd87a77d6fd6e8cc8ca99`,
+the same as `__tmp/python-cr019/cr019-placeholders-written.docx`), and this time Word kept all eight references. So the
+reshuffle is not in the file. It came from the state of Word's session in section 14.1's run, which this bisect does not
+identify. One possibility, unmeasured: that session had already opened the check's other files, whose glossaries hold
+entries of the same names (`DefaultPlaceholder_-1854013440` and the rest) with other content, and Word renamed to keep
+them apart. Either way the text and the look were kept, as section 14.1 found.
+
+**Nothing changes in code.** `placeholders.py`'s entries keep Word's own names and form; nothing further is asked of Word.
+
+## 15. Phase D implementation notes (2026-10-25)
+
+Phase D as built, on `28ee7ce` (a docs-only CR-014 commit after `81cbe45`; the code is `a3a9571`'s, Phase B's). The oracle is docx4j-core-ts `09dc3d2`, on its `main`, local and not pushed: its CR-002 sections 63.23 to 63.27 (checks 69 and 70 written, run and decided; the user there: "D12: as word; D13: ok; D14: as word"); `Paragraph.mts`'s `writeAtEnd` and `appendTo`, and `boundControlsAt`'s `ancestorsOnly`; `Range.mts`'s `atEndOf` and `writesAtParagraphEnd`; the fourteen tests it added to `test/placeholders.test.mjs`; and checks 69's and 70's builds, snippets, Word's JSONs and saves, with their SHA-1 manifests. All were read with `git show 09dc3d2:<path>`; the two source files, git-ignored there, were copied from core-ts's working tree and are the same bytes as the share's copies Word read (`__tmp/69/`, `__tmp/70/`). Section 13.4 item 1 is the defect; core-ts's checks are its answer.
+
+**Commits.**
+- `971612a`: the rule (`paragraph.py`, `range.py`, a docstring in `body.py`), checks 69's and 70's files (`tests/office_js/`, `SHA1SUMS`) and their port (`checks.py`), `tests/content/test_paragraph_end.py`, and the expectations that moved (15.6).
+- the records, the commit after it: this section and the Status line; the CHANGELOG's `[0.2.0]` (under "Changed" a bullet for D12 to D14, and CR-013's sub-bullet on text in a hidden paragraph revised, its end superseded; under "Fixed" the write into a trailing placeholder control, section 13.4 item 1, and into a trailing control holding text, a field's result or another author's insertion, each "0.1.0 did" probed in a `v0.1.0` worktree; under "Added" the check fixtures' bullet widened to checks 69 and 70; the date left alone); `tests/README.md` (`test_paragraph_end.py` mapped, `test_word_writers.py`'s row, two provenance rows; no run record); and two notes in CR-013 section 11.1.11. The test file's two comments on what `81cbe45` did were corrected with them.
+
+### 15.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the write | `Paragraph._write_at_end(text, *, plain=False)`, with `_text_run_of` and `_append_at_end` | core-ts's `writeAtEnd`, `textRun` and `appendTo` (15.2) |
+| the routes | `Paragraph.insert_text(..., "End")`; `Paragraph.get_range("End" \| "Content")` marking the range (`Range.end_of`, a slot, core-ts's `endOf`); `Range.insert_text` through `_writes_at_paragraph_end` and `_insert_at_paragraph_end`, after a control's own range and before every other rule | core-ts's `insertText('End')`, `getRange`'s `atEndOf` and `writesAtParagraphEnd`, in the same place in `insertText` |
+| the node sync | `Paragraph._bound_controls_at(..., ancestors_only=True)`, then `write_through()` on each | core-ts's `boundControlsAt(length, length, true)` and `syncBoundNode`; `write_control_to_node` unchanged |
+| checks 69 and 70 | `tests/office_js/` (ten files, `SHA1SUMS`); `checks.py`'s `run_check_69`, `run_check_70`, `parse_region_69` | 15.3 |
+| the tests | `tests/content/test_paragraph_end.py` (41, new); `test_word_writers.py`, `test_office_js_characters.py` | 15.3 and 15.6 |
+
+No file under `docx4j_py/` is new, so `codegen/clean.py`'s `KEEP` is unchanged. `span_edits.py` and `tracking.py` are unchanged: the write builds its `w:ins` with `ChangeTracker.ins` and asks `own_insertion`, as core-ts's does.
+
+### 15.2 The rules as built, against `09dc3d2`'s
+
+1. **The routes.** `Paragraph.insert_text(..., "End")`; the paragraph's `"End"` range at any location, while it is still collapsed at the paragraph's end; its `"Content"` range at `"End"` and `"After"`, while it still ends there; and through them `Body.insert_text(..., "End")` and a cell's (`TableCell.insert_text`, through its body). A range is marked only by `Paragraph.get_range`; a range made from one (`get_range`, `expand_to`), a `"Whole"` range and a search hit ending at the paragraph's end are ordinary, and write as before (`splice`, `edge="end"`). core-ts's structure gives more routes, and this package's the same ones, since its views return the paragraph's own ranges as core-ts's do: `Body.get_range("End")`, `Table.get_range("End")` and a block control's `get_range("End")` are the last paragraph's End range, and a one-paragraph body's or block control's `"Content"` range is its paragraph's (a control's own range asks the control first, `_write_through`, as `09dc3d2` asks `writeThrough`); a block control's `insert_text(..., "End")` goes through its body.
+2. **D12.** The text goes after the paragraph's last item, `w:proofErr`s at the end passed over (core-ts's choice), into none of the items: a run-level control (its flag and prompt as they were), a hyperlink, a `w:ins` or `w:del`, a field (complex or `w:fldSimple`), a bookmark's or comment's markers, a text box or a picture.
+3. **D13.** Where the last item is a `w:r` holding a `w:t`, the text extends that run: onto its last `w:t` where the text begins with one (the writers' map making a `w:tab`, `w:br` and the rest of what follows, `text_items`), else after its last item. So after a hidden run it is hidden, and the range returned is collapsed at the old end (reads `""`). After anything else it is a new run with no properties. Word's `w:noProof` after a text box (check 70 cases 57, 58, 63 and 64) is not written, the decided departure.
+4. **D14.** With `plain`, the End range's `"After"` and the Content range's `"After"` (unmeasured, core-ts's choice), a new run with no properties, whatever the last item is.
+5. **Tracked** (core-ts's choices): where this author's own `w:ins` is the last item, the text joins it, onto its last run where that holds text (D13 inside it), else as a new run in it; otherwise it is a new `w:ins` after everything, its run in a copy of the last text run's properties (`copy_r_pr`, its `w:rPrChange` left out). Another author's insertion is never extended.
+6. **Line breaks.** In a paragraph a block control's kind doesn't govern, `\n`, `\r` and `\r\n` make paragraphs (CR-013 section 11, E1): the text without them is written as above, then the paragraph is split after each piece (`split_paragraph`, keeping a piece's empty tail with what follows, as `_splice_paragraphs` does), and the range returned runs from the first new paragraph to this `w:p`. Text so broken after a hidden run is written visible, in no run's look (core-ts's choice). In a `w:text` control, or a bound block control Word reads as plain text, a break is a `w:br` or nothing (`paragraph_lines_of`, core-ts's `plainTextLinesOf`). The characters XML 1.0 excludes are dropped first (E3).
+7. **The node.** Each control bound by `w:dataBinding` holding the paragraph has its node written after the write (`write_through`); a trailing bound run-level control's node isn't, since nothing went into it.
+8. **A block control showing its placeholder** holding the paragraph takes the text in the placeholder's place (`_write_placeholder`, CR-019 section 4.2), first, as `writeAtEnd` asks `writePlaceholder`.
+9. **The range written through.** A `"Replace"` makes the End range cover the new text (`_cover`); `"Before"` and `"Start"` leave it collapsed after the text, in the paragraph keeping the mark (`_land_at`), so it is still the paragraph's End; at `"End"` and `"After"` it stays before the text, moved into the first paragraph a break made (this package's idiom for every range; 15.5 item 3).
+
+### 15.3 The oracles and the tallies
+
+**Checks 69 and 70**, run through the port (`run_check_69` and `run_check_70`: the snippets at `09dc3d2` step for step, Report only then Run the check, as Word's run was), and held to Word's JSONs case by case through core-ts's `look69` and `look70` (the case's paragraph item by item: runs, a hidden run, Placeholder Text, a control and its flag, bookmarks, comment markers, revisions, fields, a text box; and Office JS's paragraph text), what the write returned, and in check 70 core-ts's `placed` (where `NEW<n>` went, a simple field read as Word reads it and Word's `w:noProof` left out):
+
+| | before (`81cbe45`'s code) | after (`971612a`) | core-ts before (`b12e0c5`) | core-ts after (`09dc3d2`) |
+|---|---|---|---|---|
+| check 69's 49 cases, every reading Word's | 9 (1 to 8, 27) | **49** | 8 | 49 |
+| check 69's report, every region | 49 | 49 | --- | --- |
+| check 70's 88 cases, `NEW<n>` where Word wrote it | 0 | **88** | 8 (the tracked insertion's) | 88 |
+| check 70's 88 cases, every reading Word's | 0 | 68 (20 pinned, 15.4) | --- | 68 (the same 20) |
+| check 70's report, every region | 72 (16 pinned) | 72 | --- | --- |
+| check 69's 49 regions of the save Word's save's | 9 | **42** (7 pinned) | --- | --- |
+| check 70's 88 regions of the save Word's save's | 0 | **76** (12 pinned) | --- | --- |
+
+What `81cbe45`'s code did, case by case (`look69` and `look70` through the same port, the code from a scratch worktree), the same by every route but where named:
+- **check 69:** before a trailing placeholder control, inside the control, onto the prompt's run, the flag on, so every reader read nothing (9, 11, 13, 15 to 17, 19, 21, 23, 24, 41, 43, 45 to 49); by the End range's `"Before"`, `"Start"` and `"Replace"` before the control (10, 12, 14, 18, 20, 22), or, in a paragraph that is the control alone, inside it before the prompt (42, 44); after a trailing hidden run visible (25, 29, 31, 32), before it by `"Before"`, `"Start"` and `"Replace"` (26, 28, 30); inside a trailing control holding text (33 to 40);
+- **check 70:** inside a spanning bookmark (1 to 8), a comment's range (17 to 24), a field's result in both forms (41 to 56) and another author's tracked insertion, untracked, where it read as theirs (33 to 40); before a point bookmark (9 to 16), a deletion (25 to 32) and a text box (57 to 64); inside a trailing control holding text (73 to 88); after a bold run before a placeholder control, into the control, bold, behind the prompt (65, 67, 69, 71, 72), or bold before it by `"Before"`, `"Start"` and `"Replace"` (66, 68, 70).
+
+`v0.1.0` (a scratch worktree) wrote into the prompt's run at every location of the End range, where its readers saw it (section 13.4 item 1: `X Click here.Y`), the other endings as `81cbe45` did, and into a trailing hidden run, hidden.
+
+**Checks 52 to 68 don't move.** Every ported run (52's `reads`, `report` and `run`; 53; 54; 57; 58's `read` and `edit`; 59; 63 to 66 in both modes and files; 67's report and four phases in its three files; 68), with this package's save after it, is identical before (`81cbe45`'s code) and after, dates and paragraph ids scrubbed: 18 runs. Their writes at a paragraph's end, where they have any, land as before.
+
+**core-ts's tests that are no replay** (`placeholders.test.mjs` at `09dc3d2`), their strings kept: a trailing link (the text after it, plain); a proofing mark no item (a bold misspelt word lending its bold); a paragraph of markers alone (a run after the bookmark); tracked (a `w:ins` after a placeholder control, then this author's insertion growing, `NEWER`, one change listed); line breaks (paragraphs after a control holding text, the range `A\rB`, the control's text kept; after a hidden run visible; without a break hidden, the range `""`); a search hit ending at the paragraph's end writing inside a trailing control's text, as before.
+
+**This package's own:** every route (eleven: the paragraph's `insert_text`, the End range at its five locations, the Content range at `"End"` and `"After"`, the body's `insert_text` and `get_range("End")`, and a cell's `insert_text`), tracked and not, after a trailing placeholder control, which keeps its prompt and flag; the End range followed through `"Before"`, `"Start"` and `"Replace"`, and the Content range's `"After"`; a range made from one, a `"Whole"` and a `"Start"` range unmarked; the Content range's `"After"` plain after a hidden run and its `"End"` then the plain run's; a bound block control's node written, a trailing bound run-level control's not; a break at the end of a paragraph ending in a field's instruction refused, nothing changed.
+
+### 15.4 Pinned, each with its reason
+
+- **Check 70's run, 20 cases, none of them placement** (core-ts pins the same 20):
+  - 25 to 32: Word's All Markup reads the deleted `DELETED<n>` in the paragraph's text; `Paragraph.text` reads Word's default view (check 53).
+  - 49 to 56: Word reads a `w:fldSimple` as a complex field; this package keeps it as written.
+  - 57, 58, 63 and 64 (the paragraph's End, the End range's `"Before"`, the Content range's End, the cell body): Word's `w:noProof` after the text box, D13's departure.
+- **Check 70's report, 16 cases:** 25 to 32 and 49 to 56, for the first two reasons.
+- **Check 69's save, 7 regions** (25, 26, 28 to 32): Word's save writes `NEW<n>` as a hidden run of its own after `HIDDEN<n>`; this package extends `HIDDEN<n>`'s run, as Word's own run read it back through `getOoxml` (its JSON's `{h:HIDDEN<n>NEW<n>}`). A run boundary: the same text in the same look.
+- **Check 70's save, 12 regions:** 49 to 56, Word's save writes the simple field as a complex one (as its save on opening does); 57, 58, 63 and 64, Word's `w:noProof`.
+
+Every other region of both saves is Word's save's, item for item, and holds `NEW<n>` as a run of its own at the paragraph's end with no properties (check 70), or as core-ts's test has it (check 69: the plain run extended but by `"After"`, the hidden run extended but by `"After"`, else a run of its own after the control or the run).
+
+### 15.5 Departures and choices, with why
+
+1. **A hidden last run inside this author's own insertion** is passed over for a text holding a paragraph break, as `09dc3d2` passes over a hidden last run outside one: a new run, visible, in the insertion. `09dc3d2` extends the hidden inner run, so the text's breaks would fall at offsets the paragraph's text doesn't have. Unmeasured, and no check reaches it.
+2. **A paragraph break at the end of a paragraph ending inside a field's instruction is refused before anything changes** (`range.splits_field`, CR-013 section 13.7's D1): the split after the text written would fall in the instruction, which `split_paragraph` refuses, and refusing first keeps CR-013 E1's promise that a refused write changes nothing. `09dc3d2` writes and then splits. Unmeasured.
+3. **The range written through at `"End"` or `"After"`** moves into the first paragraph a break made, where it still covers what it covered, as every range here does (CR-013 Phase B); `09dc3d2` leaves it in the last. At `"Before"` and `"Start"` both leave it collapsed after the text.
+4. **`_place_at_hidden_edge` stays** for the writes at the end that are no route (a `"Whole"` range's `"End"` or `"After"`, a range across paragraphs at its end, a search hit): after the trailing hidden runs, visible, in the visible neighbour's look (CR-013 section 11's item 1). `09dc3d2`'s `splice` writes those on the last run with width, before trailing hidden runs and items: the ports differed there before this phase and still do (15.11 item 1).
+5. **Line breaks** are split by `split_paragraph` at each piece, `_splice_paragraphs`'s way, where `09dc3d2` uses `breakParagraphAt`; the paragraphs are the same (the `w:p` keeping the last piece, its mark and its identity, the new ones in front), as for every other writer here.
+6. **No new public member**: `_write_at_end` and `Range.end_of` are internal, as core-ts's `writeAtEnd` and `endOf` are; `Range.end_of` is readable, as `of_control` is.
+
+### 15.6 Pre-existing tests whose expectation changed
+
+- **`test_office_js_characters.py::test_every_fixture_is_the_manifests_and_the_files_word_read`** counts 100 files in `SHA1SUMS` (90), and checks the two source files against the share's SHA-1s.
+- **`test_word_writers.py`, three tests, six cases** (CR-013 section 11.1.11's item 1, its end half): after a trailing hidden run, D13 writes in that run's look, hidden, as Word wrote it in check 69 (cases 25, 26 and 28 to 32), where section 11.1.11 wrote it visible after the hidden run in the visible text's look. `0.1.0` wrote it into the hidden run, hidden, as Word does.
+  - `test_text_into_an_all_hidden_paragraph_is_seen_mapped_and_at_the_end` becomes `test_text_at_the_end_of_an_all_hidden_paragraph_is_mapped_after_the_hidden_run_hidden_as_word_writes_it`: still mapped (U+000B a `w:br`) and after the hidden run, now hidden, the range `""`; with a paragraph break, visible (core-ts's `characters.test.mjs` case, its section 60).
+  - `test_the_other_writers_into_a_hidden_paragraph`: the End range's write and `Body.insert_text(..., "End")` are hidden after the hidden run; the End range's `"After"` added, visible (D14). Its `"Start"`, `"Before"`, `"Replace"`, `text = ...` and `replace_text` cases are unchanged.
+  - `test_at_the_hidden_edge_of_a_partly_hidden_paragraph`: `insert_text("X", "End")` after `AB` (bold) and a hidden run is hidden, in the hidden run's look, not bold (check 69 case 25's shape); its `"Start"` half unchanged.
+- **Unmoved:** every test of checks 52 to 68 (15.3), and CR-013's span-edit tests (`test_span_edits.py`), all passing unchanged.
+
+### 15.7 Acceptance
+
+`out/acceptance/` was copied to `out/acceptance-before-cr019d/` first, and a regeneration at `81cbe45` (a scratch worktree) was equal to the copy (17 artefacts, 246 entries, 0 differing beyond the dates). After `scripts/acceptance.py`, `compare_acceptance.py out/acceptance-before-cr019d out/acceptance`: **17 artefacts, 246 entries, 0 differ beyond the wall-clock dates.** No artefact's output moved.
+
+### 15.8 The gates
+
+| gate | result |
+|---|---|
+| the full suite (6,540 passed, 8 skipped at `81cbe45`) | **6,581 passed, 8 skipped** (5 min 14 s): the 41 new tests; the 8 warnings are `test_parser_configs.py`'s and `test_effective.py`'s, as before |
+| `roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata`, `--normalise` and `--no-normalise` | 50 of 50 both ways, 0 differences, 34 `boolean-spelling`, 0 kept, 0 normalised, 0 skipped |
+| acceptance | 15.7 |
+| `scripts/compare_word_resolution.py --no-records` | 0 lines (2 compared, 0 differ) |
+| `codegen/generate.sh --check` (a scratch worktree of `971612a`, `TMPDIR` in the scratchpad) | "reproducible: two generations of docx4j_py are byte identical", 308 modules; the tree left as committed |
+| `ruff check` | the changed files clean |
+
+### 15.9 The cost
+
+The median of 7 passes after a warm one, 300 paragraphs each written twice at its end (`insert_text(..., "End")`, then the End range's `"After"`), `81cbe45`'s code (a scratch worktree) and this phase's interleaved, three rounds (ms):
+
+| | before | after |
+|---|---|---|
+| 600 writes, a plain last run | 35.7 to 38.1 | 31.9 to 33.0 |
+| 600 writes, a trailing placeholder control | 91.3 to 96.3 | 54.2 to 55.5 |
+
+Faster: the write reads the paragraph's last item, where `splice` walked its segments again for a landing.
+
+### 15.10 The Word check's files
+
+Built by `out/cr019-d-word-check/build.py` (`PYTHONPATH=. .venv-fork/bin/python out/cr019-d-word-check/build.py`, about 6 s), from the checkout, into `out/cr019-d-word-check/` (git-ignored), for the coordinator to stage. It runs the suite's own port and comparisons (`tests/office_js/checks.py`, `test_paragraph_end.py`'s helpers), with the suite's pins and nothing more. Each save is a default save (Word's normal form), read back with `LoadOptions(strict=True)`: nothing skipped, every part well formed, no `w:formsDesign` or `w:trackRevisions` in the settings, no part added.
+
+| file | what it holds | held by the build to |
+|---|---|---|
+| `cr019d-69-run.docx` | check 69's run on `69-paragraph-end.docx` | Word's run in 49 of 49 cases and returned ranges; Word's save in 42 of 49 regions, the 7 hidden cases' run boundary pinned |
+| `cr019d-70-run.docx` | check 70's run on `70-paragraph-endings.docx`; regions 25 to 40 hold tracked changes (All Markup) | `NEW<n>` where Word wrote it in 88 of 88, returned ranges 88 of 88, 68 of 88 in every reading (15.4's 20 pinned); Word's save in 76 of 88 regions, 15.4's 12 pinned; no tracked change holds `NEW` |
+| `reference-word365/` | Word 365's own saves after the same runs (`word365-69-run.docx`, `word365-70-run.docx`, from `tests/office_js/`) | for comparison only |
+| `REGIONS.txt` | every region of both saves, one line each, item by item with the suite's readings, and a legend | --- |
+| `README.txt`, `BUILD-LOG.txt`, `SHA1SUMS` | the user's steps (Design Mode off; All Markup for 70's tracked regions; Show/Hide for the hidden text; what each shape looks like, every per-case exception and pinned difference named; `results.txt`, one line a file); the build's tallies and commit; the folder's SHA-1s | --- |
+
+**The Word check is not yet run.**
+
+### 15.11 Found, and not done
+
+1. **The writes at a paragraph's end that are no route** (a `"Whole"` range's `"End"` or `"After"`, a range across paragraphs at its end, a range built by offset) still land by `splice`'s rules: on the run holding the last text, which may be inside a trailing control holding text or a field's result, or before a trailing placeholder control, marker, deletion or text box; and after trailing hidden runs, visible. core-ts's are its `splice`'s too, which differs at a hidden run (15.5 item 4). None is measured.
+2. **Word's `w:noProof` after a text box** is left out by decision (D13); nothing reads it.
+3. **CR-013 section 11.1.11's "found, and not done" picture item** is settled by D12: a write at a paragraph's end after a trailing picture goes after it (a drawing run holds no `w:t`), as Word wrote after a text box; before this phase, and in `0.1.0`, before it. A picture itself is unmeasured.
+4. **Section 14.3's bisect** of the glossary reshuffle was pending when this phase was built; its result (section 14.5) is Word's session, not the file, and `placeholders.py`'s glossary code is untouched.
+5. Section 13.4's items 2 and 3 stand.
