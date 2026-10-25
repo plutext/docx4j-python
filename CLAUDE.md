@@ -93,7 +93,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   (`dfb05fa`, `0dc354a`, `a3a9571`) implemented 2026-10-25, held to Word's runs of checks 63 to 68; C (the records and
   the Word check) done 2026-10-25, Word-checked (a glossary reshuffle in Word's first save was Word's session, not the
   file: section 14.5); D (`971612a`, checks 69 and 70) done 2026-10-25, Word-checked:
-  complete. **0.2.0 is next**, with a new wheel, `release_check.sh` and the wheel's Word check.
+  complete. **0.2.0's gates passed 2026-10-25**: `release_check.sh` at `21a60d9` and the wheel's Word check
+  (`tests/README.md`); pushing, the TestPyPI dry run, the tag `v0.2.0` and the GitHub release are the user's.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
