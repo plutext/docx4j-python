@@ -9,7 +9,7 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
-## [0.2.0] --- 2026-10-24
+## [0.2.0] --- 2026-10-25
 
 Still WordprocessingML only; PresentationML and SpreadsheetML remain CR-001 Phase D and CR-002
 Phase C. Seven change requests are new and complete, each Word-checked:
@@ -38,12 +38,15 @@ Phase C. Seven change requests are new and complete, each Word-checked:
   control showing its placeholder replaces it as Word 365 does, by every route, and placeholders
   are written in Word's own form, naming a glossary entry, the glossary written on save where a
   file has none. This closes a defect 0.1.0 shared: a value written into a control showing its
-  placeholder, by any route, left the control a placeholder.
+  placeholder, by any route, left the control a placeholder. A write at a paragraph's end goes
+  after everything the paragraph holds, as Word 365 writes it, which closes another: 0.1.0 wrote it
+  into a trailing control, field result or tracked insertion (Phase D).
 
 [CR-009](docs/change-requests/CR-009-theme-colours.md)'s Phase B resolves theme colours as Word
 draws them, so `Font.color` reads a theme colour in the theme's colour rather than the cache written
 beside it. With these come CR-003's `Range.hyperlink`, CR-009 Phase A's colour merge rules, CR-002
-section 16's single parse of a part, and a fix to a defect 0.1.0 shipped: an embedded object would
+section 16's single parse of a part, docx4j 17.3.5's `DOCPROPERTY` changes (a name matched in any
+case, `Keywords` a core property), and a fix to a defect 0.1.0 shipped: an embedded object would
 not open in Word after a save.
 
 ### Added
