@@ -176,7 +176,16 @@ The message names the holder's field and the item, both the class and the elemen
 
 `misplaced(root)` walks a tree, a part or a package and returns every finding: the holder, the field, the item, what the field takes, and the address where the content API has one. It applies D2 to every list and checks every single-valued field's class as well, which the add-time check can't see (section 2.6). It also carries the completeness rules, starting with CR-016's "a table cell ends with a paragraph" (`table_rules`). Ordering rules belong here too if any are added; the add-time check carries none.
 
-**Out-of-range measurements** (added 2026-10-26, the user). An integer measurement beyond Word's range for its type is reported: an indent, spacing, a page size or a width that Word stores in 16 bits and wraps (CR-022 section 1: 7205001 in a signed twips field read as -3959). The limits are CR-022's table, from docx4j CR-065's probe round 5, and a type without a row isn't checked. A finding names the attribute, the value, Word's range and, where it's known, what Word will show. **The value is never rewritten:** CR-021 Q7 recommends against emulating the wrap. This is the read side of CR-022. It also covers what CR-022's write-side check can't see: a value already in a file, or one assigned straight to a field. This part of Phase B waits for CR-022's table; the rest of Phase B doesn't.
+**Out-of-range measurements** (added 2026-10-26, the user). An integer measurement beyond Word's range for its type is reported: an indent, spacing, a page size or a width that Word stores in 16 bits and wraps (CR-022 section 1: 7205001 in a signed twips field read as -3959). The limits are CR-022's table, from docx4j CR-065's probe round 5, and a type without a row isn't checked. **The finding** (agreed with docx4j-core-ts's CR-017, 2026-10-26, so the ports share one name) has the code `value.out_of_range`, the same as CR-022's `MeasureRangeError` for the write side, since it's the same condition, and these fields:
+- `element`, a qualified name (`"w:ind"`);
+- `attribute` (`"w:left"`);
+- `value`, the attribute as written: an `int` where it binds as one, else the kept text;
+- `word_reads`, what Word reads (-3959 for 7205001), or `None` where no reading is known;
+- `storage`, the measured width: `"int16"`, `"uint16"`, `"8 bits"`, `"5 bits"` or `"int32"`, with a note for CR-022's special rules (first line and hanging one signed field; `w:trHeight` and exact line spacing with the sign as the rule; the tab's ±31,680 and the page width's 144 to 31,681 clamps);
+- `range`, the faithful `[min, max]` in the attribute's own unit;
+- the part and the path, or an address where the content API has one.
+
+core-ts names the same fields in camelCase (`wordReads`), and its `value` is a number. **The value is never rewritten:** CR-021 Q7 recommends against emulating the wrap. This is the read side of CR-022. It also covers what CR-022's write-side check can't see: a value already in a file, or one assigned straight to a field. This part of Phase B waits for CR-022's table; the rest of Phase B doesn't.
 
 It would serve the inspector, the MCP server and tests. Optionally a save runs it: off by default, and turned on for the whole test suite by `conftest`, so every save the engine's own edits make is held to it (Q5).
 
