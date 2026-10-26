@@ -749,18 +749,27 @@ class List:
         """Office JS ``setLevelIndents``: where the text and the marker sit.
 
         Both in **points**, as every other measurement in this API is:
-        `text_indent` is the level's ``w:ind/@w:left`` (Office JS: "the same as
-        paragraph indent") and `bullet_number_picker_indentation` its
-        ``@w:hanging`` ("the same as paragraph hanging indent").
+        `text_indent` is the level's ``w:ind/@w:left``, and
+        `bullet_number_picker_indentation` (Office JS's
+        ``bulletNumberPictureIndent``) is the marker's place relative to it:
+        the level's first-line indent, written ``@w:firstLine`` when it is zero
+        or more and ``@w:hanging`` with its magnitude when it is negative. That
+        is what Word 365 writes (core-ts check 71, case 86:
+        ``set_level_indents(0, -1, 0)`` is ``w:left="-20" w:firstLine="0"``;
+        CR-023), and the usual list is ``set_level_indents(0, 36, -18)``,
+        ``w:left="720" w:hanging="360"``. Word keeps the two in one signed
+        field, so a level holds one or the other.
         """
         with recording(self.body, "list.set_level_indents") as change:
             lvl = self._writable_level(level, change)
             if lvl.p_pr is None:
                 lvl.p_pr = el.pPr()
                 lvl.p_pr.parent = lvl
+            marker = round(float(bullet_number_picker_indentation) * TWIPS_PER_POINT)
             lvl.p_pr.ind = el.ind(
                 left=round(float(text_indent) * TWIPS_PER_POINT),
-                hanging=round(float(bullet_number_picker_indentation) * TWIPS_PER_POINT),
+                first_line=marker if marker >= 0 else None,
+                hanging=-marker if marker < 0 else None,
             )
             lvl.p_pr.ind.parent = lvl.p_pr
             change.touched(self.address)

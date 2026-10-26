@@ -1055,15 +1055,20 @@ def _definition_lines(variable: str, listing: Any, kind: str, notes: list[str]) 
                     lines.append(f"{variable}.set_level_numbering({', '.join(arguments)})")
                     if font:
                         notes.append(f"level {ilvl}'s w:rFonts")
-        if (left, hanging) != (was[4], was[5]):
+        if (left, hanging, first_line) != (was[4], was[5], was[6]):
+            # the marker's place relative to the text: a first-line indent, or a hanging one as its
+            # negative (Word keeps the two in one signed field; CR-023)
+            marker = first_line if first_line is not None else -(hanging or 0)
             lines.append(
                 f"{variable}.set_level_indents({ilvl}, "
                 f"{_num((left or 0) / TWIPS_PER_POINT)}, "
-                f"{_num((hanging or 0) / TWIPS_PER_POINT)})"
+                f"{_num(marker / TWIPS_PER_POINT)})"
             )
+            if first_line is not None and hanging is not None:
+                notes.append(f"level {ilvl}'s w:ind holds both @w:firstLine and @w:hanging; the script keeps @w:firstLine")
         beyond = []
-        if (first_line, right) != (was[6], was[7]):
-            beyond.append("w:ind/@w:firstLine or @w:right")
+        if right != was[7]:
+            beyond.append("w:ind/@w:right")
         if start != was[8]:
             beyond.append(f"w:start {start + 1}")
         if restart != was[9]:

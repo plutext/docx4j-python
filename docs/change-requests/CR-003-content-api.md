@@ -3273,6 +3273,9 @@ CR-015 measured (section 18.5).
    `@w:left` and `bullet_number_picker_indentation` is `@w:hanging`, which is
    what Office JS's own documentation says the two are ("the same as paragraph
    indent", "the same as paragraph hanging indent"). Both are in points.
+   **Superseded by CR-023 (2026-10-26):** Word 365 writes the second as the marker's
+   *first-line* indent, `w:firstLine` when zero or more and `w:hanging` of its
+   magnitude when negative (core-ts check 71, case 86).
 7. **`start_new_list` takes `kind=` and `like=`.** Office JS's `startNewList()`
    takes nothing and always makes a numbered list. `kind="Bullet"` is the
    obvious extension (docx4j's default numbering carries both sets, and the

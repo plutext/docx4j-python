@@ -19,6 +19,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **`List.set_level_indents` writes what Word writes**
+  ([CR-023](docs/change-requests/CR-023-set-level-indents-as-word-writes-them.md); a defect 0.1.0
+  and 0.2.0 shared, the port of docx4j-core-ts CR-002 section 65.5). Its second indent, Office JS's
+  `bulletNumberPictureIndent`, is the marker's place relative to the text: a first-line indent,
+  written `w:firstLine` when zero or more and `w:hanging` of its magnitude when negative, as Word
+  365 writes it (core-ts's check 71). It was written to `w:hanging` as given, so the usual list,
+  `set_level_indents(0, 36, -18)`, wrote `w:hanging="-360"`, and `(0, 36, 18)` wrote a hanging
+  indent where Word writes a first-line one. `to_api_script` scripts a level's indents the same way.
+
 - **Integer attributes are read and saved as Word 365 reads them**
   ([CR-021](docs/change-requests/CR-021-integer-attributes-read-as-word-reads-them.md), section
   [10](docs/change-requests/CR-021-integer-attributes-read-as-word-reads-them.md#10-phases-a-and-b-implementation-notes-2026-10-26);

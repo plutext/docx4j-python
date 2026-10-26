@@ -387,12 +387,53 @@ def test_a_custom_bullet_takes_a_char_code_and_a_font():
 
 def test_set_level_indents_is_in_points():
     package, the_list = numbered("One")
-    the_list.set_level_indents(0, 36, 18)
+    the_list.set_level_indents(0, 36, -18)
 
     ind = package.numbering_definitions_part.contents.abstract_num[0].lvl[0].p_pr.ind
     assert int(ind.left) == 720
     assert int(ind.hanging) == 360
+    assert ind.first_line is None
     assert reloaded(package).body.lists[0].definition.level(0).ind.left == 720
+
+
+@pytest.mark.parametrize(
+    ("marker", "first_line", "hanging"),
+    [(-18, None, 360), (18, 360, None), (0, 0, None), (-0.4, None, 8), (0.4, 8, None)],
+)
+def test_set_level_indents_marker_is_a_first_line_or_hanging_indent(marker, first_line, hanging):
+    """CR-023: the second indent is the marker's place relative to the text, as Word writes it.
+
+    Zero or more is ``w:firstLine``, a negative ``w:hanging`` of its magnitude: one signed field in
+    Word (core-ts check 71, docx4j CR-066 round 6), so a level holds one or the other.
+    """
+    package, the_list = numbered("One")
+    the_list.set_level_indents(0, 36, marker)
+    ind = package.numbering_definitions_part.contents.abstract_num[0].lvl[0].p_pr.ind
+    assert (int(ind.left), ind.first_line, ind.hanging) == (720, first_line, hanging)
+
+
+def test_set_level_indents_writes_what_word_365_writes():
+    """core-ts check 71's case 86 (Word 365, the user's run, 2026-10-26): ``setLevelIndents(0, -1, 0)``.
+
+    Word's save (``tests/office_js/71-run-word365.docx``, core-ts ``fd898b9``) holds the level's indent
+    as ``w:left="-20" w:firstLine="0"``; this package writes the same attributes.
+    """
+    import zipfile
+    from pathlib import Path
+
+    from lxml import etree
+
+    w = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    saved = Path(__file__).resolve().parents[1] / "office_js" / "71-run-word365.docx"
+    word = etree.fromstring(zipfile.ZipFile(saved).read("word/numbering.xml"))
+    words = [dict(ind.attrib) for ind in word.iter(w + "ind") if ind.get(w + "left") == "-20"]
+    assert words == [{w + "left": "-20", w + "firstLine": "0"}]
+
+    package, the_list = numbered("One")
+    the_list.set_level_indents(0, -1, 0)
+    ours = etree.fromstring(part_bytes(package.save())["word/numbering.xml"])
+    level = next(lvl for lvl in ours.iter(w + "lvl") if lvl.get(w + "ilvl") == "0")
+    assert dict(level.find(f"{w}pPr/{w}ind").attrib) == words[0]
 
 
 def test_a_level_the_definition_lacks_is_created_by_a_setter():

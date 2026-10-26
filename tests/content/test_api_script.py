@@ -455,6 +455,23 @@ def test_a_definition_that_is_not_a_default_emits_the_level_setters(new_package)
     assert 'list1.set_level_numbering(0, "LowerLetter", "%1)")' in to_api_script(body)
 
 
+@pytest.mark.parametrize(("marker", "first_line", "hanging"), [(18, 360, None), (-9, None, 180)])
+def test_set_level_indents_round_trips_a_first_line_or_a_hanging_indent(new_package, marker, first_line, hanging) -> None:
+    """CR-023: a level's first-line indent is the setter's positive marker, a hanging one its negative.
+
+    The script names it, and running the script writes the same ``w:ind`` back; a first-line indent
+    is no longer "beyond" the three setters.
+    """
+    body = new_package.body
+    listing = body.insert_paragraph("Item").start_new_list(kind="Number")
+    listing.set_level_indents(0, 36, marker)
+    script, target = executed(new_package)
+    assert f"list1.set_level_indents(0, 36, {marker})" in script
+    assert "w:firstLine" not in script
+    ind = target.body.lists[0].definition.level(0).ind
+    assert (ind.left, ind.first_line, ind.hanging) == (720, first_line, hanging)
+
+
 def test_the_executed_scripts_labels_are_the_sources(new_package) -> None:
     """What Word paints in front of each item is what matters, not the ``w:numId``."""
     body = _two_lists(new_package)
