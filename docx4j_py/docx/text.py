@@ -33,7 +33,7 @@ from collections.abc import Iterator
 from typing import IO, TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList
-from docx4j_py.docx._base import Story, recording
+from docx4j_py.docx._base import Story, recording, within_rule
 from docx4j_py.docx.enums import (
     ALIGNMENT_TO_OFFICE_JS,
     MSO_COLOR_TYPE,
@@ -1076,7 +1076,7 @@ class ParagraphFormat:
     def _set_spacing(self, attribute: str, value: int | Length | None) -> None:
         if value is None and getattr(self._p_pr(create=False), "spacing", None) is None:
             return
-        # within Word's range, 0 to 65,535 twips, before anything changes (CR-022 Q4)
+        # within 0 to 65,534 twips (Word writes 0xFFFF back as -1: decision 3), before anything changes (CR-022 Q4)
         twips = (
             None
             if value is None
@@ -1195,6 +1195,16 @@ class ParagraphFormat:
 
     @line_spacing_rule.setter
     def line_spacing_rule(self, value: WD_LINE_SPACING | None) -> None:
+        # a rule over a line already set: that line within the new rule's range, before anything changes
+        # (CR-022 section 10, decision 4); a multiple writes its own line, so there is nothing to check
+        if value not in _LINE_SPACING_MULTIPLES:
+            rule = None if value is None else WD_LINE_SPACING(value).xml_value
+            existing = self._spacing_element(create=False)
+            line = integer(getattr(existing, "line", None)) if existing is not None else None
+            if line is not None:
+                within_rule(
+                    "w:spacing/@w:line", line, setter="line_spacing", rule_attribute="w:lineRule", rule=rule, absent="auto"
+                )
         with _write(self._story, "docx.paragraph_format.line_spacing_rule"):
             spacing = self._spacing_element(create=True)
             assert spacing is not None

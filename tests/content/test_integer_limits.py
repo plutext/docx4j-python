@@ -281,7 +281,9 @@ def test_words_saves_keep_each_value_inside_the_range_and_change_each_outside(
     Kept means the save holds the value written (as Word spells it: 65535 as ``"-1"`` where
     ``word_writes`` says so) under the same rule; changed, anything else: wrapped,
     clamped, the rule flipped (``exact`` to ``atLeast``, ``w:firstLine`` to
-    ``w:hanging``), Word's sentinel, or dropped.
+    ``w:hanging``), Word's sentinel, or dropped. A value ``word_writes`` names is the
+    one exception, by choice (CR-022 section 10, decision 3): Word keeps it, but writes
+    it back as another number (65535 as ``"-1"``), so the row leaves it out.
     """
     inside = outside = 0
     for round_name, case in cited:
@@ -291,6 +293,10 @@ def test_words_saves_keep_each_value_inside_the_range_and_change_each_outside(
         before_rules = tuple(_attribute(_element(source, round_name, case), rule) for rule in RULES)
         reading, rules = _reading(row, round_name, case)
         kept = reading == written and rules == before_rules
+        if written in dict(row.word_writes):
+            assert kept, f"{case}: Word keeps {written}, written back as {dict(row.word_writes)[written]!r}"
+            assert not row.admits(written), f"{case}: the row leaves {written} out, by choice"
+            continue
         assert kept == row.admits(written), (
             f"{round_name} {case}: {written} read as {reading!r} {rules}, "
             f"where the row is {row.minimum} to {row.maximum}"
@@ -308,7 +314,7 @@ def test_the_boundaries_the_probe_measured_are_the_rows() -> None:
     """Both ends kept and one past each changed, where the probe set those values (the 16-bit edges)."""
     measured = {
         ("w:ind/@w:left", None): ((-32768, 32767), (-32769, 32768)),
-        ("w:spacing/@w:before", None): ((32768, 65535), (-1, 65536)),
+        ("w:spacing/@w:before", None): ((32768,), (-1, 65536)),
         ("w:spacing/@w:line", "exact"): ((32767, 32768), (65535, -1)),
         ("w:trHeight/@w:val", None): ((32767,), (32768,)),
         ("w:trHeight/@w:val", "exact"): ((32768,), (65535,)),
@@ -326,6 +332,42 @@ def test_the_boundaries_the_probe_measured_are_the_rows() -> None:
         assert row is not None
         assert all(row.admits(v) for v in kept), attribute
         assert not any(row.admits(v) for v in changed), attribute
+
+
+def test_where_word_writes_65535_as_minus_1_the_rows_stop_at_65534() -> None:
+    """``w:before``, ``w:after`` and the five unsigned margins: Word keeps 0xFFFF but saves it as ``"-1"``.
+
+    So 65,535 is refused there by choice (CR-022 section 10, decision 3, as docx4j-core-ts
+    stops), and the rows end at 65,534; the unsigned attributes Word writes 65535 back as
+    written (``w:sz``, ``w:szCs``, ``w:kern``, the text scale, ``w:defaultTabStop``,
+    ``w:hyphenationZone``) keep 0 to 65,535.
+    """
+    spelled = sorted(row.attribute for row in integer_limits() if row.word_writes)
+    assert spelled == sorted(
+        ["w:spacing/@w:before", "w:spacing/@w:after"]
+        + [f"w:pgMar/@w:{edge}" for edge in ("left", "right", "header", "footer", "gutter")]
+    )
+    for row in integer_limits():
+        if row.word_writes:
+            assert dict(row.word_writes) == {65535: "-1"}
+            assert (row.minimum, row.maximum) == (0, 65534), row.attribute
+    for attribute in (
+        "w:rPr/w:sz/@w:val",
+        "w:szCs/@w:val",
+        "w:kern/@w:val",
+        "w:w/@w:val",
+        "w:defaultTabStop/@w:val",
+        "w:hyphenationZone/@w:val",
+    ):
+        row = integer_limit(attribute)
+        assert row is not None and (row.minimum, row.maximum) == (0, 65535), attribute
+    # and Word's saves agree: 65535 written back as "-1" in the one family, as written in the other
+    for name, case, saved in (("round5", "P1-3", "-1"), ("round6", "A3-3", "-1"), ("round6", "S1-3", "-1"),
+                              ("round5", "R1-5", "65535"), ("round6", "R2-3", "65535"), ("round6", "D1-3", "65535")):
+        group, attribute, _place, value = cases(name)[case]
+        assert value == "65535"
+        _source, save = _files(name, group, case)
+        assert _attribute(_element(save, name, case), _parse(attribute)[1]) == saved, case
 
 
 def test_the_unmeasured_attributes_are_what_word_did_with_them() -> None:

@@ -224,17 +224,18 @@ def test_a_value_that_is_not_a_finite_number_is_refused() -> None:
 # the python-docx facade (Length)
 # ---------------------------------------------------------------------------
 
-#: (the facade's setter on a section, the attribute, (low, high) in twips, the hint's range in EMU)
+#: (the facade's setter on a section, the attribute, (low, high) in twips, the hint's range in EMU). The five
+#: unsigned margins stop at 65,534: Word keeps 0xFFFF but writes it back as -1 (CR-022 section 10, decision 3).
 SECTION = [
     ("page_width", "w", (144, 31681), "91,440 to 20,117,435 EMU"),
     ("page_height", "h", (144, 65535), "91,440 to 41,614,725 EMU"),
     ("top_margin", "top", (-32768, 32767), "-20,807,680 to 20,807,045 EMU"),
     ("bottom_margin", "bottom", (-32768, 32767), "-20,807,680 to 20,807,045 EMU"),
-    ("left_margin", "left", (0, 65535), "0 to 41,614,725 EMU"),
-    ("right_margin", "right", (0, 65535), "0 to 41,614,725 EMU"),
-    ("header_distance", "header", (0, 65535), "0 to 41,614,725 EMU"),
-    ("footer_distance", "footer", (0, 65535), "0 to 41,614,725 EMU"),
-    ("gutter", "gutter", (0, 65535), "0 to 41,614,725 EMU"),
+    ("left_margin", "left", (0, 65534), "0 to 41,614,090 EMU"),
+    ("right_margin", "right", (0, 65534), "0 to 41,614,090 EMU"),
+    ("header_distance", "header", (0, 65534), "0 to 41,614,090 EMU"),
+    ("footer_distance", "footer", (0, 65534), "0 to 41,614,090 EMU"),
+    ("gutter", "gutter", (0, 65534), "0 to 41,614,090 EMU"),
 ]
 
 
@@ -262,8 +263,8 @@ def test_a_sections_measurements(name: str, field: str, bounds: tuple[int, int],
     [
         ("left_indent", "left", (-32768, 32767)),
         ("right_indent", "right", (-32768, 32767)),
-        ("space_before", "before", (0, 65535)),
-        ("space_after", "after", (0, 65535)),
+        ("space_before", "before", (0, 65534)),
+        ("space_after", "after", (0, 65534)),
     ],
 )
 def test_a_paragraph_formats_measurements(name: str, field: str, bounds: tuple[int, int]) -> None:
@@ -281,6 +282,19 @@ def test_a_paragraph_formats_measurements(name: str, field: str, bounds: tuple[i
     assert to_xml(paragraph._p) == before
     setattr(form, name, None)
     assert getattr(holder(), field, None) is None
+
+
+def test_65535_twips_is_refused_where_word_writes_it_back_as_minus_1() -> None:
+    """Space before and after and the five unsigned margins stop at 65,534 twips (decision 3); the page height doesn't."""
+    document = Document()
+    form = document.add_paragraph("x").paragraph_format
+    section = document.sections[0]
+    for owner, name in ((form, "space_before"), (form, "space_after"), (section, "left_margin"), (section, "gutter")):
+        error = refused(lambda owner=owner, name=name: setattr(owner, name, Twips(65535)), "0 to 41,614,090 EMU")
+        assert error.stored == 65535
+        setattr(owner, name, Twips(65534))
+    section.page_height = Twips(65535)  # Word writes 65535 back as written here
+    assert section._sect_pr.pg_sz.h == 65535
 
 
 def test_a_paragraph_formats_first_line_indent() -> None:
@@ -321,6 +335,78 @@ def test_a_paragraph_formats_line_spacing_by_its_rule() -> None:
     assert error.stored == 32880
 
 
+def test_a_line_spacing_rule_rechecks_the_line_already_set() -> None:
+    """A rule over a line already set holds that line to the new rule's range (CR-022 section 10, decision 4).
+
+    Exact is 1 to 32,768 twips, at least 0 to 32,767, auto (or no rule) -32,768 to 32,767 240ths;
+    a multiple writes its own line. Refused before anything changes, the hint naming the value and
+    the rule.
+    """
+    from docx4j_py.docx import WD_LINE_SPACING
+
+    document = Document()
+    paragraph = document.add_paragraph("x")
+    form = paragraph.paragraph_format
+    spacing = lambda: paragraph._p.p_pr.spacing
+    form.line_spacing = -100 / 240  # an auto line of -100 240ths
+    assert (spacing().line, spacing().line_rule) == (-100, "auto")
+    before = to_xml(paragraph._p)
+    changes = len(document.package.changes)
+    error = refused(lambda: setattr(form, "line_spacing_rule", WD_LINE_SPACING.EXACTLY), "1 to 32,768 twips")
+    assert error.message == (
+        'line spacing, under w:lineRule="exact", -100 twips is beyond Word\'s range, 1 to 32,768 twips'
+    )
+    assert error.hint == (
+        'the line spacing already set, -100 twips, is beyond the range of w:lineRule="exact", 1 to 32,768 twips: '
+        "set line_spacing within it first, or choose another rule"
+    )
+    refused(lambda: setattr(form, "line_spacing_rule", WD_LINE_SPACING.AT_LEAST), "0 to 32,767 twips")
+    assert to_xml(paragraph._p) == before, "nothing changed"
+    assert len(document.package.changes) == changes, "and no report"
+    form.line_spacing_rule = WD_LINE_SPACING.MULTIPLE  # auto keeps -100, which it admits
+    form.line_spacing_rule = WD_LINE_SPACING.DOUBLE  # a multiple writes its own line: nothing to check
+    assert (spacing().line, spacing().line_rule) == (480, "auto")
+    form.line_spacing = Twips(32768)  # exact, its range's top
+    error = refused(lambda: setattr(form, "line_spacing_rule", WD_LINE_SPACING.AT_LEAST), 'w:lineRule="atLeast"')
+    assert error.stored == 32768
+    error = refused(lambda: setattr(form, "line_spacing_rule", None), "no w:lineRule (auto)")
+    assert "-32,768 to 32,767 240ths of a line" in error.hint
+    assert (spacing().line, spacing().line_rule) == (32768, "exact")
+    form.line_spacing = Twips(32767)
+    form.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
+    form.line_spacing_rule = None
+    assert (spacing().line, spacing().line_rule) == (32767, None)
+
+
+def test_a_rows_height_rule_rechecks_the_height_already_set() -> None:
+    """At least (or no rule) 0 to 32,767 twips, exact 1 to 32,768; auto not checked, as Word discards it."""
+    from docx4j_py.docx import WD_ROW_HEIGHT
+    from docx4j_py.docx.table import _tr_pr_child
+
+    document = Document()
+    row = document.add_table(1, 1).rows[0]
+    height = lambda: _tr_pr_child(row._tr, "trHeight")
+    row.height = Twips(0)
+    before = to_xml(row._tr)
+    error = refused(lambda: setattr(row, "height_rule", WD_ROW_HEIGHT.EXACTLY), "1 to 32,768 twips")
+    assert error.hint == (
+        'the row height already set, 0 twips, is beyond the range of w:hRule="exact", 1 to 32,768 twips: '
+        "set height within it first, or choose another rule"
+    )
+    assert to_xml(row._tr) == before
+    row.height = Twips(32767)
+    row.height_rule = WD_ROW_HEIGHT.EXACTLY
+    row.height = Twips(32768)
+    refused(lambda: setattr(row, "height_rule", WD_ROW_HEIGHT.AT_LEAST), 'w:hRule="atLeast"')
+    refused(lambda: setattr(row, "height_rule", None), "no w:hRule (atLeast)")
+    assert (height().val, height().h_rule) == (32768, "exact")
+    row.height_rule = WD_ROW_HEIGHT.AUTO  # Word discards a height under auto at every value
+    assert height().h_rule == "auto"
+    table = document.add_table(1, 1)
+    table.rows[0].height_rule = WD_ROW_HEIGHT.EXACTLY  # no height yet: nothing to check
+    assert _tr_pr_child(table.rows[0]._tr, "trHeight").val is None
+
+
 def test_a_tab_stops_position() -> None:
     """``w:tab/@w:pos``: -31,680 to 31,680 twips, where Word clamps (22 in)."""
     document = Document()
@@ -355,13 +441,13 @@ def test_a_rows_height_by_its_rule() -> None:
     document = Document()
     table = document.add_table(1, 1)
     row = table.rows[0]
-    row.height = Twips(32767)
     row.height = Twips(0)
+    row.height = Twips(32767)
     refused(lambda: setattr(row, "height", Twips(32768)))
     refused(lambda: setattr(row, "height", Twips(-1)))
     from docx4j_py.docx import WD_ROW_HEIGHT
 
-    row.height_rule = WD_ROW_HEIGHT.EXACTLY
+    row.height_rule = WD_ROW_HEIGHT.EXACTLY  # over 32,767, which exact admits too
     row.height = Twips(32768)
     row.height = Twips(1)
     refused(lambda: setattr(row, "height", Twips(0)))

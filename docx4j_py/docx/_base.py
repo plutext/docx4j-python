@@ -213,6 +213,43 @@ def column_widths(width: Any, columns: int) -> list[int]:
     ]
 
 
+def within_rule(
+    attribute: str,
+    value: int,
+    *,
+    setter: str,
+    rule_attribute: str,
+    rule: str | None,
+    absent: str,
+    label: str | None = None,
+) -> None:
+    """`value`, already set, within the range of `rule` (None: `rule_attribute` absent, which Word reads as `absent`).
+
+    For a rule setter: ``line_spacing_rule`` and ``_Row.height_rule`` change how Word reads
+    a value already in the tree (a line of 0 twips at least is no line; exact, Word reads
+    it as at least 0), so the value is held to the new rule's row before the rule is
+    written (CR-022 section 10, decision 4). `setter` is the facade property that sets the
+    value (``line_spacing``, ``height``), `label` what the message calls it (the setter's
+    name by default). ``MeasureRangeError``, its hint naming the value and the rule.
+    """
+    from docx4j_py.model.values import OWN, measure_in_range
+
+    rule_text = f'{rule_attribute}="{rule}"' if rule is not None else f"no {rule_attribute} ({absent})"
+    label = label or setter.replace("_", " ")
+    unit = "240ths of a line" if attribute == "w:spacing/@w:line" and (rule or absent) == "auto" else "twips"
+    measure_in_range(
+        attribute,
+        value,
+        OWN,
+        label=f"{label}, under {rule_text},",
+        context=rule,
+        hint=(
+            f"the {label} already set, {value:,} {unit}, is beyond the range of {rule_text}, {{span}}: "
+            f"set {setter} within it first, or choose another rule"
+        ),
+    )
+
+
 def _even(total: int, columns: int) -> list[int]:
     """`total` twips split between `columns`, the remainder on the last one."""
     each = total // columns

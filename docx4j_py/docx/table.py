@@ -16,7 +16,13 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, overload
 
-from docx4j_py.docx._base import BlockItemContainer, Story, column_widths, recording
+from docx4j_py.docx._base import (
+    BlockItemContainer,
+    Story,
+    column_widths,
+    recording,
+    within_rule,
+)
 from docx4j_py.docx.enums import (
     WD_CELL_VERTICAL_ALIGNMENT,
     WD_ROW_HEIGHT_RULE,
@@ -557,6 +563,21 @@ class _Row:
 
     @height_rule.setter
     def height_rule(self, value: WD_ROW_HEIGHT_RULE | None) -> None:
+        # a rule over a height already set: that height within the new rule's range, before anything
+        # changes (CR-022 section 10, decision 4); under auto Word discards it, so it is not checked
+        current = _tr_pr_child(self._tr, "trHeight")
+        height = integer(getattr(current, "val", None)) if current is not None else None
+        if height is not None:
+            rule = None if value is None else WD_ROW_HEIGHT_RULE(value).xml_value
+            within_rule(
+                "w:trHeight/@w:val",
+                height,
+                setter="height",
+                rule_attribute="w:hRule",
+                rule=rule,
+                absent="atLeast",
+                label="row height",
+            )
         with recording(self._table._story.body, "docx.row.height_rule"):
             found = _tr_pr_child(self._tr, "trHeight")
             if value is None:

@@ -569,7 +569,9 @@ class IntegerLimit:
             row applies under, None for that attribute absent), or None where
             the range depends on nothing: ``("w:lineRule", ("exact",))``.
         word_writes: a stored value Word's save spells otherwise, to that
-            spelling (``w:before``'s 65535 is saved as ``"-1"``).
+            spelling (``w:before``'s 65535 is saved as ``"-1"``). Word keeps
+            it, but the range leaves it out by choice, since another reader
+            takes the spelling for its number (CR-022 section 10, decision 3).
         sentinel: a value Word writes for many (``w:col/@w:space``'s -1 for
             every negative), so not a measurement it keeps.
         cases: the probe's case ids the row rests on, by round
@@ -861,6 +863,7 @@ def _refusal(
     label: str,
     limit: CallerLimit | None,
     finite: bool = True,
+    hint: str | None = None,
 ) -> Exception:
     """The ``MeasureRangeError`` for `value`: the property, the value both ways, Word's range in the caller's units."""
     from docx4j_py.model.content.errors import MeasureRangeError
@@ -902,7 +905,7 @@ def _refusal(
             both.append(f"{_number(_decimal(stored))} {row.unit}")
         written = f" ({', '.join(both)})" if both else ""
         message = f"{shown}{written} is beyond Word's range, {span}{where}"
-    error = MeasureRangeError(message, hint=f"pass a {label} from {span}")
+    error = MeasureRangeError(message, hint=f"pass a {label} from {span}" if hint is None else hint.format(span=span))
     error.attribute = row.attribute
     error.value = value
     error.stored = stored
@@ -917,6 +920,7 @@ def measure_in_range(
     label: str,
     context: str | None = None,
     limit: CallerLimit | None = None,
+    hint: str | None = None,
 ) -> Any:
     """`value` converted to `attribute`'s unit, where Word 365 reads it as written; else ``MeasureRangeError``.
 
@@ -941,6 +945,10 @@ def measure_in_range(
             width; None for that attribute absent.
         limit: the setter's own narrower range, Office JS's (CR-022 Q1), in
             the caller's units; it applies with the attribute's range.
+        hint: the refusal's hint, where the default (``pass a <label> from
+            <range>``) would not say what to do: a format string, ``{span}``
+            the range as the message shows it. A rule setter's names the
+            value already set and the rule (CR-022 section 10, decision 4).
 
     Returns:
         The value to write, in the attribute's unit. Not checked where the
@@ -957,9 +965,9 @@ def measure_in_range(
     if row is None:  # unmeasured (Q3): converted as the setter always did, and not checked
         return units.convert(value, _UNMEASURED_UNIT)
     if isinstance(value, float) and not math.isfinite(value):
-        raise _refusal(row, value, None, units, label, limit, finite=False)
+        raise _refusal(row, value, None, units, label, limit, finite=False, hint=hint)
     stored = units.convert(value, row.unit)
     if row.admits(stored) and (limit is None or limit.admits(value)):
         return stored
-    raise _refusal(row, value, stored, units, label, limit)
+    raise _refusal(row, value, stored, units, label, limit, hint=hint)
 

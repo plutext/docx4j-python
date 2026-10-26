@@ -184,7 +184,8 @@ class Section:
         return _twips(getattr(self._pg_mar(create=False), attribute, None))
 
     def _set_margin(self, attribute: str, value: int | Length | None) -> None:
-        # within Word's range before anything changes (CR-022 Q4): top and bottom are signed, the others not
+        # within Word's range before anything changes (CR-022 Q4): top and bottom are signed, the others not,
+        # and stop at 65,534 twips, since Word writes 0xFFFF back as -1 (CR-022 section 10, decision 3)
         twips = (
             None
             if value is None

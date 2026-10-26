@@ -1,5 +1,5 @@
 {
-  "about": "CR-022 D1: the range Word 365 reads each WordprocessingML integer attribute faithfully in, by attribute, from docx4j CR-066 phase 0 (rounds 5 and 6 of the shared probe, the user's Word 365 runs of 2026-10-26; docx4j CR-066 sections 3.1 and 3.4, CR-022 sections 3.1 and 3.3). Hand-written. Each row's attributes are (element, attribute) paths, a holder first where the element name alone binds a class whose attribute is not this one (w:rPr/w:sz); a context names the sibling attribute the range depends on and the values it applies under (null: the attribute absent). min and max are inclusive, in the row's unit. cases cites the probe's case ids (tests/fixtures/integer-limits/round5/cases.txt and round6/cases.txt). word_writes is how Word's save spells a stored value; sentinel a value Word writes for many. An attribute with no row is not checked (Q3); unmeasured lists those the probe could not measure.",
+  "about": "CR-022 D1: the range Word 365 reads each WordprocessingML integer attribute faithfully in, by attribute, from docx4j CR-066 phase 0 (rounds 5 and 6 of the shared probe, the user's Word 365 runs of 2026-10-26; docx4j CR-066 sections 3.1 and 3.4, CR-022 sections 3.1 and 3.3). Hand-written. Each row's attributes are (element, attribute) paths, a holder first where the element name alone binds a class whose attribute is not this one (w:rPr/w:sz); a context names the sibling attribute the range depends on and the values it applies under (null: the attribute absent). min and max are inclusive, in the row's unit. cases cites the probe's case ids (tests/fixtures/integer-limits/round5/cases.txt and round6/cases.txt). word_writes is how Word's save spells a stored value, which the row's range leaves out by choice (Word keeps it, but another reader would read the spelling); sentinel a value Word writes for many. An attribute with no row is not checked (Q3); unmeasured lists those the probe could not measure.",
   "rows": [
     {
       "attributes": ["w:ind/@w:left"],
@@ -66,7 +66,7 @@
     {
       "attributes": ["w:spacing/@w:before"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -74,12 +74,13 @@
       },
       "cases": {
         "round5": ["P1-1", "P1-2", "P1-3", "P1-4", "P1-5", "P1-6", "N1-1", "N1-9"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:spacing/@w:after"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -87,7 +88,8 @@
       },
       "cases": {
         "round6": ["A3-1", "A3-2", "A3-3", "A3-4", "A3-5", "A3-6", "A3-7", "A3-8", "A3-9", "A3-10"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:spacing/@w:line"],
@@ -379,7 +381,7 @@
     {
       "attributes": ["w:pgMar/@w:left"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -387,12 +389,13 @@
       },
       "cases": {
         "round6": ["S1-1", "S1-2", "S1-3", "S1-4", "S1-5", "S1-6", "S1-7", "S1-8", "S1-9", "S1-10"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:pgMar/@w:right"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -400,12 +403,13 @@
       },
       "cases": {
         "round6": ["S2-1", "S2-2", "S2-3", "S2-4", "S2-5", "S2-6", "S2-7", "S2-8", "S2-9", "S2-10"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:pgMar/@w:header"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -413,12 +417,13 @@
       },
       "cases": {
         "round6": ["S3-1", "S3-2", "S3-3", "S3-4", "S3-5", "S3-6", "S3-7", "S3-8", "S3-9", "S3-10"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:pgMar/@w:footer"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -426,12 +431,13 @@
       },
       "cases": {
         "round6": ["S4-1", "S4-2", "S4-3", "S4-4", "S4-5", "S4-6", "S4-7", "S4-8", "S4-9", "S4-10"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:pgMar/@w:gutter"],
       "min": 0,
-      "max": 65535,
+      "max": 65534,
       "unit": "twips",
       "storage": "uint16, wraps; 0xFFFF is written back as -1",
       "word_writes": {
@@ -439,7 +445,8 @@
       },
       "cases": {
         "round6": ["S5-1", "S5-2", "S5-3", "S5-4", "S5-5", "S5-6", "S5-7", "S5-8", "S5-9", "S5-10"]
-      }
+      },
+      "note": "Word keeps 65535 (0xFFFF) but writes it back as -1, which another reader takes for -1, so the guard stops at 65,534, as docx4j-core-ts does (CR-022 section 10, decision 3)"
     },
     {
       "attributes": ["w:pgNumType/@w:start"],
