@@ -9,6 +9,7 @@ each file's digest as copied.
 |---|---|
 | `cr021-edges-raw.docx` | the four edges together, as written (not saved by docx4j-python) |
 | `cr021-edge-E<n>-raw.docx` | one edge each: E1 `w:spacing/@w:before="239.99999999999999"`, E2 `w:spacing/@w:before="."`, E3 `w:spacing/@w:before="+"`, E4 `w:ind/@w:left="-"` |
+| `cr066-r6-E.docx` | docx4j CR-066 round 6's group E (built by docx4j-25): `"."`, `"+"`, `"-"` and `"+."` as direct values of `w:spacing/@w:before` (E1-1 to E1-4) and `w:ind/@w:left` (E2-1 to E2-4), in paragraphs of the style `ProbeBase`, which gives both 100 |
 | `*-word365.docx` | Word 365's Save As of each |
 
 What Word did, all five files opened, no repair:
@@ -22,3 +23,7 @@ What Word did, all five files opened, no repair:
 
 The same check's `cr021-edges.docx` (not kept here: our normalised save, with `w:pgMar/@w:top="abc"`
 dropped) opened with Word's Normal margins, a 2.54 cm top.
+
+**Group E settles it (the user's run, 2026-10-26).** Under `ProbeBase`'s 100, Word's save writes
+an explicit 0 for all eight cases. So Word reads `"."`, `"+"`, `"-"` and `"+."` as 0, which is
+`values.integer`'s reading; docx4j CR-065's drop changes to match.

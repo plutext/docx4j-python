@@ -85,3 +85,31 @@ def test_a_normalised_save_writes_what_word_reads(case: str) -> None:
     root = etree.fromstring(zipfile.ZipFile(path).read("word/document.xml"))
     values = [e.get(W + attribute) for e in root.iter(W + element) if e.get(W + attribute) is not None]
     assert values == (["239"] if case == "E1" else ["0"])
+
+
+def test_round_6_group_e_word_reads_the_digitless_forms_as_0() -> None:
+    """docx4j CR-066 round 6's group E: under a style giving 100, Word writes an explicit 0.
+
+    So ``"."``, ``"+"``, ``"-"`` and ``"+."`` read 0, not ignored (the inherited 100 would show as
+    no attribute), which is ``values.integer``'s reading.
+    """
+    source, word = EDGES / "cr066-r6-E.docx", EDGES / "cr066-r6-E-word365.docx"
+    def by_case(path: Path) -> dict[str, tuple[str | None, str | None]]:
+        root = etree.fromstring(zipfile.ZipFile(path).read("word/document.xml"))
+        out = {}
+        for p in root.iter(W + "p"):
+            text = "".join(t.text or "" for t in p.iter(W + "t"))
+            if text[:2] in ("E1", "E2") and text[2:3] == "-":
+                ppr = p.find(W + "pPr")
+                assert ppr.find(W + "pStyle").get(W + "val") == "ProbeBase"
+                spacing, ind = ppr.find(W + "spacing"), ppr.find(W + "ind")
+                out[text.split()[0]] = (None if spacing is None else spacing.get(W + "before"),
+                                        None if ind is None else ind.get(W + "left"))
+        return out
+    written, saved = by_case(source), by_case(word)
+    assert len(written) == 8 and written.keys() == saved.keys()
+    for case, (before, left) in written.items():
+        value = before if case.startswith("E1") else left
+        assert value in (".", "+", "-", "+.")
+        assert integer(value) == 0
+        assert saved[case] == (("0", None) if case.startswith("E1") else (None, "0"))
