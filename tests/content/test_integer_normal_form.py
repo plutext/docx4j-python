@@ -300,35 +300,54 @@ def test_normalise_tree_finds_by_name_and_by_holder() -> None:
 # section 2.2: the forms the fork's stage 14 keeps (phase 0)
 # ---------------------------------------------------------------------------
 
-#: Forms Python's ``int()`` binds and Word refuses: kept as their text once the parse is exact, read None,
-#: dropped at save. Until phase 0 turns ``int`` on in ``runtime.EXACT_TYPES`` they bind as 240 (section 2.2).
-STAGE_14_FORMS = [" 240 ", "\t240\n", "1_000", "٢٤٠"]
+#: Forms Python's ``int()`` binds and Word refuses, and the reason the fork's stage 14 keeps each: XSD's
+#: whitespace alone is kept on purpose (``"exact"``); underscores, other scripts' digits and Unicode
+#: whitespace no XSD rule converts (``"invalid"``, with the warning). Each reads None and is dropped at save.
+#: Until phase 0 turns ``int`` on in ``runtime.EXACT_TYPES`` they bind as 240 (section 2.2).
+STAGE_14_FORMS = [
+    (" 240 ", "exact"),
+    ("\t240\n", "exact"),
+    ("1_000", "invalid"),
+    ("\u0662\u0664\u0660", "invalid"),  # Arabic-Indic digits
+    ("\uff12\uff14\uff10", "invalid"),  # fullwidth digits
+    ("\u00a0240", "invalid"),  # a no-break space
+]
 
 
 def _a1_with(form: str) -> bytes:
     path = INTEGERS / "cr065-A1-decimals.docx"
     document = zipfile.ZipFile(path).read("word/document.xml")
-    xml_form = form.replace("\t", "&#9;").replace("\n", "&#10;").encode("utf-8")
+    # character references, so that XML's attribute normalisation leaves the tab, newline and no-break space alone
+    xml_form = "".join(f"&#{ord(c)};" if c in "\t\n\u00a0" else c for c in form).encode("utf-8")
     assert document.count(b'w:before="120.5"') == 1
     return _docx_with(document.replace(b'w:before="120.5"', b'w:before="' + xml_form + b'"'), path)
 
 
 @pytest.mark.skipif(not _exact_integers(), reason="phase 0: int is not in runtime.EXACT_TYPES until docx4j-xsdata 26.2.4")
-@pytest.mark.parametrize("form", STAGE_14_FORMS)
-def test_a_form_word_refuses_is_kept_read_none_and_dropped(form: str) -> None:
+@pytest.mark.parametrize(("form", "reason"), STAGE_14_FORMS)
+def test_a_form_word_refuses_is_kept_read_none_and_dropped(form: str, reason: str) -> None:
+    import warnings
+
     from docx4j_py.openpackaging.api import load
 
     package = load(io.BytesIO(_a1_with(form)))
-    body = package.main_document_part.contents.body
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        body = package.main_document_part.contents.body
+    # (A1 holds the decimals too, each kept and warned about: only the form's own count here)
+    warned = [w for w in caught if f"`{form}`" in str(w.message)]
+    assert len(warned) == (1 if reason == "invalid" else 0), [str(w.message) for w in caught]
     spacing = body.content[1].p_pr.spacing
     assert spacing.before == form
-    assert [k.text for _part, k in package.kept if k.field_name == "before"][0] == form
+    kept = [k for _part, k in package.kept if k.text == form]
+    assert [(k.field_name, k.reason) for k in kept] == [("before", reason)]
     assert integer(spacing.before) is None
     assert package.body.paragraphs[1].space_before == 0.0  # unset
     xml = zipfile.ZipFile(io.BytesIO(package.save())).read("word/document.xml")
     first = etree.fromstring(xml).find(f"{_w('body')}/{_w('p')}[2]/{_w('pPr')}/{_w('spacing')}")
     assert first.get(_w("before")) is None
-    assert [(r.before, r.after) for r in package.last_save.normalised][0] == (form, None)
+    assert [(r.before, r.after) for r in package.last_save.normalised if r.before == form] == [(form, None)]
+    assert spacing.before == form  # the tree keeps what was read
 
 
 @pytest.mark.skipif(not _exact_integers(), reason="phase 0: int is not in runtime.EXACT_TYPES until docx4j-xsdata 26.2.4")
@@ -345,6 +364,42 @@ def test_outside_word_s_namespaces_the_output_is_today_s() -> None:
         pass
     assert [(r.before, r.after) for r in records] == [(" 5", "5")]
     assert context() is not None
+
+
+@pytest.mark.skipif(not _exact_integers(), reason="phase 0: int is not in runtime.EXACT_TYPES until docx4j-xsdata 26.2.4")
+@pytest.mark.parametrize("value", [" 240", "240 ", "1_000", "\u0662\u0664\u0660", "\u00a0240", "+7", "1.5", "guide", ""])
+def test_the_union_fields_write_what_26_2_3_wrote(value: str) -> None:
+    """D5 over every union field an element binds: stage 14's parse and the render's rows give 26.2.3's output.
+
+    26.2.3's parse is ``exact_types={bool, Enum}`` (Python's ``int()``); the
+    element is rendered under its own name, as under its parent.
+    """
+    from enum import Enum
+
+    from docx4j_xsdata.formats.dataclass.parsers import XmlParser
+
+    from docx4j_py.runtime import context, parser_config, tree_serializer
+
+    bound, _holders, broken = normalise._bound()
+    checked = 0
+    text = "".join(f"&#{ord(c)};" if c == "\u00a0" else c for c in value)
+    for element, names in UNION_INTEGER_ATTRIBUTES.items():
+        namespace, local = element[1:].split("}")
+        for cls in bound[element] - broken:
+            for attribute in names:
+                written = attribute if not attribute.startswith("{") else "x:" + attribute.split("}")[1]
+                xml = f'<x:{local} xmlns:x="{namespace}" {written}="{text}"/>'
+                outputs = []
+                for exact in (frozenset({bool, Enum}), frozenset({bool, Enum, int})):
+                    parsed = XmlParser(config=parser_config(exact_types=exact), context=context()).from_string(xml, cls)
+                    root = tree_serializer().render(parsed, {"x": namespace}).getroot()
+                    root.tag = element
+                    if int in exact:
+                        rendered_rows(root)
+                    outputs.append(root.get(attribute))
+                assert outputs[0] == outputs[1], (element, attribute, value, outputs)
+                checked += 1
+    assert checked == 42
 
 
 @pytest.mark.parametrize("form", ["+240", "0240"])

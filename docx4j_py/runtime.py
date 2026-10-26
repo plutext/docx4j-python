@@ -86,7 +86,14 @@ LEXICAL_TYPES: frozenset[type] = frozenset({float, bytes})
 #: ``1`` or ``0``, and an enumeration only from exactly a member's value. Anything
 #: else is bound as the text it was read with and written back as read, so that
 #: ``w:b w:val=" false"``, which Word reads as on, is not trimmed to ``False``.
-EXACT_TYPES: frozenset[type] = frozenset({bool, Enum})
+#: Since the fork's stage 14 (item 32, docx4j-xsdata 26.2.4; CR-021 phase 0) an
+#: ``int`` too converts only from ``[+-]?[0-9]+`` as written: XSD's whitespace
+#: (``" 240 "``) is kept on purpose, underscores, other scripts' digits and Unicode
+#: whitespace (``"1_000"``, ``"٢٤٠"``) with the warning, where Python's ``int()``
+#: bound each as 240 (CR-021 section 2.2). Word refuses a document holding any of
+#: them, so :func:`docx4j_py.model.values.integer` reads each as unset and a save
+#: drops it (:mod:`docx4j_py.openpackaging.normalise`).
+EXACT_TYPES: frozenset[type] = frozenset({bool, Enum, int})
 
 
 def parser_config(
@@ -130,11 +137,12 @@ def parser_config(
     wrapped at 76 characters, is not saved on one line. A value set in code is
     written in the converter's spelling, as before.
 
-    ``exact_types`` is the fork's stage 13 (CR-018 section 4.1a, :data:`EXACT_TYPES`):
-    a ``bool`` or an enumeration value converts only from exactly a lexical form,
-    with no XSD whitespace collapse. Anything else keeps its text: ``" false"``
-    (which XSD would have trimmed) silently, ``"off"`` or ``"Yellow"`` with the
-    usual ``ConverterWarning``. The skipped report lists both apart from the
+    ``exact_types`` is the fork's stages 13 and 14 (CR-018 section 4.1a, CR-021
+    phase 0, :data:`EXACT_TYPES`): a ``bool``, an enumeration or an ``int`` value
+    converts only from exactly a lexical form, with no XSD whitespace collapse.
+    Anything else keeps its text: ``" false"`` and ``" 240 "`` (which XSD would
+    have trimmed) silently, ``"off"``, ``"Yellow"``, ``"720.5"`` or ``"1_000"``
+    with the usual ``ConverterWarning``. The skipped report lists both apart from the
     skipped items (``SkippedReport.kept``; ``part.kept``), and
     :mod:`docx4j_py.model.values` reads them as Word does. **Every parse in this
     package goes through this function** (``tests/test_parser_configs.py``), so

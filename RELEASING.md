@@ -26,7 +26,7 @@ second dry run of the same version fails at the upload; that is expected.
 
 ## Dependencies
 
-`pyproject.toml` depends on `docx4j-xsdata[lxml]>=26.2.1,<26.3`, the xsdata fork every generated
+`pyproject.toml` depends on `docx4j-xsdata[lxml]>=26.2.4,<26.3`, the xsdata fork every generated
 module imports, and on `markdown-it-py>=3.0`. Consumers resolve those ranges from PyPI; CI
 (`test.yml`) installs the fork **from PyPI** too, so what CI tests is what a consumer gets. The
 checkout's `.venv-fork` has the fork installed editable from `~/git/docx4j-xsdata` and is for

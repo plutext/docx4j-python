@@ -97,7 +97,7 @@ def test_the_engine_s_config_reads_exactly() -> None:
 
     from docx4j_py.runtime import EXACT_TYPES, parser, parser_config
 
-    assert frozenset({bool, Enum}) == EXACT_TYPES
+    assert frozenset({bool, Enum, int}) == EXACT_TYPES  # int since CR-021 phase 0 (the fork's stage 14)
     assert parser_config().exact_types == EXACT_TYPES
     assert parser().config.exact_types == EXACT_TYPES
 
