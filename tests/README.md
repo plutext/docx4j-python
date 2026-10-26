@@ -688,6 +688,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 >   A4's 15.9 cm text column, and Word's own save of the probe has the same 10206, so Word renders
 >   the original probe the same way.
 
+> **2026-10-26, CR-023 (`cr023-level-indents.docx`, built at `fa22937`, `__tmp/python-cr023/`): passed** (the
+> user: "python-cr023 opened cleanly; A B C as described"). Three numbered lists, each set by one
+> `set_level_indents` call, opened without a repair prompt, each laid out as its label says:
+> - A, `(0, 36, -18)`: the usual hanging list;
+> - B, `(0, 36, 18)`: a first-line indent;
+> - C, `(0, -1, 0)`: core-ts check 71's case 86.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

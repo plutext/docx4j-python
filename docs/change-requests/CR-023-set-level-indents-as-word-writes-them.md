@@ -1,6 +1,6 @@
 # CR-023: `List.set_level_indents` as Word 365 writes it --- the marker's indent is a first-line indent, negative for hanging; the port of docx4j-core-ts CR-002 section 65.5 (`fd898b9`)
 
-**Status:** Proposed and implemented 2026-10-26, at the user's request ("do The set_level_indents fix"), after core-ts's heads-up that its check 71 (Word 365, the user's run, 2026-10-26) found its own reading wrong, and the same defect was measured here. A defect 0.1.0 and 0.2.0 shipped (CR-003 Phase H, `ef93251`). The Word check is staged; see section 5.
+**Status:** Proposed and implemented 2026-10-26 (`fa22937`), at the user's request ("do The set_level_indents fix"), after core-ts's heads-up that its check 71 (Word 365, the user's run, 2026-10-26) found its own reading wrong, and the same defect was measured here. A defect 0.1.0 and 0.2.0 shipped (CR-003 Phase H, `ef93251`). **The Word check passed 2026-10-26** (the user: "python-cr023 opened cleanly; A B C as described"). **CR-023 is complete.**
 
 *The number:* CR-022 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -51,4 +51,8 @@ CHANGELOG [Unreleased], Fixed. CR-003 section 19, item 6, notes that this CR sup
 
 ## 6. Implementation notes (2026-10-26)
 
-To be filled in once the Word check is in: the commit, the gates' numbers, and the Word check's result.
+- **The commit:** `fa22937`, which holds D1, D2, the tests, the fixture and the records.
+- **The gates:** the fast suite, 5,389 passed, 8 skipped. The new tests: `test_lists.py` 7, `test_api_script.py` 2, and the affected files' 129 and the agent workflows' 32 pass.
+- **D1 against Word's three calls:** `(0, 36, -18)` writes `w:left="720" w:hanging="360"`, `(0, 36, 18)` `w:left="720" w:firstLine="360"`, and `(0, -1, 0)` `w:left="-20" w:firstLine="0"`, Word's case 86 attribute for attribute.
+- **One choice, recorded:** `to_api_script` keeps `w:firstLine` with a note where a level holds both attributes, which Word can't store.
+- **The Word check passed** (the user, 2026-10-26: "python-cr023 opened cleanly; A B C as described"). `cr023-level-indents.docx`, built at `fa22937` and staged at `__tmp/python-cr023/`, holds a list for each of section 1's calls. It opened without a repair prompt, and each list's number and wrapped lines sat as its label says: A the usual hanging list, B a first-line indent, C case 86.

@@ -109,7 +109,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   probe's round 5 is phase 0, done, with round 6 and core-ts's check 71): decided 2026-10-26 (Q1 to Q7 as
   recommended); nothing started.
 - **CR-023** (`List.set_level_indents` as Word 365 writes it: the second indent a first-line indent, negative for
-  hanging; the port of core-ts CR-002 section 65.5): implemented 2026-10-26; the Word check staged.
+  hanging; the port of core-ts CR-002 section 65.5): complete 2026-10-26 (`fa22937`; Word-checked).
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
