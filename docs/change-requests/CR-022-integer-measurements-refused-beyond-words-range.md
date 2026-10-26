@@ -2,7 +2,7 @@
 
 **Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Two more measurements came the same day:**
 - core-ts's check 71 measured Office JS's own setters (section 3.2), which revises Q1's recommendation;
-- round 6, the file side of the attributes round 5 left unmeasured (481 cases), is built and on the share at `__tmp/cr066/round6/`, awaiting the user's run. Checked here: all 317 files load with nothing kept or skipped. D1's table is completed from it. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Seven questions wait on the user (section 8).
+- round 6, the file side of the attributes round 5 left unmeasured (481 cases, `__tmp/cr066/round6/`), **was run 2026-10-26** (the user: "cr066/round6 all opened cleanly"). docx4j-25's reading is section 3.3, and with it D1's table covers every attribute Word could measure. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Seven questions wait on the user (section 8).
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -113,6 +113,33 @@ core-ts's check 71 (96 cases, Word 365 16.0.20326, the user's run, 2026-10-26) s
   - `font.size` above 1,638 and at 0.
 
 So Office JS guards some measures, at Word's interface limits, and leaves the rest to wrap.
+
+### 3.3 Round 6, measured (docx4j CR-066 section 3.4; the user's run, 2026-10-26)
+
+Everything opened; nothing was refused or repaired. docx4j-25's reading, spot-checked here in Word's saves (group A's `w:firstLine` 32768 → `w:hanging="32768"`, 65535 → hanging 1, 65536 → firstLine 0, -1 → hanging 1; `w:defaultTabStop` 32768 and 65535 kept, 65536 → 0):
+
+| Attribute | What Word does | Read faithfully |
+|---|---|---|
+| `w:ind/@w:firstLine` and `@w:hanging` | **one signed 16-bit field**: first line F stored as F, hanging H as -H, after the wrap; written as `firstLine` when 0 or more, as `hanging` with the magnitude when negative (firstLine 7205001 → hanging 3959; hanging 7205001 → firstLine 3959) | first line 0 to 32,767; hanging 0 to 32,768 |
+| `w:spacing/@w:after`; `w:pgMar` `left`, `right`, `header`, `footer`, `gutter`; `w:defaultTabStop`; `w:hyphenationZone`; `w:szCs`, `w:kern` | unsigned 16 bits (0xFFFF written "-1" in the first two) | 0 to 65,535 |
+| `w:spacing/@w:line` with `lineRule="atLeast"` | signed 16 bits stored positive; a wrapped negative becomes `exact` (65535 → exact 1) | 0 to 32,767 |
+| `w:ind/@w:right` (`start` and `end` read and written back as `left` and `right`); `w:pgMar/@w:bottom`; `w:framePr` `w`, `hSpace`, `vSpace`, `x`, `y` (0 not written); `w:tblCellSpacing`, `w:tblCellMar`, `w:tcMar` in `dxa`; `w:tblpPr`'s six (0 not written); `w:cols/@w:space`; `w:lnNumType/@w:distance` | signed 16 bits | -32,768 to 32,767 |
+| `w:framePr/@w:h` | 15 bits and a flag: bit 15 turns exact off (32768 → 0 with no `hRule`; 65535 → 32767) | 0 to 32,767 |
+| `w:col/@w:w` | signed 16 bits, then a negative replaced by a computed width (9360); 32767 kept though wider than the page | 0 to 32,767 |
+| `w:col/@w:space` | signed 16 bits, then a negative becomes -1 | 0 to 32,767 |
+| `w:trHeight/@w:val` with `hRule="exact"` | signed 16 bits, the sign as the rule (as round 5) | 0 to 32,767 |
+| `w:trHeight/@w:val` with `hRule="auto"` | discarded at every value | (no reading) |
+| every border family (a run's `w:bdr`, `w:tcBorders`, `w:tblBorders`, `w:pgBorders`) | `w:sz` 8 bits, `w:space` 5 bits, as round 5's paragraph borders | 0 to 255; 0 to 31 |
+| `w:fitText/@w:val` | not 16-bit: all ten values kept as written | (no limit found) |
+
+**Not measurable:**
+- `w:wBefore` and `w:wAfter`: Word drops them with an inconsistent `gridBefore`;
+- `w:gridCol`: Word recomputes it, even under a fixed layout;
+- a level's `w:legacy`: Word 365 drops it from `numbering.xml`.
+
+These go unchecked (Q3).
+
+Group E (the digitless forms) belongs to CR-021: Word reads `"."`, `"+"`, `"-"` and `"+."` as 0.
 
 ## 4. Design
 
