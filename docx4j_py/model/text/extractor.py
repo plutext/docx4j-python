@@ -89,7 +89,7 @@ from docx4j_py.model.text.result import (
     TextWarning,
 )
 from docx4j_py.model.text.trees import Context, PackageTrees
-from docx4j_py.model.values import effective, is_on, on_off, xsd_boolean
+from docx4j_py.model.values import effective, integer, is_on, on_off, xsd_boolean
 
 __all__ = ["Extractor", "normalize"]
 
@@ -1039,11 +1039,8 @@ class Extractor:
             block.alignment = str(_v(effective.jc.val))
         level = _v(getattr(effective.outline_lvl, "val", None)) if effective.outline_lvl is not None else None
         if level is not None:
-            try:
-                number = int(level)
-            except (TypeError, ValueError):
-                number = -1
-            if 0 <= number <= 8:
+            number = integer(level)  # as Word reads it (CR-021); a refused form is unset
+            if number is not None and 0 <= number <= 8:
                 block.outline_level = number  # 9 is body text
         if effective.contextual_spacing is not None:
             block.contextual_spacing = _on(effective.contextual_spacing)
@@ -1061,10 +1058,7 @@ class Extractor:
         if num_id == "0":
             return None
         ilvl_value = _v(num_pr.ilvl.val) if num_pr.ilvl is not None else None
-        try:
-            ilvl = int(ilvl_value) if ilvl_value is not None else 0
-        except (TypeError, ValueError):
-            ilvl = 0
+        ilvl = integer(ilvl_value) or 0  # as Word reads it (CR-021); absent or refused, level 0
         emulator = self.trees.emulator
         fmt: str | None = None
         text: str | None = None
@@ -2485,12 +2479,8 @@ def _ascii_font(r_pr: Any) -> str | None:
 
 
 def _twips(value: Any) -> int | None:
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
+    """A twips attribute as Word reads it (CR-021): ``"720.5"`` is 720; absent or refused, None."""
+    return integer(value)
 
 
 def _mark_revisions(p: Any) -> int:

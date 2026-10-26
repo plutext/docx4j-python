@@ -75,6 +75,7 @@ from docx4j_py.model.content.text_model import (
     text_run,
 )
 from docx4j_py.model.property_resolver import resolver_of
+from docx4j_py.model.values import integer
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
 from docx4j_py.wml import (
@@ -646,10 +647,11 @@ class Paragraph:
         ind = self._ind_or_none
         if ind is None:
             return 0.0
-        value = getattr(ind, transitional, None)
+        # a value Word reads (CR-021: "720.5" is 720 twips, "" is 0); one it refuses is unset
+        value = integer(getattr(ind, transitional, None))
         if value is None:
-            value = getattr(ind, strict, None)
-        return 0.0 if value is None else float(value) / TWIPS_PER_POINT
+            value = integer(getattr(ind, strict, None))
+        return 0.0 if value is None else value / TWIPS_PER_POINT
 
     def _set_indent(self, transitional: str, strict: str, points: float) -> None:
         ind = self._ind()
@@ -685,9 +687,11 @@ class Paragraph:
         ind = self._ind_or_none
         if ind is None:
             return 0.0
-        if ind.hanging is not None:
-            return -float(ind.hanging) / TWIPS_PER_POINT
-        return 0.0 if ind.first_line is None else float(ind.first_line) / TWIPS_PER_POINT
+        hanging = integer(ind.hanging)
+        if hanging is not None:
+            return -hanging / TWIPS_PER_POINT
+        first_line = integer(ind.first_line)
+        return 0.0 if first_line is None else first_line / TWIPS_PER_POINT
 
     @first_line_indent.setter
     def first_line_indent(self, points: float) -> None:
@@ -703,8 +707,8 @@ class Paragraph:
     def space_before(self) -> float:
         """The space above the paragraph in points (``w:spacing/@w:before``)."""
         spacing = self._spacing_or_none
-        value = getattr(spacing, "before", None) if spacing is not None else None
-        return 0.0 if value is None else float(value) / TWIPS_PER_POINT
+        value = integer(getattr(spacing, "before", None)) if spacing is not None else None
+        return 0.0 if value is None else value / TWIPS_PER_POINT
 
     @space_before.setter
     def space_before(self, points: float) -> None:
@@ -714,8 +718,8 @@ class Paragraph:
     def space_after(self) -> float:
         """The space below the paragraph in points (``w:spacing/@w:after``)."""
         spacing = self._spacing_or_none
-        value = getattr(spacing, "after", None) if spacing is not None else None
-        return 0.0 if value is None else float(value) / TWIPS_PER_POINT
+        value = integer(getattr(spacing, "after", None)) if spacing is not None else None
+        return 0.0 if value is None else value / TWIPS_PER_POINT
 
     @space_after.setter
     def space_after(self, points: float) -> None:
@@ -730,14 +734,14 @@ class Paragraph:
         and twips otherwise. Setting writes ``w:lineRule="exact"``.
         """
         spacing = self._spacing_or_none
-        line = getattr(spacing, "line", None) if spacing is not None else None
+        line = integer(getattr(spacing, "line", None)) if spacing is not None else None
         if line is None:
             return 0.0
         rule = getattr(spacing, "line_rule", None)
         rule = getattr(rule, "value", rule)
         if rule in (None, "auto"):
-            return float(line) / 240 * 12
-        return float(line) / TWIPS_PER_POINT
+            return line / 240 * 12
+        return line / TWIPS_PER_POINT
 
     @line_spacing.setter
     def line_spacing(self, points: float) -> None:
@@ -749,8 +753,8 @@ class Paragraph:
     def outline_level(self) -> int:
         """``w:outlineLvl + 1``, 1 to 9; ``10`` for body text, as Office JS."""
         p_pr = self._read_p_pr()
-        value = _value(getattr(p_pr, "outline_lvl", None)) if p_pr is not None else None
-        return 10 if value is None else int(value) + 1
+        value = integer(_value(getattr(p_pr, "outline_lvl", None))) if p_pr is not None else None
+        return 10 if value is None else value + 1
 
     @outline_level.setter
     def outline_level(self, level: int) -> None:

@@ -50,9 +50,10 @@ from docx4j_py.model.listnumbering.definitions import (
     NumberingState,
     NumberingStates,
     StyleNumbering,
+    decimal,
     read_definitions,
 )
-from docx4j_py.model.values import on_off
+from docx4j_py.model.values import integer, on_off
 
 __all__ = [
     "Emulator",
@@ -363,8 +364,8 @@ class Emulator:
             return StyleNumbering(
                 style_id,
                 None,
-                None if num_id is None else str(num_id),
-                None if ilvl is None else str(ilvl),
+                decimal(num_id),  # each as Word reads it (CR-021): "1.0" is list 1
+                decimal(ilvl),
                 has_num_pr=num_pr is not None,
             )
         styles = self.styles
@@ -562,8 +563,9 @@ class Emulator:
         if num_pr is not None:
             num_id = _value(getattr(num_pr, "num_id", None))
             ilvl = _value(getattr(num_pr, "ilvl", None))
-        num_id = None if num_id is None else str(num_id)
-        ilvl = None if ilvl is None else str(ilvl)
+        # each as Word reads it (CR-021): "1.0" is list 1; a refused form is unset
+        num_id = decimal(num_id)
+        ilvl = decimal(ilvl)
         return self.number_of(
             p_style_val, num_id, ilvl, bool(num_id), state
         )
@@ -664,13 +666,14 @@ class Emulator:
         """
         if num_pr is None:
             return None
-        ilvl = _value(getattr(num_pr, "ilvl", None))
-        num_id = _value(getattr(num_pr, "num_id", None))
+        # each as Word reads it (CR-021): "1.0" is list 1; a refused form is unset
+        ilvl = decimal(_value(getattr(num_pr, "ilvl", None)))
+        num_id = decimal(_value(getattr(num_pr, "num_id", None)))
         if num_id is None:
             # w:numPr without a w:numId: docx4j logs and answers null
             return None
         # w:ilvl (and its w:val) is optional; its absence means level 0
-        return self.ind_of(str(num_id), "0" if ilvl is None else str(ilvl))
+        return self.ind_of(num_id, "0" if ilvl is None else ilvl)
 
     def ind_of(self, num_id: str, ilvl: str | int | None = "0") -> Any:
         """The ``w:ind`` of a level of a list. docx4j ``getInd(String, String)``.
@@ -896,17 +899,18 @@ def _read_styles(package: Any) -> tuple[dict[str, StyleNumbering], str | None]:
         if p_pr is not None:
             num_pr = p_pr.find(_w("numPr"))
             if num_pr is not None:
+                # each as Word reads it (CR-021): "1.0" is list 1; a refused form is unset
                 num_id_element = num_pr.find(_w("numId"))
                 if num_id_element is not None:
-                    num_id = num_id_element.get(_w("val"))
+                    num_id = decimal(num_id_element.get(_w("val")))
                 ilvl_element = num_pr.find(_w("ilvl"))
                 if ilvl_element is not None:
-                    ilvl = ilvl_element.get(_w("val"))
+                    ilvl = decimal(ilvl_element.get(_w("val")))
             ind_element = p_pr.find(_w("ind"))
             if ind_element is not None:
                 ind = Indent(
-                    left=_as_int(ind_element.get(_w("left")) or ind_element.get(_w("start"))),
-                    right=_as_int(ind_element.get(_w("right")) or ind_element.get(_w("end"))),
+                    left=_as_int(_stated(ind_element, "left", "start")),
+                    right=_as_int(_stated(ind_element, "right", "end")),
                     hanging=_as_int(ind_element.get(_w("hanging"))),
                     first_line=_as_int(ind_element.get(_w("firstLine"))),
                 )
@@ -921,12 +925,14 @@ def _read_styles(package: Any) -> tuple[dict[str, StyleNumbering], str | None]:
 
 
 def _as_int(text: str | None) -> int | None:
-    if text is None:
-        return None
-    try:
-        return int(text)
-    except ValueError:  # pragma: no cover - a malformed indent
-        return None
+    """An integer attribute as Word reads it (CR-021): ``"720.5"`` is 720, ``""`` 0; absent or refused, None."""
+    return integer(text)
+
+
+def _stated(element: Any, first: str, second: str) -> str | None:
+    """``@first``, else ``@second``: the first the element states, ``""`` included (Word reads ``""`` as 0)."""
+    value = element.get(_w(first))
+    return element.get(_w(second)) if value is None else value
 
 
 # ---------------------------------------------------------------------------

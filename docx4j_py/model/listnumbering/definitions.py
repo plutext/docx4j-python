@@ -37,7 +37,7 @@ import dataclasses
 from typing import Any
 
 from docx4j_py.model.listnumbering.formats import format_value
-from docx4j_py.model.values import on_off
+from docx4j_py.model.values import integer, on_off
 
 __all__ = [
     "LEVELS",
@@ -49,6 +49,7 @@ __all__ = [
     "NumberingState",
     "NumberingStates",
     "StyleNumbering",
+    "decimal",
     "read_definitions",
 ]
 
@@ -71,12 +72,26 @@ def _val(element: Any, local: str) -> str | None:
 
 
 def _int(text: str | None) -> int | None:
-    if text is None:
-        return None
-    try:
-        return int(text)
-    except ValueError:
-        return None
+    """An integer attribute as Word reads it (CR-021): ``"720.5"`` is 720, ``""`` 0; absent or refused, None."""
+    return integer(text)
+
+
+def decimal(value: Any) -> str | None:
+    """A ``w:numId``, ``w:abstractNumId`` or ``w:ilvl`` as the decimal Word reads it as, the emulator's key (CR-021).
+
+    The emulator keys its definitions and levels by these values as text, as
+    docx4j's does; read through :func:`~docx4j_py.model.values.integer` first,
+    ``"1.0"`` and ``"1"`` are one list, as Word reads them. None when absent,
+    or a form Word refuses.
+    """
+    read = integer(value)
+    return None if read is None else str(read)
+
+
+def _stated(element: Any, first: str, second: str) -> str | None:
+    """``@first``, else ``@second``: the first the element states, ``""`` included (Word reads ``""`` as 0)."""
+    value = element.get(_w(first))
+    return element.get(_w(second)) if value is None else value
 
 
 def _on(element: Any, local: str) -> bool:
@@ -133,8 +148,8 @@ class Indent:
         if ind is None:
             return None
         return cls(
-            left=_int(ind.get(_w("left")) or ind.get(_w("start"))),
-            right=_int(ind.get(_w("right")) or ind.get(_w("end"))),
+            left=_int(_stated(ind, "left", "start")),
+            right=_int(_stated(ind, "right", "end")),
             hanging=_int(ind.get(_w("hanging"))),
             first_line=_int(ind.get(_w("firstLine"))),
         )
@@ -388,7 +403,7 @@ class ListLevel:
         #: The instance's ``w:lvlOverride/w:lvl`` for this level, or None.
         self.override_element: Any = None
         #: ``w:ilvl``, as a string ("0" to "8").
-        self.id = ilvl if ilvl is not None else (element.get(_w("ilvl")) if element is not None else "0")
+        self.id = ilvl if ilvl is not None else (decimal(element.get(_w("ilvl"))) if element is not None else "0")
         #: The referencing ``w:abstractNum``: the counter's key.
         self.abstract_num_id = ""
         #: The ``w:num`` an instance level belongs to; None for an abstract one.
@@ -525,11 +540,9 @@ class ListLevel:
 
     @property
     def ilvl(self) -> int:
-        """:attr:`id` as an ``int``."""
-        try:
-            return int(self.id)
-        except (TypeError, ValueError):  # pragma: no cover - a malformed w:ilvl
-            return 0
+        """:attr:`id` as an ``int``; 0 where the ``w:lvl`` states none."""
+        read = integer(self.id)
+        return 0 if read is None else read
 
     def counter(self, state: NumberingState) -> Counter:
         """This level's counter in the given state."""
@@ -609,7 +622,7 @@ class AbstractListNumberingDefinition:
         #: The ``w:abstractNum``.
         self.element = element
         #: ``w:abstractNumId``.
-        self.id = element.get(_w("abstractNumId")) or ""
+        self.id = decimal(element.get(_w("abstractNumId"))) or ""
         #: The levels, keyed by ``w:ilvl`` ("0" to "8").
         self.levels: dict[str, ListLevel] = {}
         #: ``w:numStyleLink``: the numbering style this takes its levels from.
@@ -662,13 +675,13 @@ class ListNumberingDefinition:
         #: The ``w:num``.
         self.element = element
         #: ``w:numId``.
-        self.num_id = element.get(_w("numId")) or ""
+        self.num_id = decimal(element.get(_w("numId"))) or ""
         #: The abstract definition this names, or None.
         self.abstract_definition: AbstractListNumberingDefinition | None = None
         #: The levels, with this instance's overrides applied.
         self.levels: dict[str, ListLevel] = {}
 
-        abstract_id = _val(element, "abstractNumId")
+        abstract_id = decimal(_val(element, "abstractNumId"))
         if abstract_id is None:
             return
         abstract = abstract_definitions.get(abstract_id)
@@ -685,7 +698,7 @@ class ListNumberingDefinition:
             self.levels[ilvl] = instance
 
         for override in element.findall(_w("lvlOverride")):
-            ilvl = override.get(_w("ilvl"))
+            ilvl = decimal(override.get(_w("ilvl")))
             if ilvl is None:
                 continue
             level = self.levels.get(ilvl)

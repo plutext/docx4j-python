@@ -24,7 +24,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from docx4j_py.model.values import on_off
+from docx4j_py.model.values import integer, on_off
 from docx4j_py.traversal import element_name, iter_nodes
 
 __all__ = [
@@ -285,12 +285,13 @@ def _page(package: Any) -> PageSetup:
             return PageSetup()
         size = getattr(sect_pr, "pg_sz", None)
         margin = getattr(sect_pr, "pg_mar", None)
-        width = float(getattr(size, "w", 0) or 0)
-        height = float(getattr(size, "h", 0) or 0)
+        # each as Word reads it (CR-021); a refused form, like an absent one, is 0
+        width = float(integer(getattr(size, "w", None)) or 0)
+        height = float(integer(getattr(size, "h", None)) or 0)
         orient = getattr(size, "orient", None)
         orient = getattr(orient, "value", orient)
         margins = {
-            key: float(getattr(margin, key, 0) or 0) / _TWIPS
+            key: float(integer(getattr(margin, key, None)) or 0) / _TWIPS
             for key in ("top", "bottom", "left", "right", "header", "footer")
             if margin is not None
         }
@@ -309,12 +310,12 @@ def _page(package: Any) -> PageSetup:
     sect_pr = sections[-1]
     size = sect_pr.find(f"{{{_W}}}pgSz")
     margin = sect_pr.find(f"{{{_W}}}pgMar")
-    width = float(size.get(f"{{{_W}}}w") or 0) if size is not None else 0.0
-    height = float(size.get(f"{{{_W}}}h") or 0) if size is not None else 0.0
+    width = float(integer(size.get(f"{{{_W}}}w")) or 0) if size is not None else 0.0
+    height = float(integer(size.get(f"{{{_W}}}h")) or 0) if size is not None else 0.0
     orient = size.get(f"{{{_W}}}orient") if size is not None else None
     margins = (
         {
-            key: float(margin.get(f"{{{_W}}}{key}") or 0) / _TWIPS
+            key: float(integer(margin.get(f"{{{_W}}}{key}")) or 0) / _TWIPS
             for key in ("top", "bottom", "left", "right", "header", "footer")
         }
         if margin is not None

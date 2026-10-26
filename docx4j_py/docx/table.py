@@ -26,7 +26,7 @@ from docx4j_py.docx.enums import (
 )
 from docx4j_py.docx.shared import Inches, Length, Twips, twips_of
 from docx4j_py.model.content.table import Table as ContentTable
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import integer, is_on
 from docx4j_py.wml import Tbl, Tc, Tr, el
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -53,8 +53,8 @@ def _cells_of(tr: Tr) -> list[Tc]:
 def _grid_span(tc: Tc) -> int:
     """``w:gridSpan/@val``, or 1."""
     tc_pr = getattr(tc, "tc_pr", None)
-    value = getattr(getattr(tc_pr, "grid_span", None), "val", None) if tc_pr else None
-    return max(1, int(value)) if value is not None else 1
+    value = integer(getattr(getattr(tc_pr, "grid_span", None), "val", None)) if tc_pr else None
+    return max(1, value) if value is not None else 1
 
 
 def _v_merge(tc: Tc) -> str | None:
@@ -80,8 +80,8 @@ def _grid_after(tr: Tr) -> int:
 
 def _tr_pr_count(tr: Tr, field: str) -> int:
     found = _tr_pr_child(tr, "gridBefore" if field == "grid_before" else "gridAfter")
-    value = getattr(found, "val", None) if found is not None else None
-    return int(value) if value is not None else 0
+    value = integer(getattr(found, "val", None)) if found is not None else None
+    return value if value is not None else 0
 
 
 def _tr_pr_items(tr: Tr) -> list[Any]:
@@ -508,8 +508,8 @@ class _Row:
     def height(self) -> Length | None:
         """``w:trPr/w:trHeight/@val``, or None."""
         found = _tr_pr_child(self._tr, "trHeight")
-        value = getattr(found, "val", None) if found is not None else None
-        return None if value is None else Twips(int(value))
+        value = integer(getattr(found, "val", None)) if found is not None else None  # as Word reads it (CR-021)
+        return None if value is None else Twips(value)
 
     @height.setter
     def height(self, value: int | Length | None) -> None:
@@ -648,8 +648,8 @@ class _Column:
     @property
     def width(self) -> Length | None:
         """``w:gridCol/@w``, or None."""
-        value = getattr(self._grid_col, "w", None)
-        return None if value is None else Twips(int(value))
+        value = integer(getattr(self._grid_col, "w", None))  # as Word reads it (CR-021): "4500.5" is 4500
+        return None if value is None else Twips(value)
 
     @width.setter
     def width(self, value: int | Length | None) -> None:
@@ -801,8 +801,8 @@ class _Cell(BlockItemContainer):
         """``w:tcW/@w``, or None when no explicit width is set."""
         tc_pr = getattr(self._tc, "tc_pr", None)
         tc_w = getattr(tc_pr, "tc_w", None) if tc_pr else None
-        value = getattr(tc_w, "w", None) if tc_w is not None else None
-        return None if value is None else Twips(int(value))
+        value = integer(getattr(tc_w, "w", None)) if tc_w is not None else None  # as Word reads it (CR-021)
+        return None if value is None else Twips(value)
 
     @width.setter
     def width(self, value: int | Length | None) -> None:

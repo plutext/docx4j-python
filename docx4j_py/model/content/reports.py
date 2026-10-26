@@ -43,6 +43,7 @@ from docx4j_py.model.content.text_model import (
     cells_of,
     rows_of,
 )
+from docx4j_py.model.values import integer
 from docx4j_py.traversal import element_name
 from docx4j_py.wml import P
 
@@ -342,9 +343,9 @@ def heading_level_of(element: P) -> int | None:
     if p_pr is not None:
         outline = getattr(p_pr, "outline_lvl", None)
         value = getattr(outline, "val", None) if outline is not None else None
-        value = getattr(value, "value", value)
-        if value is not None:
-            return int(value) + 1
+        level = integer(getattr(value, "value", value))  # as Word reads it (CR-021); a refused form is unset
+        if level is not None:
+            return level + 1
         style = getattr(p_pr, "p_style", None)
         style_id = getattr(style, "val", None) if style is not None else None
         style_id = getattr(style_id, "value", style_id)

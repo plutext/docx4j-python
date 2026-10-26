@@ -43,6 +43,7 @@ from lxml import etree
 from docx4j_py.child import is_any_element
 from docx4j_py.model.revisions import trees
 from docx4j_py.model.revisions.story import Story
+from docx4j_py.model.values import integer
 
 __all__ = ["Removals"]
 
@@ -223,13 +224,11 @@ class Removals:
                     tag = element.tag
                     if not isinstance(tag, str) or not tag.startswith(f"{{{_W}}}"):
                         continue
-                    value = element.get(id_attribute)
+                    # as Word reads it (CR-021), as trees.marker_id reads a typed one: "3.0" is 3
+                    value = integer(element.get(id_attribute))
                     if value is None:
                         continue
-                    try:
-                        index.setdefault(tag.rpartition("}")[2], set()).add(int(value))
-                    except ValueError:
-                        continue
+                    index.setdefault(tag.rpartition("}")[2], set()).add(value)
         else:
 
             def enter(node: Any) -> bool:

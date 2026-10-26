@@ -51,6 +51,7 @@ from docx4j_py.child import (
 )
 from docx4j_py.model.revisions import props, trees
 from docx4j_py.model.revisions.trees import View
+from docx4j_py.model.values import integer
 from docx4j_py.traversal import element_name
 
 __all__ = [
@@ -594,8 +595,8 @@ def _row_member(tr: Any, local: str) -> Any:
 
 def _grid_before(tr: Any) -> int:
     member = _row_member(tr, "gridBefore")
-    value = getattr(member, "val", None) if member is not None else None
-    return int(value) if value is not None else 0
+    value = integer(getattr(member, "val", None)) if member is not None else None  # as Word reads it (CR-021)
+    return value if value is not None else 0
 
 
 def _set_row_member(tr: Any, count: str, width: str, value: int) -> None:
@@ -616,10 +617,10 @@ def _set_row_member(tr: Any, count: str, width: str, value: int) -> None:
 def _span(tc: Any) -> int:
     tc_pr = tc.tc_pr
     grid_span = tc_pr.grid_span if tc_pr is not None else None
-    value = grid_span.val if grid_span is not None else None
+    value = integer(grid_span.val) if grid_span is not None else None  # as Word reads it (CR-021)
     if value is None:
         return 1
-    return max(int(value), 1)
+    return max(value, 1)
 
 
 def _layouts(tr: Any) -> list[list[Any]]:
@@ -683,8 +684,9 @@ def collapse_grid(tbl: Any) -> None:
     for i in range(1, len(kept)):
         width = 0
         for c in range(kept[i - 1], min(kept[i], len(cols))):
-            if cols[c].w is not None:
-                width += int(cols[c].w)
+            column = integer(cols[c].w)  # as Word reads it (CR-021): "4500.5" is 4500
+            if column is not None:
+                width += column
         merged.append(el.gridCol(w=width))
     cols.clear()
     cols.extend(merged)
@@ -785,15 +787,18 @@ def remove_cell(tc: Any, tr: Any, removals: Any, story: Any) -> None:
     _set(kept, "grid_span", el.gridSpan(val=_span(neighbour) + _span(tc)))
     mine = tc.tc_pr.tc_w if tc.tc_pr is not None else None
     theirs = kept.tc_w
+    # each width as Word reads it (CR-021): "4500.5" is 4500; a refused form is unset
+    mine_w = integer(mine.w) if mine is not None else None
+    theirs_w = integer(theirs.w) if theirs is not None else None
     if (
         mine is not None
         and theirs is not None
         and _value(mine.type_value) == "dxa"
         and _value(theirs.type_value) == "dxa"
-        and mine.w is not None
-        and theirs.w is not None
+        and mine_w is not None
+        and theirs_w is not None
     ):
-        theirs.w = int(theirs.w) + int(mine.w)
+        theirs.w = theirs_w + mine_w
 
 
 def _index_in(cells: list[tuple[Any, list]], tc: Any) -> int:
@@ -874,7 +879,7 @@ def reject_section(sect_pr: Any) -> None:
     grid = sect_pr.doc_grid
     if (
         grid is not None
-        and (grid.line_pitch is None or int(grid.line_pitch) == 0)
+        and integer(grid.line_pitch) in (None, 0)  # as Word reads it (CR-021); a refused form is unset
         and grid.type_value is None
         and grid.char_space is None
     ):

@@ -29,7 +29,7 @@ from docx4j_py.docx.enums import (
     WD_SECTION_START,
 )
 from docx4j_py.docx.shared import Length, Twips, twips_of
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import integer, is_on
 from docx4j_py.wml import CtSectPrType, P, SectPr, el
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -349,8 +349,12 @@ class Section:
 
 
 def _twips(value: Any) -> Length | None:
-    """A twips attribute as a :class:`Length`."""
-    return None if value is None else Twips(int(value))
+    """A twips attribute as a :class:`Length`, read as Word reads it (CR-021): ``"11907.0"`` 11907, ``""`` 0.
+
+    None when it is absent, as python-docx answers, or a form Word refuses.
+    """
+    twips = integer(value)
+    return None if twips is None else Twips(twips)
 
 
 class Sections(Sequence):

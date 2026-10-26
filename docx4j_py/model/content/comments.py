@@ -64,7 +64,7 @@ from docx4j_py.model.content.text_model import (
     segments_of,
     text_run,
 )
-from docx4j_py.model.values import on_off
+from docx4j_py.model.values import integer, on_off
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.openpackaging.parts.wml.comments import (
     CommentParts,
@@ -244,8 +244,8 @@ def _index_of(items: list, element: Any) -> int:
 
 
 def _marker_id(item: Any) -> int | None:
-    value = getattr(item, "id", None)
-    return int(value) if isinstance(value, int) else None
+    """A marker's ``w:id`` as Word reads it (CR-021): ``"3.0"`` is 3; a refused form None."""
+    return integer(getattr(item, "id", None))
 
 
 def _markers_in_paragraph(
@@ -857,8 +857,8 @@ class Comment:
     @property
     def id(self) -> int:
         """``w:id``. Extension: Office JS's ``id`` is an opaque string."""
-        value = getattr(self.element, "id", None)
-        return int(value) if isinstance(value, int) else -1
+        value = integer(getattr(self.element, "id", None))  # as Word reads it (CR-021)
+        return value if value is not None else -1
 
     @property
     def author_name(self) -> str:

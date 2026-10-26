@@ -63,7 +63,7 @@ from docx4j_py.model.content.text_model import (
     rows_of,
     text_run,
 )
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import integer, is_on
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, text_of
 from docx4j_py.wml import P, Tbl, Tc, Tr, el, tbl, to_xml, tr
@@ -114,17 +114,14 @@ def writable_width(body: Any) -> int:
     container = getattr(body, "container", body)
     sect_pr = getattr(container, "sect_pr", None)
     pg_sz = getattr(sect_pr, "pg_sz", None) if sect_pr is not None else None
-    width = getattr(pg_sz, "w", None) if pg_sz is not None else None
+    # each as Word reads it (CR-021: "11907.0" is 11907); a refused form is unset
+    width = integer(getattr(pg_sz, "w", None)) if pg_sz is not None else None
     if width is None:
         return DEFAULT_TABLE_WIDTH
     pg_mar = getattr(sect_pr, "pg_mar", None)
-    left = getattr(pg_mar, "left", None) if pg_mar is not None else None
-    right = getattr(pg_mar, "right", None) if pg_mar is not None else None
-    try:
-        writable = int(width) - int(left if left is not None else 1440)
-        writable -= int(right if right is not None else 1440)
-    except (TypeError, ValueError):  # pragma: no cover - a malformed w:sectPr
-        return DEFAULT_TABLE_WIDTH
+    left = integer(getattr(pg_mar, "left", None)) if pg_mar is not None else None
+    right = integer(getattr(pg_mar, "right", None)) if pg_mar is not None else None
+    writable = width - (left if left is not None else 1440) - (right if right is not None else 1440)
     return writable if writable > 0 else DEFAULT_TABLE_WIDTH
 
 
@@ -443,7 +440,8 @@ class Table:
         grid = getattr(self.element.tbl_grid, "grid_col", None) if self.element.tbl_grid else None
         if grid:
             each = DEFAULT_TABLE_WIDTH // len(grid)
-            return [int(column.w) if column.w is not None else each for column in grid]
+            # as Word reads it (CR-021: "4500.5" is 4500); a refused form is unset
+            return [width if (width := integer(column.w)) is not None else each for column in grid]
         rows = rows_of(self.element)
         cells = cells_of(rows[0][0]) if rows else []
         count = max(1, len(cells))
@@ -452,8 +450,8 @@ class Table:
         for index in range(count):
             tc_pr = getattr(cells[index][0], "tc_pr", None) if index < len(cells) else None
             tc_w = getattr(tc_pr, "tc_w", None) if tc_pr is not None else None
-            value = getattr(tc_w, "w", None) if tc_w is not None else None
-            out.append(int(value) if value is not None else each)
+            value = integer(getattr(tc_w, "w", None)) if tc_w is not None else None
+            out.append(value if value is not None else each)
         return out
 
     # -- style -------------------------------------------------------------
@@ -1082,9 +1080,10 @@ class TableCell:
             return 0.0
         kind = getattr(tc_w, "type_value", None)
         kind = getattr(kind, "value", kind)
-        if kind != "dxa" or tc_w.w is None:
+        width = integer(tc_w.w)
+        if kind != "dxa" or width is None:
             return 0.0
-        return float(tc_w.w) / TWIPS_PER_POINT
+        return width / TWIPS_PER_POINT
 
     @width.setter
     def width(self, points: float) -> None:

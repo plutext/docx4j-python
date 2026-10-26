@@ -47,6 +47,7 @@ from docx4j_py.model.listnumbering import (
     invalidate,
     labels_for,
 )
+from docx4j_py.model.values import integer
 from docx4j_py.wml import el
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -179,7 +180,7 @@ def next_abstract_num_id(numbering: Any) -> int:
     """The next free ``w:abstractNumId``: one above the document's own."""
     return (
         max(
-            (int(getattr(a, "abstract_num_id", 0) or 0) for a in (numbering.abstract_num or ())),
+            (integer(getattr(a, "abstract_num_id", None)) or 0 for a in (numbering.abstract_num or ())),
             default=-1,
         )
         + 1
@@ -223,7 +224,12 @@ def next_num_id(numbering: Any) -> int:
 
     ``w:numId`` 0 is Word's "no numbering", so a list never takes it.
     """
-    return max((int(getattr(n, "num_id", 0) or 0) for n in (numbering.num or ())), default=0) + 1
+    return max((integer(getattr(n, "num_id", None)) or 0 for n in (numbering.num or ())), default=0) + 1
+
+
+def _ilvl(level: Any) -> int:
+    """A ``w:lvl``'s or a ``w:lvlOverride``'s ``w:ilvl`` as Word reads it (CR-021); 0 when absent or refused."""
+    return integer(getattr(level, "ilvl", None)) or 0
 
 
 def add_abstract_definition(
@@ -320,7 +326,7 @@ def _default_abstract(kind: str) -> Any:
     part = NumberingDefinitionsPart()
     numbering = part.unmarshal_default_numbering()
     for abstract in numbering.abstract_num or ():
-        first = next((lvl for lvl in (abstract.lvl or ()) if int(lvl.ilvl or 0) == 0), None)
+        first = next((lvl for lvl in (abstract.lvl or ()) if _ilvl(lvl) == 0), None)
         fmt = _value(getattr(first, "num_fmt", None)) if first is not None else None
         _DEFAULTS["bullet" if fmt == "bullet" else "decimal"] = abstract
     found = _DEFAULTS.get(wanted)
@@ -522,10 +528,10 @@ class List:
             1 for other in numbering.num or () if str(_value(other.abstract_num_id)) == str(abstract_id)
         )
 
-        found = next((lvl for lvl in (abstract.lvl or ()) if int(lvl.ilvl or 0) == ilvl), None)
+        found = next((lvl for lvl in (abstract.lvl or ()) if _ilvl(lvl) == ilvl), None)
         if shared > 1:
             override = next(
-                (o for o in (num.lvl_override or ()) if int(o.ilvl or 0) == ilvl), None
+                (o for o in (num.lvl_override or ()) if _ilvl(o) == ilvl), None
             )
             if override is None:
                 override = el.lvlOverride(ilvl=ilvl)
@@ -656,12 +662,12 @@ class List:
         if num is None:
             return None
         for override in num.lvl_override or ():
-            if int(override.ilvl or 0) == ilvl and override.lvl is not None:
+            if _ilvl(override) == ilvl and override.lvl is not None:
                 return override.lvl
         abstract = _typed_abstract(numbering, _value(num.abstract_num_id))
         if abstract is None:
             return None
-        return next((lvl for lvl in (abstract.lvl or ()) if int(lvl.ilvl or 0) == ilvl), None)
+        return next((lvl for lvl in (abstract.lvl or ()) if _ilvl(lvl) == ilvl), None)
 
     def get_level_font(self, level: int) -> Any:
         """Office JS ``getLevelFont``: the ``Font`` of a level's label (its ``w:rPr``).
@@ -1021,7 +1027,7 @@ def start_new_list(
             num = restart_over(package, like.id, touched=touched)
         else:
             num = add_abstract_definition(package, kind, touched=touched)
-        num_id = int(num.num_id)
+        num_id = integer(num.num_id)
         _set_num_pr(paragraph, num_id, 0)
         _apply_list_style(paragraph, touched)
         change.part(*sorted(touched))
@@ -1162,7 +1168,7 @@ def _append_override(num: Any, override: Any) -> None:
         num.lvl_override = overrides
     position = len(overrides)
     for index, existing in enumerate(overrides):
-        if int(existing.ilvl or 0) > int(override.ilvl or 0):
+        if _ilvl(existing) > _ilvl(override):
             position = index
             break
     overrides.insert(position, override)
@@ -1178,7 +1184,7 @@ def _append_level(abstract: Any, lvl: Any) -> None:
         abstract.lvl = levels
     position = len(levels)
     for index, existing in enumerate(levels):
-        if int(existing.ilvl or 0) > int(lvl.ilvl or 0):
+        if _ilvl(existing) > _ilvl(lvl):
             position = index
             break
     levels.insert(position, lvl)

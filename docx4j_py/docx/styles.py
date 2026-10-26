@@ -26,7 +26,7 @@ from typing import Any
 from docx4j_py.docx._base import recording
 from docx4j_py.docx.enums import WD_STYLE_TYPE
 from docx4j_py.model.content.styles import display_name_of, style_id_of
-from docx4j_py.model.values import effective, is_on, on_off
+from docx4j_py.model.values import effective, integer, is_on, on_off
 from docx4j_py.wml import Style, StyleNext
 from docx4j_py.wml import Styles as StylesElement
 
@@ -204,8 +204,7 @@ class BaseStyle:
     @property
     def priority(self) -> int | None:
         """``w:uiPriority``: the sort key Word shows the style under."""
-        value = getattr(getattr(self._style, "ui_priority", None), "val", None)
-        return None if value is None else int(value)
+        return integer(getattr(getattr(self._style, "ui_priority", None), "val", None))  # as Word reads it (CR-021)
 
     @priority.setter
     def priority(self, value: int | None) -> None:

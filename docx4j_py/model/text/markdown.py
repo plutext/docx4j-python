@@ -63,6 +63,7 @@ from docx4j_py.model.text.result import (
     TextRow,
     TextRun,
 )
+from docx4j_py.model.values import integer
 
 __all__ = [
     "MarkdownBlock",
@@ -606,8 +607,7 @@ class _WmlToMarkdown:
                 ind = getattr(effective, "ind", None) if effective is not None else None
                 if ind is not None:
                     value = ind.left if ind.left is not None else ind.start
-                    if value is not None:
-                        left = int(value)
+                    left = integer(value) or 0  # as Word reads it (CR-021); a refused form is unset
             except Exception:  # noqa: BLE001 - no indent for the style
                 left = 0
         self.style_indents[style_id] = left

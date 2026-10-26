@@ -29,6 +29,7 @@ from docx4j_py.child import (
     iter_children,
     mce_branch,
 )
+from docx4j_py.model.values import integer
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name
 
@@ -246,14 +247,8 @@ def attribute(item: Any, local: str, namespace: str = W_NS) -> Any:
 
 
 def marker_id(item: Any) -> int | None:
-    """The ``w:id`` of a marker, typed or wildcard, as an int."""
-    value = attribute(item, "id")
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
+    """The ``w:id`` of a marker, typed or wildcard, as Word reads it (CR-021): ``"3.0"`` is 3; a refused form None."""
+    return integer(attribute(item, "id"))
 
 
 def is_math(value: Any) -> bool:

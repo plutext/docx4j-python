@@ -51,7 +51,7 @@ from docx4j_py.model.content.text_model import (
     text_of_view,
     text_run,
 )
-from docx4j_py.model.values import effective, is_on, on_off
+from docx4j_py.model.values import effective, integer, is_on, on_off
 from docx4j_py.traversal import element_name, run_items_of, text_of
 from docx4j_py.wml import (
     CTSdtCell,
@@ -323,8 +323,8 @@ class ContentControl:
     @property
     def id(self) -> int:
         """``w:id``, the number Word gives a control; 0 when it has none."""
-        value = getattr(sdt_property(self.sdt_pr, "id", W_NS), "val", None)
-        return int(value) if isinstance(value, int) else 0
+        value = integer(getattr(sdt_property(self.sdt_pr, "id", W_NS), "val", None))  # as Word reads it (CR-021)
+        return value if value is not None else 0
 
     @property
     def text(self) -> str:

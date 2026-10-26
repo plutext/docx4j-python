@@ -47,7 +47,7 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 from docx4j_py.fragments import to_xml
-from docx4j_py.model.values import is_on
+from docx4j_py.model.values import integer, is_on
 from docx4j_py.traversal import element_name
 from docx4j_py.wml import read_run_options
 
@@ -578,38 +578,45 @@ class _Emitter:
         ind = getattr(p_pr, "ind", None)
         if ind is not None:
             _refuse(ind, _IND_FIELDS, "w:ind")
-            left = ind.left if ind.left is not None else ind.start
-            right = ind.right if ind.right is not None else ind.end
+            # each as Word reads it (CR-021), as Paragraph's readers do; a refused form is unset
+            left = integer(ind.left)
+            if left is None:
+                left = integer(ind.start)
+            right = integer(ind.right)
+            if right is None:
+                right = integer(ind.end)
+            hanging, first_line = integer(ind.hanging), integer(ind.first_line)
             if left is not None:
-                out.append(("left_indent", _num(float(left) / TWIPS_PER_POINT)))
+                out.append(("left_indent", _num(left / TWIPS_PER_POINT)))
             if right is not None:
-                out.append(("right_indent", _num(float(right) / TWIPS_PER_POINT)))
-            if ind.hanging is not None:
-                out.append(("first_line_indent", _num(-float(ind.hanging) / TWIPS_PER_POINT)))
-            elif ind.first_line is not None:
-                out.append(("first_line_indent", _num(float(ind.first_line) / TWIPS_PER_POINT)))
+                out.append(("right_indent", _num(right / TWIPS_PER_POINT)))
+            if hanging is not None:
+                out.append(("first_line_indent", _num(-hanging / TWIPS_PER_POINT)))
+            elif first_line is not None:
+                out.append(("first_line_indent", _num(first_line / TWIPS_PER_POINT)))
 
         spacing = getattr(p_pr, "spacing", None)
         if spacing is not None:
             _refuse(spacing, _SPACING_FIELDS, "w:spacing")
-            if spacing.before is not None:
-                out.append(("space_before", _num(float(spacing.before) / TWIPS_PER_POINT)))
-            if spacing.after is not None:
-                out.append(("space_after", _num(float(spacing.after) / TWIPS_PER_POINT)))
-            if spacing.line is not None:
+            before, after, line = integer(spacing.before), integer(spacing.after), integer(spacing.line)
+            if before is not None:
+                out.append(("space_before", _num(before / TWIPS_PER_POINT)))
+            if after is not None:
+                out.append(("space_after", _num(after / TWIPS_PER_POINT)))
+            if line is not None:
                 rule = getattr(spacing, "line_rule", None)
                 rule = getattr(rule, "value", rule)
                 if rule != "exact":
                     # line_spacing writes w:lineRule="exact", so only an exact
                     # rule round-trips (docx4j-core-ts CR-002 section 10)
                     raise _Unexpressible(f'w:spacing w:lineRule="{rule or "auto"}"')
-                out.append(("line_spacing", _num(float(spacing.line) / TWIPS_PER_POINT)))
-            if spacing.line is None and getattr(spacing, "line_rule", None) is not None:
+                out.append(("line_spacing", _num(line / TWIPS_PER_POINT)))
+            if line is None and getattr(spacing, "line_rule", None) is not None:
                 raise _Unexpressible("w:spacing w:lineRule without w:line")
 
-        outline = _value(getattr(p_pr, "outline_lvl", None))
+        outline = integer(_value(getattr(p_pr, "outline_lvl", None)))
         if outline is not None:
-            out.append(("outline_level", str(int(outline) + 1)))
+            out.append(("outline_level", str(outline + 1)))
 
         return out
 

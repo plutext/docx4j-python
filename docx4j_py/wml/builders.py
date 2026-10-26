@@ -46,6 +46,7 @@ from docx4j_py.model.values import (
     AUTO,
     colour,
     highlight,
+    integer,
     is_on,
     underline,
     vertical_alignment,
@@ -339,7 +340,7 @@ def read_run_options(r_pr: RPr | None) -> dict[str, Any]:
     highlight_value = None if highlight_value is None else highlight_value.value
     vert = vertical_alignment(getattr(getattr(r_pr, "vert_align", None), "val", None))
     vert = None if vert is None else vert.value
-    size = getattr(getattr(r_pr, "sz", None), "val", None)
+    size = integer(getattr(getattr(r_pr, "sz", None), "val", None))  # as Word reads it (CR-021): "22.5" is 22
 
     return {
         "bold": _on(getattr(r_pr, "b", None)),

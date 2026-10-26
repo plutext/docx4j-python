@@ -51,10 +51,21 @@ leading ``#`` allowed) or one of the 140 classic HTML names
 anything else. What None means is the attribute's: as if absent in a text or
 underline colour (:func:`states_colour`), automatic in a fill or a border, no
 page colour in ``w:background``.
+
+**Integers** (CR-021 section 4.1, docx4j CR-065 phase 0: four rounds, 65 cases, Word
+365, 2026-10-26). :func:`integer` reads a WordprocessingML integer attribute
+(twips, half-points, eighths of a point, percentages, counts, ids) as Word does:
+an optional sign, digits, and optionally a dot and digits, either digit group
+possibly empty, or the empty string, reads as its **integer part with its
+sign**, a decimal truncated toward zero (``"720.5"`` 720, ``"-121.5"`` -121,
+``"141.99999999999994"`` 141, ``"240."`` 240, ``".5"`` 0, ``"+240.5"`` 240);
+``""`` reads 0; any other form (``"abc"``, ``"1e3"``, ``"0x10"``, ``"240,5"``,
+``" 240 "``) None, unset, because Word refuses the document holding it.
 """
 
 from __future__ import annotations
 
+import re
 import threading
 from enum import Enum
 from typing import Any
@@ -72,6 +83,7 @@ __all__ = [
     "emphasis_mark",
     "highlight",
     "in_enumeration",
+    "integer",
     "is_on",
     "on_off",
     "on_off_normal_form",
@@ -365,6 +377,64 @@ def states_colour(value: Any) -> bool:
     border's are read otherwise: there an invalid value is a stated automatic.
     """
     return colour(value) is not None
+
+
+# ---------------------------------------------------------------------------
+# integers (CR-021 section 4.1)
+# ---------------------------------------------------------------------------
+
+#: Word's lexical form for an integer attribute (docx4j CR-065 D3 (a), rounds two to four):
+#: an optional sign, ASCII digits, optionally a dot and ASCII digits, either digit group
+#: possibly empty. It matches ``""`` too, which Word reads as 0. ``[0-9]``, never ``\d``,
+#: which matches every Unicode digit; :func:`re.fullmatch`, never ``$``, which matches
+#: before a trailing newline; and no surrounding whitespace, which Word refuses (round four).
+_WORD_INTEGER = re.compile(r"([+-]?)([0-9]*)(?:\.[0-9]*)?")
+
+
+def integer(value: Any) -> int | None:
+    """A WordprocessingML integer attribute as Word 365 reads it: an ``int``, or None for unset.
+
+    * an ``int`` is itself (what the parse binds for an integer; a ``bool``,
+      which is no integer attribute's value, is None);
+    * a ``str`` (a value the parse kept as its text: a decimal, ``""``) in
+      Word's form, :data:`_WORD_INTEGER`, reads as its integer part with its
+      sign, the fraction dropped: truncation toward zero, done on the string,
+      never through ``float`` (``float("2.9999999999999999")`` is 3.0, where
+      the string's integer part is 2). ``"720.5"`` is 720, ``"-121.5"`` -121,
+      ``"141.99999999999994"`` 141, ``"240."`` 240, ``"+240.5"`` 240, ``".5"``
+      and ``"-0.5"`` 0;
+    * ``""`` is 0, as Word reads it (SSRS's ``w:header=""``); so is a form
+      whose digit groups are both empty (``"."``, ``"+"``, ``"-"``), as
+      docx4j's test reads it (unmeasured in Word);
+    * anything else is None, unset, as if absent: ``"abc"``, ``"1e3"``,
+      ``"0x10"``, ``"240,5"``, a value with surrounding whitespace
+      (``" 240 "``, ``" 240.5 "``), ``"1_000"``, other scripts' digits. Word
+      refuses a document holding any of them; a save drops such a value
+      (:mod:`docx4j_py.openpackaging.normalise`).
+
+    Word's twips are 16 bits wide inside, and a value beyond them wraps
+    (docx4j CR-065's aside, CR-022); that is not emulated (CR-021 Q7): the
+    integer is the file's. A digit string longer than Python converts
+    (``sys.get_int_max_str_digits()``, 4,300 by default) is None rather than
+    an exception: no measurement covers it.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return None
+    found = _WORD_INTEGER.fullmatch(value)
+    if found is None:
+        return None
+    sign, digits = found.group(1), found.group(2)
+    if not digits:
+        return 0
+    try:
+        whole = int(digits)
+    except ValueError:  # beyond Python's digit limit for a conversion (sys.get_int_max_str_digits)
+        return None
+    return -whole if sign == "-" else whole
 
 
 # ---------------------------------------------------------------------------

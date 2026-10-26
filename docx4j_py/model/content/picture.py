@@ -35,6 +35,7 @@ from docx4j_py.child import ChildList, link_parents
 from docx4j_py.model.content.enums import BodyLocation, TextLocation
 from docx4j_py.model.content.errors import ContentError
 from docx4j_py.model.content.reports import recording
+from docx4j_py.model.values import integer
 from docx4j_py.openpackaging.content_types import ContentTypes
 from docx4j_py.openpackaging.part_name import PartName
 from docx4j_py.openpackaging.parts.binary_part import ImagePart
@@ -170,16 +171,14 @@ def writable_width_emu(body: Any) -> int | None:
     container = getattr(body, "container", body)
     sect_pr = getattr(container, "sect_pr", None)
     pg_sz = getattr(sect_pr, "pg_sz", None) if sect_pr is not None else None
-    width = getattr(pg_sz, "w", None) if pg_sz is not None else None
+    # each as Word reads it (CR-021: "11907.0" is 11907, "" is 0); a refused form is unset
+    width = integer(getattr(pg_sz, "w", None)) if pg_sz is not None else None
     if width is None:
         return None
     pg_mar = getattr(sect_pr, "pg_mar", None)
-    left = getattr(pg_mar, "left", None) if pg_mar is not None else None
-    right = getattr(pg_mar, "right", None) if pg_mar is not None else None
-    try:
-        twips = int(width) - int(left or 0) - int(right or 0)
-    except (TypeError, ValueError):  # pragma: no cover - a malformed w:sectPr
-        return None
+    left = integer(getattr(pg_mar, "left", None)) if pg_mar is not None else None
+    right = integer(getattr(pg_mar, "right", None)) if pg_mar is not None else None
+    twips = width - (left or 0) - (right or 0)
     return twips * EMU_PER_TWIP if twips > 0 else None
 
 

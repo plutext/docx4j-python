@@ -48,6 +48,7 @@ from docx4j_py.model.revisions.change import (
     TrackedChange,
 )
 from docx4j_py.model.revisions.trees import Revision
+from docx4j_py.model.values import integer
 
 __all__ = ["ResolvedView"]
 
@@ -352,10 +353,8 @@ class ResolvedView:
 
     def removes_comment(self, comment_id: Any) -> bool:
         """Whether a comment goes in this view, entry and reference (CR-010 section 12.9)."""
-        try:
-            return comment_id is not None and int(comment_id) in self._comments_gone
-        except (TypeError, ValueError):
-            return False
+        value = integer(comment_id)  # as Word reads it (CR-021), as the comment ids are read
+        return value is not None and value in self._comments_gone
 
     # -- the plan, change by change, as the resolver resolves each -----------------
 

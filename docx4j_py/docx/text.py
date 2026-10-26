@@ -53,6 +53,7 @@ from docx4j_py.model.values import (
     AUTO,
     colour,
     highlight,
+    integer,
     is_on,
     underline,
     vertical_alignment,
@@ -734,8 +735,8 @@ class Font:
     def size(self) -> Length | None:
         """``w:sz``, in half-points, as a :class:`Length`; None when unset."""
         r_pr = _r_pr(self._holder, create=False)
-        value = getattr(getattr(r_pr, "sz", None), "val", None)
-        return None if value is None else Pt(float(value) / 2)
+        value = integer(getattr(getattr(r_pr, "sz", None), "val", None))  # as Word reads it (CR-021): "22.5" is 22
+        return None if value is None else Pt(value / 2)
 
     @size.setter
     def size(self, value: int | Length | None) -> None:
@@ -965,8 +966,8 @@ class ParagraphFormat:
         ind = getattr(p_pr, "ind", None) if p_pr is not None else None
         if ind is None:
             return None
-        value = getattr(ind, attribute, None)
-        return None if value is None else Twips(int(value))
+        value = integer(getattr(ind, attribute, None))  # as Word reads it (CR-021): "720.5" is 720
+        return None if value is None else Twips(value)
 
     def _set_ind(self, attribute: str, value: int | Length | None) -> None:
         if value is None and getattr(self._p_pr(create=False), "ind", None) is None:
@@ -1016,10 +1017,12 @@ class ParagraphFormat:
         ind = getattr(p_pr, "ind", None) if p_pr is not None else None
         if ind is None:
             return None
-        if getattr(ind, "hanging", None) is not None:
-            return Twips(-int(ind.hanging))
-        if getattr(ind, "first_line", None) is not None:
-            return Twips(int(ind.first_line))
+        hanging = integer(getattr(ind, "hanging", None))  # each as Word reads it (CR-021)
+        if hanging is not None:
+            return Twips(-hanging)
+        first_line = integer(getattr(ind, "first_line", None))
+        if first_line is not None:
+            return Twips(first_line)
         return None
 
     @first_line_indent.setter
@@ -1053,8 +1056,8 @@ class ParagraphFormat:
         spacing = getattr(p_pr, "spacing", None) if p_pr is not None else None
         if spacing is None:
             return None
-        value = getattr(spacing, attribute, None)
-        return None if value is None else Twips(int(value))
+        value = integer(getattr(spacing, attribute, None))  # as Word reads it (CR-021): "120.5" is 120
+        return None if value is None else Twips(value)
 
     def _set_spacing(self, attribute: str, value: int | Length | None) -> None:
         if value is None and getattr(self._p_pr(create=False), "spacing", None) is None:
@@ -1278,10 +1281,10 @@ def _insert_in_order(tabs: Any, element: Any) -> Any:
     """Put a ``w:tab`` in ``w:tabs`` before the first one further right."""
     if tabs.tab is None:
         tabs.tab = ChildList([], owner=tabs)
-    position = int(element.pos or 0)
+    position = integer(element.pos) or 0
     index = len(tabs.tab)
     for i, existing in enumerate(tabs.tab):
-        if int(existing.pos or 0) > position:
+        if (integer(existing.pos) or 0) > position:
             index = i
             break
     tabs.tab.insert(index, element)
@@ -1335,7 +1338,7 @@ class TabStop:
     @property
     def position(self) -> Length:
         """``w:tab/@pos`` as a :class:`Length`; may be negative."""
-        return Twips(int(self._element.pos or 0))
+        return Twips(integer(self._element.pos) or 0)  # as Word reads it (CR-021): "1440.5" is 1440
 
     @position.setter
     def position(self, value: int | Length) -> None:
