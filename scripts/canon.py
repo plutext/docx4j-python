@@ -122,10 +122,10 @@ class DiffReport:
 
     #: categories that are a different spelling of the same value, not a
     #: difference; they are counted and reported but ``identical`` ignores them.
-    #: ``word-normal-form`` (CR-018 section 4.7) is a value a normalising save
-    #: wrote in Word's normal form: :func:`compare` with ``normalise=True``
-    #: writes the same normal form into the source first, counting each, so
-    #: that the diff proves nothing else moved
+    #: ``word-normal-form`` (CR-018 section 4.7, CR-021 section 4.3) is a value
+    #: a normalising save wrote in Word's normal form: :func:`compare` with
+    #: ``normalise=True`` writes the same normal form into the source first,
+    #: counting each, so that the diff proves nothing else moved
     BENIGN = ("boolean-spelling", "word-normal-form")
 
     def add(self, category: str, path: str, detail: str, limit: int = 400) -> None:
@@ -265,9 +265,11 @@ def compare(orig: bytes, new: bytes, *, unordered_root: bool = False, normalise:
             :func:`sort_children`).
         normalise: `new` is a normalising save's (CR-018 section 4.7,
             ``package.save()``'s default): write the same normal form into the
-            source first (:func:`docx4j_py.openpackaging.normalise.normalise_tree`),
-            each rewrite counted as ``word-normal-form``, so that any other
-            difference is still one.
+            source first (:func:`docx4j_py.openpackaging.normalise.normalise_tree`:
+            the on/off, enumeration and colour rows, and CR-021's integers and
+            empty rsids), each rewrite counted as ``word-normal-form``, so that
+            any other difference is still one. An integer the serialiser
+            re-spells (``"+240"`` as ``240``) is counted there too.
     """
     rep = DiffReport()
     a, b = normalize_tree(orig), normalize_tree(new)

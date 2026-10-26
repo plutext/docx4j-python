@@ -12,7 +12,8 @@ integer, or nothing where it equals the style's (``README.md``: ``A08``, ``A17``
 its values reads None. So for every case :func:`values.integer` of the source's
 value is Word's integer, or None where Word refused the document
 (:func:`test_every_case_reads_as_word_reads_it`), and the readers over the probe
-read as over Word's save.
+read as over Word's save. Phase B's half, the normalised saves, is
+:func:`test_a_normalised_save_writes_word_s_values` and the tests after it.
 """
 
 from __future__ import annotations
@@ -412,6 +413,193 @@ def test_the_resolver_and_the_text_model_read_as_word() -> None:
     styles = _load(INTEGERS / "cr065-I.docx").main_document_part.style_definitions_part
     probe = next(s for s in styles.contents.style if s.style_id == "ProbeStyle")
     assert probe.p_pr.ind.left == "720.5"  # kept as read: the reader, not the tree, reads it as Word
+
+
+# ---------------------------------------------------------------------------
+# D3, D5, D6: what a save writes (CR-021 sections 4.3 to 4.6)
+# ---------------------------------------------------------------------------
+
+#: Every family file, Word's saves aside: the refused ones too, whose values a save drops.
+SOURCES = sorted(p.stem for p in INTEGERS.glob("cr065-*.docx") if not p.stem.endswith("-word365"))
+
+
+def _parts(path: Path) -> list[str]:
+    return sorted(n for n in zipfile.ZipFile(path).namelist() if n.startswith("word/") and n.endswith(".xml"))
+
+
+def _saved(name: str, **save: Any) -> tuple[Any, dict[str, bytes], bytes]:
+    """The family loaded, every WordprocessingML part read (so re-marshalled), and saved."""
+    path = INTEGERS / f"{name}.docx"
+    package = _load(path)
+    for part_name in _parts(path):
+        part = package.get_part("/" + part_name)
+        if part is not None and hasattr(part, "contents"):
+            _ = part.contents
+    data = package.save(**save)
+    source = {n: zipfile.ZipFile(path).read(n) for n in _parts(path)}
+    return package, source, data
+
+
+#: How many values each family's normalised save rewrites (CR-021's rows; nothing else in the probe is odd).
+REWRITES = {
+    "cr065-A": 17, "cr065-A1-decimals": 6, "cr065-A2-forms": 4, "cr065-A2a-trailing-dot": 1,
+    "cr065-A2b-leading-dot": 1, "cr065-A2c-plus": 0, "cr065-A2d-plus-decimal": 1, "cr065-A2e-spaced-decimal": 1,
+    "cr065-A2f-spaced-integer": 0, "cr065-A3-comma": 1, "cr065-A4-hex": 1, "cr065-A5-exponents": 3,
+    "cr065-A6-empty": 1, "cr065-A7-abc": 1, "cr065-B": 8, "cr065-C": 7, "cr065-D": 4, "cr065-E": 2,
+    "cr065-F": 4, "cr065-G": 12, "cr065-H": 14, "cr065-I": 3,
+}
+
+
+def test_the_rows_of_each_family() -> None:
+    """Each family's rewrites, every one a kept decimal, ``""`` or refused form, or an empty rsid (H60's four)."""
+    found = {}
+    total = 0
+    for name in SOURCES:
+        package, _source, _data = _saved(name)
+        records = package.last_save.normalised
+        found[name] = len(records)
+        total += len(records)
+        kept = {k.text for _part, k in package.kept}
+        for record in records:
+            rsid = record.path.rsplit("/@", 1)[1].startswith("w:rsid")
+            assert (record.before == "" and record.after is None) if rsid else record.before in kept, record
+            assert record.after is None or record.after == str(integer(record.before)), record
+    expected = dict(REWRITES)
+    if _exact_integers():  # phase 0: A19's " 240 " is kept, and dropped, rather than bound as 240
+        for name in ("cr065-A", "cr065-A2-forms", "cr065-A2f-spaced-integer"):
+            expected[name] += 1
+    assert found == expected
+    assert total == sum(expected.values()) == (95 if _exact_integers() else 92)
+
+
+def test_a_normalised_save_writes_word_s_values() -> None:
+    """For each family Word opened, this package's normalised save writes, case by case, what Word's save wrote.
+
+    Allowing for the values Word leaves out because each equals its style's
+    (:data:`OMITTED`: this package writes the value Word read, D7) and for the
+    grid Word recomputes (:data:`GRID`: written truncated). H60's four empty
+    rsids are dropped, as Word dropped them.
+    """
+    compared = 0
+    for name in sorted({FAMILY[case] for case in CASES} - REFUSED):
+        word = _save(name)
+        assert word is not None
+        _package, _source, data = _saved(name)
+        ours = Family(data)
+        for case in CASES:
+            if FAMILY[case] != name and not (case == "Z65"):
+                continue
+            for (attribute, value), (_same, saved) in zip(ours.values(case), word.values(case), strict=True):
+                if case in GRID:
+                    assert value == str(integer(_family(name).values(case)[0][1])) or value is not None
+                elif saved is None:
+                    assert value == str(OMITTED[(case, attribute)]), (name, case, attribute, value)
+                else:
+                    assert value == saved, (name, case, attribute, value, saved)
+                compared += 1
+        if name == "cr065-H":
+            sect_pr = ours.label("H60").getnext().find(f"{_w('pPr')}/{_w('sectPr')}")
+            assert [a for a in sect_pr.attrib if a.startswith(_w("rsid"))] == []
+    # every value of the opened families (70 less the refused families' 8), and Z65 in each of the other 13
+    assert compared == 70 - 8 + 13
+
+
+def test_the_grid_is_written_truncated() -> None:
+    _package, _source, data = _saved("cr065-G")
+    ours = Family(data)
+    assert [value for _a, value in ours.values("G50")] == ["4500", "5705"]
+    assert [value for _a, value in ours.values("G51")] == ["1234"]
+
+
+@pytest.mark.parametrize("name", SOURCES)
+def test_a_normalising_save_moves_only_the_rewritten_values(name: str) -> None:
+    """``save()``: the canon's mirror writes the same rows into the source, and nothing else differs (CR-021 section 5)."""
+    import canon
+
+    package, source, data = _saved(name)
+    written = {n: zipfile.ZipFile(io.BytesIO(data)).read(n) for n in source}
+    rewrites = 0
+    for part, before in source.items():
+        report = canon.compare(before, written[part], normalise=True)
+        assert report.identical, (part, report.differences, report.diffs[:5])
+        rewrites += report.counts.get("word-normal-form", 0)
+    # the canon also counts the serialiser's re-spelling of a value the parse bound: A09's "+240", and A19's
+    # " 240 " until phase 0, after which it is kept and is one of the save's rows
+    respelt = {"cr065-A": 2, "cr065-A2-forms": 2, "cr065-A2c-plus": 1, "cr065-A2f-spaced-integer": 1}
+    if _exact_integers():
+        respelt = {"cr065-A": 1, "cr065-A2-forms": 1, "cr065-A2c-plus": 1}
+    assert rewrites == len(package.last_save.normalised) + respelt.get(name, 0)
+
+
+@pytest.mark.parametrize("name", SOURCES)
+def test_a_save_that_keeps_the_spelling_changes_nothing(name: str) -> None:
+    """``save(normalise=False)``: every kept value written as read, the probe's re-spelt forms aside."""
+    import canon
+
+    package, source, data = _saved(name, normalise=False)
+    written = {n: zipfile.ZipFile(io.BytesIO(data)).read(n) for n in source}
+    differences = {}
+    for part, before in source.items():
+        report = canon.compare(before, written[part])
+        assert "word-normal-form" not in report.counts
+        if not report.identical:
+            differences[part] = [d.detail for d in report.diffs]
+    assert package.last_save.normalise is False and package.last_save.normalised == []
+    # "+240" and " 240 " bind as 240 (CR-021 section 2.2), which the serialiser writes: today's output. With
+    # phase 0's exact parse " 240 " is kept and written as read; "+240", an xs:integer form, still binds
+    plus, spaced = "w:before: '+240' -> '240'", "w:before: ' 240 ' -> '240'"
+    expected = {
+        "cr065-A": [plus, spaced], "cr065-A2-forms": [plus, spaced], "cr065-A2c-plus": [plus],
+        "cr065-A2f-spaced-integer": [spaced],
+    }.get(name, [])
+    if _exact_integers():
+        expected = [each for each in expected if each != spaced]
+    assert differences == ({"word/document.xml": expected} if expected else {})
+
+
+def _exact_integers() -> bool:
+    from docx4j_py.runtime import EXACT_TYPES
+
+    return int in EXACT_TYPES
+
+
+def test_the_tree_keeps_what_was_read() -> None:
+    """The rows are the save's: the tree keeps ``"720.5"``, and ``normalise=False`` writes it."""
+    package = _load(INTEGERS / "cr065-B.docx")
+    p = package.body.paragraphs[1].element
+    assert p.p_pr.ind.left == "720.5"
+    first = zipfile.ZipFile(io.BytesIO(package.save())).read("word/document.xml")
+    assert p.p_pr.ind.left == "720.5"
+    assert len(package.last_save.normalised) == 8
+    second = zipfile.ZipFile(io.BytesIO(package.save(normalise=False))).read("word/document.xml")
+    # (the labels' text holds the spellings too, so the element is what is looked for)
+    assert b'<w:ind w:left="720.5"/>' not in first and b'<w:ind w:left="720"/>' in first
+    assert b'<w:ind w:left="720.5"/>' in second
+
+
+def test_a_refused_form_is_dropped() -> None:
+    """``"abc"``, ``"240,5"``, ``"0x10"``, the exponents and ``" 240.5 "``: unset, so the attribute goes (Q4)."""
+    for name, case in (("cr065-A7-abc", "A18"), ("cr065-A3-comma", "A12"), ("cr065-A4-hex", "A13"),
+                       ("cr065-A5-exponents", "A14"), ("cr065-A5-exponents", "A16"),
+                       ("cr065-A2e-spaced-decimal", "A11")):
+        package, _source, data = _saved(name)
+        assert Family(data).values(case) == [("before", None)], (name, case)
+        assert any(r.after is None and r.path.endswith("/w:spacing/@w:before") for r in package.last_save.normalised)
+
+
+def test_a_required_attribute_refused_is_dropped_too() -> None:
+    """``w:pgMar/@w:top`` is required; a refused form is dropped all the same (Q4; phase C's Word check asks Word)."""
+    from docx4j_py.wml import P
+
+    package = _load(INTEGERS / "cr065-H.docx")
+    body = package.main_document_part.contents.body
+    sect_prs = [p.p_pr.sect_pr for p in body.content if isinstance(p, P) and p.p_pr is not None and p.p_pr.sect_pr]
+    sect_prs[5].pg_mar.top = "abc"  # H61's section, as a parse keeps a refused form
+    xml = zipfile.ZipFile(io.BytesIO(package.save())).read("word/document.xml")
+    root = etree.fromstring(xml)
+    margins = root.findall(f".//{_w('sectPr')}/{_w('pgMar')}")
+    assert margins[5].get(_w("top")) is None and margins[5].get(_w("left")) == "1440"
+    assert sect_prs[5].pg_mar.top == "abc"
 
 
 def test_the_font_size_reads_as_word() -> None:

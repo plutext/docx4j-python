@@ -100,6 +100,7 @@ class XmlPart(Part, Generic[T]):
     __slots__ = (
         "_bytes",
         "_contents",
+        "_empty_value",
         "_options",
         "_private_contents",
         "_private_settings",
@@ -127,6 +128,10 @@ class XmlPart(Part, Generic[T]):
         #: ``{namespace}localName`` of the root, when the class alone does not say.
         self.root_name = root_name
         self._source_ns_map: dict[str, str] = {}
+        #: Whether the last parse's source holds an empty attribute value (``=""``): an empty
+        #: rsid binds without a record, so this, as well as :attr:`kept`, sends the part through
+        #: the save's typed rows (CR-021 D6, :mod:`~docx4j_py.openpackaging.normalise`).
+        self._empty_value = False
         #: What the fork's parser skipped, per entry. Empty is the good answer.
         self.skipped: list[Any] = []
         #: The values the last parse bound as the text they were read with (CR-018 Q16): the fork's
@@ -283,6 +288,7 @@ class XmlPart(Part, Generic[T]):
         self._private_settings = None
         self.skipped = []
         self.kept = []
+        self._empty_value = False
         self.resolved_alternate_content = []
 
     def set_xml(self, xml: str) -> None:
@@ -311,6 +317,8 @@ class XmlPart(Part, Generic[T]):
             )
         data = self._raw_bytes()
         self._source_ns_map = _root_ns_map(data)
+        # an empty attribute value, either quote and any spacing round "=": two substring tests
+        self._empty_value = b'""' in data or b"''" in data
 
         settings = self._parse_settings()
         resolved: list[Any] = []

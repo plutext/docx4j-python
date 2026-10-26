@@ -46,6 +46,28 @@ it is (a lower-case hex, a bare ``<w:highlight/>``) and so is not in
 * a ``w:background`` whose colour Word rejects is dropped, as Word's save
   drops it (round seven): no page colour.
 
+**CR-021's rows** (integers, sections 4.3, 4.5 and 4.6; docx4j CR-065 D3 (a)), in
+the same typed walk as the on/off rows:
+
+* an integer attribute of ``w``, ``w14`` or ``w15`` (:data:`INTEGER_NAMESPACES`)
+  that the parse kept as its text (a decimal, ``""``) is written as Word reads
+  it, :func:`docx4j_py.model.values.integer`, a decimal integer: ``"720.5"`` as
+  ``720``, ``"-121.5"`` as ``-121``, ``""`` as ``0``; a form Word refuses
+  (``"abc"``, ``"1e3"``, ``" 240 "``) is dropped, as Word refuses the document;
+* elsewhere (DrawingML, VML, charts: CR-021 D5) a kept value is written as
+  Python's ``int()`` binds it where it can, and as read where it cannot, so
+  that the output there is what the parse before the fork's stage 14 gave; in
+  the union fields that hold an integer (:data:`UNION_INTEGER_ATTRIBUTES`, none
+  in ``w``), whose values bind as text without a record, the same rule is
+  applied by name in the render;
+* an rsid attribute (``w:rsidR``, ``w:rsidRPr``, any ``w:rsid*``) whose value
+  is ``""`` is dropped, as Word's save drops it (D6): an empty ``hexBinary`` is
+  lexically valid, so it is found by value, in the parts whose source holds an
+  empty value (``XmlPart._empty_value``) as well as those that kept one.
+
+A value Word reads as it is (``"240"``) is the serialiser's and is not touched;
+neither is a value equal to its style's, which Word's own save leaves out (D7).
+
 **Scope and cost.** Only parts the save re-marshals (a part never unmarshalled
 is still written byte for byte). The on/off rows walk only the parts whose
 parse kept a value (:attr:`XmlPart.kept`), so a save with nothing odd in it
@@ -77,21 +99,25 @@ import threading
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
-from docx4j_py.model.values import on_off_normal_form
+from docx4j_py.model.values import integer, on_off_normal_form
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
 __all__ = [
+    "INTEGER_NAMESPACES",
     "ON_OFF_NAMESPACES",
+    "UNION_INTEGER_ATTRIBUTES",
     "Normalised",
     "SaveReport",
+    "integer_attributes",
     "normalise_render",
     "normalise_tree",
     "normalised_package",
     "normalised_tree",
     "on_off_attributes",
     "rendered_rows",
+    "rsid_attributes",
 ]
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -101,6 +127,42 @@ W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
 #: The namespaces whose ``bool`` attributes are Word's ST_OnOff (docx4j's ``wml.xsd``
 #: types ST_OnOff as ``xsd:boolean``; ``w14`` and ``w15`` carry docx4j's own patch of it).
 ON_OFF_NAMESPACES: frozenset[str] = frozenset({W, W14, W15})
+
+#: The namespaces whose integer attributes are read by Word's rule (CR-021 D5, Q3): where
+#: Word was measured (docx4j CR-065 phase 0). Elsewhere a kept integer keeps today's output.
+INTEGER_NAMESPACES: frozenset[str] = frozenset({W, W14, W15})
+
+#: The union fields that hold an integer (CR-021 D5; none is in ``w``, ``w14`` or ``w15``), by
+#: element and attribute, as the model declares them (``tests/content/test_integer_values.py``
+#: derives the table from it): a value Python's ``int()`` takes is written as that integer, as
+#: the parse before the fork's stage 14 bound it. Found by name in the render, since such a
+#: value binds as the ``str`` member without a record.
+UNION_INTEGER_ATTRIBUTES: dict[str, tuple[str, ...]] = {
+    "{http://schemas.microsoft.com/ink/2010/main}context": ("semanticType",),
+    "{http://schemas.microsoft.com/office/drawing/2008/diagram}sp": ("modelId",),
+    "{http://schemas.microsoft.com/office/drawing/2012/chartStyle}styleClr": ("val",),
+    "{http://schemas.microsoft.com/office/drawing/2018/animation/model3d}animPr": ("count",),
+    "{http://schemas.openxmlformats.org/drawingml/2006/diagram}cxn": (
+        "modelId", "srcId", "destId", "parTransId", "sibTransId",
+    ),
+    "{http://schemas.openxmlformats.org/drawingml/2006/diagram}if": ("val",),
+    "{http://schemas.openxmlformats.org/drawingml/2006/diagram}param": ("val",),
+    "{http://schemas.openxmlformats.org/drawingml/2006/diagram}prSet": ("presAssocID",),
+    "{http://schemas.openxmlformats.org/drawingml/2006/diagram}pt": ("modelId", "cxnId"),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}ahPolar": ("minR", "maxR", "minAng", "maxAng"),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}ahXY": ("minX", "maxX", "minY", "maxY"),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}arcTo": ("wR", "hR", "stAng", "swAng"),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}cxn": ("ang",),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}pos": ("x", "y"),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}pt": ("x", "y"),
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}rect": ("l", "t", "r", "b"),
+    **{
+        f"{{http://schemas.openxmlformats.org/officeDocument/2006/math}}{name}": (
+            "{http://schemas.openxmlformats.org/officeDocument/2006/math}val",
+        )
+        for name in ("interSp", "intraSp", "lMargin", "postSp", "preSp", "rMargin", "wrapIndent")
+    },
+}
 
 #: The namespace whose defaults have been audited (docx4j #697, CR-059; CR-018 Q10): only
 #: there does a save drop an on value whose schema default is on.
@@ -194,6 +256,61 @@ def on_off_attributes(cls: type) -> tuple[tuple[Any, bool], ...]:
     return found
 
 
+_INTEGER_VARS: dict[type, tuple[tuple[Any, bool], ...]] = {}
+_RSID_VARS: dict[type, tuple[Any, ...]] = {}
+
+
+def integer_attributes(cls: type) -> tuple[tuple[Any, bool], ...]:
+    """A class's integer attributes: (its ``XmlVar``, whether Word's rule applies), cached per class.
+
+    An attribute is an integer one when its one type is ``int`` (a token list
+    of them too, DrawingML's ``dgm:forEach/@st``). Word's rule
+    (:func:`~docx4j_py.model.values.integer`) applies where the attribute is in
+    :data:`INTEGER_NAMESPACES` (CR-021 D5); elsewhere a kept value is written as
+    Python's ``int()`` binds it, where it can.
+    """
+    found = _INTEGER_VARS.get(cls)
+    if found is not None:
+        return found
+    from docx4j_py.runtime import context
+
+    found = tuple(
+        (var, _namespace(var.qname) in INTEGER_NAMESPACES)
+        for var in context().build(cls).get_attribute_vars()
+        if tuple(var.types) == (int,)
+    )
+    with _VARS_LOCK:
+        _INTEGER_VARS[cls] = found
+    return found
+
+
+def rsid_attributes(cls: type) -> tuple[Any, ...]:
+    """A class's rsid attributes (``w:rsidR``, ``w:rsidRPr``, ``w:rsidDel``, any ``w:rsid*``), cached per class (D6)."""
+    found = _RSID_VARS.get(cls)
+    if found is not None:
+        return found
+    from docx4j_py.runtime import context
+
+    found = tuple(
+        var
+        for var in context().build(cls).get_attribute_vars()
+        if _namespace(var.qname) == W and var.qname.split("}", 1)[1].startswith("rsid")
+    )
+    with _VARS_LOCK:
+        _RSID_VARS[cls] = found
+    return found
+
+
+def _python_int(text: str, tokens: bool = False) -> str | None:
+    """What Python's ``int()`` binds `text` as, written; a token list token by token; None where it cannot (D5)."""
+    try:
+        if tokens:
+            return " ".join(str(int(token)) for token in text.split())
+        return str(int(text))
+    except ValueError:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # the typed tree
 # ---------------------------------------------------------------------------
@@ -205,7 +322,11 @@ class _Change:
     field: str
     qname: str
     before: str
-    after: bool | None
+    #: what the field holds for the save: a ``bool`` (the on/off rows), an ``int`` or a token list's text
+    #: (the integer rows), or None for the attribute dropped
+    after: Any
+    #: what the save writes, for the record: ``"1"``, ``"0"``, ``"720"``; None for the attribute dropped
+    written: str | None
 
 
 #: ``xsd:boolean``'s four literals: a value spelt so binds as a ``bool`` and is the serialiser's.
@@ -213,7 +334,11 @@ _EXACT = frozenset({"true", "false", "1", "0"})
 
 
 def _changes(root: Any) -> list[_Change]:
-    """Every kept ST_OnOff value under `root`, every ``mc`` branch included, with its normal form."""
+    """Every kept ST_OnOff and integer value, and every empty rsid, under `root`, every ``mc`` branch included.
+
+    Each with its normal form: the on/off rows (CR-018 section 4.7), the integer
+    rows (CR-021 sections 4.3 and 4.5) and the empty rsid (section 4.6).
+    """
     from docx4j_py.child import is_any_element
     from docx4j_py.runtime import context
     from docx4j_py.traversal import iter_nodes
@@ -222,11 +347,30 @@ def _changes(root: Any) -> list[_Change]:
     for node in iter_nodes(root, context=context(), mce="all"):
         if is_any_element(node) or not dataclasses.is_dataclass(node):
             continue
-        for var, absent_is_on in on_off_attributes(type(node)):
+        cls = type(node)
+        for var, absent_is_on in on_off_attributes(cls):
             value = getattr(node, var.name, None)
             # an exact literal as a str is code's (``checked.val = "1"``), and Word reads it as written
             if isinstance(value, str) and value not in _EXACT:
-                out.append(_Change(node, var.name, var.qname, value, on_off_normal_form(value, absent_is_on)))
+                after = on_off_normal_form(value, absent_is_on)
+                out.append(_Change(node, var.name, var.qname, value, after, _written(after)))
+        for var, word in integer_attributes(cls):
+            value = getattr(node, var.name, None)
+            if not isinstance(value, str):
+                continue  # bound as an int (or absent): the serialiser's, as before
+            if word:
+                read = integer(value)
+                written = None if read is None else str(read)
+                if written != value:  # "240" as a str is code's, and Word reads it as written
+                    out.append(_Change(node, var.name, var.qname, value, read, written))
+                continue
+            bound = _python_int(value, bool(var.tokens))
+            if bound is not None and bound != value:
+                after: Any = bound if var.tokens else int(bound)
+                out.append(_Change(node, var.name, var.qname, value, after, bound))
+        for var in rsid_attributes(cls):
+            if getattr(node, var.name, None) == "":
+                out.append(_Change(node, var.name, var.qname, "", None, None))
     return out
 
 
@@ -288,7 +432,7 @@ def normalised_tree(root: Any, *, part: str = "") -> Iterator[list[Normalised]]:
     runs.
     """
     changes = _changes(root)
-    records = [Normalised(part, _path(c.node, c.qname), c.before, _written(c.after)) for c in changes]
+    records = [Normalised(part, _path(c.node, c.qname), c.before, c.written) for c in changes]
     with _applied(changes):
         yield records
 
@@ -298,8 +442,10 @@ def normalised_package(package: OpcPackage, *, enabled: bool = True) -> Iterator
     """Write the normal form into every part the save re-marshals, for the save; take it back out after.
 
     The parts are those holding a live tree (:attr:`XmlPart.contents` read)
-    whose parse kept a value (:attr:`XmlPart.kept`). The report is filled before
-    the block runs and stays the save's.
+    whose parse kept a value (:attr:`XmlPart.kept`) or whose source holds an
+    empty attribute value (``XmlPart._empty_value``: an empty rsid, CR-021
+    D6, binds without a record). The report is filled before the block runs and
+    stays the save's.
     """
     report = SaveReport(normalise=enabled)
     applied: list[_Change] = []
@@ -308,14 +454,14 @@ def normalised_package(package: OpcPackage, *, enabled: bool = True) -> Iterator
         from docx4j_py.openpackaging.parts.xml_part import XmlPart
 
         for part in package.parts.parts():
-            if not isinstance(part, XmlPart) or not part.kept:
+            if not isinstance(part, XmlPart) or not (part.kept or getattr(part, "_empty_value", False)):
                 continue
             tree = part._contents  # the live tree only: a private one is not saved
             if tree is None:
                 continue
             for change in _changes(tree):
                 report.normalised.append(
-                    Normalised(str(part.part_name), _path(change.node, change.qname), change.before, _written(change.after))
+                    Normalised(str(part.part_name), _path(change.node, change.qname), change.before, change.written)
                 )
                 applied.append(change)
     token = _ACTIVE.set(active)
@@ -333,21 +479,25 @@ def normalised_package(package: OpcPackage, *, enabled: bool = True) -> Iterator
 # ---------------------------------------------------------------------------
 
 _LXML_TABLE: dict[tuple[str, str], bool] | None = None
+_LXML_INTEGERS: tuple[dict[tuple[str, str], str], dict[tuple[str, str, str], str]] | None = None
+_LXML_BOUND: tuple[dict[str, set[type]], dict[tuple[str, type], set[type]], set[type]] | None = None
 _LXML_LOCK = threading.Lock()
 
 
-def _lxml_table() -> dict[tuple[str, str], bool]:
-    """(element qname, attribute qname) to "absence is on", for every ST_OnOff attribute the model types.
+def _bound() -> tuple[dict[str, set[type]], dict[tuple[str, type], set[type]], set[type]]:
+    """Every class each element name binds (a field of another class, or a root), built once from the model.
 
-    Built once from the model: every class that an element name binds (a field
-    of another class, or a root), and that class's :func:`on_off_attributes`.
-    An attribute that one binding of an element name types ``bool`` and another
-    does not is left out: the typed parse would keep it in one place and not
-    the other, so the lxml side cannot say.
+    Also the classes each (element name, class) binding is a field of, and the
+    classes whose metadata cannot be built. A root is a class whose ``Meta``
+    declares a ``namespace`` as well as a ``name`` (a global element), as
+    :func:`~docx4j_py.traversal.element_name` reads it, not ``XmlMeta.qname``,
+    which xsdata builds for a type class against whatever parent namespace it
+    met first (``CT_PPr`` before a parse, ``{...}CT_PPr`` after one), so that
+    the tables are the same whatever ran before them.
     """
-    global _LXML_TABLE
-    if _LXML_TABLE is not None:
-        return _LXML_TABLE
+    global _LXML_BOUND
+    if _LXML_BOUND is not None:
+        return _LXML_BOUND
     import inspect
     from importlib import import_module
 
@@ -355,6 +505,7 @@ def _lxml_table() -> dict[tuple[str, str], bool]:
     from docx4j_py.runtime import context
 
     bound: dict[str, set[type]] = {}
+    holders: dict[tuple[str, type], set[type]] = {}
     seen: set[type] = set()
     broken: set[type] = set()
     for module_name in sorted(set(EL_MODULES.values())):
@@ -368,15 +519,35 @@ def _lxml_table() -> dict[tuple[str, str], bool]:
             except Exception:  # noqa: BLE001 - inkml's MappingType names MathML's Math, which no module defines
                 broken.add(cls)
                 continue
-            if meta.qname:
-                bound.setdefault(meta.qname, set()).add(cls)
+            declared = vars(cls).get("Meta")
+            name, namespace = getattr(declared, "name", None), getattr(declared, "namespace", None)
+            if name and namespace:
+                bound.setdefault(f"{{{namespace}}}{name}", set()).add(cls)
             for var in meta.get_element_vars():
                 for each in (var, *(var.elements or {}).values()):
                     for tp in each.types:
                         if dataclasses.is_dataclass(tp):
                             bound.setdefault(each.qname, set()).add(tp)
+                            holders.setdefault((each.qname, tp), set()).add(cls)
+    with _LXML_LOCK:
+        _LXML_BOUND = (bound, holders, broken)
+    return _LXML_BOUND
+
+
+def _lxml_table() -> dict[tuple[str, str], bool]:
+    """(element qname, attribute qname) to "absence is on", for every ST_OnOff attribute the model types.
+
+    Built once from the model: every class that an element name binds, and that
+    class's :func:`on_off_attributes`. An attribute that one binding of an
+    element name types ``bool`` and another does not is left out: the typed
+    parse would keep it in one place and not the other, so the lxml side cannot
+    say.
+    """
+    global _LXML_TABLE
+    if _LXML_TABLE is not None:
+        return _LXML_TABLE
+    bound, _holders, broken = _bound()
     table: dict[tuple[str, str], bool] = {}
-    ambiguous: set[tuple[str, str]] = set()
     for element, classes in bound.items():
         per_class = [{var.qname: on for var, on in on_off_attributes(cls)} for cls in classes if cls not in broken]
         if not per_class:
@@ -387,42 +558,161 @@ def _lxml_table() -> dict[tuple[str, str], bool]:
             everywhere = all(attribute in found for found in per_class)
             if everywhere and len(values) == 1:
                 table[(element, attribute)] = values.pop()
-            else:
-                ambiguous.add((element, attribute))
     with _LXML_LOCK:
         _LXML_TABLE = table
     return table
 
 
+def _integer_kind(var: Any, word: bool) -> str:
+    return "word" if word else ("tokens" if var.tokens else "python")
+
+
+def _integer_tables() -> tuple[dict[tuple[str, str], str], dict[tuple[str, str, str], str]]:
+    """The integer attributes the model types, by name, for the lxml side: CR-021 Q5.
+
+    The first table maps (element qname, attribute qname) to the attribute's
+    kind --- ``"word"`` (Word's rule, :data:`INTEGER_NAMESPACES`), ``"python"``
+    or ``"tokens"`` (D5's) --- where **every class that declares the attribute**
+    among those the element name binds types it ``int``, alike (Q5: classes
+    that do not declare it, ``w:bottom`` in ``w:tblCellMar`` for a border's
+    ``w:sz``, do not count). That leaves three pairs whose element name binds a
+    class typing the attribute otherwise (``w:sz@w:val``: ``w:frame``'s is a
+    ``str``; ``w:default@w:val``; ``w:start@w:val``: a border edge's is
+    ``ST_Border``). The second table settles those by the element's holder,
+    (holder qname, element qname, attribute qname), where every class bound
+    under that holder agrees: ``w:rPr/w:sz``, ``w:ddList/w:default``,
+    ``w:lvl/w:start``.
+    """
+    global _LXML_INTEGERS
+    if _LXML_INTEGERS is not None:
+        return _LXML_INTEGERS
+    from docx4j_py.runtime import context
+
+    bound, holders, broken = _bound()
+    names_of: dict[type, set[str]] = {}
+    for element, classes in bound.items():
+        for cls in classes:
+            names_of.setdefault(cls, set()).add(element)
+
+    def kinds_of(classes: set[type]) -> dict[str, set[str | None]]:
+        """Each attribute some class declares, and the kinds the declaring classes give it (None: not an int)."""
+        out: dict[str, set[str | None]] = {}
+        for cls in classes:
+            if cls in broken:
+                continue
+            integers = {var.qname: _integer_kind(var, word) for var, word in integer_attributes(cls)}
+            for var in context().build(cls).get_attribute_vars():
+                out.setdefault(var.qname, set()).add(integers.get(var.qname))
+        return out
+
+    table: dict[tuple[str, str], str] = {}
+    by_holder: dict[tuple[str, str, str], str] = {}
+    for element, classes in bound.items():
+        if not element.startswith("{"):
+            continue  # a class's own type name (``CT_Bevel``), which no element in a part has
+        for attribute, kinds in kinds_of(classes).items():
+            if kinds == {None}:
+                continue
+            if len(kinds) == 1:
+                table[(element, attribute)] = next(iter(kinds))  # type: ignore[assignment]
+                continue
+            # the element name binds classes that disagree: by the holder each is bound under
+            under: dict[str, set[type]] = {}
+            for cls in classes:
+                for holder in holders.get((element, cls), ()):
+                    for name in names_of.get(holder, ()):
+                        under.setdefault(name, set()).add(cls)
+            for holder_name, there in under.items():
+                if not holder_name.startswith("{"):
+                    continue
+                found = kinds_of(there).get(attribute)
+                if found is not None and len(found) == 1 and None not in found:
+                    by_holder[(holder_name, element, attribute)] = next(iter(found))  # type: ignore[arg-type]
+    with _LXML_LOCK:
+        _LXML_INTEGERS = (table, by_holder)
+    return _LXML_INTEGERS
+
+
+def _integer_normal_form(value: str, kind: str, exact: bool) -> str | None:
+    """What a save writes for an integer attribute's `value`, by its kind: CR-021 sections 4.3 and 4.5.
+
+    ``"word"``: Word's reading (:func:`~docx4j_py.model.values.integer`), or
+    None for a form Word refuses; where the parse is not exact for ``int``
+    (before the fork's stage 14) a value Python's ``int()`` takes binds and the
+    serialiser writes that integer, so it is what the save writes. ``"python"``
+    and ``"tokens"`` (D5): Python's ``int()`` where it takes the value, else the
+    value as read.
+    """
+    if kind == "word":
+        if not exact:
+            bound = _python_int(value)
+            if bound is not None:
+                return bound
+        read = integer(value)
+        return None if read is None else str(read)
+    bound = _python_int(value, kind == "tokens")
+    return value if bound is None else bound
+
+
+def _exact_integers() -> bool:
+    """Whether the engine's parse reads an integer exactly (the fork's stage 14, CR-021 phase 0)."""
+    from docx4j_py.runtime import EXACT_TYPES
+
+    return int in EXACT_TYPES
+
+
 def normalise_tree(root: Any) -> list[tuple[str, str | None, str, str | None]]:
     """Write the normal form into an lxml tree of a part, in place: (element path, attribute, before, after).
 
-    The same rows as a save's: the on/off rows
-    (:func:`docx4j_py.model.values.on_off_normal_form`), found by name rather
-    than by the parse (an ST_OnOff attribute whose value is not exactly
-    ``true``, ``false``, ``1`` or ``0``), then the enumeration and colour
-    rows, the very function a save applies to its render
-    (:func:`normalise_render`; attribute None for an element dropped).
-    ``scripts/canon.py``'s ``word-normal-form`` applies it to a source before
-    comparing a normalised save with it, so that nothing else may move.
+    The same rows as a save's, found by name rather than by the parse: the
+    on/off rows (:func:`docx4j_py.model.values.on_off_normal_form`; an
+    ST_OnOff attribute whose value is not exactly ``true``, ``false``, ``1`` or
+    ``0``); the integer rows (:func:`_integer_tables`, CR-021: any value the
+    save would write otherwise, ``"720.5"`` as ``720``, a value the
+    serialiser re-spells too, ``"+240"`` as ``240``); the empty rsid, dropped;
+    then the rows a save applies to its render, the very functions
+    (:func:`normalise_render`: the enumerations and colours, attribute None for
+    an element dropped, and the union integers). ``scripts/canon.py``'s
+    ``word-normal-form`` applies it to a source before comparing a normalised
+    save with it, so that nothing else may move.
     """
     table = _lxml_table()
+    integers, by_holder = _integer_tables()
+    exact_integers = _exact_integers()
     exact = _EXACT
+    rsid = _W + "rsid"
     out: list[tuple[str, str, str, str | None]] = []
     for element in root.iter():
-        if not isinstance(element.tag, str):
+        tag = element.tag
+        if not isinstance(tag, str):
             continue
+        holder: str | None = None
         for attribute, value in list(element.attrib.items()):
-            absent_is_on = table.get((element.tag, attribute))
-            if absent_is_on is None or value in exact:
-                continue
-            after = _written(on_off_normal_form(value, absent_is_on))
+            absent_is_on = table.get((tag, attribute))
+            if absent_is_on is not None:
+                if value in exact:
+                    continue
+                after = _written(on_off_normal_form(value, absent_is_on))
+            elif attribute.startswith(rsid) and value == "":
+                after = None
+            else:
+                kind = integers.get((tag, attribute))
+                if kind is None:
+                    if holder is None:
+                        parent = element.getparent()
+                        holder = parent.tag if parent is not None else ""
+                    kind = by_holder.get((holder, tag, attribute))
+                    if kind is None:
+                        continue
+                after = _integer_normal_form(value, kind, exact_integers)
+                if after == value:
+                    continue
             if after is None:
                 del element.attrib[attribute]
             else:
                 element.set(attribute, after)
             out.append((element.getroottree().getpath(element), attribute, value, after))
-    rows = _enumeration_and_colour_rows(root)
+    rows = [*_enumeration_and_colour_rows(root), *_union_rows(root)]
     out.extend((row.element.getroottree().getpath(row.element), row.attribute, row.before, row.after) for row in rows)
     _apply_rows(rows)
     return out
@@ -580,6 +870,30 @@ def _enumeration_and_colour_rows(root: Any) -> list[_Row]:
     return rows
 
 
+_UNION_TAGS = tuple(sorted(UNION_INTEGER_ATTRIBUTES))
+
+
+def _union_rows(root: Any) -> list[_Row]:
+    """CR-021 D5's union rows, as rewrites of an lxml tree (not yet applied): found by name.
+
+    In an attribute of :data:`UNION_INTEGER_ATTRIBUTES` a value Python's
+    ``int()`` takes is written as that integer (``" 240"`` as ``240``), as the
+    parse before the fork's stage 14 bound and wrote it; any other value (a
+    guide name, a decimal) is left as it is. A value bound as an integer is
+    the serialiser's already, so nothing is found for it.
+    """
+    rows: list[_Row] = []
+    for element in root.iter(*_UNION_TAGS):
+        for attribute in UNION_INTEGER_ATTRIBUTES[element.tag]:
+            value = element.get(attribute)
+            if value is None:
+                continue
+            bound = _python_int(value)
+            if bound is not None and bound != value:
+                rows.append(_Row(element, attribute, value, bound))
+    return rows
+
+
 def _apply_rows(rows: list[_Row]) -> None:
     """Write :func:`_enumeration_and_colour_rows`' rewrites into their tree, a dropped element's tail kept."""
     for row in rows:
@@ -641,15 +955,16 @@ class _Active:
 
 
 def normalise_render(root: Any, part: str = "") -> list[Normalised]:
-    """Write the enumeration and colour rows into a part's rendered lxml tree, if a normalising save is under way.
+    """Write the render's rows into a part's rendered lxml tree, if a normalising save is under way.
 
     :meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart._marshal` calls it on
     every render. Outside a save that normalises (:func:`normalised_package`) it
     does nothing, so ``part.xml`` is unchanged; inside one the rewrites go into
-    the save's report. The rows are found by name over the render (one
-    ``iter`` of about twenty tags, a third of a millisecond over
-    ``Symbols.docx``'s 790 KB main part), so the typed tree is never touched and
-    a value set in code is written in the form too.
+    the save's report. The rows are CR-018 Phase B's enumerations and colours
+    and CR-021 D5's union integers, found by name over the render (an ``iter``
+    of about twenty tags each, a third of a millisecond over ``Symbols.docx``'s
+    790 KB main part for the first), so the typed tree is never touched and a
+    value set in code is written in the form too.
     """
     active = _ACTIVE.get()
     if active is None:
@@ -662,12 +977,13 @@ def normalise_render(root: Any, part: str = "") -> list[Normalised]:
 
 
 def rendered_rows(root: Any, part: str = "") -> list[Normalised]:
-    """Write the enumeration and colour rows into an lxml tree, in place, and return them as :class:`Normalised`.
+    """Write the render's rows into an lxml tree, in place, and return them as :class:`Normalised`.
 
-    For a caller that renders a tree itself (``scripts/roundtrip.py``), after
-    :func:`normalised_tree`'s on/off rows.
+    The enumeration and colour rows (CR-018 Phase B), then the union integer
+    rows (CR-021 D5). For a caller that renders a tree itself
+    (``scripts/roundtrip.py``), after :func:`normalised_tree`'s typed rows.
     """
-    rows = _enumeration_and_colour_rows(root)
+    rows = [*_enumeration_and_colour_rows(root), *_union_rows(root)]
     records = [Normalised(part, _lxml_path(row.element, row.attribute), row.before, row.after) for row in rows]
     _apply_rows(rows)
     return records
