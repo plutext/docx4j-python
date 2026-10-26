@@ -221,3 +221,153 @@ The user, 2026-10-26: "CR-022 questions take the recommended answers". So:
 ## 9. Effort
 
 1 to 1½ days here after round 5: A 1, B ¼ to ½.
+
+## 10. Phase A implementation notes (2026-10-26)
+
+Phase A as built, D1 to D4 and section 5's tests, at the coordinator's brief after the decision of section 8. Phase B (the records) is next and isn't started: no CHANGELOG, README, `docs/pypi-readme.md`, CLAUDE.md or index change here. docx4j CR-066 (sections 3.1 and 3.4) and docx4j-core-ts CR-002 section 65 (`fd898b9`: `wordRange.mts`, `measurements.test.mjs`, check 71's run) were read for behaviour only.
+
+**Commits.**
+- `e46f3c1`: the fixtures, `tests/fixtures/integer-limits/` (10.2).
+- `ac288fa`: D1 and D2: the limits table, `values.measure_in_range`, `MeasureRangeError`, and the table's tests (`test_integer_limits.py`). Nothing calls the check yet.
+- `3f66840`: D3 and D4: every setter through the check, the setter tests, the census (`test_measurement_setters.py`, `test_measurement_writes.py`), `tests/README.md`'s rows.
+- the commit after `3f66840`: this section.
+
+Two commits by other sessions landed on `main` between the decision (`9ef7507`) and `e46f3c1`, both documents only (`31d548b`, CR-023's close; `a1e8abc`, CR-020 section 4.7), so the before-runs below, taken at `9ef7507`, are the code `e46f3c1` started from.
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the table (D1) | `docx4j_py/resources/integer-limits.json` (`resources` is in `KEEP`) | hand-written, 60 rows, 82 (attribute, context) keys once a row naming several attributes is expanded, 7 unmeasured attributes (10.3) |
+| the check (D2) | `docx4j_py/model/values.py` | `measure_in_range(attribute, value, units=POINTS, *, label, context=None, limit=None)`; `integer_limit(attribute, context)`, `integer_limits()`, `unmeasured_attributes()`; `IntegerLimit`, `Units` (`POINTS`, `EMU`, `LINES`, `OWN`), `CallerLimit` (10.4) |
+| the error | `docx4j_py/model/content/errors.py`, exported from `docx4j_py.model.content` | `MeasureRangeError(ContentError, ValueError)`, `default_code = "value.out_of_range"`, with `attribute`, `value` and `stored` |
+| the setters (D3, D4) | `model/content/paragraph.py`, `table.py`, `lists.py`, `font.py`; `docx/section.py`, `text.py`, `table.py`, `_base.py`; `wml/builders.py` | 10.5 |
+| the census | `tests/content/test_measurement_writes.py` | 92 writes of an integer attribute, 30 through the check, 62 listed with a reason (10.6) |
+| the oracle | `tests/content/test_integer_limits.py`, `tests/content/test_measurement_setters.py` | 10.7 |
+
+### 10.2 The fixtures
+
+`tests/fixtures/integer-limits/`, copied read-only from `vbShares/Office 2016/__tmp/cr066/` on 2026-10-26 and checked against the share file by file (SHA-1): `round5/` holds round 5's six group files (`cr066-{B,N,P,R,S,T}.docx`), Word 365's save of each, `cases.txt` (191 cases, the control `Z-1` among them) and `README.txt`; `round6/` holds round 6's eight group files (`cr066-r6-{A,E,F,N,P,R,S,T}.docx`), their saves, the twenty `D1` and `D2` singles (`w:defaultTabStop` and `w:hyphenationZone`, one document-wide value per file) and their saves, `cases.txt` (489 cases) and `README.txt`. No `~$` lock file was there. Not copied: the families and the other singles (fallbacks no round needed, since Word opened every group) and `families.txt` (its content is in `cases.txt`). `README.md` names the sources (docx4j CR-066 phase 0, rounds 5 and 6, the user's Word 365 runs of 2026-10-26, docx4j-25's generator, round 5 at `1be8b6515`) and how a case is laid out; `SHA1SUMS` holds the 72 files.
+
+### 10.3 The table as built (D1)
+
+Each row gives its attribute paths, a context where the range depends on a sibling attribute (`null` for that attribute absent), the faithful range (inclusive, in the row's unit), Word's storage as found, and the case ids it rests on. A path names a holder where the element name alone isn't enough: `w:rPr/w:sz` (`w:frame/w:sz` is text), and the two cell-margin rows, which round 6 measured on one edge each. Two optional fields record how Word's save spells a reading: `word_writes` (65535 saved as `"-1"`, in `w:before`, `w:after` and the five unsigned margins) and `sentinel` (`w:col/@w:space`, where every negative becomes -1).
+
+| Attribute (context) | Faithful range | Cases |
+|---|---|---|
+| `w:ind/@w:left`, `@w:start`, `@w:right`, `@w:end` | -32,768 to 32,767 twips | r5 P2; r6 A6, A5, A7 |
+| `w:ind/@w:firstLine` | 0 to 32,767 twips | r6 A1 |
+| `w:ind/@w:hanging` | 0 to 32,768 twips | r6 A2 |
+| `w:spacing/@w:before`, `@w:after` | 0 to 65,535 twips | r5 P1, N1; r6 A3 |
+| `w:spacing/@w:line` (`lineRule` auto, absent) | -32,768 to 32,767 240ths of a line | r5 P3 |
+| `w:spacing/@w:line` (exact) | **1 to 32,768** twips (departure 1) | r5 P4 |
+| `w:spacing/@w:line` (atLeast) | 0 to 32,767 twips | r6 A4 |
+| `w:spacing/@w:val` (a run's) | -32,768 to 32,767 twips | r5 R3 |
+| `w:position/@w:val` | -32,768 to 32,767 half-points | r5 R2 |
+| `w:rPr/w:sz/@w:val`, `w:szCs/@w:val`, `w:kern/@w:val` | 0 to 65,535 half-points | r5 R1, N1; r6 R2, R3 |
+| `w:w/@w:val` (text scale) | 0 to 65,535 percent | r5 R4, N1 |
+| `w:tblW/@w:w`, `w:tcW/@w:w` (`type` dxa; pct) | -32,768 to 32,767 twips; fiftieths of a percent | r5 T1, T2; T5, T4 |
+| `w:tblInd/@w:w`, `w:tblCellSpacing/@w:w`, `w:tblCellMar/w:left/@w:w`, `w:tcMar/w:top/@w:w` (dxa) | -32,768 to 32,767 twips | r5 T3; r6 T4, T5, T6 |
+| `w:trHeight/@w:val` (`hRule` atLeast, absent) | 0 to 32,767 twips | r5 T6, N1 |
+| `w:trHeight/@w:val` (exact) | **1 to 32,768** twips (departure 1) | r6 T1 |
+| `w:tab/@w:pos` | -31,680 to 31,680 twips | r5 P5 |
+| `w:pgSz/@w:w`; `@w:h` | 144 to 31,681; 144 to 65,535 twips | r5 S1, N1; S2 |
+| `w:pgMar/@w:top`, `@w:bottom` | -32,768 to 32,767 twips | r5 S3, N1; r6 S6 |
+| `w:pgMar/@w:left`, `@w:right`, `@w:header`, `@w:footer`, `@w:gutter` | 0 to 65,535 twips | r6 S1 to S5 |
+| `w:pgNumType/@w:start` | -2,147,483,648 to 2,147,483,647 | r5 S4 |
+| `w:cols/@w:space`; `w:col/@w:w`, `@w:space`; `w:lnNumType/@w:distance` | -32,768 to 32,767; 0 to 32,767; 0 to 32,767; -32,768 to 32,767 twips | r6 S7; S8, S9; S10 |
+| `w:framePr/@w:w`, `@w:hSpace`, `@w:vSpace`, `@w:x`, `@w:y`; `@w:h` | -32,768 to 32,767; 0 to 32,767 twips | r6 F1, F3 to F6; F2 |
+| `w:tblpPr`'s `leftFromText`, `rightFromText`, `topFromText`, `bottomFromText`, `tblpX`, `tblpY` | -32,768 to 32,767 twips | r6 P1 to P6 |
+| `w:defaultTabStop/@w:val`, `w:hyphenationZone/@w:val` | 0 to 65,535 twips | r6 D1, D2 |
+| `w:top/@w:sz`, `w:bdr/@w:sz`; `@w:space` | 0 to 255 eighths of a point; 0 to 31 points | r5 B1, B2, N1; r6 R4, R5, T9, T10, S11 |
+| the other eleven border edges' `@w:sz`, `@w:space` (`left`, `bottom`, `right`, `start`, `end`, `between`, `bar`, `insideH`, `insideV`, `tl2br`, `tr2bl`) | as `w:top`'s | by analogy (Q3) |
+
+That is 60 rows, every one of section 3.1's and 3.3's measurable attributes. **Unmeasured** (no row, so not checked; Q3): `w:trHeight/@w:val` under `hRule="auto"` (discarded at every value, T2), `w:gridCol/@w:w` (recomputed, T3), `w:wBefore` and `w:wAfter` (dropped, T7, T8), `w:legacy`'s two (dropped, N1) and `w:fitText/@w:val` (kept at every value, R1: no limit found). Every case of both rounds is cited once, by a row or by the unmeasured list, but for the two controls and round 6's group E, which is CR-021's: 612 cases by rows (191 inside their row's range, 421 outside), 58 by the unmeasured list.
+
+Not in the table, by design: anything 32 bits or wider (the comment, bookmark and revision ids, `w:numId`, `w:abstractNumId`), and anything outside `w` (DrawingML's EMUs). Every row's range fits 16 bits but `w:pgNumType/@w:start`'s.
+
+### 10.4 The check (D2)
+
+`measure_in_range("w:ind/@w:left", points, label="left indent")` looks up the row (by attribute and context), converts the caller's value to the row's unit **with the conversion the setter always made** (`round(points * 20)`, python-docx's `Length.twips`, `round(Length.pt * 2)`, `twips_of(Emu(int(lines * Twips(240))))`, or the value itself for the builders' twips), and returns it if the row admits it and the caller's limit (a `CallerLimit`, in the caller's units) admits the caller's value; otherwise it raises `MeasureRangeError`. An attribute the table lists as unmeasured, or a context it lists (`w:trHeight` under auto), is converted and not checked. An attribute the table doesn't know raises `LookupError`: a setter's mistake, not a caller's. A NaN or an infinity is refused, `value.out_of_range` too. 1.4 µs a call.
+
+The message is the CR's (Q6): `left indent 400000 pt (8,000,000 twips) is beyond Word's range, -1,638.4 to 1,638.35 pt`, exactly section 4.2's example with the decided range. Its hint is the range: `pass a left indent from -1,638.4 to 1,638.35 pt`. Where Office JS's limit binds, the range is the two ranges together, an open end said so, and the message says whose: `space before 5000 pt (100,000 twips) is beyond Word's range, 0 to 1,638 pt, 1,638 excluded, where Office JS's setter stops`. For a `Length` the value is shown in EMU with cm (pt for a size) and the attribute's unit, and the range in EMU with cm, each cm bound rounded inward: `page width 180000000 EMU (500 cm, 283,465 twips) is beyond Word's range, 91,440 to 20,117,435 EMU (0.254 to 55.881 cm)`. A line multiple shows lines, its bounds to three places inward (`-136.533 to 136.529 lines`).
+
+### 10.5 The setters (D3, D4)
+
+Each computes its value through the check **before** it creates or records anything (a `w:pPr`, a `w:ind`, a `w:pPrChange` under tracking, a split run, a `ChangeReport`), so a refusal leaves the tree as it was. Where the old code converted inside `with recording(...)` or after creating the element, the conversion moved up.
+
+- **The content API, at Office JS's limits** (section 3.2, Q1): `Paragraph.space_before` and `space_after` (`OFFICE_JS_SPACING`: 0 up to, not including, 1,638 pt) and `line_spacing` (the same, with the exact row, so 0.05 pt up); `List.set_level_indents`' text indent (`OFFICE_JS_TEXT_INDENT`: above -1,638.4, below 1,638 pt); `Font.size` (`OFFICE_JS_FONT_SIZE`: above 0, up to 1,638 pt; 0 removes, departure 2). `TableCell.width` and `column_width` refuse a negative, as Office JS refuses it (`OFFICE_JS_CELL_WIDTH`; departure 3).
+- **The content API, at the faithful range**, where Office JS lets the value wrap: `Paragraph.left_indent` and `right_indent` (by whichever of `w:left`/`w:start` or `w:right`/`w:end` the paragraph writes), `first_line_indent` (`w:firstLine` 0 to 1,638.35 pt, `w:hanging` to 1,638.4 pt), `TableCell.width` up to 1,638.35 pt, and `set_level_indents`' marker (the first-line field).
+- **The python-docx facade, at the faithful range** (Q4), a `Length` in EMU: `Section.page_width`, `page_height` and the seven margins (`left_margin`, `right_margin`, `top_margin`, `bottom_margin`, `header_distance`, `footer_distance`, `gutter`); `ParagraphFormat.left_indent`, `right_indent`, `first_line_indent`, `space_before`, `space_after`, `line_spacing` (a `Length` under the rule the write leaves, exact or at least; a multiple under auto, in 240ths of a line); `TabStops.add_tab_stop` and `TabStop.position`; `Font.size` (half-points); `_Row.height` (under its row's rule: at least or absent, exact; not checked under auto, and a rule outside the enumeration read as unset, as CR-018 reads one); `_Cell.width`; `Table.add_column` and `add_table`'s and `_Cell.add_table`'s columns (`_base.column_widths`, before the table, or the paragraph `_Cell.add_table` puts in first, goes in).
+- **The builders, at the faithful range** (Q5): `apply_run_options`' `size` (so `r(..., size=)`, `p(..., size=)` and everything over them), checked first, before any option is applied; `tc(width=)`; `tbl`'s column widths and their sum (`w:tblW`).
+- `None` keeps its meaning everywhere: unset in the facade, left alone in `Font.size` and the builders. `w:gridCol` is written unchecked (`_Column.width`, `_set_column_widths`, `tbl`), with no row (10.3).
+
+### 10.6 The census (D3)
+
+`tests/content/test_measurement_writes.py` walks the AST of every module under `docx4j_py/model/content` and `docx4j_py/docx` and of `wml/builders.py`, `wml/pictures.py` and `wml/sdt.py` for every write of an integer attribute of `w`, `w14` or `w15`: an assignment to a field whose Python name is such an attribute's anywhere in the model (93 names; not to bare `self`, not of a constant), a `setattr` naming one or naming a variable, and a keyword to a model class or an `el` factory whose class types that keyword an integer attribute (the class resolved from the module's names). A write goes through the check when its value holds a call of `measure_in_range` or a name the same function bound from one, to a fixed point. Every other write is listed, keyed `<file>::<scope>::<the write>`; a new one fails, as CR-021's census does. 92 writes: 30 through the check, and 62 listed:
+- 30 an integer attribute that is no measurement (ids, `w:numId`, `w:abstractNumId`, `w:ilvl`, a level's start, `w:outlineLvl`, `w:uiPriority`, `w:gridSpan`);
+- 14 a field that is no integer attribute where it is written, only named like one elsewhere (`w:b`, toggles, children, content lists, `xml:space`, a relationship id, core properties);
+- 5 a field copied as it stands (a deep copy, a split run, a restored `w:pPr`);
+- 4 not a model field (a span's offsets, a class's methods);
+- 3 `w:gridCol`, with no row;
+- 3 a constant expression (a new level's default indents, a line multiple's 240ths);
+- 2 a string value in a `w:val` (`w:compatSetting`, a tab's alignment);
+- 1 a width computed from widths its caller checked (`_set_column_widths`' `w:tcW`).
+
+CR-021's census (`test_integer_readers.py`) lists the check's own `int()` and `float()` calls: 131 listed now, 13 added (12 in `values.py`, a new reason `TABLE` for the table's own numbers; the facade's `first_line_indent`) and 2 gone (the facade's `Font.size` and `line_spacing` conversions, now the check's).
+
+### 10.7 Tests and the numbers
+
+- **`test_integer_limits.py`** (838 tests): the fixtures against `SHA1SUMS`; the rounds' case counts; every case cited once; each cited case of its row (element, attribute, the context the source states) and its value in the source; **each row against Word's saves**: for 58 rows with cases, 612 readings, every value inside the row's range kept (the value Word saves under the same rule, 65535 read through `word_writes`) and every value outside changed (wrapped, clamped, its rule flipped, its sentinel, or dropped), a boundary kept and one past it changed wherever the probe set them; the unmeasured attributes as Word treated them; each row's element against every class it binds in the model (`normalise._bound()` and `integer_attributes`, as CR-021's canon table reads the model): at least one class declares the attribute, every declaring class types it an integer of `w` and declares the row's context attribute, and a holder is needed for its typing or named in the row's note as the only one measured; the border rows on border classes only; the wide attributes absent and every row within 16 bits but `w:pgNumType/@w:start`. Fed the CR's own `0 to 32,767` for an exact line or an exact height, the test fails on P4-2 or T1-2; fed 31,680 for the page width, on S1-2.
+- **`test_measurement_setters.py`** (37 tests): each setter of 10.5 at both ends of its range and one past each, the code, a `ValueError` and a `ContentError`, the hint naming the range, the tree and `package.changes` unchanged; `w:start`/`w:end` paragraphs; the first-line field; under change tracking, no `w:pPrChange`; a range's font splitting no run when refused; NaN and infinity; the facade's line spacing under each rule, a row's height under each rule (and an unknown rule), `add_table`'s and `_Cell.add_table`'s columns refused before anything goes in; the builders; **section 2.1's four examples**, refused with the CR's message.
+- **`test_measurement_writes.py`** (5 tests): the census, its reasons, the section 2.2 setters found through the check, and the scanner's own rules (a bound name; a raw write to a field, to an `el` keyword and by `setattr` caught, an enumeration's `w:val` not).
+
+### 10.8 Departures, with why
+
+1. **An exact line and an exact row height are 1 to 32,768 twips, where sections 3.1 and 3.3 give 0 to 32,767.** Word stores an exact value as its negative, so the stored sign gives the rule back. Exact 32,768 is stored as -32,768 and read as exact 32,768: Word's saves keep it (P4-2; T1-2), and exact -32,768 comes back as exact 32,768 too (P4-7, T1-6). Exact 0 is stored as 0, as exact 65,536 is, which Word saves as `atLeast` 0 (P4-4) or drops (T1-4). The CR's bound would refuse a value Word keeps and accept one it changes, and section 5's test, a boundary kept and one past it changed, can't hold with it (10.7). docx4j-core-ts's `spacingLineExact` is 1 to 32,768 too. So `Paragraph.line_spacing` refuses below 0.05 pt (0 included), the facade's exact `Twips(0)` is refused and `Twips(32768)` accepted, and a row's exact height is 1 to 32,768. At least, the ranges are the CR's, 0 to 32,767.
+2. **`Font.size = 0` keeps removing `w:sz` and `w:szCs`,** where Office JS refuses 0 (check 71, case 95). The removal has been documented on `Font.size` since CR-003 Phase B ("Setting `0` removes `w:sz` and `w:szCs`, which is what writing back what a silent run reads means": a run with no size reads 0, so writing back what was read must not ask for a 0 pt font), and `test_font.py::test_the_empty_values_remove_the_element` holds it. Following Office JS would break both, so 0 never reaches the check; every other value is held to Office JS's limit, above 0 up to 1,638 pt, and a negative is refused. The builders' `size=0` removes too, the same mapping (`apply_run_options`). **For the user to decide** (10.11).
+3. **`TableCell.width` refuses a negative.** D4's list of Office JS's refusals doesn't name it, but section 3.2 records it ("Only a negative `columnWidth` is refused"), and Q1 is to refuse where Office JS refuses. The faithful row alone (signed) would accept it. The facade's `_Cell.width` and the builders' `tc(width=)` accept a negative, as the faithful range does (Q4, Q5).
+4. **The content API's Office JS limits apply with the faithful range, not instead of it.** The two agree except at an exact line's 0 (departure 1), which Office JS was not asked; check 71 never set `lineSpacing` to 0. The setter refuses there.
+5. **Office JS's limits are on the caller's value, before rounding**, as Office JS's are stated: 1,637.99 pt of space before is accepted and written as 32,760 twips, the twips 1,638 pt would write; 1,638 is refused. Where exactly Office JS stops between the values check 71 set (1,584 and 1,638 pt for spacing; 1 to 1,638 for a font) is unmeasured (core-ts's D2 asks for a check 71b); this follows the CR's statement of them.
+6. **Two fields the table carries for the readings, not for the check:** `word_writes` and `sentinel` (10.3). Without them the fixture test would read Word's `"-1"` for 65,535 as a change, and `w:col/@w:space`'s `-1` as a kept -1.
+7. **The cell-margin rows are the measured edges only** (`w:tblCellMar/w:left`, `w:tcMar/w:top`), though section 3.3's table names the containers: Q3 takes only the border edges by analogy. The other margin edges have no row.
+8. **`add_table`'s column widths are shown in twips**, not in the caller's `Length`: they're the facade's own division of it (`_base.column_widths`), and a column's twips are what is refused.
+9. **`_Row.height` under `hRule="auto"` is not checked**, by the table's unmeasured entry: Word discards it at every value (T2). A height set under auto and a rule changed afterwards is 10.10 item 1.
+
+### 10.9 Existing semantics kept
+
+- `wml/builders.py`'s `size=0` removes `w:sz` and `w:szCs`: not a measurement written, so not checked. Kept.
+- `None`: unset in the facade (`page_width = None` and the margins, indents, spacing, line spacing, row height and cell width remove the attribute or the element, as before); left alone by `Font.size` and the builders. Kept, and tested for the section, the paragraph format and the font.
+- `Font.size = 0` removes the size (departure 2). The content API has no other documented meaning for a value Office JS refuses: `line_spacing = 0` was undocumented (the getter's "0 when the paragraph sets none" is a reading), and it wrote `w:line="0" w:lineRule="exact"`, which Word reads as at least 0.
+- **No pre-existing test's expectation changed.** No test asserted a value now refused; the only edits to existing tests are CR-021's census list (10.6) and `tests/README.md`'s rows.
+
+### 10.10 Found, and not done
+
+1. **The rule setters can move a value out of its range without a check.** The facade's `line_spacing_rule` changes `w:lineRule` under an existing `w:line` (an auto line of -100 set to `EXACTLY` is exact -100, which Word reads as at least 100), and `_Row.height_rule` changes `w:hRule` under an existing height (32,768 at least is refused, but 32,768 exact set to at least is accepted and read as exact). They write the rule, not the measurement, so the census doesn't see them; they could check the existing value under the new rule.
+2. **`insert_table` (and the Markdown importer's tables) over a section whose page width is already beyond Word's range** now refuse, through `tbl`'s check (`table width ... twips`), where before they wrote a width Word wraps. Only a file's own out-of-range `w:pgSz` reaches it (CR-020 Phase B's to report); `writable_width` could clamp, but CR-021 Q7 is against emulating Word's reading.
+3. **Writers outside the census's scope**: the Markdown importer's nested-quote indent grows 720 twips a level, beyond 32,767 at 46 levels (`model/markdown/importer.py`, `context_p_pr`); the revisions engine's grid and width merges (`model/revisions/tables.py`) sum widths already in the tree. Neither takes a caller's measurement. The scanner run over `model/markdown`, `model/customxml` and `model/revisions` finds 29 writes, none through the check.
+4. **`api_script`** writes a script from a document's values, so a file already out of range gives a script that now raises when it is run. It reads; it doesn't write.
+5. **CR-020 Phase B's finding** (its section 4.7, agreed with core-ts's CR-017 the same day) wants `storage` as a token (`"int16"`, `"uint16"`, `"8 bits"`, `"5 bits"`, `"int32"`) and `word_reads`, what Word reads. The table's `storage` is prose beginning with the token in most rows (not `w:firstLine`'s, `w:hanging`'s or `w:framePr/@w:h`'s), and there is no model of the wrap. Both are Phase B's of CR-020 to add, or a field here.
+6. **Differences from docx4j-core-ts's setters** (`wordRange.mts` at `fd898b9`), where this follows the CR: core-ts holds `spaceBefore`, `spaceAfter`, `font.size` and the list text indent at Word's storage, pending its D2, where these are at Office JS's limits (Q1); core-ts stops `w:before` and `w:after` at 65,534 because Word writes 65,535 back as `"-1"`, where the CR's range is 0 to 65,535 and these only matter in the facade (the content API stops at 1,638 pt); core-ts's message also says what Word would read (`Word 365 would read it as 4608`), which needs the wrap model of item 5; core-ts has a percentage cell width, which this content API doesn't write. The exact line agrees (1 to 32,768), as do the indents, the first-line field and a cell's width.
+
+### 10.11 For the user to decide
+
+1. **`Font.size = 0`** (departure 2): keep the documented removal (as built), or follow Office JS and refuse 0, changing CR-003's documented behaviour and `test_the_empty_values_remove_the_element`.
+2. **Departure 1**: the exact rows at 1 to 32,768, from Word's saves, and with them `Paragraph.line_spacing = 0` refused.
+3. **65,535 in the unsigned twips attributes** (`w:before`, `w:after`, the five unsigned margins): accepted, as the CR's range says, though Word's save writes it back as `"-1"`, which another reader (and CR-020's report, unless it reads `word_writes`) takes for -1; core-ts stops at 65,534. Only the facade and the builders reach it.
+4. **10.10 item 1**: whether the facade's rule setters should check the value they leave under the new rule.
+
+### 10.12 The gates
+
+| gate | before (`9ef7507`) | after (`3f66840`) |
+|---|---|---|
+| the full suite (`.venv-fork/bin/python -m pytest`) | 6,770 passed, 8 skipped (derived: 7,650 less the 880 new tests) | **7,650 passed, 8 skipped** (4 min 47 s) |
+| the fast suite (`-m "not slow"`) | 5,389 passed, 8 skipped, 1,381 deselected: the existing tests, run once the setters had changed and before any new test was written; none failed but CR-021's census, which then listed the check's conversions | 6,269 passed, 8 skipped, 1,381 deselected (3 min 16 s) |
+| the new tests | --- | 838 in `test_integer_limits.py`, 37 in `test_measurement_setters.py`, 5 in `test_measurement_writes.py` |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | --- | **50 of 50** canonically identical, 0 differences, 0 skipped, 34 `boolean-spelling` |
+| acceptance (`scripts/compare_acceptance.py`, `out/acceptance/` regenerated at `9ef7507` in a scratch worktree against the checkout's) | --- | **17 artefacts, 246 entries, 0 differ** beyond the dates: no acceptance document sets an out-of-range value |
+| `codegen/generate.sh --check` (a scratch worktree at `3f66840`) | --- | two generations byte identical, 308 modules; nothing generated differs from the commit, and `resources/integer-limits.json` survives `clean.py` |
+| `ac288fa` on its own (a scratch worktree) | --- | `tests/content/`, `test_builders.py`, `test_builders_phase_a.py`: 3,449 passed, 3 skipped (the worktree's skips) |
+| the censuses | --- | 92 writes, 30 through the check, 62 listed; CR-021's 131 listed |
+
+No Word check (section 5): a refusal writes nothing, and the acceptance documents are unchanged.
