@@ -35,7 +35,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   trusted publishing from a GitHub release (`RELEASING.md`; the fork's is its `REBASING.md`
   "Releasing"). The gates are
   `scripts/release_check.sh` plus the Word check. `pyproject.toml` depends on
-  `docx4j-xsdata[lxml]>=26.2.3,<26.3`; `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
+  `docx4j-xsdata[lxml]>=26.2.4,<26.3` (since CR-021 phase 0, unreleased here); `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
   the PyPI page, every fence executed by `tests/test_readme.py`.
 - **CR-008** (table conditional formatting): proposed. **CR-009** (theme colours): Phase A
   implemented; B implemented 2026-10-24 (`model/color/`, the WordprocessingML half of docx4j's
@@ -101,7 +101,10 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   2026-10-26 (Q1 to Q9 as recommended); nothing started.
 - **CR-021** (integer attributes read as Word reads them, docx4j CR-065's rule: a decimal truncated toward zero, the
   empty string 0, any other form refused; one `values.integer`, the normaliser's integer rows, the fork's `int` made exact):
-  decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately); nothing started.
+  decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately). Phases 0 (the fork's stage 14,
+  docx4j-xsdata 26.2.4, `int` in `runtime.EXACT_TYPES`), A (`values.integer` under every reader, a census) and B
+  (the normaliser's integer rows, the empty rsid dropped, today's output outside `w`, `w14`, `w15`) done 2026-10-26;
+  C's Word check staged, awaiting the user.
 - **CR-022** (integer measurements refused beyond Word's range as code sets them, after Word's 16-bit wrap; the shared
   probe's round 5 is phase 0): proposed 2026-10-26; six questions open.
 

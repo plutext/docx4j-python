@@ -9,7 +9,34 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **An integer attribute is read exactly as written** ([CR-021](docs/change-requests/CR-021-integer-attributes-read-as-word-reads-them.md)
+  phase 0; the fork's stage 14). `" 240 "`, `"1_000"` and digits from other scripts used to bind as
+  integers through Python's `int()`, where Word refuses the document. They're now kept as their text
+  and listed in `part.kept`. In WordprocessingML a save drops them; elsewhere it writes the integer,
+  as before.
+
 ### Fixed
+
+- **Integer attributes are read and saved as Word 365 reads them**
+  ([CR-021](docs/change-requests/CR-021-integer-attributes-read-as-word-reads-them.md), section
+  [10](docs/change-requests/CR-021-integer-attributes-read-as-word-reads-them.md#10-phases-a-and-b-implementation-notes-2026-10-26);
+  a defect 0.1.0 and 0.2.0 shared). A decimal where WordprocessingML wants an integer (Google Docs'
+  `w:tblW w:w="10206.0"` and `w:pgSz w:w="11907.0"`, pandoc 2.2.1's `tblW`, the
+  `w:hanging="141.99999999999994"` family) or an empty one (SQL Server Reporting Services 2012's
+  `w:pgMar w:header=""`) was kept as its text and written back after an edit. The readers then
+  disagreed: `Paragraph.left_indent` read "720.5" as 36.025 pt, and the python-docx facade's
+  `section.page_width`, `header_distance` and table column widths raised `ValueError`.
+  - **Reading:** `docx4j_py.model.values.integer` reads Word's form, `[+-]?[0-9]*(\.[0-9]*)?` or the
+    empty string, truncated toward zero, the empty string 0. Every reader of an integer attribute
+    goes through it, held by a census.
+  - **Saving:** a save writes Word's integer and drops a form Word refuses (`"abc"`, `"1e3"`,
+    surrounding whitespace). It drops an empty `w:rsid*` too, as Word does. Each change is recorded
+    in `last_save.normalised`, and `save(normalise=False)` keeps the source.
+  - **Scope:** WordprocessingML (`w`, `w14`, `w15`), where Word was measured. Elsewhere a save writes
+    what 0.2.0 wrote.
+  - **The rule** is Word's, from docx4j CR-065's shared probe (four rounds, Word 365, 2026-10-26).
 
 - **The PyPI page's figures** ([`docs/pypi-readme.md`](docs/pypi-readme.md)): 0.2.0's page still
   described 0.1.0 ("What is and is not in 0.1", 45 parity goldens, a 1 MB wheel of 238 modules,
@@ -17,6 +44,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   package's source at 0.1.0). It now gives 0.2.0's: 46 goldens, a 1.5 MB wheel of 308 modules,
   7.5 MB installed, a 0.7 s import and 112,000 lines of generated code (the files outside
   `codegen/clean.py`'s `KEEP`), under "What is and is not in 0.x".
+
+### Dependencies
+
+- `docx4j-xsdata[lxml] >=26.2.4,<26.3`: the fork's
+  [docx4j-xsdata 26.2.4](https://pypi.org/project/docx4j-xsdata/26.2.4/), published 2026-10-26 (its
+  `docs/fork/CHANGES.md` stage 14, item 32: `ParserConfig(exact_types=)` takes `int`).
 
 ## [0.2.0] --- 2026-10-25
 

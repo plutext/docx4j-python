@@ -1,6 +1,6 @@
 # CR-021: Integer attributes read as Word reads them --- a decimal truncated toward zero, the empty string 0, every other form refused; the port of docx4j CR-065's rule
 
-**Status:** Proposed 2026-10-26, at the user's request ("yes please draft the CR"). The portfolio session had relayed the user's request the same day: propose a fix for a decimal in a WordprocessingML integer attribute, which docx4j repairs on load and this package saves back. The rule comes from docx4j CR-065's phase 0: one Word probe shared by the three ports, 65 cases over four rounds, run by the user in Word 365 on 2026-10-26 and checked here against Word's own saves (section 3). Four phases (section 6): 0, the fork's stage 14 (Q2); A, the reader; B, the save; C, the records and a Word check. 2 to 3 days here, plus half a day in the fork. **Decided 2026-10-26** (the user: "CR-021 Q1 to Q6 and Q8 as recommended; Q7 discussed separately"; section 8). Q7 was discussed separately. Its outcome so far is CR-022, the write-side guard, and an out-of-range report added to CR-020 Phase B. This CR doesn't emulate the wrap, as recommended, unless that discussion decides otherwise. **Started 2026-10-26** (the user: "do CR-021"). Phases A and B are in progress here. Phase 0, the fork's stage 14 (its item 32), is being built by the fork session; its release, docx4j-xsdata 26.2.4, waits on the user's go, step by step.
+**Status:** Proposed 2026-10-26, at the user's request ("yes please draft the CR"). The portfolio session had relayed the user's request the same day: propose a fix for a decimal in a WordprocessingML integer attribute, which docx4j repairs on load and this package saves back. The rule comes from docx4j CR-065's phase 0: one Word probe shared by the three ports, 65 cases over four rounds, run by the user in Word 365 on 2026-10-26 and checked here against Word's own saves (section 3). Four phases (section 6): 0, the fork's stage 14 (Q2); A, the reader; B, the save; C, the records and a Word check. 2 to 3 days here, plus half a day in the fork. **Decided 2026-10-26** (the user: "CR-021 Q1 to Q6 and Q8 as recommended; Q7 discussed separately"; section 8). Q7 was discussed separately. Its outcome so far is CR-022, the write-side guard, and an out-of-range report added to CR-020 Phase B. This CR doesn't emulate the wrap, as recommended, unless that discussion decides otherwise. **Started 2026-10-26** (the user: "do CR-021"). **Phases 0, A and B are done (2026-10-26; section 10).** Phase 0 is the fork's stage 14 (item 32), released as docx4j-xsdata 26.2.4 on the user's go, with `int` now in `runtime.EXACT_TYPES`; the commits here are `2d7e46c`, `e158f2f`, `406d98d`, `44e2888` and `7fe0be8`. Each was verified by hand (section 10.12). **Phase C:** the records are done, and the Word check is staged on the share at `__tmp/python-cr021/`, awaiting the user's run.
 
 *The number:* CR-020 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -328,3 +328,32 @@ At the coordinator's brief (2026-10-26), once docx4j-xsdata 26.2.4 was on PyPI (
 7. **The 16-bit wrap** is not emulated (Q7); CR-022 is its guard.
 8. **`XmlPart._empty_value` has false positives**: `""` or `''` in a part's text (two quotation marks typed together) sends the part through the typed walk, about 30 ms over a part the size of `Symbols.docx`'s, for no row. Not measured over the corpus; a tighter test (`=""` with XML's optional spacing) would cost a regular expression over the bytes.
 9. **CHANGELOG's dependency line for 26.2.4** is phase C's, with the other records; `pyproject.toml` and `RELEASING.md` name it already.
+
+### 10.12 Review (2026-10-26)
+
+Verified by hand at `7fe0be8`:
+- **The fast suite:** 5,370 passed, 8 skipped. The full suite was the agent's: 6,751 passed, 8 skipped.
+- **`scripts/roundtrip.py`:** 50/50 canonically identical, 0 skipped. The pin is `>=26.2.4,<26.3` in both places, and `EXACT_TYPES` is `{bool, Enum, int}`.
+- **The readers,** on the morning's probe (section 2.1's shapes):
+  - "720.5" reads 36.0 pt, "2.5" 0.1 pt, "8.5" 0.4 pt;
+  - the facade's `page_width` is 11907 twips, and `header_distance`, `footer_distance` and `gutter` are 0, with no `ValueError`.
+- **Untouched and normalised saves:** a save with the part never read is byte for byte. A save after an edit writes every value truncated (3.5 → 3, 1.8 → 1, 141.99999999999994 → 141), SSRS's empties as 0, and the empty rsids dropped. That's 25 records in `last_save.normalised`, and `normalise=False` keeps the source.
+- **The canon:** `compare(normalise=True)` counts the 25 as `word-normal-form`. The other differences it shows come from the probe's own out-of-order `w:jc` before `w:tabs`, not from this CR.
+- **Section 2.2's forms:**
+  - `" 240 "` is kept as `exact`;
+  - `"1_000"`, `"٢٤٠"`, `"２４０"` and `"\u00a0240"` are kept as `invalid`;
+  - each reads as unset and is dropped at save;
+  - `"+240"` and `"0240"` bind as 240.
+- **`values.integer`'s edges:**
+  - `"2.9999999999999999"` → 2;
+  - `"."`, `"+"`, `"-"` and `"-0.5"` → 0;
+  - `"abc"`, `"1e3"`, `" 240"` and `"240,5"` → None, and so does `True`.
+
+**The departures of section 10.7 are accepted on review.** The census's wider scope (1) found a real reader in `wml/builders.py`. The parse-time flag for `=""` (2) is two substring tests, and a false positive costs one walk at save. The canon settling the three ambiguous pairs by holder (4) and counting the serialiser's re-spellings (5) keep "nothing else moves" true over the probe.
+
+One limitation is noted, and it isn't new: a source `"+240"` is written `"240"` even under `save(normalise=False)`, because it binds as an integer. That was so before this CR.
+
+**The Word check** (phase C) is staged at `vbShares/Office 2016/__tmp/python-cr021/` (`out/cr021-word-check/build.py`, built at `7fe0be8`):
+- the 22 families saved through this package, 95 rewrites in all; the 8 families Word refused as sources now have the refused values dropped;
+- `cr021-edges.docx`, a dropped required `pgMar top="abc"`;
+- five raw files for Word's reading of the unmeasured `"239.99999999999999"`, `"."`, `"+"` and `"-"`.
