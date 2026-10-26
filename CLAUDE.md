@@ -104,7 +104,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately). Phases 0 (the fork's stage 14,
   docx4j-xsdata 26.2.4, `int` in `runtime.EXACT_TYPES`), A (`values.integer` under every reader, a census) and B
   (the normaliser's integer rows, the empty rsid dropped, today's output outside `w`, `w14`, `w15`) done 2026-10-26;
-  C's Word check staged, awaiting the user.
+  C done, its Word check passed (section 10.13): complete, 2026-10-26.
 - **CR-022** (integer measurements refused beyond Word's range as code sets them, after Word's 16-bit wrap; the shared
   probe's round 5 is phase 0): proposed 2026-10-26; six questions open.
 
