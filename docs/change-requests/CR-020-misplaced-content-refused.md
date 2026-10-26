@@ -106,6 +106,15 @@ It's a refuse-list: it names known-wrong classes and lets everything else throug
 
 Java's own cases are refused here too, with messages in Java's voice (section 4.6), so the two agree wherever Java has an opinion.
 
+**docx4j CR-064 phase 1 shipped (2026-10-26, `befc57371`, local).** docx4j's content lists refuse a misplaced child at add time, with the fix in the message, as a refuse-list:
+- a run, `Text`, `Drawing`, `Br`, cell or row at block level;
+- a table, paragraph, `Text`, `Drawing` or `Br` in a run-level container;
+- a cell, paragraph or run in a table, and a paragraph or run in a row;
+- a property object added instead of set;
+- a `String`.
+
+A `JAXBElement` is unwrapped first. Its section 7 hands docx4j-python the choice of whether its list or builder layer refuses the same at add time, and this CR (decided 2026-10-26) does, by D2's allow-rule. Phase A checks D6's hand-written messages against CR-064 section 2's table of mistakes worth catching, so that the two ports name each mistake alike.
+
 ## 4. Design
 
 ### 4.1 The table (D1)
