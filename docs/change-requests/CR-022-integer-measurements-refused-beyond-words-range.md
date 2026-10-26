@@ -78,7 +78,7 @@ No value was refused or repaired. A negative in a schema-unsigned attribute is a
 
 | Attribute | What Word does | Read faithfully |
 |---|---|---|
-| `w:ind/@w:left`; `w:spacing/@w:line` with `lineRule="auto"` (negatives written); `w:rPr/w:spacing/@w:val` (31681 kept); `w:position/@w:val` (3169 kept); `@w:w` of `w:tblW`, `w:tcW` and `w:tblInd`, in `dxa` and in `pct` (5001 and 32767 kept); `w:pgMar/@w:top` (unsigned in the schema; 32768 → -32768, -1 kept) | signed 16 bits, wraps; no interface clamp | -32,768 to 32,767 |
+| `w:ind/@w:left`; `w:spacing/@w:line` with `lineRule="auto"` (negatives written); `w:rPr/w:spacing/@w:val` (31681 kept); `w:position/@w:val` (3169 kept); `@w:w` of `w:tblW`, `w:tcW` and `w:tblInd`, in `dxa` and in `pct` (5001 and 32767 kept); `w:pgMar/@w:top` (`ST_SignedTwipsMeasure`, as is `bottom`; 32768 → -32768, -1 kept) | signed 16 bits, wraps; no interface clamp | -32,768 to 32,767 |
 | `w:spacing/@w:before` (32768 kept, 65536 → 0, 1205003 → 25355; 0xFFFF is written as "-1", so 65535 and -1 both come back as "-1"); `w:sz/@w:val` (3277, 32768 and 65535 kept; 65536 → 0; -1 → 65535); text scale `w:w/@w:val` (601 and 65535 kept, past the schema's 600; 65536 → 0; -1 → 65535) | unsigned 16 bits, wraps | 0 to 65,535 |
 | `w:pgSz/@w:h` | unsigned 16 bits, with a minimum of 144 and no maximum (65535 kept, 65536 → 144) | 144 to 65,535 |
 | `w:tab/@w:pos` | signed 16 bits, then clamped to ±31,680 (32767 → 31680, 32768 → -31680, -32769 → 31680) | -31,680 to 31,680 |
@@ -122,7 +122,7 @@ Every write of section 2.2: the content API's setters, the facade's (at the poin
 
 The faithful range of section 3.1, per attribute. That's Word's storage width, narrowed where Word clamps: the tab stop's ±31,680, the page width's 144 to 31,681, the page height's minimum of 144. Word's other interface limits aren't enforced by Word itself (section 3.1), so refusing at them would refuse values Word reads as written.
 
-"Unsigned" here means Word's storage (section 3.1's unsigned rows), not the schema's. `w:pgMar/@w:top` is unsigned in the schema but signed in Word, and a negative top margin is Word's exact top margin, so a negative there is accepted. A negative in an attribute Word stores unsigned is refused as a caller's mistake (Q7). Word keeps `w:before="-1"` as 0xFFFF, the same stored value as 65,535, and writes it back as "-1"; what it shows on screen is unmeasured. docx4j CR-066 only reports these, which is the read side's position; this CR's is the write side's.
+"Unsigned" means Word's storage (section 3.1's unsigned rows). For every attribute round 5 measured, that matches the schema, with one exception: `w:trHeight/@w:val` is `ST_TwipsMeasure` (unsigned) in the schema, but signed in Word, with the sign as the rule (-1 → exact 1). `w:pgMar/@w:top` is signed in both (`ST_SignedTwipsMeasure`), and a negative top margin is Word's exact top margin, so a negative there is accepted. A negative in an attribute Word stores unsigned, or in `w:trHeight/@w:val` (where `w:hRule` says exact), is refused as a caller's mistake (Q7). Word keeps `w:before="-1"` as 0xFFFF, the same stored value as 65,535, and writes it back as "-1"; what it shows on screen is unmeasured. docx4j CR-066 only reports these, which is the read side's position; this CR's is the write side's.
 
 ### 4.5 The read side is CR-020's (D5)
 
@@ -160,7 +160,7 @@ A value already out of range in a file, or assigned straight to a field, is repo
 | Q4 | The python-docx facade refuses too, though python-docx itself accepts any `Length`? | Yes. python-docx writes the same broken file; the facade's promise is python-docx's names and semantics, and a refusal is a better semantics for a value Word misreads. |
 | Q5 | The builders (`p(..., size=...)`, `r(..., size=...)`) refuse too? | Yes, through the same check. |
 | Q6 | The hint in the caller's units (points, cm, `Length`) as well as twips? | Yes: the caller set points or a `Length`, and twips alone would not tell them what to change. |
-| Q7 | A negative in an attribute Word stores unsigned (`w:before`, `w:sz`, the text scale, the page size): refuse it at the setters, or allow it, since Word accepts it and keeps it as a large positive value (docx4j only reports it)? | Refuse it: no caller setting a negative space before or font size means a large positive one. A negative in a Word-signed attribute (`w:pgMar/@w:top`, the indents) stays accepted. |
+| Q7 | A negative in an attribute Word stores unsigned (`w:before`, `w:sz`, the text scale, the page size), or in `w:trHeight/@w:val`: refuse it at the setters, or allow it, since Word accepts it and keeps it as a large positive value or an exact height (docx4j only reports it)? | Refuse it. No caller setting a negative space before or font size means a large positive one, and a row's exact height is `w:hRule`'s to say. A negative in a signed attribute (`w:pgMar/@w:top`, the indents) stays accepted. |
 
 ## 9. Effort
 
