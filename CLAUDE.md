@@ -106,7 +106,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   (the normaliser's integer rows, the empty rsid dropped, today's output outside `w`, `w14`, `w15`) done 2026-10-26;
   C done, its Word check passed (section 10.13): complete, 2026-10-26.
 - **CR-022** (integer measurements refused beyond Word's range as code sets them, after Word's 16-bit wrap; the shared
-  probe's round 5 is phase 0): proposed 2026-10-26; six questions open.
+  probe's round 5 is phase 0, done, with round 6 and core-ts's check 71): decided 2026-10-26 (Q1 to Q7 as
+  recommended); nothing started.
 - **CR-023** (`List.set_level_indents` as Word 365 writes it: the second indent a first-line indent, negative for
   hanging; the port of core-ts CR-002 section 65.5): implemented 2026-10-26; the Word check staged.
 

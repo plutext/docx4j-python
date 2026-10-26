@@ -2,7 +2,7 @@
 
 **Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Two more measurements came the same day:**
 - core-ts's check 71 measured Office JS's own setters (section 3.2), which revises Q1's recommendation;
-- round 6, the file side of the attributes round 5 left unmeasured (481 cases, `__tmp/cr066/round6/`), **was run 2026-10-26** (the user: "cr066/round6 all opened cleanly"). docx4j-25's reading is section 3.3, and with it D1's table covers every attribute Word could measure. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Seven questions wait on the user (section 8).
+- round 6, the file side of the attributes round 5 left unmeasured (481 cases, `__tmp/cr066/round6/`), **was run 2026-10-26** (the user: "cr066/round6 all opened cleanly"). docx4j-25's reading is section 3.3, and with it D1's table covers every attribute Word could measure. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. **Decided 2026-10-26** (the user: "CR-022 questions take the recommended answers"; section 8): Q1 to Q7 as recommended. **Nothing has started.**
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -198,7 +198,15 @@ A value already out of range in a file, or assigned straight to a field, is repo
 - **A user-interface limit (Q1) refuses a value Word reads faithfully,** for example a page wider than 22 in that Word renders. That's why the storage limit is the recommendation.
 - **Code that set an out-of-range value on purpose breaks.** No sensible measurement is that large, and the CHANGELOG says so.
 
-## 8. Questions
+## 8. Questions (decided 2026-10-26)
+
+The user, 2026-10-26: "CR-022 questions take the recommended answers". So:
+- the content API refuses where Office JS refuses, at Office JS's limits, and every setter refuses beyond the faithful range per attribute elsewhere (Q1);
+- the error is `MeasureRangeError(ContentError, ValueError)` with code `value.out_of_range` (Q2);
+- only the measured attributes are checked, with `w:after` and the other border edges by analogy (Q3);
+- the facade (Q4) and the builders (Q5) refuse too;
+- the hint is in the caller's units (Q6);
+- a negative in a Word-unsigned attribute, or in `w:trHeight/@w:val`, is refused (Q7).
 
 | Q | Question | Recommendation |
 |---|---|---|
