@@ -47,7 +47,7 @@ from docx4j_py.model.listnumbering import (
     invalidate,
     labels_for,
 )
-from docx4j_py.model.values import integer
+from docx4j_py.model.values import CallerLimit, integer, measure_in_range
 from docx4j_py.wml import el
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -117,6 +117,10 @@ BULLET_GLYPHS: dict[str, str] = {
 TWIPS_PER_POINT = 20
 TWIPS_PER_LEVEL = 720
 HANGING = 360
+
+#: Office JS's own limit for ``setLevelIndents``' text indent: refused from 1,638 pt and at
+#: -1,638.4 pt and below, though Word stores -1,638.4 (core-ts check 71; CR-022 section 3.2, Q1).
+OFFICE_JS_TEXT_INDENT = CallerLimit(low=-1638.4, high=1638, low_open=True, high_open=True)
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -759,18 +763,31 @@ class List:
         CR-023), and the usual list is ``set_level_indents(0, 36, -18)``,
         ``w:left="720" w:hanging="360"``. Word keeps the two in one signed
         field, so a level holds one or the other.
+
+        Refused before anything changes (CR-022), ``MeasureRangeError``: a
+        text indent from 1,638 pt and at -1,638.4 pt and below, as Office JS
+        refuses it (core-ts check 71); a marker beyond Word's range for a
+        first-line indent (0 to 1,638.35 pt) or a hanging one (to 1,638.4 pt).
         """
+        text = float(text_indent)
+        marker_points = float(bullet_number_picker_indentation)
+        left = measure_in_range("w:ind/@w:left", text, label="text indent", limit=OFFICE_JS_TEXT_INDENT)
+        if marker_points < 0:
+            hanging = measure_in_range(
+                "w:ind/@w:hanging", -marker_points, label="bullet number picker indentation (a hanging indent)"
+            )
+            first_line = None
+        else:
+            first_line = measure_in_range(
+                "w:ind/@w:firstLine", marker_points, label="bullet number picker indentation"
+            )
+            hanging = None
         with recording(self.body, "list.set_level_indents") as change:
             lvl = self._writable_level(level, change)
             if lvl.p_pr is None:
                 lvl.p_pr = el.pPr()
                 lvl.p_pr.parent = lvl
-            marker = round(float(bullet_number_picker_indentation) * TWIPS_PER_POINT)
-            lvl.p_pr.ind = el.ind(
-                left=round(float(text_indent) * TWIPS_PER_POINT),
-                first_line=marker if marker >= 0 else None,
-                hanging=-marker if marker < 0 else None,
-            )
+            lvl.p_pr.ind = el.ind(left=left, first_line=first_line, hanging=hanging)
             lvl.p_pr.ind.parent = lvl.p_pr
             change.touched(self.address)
             change.text(

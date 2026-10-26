@@ -862,7 +862,7 @@ def _refusal(
     limit: CallerLimit | None,
     finite: bool = True,
 ) -> Exception:
-    """The ``MeasureRangeError`` for `value`: the property, the value both ways, and Word's range in the caller's units."""
+    """The ``MeasureRangeError`` for `value`: the property, the value both ways, Word's range in the caller's units."""
     from docx4j_py.model.content.errors import MeasureRangeError
 
     per = units.per(row.unit)
@@ -892,7 +892,7 @@ def _refusal(
     where = f", where {limit.by}'s setter stops" if by_limit else ""  # type: ignore[union-attr]
     shown = f"{label} {_given(value)}" + (f" {units.name}" if units.name else f" {row.unit}")
     if not finite:
-        message = f"{shown} is not a finite number"
+        message = f"{shown} is not a finite number; Word's range is {span}{where}"
     else:
         both = []
         secondary = units.secondary(value, row.unit) if units.name else None

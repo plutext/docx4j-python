@@ -54,13 +54,18 @@ from collections.abc import Callable
 from typing import Any
 
 from docx4j_py.model.content.enums import UnderlineValue
-from docx4j_py.model.values import AUTO
+from docx4j_py.model.values import AUTO, CallerLimit, measure_in_range
 from docx4j_py.wml import RPr, apply_run_options, read_run_options
 
 __all__ = ["Font", "MixedFont", "mark_run_properties"]
 
 #: What an automatic colour reads in the effective view, as Office JS reads it (CR-016 Phase B).
 AUTOMATIC = "#000000"
+
+#: Office JS's own limit for ``font.size``: refused above 1,638 pt and at 0 (core-ts check 71; CR-022
+#: section 3.2, Q1), though Word stores to 32,767.5 pt. 0 here keeps its documented meaning, the
+#: element removed (CR-022 section 10, departure 2), so it never reaches the check.
+OFFICE_JS_FONT_SIZE = CallerLimit(low=0, high=1638, low_open=True)
 
 #: ``Font.to_dict()``'s keys for ``w:color``'s theme attributes, as written (CR-009 Phase B).
 THEME_KEYS = ("theme_color", "theme_tint", "theme_shade")
@@ -439,11 +444,18 @@ class Font:
         ``0`` in the direct view where the runs set none. Setting ``0`` removes
         ``w:sz`` and ``w:szCs``, which is what writing back what a silent run
         reads means.
+
+        Setting a size above 1,638 pt or below 0 is refused before anything
+        changes, as Office JS refuses it (CR-022 Q1): ``MeasureRangeError``,
+        ``value.out_of_range``. Office JS refuses 0 too; here 0 keeps its
+        meaning, the element removed (CR-022 section 10, departure 2).
         """
         return self._read()["size"]  # type: ignore[no-any-return]
 
     @size.setter
     def size(self, value: float) -> None:
+        if value is not None and value != 0:
+            measure_in_range("w:rPr/w:sz/@w:val", value, label="font size", limit=OFFICE_JS_FONT_SIZE)
         self._apply(size=value)
 
     @property

@@ -47,14 +47,17 @@ from docx4j_py.docx.enums import (
     WD_TAB_LEADER,
     WD_UNDERLINE,
 )
-from docx4j_py.docx.shared import Emu, Length, Pt, RGBColor, Twips, points_of, twips_of
+from docx4j_py.docx.shared import Length, Pt, RGBColor, Twips, points_of
 from docx4j_py.model.content.paragraph import Paragraph as ContentParagraph
 from docx4j_py.model.values import (
     AUTO,
+    EMU,
+    LINES,
     colour,
     highlight,
     integer,
     is_on,
+    measure_in_range,
     underline,
     vertical_alignment,
 )
@@ -740,6 +743,8 @@ class Font:
 
     @size.setter
     def size(self, value: int | Length | None) -> None:
+        # within Word's range, 0 to 32,767.5 pt, before anything changes (CR-022 Q4)
+        half = None if value is None else measure_in_range("w:rPr/w:sz/@w:val", value, EMU, label="font size")
         with _write(self._story, "docx.font.size"):
             r_pr = _r_pr(self._holder, create=value is not None)
             if r_pr is None:
@@ -748,7 +753,6 @@ class Font:
                 r_pr.sz = None
                 r_pr.sz_cs = None
                 return
-            half = round(Length(int(value)).pt * 2)
             for field, factory in (("sz", el.sz), ("sz_cs", el.szCs)):
                 toggle = factory(val=half)
                 setattr(r_pr, field, toggle)
@@ -972,6 +976,12 @@ class ParagraphFormat:
     def _set_ind(self, attribute: str, value: int | Length | None) -> None:
         if value is None and getattr(self._p_pr(create=False), "ind", None) is None:
             return
+        # within Word's range, -32,768 to 32,767 twips, before anything changes (CR-022 Q4)
+        twips = (
+            None
+            if value is None
+            else measure_in_range(f"w:ind/@w:{attribute}", value, EMU, label=f"{attribute} indent")
+        )
         with _write(self._story, f"docx.paragraph_format.{attribute}"):
             p_pr = self._p_pr(create=True)
             assert p_pr is not None
@@ -980,7 +990,7 @@ class ParagraphFormat:
                 ind = el.ind()
                 p_pr.ind = ind
                 ind.parent = p_pr
-            setattr(ind, attribute, twips_of(value))
+            setattr(ind, attribute, twips)
             if all(
                 getattr(ind, each, None) is None
                 for each in ("start", "end", "left", "right", "first_line", "hanging")
@@ -1027,6 +1037,16 @@ class ParagraphFormat:
 
     @first_line_indent.setter
     def first_line_indent(self, value: int | Length | None) -> None:
+        # within Word's range before anything changes (CR-022 Q4): w:firstLine and w:hanging are one
+        # signed field, a first line 0 to 32,767 twips and a hanging indent 0 to 32,768
+        first_line = hanging = None
+        if value is not None:
+            if Length(int(value)).twips < 0:
+                hanging = measure_in_range(
+                    "w:ind/@w:hanging", -int(value), EMU, label="hanging indent (a negative first line indent)"
+                )
+            else:
+                first_line = measure_in_range("w:ind/@w:firstLine", value, EMU, label="first line indent")
         with _write(self._story, "docx.paragraph_format.first_line_indent"):
             if value is None and getattr(self._p_pr(create=False), "ind", None) is None:
                 return
@@ -1037,14 +1057,8 @@ class ParagraphFormat:
                 ind = el.ind()
                 p_pr.ind = ind
                 ind.parent = p_pr
-            ind.first_line = None
-            ind.hanging = None
-            if value is not None:
-                twips = twips_of(value) or 0
-                if twips < 0:
-                    ind.hanging = -twips
-                else:
-                    ind.first_line = twips
+            ind.first_line = first_line
+            ind.hanging = hanging
             if all(
                 getattr(ind, each, None) is None
                 for each in ("start", "end", "left", "right", "first_line", "hanging")
@@ -1062,6 +1076,12 @@ class ParagraphFormat:
     def _set_spacing(self, attribute: str, value: int | Length | None) -> None:
         if value is None and getattr(self._p_pr(create=False), "spacing", None) is None:
             return
+        # within Word's range, 0 to 65,535 twips, before anything changes (CR-022 Q4)
+        twips = (
+            None
+            if value is None
+            else measure_in_range(f"w:spacing/@w:{attribute}", value, EMU, label=f"space {attribute}")
+        )
         with _write(self._story, f"docx.paragraph_format.{attribute}"):
             p_pr = self._p_pr(create=True)
             assert p_pr is not None
@@ -1070,7 +1090,7 @@ class ParagraphFormat:
                 spacing = el.spacing()
                 p_pr.spacing = spacing
                 spacing.parent = p_pr
-            setattr(spacing, attribute, twips_of(value))
+            setattr(spacing, attribute, twips)
 
     @property
     def space_before(self) -> Length | None:
@@ -1118,6 +1138,19 @@ class ParagraphFormat:
 
     @line_spacing.setter
     def line_spacing(self, value: float | Length | None) -> None:
+        # within Word's range under the rule the write leaves, before anything changes (CR-022 Q4): a
+        # multiple is 240ths of a line under auto; a Length is exact, or at least where the rule is that
+        line = None
+        if isinstance(value, Length):
+            existing = self._spacing_element(create=False)
+            rule = getattr(existing, "line_rule", None) if existing is not None else None
+            rule = getattr(rule, "value", rule)
+            at_least = str(rule) == "atLeast"
+            line = measure_in_range(
+                "w:spacing/@w:line", value, EMU, label="line spacing", context="atLeast" if at_least else "exact"
+            )
+        elif value is not None:
+            line = measure_in_range("w:spacing/@w:line", value, LINES, label="line spacing", context="auto")
         with _write(self._story, "docx.paragraph_format.line_spacing"):
             if value is None:
                 if getattr(self._p_pr(create=False), "spacing", None) is None:
@@ -1129,14 +1162,13 @@ class ParagraphFormat:
                 return
             spacing = self._spacing_element(create=True)
             assert spacing is not None
+            spacing.line = line
             if isinstance(value, Length):
-                spacing.line = twips_of(value)
                 rule = getattr(spacing, "line_rule", None)
                 rule = getattr(rule, "value", rule)
                 if str(rule) != "atLeast":
                     spacing.line_rule = "exact"
             else:
-                spacing.line = twips_of(Emu(int(value * Twips(240))))
                 spacing.line_rule = "auto"
 
     def _spacing_element(self, *, create: bool) -> Any:
@@ -1253,12 +1285,14 @@ class TabStops:
         Inserted in position order, after any stop at the same position, as
         python-docx does. ``SPACES`` (or None) writes no ``w:leader``.
         """
+        # within Word's range, -31,680 to 31,680 twips (22 in), before anything changes (CR-022 Q4)
+        pos = measure_in_range("w:tab/@w:pos", position, EMU, label="tab stop position")
         with _write(self._format._story, "docx.tab_stops.add"):
             tabs = self._tabs(create=True)
             element = CTTabStop(
                 val=WD_TAB_ALIGNMENT.to_xml(alignment),
                 leader=_leader_xml(leader),
-                pos=twips_of(position),
+                pos=pos,
             )
             return TabStop(self, _insert_in_order(tabs, element))
 
@@ -1343,10 +1377,12 @@ class TabStop:
     @position.setter
     def position(self, value: int | Length) -> None:
         """Move the stop, keeping ``w:tabs`` in position order as python-docx does."""
+        # within Word's range, -31,680 to 31,680 twips (22 in), before anything changes (CR-022 Q4)
+        pos = measure_in_range("w:tab/@w:pos", value, EMU, label="tab stop position")
         with _write(self._stops._format._story, "docx.tab_stop.position"):
             tabs = self._element.parent
             tabs.tab.remove(self._element)
-            self._element.pos = twips_of(value)
+            self._element.pos = pos
             _insert_in_order(tabs, self._element)
 
 

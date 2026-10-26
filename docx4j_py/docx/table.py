@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, overload
 
-from docx4j_py.docx._base import BlockItemContainer, Story, recording
+from docx4j_py.docx._base import BlockItemContainer, Story, column_widths, recording
 from docx4j_py.docx.enums import (
     WD_CELL_VERTICAL_ALIGNMENT,
     WD_ROW_HEIGHT_RULE,
@@ -26,7 +26,7 @@ from docx4j_py.docx.enums import (
 )
 from docx4j_py.docx.shared import Inches, Length, Twips, twips_of
 from docx4j_py.model.content.table import Table as ContentTable
-from docx4j_py.model.values import integer, is_on
+from docx4j_py.model.values import EMU, integer, is_on, measure_in_range
 from docx4j_py.wml import Tbl, Tc, Tr, el
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -263,8 +263,9 @@ class Table:
 
     def add_column(self, width: int | Length) -> _Column:
         """A new rightmost column of `width`, with a cell in every row."""
+        # each new cell's w:tcW within Word's range before anything changes (CR-022 Q4)
+        twips = measure_in_range("w:tcW/@w:w", width or 0, EMU, label="column width", context="dxa")
         with recording(self._story.body, "docx.add_column"):
-            twips = twips_of(width) or 0
             grid = getattr(self._tbl, "tbl_grid", None)
             if grid is None:
                 grid = el.tblGrid()
@@ -513,6 +514,19 @@ class _Row:
 
     @height.setter
     def height(self, value: int | Length | None) -> None:
+        # within Word's range under the row's rule before anything changes (CR-022 Q4, Q7): 0 to 32,767
+        # twips at least (hRule absent or atLeast), 1 to 32,768 exact; unchecked under auto, which
+        # Word discards
+        current = _tr_pr_child(self._tr, "trHeight")
+        rule = getattr(current, "h_rule", None) if current is not None else None
+        rule = getattr(rule, "value", rule)
+        # a rule outside the enumeration is unset, as Word reads it (CR-018): at least
+        context = rule if rule in ("atLeast", "exact", "auto") else None
+        twips = (
+            None
+            if value is None
+            else measure_in_range("w:trHeight/@w:val", value, EMU, label="row height", context=context)
+        )
         with recording(self._table._story.body, "docx.row.height"):
             found = _tr_pr_child(self._tr, "trHeight")
             if value is None:
@@ -525,7 +539,7 @@ class _Row:
                     found.val = None
                 return
             item = found if found is not None else el.trHeight()
-            item.val = twips_of(value)
+            item.val = twips
             _set_tr_pr_child(self._tr, "trHeight", item)
 
     @property
@@ -776,6 +790,7 @@ class _Cell(BlockItemContainer):
         paragraph (CR-016 Phase A), never runs and the two don't stack.
         """
         width = self.width if self.width is not None else Inches(1)
+        column_widths(width, cols)  # within Word's range before the paragraph goes in (CR-022)
         with recording(self._story.body, "docx.cell.add_table"):
             paragraph = self._content_body.insert_paragraph("")
             return self._add_table(rows, cols, width, before=paragraph)
@@ -806,6 +821,10 @@ class _Cell(BlockItemContainer):
 
     @width.setter
     def width(self, value: int | Length | None) -> None:
+        # within Word's range, -32,768 to 32,767 twips, before anything changes (CR-022 Q4)
+        twips = (
+            None if value is None else measure_in_range("w:tcW/@w:w", value, EMU, label="cell width", context="dxa")
+        )
         with recording(self._story.body, "docx.cell.width"):
             if value is None:
                 tc_pr = getattr(self._tc, "tc_pr", None)
@@ -813,7 +832,7 @@ class _Cell(BlockItemContainer):
                     tc_pr.tc_w = None
                 return
             tc_pr = self._tc_pr
-            tc_pr.tc_w = el.tcW(w=twips_of(value), type_value="dxa")
+            tc_pr.tc_w = el.tcW(w=twips, type_value="dxa")
             tc_pr.tc_w.parent = tc_pr
 
     @property

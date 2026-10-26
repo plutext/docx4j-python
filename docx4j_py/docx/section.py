@@ -28,8 +28,8 @@ from docx4j_py.docx.enums import (
     WD_ORIENTATION,
     WD_SECTION_START,
 )
-from docx4j_py.docx.shared import Length, Twips, twips_of
-from docx4j_py.model.values import integer, is_on
+from docx4j_py.docx.shared import Length, Twips
+from docx4j_py.model.values import EMU, integer, is_on, measure_in_range
 from docx4j_py.wml import CtSectPrType, P, SectPr, el
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
@@ -163,8 +163,10 @@ class Section:
 
     @page_width.setter
     def page_width(self, value: int | Length | None) -> None:
+        # within Word's range, 144 to 31,681 twips, before anything changes (CR-022 Q4)
+        twips = None if value is None else measure_in_range("w:pgSz/@w:w", value, EMU, label="page width")
         with self._recording("docx.section.page_width"):
-            self._pg_sz(create=True).w = twips_of(value)
+            self._pg_sz(create=True).w = twips
 
     @property
     def page_height(self) -> Length | None:
@@ -173,15 +175,23 @@ class Section:
 
     @page_height.setter
     def page_height(self, value: int | Length | None) -> None:
+        # within Word's range, 144 to 65,535 twips, before anything changes (CR-022 Q4)
+        twips = None if value is None else measure_in_range("w:pgSz/@w:h", value, EMU, label="page height")
         with self._recording("docx.section.page_height"):
-            self._pg_sz(create=True).h = twips_of(value)
+            self._pg_sz(create=True).h = twips
 
     def _margin(self, attribute: str) -> Length | None:
         return _twips(getattr(self._pg_mar(create=False), attribute, None))
 
     def _set_margin(self, attribute: str, value: int | Length | None) -> None:
+        # within Word's range before anything changes (CR-022 Q4): top and bottom are signed, the others not
+        twips = (
+            None
+            if value is None
+            else measure_in_range(f"w:pgMar/@w:{attribute}", value, EMU, label=_MARGIN_LABELS[attribute])
+        )
         with self._recording(f"docx.section.{attribute}"):
-            setattr(self._pg_mar(create=True), attribute, twips_of(value))
+            setattr(self._pg_mar(create=True), attribute, twips)
 
     @property
     def left_margin(self) -> Length | None:
@@ -346,6 +356,18 @@ class Section:
 
     def _recording(self, operation: str) -> Any:
         return recording(self._story.body, operation)
+
+
+#: python-docx's name for each ``w:pgMar`` attribute, for a refusal's message (CR-022).
+_MARGIN_LABELS = {
+    "left": "left margin",
+    "right": "right margin",
+    "top": "top margin",
+    "bottom": "bottom margin",
+    "header": "header distance",
+    "footer": "footer distance",
+    "gutter": "gutter",
+}
 
 
 def _twips(value: Any) -> Length | None:

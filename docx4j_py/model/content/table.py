@@ -63,7 +63,7 @@ from docx4j_py.model.content.text_model import (
     rows_of,
     text_run,
 )
-from docx4j_py.model.values import integer, is_on
+from docx4j_py.model.values import CallerLimit, integer, is_on, measure_in_range
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, text_of
 from docx4j_py.wml import P, Tbl, Tc, Tr, el, tbl, to_xml, tr
@@ -86,6 +86,10 @@ __all__ = [
 
 #: Twips per point, the unit Office JS reports a width in.
 TWIPS_PER_POINT = 20
+
+#: Office JS refuses a negative ``TableCell.columnWidth`` and lets a large one wrap (core-ts check 71;
+#: CR-022 section 3.2): the width is held to 0 here and to Word's range above.
+OFFICE_JS_CELL_WIDTH = CallerLimit(low=0)
 
 #: A4 less 2.54 cm margins, in twips: what the ``tbl`` builder falls back to and
 #: what a body with no ``w:sectPr`` gets.
@@ -1073,7 +1077,12 @@ class TableCell:
 
     @property
     def width(self) -> float:
-        """The cell width in points (``w:tcW`` of type ``dxa``); 0 when it is not fixed."""
+        """The cell width in points (``w:tcW`` of type ``dxa``); 0 when it is not fixed.
+
+        Setting a negative width is refused, as Office JS refuses it, and one
+        beyond 1,638.35 pt, which Word would read wrapped where Office JS lets
+        it (CR-022): ``MeasureRangeError``, before anything changes.
+        """
         tc_pr = self.element.tc_pr
         tc_w = getattr(tc_pr, "tc_w", None) if tc_pr is not None else None
         if tc_w is None:
@@ -1088,6 +1097,9 @@ class TableCell:
     @width.setter
     def width(self, points: float) -> None:
         refuse_read_only(self._parent_body, "format")
+        width = measure_in_range(
+            "w:tcW/@w:w", points, label="cell width", context="dxa", limit=OFFICE_JS_CELL_WIDTH
+        )
         tc_pr = self.element.tc_pr
         if tc_pr is None:
             tc_pr = el.tcPr()
@@ -1096,7 +1108,7 @@ class TableCell:
         if tc_pr.tc_w is None:
             tc_pr.tc_w = el.tcW()
             tc_pr.tc_w.parent = tc_pr
-        tc_pr.tc_w.w = round(points * TWIPS_PER_POINT)
+        tc_pr.tc_w.w = width
         tc_pr.tc_w.type_value = "dxa"
 
     @property

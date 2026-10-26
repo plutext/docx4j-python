@@ -91,9 +91,8 @@ LISTED: dict[str, str] = {
     "docx/styles.py::BaseStyle.priority::int(value)": ARGUMENT,
     "docx/table.py::Table.table_direction::int(WD_TABLE_DIRECTION.RTL)": CONSTANT,
     "docx/table.py::Table.table_direction::int(value)": ARGUMENT,
-    "docx/text.py::Font.size::int(value)": ARGUMENT,
+    "docx/text.py::ParagraphFormat.first_line_indent::int(value)": LENGTH,
     "docx/text.py::ParagraphFormat.line_spacing::int(line)": LENGTH,
-    "docx/text.py::ParagraphFormat.line_spacing::int(value * Twips(240))": ARGUMENT,
     "docx/text.py::ParagraphFormat.line_spacing_rule::int(Twips(twips))": CONSTANT,
     "docx/text.py::ParagraphFormat.line_spacing_rule::int(line)": LENGTH,
     # charts (c:, cx:), outside WordprocessingML

@@ -75,7 +75,7 @@ from docx4j_py.model.content.text_model import (
     text_run,
 )
 from docx4j_py.model.property_resolver import resolver_of
-from docx4j_py.model.values import integer
+from docx4j_py.model.values import CallerLimit, integer, measure_in_range
 from docx4j_py.namespaces import WML_NS
 from docx4j_py.traversal import element_name, run_items_of
 from docx4j_py.wml import (
@@ -102,6 +102,10 @@ __all__ = ["Paragraph", "replace_matches"]
 
 #: Twips per point: the unit every Office JS measurement here is in.
 TWIPS_PER_POINT = 20
+
+#: Office JS's own limit for ``spaceBefore``, ``spaceAfter`` and ``lineSpacing``: refused from
+#: 1,638 pt and for every negative, though Word stores more (core-ts check 71; CR-022 section 3.2, Q1).
+OFFICE_JS_SPACING = CallerLimit(low=0, high=1638, high_open=True)
 
 _JC_TO_ALIGNMENT: dict[str, str] = {
     "left": "Left",
@@ -653,37 +657,57 @@ class Paragraph:
             value = integer(getattr(ind, strict, None))
         return 0.0 if value is None else value / TWIPS_PER_POINT
 
-    def _set_indent(self, transitional: str, strict: str, points: float) -> None:
-        ind = self._ind()
-        twips = round(points * TWIPS_PER_POINT)
+    def _set_indent(self, transitional: str, strict: str, points: float, label: str) -> None:
         # Write whichever name the paragraph already uses; the transitional one
         # otherwise, because that is what Word writes (CR-003 section 3.12).
-        if getattr(ind, transitional, None) is None and getattr(ind, strict, None) is not None:
-            setattr(ind, strict, twips)
-        else:
-            setattr(ind, transitional, twips)
+        current = self.element.p_pr.ind if self.element.p_pr is not None else None
+        uses_strict = (
+            current is not None
+            and getattr(current, transitional, None) is None
+            and getattr(current, strict, None) is not None
+        )
+        name = strict if uses_strict else transitional
+        # within Word's range before anything changes (CR-022): Office JS lets an indent wrap
+        twips = measure_in_range(f"w:ind/@w:{name}", points, label=label)
+        setattr(self._ind(), name, twips)
 
     @property
     def left_indent(self) -> float:
-        """The left indent in points (``w:ind/@w:left`` or ``@w:start``)."""
+        """The left indent in points (``w:ind/@w:left`` or ``@w:start``).
+
+        Setting it beyond -1,638.4 to 1,638.35 pt, which Word would read
+        wrapped, is refused before anything changes (CR-022):
+        ``MeasureRangeError``, ``value.out_of_range``.
+        """
         return self._indent("left", "start")
 
     @left_indent.setter
     def left_indent(self, points: float) -> None:
-        self._set_indent("left", "start", points)
+        self._set_indent("left", "start", points, "left indent")
 
     @property
     def right_indent(self) -> float:
-        """The right indent in points (``w:ind/@w:right`` or ``@w:end``)."""
+        """The right indent in points (``w:ind/@w:right`` or ``@w:end``).
+
+        Setting it beyond -1,638.4 to 1,638.35 pt, which Word would read
+        wrapped, is refused before anything changes (CR-022):
+        ``MeasureRangeError``, ``value.out_of_range``.
+        """
         return self._indent("right", "end")
 
     @right_indent.setter
     def right_indent(self, points: float) -> None:
-        self._set_indent("right", "end", points)
+        self._set_indent("right", "end", points, "right indent")
 
     @property
     def first_line_indent(self) -> float:
-        """The first-line indent in points; negative for a hanging indent."""
+        """The first-line indent in points; negative for a hanging indent.
+
+        Set within -1,638.4 to 1,638.35 pt (CR-022): ``w:firstLine`` and
+        ``w:hanging`` are one signed field in Word, a first-line indent 0 to
+        32,767 twips and a hanging one 0 to 32,768 (round 6, CR-022 section
+        3.3); beyond, ``MeasureRangeError`` before anything changes.
+        """
         ind = self._ind_or_none
         if ind is None:
             return 0.0
@@ -695,35 +719,50 @@ class Paragraph:
 
     @first_line_indent.setter
     def first_line_indent(self, points: float) -> None:
-        ind = self._ind()
         if points < 0:
-            ind.hanging = round(-points * TWIPS_PER_POINT)
+            hanging = measure_in_range(
+                "w:ind/@w:hanging", -points, label="hanging indent (a negative first line indent)"
+            )
+            ind = self._ind()
+            ind.hanging = hanging
             ind.first_line = None
         else:
-            ind.first_line = round(points * TWIPS_PER_POINT)
+            first_line = measure_in_range("w:ind/@w:firstLine", points, label="first line indent")
+            ind = self._ind()
+            ind.first_line = first_line
             ind.hanging = None
 
     @property
     def space_before(self) -> float:
-        """The space above the paragraph in points (``w:spacing/@w:before``)."""
+        """The space above the paragraph in points (``w:spacing/@w:before``).
+
+        Setting it from 1,638 pt or below 0 is refused, as Office JS refuses
+        it (CR-022 Q1): ``MeasureRangeError``, before anything changes.
+        """
         spacing = self._spacing_or_none
         value = integer(getattr(spacing, "before", None)) if spacing is not None else None
         return 0.0 if value is None else value / TWIPS_PER_POINT
 
     @space_before.setter
     def space_before(self, points: float) -> None:
-        self._spacing().before = round(points * TWIPS_PER_POINT)
+        before = measure_in_range("w:spacing/@w:before", points, label="space before", limit=OFFICE_JS_SPACING)
+        self._spacing().before = before
 
     @property
     def space_after(self) -> float:
-        """The space below the paragraph in points (``w:spacing/@w:after``)."""
+        """The space below the paragraph in points (``w:spacing/@w:after``).
+
+        Setting it from 1,638 pt or below 0 is refused, as Office JS refuses
+        it (CR-022 Q1): ``MeasureRangeError``, before anything changes.
+        """
         spacing = self._spacing_or_none
         value = integer(getattr(spacing, "after", None)) if spacing is not None else None
         return 0.0 if value is None else value / TWIPS_PER_POINT
 
     @space_after.setter
     def space_after(self, points: float) -> None:
-        self._spacing().after = round(points * TWIPS_PER_POINT)
+        after = measure_in_range("w:spacing/@w:after", points, label="space after", limit=OFFICE_JS_SPACING)
+        self._spacing().after = after
 
     @property
     def line_spacing(self) -> float:
@@ -732,6 +771,12 @@ class Paragraph:
         ``w:line`` is 240ths of a line when ``w:lineRule`` is ``auto`` (or
         absent), which Office JS reports as the equivalent of 12-point lines,
         and twips otherwise. Setting writes ``w:lineRule="exact"``.
+
+        Setting it from 1,638 pt or below 0 is refused, as Office JS refuses
+        it (CR-022 Q1), and below 0.05 pt too: an exact line is stored
+        negated, so 0 twips reads as ``atLeast`` 0 and 1 twip is the least
+        exact line Word reads as written (CR-022 section 10, departure 1).
+        ``MeasureRangeError``, before anything changes.
         """
         spacing = self._spacing_or_none
         line = integer(getattr(spacing, "line", None)) if spacing is not None else None
@@ -745,8 +790,11 @@ class Paragraph:
 
     @line_spacing.setter
     def line_spacing(self, points: float) -> None:
+        line = measure_in_range(
+            "w:spacing/@w:line", points, label="line spacing", context="exact", limit=OFFICE_JS_SPACING
+        )
         spacing = self._spacing()
-        spacing.line = round(points * TWIPS_PER_POINT)
+        spacing.line = line
         spacing.line_rule = "exact"
 
     @property

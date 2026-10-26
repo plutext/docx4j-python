@@ -175,12 +175,12 @@ class BlockItemContainer:
 
     def _add_table(self, rows: int, cols: int, width: Any = None, before: Any = None) -> Any:
         """:meth:`add_table`, the table at the end or, given `before` (a content API paragraph), in front of it."""
-        from docx4j_py.docx.shared import twips_of
         from docx4j_py.docx.table import Table
         from docx4j_py.model.content.table import insert_table_into
 
         if cols < 1:
             raise ValueError(f"a table needs at least one column, not {cols}")
+        widths = None if width is None else column_widths(width, cols)  # before anything changes (CR-022)
         body = self._content_body
         with recording(body, "docx.add_table"):
             if before is None:
@@ -188,12 +188,29 @@ class BlockItemContainer:
             else:
                 view = insert_table_into(body, max(rows, 1), cols, location="Before", target=before)
             table = Table(view.element, self._story)
-            if width is not None:
-                table._set_column_widths(_even(twips_of(width) or 0, cols))
+            if widths is not None:
+                table._set_column_widths(widths)
             if rows < 1:
                 for row in list(view.element.content):
                     view.element.content.remove(row)
             return table
+
+
+def column_widths(width: Any, columns: int) -> list[int]:
+    """`width` (a python-docx ``Length``) split evenly between `columns`, in twips, each within Word's range.
+
+    What ``add_table(rows, cols, width)`` writes on every cell's ``w:tcW``
+    (and on ``w:gridCol``): each column is refused beyond -32,768 to 32,767
+    twips, which Word would read wrapped (CR-022 Q4), before the table is
+    built. The widths are the facade's own sums, so the message is in twips.
+    """
+    from docx4j_py.docx.shared import twips_of
+    from docx4j_py.model.values import OWN, measure_in_range
+
+    return [
+        measure_in_range("w:tcW/@w:w", each, OWN, label="column width", context="dxa")
+        for each in _even(twips_of(width) or 0, columns)
+    ]
 
 
 def _even(total: int, columns: int) -> list[int]:

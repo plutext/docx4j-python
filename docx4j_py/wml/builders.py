@@ -24,7 +24,7 @@ under the same name --- spelled ``snake_case``:
 ``double_strike_through`` ``w:dstrike``
 ``subscript`` / ``superscript`` ``w:vertAlign``
 ``name`` (``font``)   ``w:rFonts`` ascii and hAnsi, clearing the theme fonts
-``size``              points; ``w:sz`` and ``w:szCs`` are half-points
+``size``              points; ``w:sz`` and ``w:szCs`` are half-points; 0 removes them
 ``color``             ``'#RRGGBB'`` or ``'auto'``
 ``highlight_color``   a highlight name or one of its ``#RRGGBB`` values
 ``style``             ``w:rStyle``
@@ -33,6 +33,12 @@ under the same name --- spelled ``snake_case``:
 ``None`` leaves a property alone; ``False``, ``''`` and ``'None'`` remove it.
 ``font`` is accepted as an alias of ``name``, which reads better as a keyword
 argument in Python.
+
+A measurement Word would not read as written is refused, through
+:func:`docx4j_py.model.values.measure_in_range` and before anything is built
+(CR-022 Q5): a ``size`` beyond 0 to 32,767.5 pt, a cell width beyond -32,768
+to 32,767 twips, a table whose widths sum beyond that. ``MeasureRangeError``
+(``value.out_of_range``), a ``ValueError``.
 """
 
 from __future__ import annotations
@@ -44,10 +50,12 @@ from docx4j_py.child import ChildList, deep_copy, link_parents
 from docx4j_py.model.content.errors import BuilderError
 from docx4j_py.model.values import (
     AUTO,
+    OWN,
     colour,
     highlight,
     integer,
     is_on,
+    measure_in_range,
     underline,
     vertical_alignment,
 )
@@ -210,6 +218,9 @@ def apply_run_options(r_pr: RPr, **options: Any) -> RPr:
     unknown = set(options) - RUN_OPTIONS
     if unknown:
         raise TypeError(f"unknown run option(s): {', '.join(sorted(unknown))}")
+    size = options.get("size")
+    # within Word's range before anything is written (CR-022 Q5); 0 is no size, the elements removed
+    half = None if size is None or size == 0 else measure_in_range("w:rPr/w:sz/@w:val", size, label="font size")
 
     bold = options.get("bold")
     if bold is not None:
@@ -268,7 +279,6 @@ def apply_run_options(r_pr: RPr, **options: Any) -> RPr:
             fonts.h_ansi_theme = None
             r_pr.r_fonts = fonts
 
-    size = options.get("size")
     if size is not None:
         if size == 0:
             # 0 is what ``read_run_options`` reports for a run that says
@@ -277,7 +287,6 @@ def apply_run_options(r_pr: RPr, **options: Any) -> RPr:
             r_pr.sz = None
             r_pr.sz_cs = None
         else:
-            half = round(size * 2)
             r_pr.sz = el.sz(val=half)
             r_pr.sz_cs = el.szCs(val=half)
 
@@ -491,20 +500,21 @@ def tc(blocks: Any = "", *, width: int | None = None, span: int | None = None) -
         blocks: a string (one paragraph of text), a block-level object
             (:class:`P`, :class:`Tbl`, a ``w:sdt``), or a list of them.
         width: the cell width in twips, written as ``w:tcW`` of type ``dxa``;
-            none when absent.
+            none when absent. Refused beyond -32,768 to 32,767 (CR-022).
         span: the number of grid columns the cell spans (``w:gridSpan``).
 
     An empty cell still gets the ``w:p`` Word requires: a ``w:tc`` whose last
     child is not a paragraph makes Word repair the document.
     """
+    checked = None if width is None else measure_in_range("w:tcW/@w:w", width, OWN, label="cell width", context="dxa")
     content = _blocks_of(blocks)
     if not content:
         content = [el.p()]
     cell = Tc(content=ChildList(content))
     if width is not None or span is not None:
         cell.tc_pr = el.tcPr()
-        if width is not None:
-            cell.tc_pr.tc_w = el.tcW(w=width, type_value="dxa")
+        if checked is not None:
+            cell.tc_pr.tc_w = el.tcW(w=checked, type_value="dxa")
         if span is not None:
             cell.tc_pr.grid_span = el.gridSpan(val=span)
         link_parents(cell)
@@ -557,6 +567,11 @@ def tbl(
             the last column taking the rounding remainder so that the grid sums
             to the table width exactly.
         width: the total width in twips when `widths` is absent.
+
+    Refused, before anything is built (CR-022): a column width beyond
+    -32,768 to 32,767 twips, or a total beyond it, which Word would read
+    wrapped. ``w:gridCol`` is not checked: Word recomputes the grid (CR-022
+    section 3.3).
     """
     columns = (
         max(1, len(widths or ()), *(len(row) for row in rows))
@@ -573,7 +588,11 @@ def tbl(
         for i in range(columns)
     ]
 
-    tbl_pr = el.tblPr(tbl_w=el.tblW(w=sum(resolved), type_value="dxa"))
+    # each column is a cell's width, and the table's their sum: each within Word's range (CR-022)
+    for each in resolved:
+        measure_in_range("w:tcW/@w:w", each, OWN, label="column width", context="dxa")
+    total = measure_in_range("w:tblW/@w:w", sum(resolved), OWN, label="table width", context="dxa")
+    tbl_pr = el.tblPr(tbl_w=el.tblW(w=total, type_value="dxa"))
     if style is not None:
         tbl_pr.tbl_style = el.tblStyle(val=style)
 
