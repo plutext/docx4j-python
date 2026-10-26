@@ -1,0 +1,732 @@
+{
+  "about": "CR-022 D1: the range Word 365 reads each WordprocessingML integer attribute faithfully in, by attribute, from docx4j CR-066 phase 0 (rounds 5 and 6 of the shared probe, the user's Word 365 runs of 2026-10-26; docx4j CR-066 sections 3.1 and 3.4, CR-022 sections 3.1 and 3.3). Hand-written. Each row's attributes are (element, attribute) paths, a holder first where the element name alone binds a class whose attribute is not this one (w:rPr/w:sz); a context names the sibling attribute the range depends on and the values it applies under (null: the attribute absent). min and max are inclusive, in the row's unit. cases cites the probe's case ids (tests/fixtures/integer-limits/round5/cases.txt and round6/cases.txt). word_writes is how Word's save spells a stored value; sentinel a value Word writes for many. An attribute with no row is not checked (Q3); unmeasured lists those the probe could not measure.",
+  "rows": [
+    {
+      "attributes": ["w:ind/@w:left"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round5": ["P2-1", "P2-2", "P2-3", "P2-4", "P2-5", "P2-6", "P2-7", "P2-8", "P2-9"]
+      }
+    },
+    {
+      "attributes": ["w:ind/@w:start"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["A6-1", "A6-2", "A6-3", "A6-4", "A6-5", "A6-6", "A6-7", "A6-8", "A6-9", "A6-10"]
+      },
+      "note": "read in a transitional document and written back as w:left"
+    },
+    {
+      "attributes": ["w:ind/@w:right"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["A5-1", "A5-2", "A5-3", "A5-4", "A5-5", "A5-6", "A5-7", "A5-8", "A5-9", "A5-10"]
+      }
+    },
+    {
+      "attributes": ["w:ind/@w:end"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["A7-1", "A7-2", "A7-3", "A7-4", "A7-5", "A7-6", "A7-7", "A7-8", "A7-9", "A7-10"]
+      },
+      "note": "read in a transitional document and written back as w:right"
+    },
+    {
+      "attributes": ["w:ind/@w:firstLine"],
+      "min": 0,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "one int16 field with w:hanging (a first line F stored as F, a hanging indent H as -H), wraps; written as w:firstLine when 0 or more, as w:hanging with the magnitude when negative",
+      "cases": {
+        "round6": ["A1-1", "A1-2", "A1-3", "A1-4", "A1-5", "A1-6", "A1-7", "A1-8", "A1-9", "A1-10"]
+      }
+    },
+    {
+      "attributes": ["w:ind/@w:hanging"],
+      "min": 0,
+      "max": 32768,
+      "unit": "twips",
+      "storage": "one int16 field with w:firstLine (a hanging indent H stored as -H), wraps",
+      "cases": {
+        "round6": ["A2-1", "A2-2", "A2-3", "A2-4", "A2-5", "A2-6", "A2-7", "A2-8", "A2-9", "A2-10"]
+      }
+    },
+    {
+      "attributes": ["w:spacing/@w:before"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round5": ["P1-1", "P1-2", "P1-3", "P1-4", "P1-5", "P1-6", "N1-1", "N1-9"]
+      }
+    },
+    {
+      "attributes": ["w:spacing/@w:after"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round6": ["A3-1", "A3-2", "A3-3", "A3-4", "A3-5", "A3-6", "A3-7", "A3-8", "A3-9", "A3-10"]
+      }
+    },
+    {
+      "attributes": ["w:spacing/@w:line"],
+      "context": {
+        "w:lineRule": ["auto", null]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "240ths of a line",
+      "storage": "int16, wraps",
+      "cases": {
+        "round5": ["P3-1", "P3-2", "P3-3", "P3-4", "P3-5", "P3-6", "P3-7", "P3-8", "P3-9"]
+      },
+      "note": "lineRule absent is auto"
+    },
+    {
+      "attributes": ["w:spacing/@w:line"],
+      "context": {
+        "w:lineRule": ["exact"]
+      },
+      "min": 1,
+      "max": 32768,
+      "unit": "twips",
+      "storage": "int16 after negation: an exact line is stored as its negative, so the stored sign gives the rule back (exact 65535 reads as atLeast 1, exact 65536 as atLeast 0)",
+      "cases": {
+        "round5": ["P4-1", "P4-2", "P4-3", "P4-4", "P4-5", "P4-6", "P4-7", "P4-8", "P4-9"]
+      },
+      "note": "CR-022 section 3.1 gives 0 to 32,767; Word keeps exact 32768 (P4-2), and exact 0 is stored as exact 65536 is, which Word reads as atLeast 0 (P4-4): CR-022 section 10, departure 1"
+    },
+    {
+      "attributes": ["w:spacing/@w:line"],
+      "context": {
+        "w:lineRule": ["atLeast"]
+      },
+      "min": 0,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, stored positive; a wrapped negative reads as exact",
+      "cases": {
+        "round6": ["A4-1", "A4-2", "A4-3", "A4-4", "A4-5", "A4-6", "A4-7", "A4-8"]
+      }
+    },
+    {
+      "attributes": ["w:spacing/@w:val"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round5": ["R3-1", "R3-2", "R3-3", "R3-4", "R3-5", "R3-6", "R3-7", "R3-8", "R3-9"]
+      },
+      "note": "the run's character spacing (w:rPr/w:spacing); no clamp at the interface's 1,584 pt"
+    },
+    {
+      "attributes": ["w:position/@w:val"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "half-points",
+      "storage": "int16, wraps",
+      "cases": {
+        "round5": ["R2-1", "R2-2", "R2-3", "R2-4", "R2-5", "R2-6", "R2-7", "R2-8", "R2-9", "R2-10"]
+      }
+    },
+    {
+      "attributes": ["w:rPr/w:sz/@w:val"],
+      "min": 0,
+      "max": 65535,
+      "unit": "half-points",
+      "storage": "uint16, wraps; no clamp at the interface's 1,638 pt",
+      "cases": {
+        "round5": ["R1-1", "R1-2", "R1-3", "R1-4", "R1-5", "R1-6", "R1-7", "N1-4", "N1-12"]
+      },
+      "note": "w:sz under w:rPr only: w:frame/w:sz is text"
+    },
+    {
+      "attributes": ["w:szCs/@w:val"],
+      "min": 0,
+      "max": 65535,
+      "unit": "half-points",
+      "storage": "uint16, wraps",
+      "cases": {
+        "round6": ["R2-1", "R2-2", "R2-3", "R2-4", "R2-5", "R2-6", "R2-7", "R2-8", "R2-9", "R2-10"]
+      }
+    },
+    {
+      "attributes": ["w:kern/@w:val"],
+      "min": 0,
+      "max": 65535,
+      "unit": "half-points",
+      "storage": "uint16, wraps",
+      "cases": {
+        "round6": ["R3-1", "R3-2", "R3-3", "R3-4", "R3-5", "R3-6", "R3-7", "R3-8", "R3-9", "R3-10"]
+      }
+    },
+    {
+      "attributes": ["w:w/@w:val"],
+      "min": 0,
+      "max": 65535,
+      "unit": "percent",
+      "storage": "uint16, wraps; no clamp at the schema's 600",
+      "cases": {
+        "round5": ["R4-1", "R4-2", "R4-3", "R4-4", "R4-5", "R4-6", "R4-7", "N1-5", "N1-13"]
+      }
+    },
+    {
+      "attributes": ["w:tblW/@w:w"],
+      "context": {
+        "w:type": ["dxa"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round5": ["T1-1", "T1-2", "T1-3", "T1-4", "T1-5", "T1-6", "T1-7", "T1-8", "T1-9"]
+      }
+    },
+    {
+      "attributes": ["w:tblW/@w:w"],
+      "context": {
+        "w:type": ["pct"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "fiftieths of a percent",
+      "storage": "int16, wraps; no clamp at 5,000 (100%)",
+      "cases": {
+        "round5": ["T5-1", "T5-2", "T5-3", "T5-4", "T5-5", "T5-6", "T5-7", "T5-8"]
+      }
+    },
+    {
+      "attributes": ["w:tcW/@w:w"],
+      "context": {
+        "w:type": ["dxa"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round5": ["T2-1", "T2-2", "T2-3", "T2-4", "T2-5", "T2-6", "T2-7", "T2-8", "T2-9"]
+      }
+    },
+    {
+      "attributes": ["w:tcW/@w:w"],
+      "context": {
+        "w:type": ["pct"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "fiftieths of a percent",
+      "storage": "int16, wraps; no clamp at 5,000 (100%)",
+      "cases": {
+        "round5": ["T4-1", "T4-2", "T4-3", "T4-4", "T4-5", "T4-6", "T4-7", "T4-8"]
+      }
+    },
+    {
+      "attributes": ["w:tblInd/@w:w"],
+      "context": {
+        "w:type": ["dxa"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round5": ["T3-1", "T3-2", "T3-3", "T3-4", "T3-5", "T3-6", "T3-7", "T3-8", "T3-9"]
+      }
+    },
+    {
+      "attributes": ["w:tblCellSpacing/@w:w"],
+      "context": {
+        "w:type": ["dxa"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["T4-1", "T4-2", "T4-3", "T4-4", "T4-5", "T4-6", "T4-7", "T4-8", "T4-9", "T4-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblCellMar/w:left/@w:w"],
+      "context": {
+        "w:type": ["dxa"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["T5-1", "T5-2", "T5-3", "T5-4", "T5-5", "T5-6", "T5-7", "T5-8", "T5-9", "T5-10"]
+      },
+      "note": "measured on w:left only; the other edges have no row (Q3)"
+    },
+    {
+      "attributes": ["w:tcMar/w:top/@w:w"],
+      "context": {
+        "w:type": ["dxa"]
+      },
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["T6-1", "T6-2", "T6-3", "T6-4", "T6-5", "T6-6", "T6-7", "T6-8", "T6-9", "T6-10"]
+      },
+      "note": "measured on w:top only; the other edges have no row (Q3)"
+    },
+    {
+      "attributes": ["w:trHeight/@w:val"],
+      "context": {
+        "w:hRule": ["atLeast", null]
+      },
+      "min": 0,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, the sign carrying the rule (negative is exact); signed in Word though unsigned in the schema",
+      "cases": {
+        "round5": ["T6-1", "T6-2", "T6-3", "T6-4", "T6-5", "T6-6", "N1-6", "N1-14"]
+      },
+      "note": "hRule absent is read as atLeast; 32768 reads as exact 32768 (T6-2)"
+    },
+    {
+      "attributes": ["w:trHeight/@w:val"],
+      "context": {
+        "w:hRule": ["exact"]
+      },
+      "min": 1,
+      "max": 32768,
+      "unit": "twips",
+      "storage": "int16, the sign carrying the rule: an exact height is stored as its negative",
+      "cases": {
+        "round6": ["T1-1", "T1-2", "T1-3", "T1-4", "T1-5", "T1-6", "T1-7", "T1-8"]
+      },
+      "note": "CR-022 section 3.3 gives 0 to 32,767; Word keeps exact 32768 (T1-2), and exact 0 is stored as exact 65536 is, which Word drops (T1-4): CR-022 section 10, departure 1"
+    },
+    {
+      "attributes": ["w:tab/@w:pos"],
+      "min": -31680,
+      "max": 31680,
+      "unit": "twips",
+      "storage": "int16, wraps, then clamped to plus or minus 31,680 (22 in)",
+      "cases": {
+        "round5": ["P5-1", "P5-2", "P5-3", "P5-4", "P5-5", "P5-6", "P5-7", "P5-8", "P5-9"]
+      }
+    },
+    {
+      "attributes": ["w:pgSz/@w:w"],
+      "min": 144,
+      "max": 31681,
+      "unit": "twips",
+      "storage": "uint16, wraps, then clamped to 144 to 31,681",
+      "cases": {
+        "round5": ["S1-1", "S1-2", "S1-3", "S1-4", "S1-5", "S1-6", "S1-7", "S1-8", "N1-8", "N1-16"]
+      }
+    },
+    {
+      "attributes": ["w:pgSz/@w:h"],
+      "min": 144,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps, then a minimum of 144 and no maximum",
+      "cases": {
+        "round5": ["S2-1", "S2-2", "S2-3", "S2-4", "S2-5", "S2-6", "S2-7", "S2-8"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:top"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; a negative top margin is Word's exact top margin",
+      "cases": {
+        "round5": ["S3-1", "S3-2", "S3-3", "S3-4", "S3-5", "S3-6", "N1-7", "N1-15"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:bottom"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["S6-1", "S6-2", "S6-3", "S6-4", "S6-5", "S6-6", "S6-7", "S6-8", "S6-9", "S6-10"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:left"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round6": ["S1-1", "S1-2", "S1-3", "S1-4", "S1-5", "S1-6", "S1-7", "S1-8", "S1-9", "S1-10"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:right"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round6": ["S2-1", "S2-2", "S2-3", "S2-4", "S2-5", "S2-6", "S2-7", "S2-8", "S2-9", "S2-10"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:header"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round6": ["S3-1", "S3-2", "S3-3", "S3-4", "S3-5", "S3-6", "S3-7", "S3-8", "S3-9", "S3-10"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:footer"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round6": ["S4-1", "S4-2", "S4-3", "S4-4", "S4-5", "S4-6", "S4-7", "S4-8", "S4-9", "S4-10"]
+      }
+    },
+    {
+      "attributes": ["w:pgMar/@w:gutter"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps; 0xFFFF is written back as -1",
+      "word_writes": {
+        "65535": "-1"
+      },
+      "cases": {
+        "round6": ["S5-1", "S5-2", "S5-3", "S5-4", "S5-5", "S5-6", "S5-7", "S5-8", "S5-9", "S5-10"]
+      }
+    },
+    {
+      "attributes": ["w:pgNumType/@w:start"],
+      "min": -2147483648,
+      "max": 2147483647,
+      "unit": "page number",
+      "storage": "int32, wraps",
+      "cases": {
+        "round5": ["S4-1", "S4-2", "S4-3", "S4-4", "S4-5", "S4-6", "S4-7", "S4-8", "S4-9", "S4-10"]
+      },
+      "note": "the one 32-bit row"
+    },
+    {
+      "attributes": ["w:cols/@w:space"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps",
+      "cases": {
+        "round6": ["S7-1", "S7-2", "S7-3", "S7-4", "S7-5", "S7-6", "S7-7", "S7-8", "S7-9", "S7-10"]
+      }
+    },
+    {
+      "attributes": ["w:col/@w:w"],
+      "min": 0,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps, then a negative replaced by a width Word computes",
+      "cases": {
+        "round6": ["S8-1", "S8-2", "S8-3", "S8-4", "S8-5", "S8-6", "S8-7", "S8-8", "S8-9", "S8-10"]
+      }
+    },
+    {
+      "attributes": ["w:col/@w:space"],
+      "min": 0,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps, then a negative becomes -1",
+      "sentinel": -1,
+      "cases": {
+        "round6": ["S9-1", "S9-2", "S9-3", "S9-4", "S9-5", "S9-6", "S9-7", "S9-8", "S9-9", "S9-10"]
+      },
+      "note": "-1 is Word's value for every negative, so a -1 written is not kept as a measurement"
+    },
+    {
+      "attributes": ["w:lnNumType/@w:distance"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["S10-1", "S10-2", "S10-3", "S10-4", "S10-5", "S10-6", "S10-7", "S10-8", "S10-9", "S10-10"]
+      }
+    },
+    {
+      "attributes": ["w:framePr/@w:w"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["F1-1", "F1-2", "F1-3", "F1-4", "F1-5", "F1-6", "F1-7", "F1-8", "F1-9", "F1-10"]
+      }
+    },
+    {
+      "attributes": ["w:framePr/@w:h"],
+      "min": 0,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "15 bits and a flag: bit 15 turns hRule exact off",
+      "cases": {
+        "round6": ["F2-1", "F2-2", "F2-3", "F2-4", "F2-5", "F2-6", "F2-7", "F2-8", "F2-9", "F2-10"]
+      }
+    },
+    {
+      "attributes": ["w:framePr/@w:hSpace"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["F3-1", "F3-2", "F3-3", "F3-4", "F3-5", "F3-6", "F3-7", "F3-8", "F3-9", "F3-10"]
+      }
+    },
+    {
+      "attributes": ["w:framePr/@w:vSpace"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["F4-1", "F4-2", "F4-3", "F4-4", "F4-5", "F4-6", "F4-7", "F4-8", "F4-9", "F4-10"]
+      }
+    },
+    {
+      "attributes": ["w:framePr/@w:x"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["F5-1", "F5-2", "F5-3", "F5-4", "F5-5", "F5-6", "F5-7", "F5-8", "F5-9", "F5-10"]
+      }
+    },
+    {
+      "attributes": ["w:framePr/@w:y"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["F6-1", "F6-2", "F6-3", "F6-4", "F6-5", "F6-6", "F6-7", "F6-8", "F6-9", "F6-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblpPr/@w:leftFromText"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["P1-1", "P1-2", "P1-3", "P1-4", "P1-5", "P1-6", "P1-7", "P1-8", "P1-9", "P1-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblpPr/@w:rightFromText"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["P2-1", "P2-2", "P2-3", "P2-4", "P2-5", "P2-6", "P2-7", "P2-8", "P2-9", "P2-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblpPr/@w:topFromText"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["P3-1", "P3-2", "P3-3", "P3-4", "P3-5", "P3-6", "P3-7", "P3-8", "P3-9", "P3-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblpPr/@w:bottomFromText"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["P4-1", "P4-2", "P4-3", "P4-4", "P4-5", "P4-6", "P4-7", "P4-8", "P4-9", "P4-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblpPr/@w:tblpX"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["P5-1", "P5-2", "P5-3", "P5-4", "P5-5", "P5-6", "P5-7", "P5-8", "P5-9", "P5-10"]
+      }
+    },
+    {
+      "attributes": ["w:tblpPr/@w:tblpY"],
+      "min": -32768,
+      "max": 32767,
+      "unit": "twips",
+      "storage": "int16, wraps; 0 is not written",
+      "cases": {
+        "round6": ["P6-1", "P6-2", "P6-3", "P6-4", "P6-5", "P6-6", "P6-7", "P6-8", "P6-9", "P6-10"]
+      }
+    },
+    {
+      "attributes": ["w:defaultTabStop/@w:val"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps",
+      "cases": {
+        "round6": ["D1-1", "D1-2", "D1-3", "D1-4", "D1-5", "D1-6", "D1-7", "D1-8", "D1-9", "D1-10"]
+      }
+    },
+    {
+      "attributes": ["w:hyphenationZone/@w:val"],
+      "min": 0,
+      "max": 65535,
+      "unit": "twips",
+      "storage": "uint16, wraps",
+      "cases": {
+        "round6": ["D2-1", "D2-2", "D2-3", "D2-4", "D2-5", "D2-6", "D2-7", "D2-8", "D2-9", "D2-10"]
+      }
+    },
+    {
+      "attributes": ["w:top/@w:sz", "w:bdr/@w:sz"],
+      "min": 0,
+      "max": 255,
+      "unit": "eighths of a point",
+      "storage": "8 bits, mod 256; no clamp at the interface's 6 pt (48)",
+      "cases": {
+        "round5": ["B1-1", "B1-2", "B1-3", "B1-4", "B1-5", "B1-6", "B1-7", "B1-8", "B1-9", "N1-2", "N1-10"],
+        "round6": ["R4-1", "R4-2", "R4-3", "R4-4", "R4-5", "R4-6", "R4-7", "R4-8", "T9-1", "T9-2", "T9-3", "T9-4", "T9-5", "T9-6", "T9-7", "T9-8", "T10-1", "T10-2", "T10-3", "T10-4", "T10-5", "T10-6", "T10-7", "T10-8", "S11-1", "S11-2", "S11-3", "S11-4", "S11-5", "S11-6", "S11-7", "S11-8"]
+      },
+      "note": "measured on w:pBdr, w:tcBorders, w:tblBorders and w:pgBorders' w:top and on w:rPr/w:bdr"
+    },
+    {
+      "attributes": ["w:top/@w:space", "w:bdr/@w:space"],
+      "min": 0,
+      "max": 31,
+      "unit": "points",
+      "storage": "5 bits, mod 32; no clamp at the interface's 31",
+      "cases": {
+        "round5": ["B2-1", "B2-2", "B2-3", "B2-4", "B2-5", "B2-6", "B2-7", "B2-8", "B2-9", "N1-3", "N1-11"],
+        "round6": ["R5-1", "R5-2", "R5-3", "R5-4", "R5-5", "R5-6", "T9-9", "T9-10", "T9-11", "T9-12", "T9-13", "T9-14", "T10-9", "T10-10", "T10-11", "T10-12", "T10-13", "T10-14", "S11-9", "S11-10", "S11-11", "S11-12", "S11-13", "S11-14"]
+      },
+      "note": "measured on w:pBdr, w:tcBorders, w:tblBorders and w:pgBorders' w:top and on w:rPr/w:bdr"
+    },
+    {
+      "attributes": ["w:left/@w:sz", "w:bottom/@w:sz", "w:right/@w:sz", "w:start/@w:sz", "w:end/@w:sz", "w:between/@w:sz", "w:bar/@w:sz", "w:insideH/@w:sz", "w:insideV/@w:sz", "w:tl2br/@w:sz", "w:tr2bl/@w:sz"],
+      "min": 0,
+      "max": 255,
+      "unit": "eighths of a point",
+      "storage": "8 bits, mod 256",
+      "analogy": "the other border edges take w:top's row (Q3): every border family measured stored w:sz alike"
+    },
+    {
+      "attributes": ["w:left/@w:space", "w:bottom/@w:space", "w:right/@w:space", "w:start/@w:space", "w:end/@w:space", "w:between/@w:space", "w:bar/@w:space", "w:insideH/@w:space", "w:insideV/@w:space", "w:tl2br/@w:space", "w:tr2bl/@w:space"],
+      "min": 0,
+      "max": 31,
+      "unit": "points",
+      "storage": "5 bits, mod 32",
+      "analogy": "the other border edges take w:top's row (Q3): every border family measured stored w:space alike"
+    }
+  ],
+  "unmeasured": [
+    {
+      "attribute": "w:trHeight/@w:val",
+      "context": {
+        "w:hRule": ["auto"]
+      },
+      "why": "Word discards a row height under hRule auto at every value (round 6, T2-1 to T2-8)",
+      "cases": {
+        "round6": ["T2-1", "T2-2", "T2-3", "T2-4", "T2-5", "T2-6", "T2-7", "T2-8"]
+      }
+    },
+    {
+      "attribute": "w:gridCol/@w:w",
+      "why": "Word recomputes the grid from the cells, even under a fixed layout (round 6, T3-1 to T3-10)",
+      "cases": {
+        "round6": ["T3-1", "T3-2", "T3-3", "T3-4", "T3-5", "T3-6", "T3-7", "T3-8", "T3-9", "T3-10"]
+      }
+    },
+    {
+      "attribute": "w:wBefore/@w:w",
+      "why": "Word drops it with a w:gridBefore the row does not fit (round 6, T7-1 to T7-10)",
+      "cases": {
+        "round6": ["T7-1", "T7-2", "T7-3", "T7-4", "T7-5", "T7-6", "T7-7", "T7-8", "T7-9", "T7-10"]
+      }
+    },
+    {
+      "attribute": "w:wAfter/@w:w",
+      "why": "Word drops it with a w:gridAfter the row does not fit (round 6, T8-1 to T8-10)",
+      "cases": {
+        "round6": ["T8-1", "T8-2", "T8-3", "T8-4", "T8-5", "T8-6", "T8-7", "T8-8", "T8-9", "T8-10"]
+      }
+    },
+    {
+      "attribute": "w:legacy/@w:legacySpace",
+      "why": "Word 365 drops w:legacy from numbering.xml (round 6, N1-1 to N1-10)",
+      "cases": {
+        "round6": ["N1-1", "N1-2", "N1-3", "N1-4", "N1-5", "N1-6", "N1-7", "N1-8", "N1-9", "N1-10"]
+      }
+    },
+    {
+      "attribute": "w:legacy/@w:legacyIndent",
+      "why": "Word 365 drops w:legacy from numbering.xml (round 6, N1-1 to N1-10)",
+      "cases": {
+        "round6": ["N1-1", "N1-2", "N1-3", "N1-4", "N1-5", "N1-6", "N1-7", "N1-8", "N1-9", "N1-10"]
+      }
+    },
+    {
+      "attribute": "w:fitText/@w:val",
+      "why": "not 16 bits: Word kept all ten values as written (round 6, R1-1 to R1-10), so no limit was found",
+      "cases": {
+        "round6": ["R1-1", "R1-2", "R1-3", "R1-4", "R1-5", "R1-6", "R1-7", "R1-8", "R1-9", "R1-10"]
+      }
+    }
+  ]
+}

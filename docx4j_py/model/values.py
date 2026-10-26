@@ -61,35 +61,65 @@ sign**, a decimal truncated toward zero (``"720.5"`` 720, ``"-121.5"`` -121,
 ``"141.99999999999994"`` 141, ``"240."`` 240, ``".5"`` 0, ``"+240.5"`` 240);
 ``""`` reads 0; any other form (``"abc"``, ``"1e3"``, ``"0x10"``, ``"240,5"``,
 ``" 240 "``) None, unset, because Word refuses the document holding it.
+
+**Measurements as code sets them** (CR-022, docx4j CR-066 phase 0: rounds five and
+six, Word 365, 2026-10-26). Word keeps each integer attribute in a field of its own
+width, 16 bits signed or unsigned for most, and reads a value past it wrapped, with
+no error and no repair. :func:`measure_in_range` is the one check every setter that
+writes an integer measurement goes through: it converts the caller's value
+(:data:`POINTS`, a python-docx ``Length`` in :data:`EMU`, :data:`LINES`, or the
+attribute's own unit, :data:`OWN`) as the setter always has, and refuses it with a
+``MeasureRangeError`` (``value.out_of_range``) where Word would not read it as
+written, by the attribute's row of the limits table (:func:`integer_limit`,
+``resources/integer-limits.json``), and, where Office JS's setter stops sooner, at
+Office JS's limit (a :class:`CallerLimit`). The integer the setter writes is what it
+returns. An attribute the probe did not measure has no row and is not checked (Q3).
 """
 
 from __future__ import annotations
 
+import dataclasses
+import json
+import math
 import re
 import threading
+from collections.abc import Callable
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from enum import Enum
 from typing import Any
 
 __all__ = [
     "AUDITED_NAMESPACES",
     "AUTO",
+    "EMU",
+    "INTEGER_LIMITS_RESOURCE",
+    "LINES",
     "NETSCAPE_COLOURS",
     "OFF",
+    "OWN",
+    "POINTS",
     "UNDERLINE_ALIASES",
     "XSD_FALSE",
     "XSD_TRUE",
+    "CallerLimit",
+    "IntegerLimit",
+    "Units",
     "colour",
     "effective",
     "emphasis_mark",
     "highlight",
     "in_enumeration",
     "integer",
+    "integer_limit",
+    "integer_limits",
     "is_on",
+    "measure_in_range",
     "on_off",
     "on_off_normal_form",
     "states_colour",
     "theme_colour",
     "underline",
+    "unmeasured_attributes",
     "vertical_alignment",
     "xsd_boolean",
 ]
@@ -501,3 +531,435 @@ def effective(obj: Any, name: str) -> Any:
     if value is not None:
         return value
     return var.schema_default_value
+
+
+# ---------------------------------------------------------------------------
+# measurements as code sets them (CR-022)
+# ---------------------------------------------------------------------------
+
+#: The limits table (CR-022 D1): hand-written, in ``docx4j_py/resources/``.
+INTEGER_LIMITS_RESOURCE = "integer-limits.json"
+
+#: The unit of every attribute the table lists as unmeasured (``w:gridCol``, ``w:wBefore``,
+#: ``w:wAfter``, ``w:legacy``, ``w:fitText``, ``w:trHeight`` under ``hRule="auto"``): twips.
+_UNMEASURED_UNIT = "twips"
+
+#: A row's context: the sibling attribute and the values the row applies under (None: absent).
+Context = tuple[str, tuple[str | None, ...]]
+#: An unmeasured attribute's entries: (its context or None, why the probe could not measure it).
+Unmeasured = tuple[tuple[Context | None, str], ...]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class IntegerLimit:
+    """One attribute's row of the limits table: the range Word 365 reads it faithfully in (CR-022 D1).
+
+    Attributes:
+        attribute: the path as the table spells it, ``w:ind/@w:left``, with a
+            holder first where the element name alone binds a class whose
+            attribute is not this one (``w:rPr/w:sz/@w:val``: ``w:frame/w:sz``
+            is text).
+        minimum: the least value Word reads as written, in :attr:`unit`.
+        maximum: the greatest, inclusive.
+        unit: the attribute's unit: ``twips``, ``half-points``, ``eighths of a
+            point``, ``points``, ``fiftieths of a percent``, ``percent``,
+            ``240ths of a line`` or ``page number``.
+        storage: how Word stores it, as the probe found.
+        context: (the sibling attribute the range depends on, the values this
+            row applies under, None for that attribute absent), or None where
+            the range depends on nothing: ``("w:lineRule", ("exact",))``.
+        word_writes: a stored value Word's save spells otherwise, to that
+            spelling (``w:before``'s 65535 is saved as ``"-1"``).
+        sentinel: a value Word writes for many (``w:col/@w:space``'s -1 for
+            every negative), so not a measurement it keeps.
+        cases: the probe's case ids the row rests on, by round
+            (``tests/fixtures/integer-limits/``).
+        analogy: where no case measured the row, why it holds (Q3: the other
+            border edges).
+        note: anything else the row needs said.
+    """
+
+    attribute: str
+    minimum: int
+    maximum: int
+    unit: str
+    storage: str
+    context: Context | None = None
+    word_writes: tuple[tuple[int, str], ...] = ()
+    sentinel: int | None = None
+    cases: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    analogy: str | None = None
+    note: str | None = None
+
+    @property
+    def path(self) -> tuple[str, ...]:
+        """The elements of :attr:`attribute`, outermost first: ``("w:rPr", "w:sz")``."""
+        return tuple(self.attribute.split("/@", 1)[0].split("/"))
+
+    @property
+    def element(self) -> str:
+        """The element that carries the attribute: ``w:sz``."""
+        return self.path[-1]
+
+    @property
+    def holder(self) -> str | None:
+        """The element the row's element must be under, where the row names one: ``w:rPr``."""
+        return self.path[-2] if len(self.path) > 1 else None
+
+    @property
+    def name(self) -> str:
+        """The attribute itself: ``w:val``."""
+        return self.attribute.split("/@", 1)[1]
+
+    def applies(self, context: str | None) -> bool:
+        """Whether this row is the one for `context`, the sibling attribute's value (None: absent)."""
+        return self.context is None or context in self.context[1]
+
+    def admits(self, stored: int) -> bool:
+        """Whether Word reads `stored` as written: :attr:`minimum` to :attr:`maximum`, inclusive."""
+        return self.minimum <= stored <= self.maximum
+
+
+_LIMITS: tuple[tuple[IntegerLimit, ...], dict[str, Unmeasured]] | None = None
+_LIMITS_LOCK = threading.Lock()
+
+
+def _load_limits() -> tuple[tuple[IntegerLimit, ...], dict[str, Unmeasured]]:
+    """The table's rows, one per attribute path, and its unmeasured attributes; read once."""
+    global _LIMITS
+    if _LIMITS is not None:
+        return _LIMITS
+    from importlib.resources import files
+
+    data = json.loads(files("docx4j_py.resources").joinpath(INTEGER_LIMITS_RESOURCE).read_text("utf-8"))
+
+    def context_of(raw: dict[str, list[str | None]] | None) -> Context | None:
+        if not raw:
+            return None
+        ((attribute, values),) = raw.items()
+        return attribute, tuple(values)
+
+    rows: list[IntegerLimit] = []
+    for raw in data["rows"]:
+        for attribute in raw["attributes"]:
+            rows.append(
+                IntegerLimit(
+                    attribute=attribute,
+                    minimum=int(raw["min"]),
+                    maximum=int(raw["max"]),
+                    unit=raw["unit"],
+                    storage=raw["storage"],
+                    context=context_of(raw.get("context")),
+                    word_writes=tuple((int(k), v) for k, v in raw.get("word_writes", {}).items()),
+                    sentinel=raw.get("sentinel"),
+                    cases=tuple((name, tuple(ids)) for name, ids in raw.get("cases", {}).items()),
+                    analogy=raw.get("analogy"),
+                    note=raw.get("note"),
+                )
+            )
+    unmeasured: dict[str, list[tuple[Context | None, str]]] = {}
+    for raw in data.get("unmeasured", ()):
+        unmeasured.setdefault(raw["attribute"], []).append((context_of(raw.get("context")), raw["why"]))
+    loaded = (tuple(rows), {k: tuple(v) for k, v in unmeasured.items()})
+    with _LIMITS_LOCK:
+        _LIMITS = loaded
+    return loaded
+
+
+def integer_limits() -> tuple[IntegerLimit, ...]:
+    """Every row of the limits table, one per attribute path and context (CR-022 D1)."""
+    return _load_limits()[0]
+
+
+def unmeasured_attributes() -> dict[str, Unmeasured]:
+    """The attributes the probe could not measure, each with its context (or None) and why (CR-022 section 3.3)."""
+    return _load_limits()[1]
+
+
+def integer_limit(attribute: str, context: str | None = None) -> IntegerLimit | None:
+    """The row for `attribute` under `context` (the sibling attribute's value; None: absent), or None.
+
+    None where the probe could not measure the attribute, or not under that
+    context (``w:gridCol/@w:w``; ``w:trHeight/@w:val`` under ``hRule="auto"``,
+    which Word discards): such a value is not checked (CR-022 Q3).
+
+    Raises:
+        LookupError: the table neither has a row for `attribute` under
+            `context` nor lists it as unmeasured: a setter naming an attribute
+            the table does not know is a mistake in the setter.
+    """
+    rows, unmeasured = _load_limits()
+    found = [row for row in rows if row.attribute == attribute]
+    for row in found:
+        if row.applies(context):
+            return row
+    for where, _why in unmeasured.get(attribute, ()):
+        if where is None or context in where[1]:
+            return None
+    raise LookupError(
+        f"the integer limits table has no row for {attribute}"
+        + ("" if context is None else f" under {context!r}")
+        + " (CR-022 D1; docx4j_py/resources/integer-limits.json)"
+    )
+
+
+def _decimal(value: Any) -> Decimal:
+    """`value` as a Decimal, exactly for an int and by its shortest repr for a float."""
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, int):
+        return Decimal(int(value))
+    return Decimal(repr(float(value)))
+
+
+def _number(value: Decimal) -> str:
+    """``1,638.35``: thousands separated, no trailing zeros, no exponent."""
+    text = format(value, ",f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "") else text
+
+
+def _given(value: Any) -> str:
+    """The caller's value as they gave it: ``400000`` for ``400000.0``, ``1638.35``, ``nan``."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        return repr(value)
+    if isinstance(value, int):
+        return str(int(value))
+    number = float(value)
+    if math.isfinite(number) and number == int(number):
+        return str(int(number))
+    return repr(number)
+
+
+#: How many twips, half-points, eighths of a point and points make a point.
+_PER_POINT: dict[str, int] = {"twips": 20, "half-points": 2, "eighths of a point": 8, "points": 1}
+#: How many EMU make one of each length unit (python-docx's ``Length``).
+_EMU_PER: dict[str, Decimal] = {
+    "twips": Decimal(635),
+    "half-points": Decimal(6350),
+    "eighths of a point": Decimal("1587.5"),
+    "points": Decimal(12700),
+}
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Units:
+    """The units a caller gives a measurement in, and the conversion its setter has always made (CR-022 D2).
+
+    `convert` takes the caller's value and the attribute's unit and gives the
+    integer the setter writes, rounded as that setter rounded it before CR-022;
+    `per` gives how many of the caller's units one of the attribute's makes,
+    for the message's range; `secondary` an easier reading of a value, for the
+    message (``500 cm`` for a ``Length``).
+    """
+
+    name: str
+    convert: Callable[[Any, str], Any]
+    per: Callable[[str], Decimal]
+    secondary: Callable[[Any, str], str | None] = lambda _value, _unit: None
+
+
+def _from_points(value: Any, unit: str) -> int:
+    return round(value * _PER_POINT[unit])
+
+
+def _from_emu(value: Any, unit: str) -> int:
+    emu = int(value)
+    if unit == "twips":  # python-docx's Length.twips
+        return round(emu / 635.0)
+    if unit == "half-points":  # round(Length.pt * 2), as the facade's Font.size always wrote it
+        return round(emu / 12700.0 * 2)
+    return round(emu / float(_EMU_PER[unit]))
+
+
+def _emu_secondary(value: Any, unit: str) -> str | None:
+    emu = Decimal(int(value))
+    if unit == "half-points":
+        return f"{_number(round(emu / Decimal(12700), 2))} pt"
+    return f"{_number(round(emu / Decimal(360000), 3))} cm"
+
+
+def _from_lines(value: Any, unit: str) -> int:
+    if unit != "240ths of a line":
+        raise KeyError(unit)
+    # python-docx's line_spacing = 1.5: twips_of(Emu(int(value * Twips(240)))), Twips(240) being 152,400 EMU
+    return round(int(value * 152400) / 635.0)
+
+
+def _per_line(unit: str) -> Decimal:
+    if unit != "240ths of a line":
+        raise KeyError(unit)
+    return Decimal(1) / Decimal(240)
+
+
+def _own(value: Any, unit: str) -> Any:
+    return value
+
+
+#: A measurement in points, as the content API takes every one (Office JS's unit).
+POINTS = Units("pt", _from_points, lambda unit: Decimal(1) / _PER_POINT[unit])
+#: A python-docx ``Length``, a count of EMU (914,400 to the inch), as the facade takes every one.
+EMU = Units("EMU", _from_emu, lambda unit: _EMU_PER[unit], _emu_secondary)
+#: A line spacing in lines, python-docx's float: ``w:line`` under ``lineRule="auto"`` is 240ths of one.
+LINES = Units("lines", _from_lines, _per_line)
+#: The attribute's own unit, as the tree-layer builders take a width (twips).
+OWN = Units("", _own, lambda unit: Decimal(1))
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CallerLimit:
+    """A setter's own range, narrower than Word's storage, in the caller's units (CR-022 Q1).
+
+    Office JS's own setters refuse some values Word would store as written:
+    ``spaceBefore``, ``spaceAfter`` and ``lineSpacing`` from 1,638 pt and for
+    a negative, ``setLevelIndents``' text indent from 1,638 pt and at -1,638.4
+    and below, ``font.size`` above 1,638 and at 0 (core-ts check 71; CR-022
+    section 3.2). The content API's setters of the same names refuse where
+    Office JS refuses. None at an end means the attribute's own range rules
+    there.
+    """
+
+    low: float | None = None
+    high: float | None = None
+    low_open: bool = False
+    high_open: bool = False
+    by: str = "Office JS"
+
+    def admits(self, value: Any) -> bool:
+        """Whether the caller's `value` is inside this limit."""
+        if self.low is not None and (value < self.low or (self.low_open and value == self.low)):
+            return False
+        return not (self.high is not None and (value > self.high or (self.high_open and value == self.high)))
+
+
+def _inward(value: Decimal, up: bool) -> Decimal:
+    """`value` as shown: exact where it has three decimals or fewer, else rounded inward to three (``n/240``)."""
+    if value == value.quantize(Decimal("0.001")):
+        return value
+    return value.quantize(Decimal("0.001"), rounding=ROUND_CEILING if up else ROUND_FLOOR)
+
+
+def _range_text(low: Decimal, high: Decimal, low_open: bool, high_open: bool, unit: str) -> str:
+    """``-1,638.4 to 1,638.35 pt``; ``0 to 1,638 pt, 1,638 excluded``: each bound shown inside the range."""
+    lo, hi = _number(_inward(low, up=True)), _number(_inward(high, up=False))
+    tail = f" {unit}" if unit else ""
+    if low_open and high_open:
+        return f"{lo} to {hi}{tail}, both ends excluded"
+    if low_open:
+        return f"{lo} to {hi}{tail}, {lo} excluded"
+    if high_open:
+        return f"{lo} to {hi}{tail}, {hi} excluded"
+    return f"{lo} to {hi}{tail}"
+
+
+def _refusal(
+    row: IntegerLimit,
+    value: Any,
+    stored: Any,
+    units: Units,
+    label: str,
+    limit: CallerLimit | None,
+    finite: bool = True,
+) -> Exception:
+    """The ``MeasureRangeError`` for `value`: the property, the value both ways, and Word's range in the caller's units."""
+    from docx4j_py.model.content.errors import MeasureRangeError
+
+    per = units.per(row.unit)
+    low, high = _decimal(row.minimum) * per, _decimal(row.maximum) * per
+    low_open = high_open = False
+    by_limit = False
+    if limit is not None:
+        if limit.low is not None:
+            bound = _decimal(limit.low)
+            if bound > low or (bound == low and limit.low_open):
+                low, low_open, by_limit = bound, limit.low_open, True
+        if limit.high is not None:
+            bound = _decimal(limit.high)
+            if bound < high or (bound == high and limit.high_open):
+                high, high_open, by_limit = bound, limit.high_open, True
+    unit_name = units.name or row.unit
+    span = _range_text(low, high, low_open, high_open, unit_name)
+    if units is EMU and row.unit in _EMU_PER:
+        # the bounds read in cm (or pt), each rounded inward so that it is inside the range
+        if row.unit == "half-points":
+            scale, places, name = Decimal(12700), Decimal("0.01"), "pt"
+        else:
+            scale, places, name = Decimal(360000), Decimal("0.001"), "cm"
+        inner_low = (low / scale).quantize(places, rounding=ROUND_CEILING)
+        inner_high = (high / scale).quantize(places, rounding=ROUND_FLOOR)
+        span = f"{span} ({_range_text(inner_low, inner_high, low_open, high_open, name)})"
+    where = f", where {limit.by}'s setter stops" if by_limit else ""  # type: ignore[union-attr]
+    shown = f"{label} {_given(value)}" + (f" {units.name}" if units.name else f" {row.unit}")
+    if not finite:
+        message = f"{shown} is not a finite number"
+    else:
+        both = []
+        secondary = units.secondary(value, row.unit) if units.name else None
+        if secondary is not None:
+            both.append(secondary)
+        if units.name:
+            both.append(f"{_number(_decimal(stored))} {row.unit}")
+        written = f" ({', '.join(both)})" if both else ""
+        message = f"{shown}{written} is beyond Word's range, {span}{where}"
+    error = MeasureRangeError(message, hint=f"pass a {label} from {span}")
+    error.attribute = row.attribute
+    error.value = value
+    error.stored = stored
+    return error
+
+
+def measure_in_range(
+    attribute: str,
+    value: Any,
+    units: Units = POINTS,
+    *,
+    label: str,
+    context: str | None = None,
+    limit: CallerLimit | None = None,
+) -> Any:
+    """`value` converted to `attribute`'s unit, where Word 365 reads it as written; else ``MeasureRangeError``.
+
+    The one check every setter that writes an integer measurement goes
+    through (CR-022 D2, D3), called **before** the setter changes anything,
+    so that a refused call leaves the tree as it was and records no
+    :class:`~docx4j_py.model.content.reports.ChangeReport`.
+
+    Args:
+        attribute: the attribute, as the limits table spells it
+            (``"w:ind/@w:left"``, ``"w:rPr/w:sz/@w:val"``).
+        value: what the caller gave, in `units`.
+        units: :data:`POINTS` (the content API), :data:`EMU` (a python-docx
+            ``Length``), :data:`LINES` (python-docx's line multiple) or
+            :data:`OWN` (the attribute's own unit, the builders' twips). The
+            conversion is the one the setter always made, rounding and all.
+        label: the property, as the caller knows it (``"left indent"``),
+            for the message.
+        context: the value of the sibling attribute the range depends on,
+            as the write leaves it: ``w:lineRule`` for ``w:spacing/@w:line``,
+            ``w:hRule`` for ``w:trHeight/@w:val``, ``w:type`` for a table
+            width; None for that attribute absent.
+        limit: the setter's own narrower range, Office JS's (CR-022 Q1), in
+            the caller's units; it applies with the attribute's range.
+
+    Returns:
+        The value to write, in the attribute's unit. Not checked where the
+        table lists the attribute (or this context) as unmeasured (Q3).
+
+    Raises:
+        MeasureRangeError: ``value.out_of_range``; the message names the
+            property, the value in the caller's units and in the attribute's,
+            and Word's range in the caller's units (Q6), and the hint the
+            range. Also for a value that is not a finite number.
+        LookupError: the table does not know `attribute` (a setter's mistake).
+    """
+    row = integer_limit(attribute, context)
+    if row is None:  # unmeasured (Q3): converted as the setter always did, and not checked
+        return units.convert(value, _UNMEASURED_UNIT)
+    if isinstance(value, float) and not math.isfinite(value):
+        raise _refusal(row, value, None, units, label, limit, finite=False)
+    stored = units.convert(value, row.unit)
+    if row.admits(stored) and (limit is None or limit.admits(value)):
+        return stored
+    raise _refusal(row, value, stored, units, label, limit)
+

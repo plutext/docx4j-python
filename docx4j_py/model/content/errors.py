@@ -14,6 +14,7 @@ catches only it.
     └── ContentError            code, message, hint
         ├── AddressError        no block at that address
         ├── InvalidTargetError  this container cannot hold that element
+        ├── MeasureRangeError   a measurement Word would not read as written
         ├── StyleError          no such style, and the five closest names
         ├── SpanError           a span that cannot be formed or edited
         ├── TrackedChangeError  an edit a tracked document cannot carry
@@ -25,6 +26,10 @@ catches only it.
 ``ValueError`` as a second base so that the call sites written against Phase A
 (``pytest.raises(ValueError)``) go on working;
 :mod:`docx4j_py.wml.builders` imports it from here.
+
+:class:`MeasureRangeError` is CR-022's, raised by
+:func:`docx4j_py.model.values.measure_in_range` from every setter that writes
+an integer measurement; it keeps ``ValueError`` as a second base too (Q2).
 """
 
 from __future__ import annotations
@@ -38,6 +43,7 @@ __all__ = [
     "ContentError",
     "Docx4JError",
     "InvalidTargetError",
+    "MeasureRangeError",
     "SpanError",
     "StyleError",
     "TrackedChangeError",
@@ -92,6 +98,36 @@ class InvalidTargetError(ContentError):
 
     default_code = "target.invalid"
     default_hint = "pass an element the container can hold"
+
+
+class MeasureRangeError(ContentError, ValueError):
+    """A measurement Word 365 would not read as written (CR-022 D2, Q2).
+
+    Word keeps each integer attribute in a field of its own width, 16 bits for
+    most, and reads a value past it wrapped, with no error (docx4j CR-066
+    phase 0). Every setter that writes one refuses such a value before it
+    changes anything. The message names the property, the value in the
+    caller's units and in the attribute's, and Word's range in the caller's
+    units (Q6); the hint names the range. ``ValueError`` is a second base, so
+    that a caller catching the language's error for a bad value catches this.
+
+    Attributes:
+        attribute: the attribute, as the limits table spells it
+            (``w:ind/@w:left``).
+        value: what the caller gave.
+        stored: what the setter would have written, in the attribute's unit;
+            None for a value that is not a finite number.
+    """
+
+    default_code = "value.out_of_range"
+    default_hint = "pass a value within Word's range"
+
+    def __init__(self, message: str, *, code: str | None = None, hint: str | None = None) -> None:
+        """Build the error; :func:`~docx4j_py.model.values.measure_in_range` sets the attributes."""
+        super().__init__(message, code=code, hint=hint)
+        self.attribute: str | None = None
+        self.value: object = None
+        self.stored: object = None
 
 
 class StyleError(ContentError):

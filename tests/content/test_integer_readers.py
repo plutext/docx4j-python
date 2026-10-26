@@ -59,6 +59,7 @@ STRING = "an xsd:string value read as a number by its own rule (w:compatSetting/
 MODE = "the compatibility mode, an int the package already holds or a member of CompatibilityMode"
 KEY = "the numbering emulator's numId or ilvl key, a decimal definitions.decimal wrote through values.integer"
 OWN = "values.integer itself: ASCII digits its expression matched"
+TABLE = "the CR-022 limits table's own numbers (resources/integer-limits.json), not a model field"
 
 #: Every ``int(`` and ``float(`` under ``model/`` and ``docx/`` that does not go through ``values.integer``.
 LISTED: dict[str, str] = {
@@ -187,6 +188,19 @@ LISTED: dict[str, str] = {
     "model/text/field_values.py::FieldValues._sequence::int(reset.strip())": TEXT,
     # the reader itself
     "model/values.py::integer::int(digits)": OWN,
+    # CR-022's check: a caller's measurement converted as its setter always converted it, and shown
+    "model/values.py::_decimal::float(value)": NUMBER,
+    "model/values.py::_decimal::int(value)": NUMBER,
+    "model/values.py::_emu_secondary::int(value)": LENGTH,
+    "model/values.py::_from_emu::float(_EMU_PER[unit])": CONSTANT,
+    "model/values.py::_from_emu::int(value)": LENGTH,
+    "model/values.py::_from_lines::int(value * 152400)": ARGUMENT,
+    "model/values.py::_given::float(value)": NUMBER,
+    "model/values.py::_given::int(number)": NUMBER,
+    "model/values.py::_given::int(value)": NUMBER,
+    "model/values.py::_load_limits::int(k)": TABLE,
+    "model/values.py::_load_limits::int(raw['max'])": TABLE,
+    "model/values.py::_load_limits::int(raw['min'])": TABLE,
     # the hand-written modules beside the model
     "traversal.py::_sym_text::int(value, 16)": HEX,
     "wml/pictures.py::_jpeg_size::float(x_density)": NUMBER,
@@ -243,7 +257,7 @@ def test_every_int_and_float_is_listed() -> None:
 
 
 def test_every_listed_call_has_a_reason() -> None:
-    reasons = {ARGUMENT, LENGTH, HEX, TEXT, CONSTANT, NUMBER, OUTSIDE, STRING, MODE, KEY, OWN}
+    reasons = {ARGUMENT, LENGTH, HEX, TEXT, CONSTANT, NUMBER, OUTSIDE, STRING, MODE, KEY, OWN, TABLE}
     assert set(LISTED.values()) <= reasons
     # the readers CR-021 section 2.3 named are no longer listed: each goes through values.integer
     gone = (
