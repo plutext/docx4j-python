@@ -1,6 +1,8 @@
 # CR-022: Integer measurements refused beyond Word's range as code sets them --- the write-side guard, after Word's 16-bit wrap
 
-**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Seven questions wait on the user (section 8).
+**Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Two more measurements came the same day:**
+- core-ts's check 71 measured Office JS's own setters (section 3.2), which revises Q1's recommendation;
+- round 6, the file side of the attributes round 5 left unmeasured (481 cases), is built and on the share at `__tmp/cr066/round6/`, awaiting the user's run. Checked here: all 317 files load with nothing kept or skipped. D1's table is completed from it. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. Seven questions wait on the user (section 8).
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -100,6 +102,18 @@ No value was refused or repaired. A negative in a schema-unsigned attribute is a
 
 So the "faithful" column is the guard's range: inside it, what code sets is what Word reads.
 
+### 3.2 Office JS's own setters (core-ts's check 71; docx4j CR-066 section 3.2)
+
+core-ts's check 71 (96 cases, Word 365 16.0.20326, the user's run, 2026-10-26) sets values through Office JS and reads Word's save:
+- **The indents and `TableCell.columnWidth` aren't guarded.** `leftIndent`, `rightIndent`, `firstLineIndent` and `columnWidth` take any value and store it wrapped exactly as the file reader does: 1638.4 pt → -32768 twips, 400,000 pt → 4608. Only a negative `columnWidth` is refused.
+- **`w:firstLine` and `w:hanging` are one signed field.** A first line F is stored as F, a hanging H as -H, so first line is 0 to 32,767 and hanging 0 to 32,768, and a wrap crosses between them: `firstLineIndent` 1638.4 pt writes `w:hanging="32768"`.
+- **Refused at Office JS's own limit, below storage,** with `InvalidArgument` and nothing written:
+  - `spaceBefore`, `spaceAfter` and `lineSpacing` at 1,638 pt and up, and every negative;
+  - `setLevelIndents`' text indent at 1,638 pt and up and at -1,638.4;
+  - `font.size` above 1,638 and at 0.
+
+So Office JS guards some measures, at Word's interface limits, and leaves the rest to wrap.
+
 ## 4. Design
 
 ### 4.1 The limits table (D1)
@@ -119,6 +133,13 @@ A per-type table, derived from `schemas/`, was the draft's design. It's dropped:
 Every write of section 2.2: the content API's setters, the facade's (at the point a `Length` is written to a field), and the builders. A census like CR-021's D2 holds the list whole: every write of an integer measurement under `docx4j_py/model/content`, `docx4j_py/docx` and `docx4j_py/wml/builders.py` goes through the check, and a new one fails until it does.
 
 ### 4.4 Which limit (D4, Q1)
+
+**The content API's setters, which use Office JS's vocabulary, refuse where Office JS refuses** (section 3.2):
+- space before and after, and line spacing, from 1,638 pt and for a negative;
+- a level's text indent beyond ±1,638 pt;
+- a font size above 1,638 pt or at 0.
+
+**Everywhere else, including the indents and column widths that Office JS lets wrap, every setter refuses beyond the faithful range of section 3.1, per attribute.** That's a guard where Office JS has none. The facade and the builders use the faithful range throughout, since they don't speak Office JS.
 
 The faithful range of section 3.1, per attribute. That's Word's storage width, narrowed where Word clamps: the tab stop's ±31,680, the page width's 144 to 31,681, the page height's minimum of 144. Word's other interface limits aren't enforced by Word itself (section 3.1), so refusing at them would refuse values Word reads as written.
 
@@ -154,7 +175,7 @@ A value already out of range in a file, or assigned straight to a field, is repo
 
 | Q | Question | Recommendation |
 |---|---|---|
-| Q1 | Refuse beyond the faithful range per attribute (section 3.1: the storage width, narrowed where Word clamps), or at Word's interface limits (22 in for a page, 1,638 pt for a font)? | The faithful range. Round 5 shows Word keeps values past most interface limits, so refusing there would refuse what Word reads as written. |
+| Q1 | Refuse beyond the faithful range per attribute (section 3.1: the storage width, narrowed where Word clamps), or at Word's interface limits (22 in for a page, 1,638 pt for a font)? | Revised after check 71 (section 3.2). The content API refuses where Office JS refuses (spacing, line spacing, a level's text indent, font size, at Office JS's limits), and at the faithful range elsewhere. The facade and the builders use the faithful range. Round 5 shows Word's file reader keeps values past most interface limits, so only the API Office JS defines uses them. |
 | Q2 | The error: a new `MeasureRangeError(ContentError, ValueError)` with code `value.out_of_range`? | Yes. |
 | Q3 | Which attributes: only those round 5 measured (with `w:spacing/@w:after` and the other border edges by analogy), or every integer attribute by an assumed width? | Only those measured, plus the two analogies, which docx4j-25 also assumes. An attribute without a row isn't checked. |
 | Q4 | The python-docx facade refuses too, though python-docx itself accepts any `Length`? | Yes. python-docx writes the same broken file; the facade's promise is python-docx's names and semantics, and a refusal is a better semantics for a value Word misreads. |
