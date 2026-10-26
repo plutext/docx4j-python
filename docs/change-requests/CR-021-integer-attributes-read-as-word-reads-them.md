@@ -111,7 +111,7 @@ Word recomputes the table grid on open, so `gridCol` decimals have no reading yo
 
 `docx4j_py.model.values.integer(value) -> int | None`:
 - an `int` is itself;
-- a `str` in Word's form reads its integer part with its sign. The truncation is done on the string, not through `float`: `float("2.9999999999999999")` is 3.0, where the string's integer part is 2. Word's reading of more digits than a double holds is unmeasured: `141.99999999999994` reads 141 by either route. Phase C's Word check adds the case (Q8). `""`, and a form whose digit groups are both empty (`"."`, `"+"`), read 0, as docx4j's test does; those two are also unmeasured;
+- a `str` in Word's form reads its integer part with its sign. The truncation is done on the string, not through `float`: `float("2.9999999999999999")` is 3.0, where the string's integer part is 2. Word's reading of more digits than a double holds is unmeasured: `141.99999999999994` reads 141 by either route. Phase C's Word check adds the case (Q8). `""`, and a form whose digit groups are both empty (`"."`, `"+"`, `"-"`), read 0, by the lexical test as CR-065 D3 states it; those are unmeasured. **docx4j differs here:** its phase 2 (`fe449c35c`, 2026-10-26) requires at least one digit, and drops `"-"`, `"."` and `"+."` with a WARN. Phase C's Word check measures Word's own reading (`cr021-edge-E2-raw.docx` to `E4`), and both ports follow it;
 - anything else reads `None`, unset, because Word refuses it.
 
 Digits are ASCII `[0-9]`. Python's `\d` matches every Unicode digit, so it isn't used. The 16-bit wrap isn't emulated (Q7).
