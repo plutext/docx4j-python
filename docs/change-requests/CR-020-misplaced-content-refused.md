@@ -399,7 +399,7 @@ Section 5: `Symbols.docx`'s parse within 5% of today's. Measured interleaved, `e
 
 ### 10.11 Found, and not done
 
-1. **The serialiser names a stranger by its class** (10.3): upstream xsdata's `convert_xsi_type` for a compound field writes `meta.target_qname`, which is None for the intermediate classes, then the class's `qname`. A fork change writing a same-shape class under the element its field matched would let rule 2 accept the 692; this CR changes nothing in the fork. Sent to the fork session for its `docs/UPSTREAM.md` on 2026-10-27 (the user: worth recording, not a blocker).
+1. **The serialiser names a stranger by its class** (10.3): upstream xsdata's `convert_xsi_type` for a compound field writes `meta.target_qname`, which is None for the intermediate classes, then the class's `qname`. A fork change writing a same-shape class under the element its field matched would let rule 2 accept the 692; this CR changes nothing in the fork. Recorded by the fork session as `docs/UPSTREAM.md` report 28 on 2026-10-27 (the user: worth recording, not a blocker): to report upstream, no fork change.
 2. **inkml's `MappingType`** cannot be built by xsdata (its annotations name `Math`; 10.2). Its list field is unchecked, and a parse of `inkml:mapping` fails today regardless.
 3. **77 model classes have no `el` factory**: VML's `x:ClientData` children, inkml's types, chartex's intermediate classes (`test_every_legal_placement_goes_in` counts them).
 4. **A plain list assigned whole, and every single-valued field, are still unchecked** (section 4.11, Q4): Phase B's validator.
@@ -443,7 +443,7 @@ code, test or generated file changed and no gate moved from 10.13's:
 3. **`run_items_of` stays None for row and cell `w:sdtContent`** as for block (departure 4).
 4. **Rule 2's third condition stays**: a same-shape stranger the serialiser would write under another name is refused
    (departure 2; the 692 of 10.3). This one is **subject to the fork session's answer**: 10.11 item 1 went to it on
-   2026-10-27 for its `docs/UPSTREAM.md`. Should the fork later write a same-shape class under the element its field
+   2026-10-27, and it is `docs/UPSTREAM.md` report 28 here, with no fork change. Should the fork later write a same-shape class under the element its field
    matched, `written_as` follows the serialiser (10.3), so the rule would accept those placements with no change here
    beyond the test's expected counts.
 5. **`unchecked` is not re-exported from `docx4j_py.wml`**: it stays where it is, `docx4j_py.child` and
