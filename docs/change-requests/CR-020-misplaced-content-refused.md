@@ -1,6 +1,6 @@
 # CR-020: Content refused where it does not belong --- a check on every typed list as code adds to it, derived from the model, and a validator for what gets past
 
-**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); Phases B and C proposed. Three phases (section 6), 2 to 3 days.
+**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); Phases B and C proposed. Three phases (section 6), 2 to 3 days.
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
@@ -114,6 +114,8 @@ Java's own cases are refused here too, with messages in Java's voice (section 4.
 - a `String`.
 
 A `JAXBElement` is unwrapped first. Its section 7 hands docx4j-python the choice of whether its list or builder layer refuses the same at add time, and this CR (decided 2026-10-26) does, by D2's allow-rule. Phase A checks D6's hand-written messages against CR-064 section 2's table of mistakes worth catching, so that the two ports name each mistake alike.
+
+**What Word does with the file (core-ts check 72, its CR-016 section 7.1, 2026-10-27; saves in core-ts `test/check72/`).** Of 18 files with one misplaced child each, by CR-064's rules, Word 365 refuses to open 11 ("Word experienced an error trying to open the file", no repair offered) and silently repairs 7, dropping the content of one (a string directly in a `w:r`). So section 1's "Word found unreadable content" is the better case; most of these files do not open at all, and one that does loses text without a word. Phase A refuses each of the 18 at add time (section 10.6).
 
 ## 4. Design
 
@@ -397,7 +399,7 @@ Section 5: `Symbols.docx`'s parse within 5% of today's. Measured interleaved, `e
 
 ### 10.11 Found, and not done
 
-1. **The serialiser names a stranger by its class** (10.3): upstream xsdata's `convert_xsi_type` for a compound field writes `meta.target_qname`, which is None for the intermediate classes, then the class's `qname`. A fork change writing a same-shape class under the element its field matched would let rule 2 accept the 692; this CR changes nothing in the fork, and it is not recorded in the fork's `docs/UPSTREAM.md`.
+1. **The serialiser names a stranger by its class** (10.3): upstream xsdata's `convert_xsi_type` for a compound field writes `meta.target_qname`, which is None for the intermediate classes, then the class's `qname`. A fork change writing a same-shape class under the element its field matched would let rule 2 accept the 692; this CR changes nothing in the fork. Sent to the fork session for its `docs/UPSTREAM.md` on 2026-10-27 (the user: worth recording, not a blocker).
 2. **inkml's `MappingType`** cannot be built by xsdata (its annotations name `Math`; 10.2). Its list field is unchecked, and a parse of `inkml:mapping` fails today regardless.
 3. **77 model classes have no `el` factory**: VML's `x:ClientData` children, inkml's types, chartex's intermediate classes (`test_every_legal_placement_goes_in` counts them).
 4. **A plain list assigned whole, and every single-valued field, are still unchecked** (section 4.11, Q4): Phase B's validator.
@@ -428,3 +430,21 @@ Section 5: `Symbols.docx`'s parse within 5% of today's. Measured interleaved, `e
 | `Symbols.docx`'s parse, best | 189.9 to 194.8 ms | 192.0 to 194.4 ms (10.9) |
 
 No Word check (section 5): output is unchanged for valid code, and the acceptance documents are identical.
+
+### 10.14 The decisions (2026-10-27)
+
+The user, on 10.12: "decisions as recommended (subject to what the fork says)". Each keeps what Phase A built, so no
+code, test or generated file changed and no gate moved from 10.13's:
+
+1. **Q3's outcome stands**: the parse is unchecked by the context variable around each parse (`UncheckedXmlParser`),
+   not by the `class_factory`, which 10.5 measured at 1 to 2% more per parse for the same effect (departure 1).
+2. **A deep copy's relink stays unchecked** (departure 5): a copy holds nothing its original did not, and a tree built
+   under `unchecked()` must copy without it.
+3. **`run_items_of` stays None for row and cell `w:sdtContent`** as for block (departure 4).
+4. **Rule 2's third condition stays**: a same-shape stranger the serialiser would write under another name is refused
+   (departure 2; the 692 of 10.3). This one is **subject to the fork session's answer**: 10.11 item 1 went to it on
+   2026-10-27 for its `docs/UPSTREAM.md`. Should the fork later write a same-shape class under the element its field
+   matched, `written_as` follows the serialiser (10.3), so the rule would accept those placements with no change here
+   beyond the test's expected counts.
+5. **`unchecked` is not re-exported from `docx4j_py.wml`**: it stays where it is, `docx4j_py.child` and
+   `docx4j_py.model.content`, and the generator's footer is untouched.

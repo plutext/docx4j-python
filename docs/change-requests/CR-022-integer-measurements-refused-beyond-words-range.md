@@ -447,3 +447,38 @@ twips, and the CSS converters and `TocEntry` WARN and write the value as compute
 docx4j-core-ts's setters (`wordRange.mts` at `fd898b9`, its CR-002 section 65) are the third port and the closest in
 shape to this one; 10.10 item 6 lists where they differ. docx4j-generated-objects-ts's CR-016 encodes rounds 5 and 6
 row for row with a test over both rounds' saves, as `test_integer_limits.py` does here.
+
+### 11.2 Office JS's limits measured, and Word's own line rule (core-ts check 71b, `b7c2680`, 2026-10-27)
+
+For the user: two findings of core-ts's check 71b (its CR-002 section 65.9, CR-017 P2 and P3, committed 2026-10-27,
+unreleased; Word's JSONs and saves in core-ts `test/fixtures/check71b/` and `test/check71b/`), reported by the core-ts
+session the same day. Neither changes anything here until the user says so: the content API's limits are Office JS's
+as the CR states them (10.13, decision 5 left where Office JS stops unmeasured), and `Paragraph.line_spacing` writes
+`w:lineRule="exact"` by CR-003's choice (its section 3734's table and the note that only an exact rule round-trips).
+
+1. **Word's own `lineSpacing` setter writes `auto`**, `w:line` = 20 × points under `w:lineRule="auto"` (0.75 pt as
+   `w:line="15" w:lineRule="auto"`; Office JS's "divided by 12 in the Word UI"). core-ts wrote `exact` until `b7c2680`
+   and writes `auto` since. `Paragraph.line_spacing` here writes `exact`, so it differs from Word's setter the same way
+   core-ts did; the facade's `ParagraphFormat.line_spacing` follows python-docx (a `Length` exact or at least, a float
+   a multiple under `auto`) and is not in question. Changing the content API's write is a parity decision with a
+   Word check (a changed output), and the getter's reading of an auto line (240ths of a line as 12-point lines) would
+   then read the setter's own value back, as Office JS's does.
+2. **Where Word's own setters stop**, below the 1,638 pt the CR states from Office JS's documentation: `spaceBefore`
+   and `spaceAfter` past 1,584 pt (22 inches, 31,680 twips) or negative; `lineSpacing` below 0.75 pt or past 1,584;
+   `setLevelIndents`' text indent at 1,584 pt or -1,584 (1,583.95 either way taken; a refused call leaves the list
+   `startNewList` made with Word's default level, 36 pt hanging 18); `font.size` below 1 pt or past 1,638 after
+   rounding to a half-point (0.9 taken as `w:sz="2"`, 0.5 refused; 1,638.05 taken as 3,276, 1,638.4 refused). The
+   indent and width setters wrap in 16 bits with no error (check 71). Against the content API's limits here:
+   `OFFICE_JS_SPACING` is 0 up to, not including, 1,638 (Word: 0 to 1,584 inclusive, and a line from 0.75);
+   `OFFICE_JS_TEXT_INDENT` is above -1,638.4 and below 1,638 (Word: strictly between -1,584 and 1,584);
+   `OFFICE_JS_FONT_SIZE` is above 0 up to 1,638 (Word: 1 to 1,638 after half-point rounding, so 0.75 is taken and 0.5
+   refused, where here 0.75 is accepted and written as `w:sz="2"` too, but so is 0.5, as `w:sz="1"`, which Word's
+   setter refuses). Every value Word's setters take, the limits here take; the difference is values between Word's
+   stop and the documented 1,638 (and a font below 0.75 pt), which here are accepted and written within the faithful
+   range, so the file is sound either way. Moving the constants to the measured values is a one-line change each,
+   held by `test_measurement_setters.py` and the census; no Word check, since a refusal writes nothing.
+
+Also from core-ts, **check 72** (its CR-016 section 7.1, saves in `test/check72/`): of 18 files with one misplaced
+child each, docx4j CR-064's rules, Word 365 refuses to open 11 ("Word experienced an error trying to open the file",
+no repair offered) and silently repairs 7, dropping the content of one (a string directly in a `w:r`). Recorded in
+CR-020 section 3, whose Phase A refuses each at add time.
