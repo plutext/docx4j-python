@@ -260,6 +260,19 @@ def test_the_engine_s_own_xsi_type_in_the_core_properties_is_legal():
     assert misplaced(core) == []
 
 
+def test_only_an_element_declared_with_no_type_takes_any_xsi_type():
+    """``_any_type``: the 48 Dublin Core elements declared with no type of their own (``dcterms:created``); a named
+    type with wildcard content (``w:CT_ShapeDefaults``) takes only its own derivations, so an ``R`` there is found."""
+    any_types = [cls for cls in placement.model_classes() if placement._any_type(cls)]
+    assert len(any_types) == 48
+    assert {cls.__module__ for cls in any_types} == {"docx4j_py.docprops.dc", "docx4j_py.docprops.dcterms"}
+    assert not placement._any_type(W.CTShapeDefaults) and not placement._any_type(W.CTPictureBase)
+    settings = W.Settings()
+    settings.shape_defaults = r("x")
+    (finding,) = findings_in(settings)
+    assert (finding.field, finding.item) == ("shape_defaults", "R")
+
+
 # ---------------------------------------------------------------------------
 # the cell rule (CR-016)
 # ---------------------------------------------------------------------------

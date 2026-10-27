@@ -435,21 +435,30 @@ _any_types: dict[type, bool] = {}
 
 
 def _any_type(cls: type) -> bool:
-    """Whether a class is ``xsd:anyType``'s: no attributes, and nothing but wildcard content.
+    """Whether a class is a global element declared with no type of its own, which the model reads as ``xsd:anyType``.
 
-    Such an element takes any type by ``xsi:type`` (every type derives from
-    ``xsd:anyType``): ``dcterms:created``'s ``Created``, which OPC's core
-    properties fill with a ``dcterms:W3CDTF``.
+    The generator makes such an element a class of its own with no model base,
+    no attributes and nothing but wildcard content: ``dcterms:created``, declared
+    ``<xs:element name="created" substitutionGroup="dc:date"/>``, is ``Created``.
+    It takes a type by ``xsi:type`` (its schema type is its substitution
+    group's head's, ``dc:SimpleLiteral``, which the generator does not carry,
+    and from which ``dcterms:W3CDTF``, the type OPC's core properties give it,
+    derives). A named type with wildcard content (``w:CT_PictureBase``, oart's
+    ``CT_TextMath``) is not one: only its own derivations may stand there.
     """
     try:
         return _any_types[cls]
     except KeyError:
         pass
-    meta = _meta(cls)
+    declared = vars(cls).get("Meta")
     result = False
-    if meta is not None:
-        elements = _element_vars(meta)
-        result = bool(elements) and not list(meta.get_attribute_vars()) and all(var.is_wildcard for var in elements)
+    if getattr(declared, "namespace", None) and getattr(declared, "name", None) and not any(
+        _is_model(base) for base in cls.__mro__[1:]
+    ):
+        meta = _meta(cls)
+        if meta is not None:
+            elements = _element_vars(meta)
+            result = bool(elements) and not list(meta.get_attribute_vars()) and all(var.is_wildcard for var in elements)
     _any_types[cls] = result
     return result
 
