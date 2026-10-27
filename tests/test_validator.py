@@ -60,6 +60,9 @@ LIMITS = FIXTURES / "integer-limits"
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 NS = {"w": W_NS}
 
+# the probes hold values the converters refuse ("720.5", a bad colour): each is kept and warned about
+pytestmark = pytest.mark.filterwarnings("ignore::docx4j_xsdata.exceptions.ConverterWarning")
+
 
 def _only(found: list[Finding], kind: type) -> list:
     return [f for f in found if isinstance(f, kind)]
