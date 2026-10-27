@@ -102,7 +102,7 @@ def test_indents_and_spacing_are_points(new_package):
     assert paragraph.element.p_pr.spacing.after == 120
     assert paragraph.space_after == 6
     assert paragraph.element.p_pr.spacing.line == 480
-    assert paragraph.element.p_pr.spacing.line_rule == "exact"
+    assert paragraph.element.p_pr.spacing.line_rule == "auto", "as Word's own setter writes it (CR-024)"
     assert paragraph.line_spacing == 24
 
     paragraph.first_line_indent = 12

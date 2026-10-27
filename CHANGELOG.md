@@ -21,11 +21,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   CR-065's probe). Every setter that writes an integer measurement now raises `MeasureRangeError` (a
   `ContentError` and a `ValueError`, code `value.out_of_range`) **before it changes anything**, the
   message giving the value and Word's range in the caller's units and the hint what to pass.
-  - **The content API** refuses where Office JS refuses, at Office JS's limits: `space_before`,
-    `space_after` and `line_spacing` below 1,638 pt (an exact line spacing from 0.05 pt, so
-    `line_spacing = 0` is refused where it wrote `w:line="0"`), `Font.size` above 0 up to 1,638 pt
-    (0 still removes `w:sz` and `w:szCs`, as documented since 0.1.0; a negative is refused), a level's
-    text indent, a cell width that is not negative; and at the faithful range elsewhere: the indents
+  - **The content API** refuses where Word 365's own Office JS setters refuse, at their limits as
+    measured ([CR-024](docs/change-requests/CR-024-office-js-setters-as-word-runs-them.md), core-ts's
+    check 71b), each on the value as written: `space_before` and `space_after` 0 to 1,584 pt,
+    `line_spacing` 0.75 to 1,584 pt (so `line_spacing = 0` is refused where it wrote `w:line="0"`),
+    `Font.size` 1 to 1,638 pt after rounding to a half-point (0.9 is taken; 0 still removes `w:sz`
+    and `w:szCs`, as documented since 0.1.0; a negative is refused), a level's text indent short of
+    1,584 pt either way, a cell width that is not negative; and at the faithful range elsewhere: the indents
     (-1,638.4 to 1,638.35 pt; a first-line indent to 1,638.35, a hanging one to 1,638.4), a cell's
     width, a level's marker indent.
   - **The python-docx facade** refuses a `Length` Word would misread, where python-docx writes it:
@@ -54,6 +56,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   as before.
 
 ### Fixed
+
+- **`Paragraph.line_spacing` writes a multiple of single spacing, as Word does**
+  ([CR-024](docs/change-requests/CR-024-office-js-setters-as-word-runs-them.md); a defect 0.1.0 and
+  0.2.0 shared, the port of docx4j-core-ts CR-002 section 65.9). It wrote `w:lineRule="exact"`, a
+  fixed height, where Word 365's own `lineSpacing` setter writes `w:line` as 20 x the points under
+  `w:lineRule="auto"` (core-ts's check 71b): 12 is single spacing, 24 double, whatever the font.
+  It now writes Word's, replacing an exact or at-least rule already there, and reads back as set.
+  `to_api_script` expresses an auto rule, stated or the default, and falls back to `insert_xml` for
+  an exact or at-least one. The python-docx facade's `ParagraphFormat.line_spacing` is unchanged.
 
 - **`List.set_level_indents` writes what Word writes**
   ([CR-023](docs/change-requests/CR-023-set-level-indents-as-word-writes-them.md); a defect 0.1.0

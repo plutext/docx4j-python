@@ -1,0 +1,734 @@
+{
+ "check": 71,
+ "mode": "run",
+ "host": {
+  "host": "Word",
+  "version": "16.0.20326.20232",
+  "platform": "PC"
+ },
+ "title": "Check 71b: where Word 365's own spacing, line, list and font setters refuse, below what Word stores.",
+ "cases": [
+  {
+   "n": 1,
+   "setter": "spaceBefore",
+   "value": 0,
+   "result": "set",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 2,
+   "setter": "spaceBefore",
+   "value": 0.05,
+   "result": "set",
+   "after": {
+    "read": 0.0500000007450581,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:before=\"1\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 3,
+   "setter": "spaceBefore",
+   "value": 1583.95,
+   "result": "set",
+   "after": {
+    "read": 1583.94995117188,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:before=\"31679\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 4,
+   "setter": "spaceBefore",
+   "value": 1584,
+   "result": "set",
+   "after": {
+    "read": 1584,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:before=\"31680\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 5,
+   "setter": "spaceBefore",
+   "value": 1584.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 6,
+   "setter": "spaceBefore",
+   "value": 1584.1,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 7,
+   "setter": "spaceBefore",
+   "value": 1585,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 8,
+   "setter": "spaceBefore",
+   "value": 1600,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 9,
+   "setter": "spaceBefore",
+   "value": 1637.95,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 10,
+   "setter": "spaceBefore",
+   "value": -0.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 11,
+   "setter": "spaceAfter",
+   "value": 0,
+   "result": "set",
+   "after": {
+    "read": 0,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:after=\"0\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 12,
+   "setter": "spaceAfter",
+   "value": 0.05,
+   "result": "set",
+   "after": {
+    "read": 0.0500000007450581,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:after=\"1\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 13,
+   "setter": "spaceAfter",
+   "value": 1583.95,
+   "result": "set",
+   "after": {
+    "read": 1583.94995117188,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:after=\"31679\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 14,
+   "setter": "spaceAfter",
+   "value": 1584,
+   "result": "set",
+   "after": {
+    "read": 1584,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:after=\"31680\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 15,
+   "setter": "spaceAfter",
+   "value": 1584.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 10,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 16,
+   "setter": "spaceAfter",
+   "value": 1584.1,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 10,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 17,
+   "setter": "spaceAfter",
+   "value": 1585,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 10,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 18,
+   "setter": "spaceAfter",
+   "value": 1600,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 10,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 19,
+   "setter": "spaceAfter",
+   "value": 1637.95,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 10,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 20,
+   "setter": "spaceAfter",
+   "value": -0.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 10,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 21,
+   "setter": "lineSpacing",
+   "value": 0,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 22,
+   "setter": "lineSpacing",
+   "value": 0.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 23,
+   "setter": "lineSpacing",
+   "value": 0.5,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 24,
+   "setter": "lineSpacing",
+   "value": 0.65,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 25,
+   "setter": "lineSpacing",
+   "value": 0.7,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 26,
+   "setter": "lineSpacing",
+   "value": 0.75,
+   "result": "set",
+   "after": {
+    "read": 0.75,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:line=\"15\" w:lineRule=\"auto\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 27,
+   "setter": "lineSpacing",
+   "value": 1,
+   "result": "set",
+   "after": {
+    "read": 1,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:line=\"20\" w:lineRule=\"auto\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 28,
+   "setter": "lineSpacing",
+   "value": 1583.95,
+   "result": "set",
+   "after": {
+    "read": 1583.94995117188,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:line=\"31679\" w:lineRule=\"auto\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 29,
+   "setter": "lineSpacing",
+   "value": 1584,
+   "result": "set",
+   "after": {
+    "read": 1584,
+    "ooxml": {
+     "document": [
+      "<w:spacing w:line=\"31680\" w:lineRule=\"auto\"/>"
+     ]
+    }
+   }
+  },
+  {
+   "n": 30,
+   "setter": "lineSpacing",
+   "value": 1584.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 31,
+   "setter": "lineSpacing",
+   "value": 1585,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 32,
+   "setter": "lineSpacing",
+   "value": 1637.95,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 13.8000001907349,
+    "ooxml": {
+     "document": []
+    }
+   }
+  },
+  {
+   "n": 33,
+   "setter": "listIndent",
+   "value": 1583.95,
+   "result": "set",
+   "after": {
+    "read": {
+     "leftIndent": 1583.94995117188,
+     "firstLineIndent": 0
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 34,
+   "setter": "listIndent",
+   "value": 1584,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"2\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 35,
+   "setter": "listIndent",
+   "value": 1584.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"3\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 36,
+   "setter": "listIndent",
+   "value": 1585,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"4\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 37,
+   "setter": "listIndent",
+   "value": 1637.95,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"5\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 38,
+   "setter": "listIndent",
+   "value": -1583.95,
+   "result": "set",
+   "after": {
+    "read": {
+     "leftIndent": -1583.94995117188,
+     "firstLineIndent": 0
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"6\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 39,
+   "setter": "listIndent",
+   "value": -1584,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 40,
+   "setter": "listIndent",
+   "value": -1584.05,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"8\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 41,
+   "setter": "listIndent",
+   "value": -1585,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"9\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 42,
+   "setter": "listIndent",
+   "value": -1638.35,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": {
+     "leftIndent": 36,
+     "firstLineIndent": -18
+    },
+    "ooxml": {
+     "document": [
+      "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"10\"/></w:numPr>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 43,
+   "setter": "fontSize",
+   "value": 0.5,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 11,
+    "ooxml": {
+     "document": [],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 44,
+   "setter": "fontSize",
+   "value": 0.9,
+   "result": "set",
+   "after": {
+    "read": 1,
+    "ooxml": {
+     "document": [
+      "<w:sz w:val=\"2\"/>",
+      "<w:sz w:val=\"2\"/>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 45,
+   "setter": "fontSize",
+   "value": 1,
+   "result": "set",
+   "after": {
+    "read": 1,
+    "ooxml": {
+     "document": [
+      "<w:sz w:val=\"2\"/>",
+      "<w:sz w:val=\"2\"/>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 46,
+   "setter": "fontSize",
+   "value": 1.5,
+   "result": "set",
+   "after": {
+    "read": 1.5,
+    "ooxml": {
+     "document": [
+      "<w:sz w:val=\"3\"/>",
+      "<w:sz w:val=\"3\"/>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 47,
+   "setter": "fontSize",
+   "value": 1637.5,
+   "result": "set",
+   "after": {
+    "read": 1637.5,
+    "ooxml": {
+     "document": [
+      "<w:sz w:val=\"3275\"/>",
+      "<w:sz w:val=\"3275\"/>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 48,
+   "setter": "fontSize",
+   "value": 1638,
+   "result": "set",
+   "after": {
+    "read": 1638,
+    "ooxml": {
+     "document": [
+      "<w:sz w:val=\"3276\"/>",
+      "<w:sz w:val=\"3276\"/>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 49,
+   "setter": "fontSize",
+   "value": 1638.05,
+   "result": "set",
+   "after": {
+    "read": 1638,
+    "ooxml": {
+     "document": [
+      "<w:sz w:val=\"3276\"/>",
+      "<w:sz w:val=\"3276\"/>"
+     ],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 50,
+   "setter": "fontSize",
+   "value": 1638.4,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 11,
+    "ooxml": {
+     "document": [],
+     "numbering": []
+    }
+   }
+  },
+  {
+   "n": 51,
+   "setter": "fontSize",
+   "value": 1638.45,
+   "error": "error: InvalidArgument: InvalidArgument",
+   "after": {
+    "read": 11,
+    "ooxml": {
+     "document": [],
+     "numbering": []
+    }
+   }
+  }
+ ],
+ "caseCount": 51
+}

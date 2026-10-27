@@ -62,10 +62,11 @@ __all__ = ["Font", "MixedFont", "mark_run_properties"]
 #: What an automatic colour reads in the effective view, as Office JS reads it (CR-016 Phase B).
 AUTOMATIC = "#000000"
 
-#: Office JS's own limit for ``font.size``: refused above 1,638 pt and at 0 (core-ts check 71; CR-022
-#: section 3.2, Q1), though Word stores to 32,767.5 pt. 0 here keeps its documented meaning, the
-#: element removed (CR-022 section 10, departure 2), so it never reaches the check.
-OFFICE_JS_FONT_SIZE = CallerLimit(low=0, high=1638, low_open=True)
+#: Word 365's own limit for ``font.size``: 1 to 1,638 pt after rounding to a half-point, 2 to 3,276 as
+#: written (0.9 pt is taken as 1), though Word stores to 32,767.5 pt (core-ts check 71b; CR-022 Q1,
+#: CR-024). 0 here keeps its documented meaning, the element removed (CR-022 section 10, departure 2),
+#: so it never reaches the check.
+OFFICE_JS_FONT_SIZE = CallerLimit(low=2, high=3276, stored=True)
 
 #: ``Font.to_dict()``'s keys for ``w:color``'s theme attributes, as written (CR-009 Phase B).
 THEME_KEYS = ("theme_color", "theme_tint", "theme_shade")
@@ -445,9 +446,10 @@ class Font:
         ``w:sz`` and ``w:szCs``, which is what writing back what a silent run
         reads means.
 
-        Setting a size above 1,638 pt or below 0 is refused before anything
-        changes, as Office JS refuses it (CR-022 Q1): ``MeasureRangeError``,
-        ``value.out_of_range``. Office JS refuses 0 too; here 0 keeps its
+        Setting a size that rounds to a half-point beyond 1 to 1,638 pt is
+        refused before anything changes, as Word's own setter refuses it
+        (CR-022 Q1, CR-024): ``MeasureRangeError``, ``value.out_of_range``;
+        0.9 is taken, as 1. Office JS refuses 0 too; here 0 keeps its
         meaning, the element removed (CR-022 section 10, departure 2).
         """
         return self._read()["size"]  # type: ignore[no-any-return]

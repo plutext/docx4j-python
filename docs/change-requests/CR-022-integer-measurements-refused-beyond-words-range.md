@@ -450,6 +450,11 @@ row for row with a test over both rounds' saves, as `test_integer_limits.py` doe
 
 ### 11.2 Office JS's limits measured, and Word's own line rule (core-ts check 71b, `b7c2680`, 2026-10-27)
 
+**Both taken up in CR-024** (the user, 2026-10-28: "point 2: agreed", "point 1: switch to "auto" matching Word and
+core-ts"), which supersedes 10.5's content API limits and 10.8 item 5. A correction to what follows: the 1,638 pt
+limits came from check 71's coarse measurement (section 3.2), which set only 1,584 and 1,638 pt, not from Office JS's
+documentation, whose reference pages state no range for any of these setters.
+
 For the user: two findings of core-ts's check 71b (its CR-002 section 65.9, CR-017 P2 and P3, committed 2026-10-27,
 unreleased; Word's JSONs and saves in core-ts `test/fixtures/check71b/` and `test/check71b/`), reported by the core-ts
 session the same day. Neither changes anything here until the user says so: the content API's limits are Office JS's
@@ -463,7 +468,7 @@ as the CR states them (10.13, decision 5 left where Office JS stops unmeasured),
    a multiple under `auto`) and is not in question. Changing the content API's write is a parity decision with a
    Word check (a changed output), and the getter's reading of an auto line (240ths of a line as 12-point lines) would
    then read the setter's own value back, as Office JS's does.
-2. **Where Word's own setters stop**, below the 1,638 pt the CR states from Office JS's documentation: `spaceBefore`
+2. **Where Word's own setters stop**, below the 1,638 pt the CR took from check 71: `spaceBefore`
    and `spaceAfter` past 1,584 pt (22 inches, 31,680 twips) or negative; `lineSpacing` below 0.75 pt or past 1,584;
    `setLevelIndents`' text indent at 1,584 pt or -1,584 (1,583.95 either way taken; a refused call leaves the list
    `startNewList` made with Word's default level, 36 pt hanging 18); `font.size` below 1 pt or past 1,638 after
@@ -474,7 +479,7 @@ as the CR states them (10.13, decision 5 left where Office JS stops unmeasured),
    `OFFICE_JS_FONT_SIZE` is above 0 up to 1,638 (Word: 1 to 1,638 after half-point rounding, so 0.75 is taken and 0.5
    refused, where here 0.75 is accepted and written as `w:sz="2"` too, but so is 0.5, as `w:sz="1"`, which Word's
    setter refuses). Every value Word's setters take, the limits here take; the difference is values between Word's
-   stop and the documented 1,638 (and a font below 0.75 pt), which here are accepted and written within the faithful
+   stop and check 71's 1,638 (and a font below 0.75 pt), which here are accepted and written within the faithful
    range, so the file is sound either way. Moving the constants to the measured values is a one-line change each,
    held by `test_measurement_setters.py` and the census; no Word check, since a refusal writes nothing.
 

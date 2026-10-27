@@ -103,9 +103,12 @@ __all__ = ["Paragraph", "replace_matches"]
 #: Twips per point: the unit every Office JS measurement here is in.
 TWIPS_PER_POINT = 20
 
-#: Office JS's own limit for ``spaceBefore``, ``spaceAfter`` and ``lineSpacing``: refused from
-#: 1,638 pt and for every negative, though Word stores more (core-ts check 71; CR-022 section 3.2, Q1).
-OFFICE_JS_SPACING = CallerLimit(low=0, high=1638, high_open=True)
+#: Word 365's own limit for ``spaceBefore`` and ``spaceAfter``: 0 to 1,584 pt (22 in), 31,680 twips as
+#: written, though Word stores to 65,535 (core-ts check 71b; CR-022 Q1, CR-024).
+OFFICE_JS_SPACING = CallerLimit(low=0, high=31680, stored=True)
+#: Word 365's own limit for ``lineSpacing``: 0.75 to 1,584 pt, 15 to 31,680 240ths of a line under
+#: ``w:lineRule="auto"`` as written (core-ts check 71b; CR-024).
+OFFICE_JS_LINE_SPACING = CallerLimit(low=15, high=31680, stored=True)
 
 _JC_TO_ALIGNMENT: dict[str, str] = {
     "left": "Left",
@@ -736,8 +739,9 @@ class Paragraph:
     def space_before(self) -> float:
         """The space above the paragraph in points (``w:spacing/@w:before``).
 
-        Setting it from 1,638 pt or below 0 is refused, as Office JS refuses
-        it (CR-022 Q1): ``MeasureRangeError``, before anything changes.
+        Setting it beyond 0 to 1,584 pt is refused, as Word's own setter
+        refuses it (CR-022 Q1, CR-024): ``MeasureRangeError``, before anything
+        changes.
         """
         spacing = self._spacing_or_none
         value = integer(getattr(spacing, "before", None)) if spacing is not None else None
@@ -752,8 +756,9 @@ class Paragraph:
     def space_after(self) -> float:
         """The space below the paragraph in points (``w:spacing/@w:after``).
 
-        Setting it from 1,638 pt or below 0 is refused, as Office JS refuses
-        it (CR-022 Q1): ``MeasureRangeError``, before anything changes.
+        Setting it beyond 0 to 1,584 pt is refused, as Word's own setter
+        refuses it (CR-022 Q1, CR-024): ``MeasureRangeError``, before anything
+        changes.
         """
         spacing = self._spacing_or_none
         value = integer(getattr(spacing, "after", None)) if spacing is not None else None
@@ -770,12 +775,14 @@ class Paragraph:
 
         ``w:line`` is 240ths of a line when ``w:lineRule`` is ``auto`` (or
         absent), which Office JS reports as the equivalent of 12-point lines,
-        and twips otherwise. Setting writes ``w:lineRule="exact"``.
+        and twips otherwise.
 
-        Setting it from 1,638 pt or below 0 is refused, as Office JS refuses
-        it (CR-022 Q1), and below 0.05 pt too: an exact line is stored
-        negated, so 0 twips reads as ``atLeast`` 0 and 1 twip is the least
-        exact line Word reads as written (CR-022 section 10, departure 1).
+        Setting writes ``w:line`` as 20 x the points under
+        ``w:lineRule="auto"``, as Word 365's own setter does (core-ts check
+        71b; CR-024): the line as a multiple of single spacing, so 12 is
+        single, 18 one and a half lines and 24 double, whatever the font. An
+        exact or at-least rule already there is replaced. Setting it beyond
+        0.75 to 1,584 pt is refused, as Word's own setter refuses it:
         ``MeasureRangeError``, before anything changes.
         """
         spacing = self._spacing_or_none
@@ -791,11 +798,11 @@ class Paragraph:
     @line_spacing.setter
     def line_spacing(self, points: float) -> None:
         line = measure_in_range(
-            "w:spacing/@w:line", points, label="line spacing", context="exact", limit=OFFICE_JS_SPACING
+            "w:spacing/@w:line", points, label="line spacing", context="auto", limit=OFFICE_JS_LINE_SPACING
         )
         spacing = self._spacing()
         spacing.line = line
-        spacing.line_rule = "exact"
+        spacing.line_rule = "auto"
 
     @property
     def outline_level(self) -> int:

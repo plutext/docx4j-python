@@ -386,13 +386,27 @@ def test_a_language_hint_on_the_mark_does_not(body) -> None:
     assert to_api_script(body) == 'body.insert_paragraph("x")'
 
 
-def test_auto_line_spacing_falls_back(body) -> None:
-    """``line_spacing`` writes ``w:lineRule="exact"``, so only an exact rule round-trips."""
+def test_an_auto_line_spacing_is_expressed(body) -> None:
+    """``line_spacing`` writes ``w:lineRule="auto"`` (CR-024), so an auto rule, stated or the default, round-trips."""
+    for spacing in ('w:line="360" w:lineRule="auto"', 'w:line="360"'):
+        body.insert_xml(f"<w:p><w:pPr><w:spacing {spacing}/></w:pPr><w:r><w:t>x</w:t></w:r></w:p>")
+    stated, default = script_blocks(body)
+    for block in (stated, default):
+        assert block.kind == "paragraph"
+        assert any(line.endswith(".line_spacing = 18") for line in block.lines), block.lines
+    assert stated.exact and stated.reason is None
+    assert not default.exact, "the script states the rule the source left to its default"
+    assert default.reason.startswith('w:lineRule="auto"')
+
+
+@pytest.mark.parametrize("rule", ["exact", "atLeast"])
+def test_an_exact_or_at_least_line_spacing_falls_back(body, rule: str) -> None:
+    """Neither is what ``line_spacing`` writes, so neither round-trips."""
     body.insert_xml(
-        '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>'
+        f'<w:p><w:pPr><w:spacing w:line="360" w:lineRule="{rule}"/></w:pPr>'
         "<w:r><w:t>x</w:t></w:r></w:p>"
     )
-    assert script_blocks(body)[0].reason == 'w:spacing w:lineRule="auto"'
+    assert script_blocks(body)[0].reason == f'w:spacing w:lineRule="{rule}"'
 
 
 # ---------------------------------------------------------------------------

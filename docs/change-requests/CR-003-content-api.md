@@ -3731,7 +3731,7 @@ paragraph comes out whole either way, which is section 3.11's rule.
 | `w:pStyle` | `p1.style_built_in = "Heading1"` for a built-in, `p1.style_id = "MyOwn"` otherwise (19.3 item 1) |
 | `w:jc` | `p1.alignment = "Centered"` |
 | `w:ind` | `left_indent`, `right_indent`, `first_line_indent`, in points |
-| `w:spacing` | `space_before`, `space_after`, `line_spacing` (`w:lineRule="exact"` only) |
+| `w:spacing` | `space_before`, `space_after`, `line_spacing` (`w:lineRule="auto"`, stated or the default, since CR-024; `"exact"` only until then) |
 | `w:outlineLvl` | `p1.outline_level = n + 1` |
 | `w:numPr` | `list1 = p1.start_new_list(kind=…)` for the first item of each `w:numId`, then `p2.attach_to_list(list1.id, level)` (19.3 item 4) |
 | a level that is not docx4j's default | `list1.set_level_numbering(…)` / `set_level_bullet(…)` / `set_level_indents(…)` |
@@ -3906,6 +3906,9 @@ What forced the 196 fallbacks, by construct:
 Beyond the corpus, `w:spacing w:lineRule="auto"` is the other common one: it
 accounts for 27 of the 49 fallbacks over the numbering fixtures, because
 `line_spacing` writes `w:lineRule="exact"` and only an exact rule round-trips.
+(Since CR-024, 2026-10-28, `line_spacing` writes `w:lineRule="auto"`, as Word
+365's own setter does, so an auto rule is expressed and an exact or at-least
+one falls back instead.)
 
 Generation is a marshal of whatever falls back, and costs what that costs:
 

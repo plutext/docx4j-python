@@ -482,7 +482,11 @@ class _Emitter:
         pieces = _pieces_of(element, pictures)
 
         notes: list[str] = []
-        exact = True
+        spacing = getattr(getattr(element, "p_pr", None), "spacing", None)
+        if spacing is not None and spacing.line is not None and spacing.line_rule is None:
+            # the default rule is auto, so the line reads the same, but line_spacing states it
+            notes.append('w:lineRule="auto", which line_spacing writes where the source leaves it to the default')
+        exact = not notes
 
         first = pieces[0] if pieces else None
         leading = (
@@ -606,10 +610,11 @@ class _Emitter:
             if line is not None:
                 rule = getattr(spacing, "line_rule", None)
                 rule = getattr(rule, "value", rule)
-                if rule != "exact":
-                    # line_spacing writes w:lineRule="exact", so only an exact
-                    # rule round-trips (docx4j-core-ts CR-002 section 10)
-                    raise _Unexpressible(f'w:spacing w:lineRule="{rule or "auto"}"')
+                if rule not in (None, "auto"):
+                    # line_spacing writes w:lineRule="auto", as Word's own setter
+                    # does (CR-024; docx4j-core-ts CR-002 section 65.9), so only
+                    # an auto rule, stated or the default, round-trips
+                    raise _Unexpressible(f'w:spacing w:lineRule="{rule}"')
                 out.append(("line_spacing", _num(line / TWIPS_PER_POINT)))
             if line is None and getattr(spacing, "line_rule", None) is not None:
                 raise _Unexpressible("w:spacing w:lineRule without w:line")

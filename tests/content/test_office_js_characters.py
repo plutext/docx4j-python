@@ -151,8 +151,9 @@ def test_every_fixture_is_the_manifests_and_the_files_word_read():
     # Word's three JSONs and its six saves, 2bafbcb's); and Phase B's twenty-five (checks 65 and 66: each check's two
     # files, Word's four JSONs, and Word's five and eight saves, aefc41f's); and check 68's five (its file, Word's two
     # JSONs and its two saves, c275a2a's); and the user's placeholders-word365.docx, Word's default entry for each kind
-    # (b12e0c5's); and Phase D's ten (checks 69 and 70: each file, Word's two JSONs and its two saves, 09dc3d2's)
-    assert len(manifest) == 100
+    # (b12e0c5's); and Phase D's ten (checks 69 and 70: each file, Word's two JSONs and its two saves, 09dc3d2's);
+    # and CR-024's one (check 71b's run JSON, b7c2680's)
+    assert len(manifest) == 101
     for name, digest in manifest.items():
         assert hashlib.sha1((OFFICE_JS / name).read_bytes()).hexdigest() == digest, name
     for name, digest in SHARE_SHA1.items():

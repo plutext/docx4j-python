@@ -4,8 +4,9 @@ For each measured attribute, through each setter that writes it: both ends of th
 setter writes within are accepted and one past each is refused, ``MeasureRangeError``
 (``value.out_of_range``, a ``ValueError`` too), its hint naming the range, before anything
 changes. Which range (D4, Q1): the content API's ``space_before``, ``space_after``,
-``line_spacing``, ``List.set_level_indents``' text indent and ``Font.size`` stop where Office
-JS's own setters stop (core-ts check 71, CR-022 section 3.2); every other setter, the content
+``line_spacing``, ``List.set_level_indents``' text indent and ``Font.size`` stop where Word
+365's own setters stop (core-ts check 71b; CR-024, which ``test_office_js_setters.py`` holds to
+Word's run case by case); every other setter, the content
 API's indents and widths included, at the faithful range of the attribute's row
 (``docx4j_py/resources/integer-limits.json``, which ``tests/content/test_integer_limits.py``
 holds to Word's saves); the python-docx facade and the builders at the faithful range
@@ -61,9 +62,9 @@ def refused(write: Callable[[], Any], *in_hint: str) -> MeasureRangeError:
 PARAGRAPH = [
     ("left_indent", "left", (-1638.4, 1638.35, 0, -0.05), (-1638.45, 1638.4, 400000.0), "-1,638.4 to 1,638.35 pt"),
     ("right_indent", "right", (-1638.4, 1638.35), (-1638.45, 1638.4), "-1,638.4 to 1,638.35 pt"),
-    ("space_before", "before", (0, 1637.95), (1638, 1638.35, -0.01, -1, 5000.0), "0 to 1,638 pt, 1,638 excluded"),
-    ("space_after", "after", (0, 1637.95), (1638, 3276.75, -0.01), "0 to 1,638 pt, 1,638 excluded"),
-    ("line_spacing", "line", (0.05, 1637.95), (0, 1638, -1), "0.05 to 1,638 pt, 1,638 excluded"),
+    ("space_before", "before", (0, 1584), (1584.05, 1638, -0.05, -1, 5000.0), "0 to 1,584 pt"),
+    ("space_after", "after", (0, 1584), (1584.05, 3276.75, -0.05), "0 to 1,584 pt"),
+    ("line_spacing", "line", (0.75, 1584), (0.7, 0, 1584.05, -1), "0.75 to 1,584 pt"),
 ]
 
 
@@ -114,14 +115,20 @@ def test_the_first_line_indent_is_one_signed_field() -> None:
     assert (ind().first_line, ind().hanging) == (None, 32768), "the refusals left the last write"
 
 
-def test_a_line_spacing_is_exact_so_0_is_refused() -> None:
-    """``line_spacing`` writes ``lineRule="exact"``; exact 0 twips reads as ``atLeast`` 0 (CR-022 section 10)."""
+def test_a_line_spacing_is_written_auto_as_words_setter_writes_it() -> None:
+    """``line_spacing`` writes 20 x the points under ``lineRule="auto"``, from 0.75 pt (core-ts check 71b; CR-024)."""
     package = _package()
     paragraph = package.body.insert_paragraph("x")
-    paragraph.line_spacing = 0.05
-    assert (paragraph.element.p_pr.spacing.line, paragraph.element.p_pr.spacing.line_rule) == (1, "exact")
-    error = refused(lambda: setattr(paragraph, "line_spacing", 0.02), "0.05 to 1,638 pt")
-    assert error.stored == 0
+    from docx4j_py.wml import el
+
+    paragraph.element.p_pr = el.pPr(spacing=el.spacing(line=480, line_rule="exact"))
+    paragraph.line_spacing = 0.75
+    assert (paragraph.element.p_pr.spacing.line, paragraph.element.p_pr.spacing.line_rule) == (15, "auto")
+    assert paragraph.line_spacing == 0.75, "the getter reads an auto line as Office JS does"
+    paragraph.line_spacing = 24
+    assert (paragraph.element.p_pr.spacing.line, paragraph.element.p_pr.spacing.line_rule) == (480, "auto")
+    error = refused(lambda: setattr(paragraph, "line_spacing", 0.7), "0.75 to 1,584 pt")
+    assert error.stored == 14 and error.attribute == "w:spacing/@w:line"
 
 
 def test_a_refusal_under_change_tracking_records_nothing() -> None:
@@ -152,7 +159,7 @@ def test_a_cells_width() -> None:
 
 
 def test_a_list_levels_indents() -> None:
-    """A text indent above -1,638.4 and below 1,638 pt (Office JS's); a marker within its field (round 6)."""
+    """A text indent short of 1,584 pt either way (Word's own setter, check 71b); a marker within its field (round 6)."""
     package = _package()
     item = package.body.insert_paragraph("one")
     lst = item.start_new_list()
@@ -166,14 +173,14 @@ def test_a_list_levels_indents() -> None:
         num = next(n for n in numbering.contents.num if n.num_id == num_id)
         return num.abstract_num_id.val
 
-    lst.set_level_indents(0, -1638.35, -1638.4)
-    assert (level_ind().left, level_ind().first_line, level_ind().hanging) == (-32767, None, 32768)
-    lst.set_level_indents(0, 1637.95, 1638.35)
-    assert (level_ind().left, level_ind().first_line, level_ind().hanging) == (32759, 32767, None)
+    lst.set_level_indents(0, -1583.95, -1638.4)
+    assert (level_ind().left, level_ind().first_line, level_ind().hanging) == (-31679, None, 32768)
+    lst.set_level_indents(0, 1583.95, 1638.35)
+    assert (level_ind().left, level_ind().first_line, level_ind().hanging) == (31679, 32767, None)
     changes = len(package.changes)
     before = to_xml(numbering.contents)
-    refused(lambda: lst.set_level_indents(0, 1638, 0), "-1,638.4 to 1,638 pt, both ends excluded")
-    refused(lambda: lst.set_level_indents(0, -1638.4, 0), "-1,638.4 to 1,638 pt, both ends excluded")
+    for text in (1584, -1584, 1638, -1638.4):
+        refused(lambda text=text: lst.set_level_indents(0, text, 0), "-1,583.95 to 1,583.95 pt")
     refused(lambda: lst.set_level_indents(0, 36, 1638.4), "0 to 1,638.35 pt")
     refused(lambda: lst.set_level_indents(0, 36, -1638.45), "0 to 1,638.4 pt")
     assert to_xml(numbering.contents) == before
@@ -181,17 +188,17 @@ def test_a_list_levels_indents() -> None:
 
 
 def test_a_fonts_size() -> None:
-    """Above 0 up to 1,638 pt, as Office JS takes it; 0 removes ``w:sz`` (CR-022 section 10, departure 2)."""
+    """1 to 1,638 pt after rounding to a half-point, as Word's own setter takes it (check 71b); 0 removes ``w:sz``."""
     package = _package()
     paragraph = package.body.insert_paragraph("x")
     font = paragraph.font
-    for value in (0.5, 1638):
+    for value in (0.75, 0.9, 1, 1638, 1638.05):
         font.size = value
         assert paragraph.runs[0].r_pr.sz.val == round(value * 2)
     before = to_xml(paragraph.element)
     changes = len(package.changes)
-    for value in (1638.5, 32767.5, -1, -0.5):
-        refused(lambda value=value: setattr(font, "size", value), "0 to 1,638 pt, 0 excluded")
+    for value in (0.5, 0.7, 1638.4, 1638.5, 32767.5, -1, -0.5):
+        refused(lambda value=value: setattr(font, "size", value), "1 to 1,638 pt")
     assert to_xml(paragraph.element) == before
     assert len(package.changes) == changes
     font.size = 0
@@ -545,7 +552,7 @@ def test_the_examples_of_section_2_1_are_refused() -> None:
     assert (error.attribute, error.value, error.stored) == ("w:ind/@w:left", 400000.0, 8000000)
     error = refused(lambda: setattr(paragraph, "space_before", 5000.0))
     assert error.message == (
-        "space before 5000 pt (100,000 twips) is beyond Word's range, 0 to 1,638 pt, 1,638 excluded, "
+        "space before 5000 pt (100,000 twips) is beyond Word's range, 0 to 1,584 pt, "
         "where Office JS's setter stops"
     )
     assert paragraph.element.p_pr is None, "nothing was written"

@@ -118,9 +118,9 @@ TWIPS_PER_POINT = 20
 TWIPS_PER_LEVEL = 720
 HANGING = 360
 
-#: Office JS's own limit for ``setLevelIndents``' text indent: refused from 1,638 pt and at
-#: -1,638.4 pt and below, though Word stores -1,638.4 (core-ts check 71; CR-022 section 3.2, Q1).
-OFFICE_JS_TEXT_INDENT = CallerLimit(low=-1638.4, high=1638, low_open=True, high_open=True)
+#: Word 365's own limit for ``setLevelIndents``' text indent: short of 1,584 pt either way, 31,679 twips as
+#: written (1,583.95 pt), though Word stores -32,768 to 32,767 (core-ts check 71b; CR-022 Q1, CR-024).
+OFFICE_JS_TEXT_INDENT = CallerLimit(low=-31679, high=31679, stored=True)
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -765,8 +765,8 @@ class List:
         field, so a level holds one or the other.
 
         Refused before anything changes (CR-022), ``MeasureRangeError``: a
-        text indent from 1,638 pt and at -1,638.4 pt and below, as Office JS
-        refuses it (core-ts check 71); a marker beyond Word's range for a
+        text indent beyond -1,583.95 to 1,583.95 pt, as Word's own setter
+        refuses it (core-ts check 71b; CR-024); a marker beyond Word's range for a
         first-line indent (0 to 1,638.35 pt) or a hanging one (to 1,638.4 pt).
         """
         text = float(text_indent)

@@ -735,7 +735,10 @@ def _given(value: Any) -> str:
 
 
 #: How many twips, half-points, eighths of a point and points make a point.
-_PER_POINT: dict[str, int] = {"twips": 20, "half-points": 2, "eighths of a point": 8, "points": 1}
+#: How many of each unit make one point. ``240ths of a line`` is the content API's line spacing under
+#: ``w:lineRule="auto"``: Office JS's points are the line as a multiple of 12 pt ("in the Word UI, this value is
+#: divided by 12"), and Word's own setter writes ``w:line`` as 20 x the points (core-ts check 71b; CR-024).
+_PER_POINT: dict[str, int] = {"twips": 20, "half-points": 2, "eighths of a point": 8, "points": 1, "240ths of a line": 20}
 #: How many EMU make one of each length unit (python-docx's ``Length``).
 _EMU_PER: dict[str, Decimal] = {
     "twips": Decimal(635),
@@ -811,15 +814,21 @@ OWN = Units("", _own, lambda unit: Decimal(1))
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class CallerLimit:
-    """A setter's own range, narrower than Word's storage, in the caller's units (CR-022 Q1).
+    """A setter's own range, narrower than Word's storage (CR-022 Q1, CR-024).
 
-    Office JS's own setters refuse some values Word would store as written:
-    ``spaceBefore``, ``spaceAfter`` and ``lineSpacing`` from 1,638 pt and for
-    a negative, ``setLevelIndents``' text indent from 1,638 pt and at -1,638.4
-    and below, ``font.size`` above 1,638 and at 0 (core-ts check 71; CR-022
-    section 3.2). The content API's setters of the same names refuse where
-    Office JS refuses. None at an end means the attribute's own range rules
-    there.
+    Word 365's own Office JS setters refuse some values Word would store as
+    written (core-ts check 71b, CR-024 section 2): ``spaceBefore`` and
+    ``spaceAfter`` take 0 to 1,584 pt (31,680 twips), ``lineSpacing`` 0.75 to
+    1,584 pt (15 to 31,680 240ths of a line under ``w:lineRule="auto"``),
+    ``setLevelIndents``' text indent -1,583.95 to 1,583.95 pt (31,679 twips
+    either way) and ``font.size`` 1 to 1,638 pt after rounding to a half-point
+    (2 to 3,276). The content API's setters of the same names refuse where
+    Word's do. None at an end means the attribute's own range rules there.
+
+    With `stored`, `low` and `high` are in the attribute's unit and bound the
+    value as the setter writes it, as Word's own setters are bound (its font
+    setter takes 0.9 pt, written as 1); otherwise they are in the caller's
+    units and bound what the caller gave (a cell width's sign).
     """
 
     low: float | None = None
@@ -827,9 +836,10 @@ class CallerLimit:
     low_open: bool = False
     high_open: bool = False
     by: str = "Office JS"
+    stored: bool = False
 
     def admits(self, value: Any) -> bool:
-        """Whether the caller's `value` is inside this limit."""
+        """Whether `value` (the caller's, or with `stored` the value as written) is inside this limit."""
         if self.low is not None and (value < self.low or (self.low_open and value == self.low)):
             return False
         return not (self.high is not None and (value > self.high or (self.high_open and value == self.high)))
@@ -873,12 +883,13 @@ def _refusal(
     low_open = high_open = False
     by_limit = False
     if limit is not None:
+        scale = per if limit.stored else Decimal(1)
         if limit.low is not None:
-            bound = _decimal(limit.low)
+            bound = _decimal(limit.low) * scale
             if bound > low or (bound == low and limit.low_open):
                 low, low_open, by_limit = bound, limit.low_open, True
         if limit.high is not None:
-            bound = _decimal(limit.high)
+            bound = _decimal(limit.high) * scale
             if bound < high or (bound == high and limit.high_open):
                 high, high_open, by_limit = bound, limit.high_open, True
     unit_name = units.name or row.unit
@@ -943,8 +954,9 @@ def measure_in_range(
             as the write leaves it: ``w:lineRule`` for ``w:spacing/@w:line``,
             ``w:hRule`` for ``w:trHeight/@w:val``, ``w:type`` for a table
             width; None for that attribute absent.
-        limit: the setter's own narrower range, Office JS's (CR-022 Q1), in
-            the caller's units; it applies with the attribute's range.
+        limit: the setter's own narrower range, Word's own Office JS setter's
+            (CR-022 Q1, CR-024), in the caller's units or with its `stored`
+            on the value as written; it applies with the attribute's range.
         hint: the refusal's hint, where the default (``pass a <label> from
             <range>``) would not say what to do: a format string, ``{span}``
             the range as the message shows it. A rule setter's names the
@@ -967,7 +979,7 @@ def measure_in_range(
     if isinstance(value, float) and not math.isfinite(value):
         raise _refusal(row, value, None, units, label, limit, finite=False, hint=hint)
     stored = units.convert(value, row.unit)
-    if row.admits(stored) and (limit is None or limit.admits(value)):
+    if row.admits(stored) and (limit is None or limit.admits(stored if limit.stored else value)):
         return stored
     raise _refusal(row, value, stored, units, label, limit, hint=hint)
 

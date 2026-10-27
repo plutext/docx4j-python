@@ -98,7 +98,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   `release_check.sh` built at `21a60d9`, whose artefacts were Word-checked (`tests/README.md`).
 - **CR-020** (content refused where it does not belong: a check on every typed list as code adds to it, derived from the
   model, with the parse unchecked, and a validator walk, which also reports an out-of-range measurement): decided
-  2026-10-26 (Q1 to Q9 as recommended); nothing started.
+  2026-10-26 (Q1 to Q9 as recommended). Phase A implemented 2026-10-27 (section 10; its five open points decided as
+  recommended, 10.14); B (the validator and the out-of-range report) and C (the records) proposed.
 - **CR-021** (integer attributes read as Word reads them, docx4j CR-065's rule: a decimal truncated toward zero, the
   empty string 0, any other form refused; one `values.integer`, the normaliser's integer rows, the fork's `int` made exact):
   decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately). Phases 0 (the fork's stage 14,
@@ -116,6 +117,12 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   writes nothing. CR-020 Phase B's out-of-range report reads the same table.
 - **CR-023** (`List.set_level_indents` as Word 365 writes it: the second indent a first-line indent, negative for
   hanging; the port of core-ts CR-002 section 65.5): complete 2026-10-26 (`fa22937`; Word-checked).
+- **CR-024** (the content API's spacing, line, list indent and font size setters as Word 365's own, after core-ts's
+  check 71b; the port of core-ts CR-002 section 65.9): implemented 2026-10-28, Word check pending.
+  `Paragraph.line_spacing` writes `w:line` = 20 x points under `w:lineRule="auto"` (a multiple of single spacing, as
+  Word's setter writes it; it wrote exact); the content API's limits are Word's own, on the value as written
+  (`CallerLimit(stored=True)`), superseding CR-022's 1,638 pt from check 71; `to_api_script` expresses an auto rule;
+  `test_office_js_setters.py` holds the 51 cases to Word's run.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
