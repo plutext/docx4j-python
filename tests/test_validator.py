@@ -19,6 +19,7 @@ held.
 from __future__ import annotations
 
 import io
+import os
 import re
 import zipfile
 from functools import cache
@@ -830,11 +831,20 @@ def test_an_address_where_the_content_api_has_one():
 
 
 def test_the_check_is_off_by_default_and_on_in_this_suite():
-    assert saves_check(None) is True, "tests/conftest.py turns it on"
+    suite = os.environ.get("DOCX4J_PY_SAVE_CHECK", "1") != "0"
+    assert saves_check(None) is suite, "tests/conftest.py turns it on, unless DOCX4J_PY_SAVE_CHECK=0"
     with checking(False):
         assert saves_check(None) is False
         assert saves_check(True) is True
+    with checking(True):
+        assert saves_check(None) is True
     assert saves_check(False) is False
+    # outside any checking() block, as a program outside the suite runs: off
+    import contextvars
+
+    from docx4j_py.openpackaging import save
+
+    assert contextvars.Context().run(save.saves_check, None) is False
 
 
 def _broken_package():
@@ -866,8 +876,8 @@ def test_misplaced_content_raises_and_nothing_is_written(tmp_path):
     )
     assert error.hint == "a run goes in a paragraph: `p(r(...))`"
     assert error.to_dict()["code"] == "target.misplaced"
-    with pytest.raises(SaveCheckError):
-        package.save()  # the suite's default
+    with checking(True), pytest.raises(SaveCheckError):
+        package.save()  # check=None: the default of the moment, the suite's
 
 
 def test_a_value_the_source_held_is_carried_and_one_the_session_set_raises():
