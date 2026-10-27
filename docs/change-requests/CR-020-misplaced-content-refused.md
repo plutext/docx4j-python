@@ -1,6 +1,6 @@
 # CR-020: Content refused where it does not belong --- a check on every typed list as code adds to it, derived from the model, and a validator for what gets past
 
-**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); Phases B and C proposed. Three phases (section 6), 2 to 3 days.
+**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); **Phase B implemented 2026-10-28** (section 11: `740ea05`, `903a6d6`, `82800fd`, `5903d7d`; the validator `misplaced(root)` and `package.misplaced()`, `save(check=...)` with the suite saving checked, the out-of-range report held to Word 365's saves of docx4j CR-066 rounds 5 and 6; five points for the user in 11.9); Phase C proposed. Three phases (section 6), 2 to 3 days.
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
@@ -425,7 +425,7 @@ Section 5: `Symbols.docx`'s parse within 5% of today's. Measured interleaved, `e
 | `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 canonically identical, 0 differences, 0 skipped, 34 `boolean-spelling` | **the same** |
 | acceptance (`scripts/compare_acceptance.py`, `out/acceptance/` at `eb8f2d5` in `out/wt/base` against the checkout's) | --- | **17 artefacts, 246 entries, 0 differ** beyond the dates |
 | `codegen/generate.sh --check` (a worktree at `597097e`) | --- | two generations byte identical, 309 modules; nothing generated differs from the commit, and `placement.py` survives `clean.py` |
-| `scripts/threads.py` | passes | **passes** (eight threads, three modes, no document lost or altered) |
+| `scripts/threads.py` | --- (passed at Phase A) | **passes** (eight threads, three modes, no document lost or altered) |
 | `ebc3dcd` on its own (a worktree under `out/wt/`) | --- | the fast suite: 5,668 passed, 51 skipped (the worktree's skips: the sibling checkouts' goldens are not beside it), 0 failed |
 | `Symbols.docx`'s parse, best | 189.9 to 194.8 ms | 192.0 to 194.4 ms (10.9) |
 
@@ -448,3 +448,285 @@ code, test or generated file changed and no gate moved from 10.13's:
    beyond the test's expected counts.
 5. **`unchecked` is not re-exported from `docx4j_py.wml`**: it stays where it is, `docx4j_py.child` and
    `docx4j_py.model.content`, and the generator's footer is untouched.
+
+## 11. Phase B implementation notes (2026-10-28)
+
+Phase B as built, D7 (section 4.7) with Q5's save option and `conftest`, at the coordinator's brief after the user's
+"start CR-020 Phase B" (2026-10-28). Phase C (the records) is not begun: no CHANGELOG, README, `docs/pypi-readme.md`,
+CLAUDE.md or index change was made, and nothing in `../docx4j-portfolio/`. Read for behaviour, never edited: docx4j-core-ts
+at `b7c2680` (CR-017 section 7, `src/model/wordIntegers.mts`, `XmlPart.valueOutOfRange`, `test/integer-attributes.test.mjs`),
+docx4j-generated-objects-ts at `8ec65b3` (`src/helpers/wml.mts`: `WORD_INTEGER_STORAGE`, `wordIntegerReading`, `storageOf`;
+`src/index.mts`'s `outOfRangeOf`) and docx4j at `fa3011a41` (`word-integer-storage.tsv`, CR-066 section 10).
+
+**Commits.**
+- `740ea05`: the validator, `misplaced(root)`, the findings, the wrap model, D2's `xsd:anyType` substitution (11.7
+  departure 1), `tests/test_validator.py` without the save's check, the private reader, the cost guard.
+- `903a6d6`: `save(check=...)`, `SaveCheckError`, `XmlPart.source_tree()`, `SaveReport.findings`, `tests/conftest.py`, the one
+  opt-out, the save's tests.
+- `82800fd`: departure 1 narrowed to an element declared with no type of its own (a named type with wildcard content is not
+  one), and its test.
+- `5903d7d`: the two save-check tests that assumed the suite's default hold with `DOCX4J_PY_SAVE_CHECK=0` too.
+- the next commit: this section, the Status line, `tests/README.md`'s rows.
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the validator | `docx4j_py/validator.py` (new, hand written, added to `codegen/clean.py`'s `KEEP`) | `misplaced(root, *, unmarshalled_only=False)` over a model object, an `XmlPart` or a package; `findings_in(root, *, part_name=None, root_name=None)` (a tree), `part_findings(part, tree=None)` (a part, with its name and its addresses); one pre-order walk (`_Walker`), the three checks of 11.2 on each node; `check_for_save(package)` (11.4) |
+| the public names | `docx4j_py.traversal.misplaced(root, *, unmarshalled_only=False)`; `OpcPackage.misplaced(*, unmarshalled_only=False)` | Q5's names; both are the validator's `misplaced` |
+| the findings | `docx4j_py.validator` | `Finding` (frozen, slotted: `message`, `part_name`, `path`, `address`, and `node`, the object the finding is about, neither in `to_dict()` nor compared; `code` a class constant) and its three kinds, `MisplacedContent`, `CellWithoutEndParagraph`, `ValueOutOfRange` (11.2); `to_dict()` leaves None out, as `model/content/reports.py`'s do, but for `ValueOutOfRange`'s `word_reads` and `range`, where None means something (core-ts's `null`) |
+| the wrap model | `docx4j_py/model/word_integers.py` (new; inside `model`, listed in `KEEP` too) | `Storage` (the objects package's `WordIntegerStorage`, measured entries), `STORAGE` (one per attribute path of the limits table: 77 for its 82 rows by context), `Storage.token` (`storageOf`, character for character), `reading(storage, attribute, value, rule)` → `Reading(value, rule, attribute, kept, storage)` (`wordIntegerReading`, step for step), `kept_range` (`rangeOf`, core-ts's `keptRange`), `read_range(row)` (a row's range as Word reads, 11.3), `wrap` |
+| the save's check | `docx4j_py/openpackaging/save.py`, `packages/opc_package.py`, `normalise.py` | `save(target, *, normalise=None, check=None)`, `save_to(sink, *, normalise=None, check=None)`, `save_package(package, sink, *, normalise=None, check=None)`; `checking(enabled=True)`, a context manager over a context variable (per thread, as `unchecked()` is), whose default is False; `saves_check(check)`; `check_before_save(package, check)`; `SaveReport.checked`, `SaveReport.findings`, `SaveReport.out_of_range` (core-ts's `lastSave.outOfRange`) |
+| the error | `docx4j_py/model/content/errors.py`, exported from `docx4j_py.model.content` | `SaveCheckError(ContentError)`: `code` the first finding's (`target.misplaced`, `cell.no_end_paragraph`, `value.out_of_range`), its message and hint, `findings` every finding the session introduced; `SaveCheckError.of(findings)` |
+| the source's tree | `docx4j_py/openpackaging/parts/xml_part.py` | `XmlPart.source_tree()`: a fresh tree of the part's source bytes under the parse settings a parse now uses, held by nothing, the part untouched; `XmlPart._parse(data, settings)`, the parse `_unmarshal` makes, factored out for it |
+| D2 widened | `docx4j_py/placement.py` | `_any_type(cls)` and `_any_type_substitution`; `_derived_allowed` accepts a `DerivedElement` naming its value's own type where the choice is an element declared with no type (11.7 departure 1) |
+| the suite | `tests/conftest.py` (new) | a session fixture, `checking(True)`, unless `DOCX4J_PY_SAVE_CHECK=0` |
+| the tests | `tests/test_validator.py` (new, 346); `tests/test_performance.py` (one, `slow`); `tests/openpackaging/test_private_readers.py` (the validator a reader, its caller listed); `tests/content/test_table_rules.py` (the opt-out) | 11.8 |
+
+### 11.2 The findings
+
+| kind | code | fields beyond the four of every finding | message |
+|---|---|---|---|
+| `MisplacedContent` | `target.misplaced` | `holder` (the holder's class, `"R"`), `field` (`"content"`, `"p_pr"`), `index` (the item's position; None for a single-valued field), `item` (its class, `"Tbl"`, `"str"`), `element` (prefixed, `"w:tbl"`), `hint` | the add-time error's, from `placement.refusal`: "`R.content` can't hold a `Tbl` (`w:tbl`)", with its hint, so one search finds both |
+| `CellWithoutEndParagraph` | `cell.no_end_paragraph`, proposed here (11.9 Q3): `table_rules` has no code, and neither counterpart reports the rule | `ends_with` (`"w:tbl"`, or None for a cell holding no block), `hint` (Word's repair, and `table_rules.end_with_paragraph(tc)`) | "a table cell must end with a paragraph, as Word reads it; this one ends with a table (`w:tbl`)" |
+| `ValueOutOfRange` | `value.out_of_range`, CR-022's `MeasureRangeError`'s | `element`, `attribute`, `value`, `word_reads`, `storage`, `range`, `read_as`, `rule` (11.3) | core-ts's form: "`/word/document.xml: /w:document/w:body[1]/w:p[3]/w:pPr[1]/w:ind[1]/@w:left=7205001 is past what Word 365 stores there (int16, -32768 to 32767); Word reads it as -3959`"; `describeReading`'s `atLeast 1`, `32768 in w:hanging`, `a width Word computes` |
+
+**Misplaced content.** Every item of every typed list and every single-valued element field's value is held to D2 by
+`placement.verdict`, the add-time rule itself, so the two never disagree: one dictionary lookup per item
+(`Entry.verdicts`), the cold path only on a miss. `placement.entry` already reads a single element field (`var.is_element`)
+as a one-choice table, so a single field needed nothing new. That covers what the add-time check cannot see (section 4.11,
+10.11 item 4): a plain list assigned whole (`run.content = [Tbl()]`, never promoted to a `ChildList`), a single field
+assigned (`p.p_pr = R()`), `object.__setattr__`, a tree built under `unchecked()`. A misplaced item's step in the path is
+named by its own element (`w:tbl`), as core-ts names it, not as the serialiser would write it: a `Tbl` in `R.content` is
+written `<w:CT_Tbl/>`, its type's name (10.3, `docs/UPSTREAM.md` report 28). A string's path is its holder's, as core-ts
+gives one. A misplaced item is walked into, so what is wrong inside it is reported too. The 28 unchecked fields and what
+sits in a wildcard are not checked (section 4.11); the typed objects inside a wildcard (a kept `mc` branch's) are walked.
+
+**The cell rule.** Each `w:tc` the walk meets, `mce="all"` (every branch is written back), held to
+`table_rules.paragraph_end_of`: past range markup, through block-level controls and custom XML, through the branch of a kept
+`mc:AlternateContent` Word reads (CR-016 Phase A).
+
+**Paths and addresses.** The path is from the part's root, each step a prefixed name and its 1-based position among its
+siblings of that name, an attribute's ending with it (`/w:document/w:body[1]/w:tbl[2]/w:tr[1]/w:tc[1]`,
+`/w:settings/w:defaultTabStop[1]/@w:val`), core-ts's form; for a tree walked on its own, from that tree's root. The walk
+counts a node's children in field order, which is the order the serialiser writes them. The address is the content API's:
+the innermost block holding the finding (`address_of`'s rule: its `w14:paraId` where it has one, else its ordinal,
+`body/2/0/0`), computed down the walk's own trail, so a tree whose parent pointers are stale still gets one; only in a part
+that has a body (main document, header, footer, notes, comments), and with no `body_of`, which would unmarshal the part.
+
+### 11.3 The out-of-range report
+
+**What it reads.** CR-022's table (`integer_limit(attribute, context)`), by the attribute's path: the element the walk names
+the node, the attribute's qualified name, the holder where the row names one (`w:rPr/w:sz`), the row's context from the
+sibling attribute on the same node (an enumeration read as Word reads one, `values.in_enumeration`: an invalid value is
+unset). The value is Word's lexical reading first (CR-021, `values.integer`): `"70000.5"` is 70000 and reported, `"720.5"`
+is 720 and in range, `"abc"` is not a number Word reads and is CR-021's, not this report's. Each (path, context) is looked up
+once and cached (11.6).
+
+**Read-side semantics, section 4.7's.** The range a value is held to is the row's as Word **reads** (`read_range`): the
+row's own, with the values its `word_writes` names put back, so 65,535 in `w:before`, `w:after` and the five unsigned page
+margins is in range, the write side's 65,534 cap no read limit; a value equal to a `word_writes` spelling (`-1` there, which
+Word reads as 65,535) is not reported, nor a row's `sentinel` (`w:col/@w:space`'s -1), while any other negative space is; an
+attribute the table lists as unmeasured (`w:gridCol`, `w:wBefore`, `w:wAfter`, `w:legacy`'s two, `w:fitText`, a row height
+under `hRule="auto"`) is not checked, nor one with no row under its context (a table width under `auto` or `nil`, or with
+no `w:type`: CR-022's rows are `dxa` and `pct`).
+
+**The wrap model** (`model/word_integers.py`), the table's missing half (CR-022 10.10 item 5). The table's `storage` is
+prose and gives no reading, so each attribute path has a `Storage`: the objects package's entry for the class that path
+binds (`CTBorder` for every border edge and `w:bdr`, `TblWidth` for the widths and margins, `HpsMeasure` for `w:sz`,
+`w:szCs` and `w:kern`, `CTTwipsMeasure` for the two settings), and `reading` is `wordIntegerReading` in Python's spelling.
+`test_the_wrap_model_keeps_exactly_the_row_s_range_as_read` holds the two halves to each other for every one of the 82
+rows: `kept_range` (core-ts's `keptRange`) equals the row's range as read, and `reading().kept` is True exactly inside it and
+at Word's own spellings, at up to 46 values each, the boundaries and one past them included. So the table decides what is
+reported and the model only what Word reads, and a disagreement fails a test.
+
+**Alignment with the other ports.**
+
+| | docx4j-core-ts (CR-017 P2, P3) | here |
+|---|---|---|
+| code | `value.out_of_range` | the same |
+| fields | `element`, `attribute`, `value`, `wordReads`, `storage`, `range`, `readAs`, `rule`, `partName`, `path` or `line`/`column` | the same in snake_case (`word_reads`, `read_as`, `part_name`), always `path`, never a line (the typed tree keeps none); `address` beside it |
+| `value` | a number as held | an `int` where it binds as one, else the kept text (section 4.7) |
+| `storage` | the objects package's strings | **the same strings** (`test_the_storage_strings_are_core_ts_s`): `int16`, `uint16`, `int32`, `8 bits`, `5 bits`, `int16, shared by firstLine (+) and hanging (-)`, `int16, the sign the rule`, `int16, then ±31680`, `uint16, then 144..31681`, `uint16, then at least 144`, `int16, a negative computed`, `int16, a negative written -1`, `15 bits, bit 15 clearing exact`; a line under `auto` `int16` |
+| `range` | `keptRange` | the row's as read, equal to `kept_range` by test |
+| `rule` | wherever the reading has one (a line under `auto` too) | the same |
+| when | every load (a warning on the part) and every save (`lastSave.outOfRange`) | on demand (`misplaced`), and on a save with `check=True` (`last_save.findings`, `last_save.out_of_range`) (11.7 departure 3) |
+| what is checked | the objects table, by class: also the unmeasured attributes outside the certain range -32768 to 65535 (`unmeasured: changed outside -32768..65535`, `wordReads` null), a `TblWidth` under any type (`w:wBefore`, `w:wAfter`, a width under `auto`), every `HpsMeasure` and `CTTwipsMeasure` (`w:hps`, `w:drawingGrid*`) | CR-022's table, by attribute path: nothing it lists as unmeasured or has no row for (11.7 departure 2) |
+
+docx4j's inspector (CR-066 D6) spells `word_reads` as a string in the attribute's terms (`hanging 3959`, `atLeast 1`) and
+checks a table width with no `w:type` as `int16`; this report follows core-ts's number with `read_as` and `rule`, as
+section 4.7 agreed.
+
+### 11.4 The save's check, and what it does with a finding
+
+**The decision** (the brief's recommendation, kept: the evidence agrees with it):
+- **Misplaced content raises, always.** A parse never produces it (section 2.1; 11.5's corpus holds none, once departure 1
+  is made), so it is code's, and the file it would write is one Word refuses to open (core-ts check 72: 11 of 18) or
+  repairs. It is found before anything is written.
+- **A cell that does not end with a paragraph, or an integer measurement past what Word stores, raises where the session
+  introduced it, and is carried where the source already held it.** Carried means saved as it is, never repaired
+  (CLAUDE.md's "nothing is repaired on load or save"; CR-016 D4's "until an edit touches that cell"), and listed on
+  `last_save.findings` (`last_save.out_of_range` the out-of-range ones, core-ts's `lastSave.outOfRange`). A file from
+  elsewhere with a broken cell or a wrapped indent can be loaded, edited elsewhere and saved with the check on.
+- **Introduced** is told from **carried** by a fresh parse of the part's source (`XmlPart.source_tree()`), made only for a
+  part that has such a finding, so a save with nothing to report parses nothing more. A finding is matched to one of the
+  source's by what it is, never by where, since an edit moves things: an out-of-range value by its element, attribute and
+  value; a cell by what it ends with and its text. Matching is a multiset, so a copy of a carried value is the session's
+  (`test_a_value_the_source_held_is_carried_and_one_the_session_set_raises`), and so is a cell the session empties.
+- **The order.** The check runs first, before the save hooks (CR-019's glossary) and before the target is opened, in
+  `OpcPackage.save` for a path or a stream, so a refusal leaves the target as it was (`ZipPartSink` truncates on
+  construction) and writes nothing. `save_package` and `save_to` run it before anything is put in the sink.
+- **What it covers.** The parts the save re-marshals: those unmarshalled. A part never unmarshalled is written byte for byte,
+  as read; `package.misplaced()` reads it privately, which marks nothing for re-marshalling, so a `misplaced()` before a
+  save does not widen the save.
+
+**`SaveCheckError`** carries every introduced finding (`findings`), the first's code as its own, so a caller's
+`except ContentError` and a tool's `to_dict()` read the condition. One class rather than the condition's own
+(`MisplacedContentError`, `MeasureRangeError`): a save can introduce several kinds at once.
+
+**The suite** (Q5): `tests/conftest.py` runs every save under `checking(True)`. One test opts out at its save:
+`content/test_table_rules.py::test_d4_a_file_whose_cell_ends_with_a_table_is_left_as_it_is_until_an_edit_touches_that_cell`,
+which breaks a cell behind the API's back to stand for a file from elsewhere (`save(check=False)`); its next save, of the
+file reloaded, carries the cell. No other test of the suite introduced a finding: no engine edit the suite exercises
+leaves misplaced content, a cell without its paragraph or an out-of-range value behind. `test_validator.py`'s save tests use
+`check=` and `checking(False)` because they test the option.
+
+### 11.5 The oracle and the corpus
+
+**docx4j CR-066 rounds 5 and 6** (`tests/fixtures/integer-limits/`), as core-ts counts them: 660 integer cases (190 of
+round 5 and 470 of round 6, less the controls, round 6's `E`, CR-021's forms, and its `N`, whose `w:legacy` Word 365 drops
+whole). Each probe is loaded and `misplaced(package)` reads every part; each finding's path is evaluated as an XPath on the
+source part and must reach the value, and is mapped back to its case by the body's child and its label. Word's save of each
+is read as core-ts reads it (`_word_changed`, step for step: kept where the save writes the value back under the same name
+and rule, or 65,535 where Word writes it -1; changed otherwise; left out, a 0).
+
+| | cases |
+|---|---|
+| compared with Word's save | 614 (core-ts's), of them 8 row heights under `hRule="auto"`, which Word dropped and the table does not check |
+| left out by Word (read 0) | 16, each reported with `word_reads` 0 |
+| stated, not comparable (`w:gridCol` recomputed, `w:wBefore` and `w:wAfter` dropped) | 30, unmeasured here, none reported |
+| **reported** | **413, exactly the set Word's save changed** (`test_the_report_flags_exactly_the_cases_word_s_save_changed`): one finding per case, `word_reads` what Word wrote, `read_as` the attribute it wrote the shared field under, `rule` the rule it wrote, and the value outside the finding's `range` |
+| core-ts's count | **432 = 413 + 19**: the 19 are the stated cases core-ts reports from the objects table, which this table leaves unmeasured: 5 `w:gridCol` values outside the certain range -32768 to 65535 and 7 each of `w:wBefore` and `w:wAfter` outside int16. Not tuned: they are departure 2's |
+
+Word's own saves of the probes hold nothing (`test_word_s_own_saves_hold_nothing`), nor round 6's `E` and `N`. **docx4j
+CR-065 round 2's 64 decimals** (`tests/fixtures/integers/`, CR-021's) and CR-021's edges hold no out-of-range value in any
+part, of the probes or of Word's saves: every value, read as Word reads it lexically, is in range.
+
+**The corpus.** `samples/` and every fixture, 389 files, every part: **no misplaced content and no cell without its
+paragraph; 413 findings, all `value.out_of_range` in the probe files' case parts** (the 413 above). Before departure 1 there
+were 452 more, `dcterms:created` and `dcterms:modified` in 226 files' `docProps/core.xml`: the parse binds their
+`xsi:type="dcterms:W3CDTF"` as a `DerivedElement` of a `W3CDTF`, which D2 refused; and the engine's own `create_package`
+sets a bare `W3CDTF` there, which made the first save of the suite under the check raise.
+
+### 11.6 The cost
+
+- **The validator** over `samples/Symbols.docx`'s main part (790,857 bytes, 24,758 objects visited): **33
+  ms** best, warm, against a parse of about 195 ms (17%); the first walk of a process 50 ms, the tables and plans built
+  once. As first written it took 58 ms: the per-node path strings (now built only for a finding) and `integer_limit`'s scan
+  of all 82 rows per value (now cached per path and context) were most of it; fetching the fields with one
+  `operator.attrgetter` per class was slower (40 ms) and was not kept. Half of what is left is reading each single-valued
+  field of each node (237,740 `getattr`s a walk), which the single-field check needs.
+  `test_the_validator_costs_under_a_quarter_of_the_parse` (`slow`) holds it under 25% of the parse, best of nine.
+- **The suite with the check on against off** (the fast suite at `82800fd`, one run after the other, nothing else
+  running): **201.9 s on, 201.1 s off** (3 min 23.5 s and 3 min 22.8 s of wall time): +0.8 s, 0.4%, in the noise. The suite's
+  documents are small, and a save checks only what it re-marshals. Off, the run failed the two tests of 11.8 that read
+  the suite's default, which `5903d7d` makes read the switch. The fast suite before Phase B (`6cecdcf`) took 195.9 s for
+  6,438 tests; the 350 added (346 in `test_validator.py`, 4 private-reader runs) take the rest.
+- **The parse is unchanged.** `test_the_list_check_leaves_the_parse_within_five_percent` (Phase A's guard, `slow`, 201.6
+  ms) failed once in the full suite at `82800fd`, at 201.8 ms; run alone it passes (193.4 to 198.4 ms), and outside pytest,
+  interleaved, 20 parses each, `6cecdcf` gives 197.0 to 198.1 ms best and `82800fd` 195.3 to 197.4 ms. Phase B changes
+  nothing on the parse's path (`XmlPart._parse` is not on it: the guard parses with `runtime.parser()`); the guard's margin
+  is small under a five-minute run's heap. See 11.11 for the final run.
+
+### 11.7 Departures, with why
+
+1. **D2 accepts an `xsi:type` substitution of an element declared with no type of its own** (`placement._any_type`: a
+   global element's class with no model base, no attributes and only wildcard content, the generator's reading of such a
+   declaration as `xsd:anyType`: 48 of the model's, all Dublin Core's; a named type with wildcard content, `w:CT_PictureBase`
+   or `w:CT_ShapeDefaults`, is not one, `82800fd`): a single field given a class with a type name of
+   its own, which the serialiser writes with that `xsi:type`, and a `DerivedElement` naming its value's own type. Phase A's
+   rule (10.3) refused every `xsi:type` write, since Word writes none; but OPC's core properties require
+   `xsi:type="dcterms:W3CDTF"` on `dcterms:created` and `dcterms:modified`, every Word file has them, the parse binds them
+   so, and `create_package` writes them so. Without this the validator reported two findings in every `.docx`, and the
+   save's check refused every package whose core properties a session had unmarshalled. Every other `xsi:type` write is
+   still refused, at add time and by the validator (`test_a_subclass_written_with_an_xsi_type_is_found`: a `PPr` in
+   `w:pPrChange`). This changes Phase A's rule for the add-time check too; no Phase A test changed. For the user (11.9 Q2).
+2. **Unmeasured attributes and attributes with no row are not reported**, where core-ts reports from the objects table
+   (11.3): section 4.7 and CR-022 Q3 ("an attribute with no row is not checked"). It costs core-ts's 19 cases of 11.5 and
+   the type-level attributes docx4j and the objects package range by class (`w:hps`, `w:drawingGrid*`, a table width with
+   no `w:type`). For the user (11.9 Q4).
+3. **No report on load, and none on a save without the check.** core-ts warns on every load and every save; here the
+   validator is a walk of its own, run on demand and by `save(check=True)` (Q5's default, off), so a load and a default save
+   cost nothing. For the user (11.9 Q5).
+4. **One error class for the save's check**, `SaveCheckError`, not the condition's own (11.4), with the condition's code.
+5. **A misplaced item's path names its element**, not what the serialiser writes for it (11.2).
+6. **The checks are this phase's three.** No ordering rule exists to add (section 4.7: "ordering rules belong here too if
+   any are added").
+
+### 11.8 Tests and the numbers
+
+- **`tests/test_validator.py`, 346 tests:** the findings' shape and `to_dict()`; Phase A's refused cases (`test_misplaced.py`'s
+  65 and nine more, 74) found built under `unchecked()`, in a plain list assigned whole and through `object.__setattr__`,
+  each finding's message the add-time error's (222 tests); a single field assigned the wrong class; a subclass written with
+  an `xsi:type` found and its base not; only an element declared with no type taking any `xsi:type`; **section 10.3's 1,440 strangers**, each built under `unchecked()`: the 1,140 the
+  check refuses found, the 300 it accepts not; a deep finding's path; a string's; a misplaced item walked into; the core
+  properties' `xsi:type` legal; the cell rule, through the wrappers, and the engine's tables clean; the wrap model (one
+  storage per row and row per storage, core-ts's strings, 82 rows held to the model, core-ts's stated readings); the
+  out-of-range finding's fields, the lexical reading first, section 4.7's semantics, a column's sentinel and computed
+  width, a row height under `auto`, an unmeasured attribute, a width with no row, a holder, a line's rule; **the oracle**
+  (11.5); Word's saves; CR-065's decimals; the corpus; `misplaced()` marking no part; a tree, a part, a package; the address;
+  the save's check (off by default and on in the suite, a refusal writing nothing, carried and introduced values and
+  cells); `source_tree()` touching nothing.
+- **`tests/test_performance.py`:** `test_the_validator_costs_under_a_quarter_of_the_parse` (`slow`).
+- **`tests/openpackaging/test_private_readers.py`:** `validator.py::_tree_of` listed as a `read_contents` caller and
+  `package.misplaced()` run as a reader (it writes nothing into the trees it reads).
+- **`tests/content/test_table_rules.py`:** the opt-out (11.4).
+
+### 11.9 For the user to decide
+
+1. **The save's check** (11.4): misplaced content always raises; a cell or an out-of-range value raises only where the
+   session introduced it, the source's carried and recorded. *Recommendation: keep.* The alternatives each fail on
+   evidence: raising for every finding would refuse to save an edited file from elsewhere unless it was repaired, which the
+   package never does on a save; raising only for misplaced content would let an engine edit that breaks a cell pass the
+   suite.
+2. **D2 widened for the `xsi:type` of an element declared with no type** (departure 1, the 48 Dublin Core elements).
+   *Recommendation: keep*; it is the schema's, and without it every `.docx` holds two findings. docx4j's `checkParent` has no opinion on it.
+3. **The cell rule's code, `cell.no_end_paragraph`.** *Recommendation: keep, and offer it to docx4j-core-ts and docx4j through
+   the portfolio*, so that the ports name the finding alike when they report it (neither does yet).
+4. **Unmeasured attributes and attributes with no row** (departure 2): not reported, as section 4.7 and CR-022 Q3 say; or
+   reported as core-ts reports them (outside -32768 to 65535, `storage` `unmeasured: changed outside -32768..65535`,
+   `word_reads` None; `w:wBefore` and `w:wAfter` as `int16`), which would bring the oracle to core-ts's 432. *Recommendation:
+   keep*: a report of what Word does that rests on no measurement of it is the thing Q3 declined, and the 19 are all
+   values Word's save dropped or recomputed anyway.
+5. **Out-of-range on every save**, as core-ts's `lastSave.outOfRange` (departure 3), at 17% of a parse per re-marshalled part.
+   *Recommendation: no; keep Q5's default*, and let the MCP server and the inspector call `misplaced()`.
+
+### 11.10 Found, and not done
+
+1. **The serialiser writes a misplaced `Tbl` in `R.content` as `<w:CT_Tbl/>`**, its type's name (the same mechanism as
+   10.11 item 1, `docs/UPSTREAM.md` report 28). Nothing here depends on it; a path names the element instead.
+2. **`docs/change-requests/README.md`'s CR-020 row** still says "Nothing implemented" (Phase A did not change it either):
+   Phase C's.
+3. **The portfolio's `python/CR-020.B` entry** wants `done`, with this section as its note, sent to the docx4j-portfolio
+   session; the `tasks.yaml` rule (CLAUDE.md) is not this session's to apply. Section 11.9 Q3, if decided, is a note to
+   docx4j-core-ts and docx4j through the same session.
+4. **`tests/README.md`'s `test_private_readers.py` row** said twelve callers and nine readers, stale since CR-019 Phase B;
+   it now says fifteen and eleven.
+
+### 11.11 The gates
+
+| gate | before (`6cecdcf`) | after (`5903d7d`) |
+|---|---|---|
+| the full suite (`.venv-fork/bin/python -m pytest`) | not run | **8,245 passed, 8 skipped**, 0 failed (5 min 12 s); at `82800fd` 8,244 passed and 1 failed, Phase A's parse guard at 201.8 ms against 201.6 (11.6), which passes here |
+| the fast suite (`-m "not slow"`), the check on | 6,438 passed, 8 skipped, 1,382 deselected (195.9 s) | **6,788 passed, 8 skipped**, 1,457 deselected (221.5 s, the machine shared with a collection run; 201.9 s alone at `82800fd`) |
+| the fast suite, the check off (`DOCX4J_PY_SAVE_CHECK=0`, at `82800fd`) | --- | 6,786 passed, 2 failed (the two `5903d7d` mends), 201.1 s |
+| the new tests | --- | 346 in `test_validator.py`; 4 fast and 74 `slow` private-reader runs; 1 in `test_performance.py` (`slow`) |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | --- | **50 of 50 canonically identical**, 0 differences, 0 skipped, 34 `boolean-spelling` |
+| acceptance (`scripts/compare_acceptance.py`) | `out/acceptance-cr024/`, CR-024's build, the code of `6cecdcf` | `out/acceptance-cr020b/`: **17 artefacts, 246 entries, 0 differ** beyond the dates; `out/acceptance-cr020b-checked/`, built under `checking(True)`: 0 differ; the same build counted (`out/acceptance-cr020b-counted/`): 18 saves checked, none refused, nothing carried |
+| `codegen/generate.sh --check` (a worktree at `5903d7d`) | --- | two generations byte identical, 311 modules (Phase A's 309 and the two new files); nothing generated differs from the commit, and `validator.py` and `model/word_integers.py` survive `clean.py` |
+| `scripts/threads.py` | --- (passed at Phase A) | **passes** (eight threads, three modes, no document lost or altered) |
+| `ruff check` on the 16 files touched | --- | no new finding; the 8 there before (`opc_package.py` 2, `xml_part.py` 2, `save.py` 1, `test_performance.py` 3) left as they were |
+| `Symbols.docx`'s parse, best, outside pytest | 197.0 to 198.1 ms | 195.3 to 197.4 ms |
+| the validator over `Symbols.docx`'s main part, best, warm | --- | 33 to 35 ms (17 to 18% of the parse) |
+
+No Word check (section 5): output is unchanged, and the acceptance documents are identical.
