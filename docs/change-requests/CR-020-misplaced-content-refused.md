@@ -744,6 +744,13 @@ its probe files raise on purpose, as the other probe readers do (267 of the fast
    time and in the validator.
 3. **The cell rule's code is `cell.no_end_paragraph`**, offered to docx4j-core-ts and docx4j on 2026-10-28, so that a port
    reporting the finding names it alike.
+   Both took it the same day. docx4j-core-ts also took `target.misplaced` for its CR-016 phase 2 warning on a misplaced
+   child (its CR-016 section 4, D7), with these field names where its objects report has the data: `part_name`,
+   `path`, `index`, `element`, and `holder` and `item` as docx4j's Java class names, as here. It has no `address`,
+   `field` or `hint`; its own `rule`, `text` (a string's) and load `line` have no counterpart here; and its message
+   is docx4j's wording. Its finding covers docx4j CR-064's refuse sets, of which this allow rule finds a superset.
+   docx4j reports neither condition today (`TableRules` repairs a cell on load) and will use both codes if a
+   validator there reports them.
 4. **Unmeasured attributes and attributes with no row are not reported** (departure 2): the oracle stays 413, and
    core-ts's other 19 (`w:gridCol`, `w:wBefore`, `w:wAfter`) wait on a measurement of what Word does with them.
 5. **No out-of-range report on every save** (departure 3): Q5's default, `check` off, stands; the MCP server and the
