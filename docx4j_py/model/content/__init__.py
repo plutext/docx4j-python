@@ -122,6 +122,7 @@ __all__ = [
     "script_blocks",
     "segments_of",
     "to_api_script",
+    "unchecked",
 ]
 
 #: Public name -> the module it lives in. Imported on first use.
@@ -202,6 +203,8 @@ _LAZY: dict[str, str] = {
     "ScriptBlock": "docx4j_py.model.content.api_script",
     "script_blocks": "docx4j_py.model.content.api_script",
     "to_api_script": "docx4j_py.model.content.api_script",
+    # CR-020 D9, the escape hatch from the check every typed list makes
+    "unchecked": "docx4j_py.child",
 }
 
 

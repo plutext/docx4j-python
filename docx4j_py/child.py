@@ -24,6 +24,16 @@ Three pieces, and nothing in them knows about WordprocessingML:
     handed to a constructor as plain lists. It is driven by xsdata's
     ``XmlContext`` metadata, so it needs no generated code.
 
+**Misplaced content is refused** (CR-020 Phase A). A ``ChildList`` that knows
+its owner and its field name checks every item put into it against what the
+field's element choices allow, before anything changes, and raises
+:class:`~docx4j_py.model.content.errors.MisplacedContentError` for the rest:
+``r.content.append(Tbl())`` fails at that line rather than in Word. The table,
+the rule and the messages are :mod:`docx4j_py.placement`'s; the check here is
+one dictionary lookup per item. A parse is not checked (every parser is
+:func:`docx4j_py.runtime.parser`'s, which parses under :func:`unchecked`), and
+:func:`unchecked` is the way to build an invalid tree on purpose.
+
 Example:
     >>> from docx4j_py.child import link_parents, deep_copy
     >>> doc = parser.from_bytes(data, Document)  # doctest: +SKIP
@@ -36,6 +46,8 @@ from __future__ import annotations
 import copy
 import dataclasses
 from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Self
 
 __all__ = [
@@ -61,6 +73,7 @@ __all__ = [
     "requires_namespaces",
     "set_source_bindings",
     "source_bindings",
+    "unchecked",
     "understands",
     "understood_namespaces",
 ]
@@ -83,8 +96,62 @@ MCE_MODES = ("resolve", "all", "none")
 _DEEPCOPY_ROOT = "docx4j_py.child:deepcopy-root"
 
 
+#: Whether the lists check what goes into them (CR-020 D3). A context variable,
+#: so per thread and per asyncio task: every parse switches it off for its
+#: duration (:class:`docx4j_py.runtime.UncheckedXmlParser`), and
+#: :func:`unchecked` for a block.
+_CHECKING: ContextVar[bool] = ContextVar("docx4j_py.child.checking", default=True)
+
+
+@contextmanager
+def unchecked() -> Iterator[None]:
+    """Build a tree the model does not allow, on purpose (CR-020 D9).
+
+    Inside the block no typed list checks what goes into it, so a test can
+    reproduce a broken Word file and a repair tool can hold what it is
+    repairing::
+
+        with unchecked():
+            run.content.append(Tbl())  # Word would call this unreadable content
+
+    The check is back on when the block ends, however it ends. It is per
+    thread (a context variable), and the engine never uses it outside a parse
+    (:class:`docx4j_py.runtime.UncheckedXmlParser`) and the relink of a deep
+    copy, which holds nothing its original did not.
+    """
+    token = _CHECKING.set(False)
+    try:
+        yield
+    finally:
+        _CHECKING.reset(token)
+
+
+# (holder class, field) -> {item class: verdict}, or None for a field not checked
+_verdict_tables: dict[tuple[type, str], dict[Any, bool] | None] = {}
+
+
+def _check(owner: Any, field: str, items: Iterable[Any]) -> None:
+    """Refuse the first of `items` that `owner`'s list `field` cannot hold (CR-020 D2)."""
+    key = (owner.__class__, field)
+    try:
+        verdicts = _verdict_tables[key]
+    except KeyError:
+        from docx4j_py import placement
+
+        verdicts = _verdict_tables[key] = placement.verdicts(owner.__class__, field)
+    if verdicts is None:
+        return
+    for item in items:
+        if verdicts.get(item.__class__):
+            continue
+        from docx4j_py import placement
+
+        if not placement.verdict(owner.__class__, field, item):
+            raise placement.refusal(owner, field, item)
+
+
 class ChildList(list):
-    """A list that adopts what is put into it.
+    """A list that adopts what is put into it, and refuses what it cannot hold.
 
     Every mutation that introduces an item sets ``item.parent`` to the object
     that owns the list; every mutation that removes one clears it, unless
@@ -96,19 +163,33 @@ class ChildList(list):
     :func:`link_parents`. A ``ChildList`` with no owner is inert: it still
     behaves as a list, it just has no parent to hand out.
 
+    **The check** (CR-020 D3). A list that knows its owner and its field name
+    (:attr:`field`, given with the owner by ``__post_init__``,
+    :func:`link_parents`, :func:`link_children`, :meth:`set_owner` or the
+    constructor) refuses an item the field's element choices do not allow,
+    with :class:`~docx4j_py.model.content.errors.MisplacedContentError`:
+    ``append``, ``insert``, ``extend``, ``+=`` and item and slice assignment,
+    and every item handed over with the list. Every item is checked before
+    anything changes, so a refused ``extend`` or slice assignment leaves the
+    list as it was. A list with no field name is not checked, as one with no
+    owner is not parented. :func:`unchecked` turns the check off for a block.
+
     Attributes:
         orphan_on_remove: class level switch; when True (the default) removing
             an item sets its parent back to None.
     """
 
-    __slots__ = ("_owner",)
+    __slots__ = ("_field", "_owner")
 
     orphan_on_remove: bool = True
 
-    def __init__(self, iterable: Iterable[Any] = (), owner: Any = None) -> None:
-        """Build the list and, if an owner is given, adopt its contents."""
+    def __init__(self, iterable: Iterable[Any] = (), owner: Any = None, field: str | None = None) -> None:
+        """Build the list and, if an owner is given, check and adopt its contents."""
         super().__init__(iterable)
+        if owner is not None and field is not None and self and _CHECKING.get():
+            _check(owner, field, self)
         self._owner = owner
+        self._field = field
         if owner is not None:
             self._adopt_all()
 
@@ -119,12 +200,46 @@ class ChildList(list):
         """The object whose field this list is, or None."""
         return self._owner
 
-    def set_owner(self, owner: Any) -> None:
-        """Make `owner` the parent of everything in this list, now and later."""
+    @property
+    def field(self) -> str | None:
+        """The name of the owner's field this list is, or None; a list with none is not checked."""
+        return self._field
+
+    def set_owner(self, owner: Any, field: str | None = None) -> None:
+        """Make `owner` the parent of everything in this list, now and later.
+
+        `field` is the owner's field this list is, which turns the check on
+        (CR-020 D3); None keeps the one the list has if the owner is the same,
+        and leaves a list handed to a new owner without one. Everything
+        already in the list is checked when the owner or the field changes,
+        before anything does; a list re-bound to its own owner and field
+        (the parser's hook does that for every object it builds) holds
+        nothing new and is not checked again.
+        """
+        if field is None and owner is self._owner:
+            field = self._field
+        if (
+            field is not None
+            and owner is not None
+            and (owner is not self._owner or field != self._field)
+            and self
+            and _CHECKING.get()
+        ):
+            _check(owner, field, self)
         self._owner = owner
+        self._field = field
         self._adopt_all()
 
+    def _checked(self, items: Iterable[Any]) -> None:
+        """Refuse what the owner's field cannot hold, before anything changes."""
+        field = self._field
+        if field is not None and self._owner is not None and _CHECKING.get():
+            _check(self._owner, field, items)
+
     def _adopt(self, item: Any) -> Any:
+        field = self._field
+        if field is not None and self._owner is not None and _CHECKING.get():
+            _check(self._owner, field, (item,))
         if isinstance(item, Child):
             item.parent = self._owner
         return item
@@ -150,8 +265,13 @@ class ChildList(list):
         super().insert(index, self._adopt(item))
 
     def extend(self, iterable: Iterable[Any]) -> None:
-        """Append every item of `iterable` and adopt each one."""
-        items = [self._adopt(item) for item in iterable]
+        """Append every item of `iterable` and adopt each one; nothing goes in if one is refused."""
+        items = list(iterable)
+        self._checked(items)
+        owner = self._owner
+        for item in items:
+            if isinstance(item, Child):
+                item.parent = owner
         super().extend(items)
 
     def __iadd__(self, iterable: Iterable[Any]) -> Self:
@@ -160,15 +280,26 @@ class ChildList(list):
         return self
 
     def __setitem__(self, index: Any, value: Any) -> None:
-        """Assign by index or slice, orphaning what goes and adopting what comes."""
+        """Assign by index or slice, orphaning what goes and adopting what comes.
+
+        What comes is checked first, so a refused assignment changes nothing.
+        """
         if isinstance(index, slice):
+            values = list(value)
+            self._checked(values)
             for old in self[index]:
                 self._orphan(old)
-            values = [self._adopt(item) for item in value]
+            owner = self._owner
+            for item in values:
+                if isinstance(item, Child):
+                    item.parent = owner
             super().__setitem__(index, values)
         else:
+            self._checked((value,))
             self._orphan(self[index])
-            super().__setitem__(index, self._adopt(value))
+            if isinstance(value, Child):
+                value.parent = self._owner
+            super().__setitem__(index, value)
 
     # -- mutations that orphan ---------------------------------------------
 
@@ -250,11 +381,11 @@ class Child:
         for name in _list_field_names(self.__class__):
             value = getattr(self, name, None)
             if isinstance(value, ChildList):
-                value.set_owner(self)
+                value.set_owner(self, name)
             elif isinstance(value, list):
                 # a plain list handed to the constructor, e.g. P(content=[r]);
-                # promote it so the parent pointers work from here on
-                object.__setattr__(self, name, ChildList(value, owner=self))
+                # promote it so the parent pointers and the check work from here on
+                object.__setattr__(self, name, ChildList(value, owner=self, field=name))
 
     def get_parent(self) -> Any:
         """Return the containing object, or None if this node is detached."""
@@ -269,7 +400,9 @@ class Child:
 
         The copy is detached: its own ``parent`` is None, and its descendants
         are relinked to point inside the copy rather than inside the original.
-        Only the outermost call relinks, so copying is linear.
+        Only the outermost call relinks, so copying is linear. The relink is
+        not checked (CR-020): a copy holds nothing its original did not, and a
+        tree built under :func:`unchecked` copies as it is.
         """
         cls = self.__class__
         new = cls.__new__(cls)
@@ -289,7 +422,11 @@ class Child:
         new.parent = None
         if is_root:
             del memo[_DEEPCOPY_ROOT]
-            link_parents(new)
+            token = _CHECKING.set(False)
+            try:
+                link_parents(new)
+            finally:
+                _CHECKING.reset(token)
         return new
 
 
@@ -966,7 +1103,11 @@ def link_children(obj: Any, *, context: Any = None) -> None:
     One level of what :func:`link_parents` does, from the same ``_child_plan``
     enumeration and by the same rules: every ``Child`` in a list field or in a
     single-valued field gets `obj` as its parent, and every :class:`ChildList`
-    is bound to `obj` as its owner. A typed object nested inside an
+    is bound to `obj` as its owner, with its field name (CR-020). A list
+    already bound to `obj` under that name --- every list of an object the
+    parser builds, since ``Child.__post_init__`` binds them --- holds nothing
+    new and is not checked again; its items are re-adopted. A typed object
+    nested inside an
     ``AnyElement`` wildcard keeps the parent it has, exactly as
     :func:`link_parents` leaves it.
 
@@ -1000,7 +1141,10 @@ def link_children(obj: Any, *, context: Any = None) -> None:
         if isinstance(value, Child):
             value.parent = obj
         elif isinstance(value, ChildList):
-            value.set_owner(obj)
+            if value._owner is obj and value._field == name:
+                value._adopt_all()  # bound already (every list the parser builds): nothing new to check
+            else:
+                value.set_owner(obj, name)
         elif isinstance(value, (list, tuple)):
             for item in value:
                 if isinstance(item, Child):
@@ -1016,9 +1160,12 @@ def link_parents(root: Any, *, context: Any = None) -> int:
     element classes, and it descends through ``AnyElement`` wildcards without
     tripping over them. ``root.parent`` itself is left alone.
 
-    Every ``ChildList`` it meets is bound to its owner on the way, so a list
-    that reached a constructor as a plain list, or was replaced wholesale, ends
-    up as usable as one the constructor built.
+    Every ``ChildList`` it meets is bound to its owner on the way, with its
+    field name, so a list that reached a constructor as a plain list, or was
+    replaced wholesale, ends up as usable as one the constructor built. Binding
+    a list to a new owner or field checks what it holds (CR-020), so a
+    ``ChildList`` of misplaced content assigned whole is refused here; a list
+    already bound to the same owner and field is not checked again.
 
     **Markup compatibility does not apply here.** ``link_parents`` is
     ``mce="all"`` and always will be: every node of the tree is written back on
@@ -1054,7 +1201,7 @@ def link_parents(root: Any, *, context: Any = None) -> int:
             if value is None:
                 continue
             if isinstance(value, ChildList):
-                value.set_owner(obj)
+                value.set_owner(obj, name)
                 for item in value:
                     if isinstance(item, Child):
                         stack.append(item)

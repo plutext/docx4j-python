@@ -34,6 +34,7 @@ import canon  # noqa: E402
 
 from docx4j_py import wml as W  # noqa: E402
 from docx4j_py.child import deep_copy_as, is_any_element  # noqa: E402
+from docx4j_py.model.content import MisplacedContentError  # noqa: E402
 from docx4j_py.namespaces import WML_NS, declarations  # noqa: E402
 from docx4j_py.traversal import RUN_HOLDERS, element_name, find, run_items_of, walk_all  # noqa: E402
 from docx4j_py.w14 import el as w14_el  # noqa: E402
@@ -543,7 +544,20 @@ def test_every_form_round_trips_through_wml(form, cls, content_cls, wrapper, bui
 
 
 def test_the_form_can_be_overridden():
-    assert isinstance(sdt([p("a")], form="run"), W.SdtRun)
+    # a bookmark first infers the block form, which a run cannot go in; the run form takes both
+    content = [el.bookmarkStart(id=1, name="b"), r("a")]
+    with pytest.raises(MisplacedContentError):
+        sdt(list(content))
+    assert isinstance(sdt(list(content), form="run"), W.SdtRun)
+    assert isinstance(sdt([r("a")], form="run"), W.SdtRun)
+
+
+def test_a_form_its_content_cannot_take_is_refused():
+    """CR-020 section 2.4 (b): a paragraph in a run-level control, which the builder used to build."""
+    with pytest.raises(MisplacedContentError) as raised:
+        sdt([p("a")], form="run")
+    assert raised.value.code == "target.misplaced"
+    assert raised.value.message == "`CTSdtContentRun.content` can't hold a `P` (`w:p`)"
 
 
 def test_an_unknown_form_says_which_ones_there_are():
@@ -972,7 +986,6 @@ HOLDERS = [
     (W.CtDir, "dir"),
     (W.CtBdo, "bdo"),
     (W.CTSdtContentRun, "sdtContent"),
-    (W.SdtContentBlock, "sdtContent"),
 ]
 
 
@@ -998,7 +1011,13 @@ def test_run_items_of_a_control_reaches_through_to_its_content(
     form, cls, content_cls, wrapper, build
 ):
     control = sdt(build(), id=1)
-    assert run_items_of(control) is control.sdt_content.content
+    if form == "run":
+        assert run_items_of(control) is control.sdt_content.content
+        assert run_items_of(control.sdt_content) is control.sdt_content.content
+    else:
+        # CR-020 section 4.8: a block, row or cell control keeps no runs, and its list refuses one
+        assert run_items_of(control) is None
+        assert run_items_of(control.sdt_content) is None
 
 
 def test_run_items_of_anything_else_is_none():

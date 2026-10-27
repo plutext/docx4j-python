@@ -41,6 +41,7 @@ __all__ = [
     "BRANCH_CHILD_NAMES",
     "EXACT_TYPES",
     "LEXICAL_TYPES",
+    "UncheckedXmlParser",
     "branch_child_class",
     "container_binding",
     "context",
@@ -177,9 +178,38 @@ def parser_config(
     )
 
 
+class UncheckedXmlParser(XmlParser):
+    """The fork's :class:`XmlParser`, every parse made with the list check off (CR-020 D4).
+
+    Every typed list refuses, as code adds to it, an item its field's element
+    choices do not allow (:class:`docx4j_py.child.ChildList`). A parse has no
+    need of that: the parser puts in a list only what it bound by the field's
+    own choices, and an element no choice takes is skipped and reported
+    (``part.skipped``). So a parse runs under :func:`docx4j_py.child.unchecked`,
+    which makes a load failure on a legal document impossible by construction
+    (docx4j-25's concern, CR-020 section 3), and costs one context-variable set
+    per parse. The check is on again when the parse returns or raises, and in
+    any other thread throughout.
+
+    :meth:`parse` is the one method every ``from_bytes``, ``from_string`` and
+    ``from_path`` goes through. :func:`parser` builds this class; every parser
+    in the package is :func:`parser`'s (``tests/test_misplaced.py``). Q3 chose
+    this over a ``class_factory`` that unchecks each object it builds, which
+    measured dearer than the check itself on ``Symbols.docx`` (CR-020 section
+    10.5).
+    """
+
+    def parse(self, source: Any, clazz: Any = None, ns_map: dict[str | None, str] | None = None) -> Any:
+        """Parse as the fork does, with the list check off for the parse's duration."""
+        from docx4j_py.child import unchecked
+
+        with unchecked():
+            return super().parse(source, clazz, ns_map)
+
+
 def parser(*, lenient: bool = True, skipped_report: bool = True, **kwargs: Any) -> XmlParser:
-    """A new :class:`XmlParser` on the shared context. Never share one."""
-    return XmlParser(
+    """A new parser on the shared context, which parses unchecked (:class:`UncheckedXmlParser`). Never share one."""
+    return UncheckedXmlParser(
         context=context(),
         config=parser_config(lenient=lenient, skipped_report=skipped_report, **kwargs),
     )

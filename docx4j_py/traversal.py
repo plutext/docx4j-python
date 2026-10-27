@@ -525,10 +525,16 @@ def run_items_of(holder: Any) -> list[Any] | None:
     (``content``, ``customXmlOrSmartTagOrSdt``, ``accOrBarOrBox``); CR-003
     Phase A's notes record that.
 
+    A block-, row- or cell-level ``w:sdtContent`` (or the ``w:sdt`` holding
+    one) keeps no runs, and answers None as any holder that keeps none does
+    (CR-020 section 4.8): its list takes paragraphs, rows or cells, and
+    refuses a run (:class:`~docx4j_py.model.content.errors.MisplacedContentError`).
+    Its block-level list is :func:`docx4j_py.model.content.text_model.block_children_of`'s.
+
     Returns:
         The holder's own list (mutating it mutates the document), or None for
         anything that is not a run holder --- a ``w:tbl``, a ``w:r``, a
-        ``w:body``.
+        ``w:body``, a block-level content control.
     """
     name = element_name(holder)
     if name not in RUN_HOLDERS:
@@ -538,5 +544,27 @@ def run_items_of(holder: Any) -> list[Any] | None:
         if inner is None:
             return None
         holder = inner
+        name = _SDT_CONTENT
+    if name == _SDT_CONTENT and not _keeps_runs(holder):
+        return None
     items = getattr(holder, "content", None)
     return items if isinstance(items, list) else None
+
+
+_SDT_CONTENT = _w("sdtContent")
+_keeps_runs_cache: dict[type, bool] = {}
+
+
+def _keeps_runs(content: Any) -> bool:
+    """Whether a ``w:sdtContent``'s list takes ``w:r``: the run form's does, the other three's do not."""
+    cls = content.__class__
+    try:
+        return _keeps_runs_cache[cls]
+    except KeyError:
+        pass
+    from docx4j_py import placement
+
+    found = placement.entry(cls, "content")
+    keeps = found is None or _w("r") in found.by_name
+    _keeps_runs_cache[cls] = keeps
+    return keeps
