@@ -1324,7 +1324,7 @@ def _leader_xml(leader: Any) -> str | None:
 def _insert_in_order(tabs: Any, element: Any) -> Any:
     """Put a ``w:tab`` in ``w:tabs`` before the first one further right."""
     if tabs.tab is None:
-        tabs.tab = ChildList([], owner=tabs)
+        tabs.tab = ChildList([], owner=tabs, field="tab")
     position = integer(element.pos) or 0
     index = len(tabs.tab)
     for i, existing in enumerate(tabs.tab):

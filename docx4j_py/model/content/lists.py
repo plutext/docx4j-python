@@ -295,7 +295,7 @@ def restart_over(package: Any, num_id: int, *, touched: set[str] | None = None) 
         abstract_num_id=el.abstractNumId(val=_value(existing.abstract_num_id)),
     )
     override = el.lvlOverride(ilvl=0, start_override=el.startOverride(val=1))
-    num.lvl_override = ChildList([override], owner=num)
+    num.lvl_override = ChildList([override], owner=num, field="lvl_override")
     _append(numbering, "num", num)
     invalidate(package)
     return num
@@ -305,7 +305,7 @@ def _append(numbering: Any, field: str, value: Any) -> None:
     """Append to one of ``w:numbering``'s lists, making it a ``ChildList`` first."""
     items = getattr(numbering, field, None)
     if items is None:
-        items = ChildList([], owner=numbering)
+        items = ChildList([], owner=numbering, field=field)
         setattr(numbering, field, items)
     items.append(value)
     link_parents(value)
@@ -1190,7 +1190,7 @@ def _append_override(num: Any, override: Any) -> None:
     """Put a ``w:lvlOverride`` in the ``w:num``, in ``w:ilvl`` order."""
     overrides = num.lvl_override
     if overrides is None:
-        overrides = ChildList([], owner=num)
+        overrides = ChildList([], owner=num, field="lvl_override")
         num.lvl_override = overrides
     position = len(overrides)
     for index, existing in enumerate(overrides):
@@ -1206,7 +1206,7 @@ def _append_level(abstract: Any, lvl: Any) -> None:
     """Put a new ``w:lvl`` in the definition, in ``w:ilvl`` order."""
     levels = abstract.lvl
     if levels is None:
-        levels = ChildList([], owner=abstract)
+        levels = ChildList([], owner=abstract, field="lvl")
         abstract.lvl = levels
     position = len(levels)
     for index, existing in enumerate(levels):

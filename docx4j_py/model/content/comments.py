@@ -555,7 +555,7 @@ def _append(owner: Any, field: str, item: Any) -> None:
     """Append to a model list and wire the parents, as every verb here does."""
     items = getattr(owner, field, None)
     if items is None:
-        items = ChildList([], owner=owner)
+        items = ChildList([], owner=owner, field=field)
         setattr(owner, field, items)
     items.append(item)
     link_parents(item)
@@ -972,7 +972,7 @@ class Comment:
             paragraphs = _comment_paragraphs(text)
             if para_id:
                 paragraphs[0].para_id = para_id
-            self.element.content = ChildList(paragraphs, owner=self.element)
+            self.element.content = ChildList(paragraphs, owner=self.element, field="content")
             link_parents(self.element)
             self._body_view = None
             self._report(change)
@@ -1310,7 +1310,7 @@ class Comment:
             return existing
         content = getattr(self.element, "content", None)
         if content is None:
-            content = ChildList([], owner=self.element)
+            content = ChildList([], owner=self.element, field="content")
             self.element.content = content
         first = next((item for item in content if isinstance(item, P)), None)
         if first is None:

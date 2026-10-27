@@ -253,7 +253,7 @@ class Body(Sequence):
         owner, field = found
         items = getattr(owner, field)
         if not isinstance(items, ChildList):
-            items = ChildList(items, owner=owner)
+            items = ChildList(items, owner=owner, field=field)
             setattr(owner, field, items)
         return items
 

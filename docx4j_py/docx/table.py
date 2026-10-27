@@ -121,7 +121,7 @@ def _set_tr_pr_child(tr: Tr, name: str, item: Any | None) -> None:
         tr_pr.parent = tr
     items = tr_pr.content
     if not isinstance(items, ChildList):
-        items = ChildList(list(items or ()), owner=tr_pr)
+        items = ChildList(list(items or ()), owner=tr_pr, field="content")
         tr_pr.content = items
     wanted = f"{{http://schemas.openxmlformats.org/wordprocessingml/2006/main}}{name}"
     for index, existing in enumerate(list(items)):

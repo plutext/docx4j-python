@@ -160,3 +160,37 @@ def test_link_parents_stays_within_its_budget(document_bytes: bytes) -> None:
     share = statistics.median(link) / statistics.median(parse)
     print(f"link_parents: {share:.1%} of parse")
     assert share < 0.20, f"{share:.1%}"
+
+
+#: Milliseconds: ``samples/Symbols.docx``'s ``document.xml`` (790,857 bytes, 24,758 objects) parsed by the
+#: engine's parser (``runtime.parser()``, as ``XmlPart._unmarshal`` parses) at ``eb8f2d5``, before CR-020 made
+#: every typed list check what goes into it: the best of nine, 189.9 to 196.6 over eleven runs on the checkout
+#: machine, in this test and outside it, interleaved with the code after (CR-020 section 10.9).
+SYMBOLS_PARSE_BEFORE_MS = 192.0
+
+#: CR-020 section 5: the parse within 5% of that. A parse is not checked (the check is off for its duration,
+#: one context-variable set per parse, Q3), so what is left is the check's machinery in the lists the parse
+#: builds: a context-variable read per non-empty list and the owner comparison in ``set_owner``.
+MAX_PARSE_GROWTH = 0.05
+
+
+def test_the_list_check_leaves_the_parse_within_five_percent() -> None:
+    """CR-020 section 5: ``Symbols.docx``'s parse within 5% of its parse before the check (best of nine)."""
+    from docx4j_py.runtime import parser
+    from docx4j_py.wml import Document
+
+    with zipfile.ZipFile(ROOT / "samples" / "Symbols.docx") as z:
+        data = z.read("word/document.xml")
+    parser().from_bytes(data, Document)  # warm the class metadata
+
+    samples = []
+    for _ in range(9):
+        engine = parser()
+        start = time.perf_counter()
+        engine.from_bytes(data, Document)
+        samples.append(time.perf_counter() - start)
+
+    best = min(samples) * 1000
+    limit = SYMBOLS_PARSE_BEFORE_MS * (1 + MAX_PARSE_GROWTH)
+    print(f"Symbols.docx parse: {best:.1f} ms, before CR-020 {SYMBOLS_PARSE_BEFORE_MS} ms, limit {limit:.1f} ms")
+    assert best < limit, f"{best:.1f} ms against {limit:.1f} ms"

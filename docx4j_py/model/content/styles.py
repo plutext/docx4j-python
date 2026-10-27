@@ -591,7 +591,7 @@ def ensure_style(
         )
     styles = part.contents
     if styles.style is None:
-        styles.style = ChildList([], owner=styles)
+        styles.style = ChildList([], owner=styles, field="style")
     styles.style.append(new)
     link_parents(new)
     new.parent = styles

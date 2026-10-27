@@ -1589,7 +1589,7 @@ class ContentControl:
             link_parents(self.element)
         items = pr.content
         if not isinstance(items, ChildList):
-            items = ChildList(list(items or []), owner=pr)
+            items = ChildList(list(items or []), owner=pr, field="content")
             pr.content = items
         return items
 

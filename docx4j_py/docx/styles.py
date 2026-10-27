@@ -58,7 +58,7 @@ def styles_of(package: Any, *, create: bool = False) -> StylesElement | None:
     if create and styles.style is None:
         from docx4j_py.child import ChildList
 
-        styles.style = ChildList([], owner=styles)
+        styles.style = ChildList([], owner=styles, field="style")
     return styles
 
 

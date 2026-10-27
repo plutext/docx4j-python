@@ -470,7 +470,7 @@ class ListContentControl(_KindView):
 
         items = getattr(self.element, "list_item", None)
         if items is None:
-            items = ChildList([], owner=self.element)
+            items = ChildList([], owner=self.element, field="list_item")
             self.element.list_item = items
         return items
 

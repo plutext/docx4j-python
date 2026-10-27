@@ -527,7 +527,7 @@ def require_placeholder_style(package: Any) -> None:
         return
     styles = part.contents
     if styles.style is None:
-        styles.style = ChildList([], owner=styles)
+        styles.style = ChildList([], owner=styles, field="style")
     if any(getattr(style, "style_id", None) == PLACEHOLDER_STYLE for style in styles.style):
         return
     style = placeholder_style()
@@ -572,7 +572,7 @@ def ensure_glossary_styles(glossary: Any) -> list[str]:
         return added
     styles = part.contents
     if styles.style is None:
-        styles.style = ChildList([])
+        styles.style = ChildList([], owner=styles, field="style")
     present = {getattr(style, "style_id", None) for style in styles.style}
     for style in (default_paragraph_font(), placeholder_style()):
         if style.style_id in present:
