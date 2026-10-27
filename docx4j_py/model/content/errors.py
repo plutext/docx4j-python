@@ -14,6 +14,7 @@ catches only it.
     └── ContentError            code, message, hint
         ├── AddressError        no block at that address
         ├── InvalidTargetError  this container cannot hold that element
+        │   └── MisplacedContentError  a typed list refuses an item (CR-020)
         ├── MeasureRangeError   a measurement Word would not read as written
         ├── StyleError          no such style, and the five closest names
         ├── SpanError           a span that cannot be formed or edited
@@ -30,6 +31,12 @@ catches only it.
 :class:`MeasureRangeError` is CR-022's, raised by
 :func:`docx4j_py.model.values.measure_in_range` from every setter that writes
 an integer measurement; it keeps ``ValueError`` as a second base too (Q2).
+
+:class:`MisplacedContentError` is CR-020's, raised by the tree layer itself
+(:class:`docx4j_py.child.ChildList`) when code puts an item in a typed list
+whose element choices do not allow it; it keeps ``TypeError`` as a second
+base. ``child.py`` imports it only when it raises, so the object model's import
+cost does not change.
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ __all__ = [
     "Docx4JError",
     "InvalidTargetError",
     "MeasureRangeError",
+    "MisplacedContentError",
     "SpanError",
     "StyleError",
     "TrackedChangeError",
@@ -98,6 +106,44 @@ class InvalidTargetError(ContentError):
 
     default_code = "target.invalid"
     default_hint = "pass an element the container can hold"
+
+
+class MisplacedContentError(InvalidTargetError, TypeError):
+    """A typed list was handed an item its element choices do not allow (CR-020 D5).
+
+    ``r.content.append(Tbl())``, ``P(content=["text"])``, ``tbl.content.append(tc)``:
+    every list of the generated model refuses, as code adds to it, what the
+    class metadata says the field cannot hold (:mod:`docx4j_py.placement`), so
+    the mistake is reported at the line that made it rather than by Word's
+    "unreadable content" when the file is opened. The message names the
+    holder's field and the item, both its class and its element name
+    ("`R.content` can't hold a `Tbl` (`w:tbl`)"); the hint says where the item
+    goes. ``TypeError`` is a second base, so that a caller catching the
+    language's error for a wrong type catches this one; ``except
+    Docx4JException`` catches it too.
+
+    A parse is never checked, and code that builds an invalid tree on purpose
+    (a test reproducing a broken file, a repair tool) does it under
+    :func:`docx4j_py.child.unchecked`.
+
+    Attributes:
+        holder: the object whose list refused the item.
+        field: the list field's name (``"content"``).
+        item: what was refused.
+        element: the item's element qualified name, or None where it has none
+            (a ``str``).
+    """
+
+    default_code = "target.misplaced"
+    default_hint = "put the item where its element belongs"
+
+    def __init__(self, message: str, *, code: str | None = None, hint: str | None = None) -> None:
+        """Build the error; :func:`docx4j_py.placement.refusal` sets the attributes."""
+        super().__init__(message, code=code, hint=hint)
+        self.holder: object = None
+        self.field: str | None = None
+        self.item: object = None
+        self.element: str | None = None
 
 
 class MeasureRangeError(ContentError, ValueError):

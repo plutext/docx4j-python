@@ -23,6 +23,7 @@ KEEP = {
     "runtime.py",  # section 8: the shared context, warm_up
     "fragments.py",  # section 6.2: wml(...) and to_xml(...)
     "traversal.py",  # section 6.2: walk, find, text_of
+    "placement.py",  # CR-020 Phase A: what each typed list may hold, the rule and the messages
     "mc_declarations.py",  # CR-011 Q3: where a save declares the prefixes mc attributes name
     "resources",  # the parts warm_up parses, and docx4j's default styles etc.
     "wml/builders.py",  # section 6.2: the p/r/t/tbl/tr/tc sugar
