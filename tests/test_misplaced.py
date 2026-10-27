@@ -399,7 +399,7 @@ def test_every_namespace_is_checked():
             continue
         error = refused(cls(), field, W.Tbl())
         assert error.code == "target.misplaced", module
-    assert len(by_module) > 30, sorted(by_module)
+    assert len(by_module) == 39, sorted(by_module)
 
 
 def _checked_pairs():
