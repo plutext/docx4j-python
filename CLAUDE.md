@@ -99,7 +99,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
 - **CR-020** (content refused where it does not belong: a check on every typed list as code adds to it, derived from the
   model, with the parse unchecked, and a validator walk, which also reports an out-of-range measurement): decided
   2026-10-26 (Q1 to Q9 as recommended). Phase A implemented 2026-10-27 (section 10; its five open points decided as
-  recommended, 10.14); B (the validator and the out-of-range report) and C (the records) proposed.
+  recommended, 10.14); B (the validator `misplaced()`, `save(check=...)` and the out-of-range report, held to the 413
+  cases Word's save changed) implemented 2026-10-28, its five points kept as built (11.12); C (the records) proposed.
 - **CR-021** (integer attributes read as Word reads them, docx4j CR-065's rule: a decimal truncated toward zero, the
   empty string 0, any other form refused; one `values.integer`, the normaliser's integer rows, the fork's `int` made exact):
   decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately). Phases 0 (the fork's stage 14,

@@ -1,6 +1,6 @@
 # CR-020: Content refused where it does not belong --- a check on every typed list as code adds to it, derived from the model, and a validator for what gets past
 
-**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); **Phase B implemented 2026-10-28** (section 11: `740ea05`, `903a6d6`, `82800fd`, `5903d7d`; the validator `misplaced(root)` and `package.misplaced()`, `save(check=...)` with the suite saving checked, the out-of-range report held to Word 365's saves of docx4j CR-066 rounds 5 and 6; five points for the user in 11.9); Phase C proposed. Three phases (section 6), 2 to 3 days.
+**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); **Phase B implemented 2026-10-28** (section 11: `740ea05`, `903a6d6`, `82800fd`, `5903d7d`; the validator `misplaced(root)` and `package.misplaced()`, `save(check=...)` with the suite saving checked, the out-of-range report held to Word 365's saves of docx4j CR-066 rounds 5 and 6; five points for the user in 11.9); **its five points decided 2026-10-28** (the user: "keep what's built"; 11.12, nothing changed); Phase C proposed. Three phases (section 6), 2 to 3 days.
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
@@ -730,3 +730,21 @@ sets a bare `W3CDTF` there, which made the first save of the suite under the che
 | the validator over `Symbols.docx`'s main part, best, warm | --- | 33 to 35 ms (17 to 18% of the parse) |
 
 No Word check (section 5): output is unchanged, and the acceptance documents are identical.
+
+### 11.12 The decisions (2026-10-28)
+
+The user, on 11.9: "keep what's built". So no code, test or generated file changed for them, and no gate moved from
+11.11's. The coordinator re-ran the fast suite (6,788 passed, 8 skipped) and `roundtrip.py` (50 of 50) at `d0dade4` and
+exercised the save's check by hand. One commit followed, `78e11f4`: `test_validator.py` filters the converter warnings
+its probe files raise on purpose, as the other probe readers do (267 of the fast suite's 287).
+
+1. **The save's check stays as built** (11.4): misplaced content always raises; a cell or an out-of-range value raises
+   only where the session introduced it, and what the source held is saved as it is and listed on `last_save.findings`.
+2. **D2 keeps the `xsi:type` of an element declared with no type** (departure 1, the 48 Dublin Core elements), at add
+   time and in the validator.
+3. **The cell rule's code is `cell.no_end_paragraph`**, offered to docx4j-core-ts and docx4j on 2026-10-28, so that a port
+   reporting the finding names it alike.
+4. **Unmeasured attributes and attributes with no row are not reported** (departure 2): the oracle stays 413, and
+   core-ts's other 19 (`w:gridCol`, `w:wBefore`, `w:wAfter`) wait on a measurement of what Word does with them.
+5. **No out-of-range report on every save** (departure 3): Q5's default, `check` off, stands; the MCP server and the
+   inspector call `misplaced()`.
