@@ -18,10 +18,23 @@ the safe one, and the cost is bounded by what the caller chose to unmarshal.
 Before any of it, the package's ``save_hooks`` run (:func:`run_save_hooks`,
 CR-019 section 4.9): what the content API keeps for the save, such as the
 glossary entries a placeholder names, goes into the parts then.
+
+**The check** (CR-020 Phase B, Q5). ``save(check=True)`` runs the validator
+(:func:`docx4j_py.validator.check_for_save`) over every part the save
+re-marshals, before the hooks and before the target is opened: what this
+session introduced raises :class:`~docx4j_py.model.content.errors.SaveCheckError`
+and nothing is written; what the source already held is saved as it is and
+recorded on ``package.last_save.findings``. ``check`` None is the default of
+the moment, :func:`checking`'s, which is False: the test suite turns it on
+(``tests/conftest.py``), so every save the engine's own edits make is held to
+the validator.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.openpackaging.content_types import ContentTypes
@@ -38,10 +51,55 @@ from docx4j_py.openpackaging.stores import PartSink
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
-__all__ = ["run_save_hooks", "save_package"]
+__all__ = ["check_before_save", "checking", "run_save_hooks", "save_package", "saves_check"]
+
+#: What a save does when its own `check` is not given (CR-020 Q5): False, unless :func:`checking` says otherwise.
+#: A context variable, so per thread and per asyncio task, as :func:`docx4j_py.child.unchecked` is.
+_CHECKING: ContextVar[bool] = ContextVar("docx4j_py.openpackaging.save.checking", default=False)
 
 
-def save_package(package: OpcPackage, sink: PartSink, *, normalise: bool | None = None) -> Any:
+@contextmanager
+def checking(enabled: bool = True) -> Iterator[None]:
+    """Make every save in the block whose `check` is not given run the validator first (or not), CR-020 Q5.
+
+    ``tests/conftest.py`` turns it on for the whole suite; a test that saves a
+    tree it built invalid on purpose turns it off around that save, or passes
+    ``check=False``. The default outside any block is off.
+    """
+    token = _CHECKING.set(enabled)
+    try:
+        yield
+    finally:
+        _CHECKING.reset(token)
+
+
+def saves_check(check: bool | None = None) -> bool:
+    """Whether a save given `check` runs the validator: `check` itself, or :func:`checking`'s default for None."""
+    return _CHECKING.get() if check is None else bool(check)
+
+
+def check_before_save(package: OpcPackage, check: bool | None = None) -> list[Any] | None:
+    """The check a save makes before it writes anything: None where it does not run, else what the source held.
+
+    Raises:
+        SaveCheckError: what this session introduced
+            (:func:`docx4j_py.validator.check_for_save`).
+    """
+    if not saves_check(check):
+        return None
+    from docx4j_py.validator import check_for_save
+
+    return check_for_save(package)
+
+
+def save_package(
+    package: OpcPackage,
+    sink: PartSink,
+    *,
+    normalise: bool | None = None,
+    check: bool | None = None,
+    _checked: list[Any] | None = None,
+) -> Any:
     """Write a package to a sink and return whatever the sink produces.
 
     `normalise` (CR-018 section 4.7): write each value a parse kept as its text
@@ -49,9 +107,16 @@ def save_package(package: OpcPackage, sink: PartSink, *, normalise: bool | None 
     (:func:`~docx4j_py.openpackaging.normalise.normalised_package`). None is the
     package's ``load_options.normalise_on_save``. What it rewrote is
     ``package.last_save``.
+
+    `check` (CR-020 Phase B): run the validator first, before the hooks and
+    before anything is put in the sink (:func:`check_before_save`); None is
+    :func:`checking`'s default. `_checked` is the check's result where the
+    caller ran it already, before it opened the sink
+    (:meth:`~docx4j_py.openpackaging.packages.opc_package.OpcPackage.save`).
     """
     from docx4j_py.openpackaging.normalise import normalised_package
 
+    findings = _checked if _checked is not None else check_before_save(package, check)
     if normalise is None:
         normalise = bool(getattr(getattr(package, "load_options", None), "normalise_on_save", True))
     added = run_save_hooks(package)
@@ -65,6 +130,8 @@ def save_package(package: OpcPackage, sink: PartSink, *, normalise: bool | None 
         saver.save_rels(package.relationships_part)
         result = sink.finish()
     report.added = added
+    report.checked = findings is not None
+    report.findings = list(findings or ())
     if hasattr(package, "last_save"):
         package.last_save = report
     return result

@@ -202,11 +202,25 @@ class SaveReport:
         added: the names of the parts the save's hooks added
             (:func:`~docx4j_py.openpackaging.save.run_save_hooks`; CR-019
             section 4.9: a glossary a placeholder needed), in the order added.
+        checked: whether the save ran the validator first (``save(check=)``,
+            CR-020 Phase B).
+        findings: what that check found that the source already held, and so
+            saved as it is (:func:`docx4j_py.validator.check_for_save`): a table
+            cell that does not end with a paragraph, an integer measurement
+            past what Word stores. Empty where the check found nothing, or did
+            not run.
     """
 
     normalise: bool = True
     normalised: list[Normalised] = dataclasses.field(default_factory=list)
     added: list[str] = dataclasses.field(default_factory=list)
+    checked: bool = False
+    findings: list[Any] = dataclasses.field(default_factory=list)
+
+    @property
+    def out_of_range(self) -> list[Any]:
+        """The ``value.out_of_range`` findings: docx4j-core-ts's ``lastSave.outOfRange`` (its CR-017 P3)."""
+        return [finding for finding in self.findings if finding.code == "value.out_of_range"]
 
     def by_part(self, order: list[str]) -> None:
         """Put :attr:`normalised` in the order the save wrote the parts, each part's rows in their own order."""

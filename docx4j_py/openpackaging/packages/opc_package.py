@@ -31,7 +31,7 @@ from docx4j_py.openpackaging.parts.relationships_part import (
     RelationshipsPart,
 )
 from docx4j_py.openpackaging.parts.xml_part import XmlPart
-from docx4j_py.openpackaging.save import save_package
+from docx4j_py.openpackaging.save import check_before_save, save_package
 from docx4j_py.openpackaging.stores import (
     MemoryPartStore,
     PartSink,
@@ -418,6 +418,7 @@ class OpcPackage:
         target: str | os.PathLike[str] | IO[bytes] | None = None,
         *,
         normalise: bool | None = None,
+        check: bool | None = None,
     ) -> bytes | None:
         """Write the package as a zip.
 
@@ -431,6 +432,14 @@ class OpcPackage:
                 is True; False keeps the source's spelling. Only the parts the
                 save re-marshals are touched, and each rewrite is listed in
                 :attr:`last_save`.
+            check: run the validator (:meth:`misplaced`) over the parts the
+                save re-marshals first, before the target is opened (CR-020
+                Phase B): what this session introduced raises
+                :class:`~docx4j_py.model.content.errors.SaveCheckError` and
+                nothing is written; what the source already held is saved as
+                it is, listed in ``last_save.findings``. None (the default) is
+                :func:`~docx4j_py.openpackaging.save.checking`'s default, off
+                outside the test suite.
 
         Returns:
             The bytes when `target` is None, else None.
@@ -441,25 +450,27 @@ class OpcPackage:
         open for the lazy loads that saving itself performs. The source store is
         then reopened, so the package stays usable.
         """
+        # the check runs before the target is opened, so a refusal leaves it as it was
+        checked = check_before_save(self, check)
         if target is None:
             sink = ZipPartSink(None)
-            return save_package(self, sink, normalise=normalise)
+            return save_package(self, sink, normalise=normalise, check=False, _checked=checked)
 
         if isinstance(target, (str, os.PathLike)):
             path = Path(target)
             if self._is_source_path(path):
-                return self._save_over(path, normalise=normalise)
+                return self._save_over(path, normalise=normalise, checked=checked)
             sink = ZipPartSink(str(path))
-            save_package(self, sink, normalise=normalise)
+            save_package(self, sink, normalise=normalise, check=False, _checked=checked)
             return None
 
         sink = ZipPartSink(target)
-        save_package(self, sink, normalise=normalise)
+        save_package(self, sink, normalise=normalise, check=False, _checked=checked)
         return None
 
-    def save_to(self, sink: PartSink, *, normalise: bool | None = None) -> Any:
-        """Write the package to any sink and return what the sink produces. `normalise` is :meth:`save`'s."""
-        return save_package(self, sink, normalise=normalise)
+    def save_to(self, sink: PartSink, *, normalise: bool | None = None, check: bool | None = None) -> Any:
+        """Write the package to any sink and return what the sink produces. `normalise` and `check` are :meth:`save`'s."""
+        return save_package(self, sink, normalise=normalise, check=check)
 
     def misplaced(self, *, unmarshalled_only: bool = False) -> list[Any]:
         """Every finding of the validator in the package's typed XML parts (CR-020 Phase B, Q5).
@@ -489,7 +500,7 @@ class OpcPackage:
         except OSError:  # pragma: no cover - a path that cannot be resolved is not ours
             return False
 
-    def _save_over(self, path: Path, *, normalise: bool | None = None) -> None:
+    def _save_over(self, path: Path, *, normalise: bool | None = None, checked: list[Any] | None = None) -> None:
         """Temporary file beside the target, then rename. Decided question 4."""
         directory = path.parent
         handle, temporary = tempfile.mkstemp(
@@ -498,7 +509,7 @@ class OpcPackage:
         os.close(handle)
         try:
             sink = ZipPartSink(temporary)
-            save_package(self, sink, normalise=normalise)
+            save_package(self, sink, normalise=normalise, check=False, _checked=checked)
             os.replace(temporary, path)
         except BaseException:
             Path(temporary).unlink(missing_ok=True)

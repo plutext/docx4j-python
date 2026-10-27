@@ -305,22 +305,26 @@ class XmlPart(Part, Generic[T]):
             )
         return data
 
-    def _unmarshal(self, private: bool = False) -> None:
-        from docx4j_py.child import link_parents
-        from docx4j_py.runtime import context, parser
+    def source_tree(self) -> T | None:
+        """A fresh tree of the part's **source** bytes, parsed as a parse now would, held by nothing.
+
+        CR-020 Phase B: the save's check (:func:`docx4j_py.validator.check_for_save`)
+        compares what a part holds now with what its source held, to tell what a
+        session introduced from what the file already had. The part is not
+        touched: not its tree, its private tree, its reports nor its bytes. None
+        for a part with no source container (one made in code).
+        """
+        data = self._source_bytes()
+        if data is None or self.model_class is None:
+            return None
+        obj, _parser, _resolved = self._parse(data, self._parse_settings())
+        return obj
+
+    def _parse(self, data: bytes, settings: _ParseSettings) -> tuple[Any, Any, list[Any]]:
+        """Parse `data` under `settings`: the tree, the parser (its skipped report) and the ``mc`` content resolved."""
+        from docx4j_py.runtime import parser
 
         clazz = self.model_class
-        if clazz is None:
-            raise Docx4JException(
-                f"Part {self.part_name} ({self.content_type}) has no model class; "
-                "it is a generic XML part, use .tree"
-            )
-        data = self._raw_bytes()
-        self._source_ns_map = _root_ns_map(data)
-        # an empty attribute value, either quote and any spacing round "=": two substring tests
-        self._empty_value = b'""' in data or b"''" in data
-
-        settings = self._parse_settings()
         resolved: list[Any] = []
         if settings.mc_load_mode == "word":
             # CR-012 Phase A: block-, row- and cell-level mc:AlternateContent
@@ -339,6 +343,31 @@ class XmlPart(Part, Generic[T]):
             obj = xml_parser.from_bytes(data, clazz)
         except Exception as exc:  # noqa: BLE001 - the part name is the useful half
             raise Docx4JException(f"Problem with part {self.part_name}: {exc}") from exc
+        if xml_parser.config.on_bind is None:
+            # No post-bind hook on this config, so the parse left the parent
+            # pointers unwired and the second walk is still needed. With the
+            # hook --- which `runtime.parser_config` fills in --- every object
+            # was linked as it was built (CR-002 section 12.14).
+            from docx4j_py.child import link_parents
+            from docx4j_py.runtime import context
+
+            link_parents(obj, context=context())
+        return obj, xml_parser, resolved
+
+    def _unmarshal(self, private: bool = False) -> None:
+        clazz = self.model_class
+        if clazz is None:
+            raise Docx4JException(
+                f"Part {self.part_name} ({self.content_type}) has no model class; "
+                "it is a generic XML part, use .tree"
+            )
+        data = self._raw_bytes()
+        self._source_ns_map = _root_ns_map(data)
+        # an empty attribute value, either quote and any spacing round "=": two substring tests
+        self._empty_value = b'""' in data or b"''" in data
+
+        settings = self._parse_settings()
+        obj, xml_parser, resolved = self._parse(data, settings)
 
         report = xml_parser.skipped
         self.skipped = list(getattr(report, "items", ()) or ())
@@ -352,12 +381,6 @@ class XmlPart(Part, Generic[T]):
                     f"{self.part_name}: {len(self.skipped)} item(s) were skipped "
                     f"and strict=True: {self.skipped[:5]}"
                 )
-        if xml_parser.config.on_bind is None:
-            # No post-bind hook on this config, so the parse left the parent
-            # pointers unwired and the second walk is still needed. With the
-            # hook --- which `runtime.parser_config` fills in --- every object
-            # was linked as it was built (CR-002 section 12.14).
-            link_parents(obj, context=context())
 
         if private:
             self._private_contents = obj

@@ -34,13 +34,15 @@ checked; the write side's 65,534 cap is not a read limit.
 Nothing is raised for a finding, and nothing is rewritten: a finding is plain
 data with ``to_dict()``. A part never unmarshalled is read privately
 (:meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart.read_contents`), so it
-is still written byte for byte.
+is still written byte for byte. ``package.save(check=True)``
+(:func:`check_for_save`) is the one place a finding raises.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import re
+from collections import Counter
 from enum import Enum
 from typing import Any, ClassVar, NamedTuple
 
@@ -49,6 +51,7 @@ __all__ = [
     "Finding",
     "MisplacedContent",
     "ValueOutOfRange",
+    "check_for_save",
     "findings_in",
     "misplaced",
     "part_findings",
@@ -775,3 +778,68 @@ def misplaced(root: Any, *, unmarshalled_only: bool = False) -> list[Finding]:
             out.extend(part_findings(part))
         return out
     return findings_in(root)
+
+
+# ---------------------------------------------------------------------------
+# the save's check (CR-020 Q5)
+# ---------------------------------------------------------------------------
+
+
+def _key(finding: Finding) -> tuple:
+    """What a finding is, apart from where: so that one in the source is known again after an edit moved it."""
+    if isinstance(finding, ValueOutOfRange):
+        return (finding.code, finding.element, finding.attribute, finding.value)
+    if isinstance(finding, CellWithoutEndParagraph):
+        from docx4j_py.traversal import text_of
+
+        return (finding.code, finding.ends_with, text_of(finding.node, mce="all"))
+    return (finding.code, finding.path)
+
+
+def check_for_save(package: Any) -> list[Finding]:
+    """``save(check=True)``'s check: raise for what this session introduced; return what the source already held.
+
+    Over every part the save re-marshals (the unmarshalled ones; a part never
+    unmarshalled is written byte for byte, as it was read):
+
+    * **misplaced content raises**, always: a parse never produces it (CR-020
+      section 2.1), so it is code's;
+    * **a cell or an out-of-range value raises where the session introduced
+      it**: one the part's source already held, found again by what it is
+      (the attribute and its value; the cell's text and what it ends with) in
+      a fresh parse of the source, made only when the part has such a finding,
+      is **carried**: returned, recorded on the save's report
+      (``package.last_save.findings``), and saved as it is. Nothing is
+      repaired on a save (CLAUDE.md; CR-016 D4).
+
+    Raises:
+        SaveCheckError: the findings this session introduced, the first's code
+            as the error's.
+    """
+    carried: list[Finding] = []
+    introduced: list[Finding] = []
+    for part in _xml_parts(package, unmarshalled_only=True):
+        found = part_findings(part)
+        if not found:
+            continue
+        rest = []
+        for finding in found:
+            (introduced if isinstance(finding, MisplacedContent) else rest).append(finding)
+        if not rest:
+            continue
+        source = part.source_tree() if hasattr(part, "source_tree") else None
+        held: Counter = Counter()
+        if source is not None:
+            held.update(_key(f) for f in part_findings(part, source) if not isinstance(f, MisplacedContent))
+        for finding in rest:
+            key = _key(finding)
+            if held[key] > 0:
+                held[key] -= 1
+                carried.append(finding)
+            else:
+                introduced.append(finding)
+    if introduced:
+        from docx4j_py.model.content.errors import SaveCheckError
+
+        raise SaveCheckError.of(introduced)
+    return carried

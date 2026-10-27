@@ -1,4 +1,4 @@
-"""The validator. CR-020 Phase B (sections 4.7 and 11).
+"""The validator, and the save's check. CR-020 Phase B (sections 4.7 and 11).
 
 ``misplaced(root)`` (:mod:`docx4j_py.validator`, :func:`docx4j_py.traversal.misplaced`,
 ``package.misplaced()``) walks a tree, a part or a package and returns every finding:
@@ -9,6 +9,9 @@
 * ``cell.no_end_paragraph``: a table cell that does not end with a paragraph (CR-016);
 * ``value.out_of_range``: an integer measurement past what Word stores (CR-022's table,
   read side), held to Word 365's saves of docx4j CR-066 rounds 5 and 6.
+
+``save(check=True)`` raises for what the session introduced and records what the source
+held.
 
     .venv-fork/bin/python -m pytest tests/test_validator.py -q
 """
@@ -28,6 +31,7 @@ from test_misplaced import CR064, JAVA, SIX, _checked_pairs, _multi_class_names
 import docx4j_py.wml as W
 from docx4j_py import placement
 from docx4j_py.child import ChildList, unchecked
+from docx4j_py.model.content import SaveCheckError
 from docx4j_py.model.values import integer, integer_limit, integer_limits
 from docx4j_py.model.word_integers import (
     STORAGE,
@@ -38,6 +42,7 @@ from docx4j_py.model.word_integers import (
     storage_of,
 )
 from docx4j_py.openpackaging.api import create_package, load
+from docx4j_py.openpackaging.save import checking, saves_check
 from docx4j_py.traversal import misplaced
 from docx4j_py.validator import (
     CellWithoutEndParagraph,
@@ -804,3 +809,118 @@ def test_an_address_where_the_content_api_has_one():
     body.content.append(_table(W.Tc()))
     found = _only(package.misplaced(), CellWithoutEndParagraph)
     assert [f.address for f in found] == ["body/2/0/0"]
+
+
+# ---------------------------------------------------------------------------
+# the save's check (Q5)
+# ---------------------------------------------------------------------------
+
+
+def test_the_check_is_off_by_default_and_on_in_this_suite():
+    assert saves_check(None) is True, "tests/conftest.py turns it on"
+    with checking(False):
+        assert saves_check(None) is False
+        assert saves_check(True) is True
+    assert saves_check(False) is False
+
+
+def _broken_package():
+    package = create_package()
+    with unchecked():
+        package.main_document_part.contents.body.content.append(r("a run in the body"))
+    return package
+
+
+def test_a_save_with_the_check_off_writes_what_is_there():
+    package = _broken_package()
+    data = package.save(check=False)
+    assert b"a run in the body" in zipfile.ZipFile(io.BytesIO(data)).read("word/document.xml")
+    assert package.last_save.checked is False and package.last_save.findings == []
+
+
+def test_misplaced_content_raises_and_nothing_is_written(tmp_path):
+    package = _broken_package()
+    target = tmp_path / "out.docx"
+    target.write_bytes(b"as it was")
+    with pytest.raises(SaveCheckError) as raised:
+        package.save(target, check=True)
+    assert target.read_bytes() == b"as it was", "the check runs before the target is opened"
+    error = raised.value
+    assert error.code == "target.misplaced"
+    assert [f.code for f in error.findings] == ["target.misplaced"]
+    assert error.message.startswith(
+        "the save's check found /word/document.xml /w:document/w:body[1]/w:r[1]: `Body.content` can't hold an `R`"
+    )
+    assert error.hint == "a run goes in a paragraph: `p(r(...))`"
+    assert error.to_dict()["code"] == "target.misplaced"
+    with pytest.raises(SaveCheckError):
+        package.save()  # the suite's default
+
+
+def test_a_value_the_source_held_is_carried_and_one_the_session_set_raises():
+    package = load(LIMITS / "round5" / "cr066-P.docx")
+    part = package.main_document_part
+    held = misplaced(part)
+    assert len(held) == 30
+    package.save(check=True)  # misplaced() read the part privately: the save re-marshals nothing, so checks nothing
+    assert package.last_save.checked is True and package.last_save.findings == []
+    part.contents  # noqa: B018 - unmarshalled, adopting the private tree: every value is the source's
+    package.save(check=True)
+    assert package.last_save.findings == held == package.last_save.out_of_range
+    # an edit that moves them leaves them the source's
+    body = part.contents.body
+    body.content.insert(0, p("a new first paragraph"))
+    package.save(check=True)
+    assert len(package.last_save.findings) == len(held)
+    # a copy is the session's
+    from docx4j_py.child import deep_copy
+
+    first = next(f.node for f in held if f.attribute == "w:left")
+    copied = deep_copy(first.parent.parent)
+    body.content.append(copied)
+    with pytest.raises(SaveCheckError) as raised:
+        package.save(check=True)
+    assert raised.value.code == "value.out_of_range"
+    assert [f.attribute for f in raised.value.findings] == ["w:left"]
+
+
+def test_a_value_set_in_code_raises():
+    package = create_package()
+    body = package.main_document_part.contents.body
+    body.content.append(_paragraph_with(left=70000))
+    with pytest.raises(SaveCheckError) as raised:
+        package.save(check=True)
+    assert raised.value.code == "value.out_of_range"
+    assert raised.value.findings[0].word_reads == 4464
+
+
+def test_a_cell_the_source_held_is_carried_and_one_the_session_broke_raises(tmp_path):
+    package = create_package()
+    body = package.main_document_part.contents.body
+    with unchecked():
+        body.content.append(_table(W.Tc(content=[p("a"), tbl([["x"]])])))
+    path = tmp_path / "cell.docx"
+    package.save(path, check=False)
+    loaded = load(path)
+    loaded.main_document_part.contents.body.content.append(p("edit elsewhere"))
+    loaded.save(check=True)
+    assert [f.code for f in loaded.last_save.findings] == ["cell.no_end_paragraph"]
+    cells = [f.node for f in loaded.last_save.findings]
+    assert len(cells) == 1
+    # a cell the session empties is its own
+    first_table = loaded.main_document_part.contents.body.content[0]
+    first_table.content[0].content.append(W.Tc())
+    with pytest.raises(SaveCheckError) as raised:
+        loaded.save(check=True)
+    assert raised.value.code == "cell.no_end_paragraph"
+    assert [f.path for f in raised.value.findings] == ["/w:document/w:body[1]/w:tbl[1]/w:tr[1]/w:tc[2]"]
+
+
+def test_source_tree_touches_nothing():
+    package = load(LIMITS / "round5" / "cr066-P.docx")
+    part = package.main_document_part
+    fresh = part.source_tree()
+    assert fresh is not None and not part.is_unmarshalled and part._private_contents is None
+    live = part.contents
+    assert part.source_tree() is not live
+    assert create_package().main_document_part.source_tree() is None

@@ -16,6 +16,7 @@ catches only it.
         ├── InvalidTargetError  this container cannot hold that element
         │   └── MisplacedContentError  a typed list refuses an item (CR-020)
         ├── MeasureRangeError   a measurement Word would not read as written
+        ├── SaveCheckError      save(check=True) found what this session introduced (CR-020)
         ├── StyleError          no such style, and the five closest names
         ├── SpanError           a span that cannot be formed or edited
         ├── TrackedChangeError  an edit a tracked document cannot carry
@@ -37,6 +38,12 @@ an integer measurement; it keeps ``ValueError`` as a second base too (Q2).
 whose element choices do not allow it; it keeps ``TypeError`` as a second
 base. ``child.py`` imports it only when it raises, so the object model's import
 cost does not change.
+
+:class:`SaveCheckError` is CR-020 Phase B's, raised by ``package.save(check=True)``
+(:func:`docx4j_py.validator.check_for_save`) before anything is written, for the
+validator's findings this session introduced: misplaced content, a table cell
+that does not end with a paragraph, an integer measurement past what Word
+stores. Its ``code`` is the first finding's, and ``findings`` holds them all.
 """
 
 from __future__ import annotations
@@ -52,6 +59,7 @@ __all__ = [
     "InvalidTargetError",
     "MeasureRangeError",
     "MisplacedContentError",
+    "SaveCheckError",
     "SpanError",
     "StyleError",
     "TrackedChangeError",
@@ -174,6 +182,43 @@ class MeasureRangeError(ContentError, ValueError):
         self.attribute: str | None = None
         self.value: object = None
         self.stored: object = None
+
+
+class SaveCheckError(ContentError):
+    """``package.save(check=True)`` found what this session introduced, and wrote nothing (CR-020 Phase B).
+
+    The save's check (:func:`docx4j_py.validator.check_for_save`) runs the
+    validator over every part the save re-marshals, before the target is
+    opened. Misplaced content always raises; a table cell that does not end
+    with a paragraph, or an integer measurement past what Word stores, raises
+    where the part's source did not already hold it (one it held is saved as
+    it is, and recorded on ``package.last_save.findings``). ``save(check=False)``,
+    the default, saves what is there.
+
+    Attributes:
+        findings: every finding the session introduced, in part and document
+            order (:class:`docx4j_py.validator.Finding`, each with
+            ``to_dict()``).
+    """
+
+    default_code = "save.check_failed"
+    default_hint = "fix what the findings name, or save(check=False) to save it as it is"
+
+    def __init__(self, message: str, *, code: str | None = None, hint: str | None = None) -> None:
+        """Build the error; :meth:`of` builds it from the findings."""
+        super().__init__(message, code=code, hint=hint)
+        self.findings: list = []
+
+    @classmethod
+    def of(cls, findings: list) -> SaveCheckError:
+        """The error for these findings: the first's code, message and hint, and how many there are."""
+        first = findings[0]
+        where = " ".join(part for part in (first.part_name, first.path) if part)
+        more = f" (and {len(findings) - 1} more)" if len(findings) > 1 else ""
+        message = first.message if first.message.startswith(f"{first.part_name}: ") else f"{where}: {first.message}"
+        error = cls(f"the save's check found {message}{more}", code=first.code, hint=getattr(first, "hint", None))
+        error.findings = list(findings)
+        return error
 
 
 class StyleError(ContentError):

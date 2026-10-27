@@ -331,9 +331,10 @@ def test_elsewhere_docx4js_repair_a_table_at_a_controls_end_in_a_cell_the_cells_
 
 def test_d4_a_file_whose_cell_ends_with_a_table_is_left_as_it_is_until_an_edit_touches_that_cell():
     package, cell = cell_holding(CELL_P)
-    # made broken behind the API's back, as a file from elsewhere is
+    # made broken behind the API's back, as a file from elsewhere is, and saved as it is: the save's check
+    # (tests/conftest.py, CR-020 Phase B) would refuse the cell this session broke
     cell().body.content.append(wml(NESTED))
-    again = load(package.save())
+    again = load(package.save(check=False))
     assert shape(first_cell(again).body.content) == ["P[Heading1,center|] CELL", "TBL"]
     # an untouched part is written back byte for byte, broken as it was read
     assert load(again.save()).main_document_part.xml == again.main_document_part.xml
