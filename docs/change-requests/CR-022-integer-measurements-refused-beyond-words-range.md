@@ -2,7 +2,7 @@
 
 **Status:** Proposed 2026-10-26, at the user's request ("option 1, and also add the out-of-range report to CR-020's Phase B list"). It follows the user's suspicion the same day "that we should guard against users setting twip measurements to large integers in each of docx4j, python and core-ts". The portfolio session coordinates it as one CR per port. Round 5 of the shared Word probe is the shared phase 0. It is docx4j CR-066's phase 0 (docx4j-25, `1be8b6515`, local), on the share at `vbShares/Office 2016/__tmp/cr066/`: 191 cases in six groups, 22 single-attribute families and 48 singles. Checked here: all 76 files load with nothing kept or skipped. **Round 5 was run 2026-10-26** (the user, Word 365: all six groups opened clean, no repair). **Phase 0 is done.** The range is per attribute, not per schema type (section 3.1), so D1 is a table per attribute, and Q1 is restated. **Two more measurements came the same day:**
 - core-ts's check 71 measured Office JS's own setters (section 3.2), which revises Q1's recommendation;
-- round 6, the file side of the attributes round 5 left unmeasured (481 cases, `__tmp/cr066/round6/`), **was run 2026-10-26** (the user: "cr066/round6 all opened cleanly"). docx4j-25's reading is section 3.3, and with it D1's table covers every attribute Word could measure. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. **Decided 2026-10-26** (the user: "CR-022 questions take the recommended answers"; section 8): Q1 to Q7 as recommended. **Nothing has started.**
+- round 6, the file side of the attributes round 5 left unmeasured (481 cases, `__tmp/cr066/round6/`), **was run 2026-10-26** (the user: "cr066/round6 all opened cleanly"). docx4j-25's reading is section 3.3, and with it D1's table covers every attribute Word could measure. **Nothing has started.** Phase 0 gives the limits, and nothing here is built before it. Three phases (section 6), 1 to 1½ days after round 5. **Decided 2026-10-26** (the user: "CR-022 questions take the recommended answers"; section 8): Q1 to Q7 as recommended. **Phase A implemented 2026-10-26** (section 10; `ac288fa`, `3f66840`), verified by hand, and the four points left for the user decided the same day as recommended (section 10.13; `ed02b04`, `9869c7f`). **Phase B, the records, done 2026-10-27** (the user: "go on CR-022 Phase B"; section 11). No Word check: a refusal writes nothing. **Complete.**
 
 *The number:* CR-021 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -224,7 +224,7 @@ The user, 2026-10-26: "CR-022 questions take the recommended answers". So:
 
 ## 10. Phase A implementation notes (2026-10-26)
 
-Phase A as built, D1 to D4 and section 5's tests, at the coordinator's brief after the decision of section 8. Phase B (the records) is next and isn't started: no CHANGELOG, README, `docs/pypi-readme.md`, CLAUDE.md or index change here. docx4j CR-066 (sections 3.1 and 3.4) and docx4j-core-ts CR-002 section 65 (`fd898b9`: `wordRange.mts`, `measurements.test.mjs`, check 71's run) were read for behaviour only.
+Phase A as built, D1 to D4 and section 5's tests, at the coordinator's brief after the decision of section 8. Phase B (the records) is section 11; until it, no CHANGELOG, README, `docs/pypi-readme.md`, CLAUDE.md or index change was made here. docx4j CR-066 (sections 3.1 and 3.4) and docx4j-core-ts CR-002 section 65 (`fd898b9`: `wordRange.mts`, `measurements.test.mjs`, check 71's run) were read for behaviour only.
 
 **Commits.**
 - `e46f3c1`: the fixtures, `tests/fixtures/integer-limits/` (10.2).
@@ -401,3 +401,49 @@ The user decided 10.11's four questions as the coordinator recommended ("decided
 | `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | **50 of 50** canonically identical, 0 differences, 0 skipped, 34 `boolean-spelling` |
 | acceptance (`compare_acceptance.py`, against `out/acceptance/` built at `9ef7507` in a scratch worktree, rebuilt for this run) | **17 artefacts, 246 entries, 0 differ** beyond the dates |
 
+## 11. Phase B, the records (2026-10-27)
+
+Records only: no code, no test and no generated file changed, so no gate moved from 10.13's and there is no Word
+check (section 5). Done on the user's word ("go on CR-022 Phase B"), after Phase A had waited at `9869c7f` on their
+"do not start phase b yet" of 2026-10-26.
+
+- **CHANGELOG** (Unreleased, "Changed"): a refusal of a value 0.2.0 accepted is a behaviour change, so it leads the
+  section. The entry gives the wrap, the error, each surface's limits (Office JS's for the content API, the faithful
+  range for the facade and the builders), the table and its fixtures, the three decided departures a reader could
+  trip on (`Font.size = 0`, the exact rows, 65,534) and what is not done (a file's own value, CR-020 Phase B's).
+- **README**: the "Errors say what to do instead" paragraph gains the measurement refusal and its fragment, the
+  actual message of section 10.4's example; the facade paragraph says a `Length` Word would misread is refused where
+  python-docx writes the file. **`docs/pypi-readme.md`**: one sentence after "every error carries a `code` and a
+  `hint`". `tests/test_readme.py` executes both (the README example is a `<!-- fragment -->`).
+- **CLAUDE.md** and the index: Phase A's shape and the decisions, B done, complete.
+- **CR-020 section 4.7** told the table is ready: where it is, how it is read (`values.integer_limit`,
+  `integer_limits()`, `unmeasured_attributes()`), and what the report must add itself (10.10 item 5: `storage` as a
+  token and `word_reads`, which need a model of the wrap the table does not carry) or must read (`word_writes`:
+  Word's save spells 65,535 as `"-1"` in seven attributes, which a report over Word's saves must not take for -1).
+  CR-020's "Depends on" names Phase A's table, done.
+- **The registry** (`../docx4j-portfolio/tasks.yaml`, through the portfolio session): `python/CR-022.A` and
+  `python/CR-022.B` done, `python/CR-022` done; `python/CR-020.B` told the table it waits for exists.
+
+### 11.1 The counterpart: docx4j CR-066 phases 1 and 2 (`65ede5ec5`, `109a8d47b`, 2026-10-26, local)
+
+docx4j's write side landed the same day as Phase A, and the two differ by design (its section 8 records the
+difference from its side). docx4j's setters are generated with no hook, so it **reports** rather than refuses: each
+integer simple type's JAXB parse and print pair (`org.docx4j.wml.LenientInteger`) knows its width, and a part's
+marshal and unmarshal each log one WARN per part with the count, samples, Word's reading and the range, under the
+shared code `value.out_of_range` (this CR's and CR-020 section 4.7's request, so one search finds every port's
+report). It never wraps, clamps or rewrites: the value is held as written and written as held. Its only refusal is
+where docx4j computes a measurement itself: `TblFactory.createTable` throws for a cell width outside 0 to 32,767
+twips, and the CSS converters and `TocEntry` WARN and write the value as computed. Where the two disagree:
+
+| | here (CR-022) | docx4j (CR-066) |
+|---|---|---|
+| a value a setter is given | refused before anything changes, `MeasureRangeError` | written; one WARN at marshal, with Word's reading |
+| a value already in a file | left as it is; CR-020 Phase B reports it (proposed) | left as it is; one WARN at unmarshal |
+| the range | per attribute (60 rows), Office JS's limits in the content API | per simple type, exact for the uniform types, the certain range -32,768 to 65,535 for `ST_TwipsMeasure`; per attribute through its D6 when the CR-064 validator exists |
+| a negative in an attribute Word stores unsigned (`w:spacing/@w:before="-1"`, `w:trHeight/@w:val="-1"`) | refused (Q7) | not reported: Word accepts it (`w:before="-1"` is kept as -1, `w:trHeight="-1"` is exact 1) |
+| 65,535 where Word writes it back as `"-1"` | refused (10.13, decision 3) | in range, not reported |
+| Word's reading in the message | no (10.10 item 6; needs the wrap model) | yes (`7205001 -> -3959 in Word`) |
+
+docx4j-core-ts's setters (`wordRange.mts` at `fd898b9`, its CR-002 section 65) are the third port and the closest in
+shape to this one; 10.10 item 6 lists where they differ. docx4j-generated-objects-ts's CR-016 encodes rounds 5 and 6
+row for row with a test over both rounds' saves, as `test_integer_limits.py` does here.

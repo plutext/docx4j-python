@@ -107,7 +107,13 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   C done, its Word check passed (section 10.13): complete, 2026-10-26.
 - **CR-022** (integer measurements refused beyond Word's range as code sets them, after Word's 16-bit wrap; the shared
   probe's round 5 is phase 0, done, with round 6 and core-ts's check 71): decided 2026-10-26 (Q1 to Q7 as
-  recommended); nothing started.
+  recommended). Phase A done 2026-10-26 (section 10; the user's four decisions in 10.13: `Font.size = 0` still
+  removes, an exact line or row height 1 to 32,768, 65,534 where Word writes 0xFFFF back as `"-1"`, the facade's rule
+  setters re-check): `values.measure_in_range` over the per-attribute table `resources/integer-limits.json` (60
+  rows, docx4j CR-066's rounds 5 and 6 as fixtures), `MeasureRangeError` (`value.out_of_range`) under every setter of
+  the content API (Office JS's limits where it has them), the facade and the builders, held by a census
+  (`test_measurement_writes.py`). B, the records, done 2026-10-27 (section 11): complete. No Word check: a refusal
+  writes nothing. CR-020 Phase B's out-of-range report reads the same table.
 - **CR-023** (`List.set_level_indents` as Word 365 writes it: the second indent a first-line indent, negative for
   hanging; the port of core-ts CR-002 section 65.5): complete 2026-10-26 (`fa22937`; Word-checked).
 

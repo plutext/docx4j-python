@@ -11,6 +11,42 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **A measurement a setter would write beyond Word's range is refused**
+  ([CR-022](docs/change-requests/CR-022-integer-measurements-refused-beyond-words-range.md), sections
+  [10](docs/change-requests/CR-022-integer-measurements-refused-beyond-words-range.md#10-phase-a-implementation-notes-2026-10-26)
+  and [11](docs/change-requests/CR-022-integer-measurements-refused-beyond-words-range.md#11-phase-b-the-records-2026-10-27);
+  the counterpart of docx4j CR-066 and docx4j-core-ts CR-002 section 65). Word 365 stores a twips or
+  half-point measurement in 16 bits and keeps the low 16 bits of anything larger: 0.2.0's
+  `paragraph.left_indent = 400000` wrote `w:left="8000000"`, which Word reads as -3,959 twips (docx4j
+  CR-065's probe). Every setter that writes an integer measurement now raises `MeasureRangeError` (a
+  `ContentError` and a `ValueError`, code `value.out_of_range`) **before it changes anything**, the
+  message giving the value and Word's range in the caller's units and the hint what to pass.
+  - **The content API** refuses where Office JS refuses, at Office JS's limits: `space_before`,
+    `space_after` and `line_spacing` below 1,638 pt (an exact line spacing from 0.05 pt, so
+    `line_spacing = 0` is refused where it wrote `w:line="0"`), `Font.size` above 0 up to 1,638 pt
+    (0 still removes `w:sz` and `w:szCs`, as documented since 0.1.0; a negative is refused), a level's
+    text indent, a cell width that is not negative; and at the faithful range elsewhere: the indents
+    (-1,638.4 to 1,638.35 pt; a first-line indent to 1,638.35, a hanging one to 1,638.4), a cell's
+    width, a level's marker indent.
+  - **The python-docx facade** refuses a `Length` Word would misread, where python-docx writes it:
+    a section's page size and seven margins, a paragraph format's indents, spacing and line spacing
+    (under the rule the write leaves), tab stops, `Font.size`, a row's height (under its rule), a
+    cell's width and the column widths `add_table` and `add_column` divide out.
+    `line_spacing_rule` and `height_rule` hold the value already set to the new rule's range.
+  - **The builders** refuse `size=` (`r`, `p` and everything over them), `tc(width=)` and `tbl`'s
+    column widths and their sum.
+  - **The limits** are per attribute, measured, never assumed: 60 rows in
+    `docx4j_py/resources/integer-limits.json` (`values.integer_limit`, `integer_limits()`,
+    `unmeasured_attributes()`), from docx4j CR-066's probe rounds 5 and 6 (Word 365, 2026-10-26; the
+    group files and Word's saves are fixtures in `tests/fixtures/integer-limits/`, and a test holds
+    every row to them). An attribute the probe did not measure is not checked. The seven attributes
+    Word writes 65,535 back in as `"-1"` (`w:before`, `w:after`, the five unsigned page margins) stop
+    at 65,534; an exact line spacing or row height is 1 to 32,768 twips, from Word's saves; a negative
+    in an attribute Word stores unsigned is refused.
+  - A value already in a file is left as it is (CR-021 Q7: the wrap is never emulated); CR-020
+    Phase B reports it with the same table and code. No sensible measurement is that large, so the
+    only code this breaks set a value Word was already misreading.
+
 - **An integer attribute is read exactly as written** ([CR-021](docs/change-requests/CR-021-integer-attributes-read-as-word-reads-them.md)
   phase 0; the fork's stage 14). `" 240 "`, `"1_000"` and digits from other scripts used to bind as
   integers through Python's `int()`, where Word refuses the document. They're now kept as their text

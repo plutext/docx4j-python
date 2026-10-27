@@ -138,7 +138,9 @@ the `Length` units and the `WD_*` enums are all there; the promise is a committe
 members implemented, eight refused with a reason each) and a parity test that runs one script
 through both libraries and lets **python-docx** read both files back. python-docx itself is not a
 dependency. The Office JS vocabulary above remains the primary API; this namespace exists so that
-code already written, by people or by models, runs.
+code already written, by people or by models, runs. One semantics is better than python-docx's: a
+`Length` Word would misread (a page 500 cm wide, a 5,000 pt space before; Word keeps the low 16
+bits) is refused with Word's range, where python-docx writes the broken file (CR-022).
 
 Setting a style --- `paragraph.style`, `style_built_in`, or `style=` on `insert_paragraph` and
 `insert_table` --- **adds the definition** when the style is one of Word's built-ins and the
@@ -575,13 +577,21 @@ than the string.
 **Errors say what to do instead.** Every one carries a stable `code`, the message, and a `hint`
 an agent can act on: an address that is gone names the nearest surviving one, an element a
 container cannot hold names what it takes, a style that does not exist lists the five closest
-names, a span that crosses a hyperlink says where to split.
+names, a span that crosses a hyperlink says where to split, a measurement Word would misread
+names Word's range in the caller's units (Word stores twips in 16 bits and keeps the low 16 of
+anything larger, so an indent of 400,000 pt would read as -3,959 twips; every setter that writes an
+integer measurement refuses it instead, before changing anything, at Office JS's limits where
+Office JS has them and Word's measured range elsewhere; CR-022).
 
 <!-- fragment -->
 ```python
 pkg.element_at("body/99")
 # AddressError: nothing at 'body/99'; the nearest surviving address is 'body/6'
 #               (use 'body/6', or call outline() to list current addresses)
+
+paragraph.left_indent = 400000
+# MeasureRangeError: left indent 400000 pt (8,000,000 twips) is beyond Word's range,
+#                    -1,638.4 to 1,638.35 pt (pass a left indent from -1,638.4 to 1,638.35 pt)
 ```
 
 **Reveal codes.** `to_api_script(target)` is the other direction: shown a document, it writes the

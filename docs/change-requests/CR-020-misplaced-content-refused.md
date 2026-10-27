@@ -4,7 +4,7 @@
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
-**Depends on:** nothing.
+**Depends on:** nothing for Phase A. Phase B's out-of-range report reads CR-022 Phase A's table (`resources/integer-limits.json`, done 2026-10-26; section 4.7).
 - **docx4j** `ArrayListDocx4j.checkParent` (`docx4j-generated-objects`) is the counterpart, not a dependency (section 3). It refuses a few known-wrong children of `P`, `R` and `SdtContent`, and since `49637c6e4` (`VERSION_17_3_5`, local) of `P.Hyperlink`. docx4j-25 has proposed a wider set as a docx4j CR, which waits on the user.
 - **No fork change, and no generated file changes.** The table is derived at run time from the `XmlContext` metadata the engine already builds (section 4.1). `codegen/generate.sh --check` is a gate only.
 
@@ -185,7 +185,7 @@ The message names the holder's field and the item, both the class and the elemen
 - `range`, the faithful `[min, max]` in the attribute's own unit;
 - the part and the path, or an address where the content API has one.
 
-core-ts names the same fields in camelCase (`wordReads`), and its `value` is a number. **The value is never rewritten:** CR-021 Q7 recommends against emulating the wrap. This is the read side of CR-022. It also covers what CR-022's write-side check can't see: a value already in a file, or one assigned straight to a field. This part of Phase B waits for CR-022's table; the rest of Phase B doesn't.
+core-ts names the same fields in camelCase (`wordReads`), and its `value` is a number. **The value is never rewritten:** CR-021 Q7 recommends against emulating the wrap. This is the read side of CR-022. It also covers what CR-022's write-side check can't see: a value already in a file, or one assigned straight to a field. This part of Phase B waited for CR-022's table; the rest of Phase B didn't. **The table exists** (CR-022 Phase A, 2026-10-26; told here by its Phase B, 2026-10-27): `docx4j_py/resources/integer-limits.json`, 60 rows keyed by attribute path and context (`null` for the context attribute absent), read through `docx4j_py.model.values.integer_limit(attribute, context)`, `integer_limits()` and `unmeasured_attributes()` (CR-022 sections 10.3 and 10.4). What the report must add itself (CR-022 section 10.10 item 5): the table's `storage` is prose that begins with the token in most rows but not all (`w:firstLine`, `w:hanging`, `w:framePr/@w:h`), and it carries no model of the wrap, so `storage` as a token and `word_reads` are this phase's. What it must read: a row's `word_writes` (Word's save spells 65,535 as `"-1"` in `w:before`, `w:after` and the five unsigned page margins, whose rows stop at 65,534) and `sentinel` (`w:col/@w:space`, every negative saved as -1), without which a report over a Word-saved file takes Word's spelling for an out-of-range value; `test_integer_limits.py` shows the reading.
 
 It would serve the inspector, the MCP server and tests. Optionally a save runs it: off by default, and turned on for the whole test suite by `conftest`, so every save the engine's own edits make is held to it (Q5).
 
@@ -225,7 +225,7 @@ Every generated namespace: all 509 checkable pairs, not only WordprocessingML (Q
 | Phase | What | Effort |
 |---|---|---|
 | A | D1 to D6, D8 to D10: the table, the rule, the check in `ChildList`, the parse unchecked, the error and its messages, the engine's sites and the two tests, `unchecked()`, measured against the corpus, `Symbols.docx` and `scripts/threads.py` | 1 to 1½ days |
-| B | D7: the validator, single fields and the cell rule, the out-of-range report (with CR-022's table), the save option, `conftest` turning it on | ½ to 1 day, and ¼ day for the report once CR-022's table exists |
+| B | D7: the validator, single fields and the cell rule, the out-of-range report (with CR-022's table, which exists since 2026-10-26: section 4.7), the save option, `conftest` turning it on | ½ to 1 day, and ¼ day for the report |
 | C | The records: CHANGELOG (a "Changed" entry: a refusal of invalid input is a behaviour change), the README and `docs/pypi-readme.md`, CLAUDE.md, and the hand-off to docx4j through the portfolio (Q9) | ¼ day |
 
 ## 7. Risks

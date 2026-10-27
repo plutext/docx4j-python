@@ -94,7 +94,12 @@ pkg.save("out.docx")
 `w14:5A2B1C3D` is the `w14:paraId` Word writes and survives every edit; `body/3` is the ordinal.
 Every mutating call records a `ChangeReport`; `pkg.dry_run()` applies calls to a copy and throws
 it away; `describe()` reads what the document offers (its styles, page, parts, authors) without
-unmarshalling anything; every error carries a `code` and a `hint` naming what to do instead.
+unmarshalling anything; every error carries a `code` and a `hint` naming what to do instead. A
+measurement Word would misread is refused before anything changes, with Word's range in the caller's
+units: Word stores twips in 16 bits and keeps the low 16 of anything larger, so a 400,000 pt indent
+would read as -3,959 twips, and every setter here, the python-docx facade's included, raises
+`MeasureRangeError` (`value.out_of_range`) instead, at Office JS's own limits where Office JS has
+them and at Word's measured range elsewhere.
 
 An agent should leave the trail Word already has: tracked changes for what it did, and a comment
 for why, where the human who opens the document will see them.
