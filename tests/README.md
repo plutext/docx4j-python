@@ -701,6 +701,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > - B, `(0, 36, 18)`: a first-line indent;
 > - C, `(0, -1, 0)`: core-ts check 71's case 86.
 
+> **2026-10-28, CR-024 (`cr024-line-spacing.docx`, built at `be92666`, `__tmp/python-cr024/`): passed** (the
+> user's result: A to F each "yes"). Six paragraphs, each set by `Paragraph.line_spacing`, now written under
+> `w:lineRule="auto"`, opened with no repair prompt reported. Word's Paragraph dialog showed each as labelled:
+> A 12, Single; B 18, 1.5 lines; C 24, Double; D 36, Multiple at 3; E 0.75, Multiple at 0.06, the lines
+> overlapping; F 24 in 28 pt type, Double. The dialog shows lines, never the points: Single, 1.5 lines and
+> Double leave At blank.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

@@ -118,7 +118,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
 - **CR-023** (`List.set_level_indents` as Word 365 writes it: the second indent a first-line indent, negative for
   hanging; the port of core-ts CR-002 section 65.5): complete 2026-10-26 (`fa22937`; Word-checked).
 - **CR-024** (the content API's spacing, line, list indent and font size setters as Word 365's own, after core-ts's
-  check 71b; the port of core-ts CR-002 section 65.9): implemented 2026-10-28, Word check pending.
+  check 71b; the port of core-ts CR-002 section 65.9): complete 2026-10-28 (`be92666`; Word-checked).
   `Paragraph.line_spacing` writes `w:line` = 20 x points under `w:lineRule="auto"` (a multiple of single spacing, as
   Word's setter writes it; it wrote exact); the content API's limits are Word's own, on the value as written
   (`CallerLimit(stored=True)`), superseding CR-022's 1,638 pt from check 71; `to_api_script` expresses an auto rule;

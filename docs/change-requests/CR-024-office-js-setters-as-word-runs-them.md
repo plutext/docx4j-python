@@ -1,6 +1,6 @@
 # CR-024: The content API's spacing, line, list indent and font size setters as Word 365's own --- a line spacing written under the auto rule, and Word's own limits; the port of docx4j-core-ts CR-002 section 65.9 (`b7c2680`)
 
-**Status:** Proposed and implemented 2026-10-28, at the user's request, after core-ts's check 71b (CR-022 section 11.2): "point 2: agreed" (Word's own limits) and "point 1: switch to "auto" matching Word and core-ts". **The Word check is pending** (section 5).
+**Status:** Proposed and implemented 2026-10-28, at the user's request, after core-ts's check 71b (CR-022 section 11.2): "point 2: agreed" (Word's own limits) and "point 1: switch to "auto" matching Word and core-ts". **The Word check passed 2026-10-28** (the user's result, A to F each "yes"; section 6). **CR-024 is complete.**
 
 *The number:* CR-023 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -69,3 +69,15 @@ Word takes `font.size = 0.9` and writes it as `w:sz="2"`, so its limit is on the
 | `ruff check` on the changed files | passes |
 
 Not run, since nothing they cover changed: the corpus round trip, `generate.sh --check`, `scripts/threads.py`.
+
+**The Word check passed** (the user, 2026-10-28, in Word 365: "A line_spacing = 12: Single: yes" and the same for
+B to F, with a screenshot of the document and of A's Paragraph dialog, and a PDF of the document from Word).
+`cr024-line-spacing.docx`, built at `be92666` and staged at `__tmp/python-cr024/` (its `SHA1SUMS` still matching, so
+it was not saved), opened, and the user reported no repair prompt. Word's Paragraph dialog named each paragraph's line
+spacing as its label says: A Single, B 1.5 lines, C Double, D Multiple at 3, E Multiple at 0.06, and F, in 28 pt type,
+Double. In the PDF, E's lines overlap and F's are spaced from the large font's own height, so Word lays each out as a
+multiple of the font's single spacing, not as a height in points.
+
+One thing for the next README: Word's dialog never shows Office JS's points. Single, 1.5 lines and Double leave
+the At box blank, and only another multiple fills it, with the points divided by 12. The README asked for "Line
+spacing" and "At" without saying so, and the user couldn't tell where 12 should appear.
