@@ -24,6 +24,7 @@ KEEP = {
     "fragments.py",  # section 6.2: wml(...) and to_xml(...)
     "traversal.py",  # section 6.2: walk, find, text_of
     "placement.py",  # CR-020 Phase A: what each typed list may hold, the rule and the messages
+    "validator.py",  # CR-020 Phase B: misplaced(root), the findings, the save's check
     "mc_declarations.py",  # CR-011 Q3: where a save declares the prefixes mc attributes name
     "resources",  # the parts warm_up parses, and docx4j's default styles etc.
     "wml/builders.py",  # section 6.2: the p/r/t/tbl/tr/tc sugar
@@ -32,6 +33,7 @@ KEEP = {
     "openpackaging",  # CR-002: the engine, all of it hand written
     "model",  # CR-003: the content API, all hand written; CR-010: model/revisions/, the revisions engine
     "model/content/placeholders.py",  # CR-019 Phase B: the glossary's placeholder entries (inside "model" too)
+    "model/word_integers.py",  # CR-020 Phase B: Word's reading of an integer, per row of the limits table (inside "model" too)
     "docx",  # CR-003 Phase J: the python-docx facade, all hand written
 }
 

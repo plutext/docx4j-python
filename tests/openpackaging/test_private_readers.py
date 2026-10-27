@@ -41,6 +41,8 @@ reached over the documents.
   document, read when a body is first read; ``has_placeholder_styles``: a
   styles part, the glossary's before a save completes it (CR-019 Phase B).
   The placeholders, and every reader that reads a body.
+- ``validator.py``, ``_tree_of``: every typed part a package has, where it is
+  not unmarshalled (CR-020 Phase B). ``package.misplaced()``.
 
 The numbering emulator reads ``/word/numbering.xml`` and the styles' numbering
 with lxml from ``get_xml()``, and ``describe()`` reads every part with lxml
@@ -378,6 +380,11 @@ def read_placeholders(pkg: Any) -> None:
             has_placeholder_styles(part)
 
 
+def read_validator(pkg: Any) -> None:
+    """``package.misplaced()``, every typed part (CR-020 Phase B)."""
+    pkg.misplaced()
+
+
 READERS: dict[str, Callable[[Any], None]] = {
     "resolver": read_resolver,
     "numbering": read_numbering,
@@ -389,6 +396,7 @@ READERS: dict[str, Callable[[Any], None]] = {
     "outline": read_outline,
     "describe": read_describe,
     "placeholders": read_placeholders,
+    "validator": read_validator,
 }
 
 
@@ -545,6 +553,7 @@ CALLERS: frozenset[str] = frozenset(
         "model/fields/formatting.py::_decimal_symbol",
         "model/content/placeholders.py::GlossaryEntries.load",
         "model/content/placeholders.py::has_placeholder_styles",
+        "validator.py::_tree_of",
     }
 )
 

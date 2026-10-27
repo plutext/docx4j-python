@@ -461,6 +461,24 @@ class OpcPackage:
         """Write the package to any sink and return what the sink produces. `normalise` is :meth:`save`'s."""
         return save_package(self, sink, normalise=normalise)
 
+    def misplaced(self, *, unmarshalled_only: bool = False) -> list[Any]:
+        """Every finding of the validator in the package's typed XML parts (CR-020 Phase B, Q5).
+
+        :func:`docx4j_py.traversal.misplaced` over the package: misplaced
+        content (``target.misplaced``), a table cell that does not end with a
+        paragraph (``cell.no_end_paragraph``) and an integer measurement past
+        what Word stores (``value.out_of_range``), each a
+        :class:`docx4j_py.validator.Finding` with ``to_dict()``, in part and
+        document order. Nothing is raised for a finding and nothing is
+        rewritten: a part never unmarshalled is read privately
+        (:meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart.read_contents`)
+        and is still written byte for byte; `unmarshalled_only` walks only
+        the parts a save re-marshals.
+        """
+        from docx4j_py.validator import misplaced
+
+        return misplaced(self, unmarshalled_only=unmarshalled_only)
+
     def _is_source_path(self, path: Path) -> bool:
         store = self.source_part_store
         source = getattr(store, "path", None)

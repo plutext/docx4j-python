@@ -194,3 +194,35 @@ def test_the_list_check_leaves_the_parse_within_five_percent() -> None:
     limit = SYMBOLS_PARSE_BEFORE_MS * (1 + MAX_PARSE_GROWTH)
     print(f"Symbols.docx parse: {best:.1f} ms, before CR-020 {SYMBOLS_PARSE_BEFORE_MS} ms, limit {limit:.1f} ms")
     assert best < limit, f"{best:.1f} ms against {limit:.1f} ms"
+
+
+#: CR-020 Phase B: the validator (``misplaced()``) over ``Symbols.docx``'s main part, against its parse. Measured at
+#: 33 ms against a 195 ms parse (17%, section 11.6); the guard is a quarter, so it catches a change of kind (a
+#: per-node lookup that is no longer cached, a walk that visits a node twice), not of degree.
+MAX_VALIDATOR_SHARE = 0.25
+
+
+def test_the_validator_costs_under_a_quarter_of_the_parse() -> None:
+    """CR-020 section 11.6: ``misplaced()`` over ``Symbols.docx``'s main part, best of nine, under 25% of its parse."""
+    from docx4j_py.runtime import parser
+    from docx4j_py.validator import findings_in
+    from docx4j_py.wml import Document
+
+    with zipfile.ZipFile(ROOT / "samples" / "Symbols.docx") as z:
+        data = z.read("word/document.xml")
+    tree = parser().from_bytes(data, Document)
+    findings_in(tree)  # warm the plans and the tables
+
+    parses, walks = [], []
+    for _ in range(9):
+        engine = parser()
+        start = time.perf_counter()
+        engine.from_bytes(data, Document)
+        parses.append(time.perf_counter() - start)
+        start = time.perf_counter()
+        assert findings_in(tree) == []
+        walks.append(time.perf_counter() - start)
+
+    parse, walk = min(parses) * 1000, min(walks) * 1000
+    print(f"Symbols.docx: validator {walk:.1f} ms, parse {parse:.1f} ms ({walk / parse:.0%})")
+    assert walk < parse * MAX_VALIDATOR_SHARE, f"{walk:.1f} ms against {parse:.1f} ms"

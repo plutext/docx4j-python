@@ -23,6 +23,10 @@ and it is the same enumeration :func:`docx4j_py.child.link_parents` uses.
 ``run_items_of(holder)``
     the run-level list of a ``w:p``, a ``w:hyperlink``, a revision holder, a
     smart tag, custom XML, a field or a content control (CR-003 Phase A).
+``misplaced(root)``
+    the validator (CR-020 Phase B, :mod:`docx4j_py.validator`): misplaced
+    content, a table cell that does not end with a paragraph, an integer
+    measurement past what Word stores, in a tree, a part or a package.
 
 ``element_name(obj)`` is the piece that makes ``text_of`` possible at all: 72 of
 the generated classes (CR-001 section 13.3) have no element name of their own,
@@ -45,6 +49,7 @@ __all__ = [
     "element_name",
     "find",
     "iter_nodes",
+    "misplaced",
     "run_items_of",
     "text_of",
     "walk",
@@ -280,6 +285,40 @@ def find(
         for node in iter_nodes(root, context=context, mce=mce)
         if isinstance(node, cls_or_tuple)
     ]
+
+
+def misplaced(root: Any, *, unmarshalled_only: bool = False) -> list[Any]:
+    """Every finding of the validator in a tree, a part or a package, in document order (CR-020 D7, Q5).
+
+    Three kinds, each a frozen :class:`docx4j_py.validator.Finding` with
+    ``to_dict()``, its code, a message, the part's name and a path from the
+    part's root (``/w:document/w:body[1]/w:p[3]/w:pPr[1]/w:ind[1]/@w:left``),
+    and the content API's address where the part has a body:
+
+    * ``target.misplaced`` (:class:`~docx4j_py.validator.MisplacedContent`):
+      an item a typed list, or a single-valued field, cannot hold by CR-020's
+      rule (D2), the add-time check's message and hint with it. What gets
+      past that check: a plain list assigned whole, a single field assigned,
+      ``object.__setattr__``, a tree built under
+      :func:`~docx4j_py.child.unchecked`;
+    * ``cell.no_end_paragraph``
+      (:class:`~docx4j_py.validator.CellWithoutEndParagraph`): a table cell
+      whose last block, as Word reads it, is not a paragraph (CR-016);
+    * ``value.out_of_range`` (:class:`~docx4j_py.validator.ValueOutOfRange`):
+      an integer measurement Word 365 reads otherwise than written (CR-022's
+      table, read side), with ``word_reads``, ``storage`` and ``range``.
+
+    It never raises for a finding and never rewrites anything; a part never
+    unmarshalled is read privately, so it is still written byte for byte.
+    ``package.save(check=True)`` is where a finding raises.
+
+    Args:
+        root: a model object, an ``XmlPart``, or a package.
+        unmarshalled_only: for a package, only the parts a save re-marshals.
+    """
+    from docx4j_py.validator import misplaced as validate
+
+    return validate(root, unmarshalled_only=unmarshalled_only)
 
 
 # ---------------------------------------------------------------------------

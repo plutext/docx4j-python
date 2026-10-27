@@ -373,6 +373,19 @@ def _class_types() -> Any:
     return _context().class_type
 
 
+def _any_type_substitution(found: Entry, cls: type) -> bool:
+    """A single element field of an ``xsd:anyType`` element, given a class with a type name of its own.
+
+    The serialiser writes it under the field's element with the class's type
+    as the ``xsi:type`` (``<dcterms:created xsi:type="dcterms:W3CDTF">``), which
+    the schema allows there and nowhere else (CR-020 Phase B, section 11).
+    """
+    if found.compound:
+        return False
+    clazz = found.var.clazz
+    return clazz is not None and _any_type(clazz) and _target_qname(cls, found.namespace) is not None
+
+
 def _same_element(found: Entry, cls: type) -> bool:
     """Rule 2: the element name is a choice's, the shape that choice's class's, and it is written so."""
     from docx4j_py.traversal import element_name
@@ -390,7 +403,17 @@ def _same_element(found: Entry, cls: type) -> bool:
 
 
 def _derived_allowed(found: Entry, item: Any) -> bool:
-    """A ``DerivedElement``: its name a choice's, and its value that choice's class or of its shape."""
+    """A ``DerivedElement``: its name a choice's, and its value that choice's class or of its shape.
+
+    Or an ``xsi:type`` substitution of an ``xsd:anyType`` element (CR-020
+    Phase B, section 11): the item names its value's own type
+    (``DerivedElement.type``, which the serialiser writes as the ``xsi:type``
+    and a parse sets from one) and the choice's class is ``xsd:anyType``'s
+    (:func:`_any_type`), from which every type derives, so the XML is the
+    schema's. That is how a parse binds ``<dcterms:created
+    xsi:type="dcterms:W3CDTF">``, which OPC's core properties require. Any
+    other value written with an ``xsi:type`` is refused, since Word writes none.
+    """
     candidates = found.by_name.get(getattr(item, "qname", None))
     if candidates is None:
         return False
@@ -402,9 +425,33 @@ def _derived_allowed(found: Entry, item: Any) -> bool:
         return True
     target = _target_qname(cls, found.namespace)
     if target is not None and target != item.qname:
-        return False  # written with an xsi:type
+        # written with an xsi:type: the schema's where the item asks for it and the type derives from the declared one
+        return getattr(item, "type", None) == target and any(_any_type(candidate) for candidate in candidates)
     shape = shape_of(cls)
     return shape is not None and any(shape_of(candidate) == shape for candidate in candidates)
+
+
+_any_types: dict[type, bool] = {}
+
+
+def _any_type(cls: type) -> bool:
+    """Whether a class is ``xsd:anyType``'s: no attributes, and nothing but wildcard content.
+
+    Such an element takes any type by ``xsi:type`` (every type derives from
+    ``xsd:anyType``): ``dcterms:created``'s ``Created``, which OPC's core
+    properties fill with a ``dcterms:W3CDTF``.
+    """
+    try:
+        return _any_types[cls]
+    except KeyError:
+        pass
+    meta = _meta(cls)
+    result = False
+    if meta is not None:
+        elements = _element_vars(meta)
+        result = bool(elements) and not list(meta.get_attribute_vars()) and all(var.is_wildcard for var in elements)
+    _any_types[cls] = result
+    return result
 
 
 def verdict(cls: type, field: str, item: Any) -> bool:
@@ -430,7 +477,7 @@ def verdict(cls: type, field: str, item: Any) -> bool:
     elif isinstance(item, str):
         result = found.mixed or found.simple
     elif _is_model(item_cls):
-        result = _same_element(found, item_cls)
+        result = _same_element(found, item_cls) or _any_type_substitution(found, item_cls)
     elif item is None:
         result = False
     else:
