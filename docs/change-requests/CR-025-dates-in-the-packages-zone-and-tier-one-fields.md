@@ -83,7 +83,7 @@ So 12 of the 25 cases differ from docx4j's text model at `c3e9920e5` on the same
 
 ### 4.1 The package's zone (D1, D2; Phase A)
 
-**D1.** `pkg.date_time_zone`: the client's zone for this package, a `datetime.tzinfo` or an IANA name (`"Asia/Tokyo"`, read as `zoneinfo.ZoneInfo`), None by default. Never saved: a request attribute, as docx4j's is, so a server reusing a loaded package sets it per request. A bad name or another type raises `ContentError` (`date_time_zone.invalid`). `pkg.effective_date_time_zone` is the zone used: the package's, else the process's, as an object (`docx4j_py.model.dates.PROCESS_ZONE`, a `tzinfo` that reads the process's zone at each instant exactly as `astimezone()` does). docx4j's `getDateTimeZone()` and `effectiveDateTimeZone()`. A dry run's trial reads its package's.
+**D1.** `pkg.date_time_zone`: the client's zone for this package, a `datetime.tzinfo` or an IANA name (`"Asia/Tokyo"`, read as `zoneinfo.ZoneInfo`), None by default. Never saved: a request attribute, as docx4j's is, so a server reusing a loaded package sets it per request. A bad name or another type raises `ContentError` (`date_time_zone.invalid`). `pkg.effective_date_time_zone` is the zone used: the package's, else the process's, as an object (`docx4j_py.model.dates.PROCESS_ZONE`, a `tzinfo` that reads the process's zone at each instant exactly as `astimezone()` does). docx4j's `getDateTimeZone()` and `effectiveDateTimeZone()`. A dry run's trial starts with its package's and may be given its own, as its `tracked_change_date` may.
 
 **D2.** The fallback is the process's zone, and nothing between. docx4j's chain has a JVM-wide property between the package and the JVM default (`BindingHandler.dateTimeZone`), because a JVM's default zone is awkward to set per deployment. A Python process's zone is `TZ`, which a deployment sets as easily as it would set a property, so a second process-wide setting would be a second `TZ`.
 
@@ -91,7 +91,7 @@ So 12 of the 25 cases differ from docx4j's text model at `c3e9920e5` on the same
 
 ### 4.2 The core properties' opt-in (D4; Phase A)
 
-**D4.** `pkg.write_times_on_save`, a package attribute, False by default: docx4j-core-ts's `writeTimesOnSave` in Python's spelling (section 4.5). When on, a save sets `dcterms:modified` to now, and `dcterms:created` too where the core part has none and was not read from the source (made by `create_package` or by the caller): docx4j's `DocPropsCorePart.writeTimes()` (17.3.3, its CR-036). In UTC with a `Z`, **to the second**, as docx4j and docx4j-core-ts write it. Word writes these to the minute (section 2), and point 5's "as Word writes it" could be read to reach them; but point 5 is about a revision's and a comment's stamp, point 6 names docx4j's shape, and `create_package` writes `created` to the second, so a stamp to the minute would put `modified` before `created` in a package made and saved within the minute (found while building, section 10). A package with no core part gets none. `cp:lastModifiedBy` is not touched: docx4j writes it under its own property, `docx4j.dc.write`, which the rule does not name. `last_save.times` is the stamp written, or None. docx4j-core-ts writes the second too, and makes a core part for a new package that has none (its `createPackage` writes an empty one); here `create_package` writes one with both dates, so the case does not arise, and a package with none is left without, as docx4j leaves it.
+**D4.** `pkg.write_times_on_save`, a package attribute, False by default: docx4j-core-ts's `writeTimesOnSave` in Python's spelling (section 4.5). When on, a save sets `dcterms:modified` to now, and `dcterms:created` too where the core part has none and was not read from the source (made by `create_package` or by the caller): docx4j's `DocPropsCorePart.writeTimes()` (17.3.3, its CR-036). In UTC with a `Z`, **to the second**, as docx4j and docx4j-core-ts write it. Word writes these to the minute (section 2), and point 5's "as Word writes it" could be read to reach them; but point 5 is about a revision's and a comment's stamp, point 6 names docx4j's shape, and `create_package` writes `created` to the second, so a stamp to the minute would put `modified` before `created` in a package made and saved within the minute (found while building, section 11.2). A package with no core part gets none. `cp:lastModifiedBy` is not touched: docx4j writes it under its own property, `docx4j.dc.write`, which the rule does not name. `last_save.times` is the stamp written, or None. docx4j-core-ts writes the second too, and makes a core part for a new package that has none (its `createPackage` writes an empty one); here `create_package` writes one with both dates, so the case does not arise, and a package with none is left without, as docx4j leaves it.
 
 ### 4.3 The evaluator (D5 to D7; Phase B)
 
@@ -113,7 +113,7 @@ So 12 of the 25 cases differ from docx4j's text model at `c3e9920e5` on the same
 
 **D12. `INFO <name>`** evaluates the field it names, with its switches (`INFO Title \* Upper` is `TITLE \* Upper`), **only where that field is one the consumer computes**. docx4j's `INFO` asks the whole registry, so its extraction evaluates `INFO PrintDate` at the clock, though its text model keeps `PRINTDATE` itself cached; here it keeps the cached result. No name, an unknown one, or `INFO INFO` keeps the cached result.
 
-**D13. `SECTION`** is the section of the main story the walk is in, from 1, as docx4j's text model counts it (the sections ended so far, plus one); elsewhere (a note, a header) the cached result. **`NOTEREF`** is the number of the footnote or endnote whose reference the bookmark holds: docx4j's `FieldSources.noteNumbers`, the main part walked in document order, each kind counted apart from 1, a custom mark not counted, separators skipped; the walk goes where docx4j's goes (not into a deletion, a move, a drawing, a picture, an object or `mc:AlternateContent`).
+**D13. `SECTION`** is the section of the main story the walk is in, from 1, as docx4j's text model counts it (the sections ended so far, plus one); elsewhere (a note, a header) the cached result. **`NOTEREF`** is the number of the footnote or endnote whose reference the bookmark holds: docx4j's `FieldSources.noteNumbers`, the main part walked in document order, each kind counted apart from 1, a custom mark not counted, separators skipped; the walk goes where docx4j's goes (not into a deletion, a move, a drawing, a picture, an object, an equation, ruby or `mc:AlternateContent`).
 
 **D14. `DATE`, `TIME` and `PRINTDATE`** are registered, at the context's clock in its zone, for a caller of `evaluate`; the text model keeps their cached result, as docx4j's does (its `FieldValues` leaves them out of `COMPUTED`). Extraction stays deterministic (Q6).
 
@@ -121,7 +121,7 @@ So 12 of the 25 cases differ from docx4j's text model at `c3e9920e5` on the same
 
 ### 4.5 The names, aligned across the ports (the coordinator, 2026-10-28)
 
-The coordinator asked, the same day and before anything was built, that the three ports name these alike, taking docx4j-core-ts's names (its CR-018, uncommitted, which mirrors docx4j `c3e9920e5`) in snake_case. So:
+The coordinator asked, the same day and before anything was built, that the three ports name these alike, taking docx4j-core-ts's names (its CR-018, which mirrors docx4j `c3e9920e5`; uncommitted then, committed later the same day as `d9c0cef`) in snake_case. So:
 
 | What | docx4j | docx4j-core-ts | here |
 |---|---|---|---|
@@ -160,7 +160,7 @@ No Word check is expected: extraction output is not a file, and with the zone un
 ## 7. Risks
 
 - **Moved expectations.** A test or golden that read a `CREATEDATE` as text, or a `QUOTE` with no argument as cached, moves. Section 3.2's measurement and a scan of every fixture's instructions say none does: no fixture under `tests/` or `samples/` holds a tier-1 field but `QUOTE` with an argument, and the two `TIME` fields stay cached.
-- **The process's zone, read as an object** (D1's `PROCESS_ZONE`), disagreeing with `astimezone()` at a gap or a fold. It is only reached through `effective_date_time_zone`; the sites themselves keep `astimezone()` when nothing is set, and a test holds the object to it across a year of instants in two zones with daylight time.
+- **The process's zone, read as an object** (D1's `PROCESS_ZONE`), disagreeing with `astimezone()` at a gap or a fold. It is only reached through `effective_date_time_zone`; the sites themselves keep `astimezone()` when nothing is set, and a test holds the object to it at every half hour of a year in three zones with daylight time, one of them a half-hour change (Lord Howe).
 - **A server that forgets to set the zone** shows its own: the rule's default, and why D1's attribute is on the package.
 
 ## 8. Questions for the user
