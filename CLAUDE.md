@@ -125,6 +125,14 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   Word's setter writes it; it wrote exact); the content API's limits are Word's own, on the value as written
   (`CallerLimit(stored=True)`), superseding CR-022's 1,638 pt from check 71; `to_api_script` expresses an auto rule;
   `test_office_js_setters.py` holds the 51 cases to Word's run.
+- **CR-025** (dates in the package's zone, and docx4j CR-067 phase 1's fields in the text model, after the portfolio's
+  date rule, `../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6): complete 2026-10-28, Q1 to Q10 and
+  13.10's points decided as recommended. `pkg.date_time_zone` (the client's zone, a `tzinfo` or an IANA name, never
+  saved; unset, the process's) is where a revision's and a comment's stamp go and where a `w:date` without `dateUtc`
+  is read; `pkg.write_times_on_save` (off) stamps `dcterms:modified`; `fields: update` computes docx4j's set, with
+  `CREATEDATE`/`SAVEDATE` an instant in that zone to the minute, `INFO`, `SECTION`, `NOTEREF` and the user fields
+  (`TextOptions(field_user=)`), held to Word's probes (`tests/fixtures/field-probe-cr067/`, `date-forms-cr067/`); a
+  bare core-property date is UTC, a date-only `w:date` local midnight; the names are docx4j-core-ts's CR-018's.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -231,12 +239,14 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `reject_all`, `report`) and CR-011's text model:
   `model/text/` (`extract`, `TextOptions`, `TextResult`, `plain_text`, `markdown`, the
   commonmark-java renderer port), with Phase C's `model/chart/` (a chart as a table and a
-  description), `model/math/` (OMML to LaTeX), `model/fields/` (field formatting switches) and
+  description), `model/math/` (OMML to LaTeX), `model/fields/` (field formatting switches; since CR-025
+  docx4j's `FieldInstruction`, `FieldContext` and the evaluators by name) and
   `model/java_text.py` (Java's `DecimalFormat` and `SimpleDateFormat`, for those two); CR-009's
   `model/color/` (`ResolvedColor`, `ThemeColors`, `WordColors`, whose `normalise` and `stated` are
   `values.py`'s; `theme_colors._slot_colour` is Phase C's seam for `DrawingMLColors`); and
   CR-018's `model/values.py` (Word's on/off, enumeration and colour readers), with CR-020's
-  `model/word_integers.py` (Word's 16-bit reading of an integer, per row of CR-022's table)
+  `model/word_integers.py` (Word's 16-bit reading of an integer, per row of CR-022's table) and CR-025's
+  `model/dates.py` (the package's zone, where an instant meets a clock)
 - `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
   `understood-namespaces.txt` (docx4j's published understood list, copied at `198d015a3`; CR-011),
   and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office
@@ -357,7 +367,9 @@ section 12.3.
   the source (an on/off value Word reads as on bare, one it reads as off `0`; since Phase B every
   enumeration and colour too: a colour as upper-case `RRGGBB`; a rejected text or underline colour,
   a missing or invalid `w:highlight`/`w:vertAlign`/`w:em` and a bare `<w:u/>` dropped; a rejected
-  fill or border colour `auto`; `w:u`'s on/off words `none`, those rows found by name in each part's
+  fill or border colour `auto`; `w:u`'s on/off words `none`; since CR-025 Phase B2 a date-only or
+  offset-free `w:date` or `w:fullDate` as Word's save writes it, the nominal clock to the minute with a
+  `Z`, a value with a `Z` or an offset untouched; those rows found by name in each part's
   render, `normalise.normalise_render`, so the tree keeps what was read), recorded in
   `package.last_save.normalised`. `canon.compare(..., normalise=True)` writes the same normal form
   into the source before comparing, so every other category must still be zero;

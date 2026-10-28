@@ -126,7 +126,9 @@ comment before it, and `body.insert_markdown(text)` writes CommonMark plus GFM t
 document's own styles, creating the numbering part when there is none.
 
 The text an agent reads is one text model, the port of docx4j's (`docx4j_py.model.text`): text
-boxes after their anchors, notes, hidden text left out, the views by resolution. `to_markdown` and
+boxes after their anchors, notes, hidden text left out, the views by resolution, and with
+`fields="update"` the fields Word's F9 computes without layout (`CREATEDATE` in the package's
+`date_time_zone`, `INFO`, `SECTION`, `NOTEREF`, `SEQ`, `REF`, ...). `to_markdown` and
 `outline()` read through it, and so can a tool:
 
 ```python

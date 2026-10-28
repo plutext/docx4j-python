@@ -738,7 +738,11 @@ deleted. Each revision carries its date as Word 365 writes it: `w:date` on the l
 with a `Z` that does not mean UTC, and the true UTC in `w16du:dateUtc`, to the minute, with `w16du`
 declared in the part's `mc:Ignorable`; a revision's `date` reads them back as one instant.
 `pkg.tracked_change_date` fixes that instant (a naive datetime is UTC), which is what makes a
-tracked edit byte-reproducible in a given time zone.
+tracked edit byte-reproducible in a given time zone. The time zone is the package's: `pkg.date_time_zone`
+names the client's (a `tzinfo` or an IANA name, never saved), so a server stamps and reads a
+revision's and a comment's `w:date` on its user's clock, not its own; unset, it is the process's
+(CR-025, the ports' one date rule). `pkg.write_times_on_save`, off by default, stamps
+`dcterms:modified` on each save, as docx4j's `docx4j.dcterms.write` does.
 
 The comment half is the same identity and a different id space:
 
@@ -966,6 +970,12 @@ result.blocks[0].to_dict()["address"]    # REQ-706's block JSON, for a tool
 [warning.to_dict() for warning in result.warnings]   # where the text is not the whole document
 # []
 ```
+
+With `fields="update"`, a field that needs neither layout nor a data source shows what Word's F9
+computes, held to Word 365's results on docx4j's probes (CR-011 section 6, CR-025): `DOCPROPERTY` and
+the core-property fields, `CREATEDATE` and `SAVEDATE` in the package's zone in Word's default
+format, `SEQ`, `REF`, `QUOTE`, `INFO`, `SECTION`, `NOTEREF`, and the user fields from
+`field_user=`; anything else keeps the result the file holds.
 
 `Paragraph.text`, `get_text()` and `search()` keep Office JS's text, as Word's own Office JS
 gives it (CR-011 Q4), and the python-docx facade keeps python-docx's.

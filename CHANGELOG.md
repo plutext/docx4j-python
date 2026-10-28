@@ -11,6 +11,26 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **The package's time zone, `pkg.date_time_zone`** ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) Phase A, section
+  [11](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md#11-phase-a-implementation-notes-2026-10-28); the ports' one date rule,
+  `docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, with docx4j CR-067 D12 and docx4j-core-ts
+  CR-018). The client's zone for this package, a `tzinfo` or an IANA name, never saved; `pkg.effective_date_time_zone`
+  is the zone used, the process's where none is set, so nothing changes until one is. A server stamps a new
+  revision's and comment's `w:date` on its user's wall clock, and reads a `w:date` with no `dateUtc` there
+  (`TrackedChange.date`, `tracking.date_of`, `Comment.creation_date`); `dateUtc` stays UTC. An unknown zone raises
+  `ContentError` (`date_time_zone.invalid`).
+- **`pkg.write_times_on_save`**, off by default (docx4j's `docx4j.dcterms.write`): a save sets `dcterms:modified` to
+  its moment, and `created` for a new core part without one, in UTC to the second; `last_save.times` is the stamp.
+  Off, a save leaves the core properties as they are, as before.
+- **More fields under the text model's `fields: update`** ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) Phase B, section
+  [12](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md#12-phase-b-implementation-notes-2026-10-28); docx4j CR-067 phase 1, held to Word 365's F9 on its probe,
+  copied in `tests/fixtures/field-probe-cr067/`): `INFO <name>` as the field it names, `SECTION`, `NOTEREF`, and
+  `USERNAME`, `USERINITIALS` and `USERADDRESS` from `TextOptions(field_user=...)` (a `FieldUser`, a name or a mapping;
+  without one they keep their cached result). The set computed is docx4j's text model's. `docx4j_py.model.fields` gains
+  docx4j's `FieldInstruction` (`FldSimpleModel` is now its subclass), `FieldContext`, `FieldUser`, `evaluate`,
+  `register`, `format_date` and `parse_w3cdtf`. 21 of the probe's 25 cases give Word's result; the 4 where Word writes
+  an error text keep the cached result, as docx4j's do.
+
 - **The validator, `misplaced()`** ([CR-020](docs/change-requests/CR-020-misplaced-content-refused.md) Phase B, section
   [11](docs/change-requests/CR-020-misplaced-content-refused.md#11-phase-b-implementation-notes-2026-10-28)): `docx4j_py.traversal.misplaced(root)`
   over a tree, a part or a package, and `package.misplaced()`, report what Word would refuse or read
@@ -37,6 +57,19 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   untouched. The default is `check=False`; the test suite saves checked throughout.
 
 ### Changed
+
+- **`CREATEDATE` and `SAVEDATE` under `fields: update` show what Word shows** ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) Phases B and B2,
+  sections 12 and [13](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md#13-phase-b2-implementation-notes-2026-10-28)). They gave the core property's raw W3CDTF
+  text (`2024-02-03T04:05:06Z`), with or without `\@`; now the instant, cut to the minute and shown in the package's
+  zone, in Word's default short date and long time where there is no `\@` (`2/3/2024 3:05:00 PM` in Sydney). A
+  core property's date alone or time with no offset is UTC, as Word 365 reads it (docx4j's date-forms probe,
+  `tests/fixtures/date-forms-cr067/`). `QUOTE` with no argument gives an empty result, as Word's does.
+- **Dates Word does not write are read and saved as Word reads and saves them** ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) Phase B2). A
+  date-only `w:date` on a revision or a comment reads as local midnight in the package's zone, where it read as no
+  date; a date-only `w:fullDate` as midnight. A default save writes a date-only or offset-free `w:date` or `w:fullDate`
+  as Word's save does, the nominal clock to the minute with a `Z` (`2024-02-03` as `2024-02-03T00:00:00Z`), each
+  rewrite on `last_save.normalised`; a value with a `Z` or an offset is never touched, and `save(normalise=False)` keeps
+  the source's spelling. Word writes neither form, so a file Word wrote saves as before.
 
 - **A typed list refuses what its element cannot hold** ([CR-020](docs/change-requests/CR-020-misplaced-content-refused.md) Phase A, section
   [10](docs/change-requests/CR-020-misplaced-content-refused.md#10-phase-a-implementation-notes-2026-10-27); the counterpart of docx4j's
@@ -105,6 +138,14 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   as before.
 
 ### Fixed
+
+- **`DOCPROPERTY LastPrinted` resolves**, to `cp:lastPrinted`'s lexical form as docx4j's resolver gives it; it never
+  found the value, a bare date-time where the other core dates are W3CDTF, so the field kept its cached result.
+  `evaluate("PRINTDATE", ...)` reads `cp:lastPrinted`, as Word's F9 does (docx4j's D14), not the clock; the text model
+  keeps `PRINTDATE` cached as before ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) section 13.11).
+- **The python-docx facade's core dates are aware in UTC in every form**, as python-docx 1.2.0 gives them:
+  `core_properties.created`, `modified` and `last_printed` were naive for a date alone or a time with no offset
+  ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) section 13.11).
 
 - **`Paragraph.line_spacing` writes a multiple of single spacing, as Word does**
   ([CR-024](docs/change-requests/CR-024-office-js-setters-as-word-runs-them.md); a defect 0.1.0 and
