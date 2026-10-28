@@ -165,7 +165,7 @@ def _dates(data: bytes) -> dict[str, list[str]]:
 def test_the_date_table_is_the_models():
     """:data:`DATE_ATTRIBUTES` is every element whose bound classes declare a ``w``-namespace ``xsd:dateTime`` attribute.
 
-    The model's 25: ``w:date`` on 22 revision elements of ``w`` and two of
+    The model's 25: ``w:date`` on 21 revision elements of ``w`` and two of
     ``w14``, and on ``w:comment``; ``w:fullDate`` on ``w:date``. Every class
     each element name binds types its attribute ``XmlDateTime`` alone, so a
     row found by name is never another attribute's.

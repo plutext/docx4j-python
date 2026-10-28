@@ -1,6 +1,6 @@
 # CR-025: Dates in the package's zone, and docx4j CR-067 phase 1's fields in the text model --- the portfolio's date rule, and the tier-1 fields under `fields: update`
 
-**Status:** Proposed 2026-10-28, on the user's ruling on the cross-product date policy the same day (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, committed at `4ac305b`: "I confirm option (a) as amended, and 3.5; also the three sub-items") and his instruction as the portfolio session relayed it: "commit, then have the ports do their work". Three phases (section 6): A, the package's time zone and the core properties' opt-in (the rule's points 2, 5 and 6, after docx4j's D12); B, docx4j CR-067 phase 1's fields in the text model, held to Word's probe (point 1 for the zone); C, the records. A and B are built at the coordinator's brief; C is not, beyond this CR's row in the index and the note for CR-014 in section 9. The names follow docx4j-core-ts's, at the coordinator's request the same day (section 4.5). The questions are in section 8, each with a recommendation. Where building needed an answer, the recommendation is built and listed for the user to decide, as CR-020 sections 10.12 and 11.9 did. **Phase A implemented 2026-10-28** (section 11; `cbafbc1`): `pkg.date_time_zone`, the five places an instant meets a clock, `pkg.write_times_on_save`, its stamp to the second after a finding while building (11.2, Q3 restated). **Phase B implemented 2026-10-28** (section 12; `23fa5ce`): docx4j's evaluator ported, the text model's `fields: update` at docx4j's set; Word's probe given back in 21 of 25 cases and the cached result in the 4 where Word writes an error text; docx4j's own extraction of the probe matched byte for byte in five modes; no golden moved. **Q1 to Q10 decided as recommended 2026-10-28** (the user: "CR-025's ten questions as recommended"; 12.10, nothing changed). No Word check: extraction is no file, and with the zone unset and the opt-in off a saved file is unchanged (acceptance 0 differ). Phase C proposed.
+**Status:** Proposed 2026-10-28, on the user's ruling on the cross-product date policy the same day (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, committed at `4ac305b`: "I confirm option (a) as amended, and 3.5; also the three sub-items") and his instruction as the portfolio session relayed it: "commit, then have the ports do their work". Three phases (section 6): A, the package's time zone and the core properties' opt-in (the rule's points 2, 5 and 6, after docx4j's D12); B, docx4j CR-067 phase 1's fields in the text model, held to Word's probe (point 1 for the zone); C, the records. A and B are built at the coordinator's brief; C is not, beyond this CR's row in the index and the note for CR-014 in section 9. The names follow docx4j-core-ts's, at the coordinator's request the same day (section 4.5). The questions are in section 8, each with a recommendation. Where building needed an answer, the recommendation is built and listed for the user to decide, as CR-020 sections 10.12 and 11.9 did. **Phase A implemented 2026-10-28** (section 11; `cbafbc1`): `pkg.date_time_zone`, the five places an instant meets a clock, `pkg.write_times_on_save`, its stamp to the second after a finding while building (11.2, Q3 restated). **Phase B implemented 2026-10-28** (section 12; `23fa5ce`): docx4j's evaluator ported, the text model's `fields: update` at docx4j's set; Word's probe given back in 21 of 25 cases and the cached result in the 4 where Word writes an error text; docx4j's own extraction of the probe matched byte for byte in five modes; no golden moved. **Q1 to Q10 decided as recommended 2026-10-28** (the user: "CR-025's ten questions as recommended"; 12.10, nothing changed). No Word check: extraction is no file, and with the zone unset and the opt-in off a saved file is unchanged (acceptance 0 differ). **Phase B2 implemented 2026-10-28** (section 13; `3fe390d`), a phase the user ordered once docx4j's date-forms probe had run (its CR-067 section 12.2, `c58e36e64`): "item 3 as recommended; go on CR-025 B2". A core property's date alone or time with no offset is UTC, as Word reads it (docx4j's D13; Q8's reading ends, as Q8 foresaw); a date alone in a revision's or a comment's `w:date` is local midnight, and in a date control's `w:fullDate` midnight; a save writes a `w:date` or `w:fullDate` given as a date alone or a time with no offset in Word's form, the nominal clock to the minute labelled `Z`, and leaves every value with a `Z` or an offset as read. No file of the corpus or the acceptance set holds such a value, so no saved file there changed. Phase C proposed.
 
 *The number:* CR-024 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -105,7 +105,7 @@ So 12 of the 25 cases differ from docx4j's text model at `c3e9920e5` on the same
 
 **D8. `CREATEDATE` and `SAVEDATE`.** The core property's W3CDTF with an offset or a `Z` is an instant, truncated to the minute on the instant (docx4j's `floorMod` of the epoch), shown in the package's zone (the context's override, else `pkg.date_time_zone`, else the process's). With `\@`, the switch formats it; with `\@` and no value, the short date (`M/d/yy`), as Java's default short date instance gives it in docx4j. With no `\@`, Word's default: the short date and the long time, `M/d/yyyy h:mm:ss a` in US English (`2/3/2024 3:05:00 PM`), docx4j's choice for no language. docx4j gives another language the locale's short date and medium time, unmeasured; no language reaches this evaluator (D7). A value that is no date keeps the cached result, as docx4j's does (today the raw text was shown). An argument is ignored, as docx4j's `CoreDate` ignores it.
 
-**D9. The forms Word has not been measured on** (the rule's point 4). A date only (`2024-02-03`, also `2024` and `2024-02`) and a time with no offset (`2025-06-07T08:09:10`) are read as today, nominally: the wall clock as written, converted by no zone. The field's own rules, the minute and Word's default format, apply to them as to any date the field shows. With no package zone set, this is docx4j's result too: it reads such a value as local time in the JVM's zone and shows it in the same zone. With one set it differs: docx4j shows the JVM-local reading converted to the package's zone. Docx4j's date-forms probe (its CR-067 section 12.1, staged for Jason) measures what Word does with all three forms; until then each port keeps its reading (Q8).
+**D9. The forms Word has not been measured on** (the rule's point 4). A date only (`2024-02-03`, also `2024` and `2024-02`) and a time with no offset (`2025-06-07T08:09:10`) are read as today, nominally: the wall clock as written, converted by no zone. The field's own rules, the minute and Word's default format, apply to them as to any date the field shows. With no package zone set, this is docx4j's result too: it reads such a value as local time in the JVM's zone and shows it in the same zone. With one set it differs: docx4j shows the JVM-local reading converted to the package's zone. Docx4j's date-forms probe (its CR-067 section 12.1, staged for Jason) measures what Word does with all three forms; until then each port keeps its reading (Q8). **Phase B2 (section 13):** the probe has run, and Word reads both as UTC (created `2024-02-03` showed 11:00 in Sydney, modified `2025-06-07T08:09:10` 18:09), so both are now read as UTC, as docx4j's D13 reads them, and shown in the package's zone to the minute like any other instant.
 
 **D10. The user fields.** `FieldUser(name, initials=None, address=None)`, after docx4j's `FieldContext.user(name, initials, address)`. The text model takes it as `TextOptions(field_user=...)`, an option beyond section 10 like `image_describer`, a host's hook (a `FieldUser`, a name alone, or a mapping with `name`, `initials` and `address`). Unset, the three fields keep their cached result, which is also what Word shows until F9 (cases 20 to 22). Set, `USERNAME` is the name, and `USERINITIALS` and `USERADDRESS` their values or empty where the user has none, as Word shows a blank one. docx4j's extraction has no way to supply a user: this is an extension, and with no user the two agree.
 
@@ -146,6 +146,7 @@ The coordinator's earlier suggestion, `pkg.time_zone`, is replaced.
 - **Phase A's writers**: a revision and a comment stamped with a package zone set write `w:date` on that zone's wall clock and `dateUtc` unchanged; unset, byte for byte today's in two process zones.
 - **The opt-in**: off, a save is byte for byte; on, `modified` (and `created` where D4 says) to the second in UTC, `last_save.times`, nothing else in the part changed, and a package with no core part untouched.
 - **The gates**: the suite, `scripts/roundtrip.py` 50 of 50, `scripts/threads.py`, `compare_acceptance.py` 0 differ against `out/acceptance-cr020b/` with the zone unset and the opt-in off; `codegen/generate.sh --check` for the new files.
+- **Phase B2: docx4j's date-forms probe** (its CR-067 section 12.2), copied unedited into `tests/fixtures/date-forms-cr067/` with a `SHA1SUMS`, and `DateFormsProbeWordTest`'s replay ported (section 13.6): the fields through the text model, the revisions, the date controls, Word's save, and this save against it.
 
 No Word check is expected: extraction output is not a file, and with the zone unset and the opt-in off a saved file is unchanged. The opt-in, when on, re-marshals the core part, which the corpus round trip already holds canonically identical, and writes the form `create_package` writes, which Word has opened since 0.1.0.
 
@@ -155,6 +156,7 @@ No Word check is expected: extraction output is not a file, and with the zone un
 |---|---|---|
 | A | D1 to D4: `pkg.date_time_zone` and `effective_date_time_zone`, `model/dates.py`, the five sites of 3.1, the dcterms opt-in; the tests of section 5 for them | ½ day |
 | B | D5 to D14: `FieldInstruction`, `FieldContext`, `FieldUser`, the registry, the evaluators, `FieldValues` over them, `TextOptions(field_user=)`; the probe, docx4j's output, `FieldEvaluatorsTest`, `FieldInstructionTest` | 1 day |
+| B2 | Section 13, after docx4j's date-forms probe: a core property's bare date UTC (docx4j's D13); a date alone in a `w:date` local midnight, in a `w:fullDate` midnight; the save's normal form for a date-only or offset-free `w:date` and `w:fullDate` (`values.date_time`, `values.date_time_normal_form`, `normalise.DATE_ATTRIBUTES`); the probe's replay | ½ day |
 | C | The records: CHANGELOG (Added: `date_time_zone`, `write_times_on_save`, the fields, `field_user`; Changed: `CREATEDATE`/`SAVEDATE`, `QUOTE`), README and `docs/pypi-readme.md` where they name the readers and the save, CLAUDE.md (the status line, the new files in its list), the index's row brought up to date, CR-014's note (section 9) folded into CR-014; the portfolio's `python/CR-025.*` entries through the docx4j-portfolio session | ¼ day |
 
 ## 7. Risks
@@ -174,7 +176,7 @@ No Word check is expected: extraction output is not a file, and with the zone un
 | Q5 | The parser: port `FieldInstruction`, `FldSimpleModel` a subclass kept, both held to the 31 shapes; or keep `FldSimpleModel` alone and hold it to them (D6)? | Port it. The evaluators read as docx4j's do, accessor for accessor, and the tokeniser is already the same; nothing a caller reads changes. |
 | Q6 | `DATE`, `TIME` and `PRINTDATE` under `fields: update`: keep the cached result, as docx4j's text model does, or evaluate them at a clock (D14)? | Keep the cached result. A "now" makes extraction non-deterministic, and docx4j's extraction does not evaluate them. They are in the registry for a caller who supplies a clock. |
 | Q7 | The user for `USERNAME`, `USERINITIALS` and `USERADDRESS`: `TextOptions(field_user=...)`; or `pkg.author`, the identity a revision and a comment carry; or none, as docx4j's extraction has none (D10)? | `field_user`. It is per call, as docx4j's `FieldContext.user` is, and a server's user is a request's. `pkg.author` has a default and is the content API's; using it would change extraction for every document with a user field. |
-| Q8 | A date-only or offset-free core property with a package zone set: shown as written, this repository's reading; or read in the process's zone and converted to the package's, docx4j's (D9)? | As written, until docx4j's date-forms probe has run (point 4); then both ports follow Word. |
+| Q8 | A date-only or offset-free core property with a package zone set: shown as written, this repository's reading; or read in the process's zone and converted to the package's, docx4j's (D9)? | As written, until docx4j's date-forms probe has run (point 4); then both ports follow Word. (Phase B2: the probe has run, and both follow Word, UTC; section 13.) |
 | Q9 | `INFO <name>`: only the fields the consumer computes; or every field the registry has, as docx4j's, so that `INFO PrintDate` shows the clock in extraction (D12)? | Only the consumer's. docx4j's reach looks unintended (its text model keeps `PRINTDATE` cached); offer docx4j the narrower rule through the portfolio. |
 | Q10 | `create_package` writes `created` and `modified` to the second. Leave it, or write them to the minute as Word does? | Leave it. The rule's point 6 is about saves; changing a new package's stamps moves every saved file's core part for no reader's gain. Raise it with the portfolio if a port wants one rule for all core stamps. |
 
@@ -380,3 +382,144 @@ predates) and exercised the zone, the opt-in and the probe's dates by hand (Lond
 9. **Q9:** `INFO` evaluates only what the consumer computes. Offered to docx4j the same day (docx4j-12), whose `INFO` reaches
    the clock fields in extraction (12.5 item 1).
 10. **Q10:** `create_package`'s dates unchanged, to the second.
+
+## 13. Phase B2 implementation notes (2026-10-28)
+
+Phase B2 as built, at the coordinator's brief after the user's order (13.1). docx4j at `c58e36e64` was read for behaviour: its CR-067 sections 12.2 and 12.3, the commit's diff (`FieldSources.parseW3CDTF`, `FieldEvaluators`, `FieldValues`) and `DateFormsProbeWordTest`. Phase C (the records) is not this phase's: no CHANGELOG, README, `docs/pypi-readme.md`, CLAUDE.md or index change was made, beyond `tests/README.md`'s rows for the new tests and fixtures.
+
+**Commits.** `3fe390d`, Phase B2 (13.3 to 13.6: the readers, the normal form, the fixtures, the tests); and this section's, after it.
+
+### 13.1 Why
+
+**Q8 foresaw it.** Q8 was decided as recommended (12.10 item 8): "a date-only or offset-free value is read as written, whatever the package's zone, until docx4j's date-forms probe has run", the recommendation going on "then both ports follow Word". The portfolio's rule (`date_handling_across_ports.md` section 3.6 point 4) says the same. The probe has run (Jason, Word 365 version 2608 build 20326.20232, Sydney's zone, 2026-10-28; docx4j CR-067 section 12.2, committed at `c58e36e64`), so Q8's reading ends and Word's begins: the decision changes its meaning as it said it would, and items 1 and 2 needed no new decision.
+
+**Item 3 is the user's.** "item 3 as recommended; go on CR-025 B2" (2026-10-28, relayed by the coordinator). The recommendation it accepts: a save normalises only the forms the source did not write as Word does, a date alone and a date-time with no offset in a `w:date` or a `w:fullDate`, writing them in Word's form, the nominal clock to the minute labelled `Z`; a value already carrying a `Z` or an offset is left exactly as it is, with no truncation, because "truncating well-formed values would move many saved files for no gain".
+
+**What this repository did at `2d206c0`** (the coordinator's measurement, confirmed here; `TZ=Australia/Sydney`, `pkg.date_time_zone` Sydney):
+
+| what | here at `2d206c0` | Word |
+|---|---|---|
+| D01, `CREATEDATE` of created `2024-02-03` | `2024-02-03 00:00:00` | `2024-02-03 11:00:00` |
+| D02, `SAVEDATE` of modified `2025-06-07T08:09:10` | `2025-06-07 08:09:00` | `2025-06-07 18:09:00` |
+| D04, D05, the same without `\@` | `2/3/2024 12:00:00 AM`, `6/7/2025 8:09:00 AM` | `2/3/2024 11:00:00 AM`, `6/7/2025 6:09:00 PM` |
+| D03, D06, `PRINTDATE` | `OLD`, cached (Q6) | `cp:lastPrinted` |
+| R01, `w:date="2024-02-03"` | `TrackedChange.date` None: no `xsd:dateTime`, so the exact parse keeps it as its text (`part.kept`, a `ConverterWarning`) | local midnight |
+| B01, `w:fullDate="2024-02-03"` | `DatePicker.full_date` None, kept the same way | the picker on 3 Feb 2024 |
+| a save of the probe, its document read | every `w:date` and `w:fullDate` as read, `last_save.normalised` empty | the nominal clock to the minute labelled `Z` |
+
+### 13.2 What Word does (docx4j CR-067 section 12.2)
+
+The probe, `date-forms-r1.docx`, holds three stored forms, a date alone (`2024-02-03`), a time with no offset (`2025-06-07T08:09:10`) and a UTC time (`2025-01-02T03:04:05Z`), each in a core property (created, modified, lastPrinted, read by `CREATEDATE`, `SAVEDATE` and `PRINTDATE` with `\@ "yyyy-MM-dd HH:mm:ss"`, D01 to D03, and without a switch, D04 to D06), in a revision's `w:date` (three `w:ins`, R01 to R03), and in a date control's `w:fullDate` (B01 to B03). Jason opened it in Word 365 in Sydney's zone, pressed Ctrl+A and F9, read the balloons and the pickers, and saved it (`date-forms-r1-word365.docx`):
+
+| Case | Word 365 | Taken as |
+|---|---|---|
+| D01, D04: created `2024-02-03` | `2024-02-03 11:00:00`; `2/3/2024 11:00:00 AM` | a date alone is **UTC midnight** (11:00 at UTC+11) |
+| D02, D05: modified `2025-06-07T08:09:10` | `2025-06-07 18:09:00`; `6/7/2025 6:09:00 PM` | a time with no offset is **UTC** (18:09 at UTC+10), to the minute |
+| D03, D06: lastPrinted `2025-01-02T03:04:05Z` | `2025-01-02 14:04:00`; `1/2/2025 2:04:00 PM` | `PRINTDATE` on F9 is `cp:lastPrinted` (docx4j's D14) |
+| R01: `w:date="2024-02-03"` | `3/02/2024 12:00:00 AM` | a date alone is **local midnight** |
+| R02: `2025-06-07T08:09:10` | `7/06/2025 8:09 AM` | the local clock as written |
+| R03: `2025-01-02T03:04:05Z` | `2/01/2025 3:04 AM` | the local clock, the `Z` ignored (CR-010 section 12.9) |
+| B01 to B03: `w:fullDate` in the three forms | the stored text; the picker on 3 Feb 2024, 7 Jun 2025, 2 Jan 2025 | the nominal day in every form |
+| Word's save | every `w:date` and `w:fullDate` `2024-02-03T00:00:00Z`, `2025-06-07T08:09:00Z`, `2025-01-02T03:04:00Z`; lastPrinted `2025-01-02T03:04:00Z`; created and modified the save's moment | the nominal clock to the minute labelled `Z`, no zone converted |
+
+So the three places disagree on a bare value: a core property's is UTC; a revision's and a control's are the local clock or the nominal day.
+
+### 13.3 What landed
+
+| piece | where | what |
+|---|---|---|
+| `values.date_time` | `model/values.py` (new section "Dates") | a `w:date` or `w:fullDate` as Word reads its form: an `xsd:dateTime` with a `Z`, an offset or neither is that clock (an `XmlDateTime`); a **date alone** is midnight on that day, its offset (if any) kept, as docx4j's `XMLGregorianCalendar` reads one; anything else None (`2025-06-07T08:09`, a month alone, no date). Takes the model's value, a string (trimmed) or a `datetime`. The one reader of the form, as `values.py` is for every other kind of value: the parse keeps what was written and the reader applies Word's rule |
+| `values.date_time_normal_form` | the same | what a save writes for a `w:date` or `w:fullDate`: for a date alone or a date-time with no offset, the nominal clock to the minute labelled `Z`; None (leave it) for a value with a `Z` or an offset, or no date |
+| item 1: `parse_w3cdtf` | `model/fields/sources.py` | docx4j's D13: a core property's value with no offset, and a date alone (also `2024`, `2024-02`), is **UTC**. It now returns an aware UTC `datetime` (or None), docx4j's `Date`, where Phase B returned `(datetime, has_offset)`: the flag had no other use, and the function is unreleased |
+| `CREATEDATE`, `SAVEDATE` | `model/fields/evaluators.py`, `_core_date` | one path for every form: the instant to the minute, shown in the context's zone; D9's nominal branch is gone |
+| item 2: the revision and comment readers | `model/revisions/change.py`: `_calendar` is `values.date_time`; `word_date`, `utc_date`, `date_of` over it | a date alone in a `w:date` is **local midnight** in the package's zone (else the process's): `TrackedChange.date` (every kind, through `date_of`), `tracking.date_of`, `Comment.creation_date` (all three readers go through `word_date`). The other forms read as before: no offset the local clock as written, a `Z` the local clock, a non-zero offset as it says. A `dateUtc` still wins; a date alone there is UTC midnight, as docx4j's `dateOf` reads one (`setTimezone(0)`) |
+| the date control's reader | `model/customxml/kinds.py`, `DatePicker.full_date` | through `values.date_time`: a date alone is midnight, naive, the nominal day (B01), where it was None. The other forms as before (naive with no offset, aware with one) |
+| item 3: `DATE_ATTRIBUTES` | `openpackaging/normalise.py` | the 25 elements and their attribute (13.4), a constant, as `UNION_INTEGER_ATTRIBUTES` is, held to the model by a test |
+| `_date_rows` | the same; in `_render_rows` with Phase B's and CR-021's render rows | found by name in each render (`normalise_render`, so in a normalising save only), and in a source by `normalise_tree` (so `canon.compare(..., normalise=True)`) and `rendered_rows` (`scripts/roundtrip.py`): a value `date_time_normal_form` rewrites is written so, one `Normalised` row each, in `last_save.normalised`. The render rows are the right home: an offset-free value binds as it is and is in no `part.kept`, and a render row leaves the tree as read (13.5). 0.008 ms over `Symbols.docx`'s main part |
+| `canon.compare` | `scripts/canon.py` | its docstring names the new rows; nothing else changed there |
+
+### 13.4 The attributes, from the model
+
+`tests/content/test_date_forms.py` derives the table from the model (every element name whose bound classes declare a `w`-namespace `xsd:dateTime` attribute) and holds `DATE_ATTRIBUTES` to it. **The `w` namespace has exactly two `xsd:dateTime` attributes, `w:date` and `w:fullDate`**, on these 25 elements, every class each name binds typing the attribute `XmlDateTime` alone:
+
+- `w:date` on the revision elements of `w`: `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `w:moveFromRangeStart`, `w:moveToRangeStart`, `w:rPrChange`, `w:pPrChange`, `w:sectPrChange`, `w:tblPrChange`, `w:tblPrExChange`, `w:trPrChange`, `w:tcPrChange`, `w:cellIns`, `w:cellDel`, `w:cellMerge`, `w:numberingChange`, `w:customXmlInsRangeStart`, `w:customXmlDelRangeStart`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveToRangeStart` (21; `w:ins` and `w:del` include a paragraph mark's, a row's and those in an `m:r` or `m:ctrlPr`);
+- `w:date` on `w14`'s two, `w14:customXmlConflictInsRangeStart` and `w14:customXmlConflictDelRangeStart`, root elements in the model and in no content model (a typed document has nowhere to hold them, so a test covers them over a render);
+- `w:date` on a comment, `w:comment`;
+- `w:fullDate` on a date control's `w:date`.
+
+42 classes carry a `w:date` (the revision elements' choice classes, `w14`'s and `CommentsComment`); a test reads a date alone through `date_of` on every one. Not in the table: `w16du:dateUtc` and `w16cex:dateUtc`, which are UTC and which Word writes only with a `Z`, and every other namespace's `xsd:dateTime` (`dcterms`, `cp:lastPrinted`, inkml's, the 2013 command's `dt`): the brief and the probe are about `w:date` and `w:fullDate`.
+
+### 13.5 The normal form, and `w:fullDate`'s
+
+- **`w:fullDate` takes `w:date`'s form.** Word's save of B01 wrote `2024-02-03T00:00:00Z` and of B02 (`2025-06-07T08:09:10`) `2025-06-07T08:09:00Z`: the nominal clock to the minute labelled `Z`, the seconds of an offset-free value cut, exactly as for R01 and R02. So one rule serves both, and an offset-free `w:fullDate` with seconds is cut to the minute, as Word's save cut it.
+- **Word reads the form written as it read the source.** A revision's `2024-02-03T00:00:00Z` is local midnight (the `Z` ignored) as `2024-02-03` was; `2025-06-07T08:09:00Z` is 8:09 local as `2025-06-07T08:09:10` was, to the minute, which is what Word holds (its balloon showed 8:09 AM and its save wrote `:00`). A control's day is the same. Read back here, R02's instant loses its 10 seconds (13.6), as Word's own save loses them.
+- **Left as read**: a value with a `Z` or an offset, its seconds and fraction included (`2025-01-02T03:04:05Z`, `...+10:00`, `...05.123Z`); a date alone with one (`2024-02-03Z`), which carries an offset by the user's rule though Word writes no date alone (unmeasured); anything that is no date (`2025-06-07T08:09`).
+- **CR-018's discipline throughout**: only a part the save re-marshals is normalised (a part never read is the source's bytes, dates included, which the probe's replay holds); the render is rewritten and never the tree, so `save(normalise=False)` and `part.xml` outside a save write the source's spelling; a value set in code with no offset is written in the form too, as Phase B's colours are; `canon.compare(..., normalise=True)` writes the same rows into the source, so the round trip stays at zero differences beyond `word-normal-form`.
+
+### 13.6 The oracle, case by case
+
+`tests/text/test_date_forms_probe.py`, the fixtures in `tests/fixtures/date-forms-cr067/` (`date-forms-r1.docx`, `date-forms-r1-word365.docx`, `README.txt`, `results.txt` copied unedited from docx4j at `c58e36e64`, their git blob ids docx4j's; `README.md`, `SHA1SUMS`). docx4j's `DateFormsProbeWordTest`, its updater's Part 1 through the text model's `fields: update`; in Sydney's zone by the process, and by `pkg.date_time_zone` with the process in New York, Kolkata and UTC:
+
+| Case | Word 365 | here at `2d206c0` | here now | |
+|---|---|---|---|---|
+| D01 `CREATEDATE \@`, date alone | `2024-02-03 11:00:00` | `2024-02-03 00:00:00` | `2024-02-03 11:00:00` | Word's |
+| D02 `SAVEDATE \@`, no offset | `2025-06-07 18:09:00` | `2025-06-07 08:09:00` | `2025-06-07 18:09:00` | Word's |
+| D03 `PRINTDATE \@`, `Z` | `2025-01-02 14:04:00` | `OLD` | `OLD` | cached (Q6), as docx4j's text model keeps it |
+| D04 `CREATEDATE` | `2/3/2024 11:00:00 AM` | `2/3/2024 12:00:00 AM` | `2/3/2024 11:00:00 AM` | Word's |
+| D05 `SAVEDATE` | `6/7/2025 6:09:00 PM` | `6/7/2025 8:09:00 AM` | `6/7/2025 6:09:00 PM` | Word's |
+| D06 `PRINTDATE` | `1/2/2025 2:04:00 PM` | `OLD` | `OLD` | cached (Q6) |
+| R01 `w:date`, date alone | 3/02/2024 12:00:00 AM | None | `2024-02-02T13:00:00Z` | Word's (local midnight, UTC+11) |
+| R02, no offset | 7/06/2025 8:09 AM | `2025-06-06T22:09:10Z` | the same | Word's |
+| R03, `Z` | 2/01/2025 3:04 AM | `2025-01-01T16:04:05Z` | the same | Word's |
+| B01 `w:fullDate`, date alone | the picker on 3 Feb 2024 | None | `2024-02-03 00:00` (naive) | Word's day |
+| B02, no offset | 7 Jun 2025 | `2025-06-07 08:09:10` | the same | Word's day |
+| B03, `Z` | 2 Jan 2025 | `2025-01-02 03:04:05+00:00` | the same | Word's day |
+| the save, R01 and B01 | `2024-02-03T00:00:00Z` | `2024-02-03` | `2024-02-03T00:00:00Z` | Word's |
+| the save, R02 and B02 | `2025-06-07T08:09:00Z` | `2025-06-07T08:09:10` | `2025-06-07T08:09:00Z` | Word's |
+| the save, R03 and B03 | `2025-01-02T03:04:00Z` | `2025-01-02T03:04:05Z` | `2025-01-02T03:04:05Z` | as read, the user's decision (13.7 item 1) |
+| the save, lastPrinted | `2025-01-02T03:04:00Z` | as read | as read | the core part is not unmarshalled (13.7 item 2) |
+| the save, created and modified | the save's moment | as read | as read | Word's Save As makes a new document; here D4's opt-in |
+
+The rest of the replay: `results.txt` holds the six field cases; Word's save holds the nominal clock to the minute; this save's four rows are `last_save.normalised`, `canon.compare(..., normalise=True)` counts them as `word-normal-form` and nothing else; `save(normalise=False)` writes the probe's spelling; a save that never reads the document writes it byte for byte; this save reloaded reads R01 and R02 as Word's save reads them, R03 but for the seconds Word cut, and nothing is kept as text; `parse_w3cdtf`'s three forms, and the per-call zone (Tokyo: `2024-02-03 09:00:00`, `2025-06-07 17:09:00`); and `PRINTDATE` pinned as the registry's clock (13.7 item 3). 19 tests.
+
+**docx4j's own extraction of this probe was not run.** Phase B ran docx4j's build of `c3e9920e5` (12.3); docx4j's `target/` jars are now a build of its uncommitted phase-2 work (`FieldSources`, `FieldValues`, `Extractor` modified in its tree), so they are no clean oracle for `c58e36e64`, and building docx4j is not this session's. The oracle is Word's record and docx4j's replay of it.
+
+### 13.7 Departures, with why
+
+1. **A value with a `Z` or an offset is not cut to the minute** (R03, B03): Word's save writes `03:04:00Z` where this one keeps `03:04:05Z`. The user's decision: truncating well-formed values would move many saved files for no gain. Word reads `:05` and `:00` alike (to the minute).
+2. **The core part's dates are not touched by a save**: Word's save cut lastPrinted to the minute and made created and modified the save's moment; here a part never unmarshalled is the source's bytes (the engine's rule), and `pkg.write_times_on_save` (D4, off by default) writes `modified` only. Item 1 is a reading, not a write.
+3. **docx4j's D14 is not ported**: since `c58e36e64` docx4j registers `PRINTDATE` as `cp:lastPrinted` (`CoreDate("LastPrinted")`), measured; this CR's D14 registers it at the context's clock, as docx4j did at `c3e9920e5`. Under `fields: update` both text models keep it cached (Q6; D03 and D06), so extraction agrees; only a caller of `evaluate` sees the difference, pinned by the replay. Not in the brief's three items; for the user (13.10 item 1).
+4. **A save normalises, which docx4j's does not set out to**: docx4j has no normal form for these values (its CR-067 section 12.2 records Word's save, not a change to its own), and what its JAXB marshaller writes for a date alone was not checked here. CR-018's normaliser is this port's, opt-out, on the user's rule that a save writes what Word reads exactly as it read the source (CR-018 section 4.7).
+5. **A date alone in `dateUtc` is UTC midnight**, as docx4j's `dateOf` reads one, where it was None (and the `w:date` beside it was used). Word writes neither; it follows docx4j rather than a measurement.
+6. **A date alone with an offset** (`2024-02-03Z`, `2024-02-03+05:00`) is left as read by the save, by the user's rule for a value carrying one, though Word writes no date alone; read as midnight there (the `Z` as the local clock, a non-zero offset as it says). Unmeasured.
+
+### 13.8 Moved expectations
+
+- **`tests/text/test_field_evaluators.py`**, 32 tests to 29. `test_the_core_property_dates_revision_and_info`: `parse_w3cdtf` returns the aware instant, not `(instant, True)` (13.3). `test_a_date_alone_or_a_time_with_no_offset_is_nominal_in_any_zone` (12 cases: four forms in three package zones, every one the wall clock as written) is replaced by `test_a_date_alone_or_a_time_with_no_offset_is_utc` (9 cases: the four forms in the process's zone, Sydney, and two forms each in Tokyo and New York with `2024` there too): `2025-06-07T08:09:10` moves from `6/7/2025 8:09:00 AM` to `6:09:00 PM` in Sydney, `5:09:00 PM` in Tokyo, `4:09:00 AM` in New York; `2024-02-03` from `12:00:00 AM` to `11:00:00 AM`, `9:00:00 AM`, and `2/2/2024 7:00:00 PM`; `2024` and `2024-02` to 11:00 in Sydney. The module docstring and `tests/README.md`'s row say so.
+- **The readers' results** for a date alone (none of them held by a test before): `TrackedChange.date`, `tracking.date_of`, `Comment.creation_date` and `DatePicker.full_date` give an instant or a midnight where they gave None.
+- **CR-011's goldens and the ratchet**: nothing moved. `tests/text/conformance.tsv`, `agreement-docx4j.tsv`, the goldens, `test_field_probe.py` (Phase B's 16, all with `Z` values) and `test_texts_phase2.py`'s `fields: update` cases pass unchanged, and no fixture under `tests/` or `samples/` holds a bare core-property date (a scan of every `docProps/core.xml`, 13.9).
+- **No census moved**: `parse_w3cdtf`'s nine `int(` calls are textually as CR-021's `test_integer_readers.py` lists them; `tests/openpackaging/test_private_readers.py` is unchanged.
+
+### 13.9 The gates (Phase B2 at `3fe390d`)
+
+| gate | before (`2d206c0`) | after |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 6,940 passed, 8 skipped (the brief's figure) | **6,998 passed, 8 skipped**, 0 failed, 1,457 deselected (3 min 42 s); the 13 warnings are the modules' before, none from a new test |
+| the count | --- | 6,940 less Phase B's 32 `test_field_evaluators.py` tests, plus 90: that module's 29, `test_date_forms.py` 42, `test_date_forms_probe.py` 19 |
+| the full suite | 8,397 passed, 8 skipped (12.8, at `23fa5ce`) | **8,455 passed, 8 skipped**, 0 failed (5 min 0 s): 8,397 and the same 58 |
+| `tests/test_readme.py` | 44 passed, 6 skipped (12.8) | **44 passed, 6 skipped** (the six fences marked fragments) |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50, 0 differences, 34 `boolean-spelling` | **50 of 50 canonically identical**, 0 differences, 0 skipped, 34 `boolean-spelling`, **0 normalised**: no part of the corpus holds a date alone or an offset-free `w:date` or `w:fullDate`, so no new row shows under the tolerated categories |
+| `scripts/threads.py` | --- | **passes** (no configuration lost or altered a document) |
+| acceptance (`scripts/acceptance.py --out out/acceptance-cr025b2`, `compare_acceptance.py` against `out/acceptance-cr020b/`) | --- | **17 artefacts, 246 entries, 0 differ** beyond the dates; each set holds 106 `w:date` and 1 `w:fullDate`, every one with a `Z`, so none was normalised |
+| the corpus and fixtures scanned, parsed (every `.docx` under `samples/` and `tests/`; docx4j-core-ts's `test/` and docx4j's test resources, 996 files) | --- | before the probe was copied, 419 files here with 1,023 `w:date` and 2 `w:fullDate`, every one with a `Z`; in the siblings 7,916 and 27 with a `Z`, and the only date-only and offset-free values anywhere are the probe's own four. Of every `docProps/core.xml` under `samples/`, `tests/` and `out/acceptance-cr020b/` (254 `created`, 254 `modified`, 32 `lastPrinted`), the probe's `created` and `modified` are the only bare ones |
+| `ruff check` on the changed files | --- | no new finding; `scripts/canon.py`'s one (F401, `typing.Any`) was there before |
+| `codegen/generate.sh --check` | --- | not needed: no file was added under `docx4j_py/` |
+
+**No saved file of the corpus or the acceptance set changed.** The round trip writes 0 normalised values and the acceptance comparison 0 differences, because none of those files holds a value item 3 covers. The new normal form does change a save of a file that holds one, such as the probe: its four values are written in exactly the form Word's own save wrote for them (`date-forms-r1-word365.docx`, which Word wrote and so reads). So no acceptance artefact needs a new Word check. Because the normal form is a change to marshalled output (CLAUDE.md's rule), this save of the probe is written for one, should the user want it: `out/date-forms-cr025b2/date-forms-r1-saved.docx` (13.10 item 4).
+
+### 13.10 For the user to decide
+
+1. **docx4j's D14** (13.7 item 3): register `PRINTDATE` as `cp:lastPrinted` (to the minute, in the zone, the cached result where the document was never printed), as docx4j does since `c58e36e64` and as Word's F9 showed (D03, D06), in place of this CR's D14 clock? Recommendation: yes, docx4j's, a one-line registration; extraction is unchanged, since the text model keeps `PRINTDATE` cached (Q6). Not built: it is not one of Phase B2's three items.
+2. **The python-docx facade's core dates.** `docx4j_py.docx`'s `core_properties.created`, `modified` and `last_printed` give a naive `datetime` for a bare value (`2024-02-03` as `2024-02-03 00:00`), where python-docx 1.2.0's `_parse_W3CDTF_to_datetime` gives every form aware in UTC, which is also Word's reading (D13). Recommendation: align them (`docx/coreprops.py`'s `_datetime_of`), a separate small change with its own test against python-docx's behaviour. Not built: the brief's item 1 is the field evaluation.
+3. **A date alone with a `Z` or an offset** in a `w:date` or `w:fullDate` (13.7 item 6): left as read by the save, under the rule for a value carrying one. Recommendation: keep it; Word writes none, and the rule is the user's.
+4. **A Word check** of this save of the probe, `out/date-forms-cr025b2/date-forms-r1-saved.docx` (sha1 `7984183607d83c01572990a2cdd2a7305503a9f9`), optional: it opens without a repair prompt; R01 to R03's balloons read 3/02/2024 12:00 AM, 7/06/2025 8:09 AM and 2/01/2025 3:04 AM in Sydney's zone (All Markup); B01 to B03's pickers are on 3 Feb 2024, 7 Jun 2025 and 2 Jan 2025. Recommendation: not needed for release, since the forms written are Word's own save's; worth the five minutes if the user wants the normal form seen in Word.
