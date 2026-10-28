@@ -70,21 +70,36 @@ def _text_of(value: Any) -> str:
 
 
 def _datetime_of(value: Any) -> dt.datetime | None:
-    """A ``dcterms:created`` / ``cp:lastPrinted`` as a ``datetime``, or None."""
+    """A ``dcterms:created`` / ``cp:lastPrinted`` as a ``datetime`` aware in UTC, or None.
+
+    python-docx 1.2.0's ``_parse_W3CDTF_to_datetime``: every form in UTC, an
+    offset applied, and a date alone or a time with no offset read as UTC,
+    which is also how Word 365 reads a core property's (docx4j CR-067 D13, CR-025
+    section 13.10 item 2). A form the model kept as text (``2024``, ``2024-02``)
+    is read by :func:`~docx4j_py.model.fields.sources.parse_w3cdtf`.
+    """
     if value is None:
         return None
     current = value
     for _ in range(4):
         stamp = getattr(current, "to_datetime", None)
         if callable(stamp):
-            return stamp()
+            return _in_utc(stamp())
         if isinstance(current, dt.datetime):
-            return current
+            return _in_utc(current)
+        if isinstance(current, str):
+            from docx4j_py.model.fields.sources import parse_w3cdtf
+
+            return parse_w3cdtf(current)
         nxt = getattr(current, "value", None)
         if nxt is None or nxt is current:
             return None
         current = nxt
     return None
+
+
+def _in_utc(moment: dt.datetime) -> dt.datetime:
+    return moment.replace(tzinfo=dt.UTC) if moment.tzinfo is None else moment.astimezone(dt.UTC)
 
 
 def core_properties_of(package: Any, *, create: bool = False) -> Any | None:

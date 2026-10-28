@@ -133,9 +133,11 @@ def test_the_date_fields_read_the_clock(zone):
     ctx = FieldContext(pkg(), clock=lambda: fixed)
     assert evaluate(' DATE \\@ "yyyy-MM-dd" ', ctx) == "2026-03-04"
     assert evaluate(' TIME \\@ "HH:mm" ', ctx) == "05:06"
-    assert evaluate(' PRINTDATE \\@ "d MMMM yyyy" ', FieldContext(pkg(), clock=lambda: fixed, language="en-US")) == (
+    assert evaluate(' DATE \\@ "d MMMM yyyy" ', FieldContext(pkg(), clock=lambda: fixed, language="en-US")) == (
         "4 March 2026"
     )
+    # PRINTDATE is cp:lastPrinted, not the clock (docx4j's D14, CR-025 section 13.10): never printed, cached
+    assert evaluate(' PRINTDATE \\@ "d MMMM yyyy" ', ctx) is None
     # docx4j's fr-FR case ("4 mars 2026") has no counterpart: the names are English (CR-025 D7)
     assert evaluate(' DATE \\@ "d MMMM yyyy" ', FieldContext(pkg(), clock=lambda: fixed, language="fr-FR")) == (
         "4 March 2026"
@@ -324,12 +326,13 @@ def test_an_empty_picture_is_the_short_date(zone):
 
 
 def test_info_evaluates_only_what_the_consumer_computes():
-    """D12: ``INFO PrintDate`` asks for ``PRINTDATE``, which the text model keeps cached; docx4j's asks the registry."""
+    """D12: ``INFO Date`` asks for ``DATE``, which the text model keeps cached; docx4j's asked the registry until its §12.3."""
     clock = lambda: datetime.datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
     package = dated_pkg()
-    assert evaluate(' INFO PrintDate \\@ "yyyy" ', FieldContext(package, clock=clock)) == "2026", "every name, unrestricted"
+    assert evaluate(' INFO Date \\@ "yyyy" ', FieldContext(package, clock=clock)) == "2026", "every name, unrestricted"
     restricted = FieldContext(package, clock=clock, computes=COMPUTED)
-    assert evaluate(' INFO PrintDate \\@ "yyyy" ', restricted) is None
+    assert evaluate(' INFO Date \\@ "yyyy" ', restricted) is None
+    assert evaluate(' INFO PrintDate \\@ "yyyy" ', restricted) is None, "PRINTDATE is cp:lastPrinted (D14), cached here"
     assert evaluate(" INFO Title ", restricted) == "The Title"
     assert evaluate(' INFO CreateDate \\@ "yyyy" ', restricted) == "2024"
 

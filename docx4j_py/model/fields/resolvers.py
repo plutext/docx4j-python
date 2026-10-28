@@ -70,10 +70,18 @@ def _contents(part: Any) -> Any:
 
 
 def _first(value: Any) -> Any:
-    """A Dublin Core value's first piece of text, a date's lexical form, or the value."""
-    from docx4j_py.model.text.metadata import _literal
+    """A Dublin Core value's first piece of text, a date's lexical form, or the value.
 
-    return _literal(value)
+    ``cp:lastPrinted`` is a bare ``XmlDateTime``, not a ``W3CDTF``: its lexical form,
+    as docx4j reads it (``XMLGregorianCalendar.toXMLFormat``), where the text
+    model's reader finds none (CR-025 section 13.10 item 1: ``PRINTDATE`` reads it).
+    """
+    from docx4j_py.model.text.metadata import _literal, date_text
+
+    found = _literal(value)
+    if found is None and value is not None and callable(getattr(value, "to_datetime", None)):
+        return date_text(value)
+    return found
 
 
 class DocPropertyResolver:

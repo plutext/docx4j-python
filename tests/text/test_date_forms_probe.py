@@ -12,7 +12,8 @@ rewrote them (``date-forms-r1-word365.docx``):
 * **the fields** (item 1, docx4j's D13): a core property's bare value is UTC, so
   ``CREATEDATE`` and ``SAVEDATE`` give Word's results through the text model's
   ``fields: update``; ``PRINTDATE`` keeps its cached result there (CR-025 Q6),
-  as docx4j's text model keeps it;
+  as docx4j's text model keeps it, and the registry reads it as
+  ``cp:lastPrinted`` (docx4j's D14, CR-025 section 13.10 item 1);
 * **the revisions** (item 2): the local clock in every form, a date alone local
   midnight, the ``Z`` ignored;
 * **the date controls**: the nominal day in every form;
@@ -160,19 +161,32 @@ def test_a_bare_core_property_value_is_utc(zone):
     assert evaluate(' SAVEDATE \\@ "yyyy-MM-dd HH:mm:ss" ', tokyo) == "2025-06-07 17:09:00"
 
 
-def test_printdate_here_is_the_registrys_clock_not_last_printed(zone):
-    """The other half, docx4j's D14 (``PRINTDATE`` is ``cp:lastPrinted``), is not ported: CR-025 D14 stands (section 13).
+def test_printdate_is_last_printed(zone):
+    """``aBareCorePropertyValueIsUtcAndPrintdateIsLastPrinted``, its D14 half (CR-025 section 13.10 item 1).
 
-    The text model keeps ``PRINTDATE`` cached either way (Q6, D03 and D06
-    above); a caller of :func:`evaluate` gets the context's clock, where docx4j
-    since ``c58e36e64`` gives ``1/2/2025 2:04:00 PM``.
+    ``PRINTDATE`` is ``cp:lastPrinted``, as Word's F9 showed (D03, D06), to the
+    minute in the package's zone, Word's default format where there is no
+    ``\\@``; never the clock. The text model still keeps it cached (Q6, above), so
+    this is :func:`evaluate`'s, the registry's.
     """
     zone("UTC")
     pkg = load(PROBE / "date-forms-r1.docx")
     pkg.date_time_zone = SYDNEY
     clock = datetime.datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
     ctx = FieldContext(pkg, clock=lambda: clock)
-    assert evaluate(' PRINTDATE \\@ "yyyy-MM-dd HH:mm" ', ctx) == "2026-03-04 16:06"
+    words = word_results()
+    assert evaluate(' PRINTDATE \\@ "yyyy-MM-dd HH:mm:ss" ', ctx) == words["D03_PRINTDATE_UTC"] == "2025-01-02 14:04:00"
+    assert evaluate(" PRINTDATE ", ctx) == words["D06_PRINTDATE_DEFAULT"] == "1/2/2025 2:04:00 PM"
+    assert evaluate(" DOCPROPERTY LastPrinted ", ctx) == "2025-01-02T03:04:05Z", "its lexical form, as docx4j's resolver"
+
+
+def test_printdate_where_the_document_was_never_printed_keeps_its_cached_result(zone):
+    """No ``cp:lastPrinted``: no value, so the cached result stays, as docx4j's (Word's text there is unmeasured)."""
+    from docx4j_py import create_package
+
+    zone("UTC")
+    clock = datetime.datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
+    assert evaluate(" PRINTDATE ", FieldContext(create_package(), clock=lambda: clock)) is None
 
 
 # ---------------------------------------------------------------------------

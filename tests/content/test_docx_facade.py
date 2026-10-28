@@ -1055,6 +1055,21 @@ def test_a_loaded_documents_properties_are_read_as_they_are():
     assert properties.created.year == 2011
 
 
+@pytest.mark.filterwarnings("ignore::docx4j_xsdata.exceptions.ConverterWarning")
+def test_the_core_dates_are_aware_in_utc_in_every_form_as_python_docx_reads_them():
+    """python-docx 1.2.0's ``_parse_W3CDTF_to_datetime``: UTC whatever the form, as Word reads a core property's.
+
+    docx4j's date-forms probe (CR-067 section 12.2; CR-025 section 13.10 item 2):
+    ``created`` a date alone, ``modified`` a time with no offset, ``lastPrinted``
+    with a ``Z``. They were naive for the first two.
+    """
+    properties = Document(SAMPLES.parent / "tests" / "fixtures" / "date-forms-cr067" / "date-forms-r1.docx").core_properties
+    assert properties.created == dt.datetime(2024, 2, 3, tzinfo=dt.UTC)
+    assert properties.modified == dt.datetime(2025, 6, 7, 8, 9, 10, tzinfo=dt.UTC)
+    assert properties.last_printed == dt.datetime(2025, 1, 2, 3, 4, 5, tzinfo=dt.UTC)
+    assert all(d.tzinfo is dt.UTC for d in (properties.created, properties.modified, properties.last_printed))
+
+
 def test_the_revision_setter_refuses_what_word_refuses(doc):
     with pytest.raises(ValueError, match="positive int"):
         doc.core_properties.revision = 0

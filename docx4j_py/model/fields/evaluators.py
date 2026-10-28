@@ -28,7 +28,9 @@ Registered here, as docx4j registers them:
   ``\\s``); ``REF`` to a bookmark the context has read (with ``\\n``,
   ``\\r``, ``\\w``, ``\\p`` or ``\\f``, which need numbering or layout, the
   cached result); ``QUOTE`` (no argument is empty, measured);
-* ``DATE``, ``TIME`` and ``PRINTDATE`` at the context's clock in its zone;
+* ``DATE`` and ``TIME`` at the context's clock in its zone; ``PRINTDATE`` as
+  ``cp:lastPrinted``, as ``CREATEDATE`` reads its property, the cached result
+  where the document was never printed (docx4j's D14, CR-025 section 13.10);
 * ``INFO <name>`` as the field it names, where the context's consumer
   evaluates that field (CR-025 D12); ``SECTION`` where the context says which;
   ``NOTEREF`` to a bookmark on a note reference; ``USERNAME``,
@@ -214,7 +216,7 @@ WORD_DEFAULT_DATE_TIME = "M/d/yyyy h:mm:ss a"
 
 
 def _core_date(property_name: str) -> Evaluator:
-    """``CREATEDATE`` and ``SAVEDATE``: docx4j's ``CoreDate`` (CR-025 D8).
+    """``CREATEDATE``, ``SAVEDATE`` and ``PRINTDATE``: docx4j's ``CoreDate`` (CR-025 D8; ``PRINTDATE`` its D14).
 
     The core property is an instant (:func:`~docx4j_py.model.fields.sources.parse_w3cdtf`:
     a value with no offset, or a date alone, is UTC, as Word reads it; docx4j's
@@ -287,10 +289,11 @@ register("REF", _ref)
 register("QUOTE", _quote)
 register("DATE", _clock_date, formats_itself=True)
 register("TIME", _clock_date, formats_itself=True)
-register("PRINTDATE", _clock_date, formats_itself=True)  # the conversion is the printing, as docx4j's
 # tier 1 (docx4j CR-067 phase 1): CREATEDATE and SAVEDATE replace the document-information rule
 register("CREATEDATE", _core_date("CreateTime"), formats_itself=True)
 register("SAVEDATE", _core_date("LastSavedTime"), formats_itself=True)
+# docx4j CR-067 D14 (c58e36e64): PRINTDATE on F9 is cp:lastPrinted, not the clock (CR-025 section 13.10 item 1)
+register("PRINTDATE", _core_date("LastPrinted"), formats_itself=True)
 register("INFO", _info)
 register("SECTION", _section)
 register("NOTEREF", _note_ref)
