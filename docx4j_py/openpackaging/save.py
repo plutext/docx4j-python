@@ -19,6 +19,12 @@ Before any of it, the package's ``save_hooks`` run (:func:`run_save_hooks`,
 CR-019 section 4.9): what the content API keeps for the save, such as the
 glossary entries a placeholder names, goes into the parts then.
 
+**The core properties' times** (CR-025 Phase A, the portfolio's date rule's
+point 6). Off by default: a save leaves ``dcterms:created`` and
+``dcterms:modified`` as they are. ``pkg.write_times_on_save = True`` makes each
+save write its time there first (:func:`write_core_times`), as docx4j's
+``docx4j.dcterms.write`` and docx4j-core-ts's ``writeTimesOnSave`` do.
+
 **The check** (CR-020 Phase B, Q5). ``save(check=True)`` runs the validator
 (:func:`docx4j_py.validator.check_for_save`) over every part the save
 re-marshals, before the hooks and before the target is opened: what this
@@ -32,6 +38,7 @@ the validator.
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -51,7 +58,7 @@ from docx4j_py.openpackaging.stores import PartSink
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
-__all__ = ["check_before_save", "checking", "run_save_hooks", "save_package", "saves_check"]
+__all__ = ["check_before_save", "checking", "run_save_hooks", "save_package", "saves_check", "write_core_times"]
 
 #: What a save does when its own `check` is not given (CR-020 Q5): False, unless :func:`checking` says otherwise.
 #: A context variable, so per thread and per asyncio task, as :func:`docx4j_py.child.unchecked` is.
@@ -119,6 +126,7 @@ def save_package(
     findings = _checked if _checked is not None else check_before_save(package, check)
     if normalise is None:
         normalise = bool(getattr(getattr(package, "load_options", None), "normalise_on_save", True))
+    times = write_core_times(package)
     added = run_save_hooks(package)
     with normalised_package(package, enabled=normalise) as report:
         sink.put(
@@ -130,11 +138,62 @@ def save_package(
         saver.save_rels(package.relationships_part)
         result = sink.finish()
     report.added = added
+    report.times = times
     report.checked = findings is not None
     report.findings = list(findings or ())
     if hasattr(package, "last_save"):
         package.last_save = report
     return result
+
+
+def _now() -> datetime.datetime:
+    """Now, in UTC: the save's time (a test replaces it)."""
+    return datetime.datetime.now(datetime.UTC)
+
+
+def write_core_times(package: OpcPackage) -> str | None:
+    """Where ``pkg.write_times_on_save``: the save's time into the core properties; the stamp written, or None.
+
+    CR-025 D4, after docx4j's ``DocPropsCorePart.writeTimes()`` (17.3.3, its
+    CR-036; under ``docx4j.dcterms.write``) and docx4j-core-ts's
+    ``writeTimesOnSave``: ``dcterms:modified`` is now, and ``dcterms:created``
+    too where the core part has none and was not read from the source (a part
+    ``create_package`` or the caller made). In UTC with a ``Z``, to the
+    second, as docx4j and core-ts write them and as ``create_package`` writes
+    ``created``, so that ``modified`` is never before it; Word writes the
+    minute (CR-025 section 2, Q3). A package with no core part gets none, as
+    docx4j leaves it.
+    ``cp:lastModifiedBy`` is not touched (docx4j's is ``docx4j.dc.write``).
+    The part is unmarshalled for the write, so this save marshals it.
+    """
+    if not getattr(package, "write_times_on_save", False):
+        return None
+    part = getattr(package, "doc_props_core_part", None)
+    if part is None:
+        return None
+    core = part.contents
+    if core is None:
+        return None
+    from docx4j_xsdata.models.datatype import XmlDateTime
+
+    from docx4j_py.docprops.dcterms import W3CDTF
+
+    stamp = XmlDateTime.from_datetime(_now().astimezone(datetime.UTC).replace(microsecond=0))
+    if getattr(core, "created", None) is None and not _from_source(package, part):
+        core.created = W3CDTF(value=stamp)
+    core.modified = W3CDTF(value=stamp)
+    return str(stamp)
+
+
+def _from_source(package: OpcPackage, part: Part) -> bool:
+    """Whether `part` was read from the package's source container, rather than made in this session."""
+    store = getattr(package, "source_part_store", None)
+    if store is None:
+        return False
+    try:
+        return bool(store.has(part.part_name.store_name))
+    except Exception:  # noqa: BLE001 - a store that cannot say holds nothing of ours
+        return False
 
 
 def run_save_hooks(package: OpcPackage) -> list[str]:

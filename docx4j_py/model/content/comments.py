@@ -895,11 +895,13 @@ class Comment:
 
         Its ``w16cex:dateUtc`` when the document has one for it, which is UTC;
         else ``w:date``, which Word writes on the author's local wall clock
-        whatever its ``Z`` says, read as local time in this process's zone
-        (CR-010 section 12.9; docx4j-core-ts ``Comment.creationDate``). The
+        whatever its ``Z`` says, read as local time in the package's zone
+        (``pkg.date_time_zone``, CR-025), else this process's (CR-010 section
+        12.9; docx4j-core-ts ``Comment.creationDate``). The
         extensible entry is found through the paragraph ids, the last paragraph's
         first, which is the one Word keys it by.
         """
+        from docx4j_py.model.dates import package_zone
         from docx4j_py.model.revisions.change import word_date
         from docx4j_py.openpackaging.parts.wml.comments import dates_utc
 
@@ -910,7 +912,7 @@ class Comment:
                 found = dates.get(para_id.upper()) if para_id else None
                 if found is not None:
                     return found
-        return word_date(getattr(self.element, "date", None))
+        return word_date(getattr(self.element, "date", None), package_zone(getattr(self.body, "package", None)))
 
     @property
     def para_id(self) -> str | None:
@@ -1402,12 +1404,14 @@ def _add_comment(
     `marks` is :func:`_comment_paragraphs`'.
     """
     from docx4j_py.model.content.tracking import now_to_the_minute, xml_date
+    from docx4j_py.model.dates import package_zone
     from docx4j_py.w15 import el as w15el
     from docx4j_py.wml import el
 
     author = author_of(body.package)
-    # one instant for w:date (the local wall clock, as Word writes it) and
-    # w16cex:dateUtc (UTC), to the minute as Word stamps it (CR-010 section 12.9)
+    # one instant for w:date (the local wall clock, as Word writes it, in the
+    # package's zone else the process's: CR-025) and w16cex:dateUtc (UTC), to
+    # the minute as Word stamps it (CR-010 section 12.9)
     now = now_to_the_minute()
     paragraphs = _comment_paragraphs(text, marks=marks)
     taken = _para_ids_taken(parts, body)
@@ -1418,7 +1422,7 @@ def _add_comment(
         id=identifier,
         author=author.name,
         initials=initials_of(author),
-        date=xml_date(now),
+        date=xml_date(now, package_zone(body.package)),
         content=ChildList(paragraphs),
     )
     _append(parts.comments, "comment", comment)

@@ -209,6 +209,9 @@ class SaveReport:
             cell that does not end with a paragraph, an integer measurement
             past what Word stores. Empty where the check found nothing, or did
             not run.
+        times: the stamp the save wrote into ``dcterms:modified`` under
+            ``pkg.write_times_on_save`` (CR-025 D4, ``2026-10-28T03:12:45Z``),
+            or None where it wrote none.
     """
 
     normalise: bool = True
@@ -216,6 +219,7 @@ class SaveReport:
     added: list[str] = dataclasses.field(default_factory=list)
     checked: bool = False
     findings: list[Any] = dataclasses.field(default_factory=list)
+    times: str | None = None
 
     @property
     def out_of_range(self) -> list[Any]:

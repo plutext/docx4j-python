@@ -439,10 +439,13 @@ class TrackedChange:
         """When the change was made, in UTC: ``w16du:dateUtc`` where present, else ``w:date``.
 
         ``w:date`` is read as Word means it, local wall-clock time
-        (:func:`date_of`). A group's is its first piece's; None when there is
-        none.
+        (:func:`date_of`), in the package's zone (``pkg.date_time_zone``, else
+        the process's; CR-025, docx4j ``TrackedChange.getDate()`` since D12). A
+        group's is its first piece's; None when there is none.
         """
-        return date_of(self.target.value())
+        from docx4j_py.model.dates import package_zone
+
+        return date_of(self.target.value(), package_zone(getattr(self.story, "package", None)))
 
     @property
     def id(self) -> int | None:
@@ -593,16 +596,17 @@ def utc_date(value: Any) -> datetime.datetime | None:
     return found.astimezone(datetime.UTC)
 
 
-def word_date(value: Any) -> datetime.datetime | None:
+def word_date(value: Any, zone: datetime.tzinfo | None = None) -> datetime.datetime | None:
     """A ``w:date`` as Word means it, in UTC: its local wall-clock time, the ``Z`` notwithstanding.
 
     Word writes ``w:date`` on the author's local wall clock with a ``Z`` that
     does not mean UTC, and the true UTC beside it in ``w16du:dateUtc`` (Word
     365) or ``w16cex:dateUtc`` (a comment). Without those, the wall-clock time is
-    read in **this process's** time zone, as docx4j reads it in the JVM's
-    (``TrackedChange.dateOf``, check 36) and Office JS in the add-in's. An
-    explicit non-zero offset, which Word does not write, is read as it says
-    (CR-010 section 12.9).
+    read in `zone`, the package's (``pkg.date_time_zone``; CR-025, docx4j's
+    ``TrackedChange.dateOf(value, zone)`` since D12), or for None in **this
+    process's** time zone, as docx4j reads it in the JVM's by default (check
+    36) and Office JS in the add-in's. An explicit non-zero offset, which Word
+    does not write, is read as it says (CR-010 section 12.9).
     """
     calendar = _calendar(value)
     found = _to_datetime(calendar) if calendar is not None else None
@@ -610,25 +614,27 @@ def word_date(value: Any) -> datetime.datetime | None:
         return None
     if calendar.offset not in (None, 0):
         return found.astimezone(datetime.UTC)
+    from docx4j_py.model.dates import instant_of
+
     wall_clock = found.replace(tzinfo=None)
     try:
-        # a naive datetime is the system's local time to astimezone()
-        return wall_clock.astimezone(datetime.UTC)
+        return instant_of(wall_clock, zone)
     except (OverflowError, OSError, ValueError):  # pragma: no cover - out of the platform's range
         return wall_clock.replace(tzinfo=datetime.UTC)
 
 
-def date_of(value: Any) -> datetime.datetime | None:
+def date_of(value: Any, zone: datetime.tzinfo | None = None) -> datetime.datetime | None:
     """A revision's date, in UTC: ``w16du:dateUtc`` where present (Word 365 writes both), else ``w:date``.
 
     docx4j ``TrackedChange.dateOf`` (CR-010 section 12.9): ``w16du:dateUtc`` is
-    the true UTC; ``w:date`` is Word's local wall-clock time, read in this
-    process's time zone (:func:`word_date`). This package's tracker writes
-    both, as Word does, so what it writes reads back as the same instant.
+    the true UTC, whatever `zone`; ``w:date`` is Word's local wall-clock time,
+    read in `zone`, else this process's time zone (:func:`word_date`). This
+    package's tracker writes both, as Word does, so what it writes reads back as
+    the same instant.
     """
     if value is None:
         return None
     utc = utc_date(getattr(value, "date_utc", None))
     if utc is not None:
         return utc
-    return word_date(getattr(value, "date", None))
+    return word_date(getattr(value, "date", None), zone)

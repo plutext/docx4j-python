@@ -484,6 +484,56 @@ def _set_package_tracked_change_date(self: object, value: object) -> None:
     self._tracked_change_date = value  # type: ignore[attr-defined]
 
 
+def _package_date_time_zone(self: object) -> object:
+    """The client's time zone for this package, or None for the process's (CR-025 Phase A). Extension.
+
+    Every instant the package holds is shown in it, and a ``w:date`` without
+    ``dateUtc`` read in it: a new revision's and comment's ``w:date`` (Word's
+    local wall clock, labelled ``Z``), ``TrackedChange.date``,
+    ``Comment.creation_date``, and the date fields the text model computes
+    under ``fields: update``. The portfolio's date rule (2026-10-28) after
+    docx4j's ``OpcPackage.setDateTimeZone`` and docx4j-core-ts's
+    ``pkg.dateTimeZone``. Set a ``datetime.tzinfo`` or an IANA name, which is
+    read as a ``zoneinfo.ZoneInfo``: ``pkg.date_time_zone = "Asia/Tokyo"``.
+
+    It is the client's for this package, not the document's, and reaches no
+    saved file as such: a server reusing a loaded package sets it per request.
+    A bound date has no zone (CR-014). ``dateUtc`` stays UTC.
+    """
+    return self._date_time_zone  # type: ignore[attr-defined]
+
+
+def _set_package_date_time_zone(self: object, value: object) -> None:
+    """Name the client's zone, a ``tzinfo`` or an IANA name; None returns to the process's."""
+    from docx4j_py.model.dates import zone_of
+
+    try:
+        zone = zone_of(value)
+    except (TypeError, ValueError) as error:
+        from docx4j_py.model.content.errors import ContentError
+
+        raise ContentError(
+            f"pkg.date_time_zone: {error}",
+            code="date_time_zone.invalid",
+            hint='pkg.date_time_zone = "Australia/Sydney", a datetime.tzinfo, or None for the process\'s zone',
+        ) from error
+    self._date_time_zone = zone  # type: ignore[attr-defined]
+
+
+def _package_effective_date_time_zone(self: object) -> object:
+    """The zone an instant in this package is shown in: ``date_time_zone``, else the process's (CR-025). Extension.
+
+    docx4j's ``effectiveDateTimeZone()``, docx4j-core-ts's
+    ``effectiveDateTimeZone()``. The process's zone (``TZ``) is
+    :data:`docx4j_py.model.dates.PROCESS_ZONE`, a ``tzinfo`` that reads it at
+    each instant as ``datetime.astimezone()`` does; there is no process-wide
+    setting between the two (CR-025 D2).
+    """
+    from docx4j_py.model.dates import effective_zone
+
+    return effective_zone(self)
+
+
 def _package_get_tracked_changes(self: object) -> list:
     """Every tracked change in every story, story by story (CR-010 section 3.2).
 
@@ -562,6 +612,15 @@ _PACKAGE_PROPERTIES: dict[str, property] = {
         _package_tracked_change_date,
         _set_package_tracked_change_date,
         doc=_package_tracked_change_date.__doc__,
+    ),
+    # CR-025 Phase A
+    "date_time_zone": property(
+        _package_date_time_zone,
+        _set_package_date_time_zone,
+        doc=_package_date_time_zone.__doc__,
+    ),
+    "effective_date_time_zone": property(
+        _package_effective_date_time_zone, doc=_package_effective_date_time_zone.__doc__
     ),
     # CR-003 section 3.4, added 2026-09-17
     "compatibility_mode": property(

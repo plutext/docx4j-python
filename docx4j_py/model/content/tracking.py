@@ -43,6 +43,8 @@ The rules of section 4 that land here:
   wall-clock time with a ``Z`` that does not mean UTC, ``w16du:dateUtc`` the
   true UTC, "now" to the minute, and ``w16du`` declared in the part's
   ``mc:Ignorable``; ``pkg.tracked_change_date``, when set, is the instant;
+  "local" is the package's zone, ``pkg.date_time_zone``, else the process's
+  (CR-025 Phase A, the portfolio's date rule);
 * ``TrackMineOnly`` is stored as ``TrackAll``: ``w:trackRevisions`` is a flag
   and a file cannot tell the two apart;
 * editing deleted text raises :class:`~.errors.TrackedChangeError`, naming the
@@ -241,20 +243,23 @@ def _instant(value: datetime.datetime) -> datetime.datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=datetime.UTC)
 
 
-def xml_date(value: datetime.datetime) -> Any:
-    """A ``w:date`` as Word writes it: the instant on this process's local wall clock, with a ``Z``.
+def xml_date(value: datetime.datetime, zone: datetime.tzinfo | None = None) -> Any:
+    """A ``w:date`` as Word writes it: the instant on the local wall clock, with a ``Z``.
 
     The ``Z`` does not mean UTC: Word writes the author's wall-clock time there
     and the true UTC beside it in ``w16du:dateUtc`` (:func:`xml_date_utc`), and
     reads ``w:date`` back as local time (CR-010 section 12.9; docx4j-core-ts
-    ``wordCalendarOf``). "Local" is this process's time zone. To the second; a
-    naive `value` is read as UTC.
+    ``wordCalendarOf``). "Local" is `zone`, the package's
+    (``pkg.date_time_zone``, CR-025), or this process's time zone for None. To
+    the second; a naive `value` is read as UTC.
     """
     from docx4j_xsdata.models.datatype import XmlDateTime
 
+    from docx4j_py.model.dates import wall_clock
+
     instant = _instant(value)
     try:
-        local = instant.astimezone()
+        local = wall_clock(instant, zone)
     except (OverflowError, OSError, ValueError):  # pragma: no cover - out of the platform's range
         local = instant
     return XmlDateTime.from_datetime(local.replace(tzinfo=datetime.UTC, microsecond=0))
@@ -267,14 +272,15 @@ def xml_date_utc(value: datetime.datetime) -> Any:
     return XmlDateTime.from_datetime(_instant(value).astimezone(datetime.UTC).replace(microsecond=0))
 
 
-def date_of(value: Any) -> datetime.datetime | None:
+def date_of(value: Any, zone: datetime.tzinfo | None = None) -> datetime.datetime | None:
     """The instant of a ``w:date``, in UTC, read as Word means it: local wall-clock time.
 
-    :func:`docx4j_py.model.revisions.change.word_date`; None when there is none.
+    :func:`docx4j_py.model.revisions.change.word_date`, in `zone` (the
+    package's, CR-025; None for the process's); None when there is none.
     """
     from docx4j_py.model.revisions.change import word_date
 
-    return word_date(value)
+    return word_date(value, zone)
 
 
 def declare_ignorable(root: Any, prefix: str) -> bool:
@@ -441,16 +447,23 @@ class ChangeTracker:
     def markup(self) -> dict[str, Any]:
         """The ``w:id``, ``w:author``, ``w:date`` and ``w16du:dateUtc`` a new revision carries.
 
-        ``w:date`` on the process's local wall clock with a ``Z`` that does not
-        mean UTC (:func:`xml_date`), and ``w16du:dateUtc`` the true UTC
+        ``w:date`` on the local wall clock with a ``Z`` that does not mean UTC,
+        in the package's zone else the process's (:func:`xml_date`, CR-025),
+        and ``w16du:dateUtc`` the true UTC
         (:func:`xml_date_utc`), as Word 365 writes them both (CR-010 section
         12.9; docx4j-core-ts ``markup``). ``w16du:dateUtc`` only from a tracker
         bound to a part, whose root is first made to list ``w16du`` in
         ``mc:Ignorable`` (:func:`declare_ignorable`); the package's own tracker
         writes ``w:date`` alone.
         """
+        from docx4j_py.model.dates import package_zone
+
         when = self.date
-        out: dict[str, Any] = {"id": self.next_id(), "author": self.author, "date": xml_date(when)}
+        out: dict[str, Any] = {
+            "id": self.next_id(),
+            "author": self.author,
+            "date": xml_date(when, package_zone(self.package)),
+        }
         if self.part is not None and declare_ignorable(getattr(self.part, "contents", None), "w16du"):
             out["date_utc"] = xml_date_utc(when)
         return out

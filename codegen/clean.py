@@ -34,6 +34,7 @@ KEEP = {
     "model",  # CR-003: the content API, all hand written; CR-010: model/revisions/, the revisions engine
     "model/content/placeholders.py",  # CR-019 Phase B: the glossary's placeholder entries (inside "model" too)
     "model/word_integers.py",  # CR-020 Phase B: Word's reading of an integer, per row of the limits table (inside "model" too)
+    "model/dates.py",  # CR-025 Phase A: the package's time zone, where an instant meets a clock (inside "model" too)
     "docx",  # CR-003 Phase J: the python-docx facade, all hand written
 }
 

@@ -73,6 +73,7 @@ class OpcPackage:
         "_compatibility_mode",
         "_current_change",
         "_custom_xml_parts",
+        "_date_time_zone",
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
@@ -95,6 +96,7 @@ class OpcPackage:
         "save_hooks",
         "source_part_store",
         "was_strict",
+        "write_times_on_save",
     )
 
     #: The pseudo part name of the package: the source of the package relationships.
@@ -155,6 +157,22 @@ class OpcPackage:
         self._change_tracking_mode: Any = None
         self._change_tracker: Any = None
         self._tracked_change_date: Any = None
+        # CR-025 Phase A: the client's time zone for this package (a tzinfo, or
+        # None for the process's), over which every instant it holds is shown.
+        # Never saved. The ``date_time_zone`` and ``effective_date_time_zone``
+        # properties are installed by ``docx4j_py.model.content.register()``,
+        # as ``tracked_change_date`` is.
+        self._date_time_zone: Any = None
+        #: Whether a save writes the save's time into the core properties
+        #: (CR-025 Phase A, the portfolio's date rule's point 6; docx4j-core-ts
+        #: ``writeTimesOnSave``, docx4j's ``docx4j.dcterms.write``): False, the
+        #: default, leaves ``dcterms:created`` and ``dcterms:modified`` as they
+        #: are; True sets ``dcterms:modified`` to now, UTC to the second as
+        #: docx4j writes it, and ``dcterms:created`` too where the core part has none
+        #: and was not read from the source. A package with no core part gets
+        #: none. ``last_save.times`` is the stamp written
+        #: (:func:`~docx4j_py.openpackaging.save.write_core_times`).
+        self.write_times_on_save = False
         # CR-003 section 3.4 (2026-09-17): the Word version the document
         # declares, over ``w:compatSetting compatibilityMode``, cached here for
         # the same reason and read the same way --- with lxml, so that a read
@@ -443,6 +461,11 @@ class OpcPackage:
 
         Returns:
             The bytes when `target` is None, else None.
+
+        Where :attr:`write_times_on_save` is True, the save writes its time
+        into ``dcterms:modified`` first (CR-025 D4,
+        :func:`~docx4j_py.openpackaging.save.write_core_times`); off by
+        default, so the core properties are saved as they are.
 
         Saving **over the file the package was loaded from** is supported and is
         what decided question 4 chose: the zip is written to a temporary file
