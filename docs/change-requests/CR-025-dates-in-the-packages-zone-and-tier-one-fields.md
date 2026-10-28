@@ -1,6 +1,6 @@
 # CR-025: Dates in the package's zone, and docx4j CR-067 phase 1's fields in the text model --- the portfolio's date rule, and the tier-1 fields under `fields: update`
 
-**Status:** Proposed 2026-10-28, on the user's ruling on the cross-product date policy the same day (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, committed at `4ac305b`: "I confirm option (a) as amended, and 3.5; also the three sub-items") and his instruction as the portfolio session relayed it: "commit, then have the ports do their work". Three phases (section 6): A, the package's time zone and the core properties' opt-in (the rule's points 2, 5 and 6, after docx4j's D12); B, docx4j CR-067 phase 1's fields in the text model, held to Word's probe (point 1 for the zone); C, the records. A and B are built at the coordinator's brief; C is not, beyond this CR's row in the index and the note for CR-014 in section 9. The names follow docx4j-core-ts's, at the coordinator's request the same day (section 4.5). The questions are in section 8, each with a recommendation. Where building needed an answer, the recommendation is built and listed for the user to decide, as CR-020 sections 10.12 and 11.9 did. **Phase A implemented 2026-10-28** (section 11; `cbafbc1`): `pkg.date_time_zone`, the five places an instant meets a clock, `pkg.write_times_on_save`, its stamp to the second after a finding while building (11.2, Q3 restated). **Phase B implemented 2026-10-28** (section 12; `23fa5ce`): docx4j's evaluator ported, the text model's `fields: update` at docx4j's set; Word's probe given back in 21 of 25 cases and the cached result in the 4 where Word writes an error text; docx4j's own extraction of the probe matched byte for byte in five modes; no golden moved. Every question of section 8 is open, each built as recommended (12.9). No Word check: extraction is no file, and with the zone unset and the opt-in off a saved file is unchanged (acceptance 0 differ). Phase C proposed.
+**Status:** Proposed 2026-10-28, on the user's ruling on the cross-product date policy the same day (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, committed at `4ac305b`: "I confirm option (a) as amended, and 3.5; also the three sub-items") and his instruction as the portfolio session relayed it: "commit, then have the ports do their work". Three phases (section 6): A, the package's time zone and the core properties' opt-in (the rule's points 2, 5 and 6, after docx4j's D12); B, docx4j CR-067 phase 1's fields in the text model, held to Word's probe (point 1 for the zone); C, the records. A and B are built at the coordinator's brief; C is not, beyond this CR's row in the index and the note for CR-014 in section 9. The names follow docx4j-core-ts's, at the coordinator's request the same day (section 4.5). The questions are in section 8, each with a recommendation. Where building needed an answer, the recommendation is built and listed for the user to decide, as CR-020 sections 10.12 and 11.9 did. **Phase A implemented 2026-10-28** (section 11; `cbafbc1`): `pkg.date_time_zone`, the five places an instant meets a clock, `pkg.write_times_on_save`, its stamp to the second after a finding while building (11.2, Q3 restated). **Phase B implemented 2026-10-28** (section 12; `23fa5ce`): docx4j's evaluator ported, the text model's `fields: update` at docx4j's set; Word's probe given back in 21 of 25 cases and the cached result in the 4 where Word writes an error text; docx4j's own extraction of the probe matched byte for byte in five modes; no golden moved. **Q1 to Q10 decided as recommended 2026-10-28** (the user: "CR-025's ten questions as recommended"; 12.10, nothing changed). No Word check: extraction is no file, and with the zone unset and the opt-in off a saved file is unchanged (acceptance 0 differ). Phase C proposed.
 
 *The number:* CR-024 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -359,3 +359,24 @@ Every question of section 8 is open; each is built as recommended, so an answer 
 8. **Q8**: a date alone or a time with no offset nominal whatever the package's zone, until docx4j's date-forms probe has run.
 9. **Q9**: `INFO` evaluates only what the consumer computes; offer docx4j the same.
 10. **Q10**: `create_package`'s dates unchanged, to the second.
+
+### 12.10 The decisions (2026-10-28)
+
+The user, on section 8: "CR-025's ten questions as recommended". Each keeps what Phases A and B built, so no code, test or
+generated file changed and no gate moved from 11.6's and 12.8's. The coordinator re-ran the fast suite at `ed416fd` (6,940
+passed, 8 skipped; the one test beyond the 151 new ones is CR-020 Phase C's README fence, which the 6,788 baseline
+predates) and exercised the zone, the opt-in and the probe's dates by hand (London, Kolkata, Los Angeles; Sydney's
+"2/3/2024 3:05:00 PM").
+
+1. **Q1:** `pkg.date_time_zone` (a `tzinfo` or an IANA name, None for the process's) and `pkg.effective_date_time_zone`.
+2. **Q2:** no process-wide fallback between the package's zone and `TZ`.
+3. **Q3:** `write_times_on_save` stamps to the second, as docx4j and docx4j-core-ts do.
+4. **Q4:** `pkg.write_times_on_save` alone, no per-save option.
+5. **Q5:** `FieldInstruction` ported, `FldSimpleModel` its subclass, with no deprecation warning.
+6. **Q6:** `DATE`, `TIME` and `PRINTDATE` keep their cached result under `fields: update`.
+7. **Q7:** the user fields' user from `TextOptions(field_user=)`, never from `pkg.author`.
+8. **Q8:** a date-only or offset-free value is read as written, whatever the package's zone, until docx4j's date-forms probe
+   has run.
+9. **Q9:** `INFO` evaluates only what the consumer computes. Offered to docx4j the same day (docx4j-12), whose `INFO` reaches
+   the clock fields in extraction (12.5 item 1).
+10. **Q10:** `create_package`'s dates unchanged, to the second.
