@@ -2,8 +2,11 @@
 
 docx4j's ``FldSimpleModel``, ``FormattingSwitchHelper``,
 ``DateFormatInferencer`` and ``NumberExtractor`` at ``198d015a3``, ported for
-what ``fields: update`` computes (WD REQ-506). The switches, in docx4j's
-order:
+what ``fields: update`` computes (WD REQ-506); since CR-025 Phase B,
+``FldSimpleModel`` a subclass of docx4j's ``FieldInstruction``
+(:mod:`~docx4j_py.model.fields.instruction`, ``c3e9920e5``) and
+:func:`format_date` its ``formatDate(instruction, date, lang, zone)`` for a
+date field's instant. The switches, in docx4j's order:
 
 * ``\\@`` (date and time): a value in one of the formats docx4j infers
   (international day-first, ISO 8601, ``dd MMM yyyy`` ...) written in Word's
@@ -33,6 +36,11 @@ import re
 from decimal import ROUND_HALF_EVEN, Decimal
 from typing import Any
 
+from docx4j_py.model.fields.instruction import (
+    MERGEFORMAT,
+    FieldInstruction,
+    split_parameters,
+)
 from docx4j_py.model.java_text import (
     MONTHS,
     DecimalFormat,
@@ -49,11 +57,12 @@ __all__ = [
     "determine_date_format",
     "extract_number",
     "find_first_switch_value",
+    "format_date",
+    "split_parameters",
 ]
 
 SWITCH_ARGUMENT_MISSING = "Error! Switch argument not specified."
 SYNTAX_ERROR = "!Syntax Error"
-MERGEFORMAT = "MERGEFORMAT"
 
 
 class FieldFormattingError(Exception):
@@ -69,62 +78,24 @@ class FieldValueError(Exception):
 # ---------------------------------------------------------------------------
 
 
-class FldSimpleModel:
-    """A field instruction: its name (upper case) and its parameters, a quoted one kept with its quotes."""
+class FldSimpleModel(FieldInstruction):
+    """A field instruction: its name (upper case) and its parameters, a quoted one kept with its quotes.
 
-    __slots__ = ("_parameters", "name", "parameter_string")
+    docx4j's ``FldSimpleModel``, which its CR-067 D2 deprecated in favour of
+    ``FieldInstruction``; here a subclass of
+    :class:`~docx4j_py.model.fields.instruction.FieldInstruction` that reads
+    every instruction as it always did (``FieldInstructionTest``'s 31 shapes,
+    ``tests/text/test_field_instruction.py``), with its own name for the text
+    after the field's name, :attr:`parameter_string`. Kept, not deprecated
+    with a warning: it is public in 0.2.0 (CR-025 D6).
+    """
 
-    def __init__(self, instr: str | None) -> None:
-        """The instruction, as ``w:instr`` or the ``w:instrText`` runs give it."""
-        self.name: str | None = None
-        self.parameter_string: str | None = None
-        self._parameters: list[str] | None = None
-        text = instr or ""
-        start = 0
-        while start < len(text) and text[start] == " ":
-            start += 1
-        if start < len(text):
-            end = start + 1
-            if text[start] != "=":  # =nn: the name is the sign
-                while end < len(text) and text[end] != " ":
-                    end += 1
-            self.name = text[start:end].upper()
-            if end < len(text):
-                self.parameter_string = text[end:].strip()
+    __slots__ = ()
 
     @property
-    def parameters(self) -> list[str]:
-        """The parameters, space apart, a quoted one whole and with its quotes (docx4j ``splitParameters``)."""
-        if self._parameters is None:
-            self._parameters = split_parameters(self.parameter_string)
-        return self._parameters
-
-
-def split_parameters(text: str | None) -> list[str]:
-    """docx4j ``FldSimpleModel.splitParameters``."""
-    out: list[str] = []
-    if not text:
-        return out
-    start = -1
-    quoted = False
-    for i, c in enumerate(text):
-        if c == '"':
-            if quoted:
-                out.append(text[start : i + 1])
-                quoted = False
-                start = -1
-            else:
-                start = i
-                quoted = True
-        elif c == " ":
-            if start > -1 and not quoted:
-                out.append(text[start:i])
-                start = -1
-        elif start == -1:
-            start = i
-    if start > -1:
-        out.append(text[start:])
-    return out
+    def parameter_string(self) -> str | None:
+        """The text after the name, trimmed, or None: :attr:`parameter_text`."""
+        return self.parameter_text
 
 
 def _find_switch(switch: str, start: int, parameters: list[str]) -> int:
@@ -308,6 +279,25 @@ def _is_am_pm(text: str, i: int) -> bool:
     )
 
 
+def format_date(instruction: FieldInstruction, when: datetime.datetime) -> str:
+    """A date field's wall-clock time in its ``\\@`` picture, or the field's default where it has none.
+
+    docx4j ``FormattingSwitchHelper.formatDate(FieldInstruction, Date, String,
+    TimeZone)`` with no language, the zone already applied (`when` is the
+    wall clock, naive): Word's picture converted to Java's
+    (:func:`convert_date_pattern`) and written in US English; with no picture
+    (``\\@`` absent, or present with no value), Java's short date for a field
+    whose name holds ``DATE`` (``M/d/yy``) and its short time for any other
+    (``h:mm a``), as docx4j's ``DateFormat.getDateInstance(SHORT)`` and
+    ``getTimeInstance(SHORT)`` give them in the US locale. CR-025 D8.
+    """
+    picture = find_first_switch_value("\\@", instruction.parameters, True)
+    if picture:
+        return simple_date_format(convert_date_pattern(picture), when)
+    name = instruction.name or ""
+    return simple_date_format("M/d/yy" if "DATE" in name else "h:mm a", when)
+
+
 # ---------------------------------------------------------------------------
 # numbers: docx4j's NumberExtractor and Java's Double.parseDouble
 # ---------------------------------------------------------------------------
@@ -457,7 +447,7 @@ def _format_general(format_: str, value: str) -> str:
     return value
 
 
-def apply_formatting_switch(package: Any, model: FldSimpleModel, value: str, lang: str | None = None) -> str:
+def apply_formatting_switch(package: Any, model: FieldInstruction, value: str, lang: str | None = None) -> str:
     """A field's value with its ``\\@``, ``\\#`` and ``\\*`` switches applied. docx4j ``applyFormattingSwitch``.
 
     Raises:
@@ -493,7 +483,7 @@ def apply_formatting_switch(package: Any, model: FldSimpleModel, value: str, lan
     return value if general is None else _format_general(general, value)
 
 
-def _number(package: Any, model: FldSimpleModel, value: str) -> float:
+def _number(package: Any, model: FieldInstruction, value: str) -> float:
     """A field's value as a number; a ``DOCPROPERTY``'s or ``MERGEFIELD``'s drawn out of its text."""
     if model.name in ("DOCPROPERTY", "MERGEFIELD"):
         value = extract_number(value, _decimal_symbol(package))

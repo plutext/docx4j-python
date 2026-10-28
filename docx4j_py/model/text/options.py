@@ -170,7 +170,12 @@ class TextOptions:
     the package was last paginated after its last edit.
 
     Beyond section 10, ``image_describer`` (REQ-514): what gives an image its
-    description, the author's alt text by default.
+    description, the author's alt text by default; and ``field_user``
+    (REQ-506, CR-025 D10): the user ``USERNAME``, ``USERINITIALS`` and
+    ``USERADDRESS`` show under ``fields: update``, a
+    :class:`~docx4j_py.model.fields.FieldUser`, a name, or a mapping of
+    ``name``, ``initials`` and ``address``; None by default, and then the three
+    keep their cached result, as docx4j's extraction keeps them.
     """
 
     __slots__ = (
@@ -182,6 +187,7 @@ class TextOptions:
         "charts",
         "embedded",
         "field_codes",
+        "field_user",
         "fields",
         "hidden",
         "image_describer",
@@ -239,6 +245,10 @@ class TextOptions:
         #: host's hook, as docx4j's ``TextOptions.imageDescriber``. The
         #: author's alt text by default (:func:`~docx4j_py.model.text.images.alt_text_describer`).
         self.image_describer: ImageDescriber = alt_text_describer
+        #: The user the user fields show under ``fields: update`` (REQ-506):
+        #: beyond section 10, a host's, as docx4j's ``FieldContext.user`` is the
+        #: updater's. None by default: the fields keep their cached result.
+        self.field_user: Any = None
         for name, value in options.items():
             self.set(name, value)
 
@@ -279,6 +289,13 @@ class TextOptions:
                     f"image_describer: {value!r} is not callable (WD REQ-514)", key, "REQ-514", "invalid"
                 )
             self.image_describer = value or alt_text_describer
+        elif key == "field_user":
+            from docx4j_py.model.fields.context import FieldUser
+
+            try:
+                self.field_user = FieldUser.of(value)
+            except TypeError as error:
+                raise TextOptionError(f"field_user: {error} (WD REQ-506)", key, "REQ-506", "invalid") from error
         else:
             raise TextOptionError(
                 f"Unknown text option {name!r}; the options are {', '.join(OPTION_NAMES)} (WD REQ-1001)",

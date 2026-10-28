@@ -215,6 +215,7 @@ class TrialPackage:
         "_compatibility_mode",
         "_current_change",
         "_custom_xml_parts",
+        "_date_time_zone",
         "_glossary_entries",
         "_id_rng",
         "_id_seed",
@@ -257,6 +258,8 @@ class TrialPackage:
         # raises it writes into the trial's **copy** of the settings part
         self._compatibility_mode: Any = None
         self._tracked_change_date: Any = package.tracked_change_date
+        #: The trial's client zone (CR-025): the real package's unless the trial is given one.
+        self._date_time_zone: Any = package.date_time_zone
         #: The halves the trial's own splits made (CR-003 section 16.12).
         self._split_runs: dict[int, int] = {}
         #: The paragraphs the trial inserted (CR-003 section 16.12).
@@ -620,6 +623,24 @@ class TrialPackage:
     @tracked_change_date.setter
     def tracked_change_date(self, value: Any) -> None:
         self._tracked_change_date = value
+
+    @property
+    def date_time_zone(self) -> Any:
+        """The trial's client time zone (CR-025); the real package's by default."""
+        return self._date_time_zone
+
+    @date_time_zone.setter
+    def date_time_zone(self, value: Any) -> None:
+        from docx4j_py.model.content import _set_package_date_time_zone
+
+        _set_package_date_time_zone(self, value)
+
+    @property
+    def effective_date_time_zone(self) -> Any:
+        """The zone an instant in the trial is shown in: its own, else the process's."""
+        from docx4j_py.model.dates import effective_zone
+
+        return effective_zone(self)
 
     def get_tracked_changes(self) -> list[Any]:
         """The trial's tracked changes, over the copies."""

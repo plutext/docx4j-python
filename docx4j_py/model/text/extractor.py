@@ -674,17 +674,19 @@ class Extractor:
         if self._field_values is None:
             from docx4j_py.model.text.field_values import FieldValues
 
-            self._field_values = FieldValues(self.trees.package)
+            self._field_values = FieldValues(
+                self.trees.package, document=self.trees.document, user=self.options.field_user
+            )
         return self._field_values
 
-    def _update(self, f: _Field) -> str | None:
+    def _update(self, f: _Field, story: _Story) -> str | None:
         """A field's result under ``fields: update``, or None to keep its cached one (REQ-506)."""
         if self.options.fields != "update" or f.locked or self.trees.document is None:
             return None
         instr = f.instr.strip()
         if f.ff_data is not None and instr[:8].upper() == "FORMTEXT":
             return self._form_text(f.ff_data)
-        return self.field_values().compute(instr)
+        return self.field_values().compute(instr, _section_of(story))
 
     def _form_text(self, ff_data: Any) -> str | None:
         """A FORMTEXT's result under ``fields: update``, as Word's update gives it (measured in Word, docx4j CR-046).
@@ -1305,7 +1307,7 @@ class Extractor:
                         para.toc = True
                         _remove_field_code(f, para)
                         return
-                    value = None if _suppressed(story) else self._update(f)
+                    value = None if _suppressed(story) else self._update(f, story)
                     if value is not None:
                         self._text(para, value, hidden, state)
                         f.computed = value  # the cached result that follows is not read
@@ -1320,7 +1322,7 @@ class Extractor:
                     para.toc = True
                     return
                 if not f.separated:
-                    value = self._update(f)
+                    value = self._update(f, story)
                     if value is not None:
                         self._text(para, value, hidden, state)
                         f.computed = value
@@ -1523,7 +1525,7 @@ class Extractor:
             and not _in_code(story)
             and not _suppressed(story)
         ):
-            value = self.field_values().compute(instr)
+            value = self.field_values().compute(instr, _section_of(story))
             if value is not None:
                 self._text(para, value, False, state)
                 para.block.fields.append(TextField(instr, value, True))
@@ -2507,6 +2509,14 @@ def _list_label(result: Any) -> str | None:
 
 def _in_code(story: _Story) -> bool:
     return any(not f.separated for f in story.fields)
+
+
+def _section_of(story: _Story) -> int | None:
+    """The section (from 1) the main story's walk is in, or None in another story (``SECTION`` keeps its cached result).
+
+    docx4j ``Extractor.sectionOf``: the sections the walk has ended, plus one.
+    """
+    return None if story.sections is None else len(story.sections) + 1
 
 
 def _suppressed(story: _Story) -> bool:

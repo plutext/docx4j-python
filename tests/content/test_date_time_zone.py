@@ -17,11 +17,11 @@ from __future__ import annotations
 import datetime
 import re
 import zoneinfo
+from pathlib import Path
 
 import pytest
-from conftest import fixture
 
-from docx4j_py import create_package
+from docx4j_py import create_package, load
 from docx4j_py.fragments import wml
 from docx4j_py.model.content import Author
 from docx4j_py.model.content.errors import ContentError
@@ -35,6 +35,7 @@ from docx4j_py.model.dates import (
 )
 
 UTC = datetime.UTC
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 W16DU = 'xmlns:w16du="http://schemas.microsoft.com/office/word/2023/wordml/word16du"'
 
@@ -96,6 +97,11 @@ def test_the_zone_is_never_saved_and_a_trial_reads_its_packages():
     with pkg.dry_run() as trial:
         assert trial.date_time_zone == zoneinfo.ZoneInfo("Asia/Tokyo")
         assert trial.effective_date_time_zone == zoneinfo.ZoneInfo("Asia/Tokyo")
+        trial.date_time_zone = "UTC"  # the trial's own, as its tracked_change_date is
+        assert trial.effective_date_time_zone == zoneinfo.ZoneInfo("UTC")
+        with pytest.raises(ContentError):
+            trial.date_time_zone = "not a zone"
+    assert pkg.date_time_zone == zoneinfo.ZoneInfo("Asia/Tokyo"), "the real package's is untouched"
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +155,7 @@ def test_an_explicit_offset_is_read_as_it_says_whatever_the_zone():
 def test_a_word_2010_comments_date_is_read_in_the_packages_zone(zone):
     """``comments.docx``'s ``w:date="2011-02-01T11:52:00Z"`` (no ``w16cex``): Tokyo's 11:52 is 02:52Z."""
     zone("America/New_York")
-    package = fixture("comments.docx")
+    package = load(FIXTURES / "comments.docx")
     package.date_time_zone = "Asia/Tokyo"
     assert package.body.get_comments()[0].creation_date == datetime.datetime(2011, 2, 1, 2, 52, tzinfo=UTC)
     package.date_time_zone = None
@@ -159,7 +165,7 @@ def test_a_word_2010_comments_date_is_read_in_the_packages_zone(zone):
 @pytest.mark.parametrize("place", ["Australia/Sydney", "America/New_York"])
 def test_a_word_365_comments_w16cex_date_utc_is_utc_whatever_the_packages_zone(zone, place):
     zone(place)
-    package = fixture("comments-modern.docx")
+    package = load(FIXTURES / "comments-modern.docx")
     package.date_time_zone = "Asia/Tokyo"
     comment = next(c for c in package.body.get_comments() if c.author_name == "Buck Cronk")
     assert comment.creation_date == datetime.datetime(2026, 5, 18, 23, 21, tzinfo=UTC)

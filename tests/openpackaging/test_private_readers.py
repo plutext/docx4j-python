@@ -32,10 +32,11 @@ reached over the documents.
   text model.
 - ``model/text/metadata.py``, ``_contents``: the core, extended and custom
   properties (``metadata``). The text model.
-- ``model/text/field_values.py``, ``FieldValues._keywords``: the core
-  properties; ``model/fields/resolvers.py``, ``_contents``: the three
-  properties parts and the settings; ``model/fields/formatting.py``,
-  ``_decimal_symbol``: the settings (all three ``fields: update``). The text
+- ``model/fields/resolvers.py``, ``_contents``: the three properties parts
+  and the settings, and the main document where a ``FieldContext`` has no
+  tree of it (CR-025: ``KEYWORDS`` is read through the resolver, as docx4j
+  reads it, where ``FieldValues._keywords`` read it before); ``model/fields/formatting.py``,
+  ``_decimal_symbol``: the settings (both ``fields: update``). The text
   model.
 - ``model/content/placeholders.py``, ``GlossaryEntries.load``: the glossary
   document, read when a body is first read; ``has_placeholder_styles``: a
@@ -116,7 +117,7 @@ CORPUS = sorted(
 
 #: A document no file of the corpus is: ``2010-sample1.docx`` with a
 #: ``KEYWORDS`` field and a ``DOCPROPERTY`` with a numeric picture, which are
-#: what reach ``FieldValues._keywords`` and ``fields.formatting._decimal_symbol``
+#: what reach the resolver's ``Keywords`` and ``fields.formatting._decimal_symbol``
 #: under ``fields: update``. Built by :func:`_with_fields`.
 WITH_FIELDS = "2010-sample1-with-fields.docx"
 
@@ -548,7 +549,6 @@ CALLERS: frozenset[str] = frozenset(
         "model/text/extractor.py::Extractor._glossary",
         "model/chart/model.py::ChartModel.read",
         "model/text/metadata.py::_contents",
-        "model/text/field_values.py::FieldValues._keywords",
         "model/fields/resolvers.py::_contents",
         "model/fields/formatting.py::_decimal_symbol",
         "model/content/placeholders.py::GlossaryEntries.load",

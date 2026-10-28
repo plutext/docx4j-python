@@ -60,6 +60,7 @@ MODE = "the compatibility mode, an int the package already holds or a member of 
 KEY = "the numbering emulator's numId or ilvl key, a decimal definitions.decimal wrote through values.integer"
 OWN = "values.integer itself: ASCII digits its expression matched"
 TABLE = "the CR-022 limits table's own numbers (resources/integer-limits.json), not a model field"
+W3CDTF = "a core property's W3CDTF date, its digits matched by a pattern (docProps, CR-025 D8), not a model field"
 
 #: Every ``int(`` and ``float(`` under ``model/`` and ``docx/`` that does not go through ``values.integer``.
 LISTED: dict[str, str] = {
@@ -170,6 +171,16 @@ LISTED: dict[str, str] = {
     "model/fields/formatting.py::_format_general::int(value)": NUMBER,
     "model/fields/formatting.py::_parse_date::int(found.group(0))": TEXT,
     "model/fields/formatting.py::_parse_double::float(text.replace('Infinity', 'inf'))": TEXT,
+    "model/fields/evaluators.py::_sequence::int(reset.strip())": TEXT,
+    "model/fields/sources.py::parse_w3cdtf::int(year)": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(month or 1)": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(day or 1)": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(hour or 0)": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(minute or 0)": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(second or 0)": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int((fraction or '0')[:6].ljust(6, '0'))": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(offset[1:3])": W3CDTF,
+    "model/fields/sources.py::parse_w3cdtf::int(offset[4:6])": W3CDTF,
     "model/markdown/importer.py::_Importer.blocks::int(token.tag[1:])": TEXT,
     "model/markdown/importer.py::_Importer.list::int(token.attrs.get('start', 1))": TEXT,
     # numbering
@@ -184,7 +195,6 @@ LISTED: dict[str, str] = {
     "model/text/drawings.py::smart_art::int(c.src_ord or 0)": OUTSIDE,
     "model/text/extractor.py::Extractor._run_item::int(code, 16)": HEX,
     "model/text/extractor.py::_at_address::int(rest.rstrip(']'))": TEXT,
-    "model/text/field_values.py::FieldValues._sequence::int(reset.strip())": TEXT,
     # the reader itself
     "model/values.py::integer::int(digits)": OWN,
     # CR-022's check: a caller's measurement converted as its setter always converted it, and shown
@@ -256,7 +266,7 @@ def test_every_int_and_float_is_listed() -> None:
 
 
 def test_every_listed_call_has_a_reason() -> None:
-    reasons = {ARGUMENT, LENGTH, HEX, TEXT, CONSTANT, NUMBER, OUTSIDE, STRING, MODE, KEY, OWN, TABLE}
+    reasons = {ARGUMENT, LENGTH, HEX, TEXT, CONSTANT, NUMBER, OUTSIDE, STRING, MODE, KEY, OWN, TABLE, W3CDTF}
     assert set(LISTED.values()) <= reasons
     # the readers CR-021 section 2.3 named are no longer listed: each goes through values.integer
     gone = (
