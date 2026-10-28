@@ -1,6 +1,6 @@
 # CR-025: Dates in the package's zone, and docx4j CR-067 phase 1's fields in the text model --- the portfolio's date rule, and the tier-1 fields under `fields: update`
 
-**Status:** Proposed 2026-10-28, on the user's ruling on the cross-product date policy the same day (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, committed at `4ac305b`: "I confirm option (a) as amended, and 3.5; also the three sub-items") and his instruction as the portfolio session relayed it: "commit, then have the ports do their work". Three phases (section 6): A, the package's time zone and the core properties' opt-in (the rule's points 2, 5 and 6, after docx4j's D12); B, docx4j CR-067 phase 1's fields in the text model, held to Word's probe (point 1 for the zone); C, the records. A and B are built at the coordinator's brief; C is not, beyond this CR's row in the index and the note for CR-014 in section 9. The names follow docx4j-core-ts's, at the coordinator's request the same day (section 4.5). The questions are in section 8, each with a recommendation. Where building needed an answer, the recommendation is built and listed for the user to decide, as CR-020 sections 10.12 and 11.9 did.
+**Status:** Proposed 2026-10-28, on the user's ruling on the cross-product date policy the same day (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, committed at `4ac305b`: "I confirm option (a) as amended, and 3.5; also the three sub-items") and his instruction as the portfolio session relayed it: "commit, then have the ports do their work". Three phases (section 6): A, the package's time zone and the core properties' opt-in (the rule's points 2, 5 and 6, after docx4j's D12); B, docx4j CR-067 phase 1's fields in the text model, held to Word's probe (point 1 for the zone); C, the records. A and B are built at the coordinator's brief; C is not, beyond this CR's row in the index and the note for CR-014 in section 9. The names follow docx4j-core-ts's, at the coordinator's request the same day (section 4.5). The questions are in section 8, each with a recommendation. Where building needed an answer, the recommendation is built and listed for the user to decide, as CR-020 sections 10.12 and 11.9 did. **Phase A implemented 2026-10-28** (section 11; `cbafbc1`): `pkg.date_time_zone`, the five places an instant meets a clock, `pkg.write_times_on_save`, its stamp to the second after a finding while building (11.2, Q3 restated). **Phase B implemented 2026-10-28** (section 12; `23fa5ce`): docx4j's evaluator ported, the text model's `fields: update` at docx4j's set; Word's probe given back in 21 of 25 cases and the cached result in the 4 where Word writes an error text; docx4j's own extraction of the probe matched byte for byte in five modes; no golden moved. Every question of section 8 is open, each built as recommended (12.9). No Word check: extraction is no file, and with the zone unset and the opt-in off a saved file is unchanged (acceptance 0 differ). Phase C proposed.
 
 *The number:* CR-024 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -185,3 +185,177 @@ CR-014 is proposed, not built. Its Q10 (decided 2026-10-23: docx4j CR-058's nomi
 ## 10. Effort
 
 1½ to 2 days: A ½, B 1, C ¼.
+
+## 11. Phase A implementation notes (2026-10-28)
+
+Phase A as built, D1 to D4, at the coordinator's brief. Phase C (the records) is not this phase's: no CHANGELOG, README, `docs/pypi-readme.md` or CLAUDE.md change was made, beyond this CR's row in the index (with the draft, `df8d51a`) and `tests/README.md`'s rows for the new tests.
+
+**Commits.** `df8d51a`, the draft and the index's row. `cbafbc1`, Phase A: `model/dates.py`, the five sites, the properties and the opt-in, and their tests. The dry run's own zone (11.1) landed with Phase B's commit.
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| `pkg.date_time_zone` | `model/content/__init__.py` (installed by `register()`, as `tracked_change_date` is); the slot `_date_time_zone` on `OpcPackage` | None by default; a `tzinfo` as given, an IANA name as `zoneinfo.ZoneInfo`; anything else `ContentError` `date_time_zone.invalid`, the zone set before kept |
+| `pkg.effective_date_time_zone` | the same | the package's, else `PROCESS_ZONE` |
+| `model/dates.py` | new, hand-written, in `KEEP` | `ProcessZone` and `PROCESS_ZONE` (the process's zone as a `tzinfo`, read at each instant as `astimezone()` reads it, its `fromutc` setting `fold` in a repeated hour); `zone_of`, `package_zone`, `effective_zone`, `wall_clock`, `instant_of`, `to_the_minute`. Each takes `zone=None` for the process's and then calls `astimezone()` with no argument, the code that ran before |
+| the writers | `tracking.xml_date(value, zone=None)`, `ChangeTracker.markup`; the comment writer | `w:date` on the package's wall clock; `dateUtc` UTC as before |
+| the readers | `revisions.change.word_date` and `date_of` (`zone=None`), `TrackedChange.date` (the story's package), `tracking.date_of`, `Comment.creation_date` (the body's package) | a `w:date` without `dateUtc` read in the package's zone; a non-zero offset as it says; `dateUtc` UTC |
+| a dry run | `model/content/trial.py` | the trial's own zone, the real package's by default, as its `tracked_change_date` is; its stamps use it |
+| `pkg.write_times_on_save` | a plain attribute on `OpcPackage`, False | D4 |
+| `save.write_core_times` | `openpackaging/save.py`, from `save_package` after the check and before the hooks | `dcterms:modified` the save's time (`save._now()`, UTC) to the second; `created` where the core part has none and its name is not in the source store (`_from_source`); a `W3CDTF` written as `create_package` writes one, `xsi:type="dcterms:W3CDTF"` |
+| `last_save.times` | `normalise.SaveReport.times` | the stamp, or None |
+
+### 11.2 D4's precision, decided while building (Q3)
+
+The draft recommended the minute, Word's. Built that way, a package made by `create_package` and saved with the opt-in in the same minute had `modified` before `created`: `create_package` writes `created` to the second (`2026-10-28T02:32:21Z`) and the stamp was `02:32:00Z`. The second, docx4j's and docx4j-core-ts's, has no such case, and makes the three ports alike; Q3 is restated with that and the recommendation is the second, which is what is built. Word's minute stays one constant away.
+
+### 11.3 Departures, with why
+
+1. **No process-wide fallback** (D2): docx4j's `BindingHandler.dateTimeZone` property has no counterpart; `TZ` is the process's.
+2. **A `tzinfo` as well as a name** (D1): docx4j takes a `ZoneId`, core-ts an IANA id; Python's zones are objects, and a fixed offset (`datetime.timezone`) is a zone a caller may hold.
+3. **`created` where the part was not read from the source**, not docx4j's "where the package is new" (`isNew()`): a `create_package` package has a memory store, so "new" is the core part's provenance here. A loaded file whose core part has no `created` keeps none, as docx4j's does; core-ts's further case, a new package with no core part given one, does not arise, `create_package` making one.
+4. **The opt-in writes the second, not the minute** (11.2).
+
+### 11.4 Kept as it was
+
+The text model's dates (a revision's and a comment's in the `markup` view's detail, the metadata's) are given as written, the rule's point 1. `tracked_change_date` is used as given, to the second; "now" is to the minute, for a revision and a comment alike (point 5, already so since CR-010 section 12.9). `create_package`'s `created` and `modified` (to the second) are unchanged (Q10).
+
+### 11.5 Tests and the numbers
+
+- `tests/content/test_date_time_zone.py`, 24: the fallback chain; six refusals; nothing saved, a dry run's own zone; docx4j's revision case in two process zones, the unset reading in two, an explicit offset; a comment's `w:date` in the package's zone and `w16cex:dateUtc` in any; a revision and a comment stamped on Tokyo's clock in two process zones, the unset bytes in two; `PROCESS_ZONE` against `astimezone()` at all 17,520 half hours of 2026 in Sydney, New York and Lord Howe (a half-hour daylight change), both ways and both folds; `xml_date`'s old formula in three zones and twelve months.
+- `tests/openpackaging/test_write_times.py`, 8: off, a loaded core part byte for byte and not unmarshalled; on, `modified` with Word's `xsi:type`, the rest of the part unchanged, every save its own time, `create_package`'s `created` kept, a part made here given `created`, a loaded one with none left without, no core part none made, the dates reloaded.
+
+### 11.6 The gates (Phase A at `cbafbc1`)
+
+| gate | result |
+|---|---|
+| the fast suite (`-m "not slow"`) | **6,821 passed**, 0 failed: one more than the baseline's 6,788 at `3c63804` and Phase A's 32 (12.8 says where the one is not), counted from pytest's progress marks (a doubled `-q` hid the summary line, and the count read 7 skips, where every later run shows the same 8 as the baseline: six README fragments and the two python-docx modules; 12.8 has the runs with the summary) |
+| acceptance (`scripts/acceptance.py --out out/acceptance-cr025a`, then `compare_acceptance.py` against `out/acceptance-cr020b/`) | **17 artefacts, 246 entries, 0 differ** beyond the dates |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | **50 of 50 canonically identical**, 0 differences, 0 skipped, 34 `boolean-spelling` |
+| `scripts/threads.py` | **passes** |
+| `ruff check` on the changed files | no new finding; the three there before (`opc_package.py` 2, `save.py` 1) left as they were |
+
+## 12. Phase B implementation notes (2026-10-28)
+
+Phase B as built, D5 to D14 and section 5's oracle, at the coordinator's brief. docx4j at `c3e9920e5` was read for behaviour (`FieldEvaluators`, `FieldContext`, `FieldSources`, `FieldInstruction`, the text model's `FieldValues` and `Extractor`, and the four test classes), and run, from its own build, as an oracle (12.3). Phase C is not this phase's.
+
+**Commits.** `23fa5ce`, Phase B (12.1 to 12.7; with it the dry run's own zone, 11.1, and the census rows of 12.6); and this section's, after it.
+
+### 12.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| `FieldInstruction` | `model/fields/instruction.py`, new, in `KEEP` | docx4j's, accessor for accessor (`name`, `parameter_text`, `parameters` a copy, `argument`, `has_switch`, `switch_value`, `switch_values`, `index_of_switch`, `value_at`; `split_parameters`, `unquote`, `FieldInstruction.parse`) |
+| `FldSimpleModel` | `model/fields/formatting.py` | a subclass of `FieldInstruction`, keeping `parameter_string`; `apply_formatting_switch` takes either |
+| `format_date` | `model/fields/formatting.py` | docx4j's `formatDate(instruction, date, lang, zone)` over a wall clock: the `\@` picture, else Java's short date (`M/d/yy`) for a `*DATE*` field and short time (`h:mm a`) for another |
+| `FieldContext`, `FieldUser` | `model/fields/context.py`, new, in `KEEP` | D5, D10; the zone (`zone`, the override, else the package's, else `PROCESS_ZONE`), `clock` and `now()`, `language`, `user`, `section`, `document`, `computes` and `evaluates()` (this port's, D12), `sequences`, `bookmarks`, `note_numbers()`, `read_bookmarks()`, `properties()`, `variables()` |
+| the registry | `model/fields/evaluators.py`, new, in `KEEP` | `register(name, evaluator, formats_itself=)`, `get`, `has`, `formats_itself`, `names`, `evaluate`; docx4j's 23 names (12.2) |
+| the sources | `model/fields/sources.py`, new, in `KEEP` | `note_numbers(document)` and `bookmark_texts(document)` over docx4j's walk; `parse_w3cdtf` (D8, D9) |
+| `docx4j_py.model.fields` | `__init__.py` | exports `FieldInstruction`, `FieldContext`, `FieldUser`, `evaluate`, `register`, `format_date`, `parse_w3cdtf`, `split_parameters`, `unquote` beside the old names |
+| `FieldValues` | `model/text/field_values.py` | a thin consumer: `COMPUTED` docx4j's 20 names, a `FieldContext` per reading over the walk's own `w:document` (nothing more is read), the section per field, the switches applied once unless the evaluator formats itself, an exception keeping the cached result |
+| the walk | `model/text/extractor.py` | `_section_of(story)` (the main story's sections ended, plus one; None elsewhere) passed to each computed field, complex and simple; the user from the options |
+| `TextOptions(field_user=)` | `model/text/options.py` | D10: a `FieldUser`, a name or a mapping of `name`, `initials`, `address`; anything else `TextOptionError` (`field_user`, REQ-506, `invalid`); beyond section 10, so not in `to_dict()`, as `image_describer` is not |
+
+### 12.2 The evaluators as registered
+
+`DOCPROPERTY`, `DOCVARIABLE`; `AUTHOR`, `COMMENTS`, `KEYWORDS`, `LASTSAVEDBY`, `SUBJECT`, `TITLE`, `REVNUM` (an argument is the value); `CREATEDATE`, `SAVEDATE` (docx4j's `CoreDate`, formatting itself); `SEQ`, `REF`, `QUOTE`; `DATE`, `TIME`, `PRINTDATE` (the clock, formatting themselves); `INFO`, `SECTION`, `NOTEREF`, `USERNAME`, `USERINITIALS`, `USERADDRESS`. The text model computes 20 of the 23, docx4j's `COMPUTED`: all but the three clock fields (D14). `KEYWORDS` now reads through `DocPropertyResolver` (`Keywords`, a core property since docx4j's #277), as docx4j's does, where the old `FieldValues._keywords` read the core part itself; `tests/openpackaging/test_private_readers.py`'s census loses that caller (12.6).
+
+### 12.3 The oracle, case by case
+
+**Word's results** (`results.txt`, Jason's F9 run), replayed through the text model, the process in Sydney's zone, `field_user=FieldUser("Author A", "AA")`; and again with the package's zone Sydney and the process in New York, Kolkata or UTC (`tests/text/test_field_probe.py`):
+
+| Case | Field | Word 365 | here, `fields: update` | |
+|---|---|---|---|---|
+| 1 | `CREATEDATE` | 2/3/2024 3:05:00 PM | 2/3/2024 3:05:00 PM | Word's |
+| 2 | `CREATEDATE \@ "yyyy-MM-dd HH:mm"` | 2024-02-03 15:05 | 2024-02-03 15:05 | Word's |
+| 3 | `SAVEDATE` | 6/7/2025 6:09:00 PM | 6/7/2025 6:09:00 PM | Word's |
+| 4 | `SAVEDATE \@ "d MMMM yyyy"` | 7 June 2025 | 7 June 2025 | Word's |
+| 5 | `REVNUM` | 7 | 7 | Word's |
+| 6 | `INFO Title` | Probe Title | Probe Title | Word's |
+| 7 | `INFO Author` | Probe Author | Probe Author | Word's |
+| 8 | `INFO` | Error! Unknown info keyword. | OLD | cached (D11, docx4j's D5) |
+| 9 | `INFO Nope` | Error! Unknown info keyword. | OLD | cached (D11) |
+| 10 | `SECTION` | 1 | 1 | Word's |
+| 11 | `QUOTE "hello world"` | hello world | hello world | Word's |
+| 12 | `QUOTE` | (empty) | (empty) | Word's |
+| 13 | `REF bm1` | Bookmarked text, bold | Bookmarked text | Word's text; the bold is a write-back's, pinned |
+| 14 | `REF bm1 \* Upper` | BOOKMARKED TEXT | BOOKMARKED TEXT | Word's |
+| 15 | `REF nope` | Error! Reference source not found. | OLD | cached (D11) |
+| 16 | `REF bm1 \h` | Bookmarked text | Bookmarked text | Word's |
+| 17 | `NOTEREF bmNote` | 1 | 1 | Word's |
+| 18 | `NOTEREF bmNote \f` | 1, in `FootnoteReference` | 1 | Word's text; the style is a write-back's, pinned |
+| 19 | `NOTEREF nope` | Error! Bookmark not defined. | OLD | cached (D11) |
+| 20 | `USERNAME` | Author A | Author A (no user: OLDUSER) | Word's with the user |
+| 21 | `USERINITIALS` | AA | AA (no user: OLDUSER) | Word's with the user |
+| 22 | `USERADDRESS` | (empty) | (empty) (no user: OLDUSER) | Word's with the user |
+| 23 | `KEYWORDS` | alpha, beta | alpha, beta | Word's |
+| 24 | `SECTION` | 2 | 2 | Word's |
+| 25 | `CREATEDATE \@ "yyyy-MM-dd"`, simple | 2024-02-03 | 2024-02-03 | Word's |
+
+21 of 25 are Word's; the 4 where Word writes an error text keep the cached result, as docx4j's do. Without a user the three user fields keep `OLDUSER`, what Word itself showed before F9. At `3c63804`, 12 of the 25 differed from Word's and docx4j's (section 3.2): cases 1 to 4 and 25 (the lexical form), 6, 7, 10, 12, 17, 18 and 24 (cached).
+
+**docx4j's own extraction**, run here from docx4j's build of `c3e9920e5` (the `17.3.5-SNAPSHOT` jars in its `target/`; `ProbeText.java` and `ProbeMd.java` in the fixture directory; the JVM in Sydney's zone): byte for byte, `Texts.plainText` of the probe updated, updated with `setDateTimeZone(Asia/Tokyo)`, and cached, and of Word's save cached; and `MarkdownExporter` of the probe updated. Word's save updated agrees too (the save's moment in cases 1 to 4 and 25, revision 2: Word's Save As rewrote them), checked by hand and not kept. So the text model is at parity with docx4j's on this file in every mode tried.
+
+**Word's save, read cached,** is `results.txt` in all 25 cases.
+
+### 12.4 The tests
+
+- `tests/text/test_field_probe.py`, 16 (12.3), the fixtures in `tests/fixtures/field-probe-cr067/` (three files copied from docx4j at `d6ca8dbee`, their git blob ids docx4j's; five outputs of docx4j and the two Java files that wrote them; `README.md`, `SHA1SUMS`).
+- `tests/text/test_field_evaluators.py`, 32: `FieldEvaluatorsTest`'s six cases that apply (`fieldUpdaterUpdatesTheTierOneFieldsInPlace` and `fieldUpdaterUpdatesItsNamesOnly` are `FieldUpdater`'s), with its `fr-FR` date pinned in English (D7) and the defaults of `DATE` and `TIME` with no picture; a custom mark and a deletion not counted by `NOTEREF`; `PackageDateTimeZoneTest.theDateFieldsShowThePackagesZone` and the context's fallback; D9's four nominal forms in three package zones; four offset forms; no date, no value, an argument ignored; an empty picture; D12; D14; `SECTION` in the main story and a note; `field_user` refused; a read leaving the package byte for byte.
+- `tests/text/test_field_instruction.py`, 71: `FieldInstructionTest`, its 31 shapes through both classes, held to what `FldSimpleModel` read at `3c63804` (computed from that commit's source into the test's table).
+- `tests/text/conftest.py` gains the `zone` fixture, as `tests/content/` and `tests/revisions/` have it.
+
+### 12.5 Departures, with why
+
+1. **`INFO` asks the consumer's set** (D12, Q9). docx4j's `INFO` asks the registry, so its extraction evaluates `INFO PrintDate` (and `INFO Date`, `INFO Time`) at the clock; here they keep the cached result. Offered to docx4j through the portfolio (12.7).
+2. **No language** (D7): the month and day names are English, so docx4j's `fr-FR` case is pinned as English. No language reaches docx4j's inspector either, so extraction agrees.
+3. **The forms Word has not measured** (D9, Q8): nominal here whatever the package's zone; docx4j reads them in the JVM's zone and shows them in the package's. With no package zone set the two agree.
+4. **A user for extraction** (D10, Q7): an extension; docx4j's text model has none, and with none the two agree.
+5. **Not ported:** `FieldContext`'s part, file name, external resolver and `sectionOf`, which only docx4j's `FieldUpdater` and writers use; `FieldUpdater` itself (no write-back here).
+6. **`format_date`'s short time is `h:mm a` with a space.** Java 20 and later (CLDR 42) put a narrow no-break space before the AM/PM marker in `getTimeInstance(SHORT)`; docx4j's output for a `TIME` with no picture depends on its JDK. The text model never reaches it (D14).
+
+### 12.6 Moved expectations
+
+None of the text model's goldens or ratchet moved: `tests/text/conformance.tsv` (the harness's report), the goldens, `test_docproperty_case.py`, `test_texts_phase2.py`'s `fields: update` cases and the agreement test pass unchanged. No fixture under `tests/` or `samples/` held a tier-1 field, a `CREATEDATE` or `SAVEDATE`, or a `QUOTE` with no argument before this phase (a scan of every instruction, section 7). Two censuses changed, both lists of the source rather than expectations of output: `tests/openpackaging/test_private_readers.py`'s `CALLERS` loses `model/text/field_values.py::FieldValues._keywords` (12.2), and its docstring says so; and CR-021's `tests/content/test_integer_readers.py` lists the new `int(` calls, the `SEQ` reset (moved from `field_values.py` to `evaluators.py`, its reason `TEXT` as before) and the nine of `parse_w3cdtf`, under a new reason, `W3CDTF` (a core property's date, no WordprocessingML integer attribute).
+
+### 12.7 Found, and not done
+
+1. **docx4j's `INFO` reach** (12.5 item 1): for docx4j, through the portfolio.
+2. **The portfolio's section 2, python column,** says this repository read `CREATEDATE \@` "parsed nominally, the `Z` ignored"; measured, it gave the lexical form with or without `\@` (section 3.2). For the portfolio session's record.
+3. **The portfolio's registry**: `python/CR-025.A` and `python/CR-025.B` want `done`, with sections 11 and 12 as their notes; the `tasks.yaml` rule (CLAUDE.md) is not this session's to apply.
+4. **Two `conftest` modules on one command line.** `pytest tests/content/X.py tests/text/Y.py` imports `tests/text/conftest.py` as `conftest` first, so a `tests/content` module's `from conftest import ...` fails; the whole suite collects in an order that avoids it. Pre-existing; the new `tests/content/test_date_time_zone.py` imports nothing from `conftest` so as not to depend on it.
+5. **Phase C**: CHANGELOG, README and `docs/pypi-readme.md`, CLAUDE.md (its status line, and the five new files in its list of hand-written ones), the index's row, CR-014's note (section 9).
+
+### 12.8 The gates (at `23fa5ce`)
+
+| gate | before (`3c63804`) | after |
+|---|---|---|
+| the fast suite (`-m "not slow"`) | 6,788 passed, 8 skipped (the brief's figure) | **6,940 passed, 8 skipped**, 0 failed, 1,457 deselected (3 min 26 s) |
+| the full suite (`.venv-fork/bin/python -m pytest`) | not run here (8,245 passed, 8 skipped at CR-020's `5903d7d`) | **8,397 passed, 8 skipped**, 0 failed (5 min 0 s) |
+| the count | --- | 6,940 is one more than 6,788 and the 151 new tests. pytest collects 6,947 items here (the python-docx module's skip is a collection skip, so 6,948 outcomes); outside the four golden files that parametrize over the sibling checkouts, a worktree of `3c63804` collects exactly these ids less the 151, and those four files and their inputs did not change, so this checkout held 6,796 items at `3c63804`, where 6,788 and 8 imply 6,795. The one was not found; no expectation moved for it |
+| the new tests | --- | 151: Phase A's 32 (`test_date_time_zone.py` 24, `test_write_times.py` 8), Phase B's 119 (`test_field_probe.py` 16, `test_field_evaluators.py` 32, `test_field_instruction.py` 71) |
+| `tests/test_readme.py` | --- | **44 passed, 6 skipped** (the six fences marked fragments) |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | --- | **50 of 50 canonically identical**, 0 differences, 0 skipped, 34 `boolean-spelling` |
+| `scripts/threads.py` | --- | **passes** (no configuration lost or altered a document) |
+| acceptance (`scripts/acceptance.py --out out/acceptance-cr025b`, `compare_acceptance.py` against `out/acceptance-cr020b/`) | --- | **17 artefacts, 246 entries, 0 differ** beyond the dates |
+| `codegen/generate.sh --check` (a worktree at `23fa5ce` in this session's scratchpad) | --- | two generations byte identical, **316 modules** (CR-020's 311 and the five new); nothing generated differs from the commit, and `model/dates.py` and the four new `model/fields/` modules survive `clean.py` |
+| `ruff check` on every Python file changed since `3c63804` | --- | no new finding; the four there before (`extractor.py` 1, `opc_package.py` 2, `save.py` 1) left as they were |
+| docx4j's extraction of the probe (12.3) | 12 of 25 cases differ | **byte for byte** in five modes |
+
+No Word check (section 5): the text model's output is no file, and the defaults leave saved files unchanged, which the acceptance comparison shows. `pkg.write_times_on_save` writes a core part in the form `create_package` has always written, which Word has opened since 0.1.0.
+
+### 12.9 For the user to decide
+
+Every question of section 8 is open; each is built as recommended, so an answer that agrees changes nothing:
+
+1. **Q1, the names**: `pkg.date_time_zone` (a `tzinfo` or an IANA name) and `pkg.effective_date_time_zone`, after docx4j-core-ts's (section 4.5).
+2. **Q2**: no process-wide fallback between the package's zone and `TZ`.
+3. **Q3, restated while building** (11.2): the opt-in's stamp to the second, the three ports alike; the minute, Word's, would want `create_package`'s to the minute too.
+4. **Q4**: `pkg.write_times_on_save` alone, no per-save option.
+5. **Q5**: `FieldInstruction` ported, `FldSimpleModel` its subclass, not deprecated with a warning.
+6. **Q6**: `DATE`, `TIME`, `PRINTDATE` cached under `fields: update`.
+7. **Q7**: the user from `TextOptions(field_user=)`, never from `pkg.author`.
+8. **Q8**: a date alone or a time with no offset nominal whatever the package's zone, until docx4j's date-forms probe has run.
+9. **Q9**: `INFO` evaluates only what the consumer computes; offer docx4j the same.
+10. **Q10**: `create_package`'s dates unchanged, to the second.
