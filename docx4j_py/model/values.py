@@ -62,6 +62,15 @@ sign**, a decimal truncated toward zero (``"720.5"`` 720, ``"-121.5"`` -121,
 ``""`` reads 0; any other form (``"abc"``, ``"1e3"``, ``"0x10"``, ``"240,5"``,
 ``" 240 "``) None, unset, because Word refuses the document holding it.
 
+**Dates** (CR-025 Phase B2, docx4j CR-067 section 12.2: the date-forms probe, Word 365,
+2026-10-28). :func:`date_time` reads a ``w:date`` or ``w:fullDate`` as Word reads its
+form: an ``xsd:dateTime`` with a ``Z``, an offset or neither is that clock, and a date
+alone (``2024-02-03``), which is no ``xsd:dateTime`` and so stays its text under the
+exact parse, is midnight on that day. What the clock means is the attribute's: a
+revision's or a comment's local wall clock, a date control's nominal day.
+:func:`date_time_normal_form` is what a save writes for the two forms Word does not
+write: Word's own form, the nominal clock to the minute labelled ``Z``.
+
 **Measurements as code sets them** (CR-022, docx4j CR-066 phase 0: rounds five and
 six, Word 365, 2026-10-26). Word keeps each integer attribute in a field of its own
 width, 16 bits signed or unsigned for most, and reads a value past it wrapped, with
@@ -79,6 +88,7 @@ returns. An attribute the probe did not measure has no row and is not checked (Q
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import json
 import math
 import re
@@ -105,6 +115,8 @@ __all__ = [
     "IntegerLimit",
     "Units",
     "colour",
+    "date_time",
+    "date_time_normal_form",
     "effective",
     "emphasis_mark",
     "highlight",
@@ -465,6 +477,79 @@ def integer(value: Any) -> int | None:
     except ValueError:  # beyond Python's digit limit for a conversion (sys.get_int_max_str_digits)
         return None
     return -whole if sign == "-" else whole
+
+
+# ---------------------------------------------------------------------------
+# dates (CR-025 Phase B2)
+# ---------------------------------------------------------------------------
+
+
+def date_time(value: Any) -> Any:
+    """A ``w:date`` or ``w:fullDate`` as Word 365 reads its form: an ``XmlDateTime``, or None for no date.
+
+    docx4j CR-067 section 12.2 (its date-forms probe, Word 365, Sydney,
+    2026-10-28):
+
+    * an ``xsd:dateTime`` is that clock, with its ``Z`` or offset, or with
+      neither (``2025-06-07T08:09:10``, which binds with no offset);
+    * a **date alone** (``2024-02-03``) is midnight on that day: R01, a
+      revision dated so, showed 3/02/2024 12:00:00 AM, and B01, a date control,
+      had its picker on that day. It is no ``xsd:dateTime``, so the exact parse
+      keeps it as its text (``part.kept``); an offset on it (``2024-02-03Z``)
+      is kept, as docx4j's ``XMLGregorianCalendar`` reads one;
+    * anything else is None: no date (``2025-06-07T08:09``, ``"abc"``).
+
+    The model's ``XmlDateTime`` is itself; a string is read as above, trimmed;
+    a ``datetime`` is converted. What the clock means is the attribute's, and
+    its reader's: a revision's or a comment's ``w:date`` is the local wall
+    clock whatever its ``Z`` says
+    (:func:`docx4j_py.model.revisions.change.word_date`), a date control's
+    ``w:fullDate`` the nominal day.
+    """
+    from docx4j_xsdata.models.datatype import XmlDate, XmlDateTime
+
+    if value is None or isinstance(value, XmlDateTime):
+        return value
+    if isinstance(value, datetime.datetime):
+        return XmlDateTime.from_datetime(value)
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    try:
+        return XmlDateTime.from_string(text)
+    except ValueError:
+        pass
+    try:
+        day = XmlDate.from_string(text)
+    except ValueError:
+        return None
+    return XmlDateTime(day.year, day.month, day.day, 0, 0, 0, 0, day.offset)
+
+
+def date_time_normal_form(value: Any) -> str | None:
+    """What a save writes for a ``w:date`` or ``w:fullDate`` written as Word does not write one; None to leave it.
+
+    Word's save writes every ``w:date`` and ``w:fullDate`` as its nominal clock
+    to the minute labelled ``Z`` (docx4j CR-067 section 12.2: ``2024-02-03`` as
+    ``2024-02-03T00:00:00Z``, ``2025-06-07T08:09:10`` as
+    ``2025-06-07T08:09:00Z``, ``2025-01-02T03:04:05Z`` as
+    ``2025-01-02T03:04:00Z``). A save here writes that form for the two forms
+    Word does not write, **a date alone and a date-time with no offset**
+    (:func:`date_time` with no offset), and for nothing else: a value with a
+    ``Z`` or an offset is left exactly as read, its seconds included (the
+    user's decision, CR-025 section 13: truncating well-formed values would
+    move many saved files for no gain), and so is one that is no date. Word
+    reads the form written as it read the source: a revision's local clock (to
+    the minute, which is what Word holds), a control's nominal day.
+    """
+    from docx4j_xsdata.models.datatype import XmlDateTime
+
+    if not isinstance(value, str):
+        return None
+    calendar = date_time(value)
+    if calendar is None or calendar.offset is not None:
+        return None
+    return str(XmlDateTime(calendar.year, calendar.month, calendar.day, calendar.hour, calendar.minute, 0, 0, 0))
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,8 @@
 docx4j's ``org.docx4j.model.fields.FieldSources`` at ``c3e9920e5`` (its CR-067
 phase 1): the number of the note a bookmark holds a reference to
 (``NOTEREF``), a bookmark's text (``REF``, for a caller with no reading of its
-own), and a core-property date parsed (``CREATEDATE``, ``SAVEDATE``). Read
+own), and a core-property date parsed (``CREATEDATE``, ``SAVEDATE``; a value
+with no offset UTC since docx4j's D13, CR-025 Phase B2). Read
 from the main document's tree; the text model's walk has its own reading of
 the bookmarks and passes the tree it holds, so nothing here unmarshals a part.
 
@@ -141,19 +142,22 @@ _W3CDTF = re.compile(
 )
 
 
-def parse_w3cdtf(value: str | None) -> tuple[datetime.datetime, bool] | None:
-    """A core property's W3CDTF date: ``(the instant, True)`` where it has a ``Z`` or an offset, else ``(the wall clock, False)``.
+def parse_w3cdtf(value: str | None) -> datetime.datetime | None:
+    """A core property's W3CDTF date as an instant, aware and in UTC; None for anything else.
 
-    docx4j ``FieldSources.parseW3CDTF``'s forms: a date-time with an offset or
-    a ``Z`` (``2024-02-03T04:05:06Z``, the form Word writes) is an instant, aware
-    and in UTC; a date-time with none (``2025-06-07T08:09:10``) and a date alone
-    (``2024-02-03``, also ``2024`` and ``2024-02``, W3CDTF's coarser forms) are a
-    naive wall-clock time, nominal, midnight for a date (CR-025 D9: the rule's
-    point 4, this repository's reading until a Word probe measures them; docx4j
-    reads them in the JVM's zone). A date alone with an offset (``2024-02-03Z``)
-    is midnight there, an instant, as XML Schema's ``xs:date`` reads it.
-    Seconds are optional, a fraction of any length is cut to microseconds.
-    None for anything else.
+    docx4j ``FieldSources.parseW3CDTF`` since its CR-067 D13 (``c58e36e64``):
+    a date-time with a ``Z`` or an offset (``2024-02-03T04:05:06Z``, the form
+    Word writes) is that instant; one with none (``2025-06-07T08:09:10``) and a
+    date alone (``2024-02-03``, also ``2024`` and ``2024-02``, W3CDTF's coarser
+    forms) are **UTC**, midnight for a date, as Word 365 reads a core
+    property's (docx4j CR-067 section 12.2, its date-forms probe in Sydney:
+    created ``2024-02-03`` showed 11:00 at UTC+11, modified
+    ``2025-06-07T08:09:10`` 18:09 at UTC+10). Not the local clock, which is what
+    a revision's ``w:date`` means instead (:func:`docx4j_py.model.values.date_time`).
+    CR-025 Phase B2: until then these two forms were read nominally (D9, Q8),
+    pending that probe. A date alone with an offset (``2024-02-03Z``) is
+    midnight there, as XML Schema's ``xs:date`` reads it. Seconds are
+    optional, a fraction of any length is cut to microseconds.
     """
     if value is None:
         return None
@@ -162,7 +166,7 @@ def parse_w3cdtf(value: str | None) -> tuple[datetime.datetime, bool] | None:
         return None
     year, month, day, hour, minute, second, fraction, offset = found.groups()
     try:
-        when = datetime.datetime(  # noqa: DTZ001 - the zone, if any, is the offset's, applied below
+        when = datetime.datetime(  # noqa: DTZ001 - the zone is the offset's, else UTC, applied below
             int(year),
             int(month or 1),
             int(day or 1),
@@ -173,14 +177,12 @@ def parse_w3cdtf(value: str | None) -> tuple[datetime.datetime, bool] | None:
         )
     except ValueError:
         return None
-    if offset is None:
-        return when, False
-    if offset in ("Z", "z"):
-        zone = datetime.UTC
+    if offset is None or offset in ("Z", "z"):
+        zone = datetime.UTC  # no offset: UTC, as Word reads a core property's (D13)
     else:
         sign = -1 if offset[0] == "-" else 1
         hours, minutes = int(offset[1:3]), int(offset[4:6])
         if hours > 14 or minutes > 59:
             return None
         zone = datetime.timezone(sign * datetime.timedelta(hours=hours, minutes=minutes))
-    return when.replace(tzinfo=zone).astimezone(datetime.UTC), True
+    return when.replace(tzinfo=zone).astimezone(datetime.UTC)

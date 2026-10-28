@@ -897,7 +897,8 @@ class Comment:
         else ``w:date``, which Word writes on the author's local wall clock
         whatever its ``Z`` says, read as local time in the package's zone
         (``pkg.date_time_zone``, CR-025), else this process's (CR-010 section
-        12.9; docx4j-core-ts ``Comment.creationDate``). The
+        12.9; docx4j-core-ts ``Comment.creationDate``), a date alone as local
+        midnight (CR-025 Phase B2, as Word reads a revision's). The
         extensible entry is found through the paragraph ids, the last paragraph's
         first, which is the one Word keys it by.
         """

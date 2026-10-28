@@ -440,8 +440,9 @@ class TrackedChange:
 
         ``w:date`` is read as Word means it, local wall-clock time
         (:func:`date_of`), in the package's zone (``pkg.date_time_zone``, else
-        the process's; CR-025, docx4j ``TrackedChange.getDate()`` since D12). A
-        group's is its first piece's; None when there is none.
+        the process's; CR-025, docx4j ``TrackedChange.getDate()`` since D12); a
+        date alone as local midnight (CR-025 Phase B2). A group's is its first
+        piece's; None when there is none.
         """
         from docx4j_py.model.dates import package_zone
 
@@ -560,19 +561,16 @@ class TrackedChange:
 
 
 def _calendar(value: Any) -> Any:
-    """An ``xsd:dateTime`` as an ``XmlDateTime``, or None: the model's value, a string or a ``datetime``."""
-    from docx4j_xsdata.models.datatype import XmlDateTime
+    """A ``w:date`` or a ``dateUtc`` as an ``XmlDateTime``, or None: the model's value, a string or a ``datetime``.
 
-    if value is None or isinstance(value, XmlDateTime):
-        return value
-    if isinstance(value, datetime.datetime):
-        return XmlDateTime.from_datetime(value)
-    if isinstance(value, str):
-        try:
-            return XmlDateTime.from_string(value.strip())
-        except ValueError:
-            return None
-    return None
+    :func:`docx4j_py.model.values.date_time`, Word's reading of the form: a
+    date alone (``2024-02-03``, which the parse keeps as its text) is midnight
+    on that day (CR-025 Phase B2; docx4j's date-forms probe, R01), as docx4j's
+    ``XMLGregorianCalendar`` reads it.
+    """
+    from docx4j_py.model.values import date_time
+
+    return date_time(value)
 
 
 def _to_datetime(calendar: Any) -> datetime.datetime | None:
@@ -585,7 +583,9 @@ def _to_datetime(calendar: Any) -> datetime.datetime | None:
 def utc_date(value: Any) -> datetime.datetime | None:
     """An ``xsd:dateTime`` meant as UTC --- ``w16du:dateUtc``, ``w16cex:dateUtc`` --- in UTC.
 
-    A missing offset is read as UTC, as docx4j reads one.
+    A missing offset is read as UTC, as docx4j reads one; a date alone is
+    midnight UTC, as docx4j's ``dateOf`` reads one (CR-025 Phase B2; Word
+    writes neither).
     """
     calendar = _calendar(value)
     found = _to_datetime(calendar) if calendar is not None else None
@@ -607,6 +607,12 @@ def word_date(value: Any, zone: datetime.tzinfo | None = None) -> datetime.datet
     process's** time zone, as docx4j reads it in the JVM's by default (check
     36) and Office JS in the add-in's. An explicit non-zero offset, which Word
     does not write, is read as it says (CR-010 section 12.9).
+
+    Word reads every form so (docx4j CR-067 section 12.2, its date-forms
+    probe, Word 365 in Sydney): ``2025-01-02T03:04:05Z`` as 3:04 AM local, the
+    ``Z`` ignored; ``2025-06-07T08:09:10``, with no offset, as 8:09 AM local, as
+    written; and a date alone, ``2024-02-03``, as **local midnight**
+    (:func:`docx4j_py.model.values.date_time`; CR-025 Phase B2: it was None).
     """
     calendar = _calendar(value)
     found = _to_datetime(calendar) if calendar is not None else None

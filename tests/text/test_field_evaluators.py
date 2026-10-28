@@ -6,8 +6,9 @@ property fields, a pass's sequences and references, the date fields at a
 clock, a caller's own evaluator, the core-property dates, ``REVNUM`` and
 ``INFO``, ``SECTION``, ``NOTEREF`` and the user. Then ``PackageDateTimeZoneTest``'s
 field cases: the date fields in the package's zone and the per-call
-override. Then this port's decisions: the forms Word has not been measured on
-(D9), ``INFO``'s reach (D12) and what ``fields: update`` keeps cached (D14).
+override. Then this port's decisions: the forms Word had not been measured on
+(D9; since Phase B2, Word's reading of them, docx4j's D13: UTC), ``INFO``'s
+reach (D12) and what ``fields: update`` keeps cached (D14).
 """
 
 from __future__ import annotations
@@ -165,8 +166,8 @@ def test_the_core_property_dates_revision_and_info(zone):
     zone("Australia/Sydney")
     ctx = FieldContext(dated_pkg())
     created = parse_w3cdtf("2024-02-03T04:05:06Z")
-    assert created == (datetime.datetime(2024, 2, 3, 4, 5, 6, tzinfo=UTC), True)
-    assert created[0].timestamp() * 1000 == 1706933106000
+    assert created == datetime.datetime(2024, 2, 3, 4, 5, 6, tzinfo=UTC)
+    assert created.timestamp() * 1000 == 1706933106000
     assert evaluate(' CREATEDATE \\@ "yyyy-MM-dd" ', ctx) == "2024-02-03"
     assert evaluate(' SAVEDATE \\@ "d MMMM yyyy" ', ctx) == "7 June 2025"
     assert evaluate(" CREATEDATE ", ctx) == "2/3/2024 3:05:00 PM", "Word's default, measured (CR-067 section 11.3)"
@@ -266,17 +267,28 @@ def test_the_contexts_zone_falls_back_to_the_packages_then_the_processs(zone):
 
 
 @pytest.mark.parametrize(
-    ("created", "default", "switched"),
+    ("created", "package_zone", "default", "switched"),
     [
-        ("2025-06-07T08:09:10", "6/7/2025 8:09:00 AM", "2025-06-07 08:09:00"),
-        ("2024-02-03", "2/3/2024 12:00:00 AM", "2024-02-03 00:00:00"),
-        ("2024", "1/1/2024 12:00:00 AM", "2024-01-01 00:00:00"),
-        ("2024-02", "2/1/2024 12:00:00 AM", "2024-02-01 00:00:00"),
+        # the process's zone, Sydney: UTC+10 in June, UTC+11 in February and January
+        ("2025-06-07T08:09:10", None, "6/7/2025 6:09:00 PM", "2025-06-07 18:09:00"),
+        ("2024-02-03", None, "2/3/2024 11:00:00 AM", "2024-02-03 11:00:00"),
+        ("2024", None, "1/1/2024 11:00:00 AM", "2024-01-01 11:00:00"),
+        ("2024-02", None, "2/1/2024 11:00:00 AM", "2024-02-01 11:00:00"),
+        # the package's zone over the process's: Tokyo (UTC+9), New York (UTC-5 in winter, UTC-4 in summer)
+        ("2025-06-07T08:09:10", "Asia/Tokyo", "6/7/2025 5:09:00 PM", "2025-06-07 17:09:00"),
+        ("2024-02-03", "Asia/Tokyo", "2/3/2024 9:00:00 AM", "2024-02-03 09:00:00"),
+        ("2025-06-07T08:09:10", "America/New_York", "6/7/2025 4:09:00 AM", "2025-06-07 04:09:00"),
+        ("2024-02-03", "America/New_York", "2/2/2024 7:00:00 PM", "2024-02-02 19:00:00"),
+        ("2024", "America/New_York", "12/31/2023 7:00:00 PM", "2023-12-31 19:00:00"),
     ],
 )
-@pytest.mark.parametrize("package_zone", [None, "Asia/Tokyo", "America/New_York"])
-def test_a_date_alone_or_a_time_with_no_offset_is_nominal_in_any_zone(zone, created, default, switched, package_zone):
-    """D9, the rule's point 4: the wall clock as written until a Word probe measures these; the field's minute and default apply."""
+def test_a_date_alone_or_a_time_with_no_offset_is_utc(zone, created, package_zone, default, switched):
+    """D9 as Phase B2 made it, docx4j's D13: UTC, as Word 365 reads a core property's (its date-forms probe, D01, D02).
+
+    Until Phase B2 these were nominal, the wall clock as written in any zone
+    (Q8: "until docx4j's date-forms probe has run; then both ports follow
+    Word"). The field's minute and default apply as to any other.
+    """
     zone("Australia/Sydney")
     package = pkg(created=created)
     package.date_time_zone = package_zone

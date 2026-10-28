@@ -276,7 +276,8 @@ def date_of(value: Any, zone: datetime.tzinfo | None = None) -> datetime.datetim
     """The instant of a ``w:date``, in UTC, read as Word means it: local wall-clock time.
 
     :func:`docx4j_py.model.revisions.change.word_date`, in `zone` (the
-    package's, CR-025; None for the process's); None when there is none.
+    package's, CR-025; None for the process's), a date alone as local midnight
+    (CR-025 Phase B2); None when there is none.
     """
     from docx4j_py.model.revisions.change import word_date
 

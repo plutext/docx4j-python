@@ -22,7 +22,8 @@ Registered here, as docx4j registers them:
   minute, in the context's zone; with ``\\@`` its picture, without one Word's
   default, the short date and the long time (``2/3/2024 3:05:00 PM``,
   measured in Word 365, docx4j CR-067 section 11.3); a date alone or a time
-  with no offset nominal (CR-025 D8, D9);
+  with no offset UTC, as Word reads them (CR-025 D8, D9 as Phase B2 made it;
+  docx4j's D13);
 * ``SEQ`` (counted in the context's pass; ``\\r``, ``\\c``, ``\\h``; not
   ``\\s``); ``REF`` to a bookmark the context has read (with ``\\n``,
   ``\\r``, ``\\w``, ``\\p`` or ``\\f``, which need numbering or layout, the
@@ -213,23 +214,23 @@ WORD_DEFAULT_DATE_TIME = "M/d/yyyy h:mm:ss a"
 
 
 def _core_date(property_name: str) -> Evaluator:
-    """``CREATEDATE`` and ``SAVEDATE``: docx4j's ``CoreDate`` (CR-025 D8)."""
+    """``CREATEDATE`` and ``SAVEDATE``: docx4j's ``CoreDate`` (CR-025 D8).
+
+    The core property is an instant (:func:`~docx4j_py.model.fields.sources.parse_w3cdtf`:
+    a value with no offset, or a date alone, is UTC, as Word reads it; docx4j's
+    D13, CR-025 Phase B2), cut to the minute and shown in the context's zone.
+    """
 
     def evaluator(instruction: FieldInstruction, context: Any) -> str | None:
         from docx4j_py.model.dates import to_the_minute, wall_clock
         from docx4j_py.model.fields.sources import parse_w3cdtf
         from docx4j_py.model.java_text import simple_date_format
 
-        parsed = parse_w3cdtf(context.properties().value(property_name))
-        if parsed is None:
+        when = parse_w3cdtf(context.properties().value(property_name))
+        if when is None:
             return None
-        when, instant = parsed
-        if instant:
-            # to the minute, as Word reads a file's time (04:05:06Z shows as :05:00), then the zone (D12)
-            clock = wall_clock(to_the_minute(when), context.zone)
-        else:
-            # a date alone or a time with no offset: nominal, the wall clock as written (D9)
-            clock = when.replace(second=0, microsecond=0)
+        # to the minute, as Word reads a file's time (04:05:06Z shows as :05:00), then the zone (D12)
+        clock = wall_clock(to_the_minute(when), context.zone)
         if instruction.has_switch("\\@"):
             return format_date(instruction, clock)
         return simple_date_format(WORD_DEFAULT_DATE_TIME, clock)

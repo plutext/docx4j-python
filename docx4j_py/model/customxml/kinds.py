@@ -343,8 +343,17 @@ class DatePickerContentControl(_KindView):
 
     @property
     def full_date(self) -> datetime.datetime | None:
-        """``w:fullDate``, the date Word really holds, or None. Extension."""
-        value = getattr(self.element, "full_date", None)
+        """``w:fullDate``, the date Word really holds, or None. Extension.
+
+        As written: naive for a value with no offset, aware for one with a
+        ``Z`` or an offset. A date alone (``2024-02-03``, which the parse keeps
+        as its text) is midnight on that day, naive, as Word reads it: its
+        picker on that day (CR-025 Phase B2, docx4j's date-forms probe, B01;
+        :func:`docx4j_py.model.values.date_time`).
+        """
+        from docx4j_py.model.values import date_time
+
+        value = date_time(getattr(self.element, "full_date", None))
         if value is None:
             return None
         try:

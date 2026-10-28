@@ -266,8 +266,9 @@ def compare(orig: bytes, new: bytes, *, unordered_root: bool = False, normalise:
         normalise: `new` is a normalising save's (CR-018 section 4.7,
             ``package.save()``'s default): write the same normal form into the
             source first (:func:`docx4j_py.openpackaging.normalise.normalise_tree`:
-            the on/off, enumeration and colour rows, and CR-021's integers and
-            empty rsids), each rewrite counted as ``word-normal-form``, so that
+            the on/off, enumeration and colour rows, CR-021's integers and
+            empty rsids, and CR-025 Phase B2's date-only and offset-free
+            ``w:date`` and ``w:fullDate``), each rewrite counted as ``word-normal-form``, so that
             any other difference is still one. An integer the serialiser
             re-spells (``"+240"`` as ``240``) is counted there too.
     """

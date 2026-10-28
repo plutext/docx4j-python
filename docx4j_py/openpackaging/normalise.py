@@ -68,6 +68,22 @@ the same typed walk as the on/off rows:
 A value Word reads as it is (``"240"``) is the serialiser's and is not touched;
 neither is a value equal to its style's, which Word's own save leaves out (D7).
 
+**CR-025 Phase B2's rows** (dates; docx4j CR-067 section 12.2, the date-forms
+probe; the user, 2026-10-28: "item 3 as recommended"), found by name in the
+render as Phase B's are, since an offset-free value binds as it is:
+
+* a ``w:date`` (every revision element's and a comment's) or a ``w:fullDate``
+  (a date control's), :data:`DATE_ATTRIBUTES`, written as a **date alone**
+  (``2024-02-03``) or a **date-time with no offset** (``2025-06-07T08:09:10``)
+  is written in Word's form, the nominal clock to the minute labelled ``Z``
+  (``2024-02-03T00:00:00Z``, ``2025-06-07T08:09:00Z``), as Word's save writes
+  it (:func:`docx4j_py.model.values.date_time_normal_form`); Word reads it as
+  it read the source (a revision's local clock, a control's nominal day);
+* a value with a ``Z`` or an offset is left exactly as read, its seconds
+  included, though Word's save cuts those too (the user's decision: truncating
+  well-formed values would move many saved files for no gain); so is one that
+  is no date.
+
 **Scope and cost.** Only parts the save re-marshals (a part never unmarshalled
 is still written byte for byte). The on/off rows walk only the parts whose
 parse kept a value (:attr:`XmlPart.kept`), so a save with nothing odd in it
@@ -105,6 +121,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
 __all__ = [
+    "DATE_ATTRIBUTES",
     "INTEGER_NAMESPACES",
     "ON_OFF_NAMESPACES",
     "UNION_INTEGER_ATTRIBUTES",
@@ -162,6 +179,30 @@ UNION_INTEGER_ATTRIBUTES: dict[str, tuple[str, ...]] = {
         )
         for name in ("interSp", "intraSp", "lMargin", "postSp", "preSp", "rMargin", "wrapIndent")
     },
+}
+
+#: The WordprocessingML attributes typed ``xsd:dateTime`` (CR-025 Phase B2), by element, as the
+#: model declares them (``tests/content/test_date_forms.py`` derives the table from it): ``w:date``
+#: on every revision element (``w:ins``, ``w:del``, the moves and their range starts, the property
+#: changes, the cell changes, ``w:numberingChange``, the custom XML range starts, ``w14``'s
+#: conflict range starts) and on a comment, and ``w:fullDate`` on a date control's ``w:date``.
+#: Every class each element name binds types its attribute so. ``w16du:dateUtc`` and
+#: ``w16cex:dateUtc`` are UTC, and not here.
+DATE_ATTRIBUTES: dict[str, str] = {
+    **{
+        f"{{{W}}}{name}": f"{{{W}}}date"
+        for name in (
+            "cellDel", "cellIns", "cellMerge", "comment",
+            "customXmlDelRangeStart", "customXmlInsRangeStart",
+            "customXmlMoveFromRangeStart", "customXmlMoveToRangeStart",
+            "del", "ins", "moveFrom", "moveFromRangeStart", "moveTo", "moveToRangeStart",
+            "numberingChange", "pPrChange", "rPrChange", "sectPrChange",
+            "tblPrChange", "tblPrExChange", "tcPrChange", "trPrChange",
+        )
+    },
+    f"{{{W14}}}customXmlConflictDelRangeStart": f"{{{W}}}date",
+    f"{{{W14}}}customXmlConflictInsRangeStart": f"{{{W}}}date",
+    f"{{{W}}}date": f"{{{W}}}fullDate",
 }
 
 #: The namespace whose defaults have been audited (docx4j #697, CR-059; CR-018 Q10): only
@@ -690,7 +731,8 @@ def normalise_tree(root: Any) -> list[tuple[str, str | None, str, str | None]]:
     serialiser re-spells too, ``"+240"`` as ``240``); the empty rsid, dropped;
     then the rows a save applies to its render, the very functions
     (:func:`normalise_render`: the enumerations and colours, attribute None for
-    an element dropped, and the union integers). ``scripts/canon.py``'s
+    an element dropped, the union integers, and CR-025 Phase B2's dates).
+    ``scripts/canon.py``'s
     ``word-normal-form`` applies it to a source before comparing a normalised
     save with it, so that nothing else may move.
     """
@@ -730,7 +772,7 @@ def normalise_tree(root: Any) -> list[tuple[str, str | None, str, str | None]]:
             else:
                 element.set(attribute, after)
             out.append((element.getroottree().getpath(element), attribute, value, after))
-    rows = [*_enumeration_and_colour_rows(root), *_union_rows(root)]
+    rows = _render_rows(root)
     out.extend((row.element.getroottree().getpath(row.element), row.attribute, row.before, row.after) for row in rows)
     _apply_rows(rows)
     return out
@@ -912,6 +954,37 @@ def _union_rows(root: Any) -> list[_Row]:
     return rows
 
 
+_DATE_TAGS = tuple(sorted(DATE_ATTRIBUTES))
+
+
+def _date_rows(root: Any) -> list[_Row]:
+    """CR-025 Phase B2's date rows, as rewrites of an lxml tree (not yet applied): found by name.
+
+    A ``w:date`` or ``w:fullDate`` (:data:`DATE_ATTRIBUTES`) written as a date
+    alone or a date-time with no offset is written as Word's save writes it,
+    the nominal clock to the minute labelled ``Z``
+    (:func:`~docx4j_py.model.values.date_time_normal_form`); a value with a
+    ``Z`` or an offset, or no date, is left as it is.
+    """
+    from docx4j_py.model.values import date_time_normal_form
+
+    rows: list[_Row] = []
+    for element in root.iter(*_DATE_TAGS):
+        attribute = DATE_ATTRIBUTES[element.tag]
+        value = element.get(attribute)
+        if value is None:
+            continue
+        after = date_time_normal_form(value)
+        if after is not None and after != value:
+            rows.append(_Row(element, attribute, value, after))
+    return rows
+
+
+def _render_rows(root: Any) -> list[_Row]:
+    """Every row a save finds by name in a render: the enumerations and colours, the union integers, the dates."""
+    return [*_enumeration_and_colour_rows(root), *_union_rows(root), *_date_rows(root)]
+
+
 def _apply_rows(rows: list[_Row]) -> None:
     """Write :func:`_enumeration_and_colour_rows`' rewrites into their tree, a dropped element's tail kept."""
     for row in rows:
@@ -978,11 +1051,11 @@ def normalise_render(root: Any, part: str = "") -> list[Normalised]:
     :meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart._marshal` calls it on
     every render. Outside a save that normalises (:func:`normalised_package`) it
     does nothing, so ``part.xml`` is unchanged; inside one the rewrites go into
-    the save's report. The rows are CR-018 Phase B's enumerations and colours
-    and CR-021 D5's union integers, found by name over the render (an ``iter``
-    of about twenty tags each, a third of a millisecond over ``Symbols.docx``'s
-    790 KB main part for the first), so the typed tree is never touched and a
-    value set in code is written in the form too.
+    the save's report. The rows are CR-018 Phase B's enumerations and colours,
+    CR-021 D5's union integers and CR-025 Phase B2's dates, found by name over
+    the render (an ``iter`` of about twenty tags each, a third of a millisecond
+    over ``Symbols.docx``'s 790 KB main part for the first), so the typed tree
+    is never touched and a value set in code is written in the form too.
     """
     active = _ACTIVE.get()
     if active is None:
@@ -998,10 +1071,11 @@ def rendered_rows(root: Any, part: str = "") -> list[Normalised]:
     """Write the render's rows into an lxml tree, in place, and return them as :class:`Normalised`.
 
     The enumeration and colour rows (CR-018 Phase B), then the union integer
-    rows (CR-021 D5). For a caller that renders a tree itself
-    (``scripts/roundtrip.py``), after :func:`normalised_tree`'s typed rows.
+    rows (CR-021 D5), then the dates (CR-025 Phase B2). For a caller that
+    renders a tree itself (``scripts/roundtrip.py``), after
+    :func:`normalised_tree`'s typed rows.
     """
-    rows = [*_enumeration_and_colour_rows(root), *_union_rows(root)]
+    rows = _render_rows(root)
     records = [Normalised(part, _lxml_path(row.element, row.attribute), row.before, row.after) for row in rows]
     _apply_rows(rows)
     return records
