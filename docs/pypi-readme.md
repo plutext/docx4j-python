@@ -167,7 +167,11 @@ doc.save("out.docx")                                  # parts untouched byte for
 
 Every element has a constructor in its namespace's `el` module, with `p`, `r`, `t` and `tbl` as
 sugar; `wml(...)` parses a fragment with docx4j's prefixes declared; `to_xml` is the inverse.
-The tree stays reachable from every view (`paragraph.element` is the typed `P`).
+The tree stays reachable from every view (`paragraph.element` is the typed `P`). A content list refuses
+what its element cannot hold as code adds it (`run.content.append(tbl(...))` raises
+`MisplacedContentError`, `target.misplaced`, saying where the item goes), since Word refuses to open
+most such files; a load is never checked. `misplaced()` walks a tree or a package for what got
+past, and `save(check=True)` refuses to write what the session introduced.
 
 ```python
 from docx4j_py.wml import el, p, r, to_xml, wml

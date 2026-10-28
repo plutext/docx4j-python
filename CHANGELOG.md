@@ -9,7 +9,56 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
+### Added
+
+- **The validator, `misplaced()`** ([CR-020](docs/change-requests/CR-020-misplaced-content-refused.md) Phase B, section
+  [11](docs/change-requests/CR-020-misplaced-content-refused.md#11-phase-b-implementation-notes-2026-10-28)): `docx4j_py.traversal.misplaced(root)`
+  over a tree, a part or a package, and `package.misplaced()`, report what Word would refuse or read
+  otherwise, and change or repair nothing. A part never unmarshalled is read privately, so it is
+  still saved byte for byte. Each finding is plain data with `to_dict()`: a `code`, the part, a path in
+  docx4j-core-ts's form (`/w:document/w:body[1]/w:p[3]/w:r[1]/w:tbl[1]`), the content API's address, a
+  message and a hint.
+  - `target.misplaced`: what got past the add-time check below, a list assigned whole, a single field
+    given the wrong class, anything built under `unchecked()`.
+  - `cell.no_end_paragraph`: a table cell whose last block, as Word reads it, is not a paragraph
+    (CR-016 Phase A's rule), which Word opens as unreadable content. docx4j-core-ts and docx4j took the
+    code for when they report it.
+  - `value.out_of_range`: an integer measurement Word does not keep as written, with CR-022's
+    per-attribute table and a model of Word's 16-bit reading (`docx4j_py.model.word_integers`), in
+    docx4j-core-ts CR-017's fields (`word_reads`, `storage`, `range`, `read_as`, `rule`). Held to Word
+    365's own saves of docx4j CR-066's probe: of its 660 integer cases, exactly the 413 Word's save
+    changed are reported, each `word_reads` what Word wrote. An attribute the probe left unmeasured is
+    not checked (docx4j-core-ts reports 19 more, from three such attributes).
+- **`package.save(check=True)`** (also `save_to` and `save_package`; `openpackaging.save.checking()` for
+  a block) runs the validator before anything is written and raises `SaveCheckError` (a
+  `ContentError`, the first finding's code, `.findings` all of them) for misplaced content, and for a
+  cell or an out-of-range value this session introduced. One the source file already held is saved as
+  it is and listed on `package.last_save.findings`, never repaired. A refused save leaves the target
+  untouched. The default is `check=False`; the test suite saves checked throughout.
+
 ### Changed
+
+- **A typed list refuses what its element cannot hold** ([CR-020](docs/change-requests/CR-020-misplaced-content-refused.md) Phase A, section
+  [10](docs/change-requests/CR-020-misplaced-content-refused.md#10-phase-a-implementation-notes-2026-10-27); the counterpart of docx4j's
+  `ArrayListDocx4j.checkParent` and docx4j CR-064). Every list of the generated model checks what code
+  appends, inserts, extends or sets against what the schema allows in it, by class, or by element name
+  where the holder's class has the same shape (`w:hyperlink` has seven classes). An item it cannot hold
+  raises `MisplacedContentError` (`target.misplaced`; an `InvalidTargetError` and a `TypeError`) at the
+  line that added it, naming the holder's field and the item, with where the item goes:
+  `` `R.content` can't hold a `Tbl` (`w:tbl`) `` (a table is the paragraph's sibling: put it in the
+  body, a table cell or a block-level content control). Word 365 refuses to open most such files
+  outright and repairs the rest (11 and 7 of docx4j-core-ts's check 72, one repair dropping text), so
+  the only code this breaks wrote files Word could not read as written.
+  - A load is never checked: a file is read as written, and the corpus and the test suite hold no
+    parsed content the check would refuse.
+  - `docx4j_py.child.unchecked()` (also from `docx4j_py.model.content`) builds a forbidden tree on
+    purpose, as a test reproducing a broken file does.
+  - The builders refuse the same: `sdt([p(...)], form="run")`, a paragraph in a run-level control, now
+    raises. An item that would be written with an `xsi:type` (a subclass where its base belongs) is refused, except on
+    the Dublin Core elements declared with no type, where OPC's core properties need
+    `xsi:type="dcterms:W3CDTF"`.
+  - Every generated namespace is checked, 509 list fields; a parse of `Symbols.docx` costs about 1%
+    more.
 
 - **A measurement a setter would write beyond Word's range is refused**
   ([CR-022](docs/change-requests/CR-022-integer-measurements-refused-beyond-words-range.md), sections

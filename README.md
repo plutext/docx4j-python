@@ -433,6 +433,42 @@ Every object is a `Child`: it knows its parent (`node.parent`), and appending to
 sets the child's parent, as docx4j's `ArrayListDocx4j` does. Objects are slotted dataclasses;
 equality and `repr` ignore the parent, and so does serialisation.
 
+A content list also refuses what its element cannot hold, at the line that adds it, as docx4j's
+`checkParent` does (CR-020): every typed list checks what code appends, inserts, extends or sets
+against what the schema allows there, and raises `MisplacedContentError` (`target.misplaced`, a
+`TypeError` too) with where the item goes. Word refuses to open most such files outright (11 of
+18 in docx4j-core-ts's check 72) and repairs the rest, once losing text. A load is never checked:
+a file is read as written. `unchecked()` builds a forbidden tree on purpose, and `misplaced()` walks
+a tree, a part or a package for what got past the check: a list assigned whole, a single field, a
+table cell that does not end with a paragraph, an integer measurement Word would misread.
+`save(check=True)` refuses a save that would write what the session introduced, and writes nothing.
+
+```python
+from docx4j_py import create_package
+from docx4j_py.child import unchecked
+from docx4j_py.model.content import MisplacedContentError, SaveCheckError
+from docx4j_py.traversal import misplaced
+from docx4j_py.wml import r, tbl
+
+run = r("text")
+try:
+    run.content.append(tbl([]))            # a table inside a run
+except MisplacedContentError as error:
+    print(error.code, error.hint)          # target.misplaced a table is the paragraph's sibling: put it in the body, ...
+
+with unchecked():                          # a broken Word file, reproduced on purpose
+    run.content.append(tbl([]))
+print([finding.code for finding in misplaced(run)])     # ['target.misplaced']
+
+doc = create_package()
+doc.body.insert_paragraph("Checked").element.content[0].content = [tbl([])]   # a whole list, past the check
+print([finding.to_dict()["path"] for finding in doc.misplaced()])  # ['/w:document/w:body[1]/w:p[1]/w:r[1]/w:tbl[1]']
+try:
+    doc.save("checked.docx", check=True)   # off by default
+except SaveCheckError as error:
+    print(error.code)                      # target.misplaced, and checked.docx is not written
+```
+
 ### The engine
 
 ```python
@@ -1019,7 +1055,9 @@ docx4j_py/            one package per XML namespace, generated; codegen/generate
   namespaces.py         hand written: docx4j's prefix table; UNDERSTOOD is generated
   runtime.py            hand written: the shared XmlContext, warm_up()
   fragments.py          hand written: wml(...) and to_xml(...)
-  traversal.py          hand written: walk, walk_all, iter_nodes, find, text_of, run_items_of
+  traversal.py          hand written: walk, walk_all, iter_nodes, find, text_of, run_items_of, misplaced
+  placement.py          hand written: what each typed list may hold, and the refusal's messages (CR-020)
+  validator.py          hand written: the findings misplaced() reports, and save(check=True)'s check
   openpackaging/        hand written, all of it: the engine (CR-002)
     part_name.py content_types.py stores.py load.py save.py mce.py resources.py api.py
     parts/              Part, BinaryPart, XmlPart, RelationshipsPart, the registry, the typed parts

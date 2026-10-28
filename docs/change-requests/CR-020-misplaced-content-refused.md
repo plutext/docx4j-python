@@ -1,6 +1,6 @@
 # CR-020: Content refused where it does not belong --- a check on every typed list as code adds to it, derived from the model, and a validator for what gets past
 
-**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); **Phase B implemented 2026-10-28** (section 11: `740ea05`, `903a6d6`, `82800fd`, `5903d7d`; the validator `misplaced(root)` and `package.misplaced()`, `save(check=...)` with the suite saving checked, the out-of-range report held to Word 365's saves of docx4j CR-066 rounds 5 and 6; five points for the user in 11.9); **its five points decided 2026-10-28** (the user: "keep what's built"; 11.12, nothing changed); Phase C proposed. Three phases (section 6), 2 to 3 days.
+**Status:** Proposed 2026-10-26, at the user's request ("draft it as a CR"). The proposal is the user's, put through the portfolio session the same day: refuse misplaced content at runtime (a `Tbl` appended to `R.content`), generated from the annotations. docx4j-25's assessment of the Java side came with it. It is measured here (section 2) with a probe kept in the session's scratchpad; nothing in the repository was changed to measure it. **Revised the same day** at the user's request ("also add the out-of-range report to CR-020's Phase B list"): the validator also reports an integer measurement beyond Word's range, with CR-022's limits table (section 4.7). **Decided 2026-10-26** (the user: "CR-020 Q1 to Q9 answered as recommended"; section 8). **Phase A implemented 2026-10-27** (section 10: `01fbe44`, `ebc3dcd`, `597097e`; Q3's measurement chose the context variable around each parse, 10.5); **its five open points decided as recommended 2026-10-27**, 10.14, nothing changed); **Phase B implemented 2026-10-28** (section 11: `740ea05`, `903a6d6`, `82800fd`, `5903d7d`; the validator `misplaced(root)` and `package.misplaced()`, `save(check=...)` with the suite saving checked, the out-of-range report held to Word 365's saves of docx4j CR-066 rounds 5 and 6; five points for the user in 11.9); **its five points decided 2026-10-28** (the user: "keep what's built"; 11.12, nothing changed); **Phase C, the records, done 2026-10-28** (section 12, the user: "go on CR-020 Phase C"). **CR-020 is complete.** Three phases (section 6), 2 to 3 days.
 
 *The number:* CR-019 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057 (CR-018's header), so this one is CR-020.
 
@@ -755,3 +755,28 @@ its probe files raise on purpose, as the other probe readers do (267 of the fast
    core-ts's other 19 (`w:gridCol`, `w:wBefore`, `w:wAfter`) wait on a measurement of what Word does with them.
 5. **No out-of-range report on every save** (departure 3): Q5's default, `check` off, stands; the MCP server and the
    inspector call `misplaced()`.
+
+## 12. Phase C, the records (2026-10-28)
+
+At the user's "go on CR-020 Phase C". Records only: no code, test or generated file changed, so no gate moved from
+11.11's; `tests/test_readme.py` runs the new README fence (44 passed, one more than before, 6 fragments skipped).
+
+- **`CHANGELOG.md`, Unreleased:** under "Added", the validator (`misplaced()`, its three codes, the out-of-range report's
+  fields and its oracle) and `save(check=True)`; under "Changed", the add-time refusal (`MisplacedContentError`, the parse
+  unchecked, `unchecked()`, the builders' `sdt(..., form="run")`, the `xsi:type` rule, the cost), with core-ts's check
+  72 as the reason it breaks no code that wrote a readable file.
+- **`README.md`:** the object model section says what a content list refuses, that a load is never checked, and what
+  `misplaced()` and `save(check=True)` do, with an executed example (an append refused, `unchecked()`, a list assigned
+  whole found, a checked save refused and nothing written); `placement.py` and `validator.py` in the layout.
+- **`docs/pypi-readme.md`:** the same in four sentences, in the object model section.
+- **`CLAUDE.md`:** CR-020's status; `placement.py`, `validator.py`, `model/word_integers.py`, `unchecked()` and
+  `misplaced` in the hand-written list; an object model note on the check, the unchecked parse, the validator and the
+  suite's checked saves with their opt-out.
+- **`docs/change-requests/README.md`:** CR-020's row, which still said "Nothing implemented", and its summary, which
+  named the `class_factory` where Q3's measurement chose the context variable (10.5).
+- **The hand-off to docx4j (Q9),** sent to the docx4j session (docx4j-12) on 2026-10-28: the derived table (10.2's
+  counts; in Java, the list fields' `@XmlElementRefs`, `@XmlElementRef`, `@XmlElements` and `@XmlMixed`, for CR-064 D8's
+  optional tree validator rather than `add()`), section 2.3's one-shape finding and what of it carries to JAXB (the
+  element-name half: a check by name alone lets the `sdt`, `customXml`, `ins` and `del` forms stand in for each other), and
+  the two test files as reference. 11.12's codes went to docx4j and docx4j-core-ts the same day.
+- **The portfolio:** `python/CR-020.C` and `python/CR-020` done, through the docx4j-portfolio session.

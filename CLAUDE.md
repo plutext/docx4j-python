@@ -100,7 +100,8 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   model, with the parse unchecked, and a validator walk, which also reports an out-of-range measurement): decided
   2026-10-26 (Q1 to Q9 as recommended). Phase A implemented 2026-10-27 (section 10; its five open points decided as
   recommended, 10.14); B (the validator `misplaced()`, `save(check=...)` and the out-of-range report, held to the 413
-  cases Word's save changed) implemented 2026-10-28, its five points kept as built (11.12); C (the records) proposed.
+  cases Word's save changed) implemented 2026-10-28, its five points kept as built (11.12); C (the records) done
+  2026-10-28 (section 12): complete.
 - **CR-021** (integer attributes read as Word reads them, docx4j CR-065's rule: a decimal truncated toward zero, the
   empty string 0, any other form refused; one `values.integer`, the normaliser's integer rows, the fork's `int` made exact):
   decided 2026-10-26 (Q1 to Q6 and Q8 as recommended; Q7 discussed separately). Phases 0 (the fork's stage 14,
@@ -203,12 +204,15 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
 
 - `py.typed`: the PEP 561 marker, empty (CR-007)
 - `child.py`: `Child`, `ChildList`, `link_parents`, `iter_children` (with the `mce` mode),
-  `deep_copy`
+  `deep_copy`, `unchecked()`
 - `namespaces.py`: docx4j's prefix table (`UNDERSTOOD` in it is re-exported from generated
   `el_index.py`)
 - `runtime.py`: the shared `XmlContext`, parser and serialiser factories, `warm_up()`
 - `fragments.py`: `wml(...)`, `to_xml(...)`
-- `traversal.py`: `walk`, `iter_nodes`, `find`, `text_of`, `element_name`
+- `traversal.py`: `walk`, `iter_nodes`, `find`, `text_of`, `element_name`, `misplaced`
+- `placement.py`: what each typed list may hold, read from `XmlMeta`, the rule and the refusal's messages
+  (CR-020 Phase A)
+- `validator.py`: the findings `misplaced()` reports and `save(check=True)`'s check (CR-020 Phase B)
 - `mc_declarations.py`: where a save declares the prefixes an `mc` attribute names, on docx4j
   CR-052's placement (CR-011 Q11)
 - `wml/builders.py`: the `p` / `r` / `t` / `tbl` / `br` / `tab` sugar (with `wml/pictures.py`
@@ -231,7 +235,8 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `model/java_text.py` (Java's `DecimalFormat` and `SimpleDateFormat`, for those two); CR-009's
   `model/color/` (`ResolvedColor`, `ThemeColors`, `WordColors`, whose `normalise` and `stated` are
   `values.py`'s; `theme_colors._slot_colour` is Phase C's seam for `DrawingMLColors`); and
-  CR-018's `model/values.py` (Word's on/off, enumeration and colour readers)
+  CR-018's `model/values.py` (Word's on/off, enumeration and colour readers), with CR-020's
+  `model/word_integers.py` (Word's 16-bit reading of an integer, per row of CR-022's table)
 - `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
   `understood-namespaces.txt` (docx4j's published understood list, copied at `198d015a3`; CR-011),
   and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office
@@ -295,6 +300,15 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
   `ChildList` (the `default_factory` of every list field) sets the parent on append, insert,
   extend and assignment, as docx4j's `ArrayListDocx4j` does. Assigning a single-valued field
   (`p.p_pr = ppr`) sets no parent until the next `link_parents`.
+- Since CR-020, a `ChildList` also refuses what its field cannot hold, as code adds it
+  (`placement.verdict`: by class, or by element name where the holder's class has the same shape):
+  `MisplacedContentError` (`target.misplaced`). A parse is never checked (`runtime.UncheckedXmlParser`
+  runs it under `unchecked()`), nor a deep copy's relink. A single-valued field and a list assigned
+  whole are the validator's: `misplaced()` (`traversal`, `package.misplaced()`) reports them, a cell
+  not ending with a paragraph and an out-of-range measurement, and never changes anything.
+  `save(check=True)` raises `SaveCheckError` for what the session introduced, off by default;
+  `tests/conftest.py` turns it on for the whole suite (`DOCX4J_PY_SAVE_CHECK=0` turns it off), so
+  a test that saves a tree built invalid on purpose passes `check=False` (`tests/README.md` lists them).
 - `deep_copy(obj, parent=None)` copies fields only and relinks the copy's descendants. Plain
   `copy.deepcopy` through the parent slot would copy the whole document.
 - `el.<elementName>(...)` is the object factory, one function per element name per namespace. Use
