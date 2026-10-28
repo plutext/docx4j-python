@@ -751,6 +751,11 @@ its probe files raise on purpose, as the other probe readers do (267 of the fast
    is docx4j's wording. Its finding covers docx4j CR-064's refuse sets, of which this allow rule finds a superset.
    docx4j reports neither condition today (`TableRules` repairs a cell on load) and will use both codes if a
    validator there reports them.
+   core-ts's is live since its `14d628e` (CR-016 phase 2, unreleased): a `MisplacedContentWarning` on
+   `part.warnings` at load, `pkg.checkContent()` on request, and a save that refuses a re-marshalled part holding
+   misplaced content **by default** (`pkg.checkContentOnSave`), whether the session made it or the file held it;
+   this package's save checks only on request and refuses only what the session made (11.4). The difference is
+   recorded in core-ts's CR-016 section 8.
 4. **Unmeasured attributes and attributes with no row are not reported** (departure 2): the oracle stays 413, and
    core-ts's other 19 (`w:gridCol`, `w:wBefore`, `w:wAfter`) wait on a measurement of what Word does with them.
 5. **No out-of-range report on every save** (departure 3): Q5's default, `check` off, stands; the MCP server and the
