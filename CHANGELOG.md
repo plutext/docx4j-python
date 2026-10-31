@@ -139,6 +139,9 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **`tables: grid` sizes its columns in code points**, not UTF-16 units, so a cell holding an emoji or another
+  character beyond the BMP no longer pads one short (WD 0.48 REQ-605, REQ-205; docx4j `1a0b5315c`;
+  [CR-011](docs/change-requests/CR-011-one-text-model.md) section 19).
 - **`DOCPROPERTY LastPrinted` resolves**, to `cp:lastPrinted`'s lexical form as docx4j's resolver gives it; it never
   found the value, a bare date-time where the other core dates are W3CDTF, so the field kept its cached result.
   `evaluate("PRINTDATE", ...)` reads `cp:lastPrinted`, as Word's F9 does (docx4j's D14), not the clock; the text model

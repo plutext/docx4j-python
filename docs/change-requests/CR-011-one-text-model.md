@@ -2063,3 +2063,18 @@ extraction to a file or a stream. The development scripts that save extractions 
 files with `encoding="utf-8"`. So the warning is never raised here. If a byte writer is added, by a CLI or by the MCP
 server (CR-006), it writes `encoding="utf-8"`, never `utf-8-sig`, and never relies on the locale's default. An encoding
 parameter would need the replacement and the warning together, and `errors="replace"` alone gives only the first.
+
+## 19. WD 0.48: a grid table's column width in code points (2026-10-31)
+
+REQ-205 asks that every count into text be in code points. This session asked whether that covers a grid table's
+column width, since `tables: grid` padded by UTF-16 length, as docx4j's `PlainText` did with `String.length`, so a
+cell holding an emoji came out one space short in both. Jason ruled that it does. WD 0.48 (docx4j-portfolio
+`fb3cfcb`) names the grid width in REQ-205's list, and REQ-605 states it as the code-point count of the column's
+widest cell line.
+
+docx4j changed in `1a0b5315c` (`codePointCount`, `TextsPhase2Test.gridWidthsCountCodePoints`), and this package at the
+same time: `plain._width` is now `len()` over the `str`. `test_grid_widths_count_code_points` is docx4j's test: a column
+holding `abcd` and `x` followed by two U+1F600 is 4 wide. It fails on the old `_width`. No suite golden holds an astral
+character in a grid cell, so none moves; `tests/text` passes, 1,354. `omml_to_latex`'s `_utf16_length(text) == 1` stays
+as it is: it is Java's `length() == 1`, a branch condition that chooses a bare character, not a count the
+specification states.

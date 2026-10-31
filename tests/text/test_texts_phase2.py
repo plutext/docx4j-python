@@ -299,6 +299,20 @@ def test_listed_format_and_grid_spans():
     assert text(headed) == "[table: listed format]\nwide\n[table: listed format]\nonly\nx\ty\n"
 
 
+def test_grid_widths_count_code_points():
+    """WD 0.48 REQ-605, REQ-205: a grid column's width is its widest line's code points (docx4j 1a0b5315c)."""
+    emoji = "x\U0001F600\U0001F600"  # three code points, five UTF-16 units
+    pkg = MiniDocx.body(
+        grid(2000, 2000) + f"<w:tr>{tc('', 'abcd')}{tc('', 'one')}</w:tr><w:tr>{tc('', emoji)}{tc('', 'two')}</w:tr></w:tbl>" + p("After.")
+    ).load()
+    assert between(text(pkg, tables="grid"), "+", "After.") == (
+        "+------+-----+\n"
+        "| abcd | one |\n"
+        "+======+=====+\n"
+        f"| {emoji}  | two |\n"
+        "+------+-----+\n"
+    )
+
 def test_listed_format_headers():
     """REQ-605's listed format, as ruled on 18 October 2026 (docx4j's listedFormatHeaders)."""
     rows = f"<w:tr>{tc('', 'P1', 'P2')}{tc('', 'N')}{tc('', '')}</w:tr><w:tr>{tc(SPAN2, 'M')}{tc('', 'L')}</w:tr></w:tbl>"

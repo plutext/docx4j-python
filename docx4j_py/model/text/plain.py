@@ -77,8 +77,8 @@ def plain_text(result: TextResult) -> str:
 
 
 def _width(text: str) -> int:
-    """Java's ``String.length``: UTF-16 code units."""
-    return len(text.encode("utf-16-le")) // 2
+    """A cell line's width in the grid: its code points, not its UTF-16 units (an emoji is one; WD 0.48 REQ-605, REQ-205)."""
+    return len(text)
 
 
 def _edges(row: TextRow) -> frozenset[int]:
