@@ -2049,3 +2049,17 @@ is `split.unfold_simple_field`'s behaviour already, since the field's content is
 (`VariablePrepare`) have no counterpart in this package, which writes no field results. Its text model computes `AUTHOR`,
 `TITLE` and the other document information fields from the core properties already.
 
+
+## 18. WD 0.45's REQ-711, the output encoding (2026-10-31)
+
+The portfolio's WD 0.45 (docx4j-portfolio `3693c44`) adds REQ-711, which applies wherever an implementation writes a
+serialization as bytes. The bytes are UTF-8 without a byte order mark unless the caller names an encoding. A character
+the named encoding lacks is written as a documented replacement and reported once, by the new warning
+`text.unencodable` (REQ-801).
+
+Nothing here comes under it. The text model's outputs (`plain_text`, `markdown`, the block model) are `str`, and a
+string has no encoding under it. The package has no CLI and no entry point, and none of its modules writes an
+extraction to a file or a stream. The development scripts that save extractions (`scripts/mce_branches.py`) open their
+files with `encoding="utf-8"`. So the warning is never raised here. If a byte writer is added, by a CLI or by the MCP
+server (CR-006), it writes `encoding="utf-8"`, never `utf-8-sig`, and never relies on the locale's default. An encoding
+parameter would need the replacement and the warning together, and `errors="replace"` alone gives only the first.
