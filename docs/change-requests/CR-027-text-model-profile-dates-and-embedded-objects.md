@@ -8,7 +8,8 @@ copy was pinned at docx4j `198d015a3`:
 - docx4j CR-070's embedded objects (WD 0.47's REQ-512, REQ-522, REQ-513 and REQ-801);
 - the suite re-pinned so that its rows show them.
 
-Five phases (section 6). The questions are in section 8, each with a recommendation. Nothing built.
+Five phases (section 6). The questions are in section 8, each with a recommendation. Q6 decided 2026-11-01 (the user:
+"CR-027 should copy docx4j's test suite from the 17.3.5 tag"); Q1 to Q5 and Q7 open. Nothing built.
 
 *The number:* CR-026 is the latest CR here. CR-028 is the proposed number for the port of docx4j CR-068 (manual
 redline to tracked changes), which the user has not yet decided.
@@ -23,6 +24,8 @@ redline to tracked changes), which the user has not yet decided.
 - **docx4j CR-070, `1560ab379`** (WD 0.47, 2026-10-31; D1 to D5 accepted, its section 7 the rules as built):
   `TextObject`, `EmbeddedFilter`, `altchunk.not_expanded`'s part name, a nested warning naming the outer part, and
   `expected-findings.tsv` re-keyed; `EmbeddedObjectsTest` (9). docx4j-12 handed it on the same day.
+- **docx4j 17.3.5** (Maven Central 2026-11-01; tag `docx4j-17.3.5` on origin at `64fae4cd0`): the release holding all
+  three, and the suite this CR copies (section 4.4, Q6).
 - **The WD** (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`): 0.34 to 0.42 committed at portfolio
   `e49964f`, 0.46 and 0.47 at `fb26239`, 0.48 at `fb3cfcb`, 0.49 at `a993e46`; this CR follows that text.
 - **This repository:**
@@ -69,6 +72,21 @@ Each piece is a WD requirement this package does not yet meet, measured 2026-10-
   copy moves, none of CR-070's rows can be checked here. docx4j's other change to these resources, `fe77bea88` (a
   control bound to a cover-page property shows the property), already holds here: `bind-props.docx` reads
   `PR4_COVER_ABSTRACT`.
+
+  By the 17.3.5 tag (`64fae4cd0`) four more commits have changed them, none of the tables above:
+  - `f2432c3de` and `a8e57ddc5`: CR-066 phase 4's Word evidence (`phase0/evidence/word-open-results.md`), which is not
+    copied;
+  - `993e385e7` and `7326296b1`: CR-069's suite, `dpp/`, beside `phase0/`, and its inspector row in `INSPECTION.md`.
+
+  `dpp/` is the WD's sixth fixture (WD 0.50). It holds:
+  - Word for Microsoft 365's re-save of the probe, with ten cases;
+  - each case alone (`bisect/`) and Word's caps measurements (`caps/`), with Word's own plain-text save of each;
+  - its tables: 34 token rows, 8 findings and 2 goldens;
+  - `word-saves.tsv`, 22 rows. Each compares a fixture's plain text under `profile: word-text` with Word's save,
+    decoded as the row says (windows-1252, or UTF-8 with a byte order mark).
+
+  Nearly all its rows state CR-069's requirements, which are not built here: REQ-521, REQ-607, REQ-710 and the
+  inspector's `text.formatting_join` (section 9.2).
 
 ## 2. What docx4j built
 
@@ -275,15 +293,35 @@ Where they are used:
 ### 4.4 The suite re-pinned (Phase A)
 
 - `tests/fixtures/text-extraction/` is re-copied unedited from docx4j's `docx4j-core-tests/src/test/resources/text-extraction/`
-  at the docx4j commit current when Phase A is built (at least `1a0b5315c`), with `SHA1SUMS`. `tests/README.md`'s row
-  names the commit.
+  at the release tag `docx4j-17.3.5` (`64fae4cd0`; Q6, the user, 2026-11-01), with `SHA1SUMS`. The copy takes the files
+  CR-011 took (`tests/README.md`'s rows), now at the tag, and `dpp/` whole, its README included because its tables'
+  columns are defined there. `tests/README.md`'s rows name the tag.
 - `level-owner/` and `understood-namespaces.txt` stay as they are: they come from elsewhere in docx4j.
-- The harness takes docx4j's changes to `ExtractionFixtureChecks` and `ExtractionConformanceTest` since `198d015a3`:
+- The harness takes docx4j's changes to `ExtractionConformance`, `ExtractionFixtureChecks` and
+  `ExtractionConformanceTest` between `198d015a3` and the tag:
   - the inspection tables' new columns (`capability` and those after it);
   - the findings keyed by part name;
-  - the new cases' statements.
+  - the new cases' statements;
+  - a run over `dpp/` beside `phase0/`;
+  - `word-saves.tsv`'s check, `verifyWordSave`, as REQ-1002's NOTE reads a save:
+    - the save is decoded by its byte order mark, else in the code page the row names;
+    - the extraction is passed through that encoding, so a character the code page lacks is `?` on both sides;
+    - the two are compared line by line, a line ending at CR LF, CR, LF or a tab, with trailing empty lines dropped;
+  - a package Word saved, which lacks the builder's fixed ZIP timestamps (`ExtractionFixtureChecks.entries(..., built)`).
 - Rows that need the inspector (REQ-901 to 907) stay pending, as its 214 do (CR-011 section 3.7). CR-050 phases 3
-  and 4 and CR-066 phase 4 are inspector rows.
+  and 4, CR-066 phase 4 and CR-069 phase 4 are inspector rows.
+- `dpp/`'s rows pend on the existing rule wherever they cite a statement the engine does not advertise:
+  - 33 of the 34 token rows (REQ-607 or REQ-710);
+  - the 8 findings: 2 `paragraph.drop_cap_joined` (REQ-521) and 6 inspector rows;
+  - both goldens;
+  - all 22 of `word-saves.tsv`'s rows until Phase D, since their scenario is `profile: word-text` (REQ-1002).
+
+  Two groups are checked earlier:
+  - **Phase A:** the remaining token row, `H₂O` stored as U+2082 in `caps/caps-lang5.docx`, cites only REQ-602,
+    which is advertised.
+  - **Phase D:** six of `word-saves.tsv`'s rows cite only REQ-1002 and REQ-605, the table rule. They become checks
+    once Phase D advertises REQ-1002, and Word's own text saves are then an oracle for `profile: word-text`. The
+    other 16 cite REQ-521, REQ-607 or REQ-710.
 - Phase A records what moves: every row that now passes, fails or pends, against 293 pending today. A text-model row
   that fails for a reason outside this CR is recorded and taken to the user, not fixed in passing.
 
@@ -297,8 +335,9 @@ Where they are used:
 
 ## 5. Tests and oracles
 
-- **Phase A: the re-pinned suite.** `test_conformance.py` over the new copy, CR-070's twelve re-keyed rows and case
-  36's split among them. The part names in the warnings, in `test_alt_chunks` (docx4j's `TextsPhase2Test.altChunks`). The nested chunk's warning names
+- **Phase A: the re-pinned suite.** `test_conformance.py` over the new copy, `phase0/` and `dpp/`, CR-070's twelve
+  re-keyed rows and case 36's split among them; `dpp/`'s `H₂O` row checked and the rest recorded pending, each with
+  its reason. The part names in the warnings, in `test_alt_chunks` (docx4j's `TextsPhase2Test.altChunks`). The nested chunk's warning names
   `/word/chunk47.docx`.
 - **Phase B: the dates.**
   - `RevisionDatesTest` ported whole (section 2.2's cases), with `trackedChanges` over `manual-redline-dates.docx`:
@@ -318,7 +357,8 @@ Where they are used:
   - A failing filter.
   - The chunk warning's part name, a nested chunk's included.
   - The block model's JSON carries the `object` member.
-- **Phase D: `TextOptionsProfileTest`.** The values; both orders, through `set`, keywords, a mapping and attribute
+- **Phase D: `TextOptionsProfileTest`,** and `dpp/`'s six `word-saves.tsv` rows that need only REQ-1002 and REQ-605,
+  checked against Word's saves. The values; both orders, through `set`, keywords, a mapping and attribute
   assignment; the map form; an unknown profile; the fields-fun memo under the preset
   (`tests/fixtures/fields-fun-cr067/`, CR-026's, or its own copy if CR-026 has not landed).
 - **The gates.**
@@ -334,7 +374,7 @@ No Word check: extraction output is not a file, and nothing this CR adds is writ
 
 | Phase | What | Effort |
 |---|---|---|
-| A | The suite re-pinned (4.4) and the harness's changes; `altchunk.not_expanded`'s part name and the nested warnings' outer part (4.3); every row's state recorded against 293 pending | ¾ day |
+| A | The suite re-pinned at `docx4j-17.3.5` (4.4) and the harness's changes, `dpp/` and `word-saves.tsv` included; `altchunk.not_expanded`'s part name and the nested warnings' outer part (4.3); every row's state recorded against 293 pending | 1 day |
 | B | The dates: `model/revisions/dates.py`, `TrackedChange.author_local_time` and `author_offset`, `TextRevision.date` and `TextComment.date` in REQ-702's form, `author: ` alone; the two tests | ½ day |
 | C | `TextObject` on every object run, the OLE 1.0 names (`model/text/ole.py`), `embedded_filter`, the JSON's `object` member; `EmbeddedObjectsTest` | ¾ day |
 | D | `profile: word-text`; `TextOptionsProfileTest` | ¼ day |
@@ -349,8 +389,8 @@ Phase E's CHANGELOG entries:
 
 - **The block model's dates change form** for every caller of `TextRevision.date` and `TextComment.date`, in every
   view, not only under `author_date` (Q2). docx4j's CHANGELOG states the same change for 17.3.5.
-- **The re-pin may surface rows that moved for reasons outside this CR.** Docx4j's tables changed in five commits
-  since the pin. Phase A records each and takes any text-model failure to the user, rather than widening the CR.
+- **The re-pin may surface rows that moved for reasons outside this CR.** Docx4j's resources changed in nine commits
+  between the pin and the tag (section 1). Phase A records each and takes any text-model failure to the user, rather than widening the CR.
 - **The compound-file reader** is new code over a binary format (Q3). It reads only the one stream, is bounded by the
   part's size, and gives no names rather than raising on a malformed file. docx4j's fixtures are its oracle,
   POI's reading through `EmbeddedObjectsTest`.
@@ -366,9 +406,9 @@ Phase E's CHANGELOG entries:
 | Q3 | An OLE 1.0 package's `label`, `file_name` and `command`: a small hand-written read-only reader of the compound file (`model/text/ole.py`), the `olefile` package as a new dependency, or leave the three absent (a named departure)? | The hand-written reader. It reads only the header, the allocation tables, the directory and one stream: a few hundred lines with no new dependency, held to docx4j's fixtures. `olefile` (BSD) is mature, but it would be this package's second runtime dependency for three strings. |
 | Q4 | The filter asked for every object docx4j would read, including a workbook, a presentation and an OLE 1.0 package, which this package defers reading? | Yes. A host can then take the objects this package cannot read, which is the filter's purpose (REQ-522's NOTE). The addresses also agree with docx4j's. Admitted, they raise `content.not_read` as today. |
 | Q5 | `profile`: every way a caller sets an option is recorded (keywords, `set`, `of`, a mapping, and direct attribute assignment through `__setattr__`), so either order gives the caller's value; `to_dict` carries `profile` last; `word-text`'s `math` is `latex`, documented beside the WD's NOTE? | Yes. It is docx4j's rule in Python's terms. Without the `__setattr__`, a caller who writes `opts.fields = "update"` and then `opts.set("profile", "word-text")` would get the preset's `cached`. |
-| Q6 | The suite re-pinned to docx4j's current text-extraction resources, with the inspector's new rows pending as its 214 are, and every moved row recorded? | Yes. A partial copy (only CR-070's rows) would mix two pins of one table. A full copy keeps the pin a single docx4j commit, as CR-011 set it. |
+| Q6 | The suite re-pinned to docx4j's current text-extraction resources, with the inspector's new rows pending as its 214 are, and every moved row recorded? | **Decided 2026-11-01:** copied from the release tag `docx4j-17.3.5` (`64fae4cd0`), the user: "CR-027 should copy docx4j's test suite from the 17.3.5 tag". The copy is whole, `dpp/` included, so the pin stays a single docx4j commit, as CR-011 set it, and that commit is a release. |
 | Q7 | Phasing: A (the suite and the warnings), B (the dates), C (the objects), D (the profile), E (the records), each built and verified before the next? | Yes. A first, so that B to D are measured against the suite they must pass. |
 
 ## 9. Effort
 
-2½ days: A ¾, B ½, C ¾, D ¼, E ¼.
+2¾ days: A 1, B ½, C ¾, D ¼, E ¼.
