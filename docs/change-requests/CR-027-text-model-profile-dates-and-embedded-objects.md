@@ -9,7 +9,8 @@ copy was pinned at docx4j `198d015a3`:
 - the suite re-pinned so that its rows show them.
 
 Five phases (section 6). The questions are in section 8, each with a recommendation. Q6 decided 2026-11-01 (the user:
-"CR-027 should copy docx4j's test suite from the 17.3.5 tag"); Q1 to Q5 and Q7 open. Nothing built.
+"CR-027 should copy docx4j's test suite from the 17.3.5 tag"). **Decided 2026-11-02** (the user: "CR-027's questions  Q1 to Q5 and Q7 as recommended"): Q1 to Q5 and Q7 as
+recommended. Nothing built.
 
 *The number:* CR-026 is the latest CR here. CR-028 is the proposed number for the port of docx4j CR-068 (manual
 redline to tracked changes), which the user has not yet decided.
@@ -397,7 +398,9 @@ Phase E's CHANGELOG entries:
 - **`__setattr__` on `TextOptions`** (Q5) adds a check to every option assignment. It is a slotted class built a few
   times per extraction, so the cost is negligible; the alternative leaves direct assignment unrecorded.
 
-## 8. Questions for the user
+## 8. Questions (decided 2026-11-02; Q6 2026-11-01)
+
+The user, 2026-11-02: "CR-027's questions  Q1 to Q5 and Q7 as recommended". With Q6 (2026-11-01), every question below is decided.
 
 | Q | Question | Recommendation |
 |---|---|---|

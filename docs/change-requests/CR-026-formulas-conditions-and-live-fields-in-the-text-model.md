@@ -1,6 +1,6 @@
 # CR-026: docx4j CR-067 phases 2 and 3's fields in the text model --- formulas, conditions, SET and nested fields; the counts, the file fields, the list numbers and SYMBOL, under `fields: update`
 
-**Status:** Proposed 2026-10-29, at the user's word ("Yes, have them join the CR-067 phase 2 formula fields as a follow-on CR here"). Three phases (section 6): A, phase 2's fields (`=`, COMPARE, IF, SET, ASK and FILLIN, nested fields, a line break in an instruction); B, phase 3's (NUMWORDS, NUMCHARS, TEMPLATE, FILENAME, FILESIZE, LISTNUM, AUTONUM, AUTONUMLGL, AUTONUMOUT, SYMBOL); C, the records. The questions are in section 8, each with a recommendation. Nothing built.
+**Status:** Proposed 2026-10-29, at the user's word ("Yes, have them join the CR-067 phase 2 formula fields as a follow-on CR here"). **Decided 2026-11-02** (the user: "CR-026's questions as recommended"; section 8): Q1 to Q8 as recommended. Three phases (section 6): A, phase 2's fields (`=`, COMPARE, IF, SET, ASK and FILLIN, nested fields, a line break in an instruction); B, phase 3's (NUMWORDS, NUMCHARS, TEMPLATE, FILENAME, FILESIZE, LISTNUM, AUTONUM, AUTONUMLGL, AUTONUMOUT, SYMBOL); C, the records. The questions are in section 8, each with a recommendation. Nothing built.
 
 *The number:* CR-025 is the latest CR here, and CR-017 stays reserved for the port of docx4j CR-057.
 
@@ -142,7 +142,9 @@ No Word check is expected: extraction output is not a file, and nothing this CR 
 - **The list numbers depend on heading levels.** docx4j's rule (`ListNumbers.headingLevel`) is the paragraph's effective outline level, else the number in its style's name (`heading 2`) or id (`Heading2`). The port takes that reader as written rather than the text model's own `outline_level` (which reads `w:outlineLvl` or a `HeadingN` style, `extractor.py` around line 1046), so the two engines agree on a heading-free style with an outline level; the probes are the gate.
 - **The WD moves.** 0.42 is committed (`e49964f`); if a later revision changes REQ-505 or REQ-506, this port follows in its next phase.
 
-## 8. Questions for the user
+## 8. Questions (decided 2026-11-02)
+
+The user, 2026-11-02: "CR-026's questions as recommended". Every question below is decided as recommended.
 
 | Q | Question | Recommendation |
 |---|---|---|

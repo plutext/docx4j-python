@@ -57,8 +57,9 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   core-ts's phases 2 and 3 and check 57); D, the records and CR-003 section 23.4's review point
   (keep parity). Each phase that changed output is Word-checked. The Office JS subset is read from
   core-ts's committed `HEAD` (246 members).
-- **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058) and **CR-015**
-  (Markdown output safety): proposed. **CR-016** (core-ts's cell, font, placeholder and wildcard
+- **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058): decided 2026-11-02 (every
+  question as recommended; phase 1 goes in the release after 0.2.0). **CR-015** (Markdown output safety): proposed.
+  **CR-016** (core-ts's cell, font, placeholder and wildcard
   changes): decided 2026-10-24. Phase A (a table cell ends with a paragraph, as Word reads it:
   `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B implemented
   2026-10-24 (`Font` reads every run in scope, `None`/`""`/`"Mixed"` where they differ, a paragraph
