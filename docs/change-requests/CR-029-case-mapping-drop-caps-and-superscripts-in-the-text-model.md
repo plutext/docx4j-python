@@ -1,6 +1,6 @@
 # CR-029: docx4j CR-069 in the text model --- All Caps in capitals by the run's language, a drop cap joined to its word, `<sup>` and `<sub>` in Markdown, and `w:dstrike` struck
 
-**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1 to Q5 as recommended (section 8). It ports the text-model half of docx4j CR-069
+**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1, Q2, Q4 and Q5 as recommended and Q3 as docx4j does (section 8). It ports the text-model half of docx4j CR-069
 (WD REQ-607, REQ-521, REQ-710, and REQ-703's strikethrough) to `model/text/`, phase for phase:
 - A, `w:caps` in capitals by the run's language, `w:smallCaps` as stored unless `small_caps: upper` (docx4j phase 1);
 - B, a drop cap joined to its word, with `paragraph.drop_cap_joined` and `drop_caps` (phase 2);
@@ -8,7 +8,7 @@
 - D, `strike` taking `w:dstrike` (phase 4; that phase's inspector kind, `text.formatting_join`, is named and left out);
 - E, the records.
 
-The questions are in section 8, each with a recommendation. **Decided 2026-11-02** (the user: "CR-029's questions Q1 to Q5 as recommended."; section 8): the case table at Unicode 15.0, generated and committed; a drop cap's letter its own run (a named departure from docx4j); docx4j's member names; after CR-027 Phases A and D. Nothing built.
+The questions are in section 8, each with a recommendation. **Decided 2026-11-02** (the user: "CR-029's questions Q1 to Q5 as recommended."; section 8): the case table at Unicode 15.0, generated and committed; a drop cap's letter merged into its word's first run as docx4j does (Q3, the user's ruling the same day); docx4j's member names; after CR-027 Phases A and D. Nothing built.
 
 *The number:* CR-027 is the latest CR here. CR-028 is the number proposed for the port of docx4j CR-068 (manual redline
 to tracked changes).
@@ -308,9 +308,15 @@ CR-069's own implementation sections (11.2, 12.2, 13.2, 14.2) record each of the
   - `sink[at] = block` in the frame's place;
   - `TextWarning(TextWarning.DROP_CAP_JOINED, frame.address, part_name=_part_name(story.part))`.
 
-  The letter's run merges into its word's first run only under the merge rule of section 3, which two runs from two
-  `w:p` never meet while both have an `office_offset` (Q3). So the letter keeps its own run, `source` and
-  `office_offset`.
+  The letter's run merges into its word's first run as `joinDropCap` merges them (Q3): where the frame's last run and
+  the block's first have the same kind, hidden flag, placeholder flag, revision and formatting (`same_format`),
+  docx4j's merge rule, not this package's contiguity rule of CR-011 section 16.5. Word's C02 is then one run,
+  `The C02_ modern ...`, as in docx4j.
+  - The merged run keeps the letter's `source`, as a merge keeps the first run's.
+  - Its `office_offset` is None: its text is two paragraphs' (the frame's `Paragraph.text` and the next one's), which
+    no one offset into one `Paragraph.text` describes. CR-011 section 12.6's invariant holds, since a run with no
+    offset claims none. `TextRun.office_offset`'s docstring gains this case.
+  - Where the two runs differ (a bold or cased letter), the letter stays its own run with its offset.
 - **`TextWarning.DROP_CAP_JOINED`** (`"paragraph.drop_cap_joined"`) is the seventh kind. Its docstring says that the
   selector is the paragraphs' part. Under CR-027's selector order (the branch, else the part name, else the content
   type) the selector is the part name.
@@ -431,8 +437,9 @@ No Word check: extraction output is not a saved file, and nothing this CR change
 - **Word's own table is unmeasured.** Word uses Windows' casing at an unknown version. For example, 15.0 maps Georgian
   Mkhedruli under `w:caps` to Mtavruli capitals, and docx4j on Java 11 does not. Word is unmeasured for both. The pinned
   version is a stated choice, not a measurement (Q1).
-- **Departures from docx4j.** The letter's run (Q3) and an invalid own `w:vertAlign` (section 4.3) make the block model
-  differ from docx4j's. Neither changes plain text or Markdown.
+- **Departures from docx4j.** An invalid own `w:vertAlign` (section 4.3) makes the block model differ from docx4j's.
+  It changes neither plain text nor Markdown. The drop cap's letter follows docx4j (Q3), at the cost of the merged
+  run's `office_offset`.
 - **Drop-cap false joins.** Word writes `w:dropCap` for its drop-cap feature alone (the WD's NOTE). The one-word limit
   guards a hand-made frame, and `drop_caps: asis` gives Word's own text.
 - **Unmeasured in Word** (CR-069 section 7): a style's caps, a `tr-TR` document default, a style's frame, a frame ending
@@ -443,13 +450,15 @@ No Word check: extraction output is not a saved file, and nothing this CR change
 
 ## 8. Questions (decided 2026-11-02)
 
-The user, 2026-11-02: "CR-029's questions Q1 to Q5 as recommended." Every question below is decided as recommended. Q3's departure is this port's: core-ts decides its own (its section 24.3).
+The user, 2026-11-02: "CR-029's questions Q1 to Q5 as recommended." Then, the same day, on Q3: "you and core-ts should handle a drop-cap letter as docx4j does!" So Q1,
+Q2, Q4 and Q5 are decided as recommended, and Q3 against its recommendation: the letter merges as docx4j's
+`joinDropCap` merges it (section 4.5). The ruling covers core-ts too (its section 24.3 and D6).
 
 | Q | Question | Recommendation |
 |---|---|---|
 | Q1 | The case table's Unicode version: 15.0 or 16.0? | **15.0.** It is the version of the JDK docx4j's tests ran on (1,450 code points), so this package and docx4j map every code point alike there. It is also core-ts's D4 (decided 2026-11-02), so the ports agree. 16.0, the version Python 3.14 ships, was the first plan, on the understanding that U+1C89/U+1C8A was the only difference. Measured, 16.0 maps 27 more code points (section 2.1), U+019B and U+0264 among them. With either version the table is committed and its version is in `case_mapping`'s docstring. The tests map only characters stable since 10.0, and a move is a deliberate regeneration. |
 | Q2 | The table generated by `scripts/generate_case_mapping.py` from that version's `UnicodeData.txt` (field 12), its output committed as `resources/case-mapping.json`, the input fetched from unicode.org and checked against a pinned SHA-256 rather than committed; never computed from `unicodedata` at import, and `str.upper` never used? | Yes. `unicodedata` has no simple case mapping at all, and its version differs on each of CI's three Pythons (15.0.0, 15.1.0, 16.0.0). The pinned hash makes the fetch reproducible. Committing `UnicodeData.txt` (about 2 MB) would let the script run offline, at the cost of a large file nothing else reads. |
-| Q3 | At a joined drop cap, does the letter's run merge into its word's first run, as docx4j's `joinDropCap` does (Word's C02 as one run, `The C02_ modern ...`)? Or does it stay its own run under this package's merge rule? | **Its own run.** The merge rule of CR-011 section 16.5 already keeps runs from two `w:p` apart wherever both carry an `office_offset`, in CR-043's chain join too (read from `_add_text`). Merging would leave the joined run's text in neither paragraph's `Paragraph.text`, so its `office_offset` and `source` would have to go, against CR-011 section 12.6's invariant. Plain text and Markdown are the same either way. The cost is a recorded departure: the block model has `["T", "he C02_ modern ..."]` where docx4j has one run. core-ts's section 24.3 plans docx4j's merge over a contiguity rule like this one, so the user may want to rule for both ports. |
+| Q3 | At a joined drop cap, does the letter's run merge into its word's first run, as docx4j's `joinDropCap` does (Word's C02 as one run, `The C02_ modern ...`)? Or does it stay its own run under this package's merge rule? | **Its own run.** The merge rule of CR-011 section 16.5 already keeps runs from two `w:p` apart wherever both carry an `office_offset`, in CR-043's chain join too (read from `_add_text`). Merging would leave the joined run's text in neither paragraph's `Paragraph.text`, so its `office_offset` and `source` would have to go, against CR-011 section 12.6's invariant. Plain text and Markdown are the same either way. The cost is a recorded departure: the block model has `["T", "he C02_ modern ..."]` where docx4j has one run. core-ts's section 24.3 plans docx4j's merge over a contiguity rule like this one, so the user may want to rule for both ports. **Decided 2026-11-02, against this recommendation: as docx4j does** (the user: "you and core-ts should handle a drop-cap letter as docx4j does!"). The letter's run merges into its word's first run where docx4j's rule merges them, and the merged run has no `office_offset` (4.5). |
 | Q4 | The four run members named after docx4j's getters in this package's spelling (`caps`, `small_caps`, `vertical_alignment` with `"BASELINE"`, `"SUPERSCRIPT"`, `"SUBSCRIPT"`, and `language`), the same names in the JSON, the WD's `vertAlign` and `lang` given in the docstrings? | Yes. That matches core-ts's D3 (docx4j's names), the existing members (`display_math`, `note_type`, `prog_id`) and CR-027's JSON spelling. The JSON writes each only where it is set, as the other flags are written only where true. |
 | Q5 | Order: CR-029 after CR-027's Phases A and D, its phases A to E in docx4j's order, each built and verified against `dpp/` before the next? | Yes. CR-027 Phase A brings the rows and Phase D the preset, which every `word-saves.tsv` row runs under, so each phase is measured against Word's own text as it lands. Phase A can begin after CR-027 Phase A alone, its 13 saves checked once Phase D lands. |
 
