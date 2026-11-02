@@ -1,6 +1,6 @@
 # CR-027: the text model's WD 0.41 to 0.49 additions --- `profile: word-text`, revision and comment dates as the author's clock, embedded objects for a host, and the conformance suite re-pinned
 
-**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts). It covers five
+**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending. It covers five
 pieces of the text model (CR-011's `model/text/`) that the WD and docx4j have added since this repository's suite
 copy was pinned at docx4j `198d015a3`:
 - WD 0.41's `profile` (REQ-1002);
