@@ -57,6 +57,7 @@ for REF's bookmarks), and a FORMTEXT is as Word's update leaves it.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from typing import Any
 
@@ -770,13 +771,19 @@ class Extractor:
 
     # -- one level down (REQ-512, REQ-513) --------------------------------------------
 
-    def read_nested(self, package: Any, prefix: str, story: str | None) -> list[TextBlock]:
+    def read_nested(self, package: Any, prefix: str, story: str | None, outer: Any = None) -> list[TextBlock]:
         """A package read one level down, an embedded document's or a chunk's. docx4j ``Extractor.nested``.
 
         The same options, but none of its own embedded packages or chunks
         expanded (its chunks raising ``altchunk.not_expanded``), and no
         metadata. Its addresses start ``prefix/``, its warnings join this
-        reading's, and its main story's blocks take `story`.
+        reading's, and its main story's blocks take `story`. A warning naming
+        a part names `outer`, the embedded package's or the chunk's part,
+        whatever its kind: that is the part a host can find, where the inner
+        name could find another (Word names every HTML chunk ``afchunk.htm``;
+        REQ-801's rule for ``content.not_read``, applied by docx4j CR-070 to a
+        nested chunk's ``altchunk.not_expanded`` and a nested
+        ``image.not_described`` too).
         """
         options = self.options.copy()
         options.embedded = False
@@ -786,7 +793,10 @@ class Extractor:
         reading.root = f"{prefix}/"
         reading.nested = True
         result = reading.extract()
+        outer_name = _part_name(outer)
         for warning in result.warnings:
+            if warning.part_name is not None and outer_name is not None:
+                warning = dataclasses.replace(warning, part_name=outer_name)
             self.warn(warning)
         blocks = list(result.blocks)
         if story is not None:
@@ -803,7 +813,9 @@ class Extractor:
 
         blocks = chunk_blocks(self, part, story.kind, f"{address}/altchunk:0") if self.options.altchunks else None
         if blocks is None:
-            self.warn(TextWarning(TextWarning.ALTCHUNK_NOT_EXPANDED, address, content_type=content_type(part)))
+            # the chunk's part name, the selector, so that a host can read it itself; its content type beside it
+            kind, name = TextWarning.ALTCHUNK_NOT_EXPANDED, _part_name(part)
+            self.warn(TextWarning(kind, address, content_type=content_type(part), part_name=name))
             return
         section = len(story.sections) if story.sections is not None else 0
         for b in blocks:

@@ -658,8 +658,9 @@ HTML = (
 )
 
 
-def test_alt_chunks():
-    """REQ-513: text chunks as lines; HTML not expanded without an HTML reader (CR-011 Q13); RTF never; one level."""
+def test_alt_chunks(probe):
+    """docx4j's ``altChunks`` at ``docx4j-17.3.5``: text chunks as lines; HTML not expanded without an HTML reader
+    (CR-011 Q13); RTF never; ``altchunks: false``; one level. Each warning names its chunk's part (CR-027, CR-070)."""
     pkg = (
         MiniDocx.body(f'{p("Before.")}<w:altChunk r:id="rIdT"/><w:altChunk r:id="rIdR"/><w:altChunk r:id="rIdH"/>{p("After.")}')
         .part("t.txt", "text/plain", A_F_CHUNK, "rIdT", b"line one\r\nline two\r\n")
@@ -671,20 +672,49 @@ def test_alt_chunks():
     r = extract(pkg)
     assert plain_text(r) == "Before.\nline one\nline two\nAfter.\n"
     assert [str(w) for w in r.warnings] == [
-        "altchunk.not_expanded at body/2 (application/rtf)",
-        "altchunk.not_expanded at body/3 (text/html)",
+        "altchunk.not_expanded at body/2 (application/rtf) (/word/r.rtf)",
+        "altchunk.not_expanded at body/3 (text/html) (/word/h.htm)",
     ]
+    # the selector is the chunk's part name, the content type beside it
+    assert [w.selector for w in r.warnings] == ["/word/r.rtf", "/word/h.htm"]
     assert r.blocks[2].address == "body/1/altchunk:0/1"
     off = extract(pkg, altchunks=False)
     assert plain_text(off) == "Before.\nAfter.\n"
     assert len(off.warnings) == 3 and off.warnings[0].content_type == "text/plain"
+    assert off.warnings[0].part_name == "/word/t.txt"
     assert pkg.save() == before  # REQ-204
 
+    # the probe's document chunk holds an HTML chunk, which is not expanded (one level)
+    (nested,) = [w for w in extract(probe).warnings if w.address is not None and "/altchunk:0/" in w.address]
+    assert nested.content_type == "text/html"
+    # named for the chunk holding it, the part the probe has: the inner name is /word/nested.html
+    assert (nested.part_name, nested.selector) == ("/word/chunk47.docx", "/word/chunk47.docx")
 
-def test_a_document_chunks_html_chunk_is_not_expanded(probe):
-    """The probe's document chunk holds an HTML chunk, which is not expanded (one level)."""
-    nested = [w for w in extract(probe).warnings if w.address is not None and "/altchunk:0/" in w.address]
-    assert len(nested) == 1 and nested[0].content_type == "text/html"
+
+def test_a_warning_one_level_down_names_the_outer_part_whatever_its_kind():
+    """CR-027 section 4.3: an ``image.not_described`` in a chunk names the chunk, not the chunk's image part."""
+    image = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    picture = (
+        '<w:p><w:r><w:drawing><wp:inline><wp:extent cx="1" cy="1"/><wp:docPr id="1" name="P" descr="D"/><a:graphic>'
+        '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr>'
+        '<pic:cNvPr id="0" name="P"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg"/>'
+        "</pic:blipFill><pic:spPr/></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
+    )
+    inner = MiniDocx.body(picture).part("media/image1.png", "image/png", image, "rIdImg", b"\x89PNG\r\n\x1a\n")
+    pkg = (
+        MiniDocx.body(f'<w:altChunk r:id="rIdC"/>{picture}')
+        .part("chunk.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+              A_F_CHUNK, "rIdC", inner.save())
+        .part("media/image1.png", "image/png", image, "rIdImg", b"\x89PNG\r\n\x1a\n")
+        .load()
+    )  # fmt: skip
+
+    def failing(described):
+        raise RuntimeError("the describing service is down")
+
+    warnings = extract(pkg, image_describer=failing).warnings
+    found = [(w.address, w.part_name) for w in warnings if w.kind == TextWarning.IMAGE_NOT_DESCRIBED]
+    assert found == [("body/0/altchunk:0/body/0", "/word/chunk.docx"), ("body/1", "/word/media/image1.png")]
 
 
 def test_a_chunks_text_is_decoded_by_its_bom_else_utf8_else_windows_1252():

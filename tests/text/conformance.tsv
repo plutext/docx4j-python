@@ -1679,42 +1679,42 @@ extraction-probe-external.docm	52	metadata:ProbeCustom:	markup	default	PASS
 extraction-probe-external.docm	52	metadata:Company:	accepted	default	PASS	
 extraction-probe-external.docm	52	metadata:Company:	original	default	PASS	
 extraction-probe-external.docm	52	metadata:Company:	markup	default	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	accepted	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	original	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	markup	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	accepted	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	original	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	markup	html reader absent	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	accepted	default	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	original	default	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	markup	default	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	accepted	default	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	original	default	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	markup	default	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	markup	altchunks: false	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	accepted	html reader absent	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	original	html reader absent	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	markup	html reader absent	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	accepted	altchunks: false	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	original	altchunks: false	FAIL	expected 1, got None
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	accepted	html reader absent	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	original	html reader absent	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	markup	html reader absent	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	accepted	altchunks: false	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	original	altchunks: false	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	markup	altchunks: false	PASS	
+extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	accepted	altchunks: false	PASS	
+extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	original	altchunks: false	PASS	
+extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	markup	altchunks: false	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	accepted	html reader absent	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	original	html reader absent	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	markup	html reader absent	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	accepted	altchunks: false	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	original	altchunks: false	PASS	
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	markup	altchunks: false	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	accepted	default	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	original	default	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	markup	default	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	accepted	altchunks: false	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	original	altchunks: false	PASS	
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	markup	altchunks: false	PASS	
+extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	accepted	altchunks: false	PASS	
+extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	original	altchunks: false	PASS	
+extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	markup	altchunks: false	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	accepted	default	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	original	default	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	markup	default	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	accepted	altchunks: false	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	original	altchunks: false	PASS	
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	markup	altchunks: false	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	accepted	html reader absent	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	original	html reader absent	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	markup	html reader absent	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	accepted	altchunks: false	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	original	altchunks: false	PASS	
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	markup	altchunks: false	PASS	
 extraction-probe.docx	53	order	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	order	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	order	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package

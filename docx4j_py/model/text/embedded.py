@@ -20,10 +20,12 @@ A package read one level down has the reading's options, but none of its own
 embedded packages or chunks expanded (its chunks raising
 ``altchunk.not_expanded``), and no metadata. Its addresses start with the
 chunk's or the object's (``body/7/altchunk:0/body/0``,
-``body/3/object:0/body/0``), its warnings join the reading's, and its main
-story's blocks take the story the content is read into (an ``altChunk``'s
-the story the chunk is in, as Word expands it there; an embedded package's
-``EMBEDDED``).
+``body/3/object:0/body/0``), its warnings join the reading's, each naming the
+chunk's or the embedded package's part where it names one (CR-027, docx4j
+CR-070), and its main story's blocks take the story the content is read into
+(an ``altChunk``'s the story the chunk is in, as Word expands it there; an
+embedded package's ``EMBEDDED``). A chunk not expanded is named by its part
+(``altchunk.not_expanded``'s selector), its content type beside it.
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ _HTML_TYPES = ("text/html", "application/xhtml+xml", "message/rfc822")
 
 
 def content_type(part: Any) -> str:
-    """A chunk's content type as the package declares it, without parameters: the warning's selector."""
+    """A chunk's content type as the package declares it, without parameters, which its warning carries."""
     value = getattr(part, "content_type", None) or ""
     return value.split(";", 1)[0].strip()
 
@@ -92,7 +94,7 @@ def chunk_blocks(x: Any, part: Any, story: str, prefix: str) -> list[Any] | None
     if ct in _HTML_TYPES or (not ct and ext in ("htm", "html", "xhtml")) or ext in ("mht", "mhtml"):
         return None  # read only by an HTML reader, which is absent (CR-011 Q12, Q13)
     if (len(data) > 3 and data[:2] == b"PK") or _XML_PACKAGE in data[:2048]:
-        return _document(x, data, story, prefix)
+        return _document(x, data, story, prefix, part)
     return None
 
 
@@ -106,15 +108,18 @@ def _load(data: bytes) -> Any:
     return load(FlatOpcStore.parse(data))
 
 
-def _document(x: Any, data: bytes, story: str, prefix: str) -> list[Any] | None:
-    """A WordprocessingML or Flat OPC chunk, read one level down; None for a package of another kind."""
+def _document(x: Any, data: bytes, story: str, prefix: str, part: Any) -> list[Any] | None:
+    """A WordprocessingML or Flat OPC chunk, read one level down; None for a package of another kind.
+
+    A warning the chunk's reading raises that names a part names the chunk's, `part`.
+    """
     try:
         package = _load(data)
     except Exception:  # noqa: BLE001 - a chunk that will not load is not expanded
         return None
     if getattr(package, "main_document_part", None) is None:
         return None
-    return x.read_nested(package, prefix, story)
+    return x.read_nested(package, prefix, story, part)
 
 
 def package_blocks(x: Any, part: Any, prefix: str) -> list[Any]:
@@ -129,4 +134,4 @@ def package_blocks(x: Any, part: Any, prefix: str) -> list[Any]:
     package = _load(part.data)
     if getattr(package, "main_document_part", None) is None:
         raise NotImplementedError(f"a {type(package).__name__} (CR-011 Q7)")
-    return x.read_nested(package, prefix, "EMBEDDED")
+    return x.read_nested(package, prefix, "EMBEDDED", part)

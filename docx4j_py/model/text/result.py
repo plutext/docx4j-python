@@ -477,9 +477,16 @@ class TextWarning:
     """Where a result is not the whole document (WD section 8, REQ-801). docx4j ``TextWarning``.
 
     A kind, the address of the block it is in where there is one, and its
-    selector: for ``mce.branches_differ`` the branch selected, for
-    ``altchunk.not_expanded`` the chunk's content type, for ``content.not_read``
-    the part's name. Never the document's text (REQ-802).
+    selector: for ``mce.branches_differ`` the branch selected; for
+    ``altchunk.not_expanded``, ``content.not_read`` and ``image.not_described``
+    the part's name (an ``altchunk.not_expanded``'s is the chunk's since
+    CR-027, WD 0.47 and docx4j CR-070; it was the chunk's content type, which
+    the warning still carries). Never the document's text (REQ-802).
+
+    A warning raised one level down, in an embedded package or a chunk, that
+    names a part names the outer package's or chunk's part: the one the host
+    package has, which a host can find (REQ-801's rule, docx4j's
+    ``Extractor.nested``).
     """
 
     #: Both branches of an ``mc:AlternateContent`` hold text, and the texts differ (REQ-307).
@@ -491,8 +498,9 @@ class TextWarning:
     #: An ``altChunk`` not expanded (REQ-513).
     ALTCHUNK_NOT_EXPANDED = "altchunk.not_expanded"
     #: A part that cannot be read: a text box that would lose content as typed, a
-    #: chart, a SmartArt data part, an embedded package or a part inside it; it
-    #: contributes nothing (REQ-511, REQ-512, REQ-801).
+    #: chart, a SmartArt data part, an embedded package or a part inside it, a
+    #: story part (the notes, the comments, a header or footer, the glossary, an
+    #: embedded document's main part); it contributes nothing (REQ-511, REQ-512, REQ-801).
     CONTENT_NOT_READ = "content.not_read"
     #: An image the describer failed to describe: it has no description (REQ-514, REQ-801).
     IMAGE_NOT_DESCRIBED = "image.not_described"
@@ -503,21 +511,27 @@ class TextWarning:
     branch: str | None = None
     #: For ``altchunk.not_expanded``: the chunk's content type as the package declares it.
     content_type: str | None = None
-    #: For ``content.not_read``: the part's name (for a part inside an embedded
-    #: package, the embedded package part's); for ``image.not_described``, the
-    #: image part's.
+    #: For ``content.not_read``: the part's name; for ``image.not_described``,
+    #: the image part's; for ``altchunk.not_expanded``, the chunk's
+    #: (``/word/afchunk.rtf``), so that a host can read it itself (CR-027). One
+    #: level down, the embedded package part's or the chunk's.
     part_name: str | None = None
 
     @property
     def selector(self) -> str | None:
-        """REQ-801's selector: the branch, the content type or the part's name, whichever the kind has."""
-        return self.branch or self.content_type or self.part_name
+        """REQ-801's selector: the branch, else the part's name, else the content type; None for none."""
+        return self.branch or self.part_name or self.content_type
 
     def to_dict(self) -> dict[str, Any]:
         return {"kind": self.kind, "address": self.address, "selector": self.selector}
 
     def __str__(self) -> str:
-        return self.kind + (f" at {self.address}" if self.address else "") + (f" ({self.selector})" if self.selector else "")
+        """docx4j's ``toString``: the kind, its address, then its branch, content type and part name, each in brackets."""
+        return (
+            self.kind
+            + (f" at {self.address}" if self.address is not None else "")
+            + "".join(f" ({value})" for value in (self.branch, self.content_type, self.part_name) if value is not None)
+        )
 
 
 @dataclass(slots=True, eq=False)
