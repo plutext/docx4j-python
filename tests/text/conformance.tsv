@@ -1191,6 +1191,129 @@ extraction-probe-inspect.docx	67	SDT67_SURFACE	original	default	PASS
 extraction-probe-inspect.docx	67	SDT67_SURFACE	original	bindings: surface	PASS	
 extraction-probe-inspect.docx	67	SDT67_SURFACE	markup	default	PASS	
 extraction-probe-inspect.docx	67	SDT67_SURFACE	markup	bindings: surface	PASS	
+extraction-probe-inspect.docx	68	SVG68_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_DESCR	accepted	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_DESCR	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_DESCR	original	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_DESCR	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_DESCR	markup	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_PLAIN	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_PLAIN	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_PLAIN	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_TSPAN	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_TSPAN	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_TSPAN	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_TEXTPATH	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_TEXTPATH	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	68	SVG68_TEXTPATH	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_FIRST_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_FIRST_DESCR	accepted	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_FIRST_DESCR	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_FIRST_DESCR	original	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_FIRST_DESCR	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_FIRST_DESCR	markup	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SECOND_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SECOND_DESCR	accepted	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SECOND_DESCR	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SECOND_DESCR	original	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SECOND_DESCR	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SECOND_DESCR	markup	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SHARED	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SHARED	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	69	SVG69_SHARED	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_DESCR	accepted	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_DESCR	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_DESCR	original	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_DESCR	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_DESCR	markup	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_TITLE_ONLY	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_TITLE_ONLY	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	70	SVG70_TITLE_ONLY	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	71	SVG71_HEADER	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	71	SVG71_HEADER	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	71	SVG71_HEADER	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_TEXTOUT	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_TEXTOUT	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_TEXTOUT	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SJIS	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SJIS	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SJIS	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_GLYPH_INDEX	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_GLYPH_INDEX	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_GLYPH_INDEX	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SLOT_REUSED	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SLOT_REUSED	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SLOT_REUSED	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SYMBOL	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SYMBOL	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	72	WMF72_SYMBOL	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_DESCR	accepted	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_DESCR	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_DESCR	original	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_DESCR	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_DESCR	markup	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_UTF16	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_UTF16	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_UTF16	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_ANSI	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_ANSI	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_ANSI	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_GLYPH_INDEX	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_GLYPH_INDEX	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_GLYPH_INDEX	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_STOCK_FONT	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_STOCK_FONT	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	73	EMF73_STOCK_FONT	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	74	EMF74_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	74	EMF74_DESCR	accepted	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	74	EMF74_DESCR	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	74	EMF74_DESCR	original	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	74	EMF74_DESCR	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	74	EMF74_DESCR	markup	alt_text: true	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	75	RNG75_LEFT_BEFORE	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	75	RNG75_LEFT_BEFORE	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	75	RNG75_LEFT_BEFORE	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	76	RNG76_CELL	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	76	RNG76_CELL	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	76	RNG76_CELL	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	77	RNG77_TAB	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	77	RNG77_TAB	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	77	RNG77_TAB	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	78	RNG78_FIRSTLINE_LINE	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	78	RNG78_FIRSTLINE_LINE	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	78	RNG78_FIRSTLINE_LINE	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_ROW	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_ROW	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_ROW	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_BORDER	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_BORDER	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_BORDER	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_SCALE	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_SCALE	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	79	RNG79_SCALE	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	80	RNG80_STYLE	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	80	RNG80_STYLE	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	80	RNG80_STYLE	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HERE	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HERE	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HERE	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_CHOICE	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_CHOICE	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_CHOICE	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_FALLBACK	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_FALLBACK	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_FALLBACK	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HEADER	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HEADER	accepted	include: headers	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HEADER	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HEADER	original	include: headers	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HEADER	markup	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	81	RNG81_HEADER	markup	include: headers	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	82	RNG82_SECTION	accepted	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	82	RNG82_SECTION	original	default	PENDING	the inspector (CR-050); REQ-904
+extraction-probe-inspect.docx	82	RNG82_SECTION	markup	default	PENDING	the inspector (CR-050); REQ-904
 extraction-probe.docx	40	EMB40_NESTED_TEXT	accepted	embedded: true	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	original	embedded: true	PASS	
 extraction-probe.docx	40	EMB40_NESTED_TEXT	markup	embedded: true	PASS	
@@ -1341,6 +1464,7 @@ extraction-probe.docx	33	inspect:alt_text.description:IMG33_ALT_TEXT	accepted	de
 extraction-probe.docx	33	inspect:alt_text.title:IMG33_TITLE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	33	inspect:alt_text.description:IMG33_DECORATIVE_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	33	inspect:alt_text.description:IMG33_SVG_ALT	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe.docx	33	inspect:image.svg_text:SVG33_INNER_TEXT	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	34	inspect:chart.cached:CHT34_TITLE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	48	inspect:shape.off_page:OFF48_BOX	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	48	inspect:shape.zero_size:ZER48_BOX	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
@@ -1373,9 +1497,9 @@ extraction-probe.docx	14	inspect:revision.author:Probe Two	accepted	default	PEND
 extraction-probe.docx	23	inspect:custom_xml:BND23_XML_VALUE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	38	inspect:properties:PRP38_SUBJECT	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	42	inspect:part.activex:/word/activeX/activeX42.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
-extraction-probe.docx	36	inspect:altchunk:/word/afchunk.htm	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe.docx	36	inspect:altchunk:/word/afchunk.htm	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	43	inspect:altchunk:/word/chunk43.txt	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
-extraction-probe.docx	44	inspect:altchunk:/word/chunk44.mht	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe.docx	44	inspect:altchunk:/word/chunk44.mht	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	45	inspect:altchunk:/word/chunk45.rtf	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	46	inspect:altchunk:/word/chunk46.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	47	inspect:altchunk:/word/chunk47.docx	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
@@ -1388,6 +1512,8 @@ extraction-probe.docx	53	inspect:object.embedded:/word/embeddings/probe53.pptx	a
 extraction-probe.docx	53	inspect:embedded.notes:EMB53_SPEAKER_NOTES	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	53	inspect:embedded.slide_hidden:EMB53_HIDDEN_SLIDE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe.docx	21	inspect:hyperlink.web:https://example.com/FLD21_URL_MARK	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe.docx	36	inspect:altchunk:/word/afchunk.htm	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe.docx	44	inspect:altchunk:/word/chunk44.mht	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
 extraction-probe-external.docm	50	inspect:alt_text.name:Picture 17	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-external.docm	50	inspect:settings.update_fields:/word/settings.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-external.docm	52	inspect:properties:APP52_COMPANY	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
@@ -1405,6 +1531,7 @@ extraction-probe-structure.docx	57	inspect:embedded.sheet_hidden:SHT57_HIDDEN	ac
 extraction-probe-structure.docx	57	inspect:embedded.sheet_very_hidden:SHT57_VERY_HIDDEN	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:mce.branch:/word/document.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	67	inspect:mce.branch:MCE67_FALLBACK_WHITE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	81	inspect:mce.branch:RNG81_FALLBACK	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	58	inspect:text.hidden:VAN58_INHERITED	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	58	inspect:text.hidden:PAR58_PART_HIDDEN	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	58	inspect:paragraph.hidden:PAR58_WHOLE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
@@ -1453,10 +1580,23 @@ extraction-probe-inspect.docx	63	inspect:alt_text.name:Ink 8	accepted	default	PE
 extraction-probe-inspect.docx	66	inspect:alt_text.name:PIC66_NAME_ONLY	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	66	inspect:alt_text.description:PIC66_DECOR_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	66	inspect:alt_text.name:PIC66_DECOR_NAME	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	68	inspect:alt_text.description:SVG68_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	68	inspect:image.svg_text:SVG68_PLAIN	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	69	inspect:alt_text.description:SVG69_FIRST_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	69	inspect:image.svg_text:SVG69_SHARED	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	69	inspect:alt_text.description:SVG69_SECOND_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	70	inspect:alt_text.description:SVG70_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	73	inspect:alt_text.description:EMF73_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	73	inspect:image.metafile_text:EMF73_UTF16	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	74	inspect:alt_text.description:EMF74_DESCR	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	74	inspect:image.metafile_text:/word/media/image74.emf	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	72	inspect:image.metafile_text:WMF72_TEXTOUT	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	67	inspect:sdt.stored_surface:SDT67_SURFACE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	58	inspect:paragraph.collapsed:BODY58_FIRST	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	59	inspect:story.unused:HDR59_UNUSED	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:header_footer:HDR63_USED	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	82	inspect:alt_text.description:a header picture	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	71	inspect:image.svg_text:SVG71_HEADER	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:watermark:WMK63_WATERMARK	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:note:NOTE63_REFERENCED	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:story.unused:NOTE63_UNREFERENCED	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
@@ -1473,10 +1613,27 @@ extraction-probe-inspect.docx	65	inspect:font.embedded:Inspect Probe Careful	acc
 extraction-probe-inspect.docx	65	inspect:font.embedded:Inspect Probe Plain	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	65	inspect:font.embedded:Inspect Probe Symbol	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	65	inspect:font.embedded:Inspect Probe Substitution	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	75	inspect:value.out_of_range:/word/document.xml w:spacing/@w:before=65537	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	75	inspect:value.out_of_range:/word/document.xml w:ind/@w:left=66256	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	76	inspect:value.out_of_range:/word/document.xml w:tblW/@w:w=65536	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	76	inspect:value.out_of_range:/word/document.xml w:gridCol/@w:w=70000	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	76	inspect:value.out_of_range:/word/document.xml w:tcW/@w:w=70000	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	77	inspect:value.out_of_range:/word/document.xml w:tab/@w:pos=32768	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	78	inspect:value.out_of_range:/word/document.xml w:spacing/@w:line=65535	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	78	inspect:value.out_of_range:/word/document.xml w:ind/@w:firstLine=65535	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	79	inspect:value.out_of_range:/word/document.xml w:trHeight/@w:val=65537	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	79	inspect:value.out_of_range:/word/document.xml w:top/@w:sz=256	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	79	inspect:value.out_of_range:/word/document.xml w:top/@w:space=32	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	79	inspect:value.out_of_range:/word/document.xml w:w/@w:val=65636	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	81	inspect:value.out_of_range:/word/document.xml w:spacing/@w:val=65537	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	82	inspect:value.out_of_range:/word/document.xml w:pgNumType/@w:start=4294967295	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	81	inspect:value.out_of_range:/word/header2.xml w:ind/@w:right=66976	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	80	inspect:value.out_of_range:/word/settings.xml w:hyphenationZone/@w:val=65537	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	80	inspect:value.out_of_range:/word/styles.xml w:ind/@w:left=66256	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	67	inspect:custom_xml:SDT67_VALUE	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	0	inspect:properties:/docProps/app.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	0	inspect:properties:/docProps/core.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
-extraction-probe-inspect.docx	63	inspect:altchunk:/word/chunk63.htm	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	63	inspect:altchunk:/word/chunk63.htm	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:altchunk.script:/word/chunk63.htm	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:altchunk.external_ref:/word/chunk63.htm	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	63	inspect:object.embedded:/word/embeddings/probe63.docx	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
@@ -1491,6 +1648,28 @@ extraction-probe-inspect.docx	64	inspect:relationship.external:file:///C:/CR050-
 extraction-probe-inspect.docx	64	inspect:relationship.external:file:///\\cr050-missing\share\LNK64_UNC.docx	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	64	inspect:hyperlink.web:https://example.com/LNK64_WEB	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 extraction-probe-inspect.docx	64	inspect:hyperlink.web:mailto:probe@example.com?subject=LNK64_MAIL	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-inspect.docx	63	inspect:altchunk:/word/chunk63.htm	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:properties:/docProps/app.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-html.docx	0	inspect:properties:/docProps/core.xml	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-a.htm	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-b.htm	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-c.xhtml	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-d.mht	accepted	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-a.htm	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-b.htm	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-c.xhtml	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:altchunk:/word/chunk-d.mht	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_A_INLINE	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_A_CLASS	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_A_OUTER	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_A_SPAN_HIDDEN	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_B_STAYS_HIDDEN	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_B_CELL_HIDDEN	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_B_ROW_HIDDEN	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_B_ITEM_HIDDEN	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_C_INLINE	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_C_AFTER	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
+extraction-probe-html.docx	0	inspect:text.hidden:HTM_D_FIRST_PART	accepted	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, html reader present
 extraction-probe-external.docm	50	metadata:fields_update_on_open:	accepted	default	PASS	
 extraction-probe-external.docm	50	metadata:fields_update_on_open:	original	default	PASS	
 extraction-probe-external.docm	50	metadata:fields_update_on_open:	markup	default	PASS	
@@ -1500,53 +1679,56 @@ extraction-probe-external.docm	52	metadata:ProbeCustom:	markup	default	PASS
 extraction-probe-external.docm	52	metadata:Company:	accepted	default	PASS	
 extraction-probe-external.docm	52	metadata:Company:	original	default	PASS	
 extraction-probe-external.docm	52	metadata:Company:	markup	default	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	html reader absent	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	html reader absent	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	html reader absent	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	original	altchunks: false	PASS	
-extraction-probe.docx	36	warning:altchunk.not_expanded:text/html	markup	altchunks: false	PASS	
-extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	accepted	altchunks: false	PASS	
-extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	original	altchunks: false	PASS	
-extraction-probe.docx	43	warning:altchunk.not_expanded:text/plain	markup	altchunks: false	PASS	
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	accepted	html reader absent	PASS	
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	original	html reader absent	PASS	
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	markup	html reader absent	PASS	
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	accepted	altchunks: false	PASS	
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	original	altchunks: false	PASS	
-extraction-probe.docx	44	warning:altchunk.not_expanded:message/rfc822	markup	altchunks: false	PASS	
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	accepted	default	PASS	
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	original	default	PASS	
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	markup	default	PASS	
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	accepted	altchunks: false	PASS	
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	original	altchunks: false	PASS	
-extraction-probe.docx	45	warning:altchunk.not_expanded:application/rtf	markup	altchunks: false	PASS	
-extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	accepted	altchunks: false	PASS	
-extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	original	altchunks: false	PASS	
-extraction-probe.docx	46	warning:altchunk.not_expanded:application/xml	markup	altchunks: false	PASS	
-extraction-probe.docx	47	warning:altchunk.not_expanded:text/html	accepted	html reader present	PENDING	phase 2; html reader present
-extraction-probe.docx	47	warning:altchunk.not_expanded:text/html	original	html reader present	PENDING	phase 2; html reader present
-extraction-probe.docx	47	warning:altchunk.not_expanded:text/html	markup	html reader present	PENDING	phase 2; html reader present
-extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	accepted	altchunks: false	PASS	
-extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	original	altchunks: false	PASS	
-extraction-probe.docx	47	warning:altchunk.not_expanded:application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml	markup	altchunks: false	PASS	
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	html reader absent	PASS	
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	html reader absent	PASS	
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	html reader absent	PASS	
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	accepted	altchunks: false	PASS	
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	original	altchunks: false	PASS	
-extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:text/html	markup	altchunks: false	PASS	
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	accepted	html reader absent	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	original	html reader absent	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	markup	html reader absent	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	36	warning:altchunk.not_expanded:/word/afchunk.htm	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	43	warning:altchunk.not_expanded:/word/chunk43.txt	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	accepted	html reader absent	FAIL	expected 1, got None
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	original	html reader absent	FAIL	expected 1, got None
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	markup	html reader absent	FAIL	expected 1, got None
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	44	warning:altchunk.not_expanded:/word/chunk44.mht	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	accepted	default	FAIL	expected 1, got None
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	original	default	FAIL	expected 1, got None
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	markup	default	FAIL	expected 1, got None
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	45	warning:altchunk.not_expanded:/word/chunk45.rtf	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	46	warning:altchunk.not_expanded:/word/chunk46.xml	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	accepted	default	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	original	default	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	markup	default	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe.docx	47	warning:altchunk.not_expanded:/word/chunk47.docx	markup	altchunks: false	FAIL	expected 1, got None
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	accepted	html reader absent	FAIL	expected 1, got None
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	original	html reader absent	FAIL	expected 1, got None
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	markup	html reader absent	FAIL	expected 1, got None
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	accepted	altchunks: false	FAIL	expected 1, got None
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	original	altchunks: false	FAIL	expected 1, got None
+extraction-probe-inspect.docx	63	warning:altchunk.not_expanded:/word/chunk63.htm	markup	altchunks: false	FAIL	expected 1, got None
 extraction-probe.docx	53	order	accepted	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	order	original	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	53	order	markup	embedded: true	PENDING	deferred (CR-011 Q7): an embedded PresentationML package
 extraction-probe.docx	54	order	accepted	include: glossary	PASS	
 extraction-probe.docx	54	order	original	include: glossary	PASS	
 extraction-probe.docx	54	order	markup	include: glossary	PASS	
-extraction-probe.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
-extraction-probe-external.docm	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
-extraction-probe-structure.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
-extraction-probe-inspect.docx	0	inspection	-	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
-extraction-probe-html.docx	0	inspection	-	html reader present	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204, html reader present
+extraction-probe.docx	0	inspection	-	html reader present	PENDING	2 rows of html reader present, not this run's environment
+extraction-probe.docx	0	inspection	-	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
+extraction-probe-external.docm	0	inspection	-	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
+extraction-probe-structure.docx	0	inspection	-	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
+extraction-probe-inspect.docx	0	inspection	-	html reader present	PENDING	1 row of html reader present, not this run's environment
+extraction-probe-inspect.docx	0	inspection	-	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
+extraction-probe-html.docx	0	inspection	-	html reader present	PENDING	15 rows of html reader present, not this run's environment
+extraction-probe-html.docx	0	inspection	-	html reader absent	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907, REQ-1204
 extraction-probe.docx	0	counts	-	plain	PENDING	the inspector (CR-050); REQ-903
 extraction-probe.docx	0	counts	-	markdown	PENDING	the inspector (CR-050); REQ-903
 extraction-probe.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); REQ-903
@@ -1571,6 +1753,12 @@ extraction-probe-inspect.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); 
 extraction-probe-inspect.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
 extraction-probe-inspect.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
+extraction-probe-html.docx	0	counts	-	plain	PENDING	the inspector (CR-050); REQ-903
+extraction-probe-html.docx	0	counts	-	markdown	PENDING	the inspector (CR-050); REQ-903
+extraction-probe-html.docx	0	counts	-	blocks	PENDING	the inspector (CR-050); REQ-903
+extraction-probe-html.docx	0	counts	-	hidden	PENDING	the inspector (CR-050); REQ-903
+extraction-probe-html.docx	0	counts	-	embedded	PENDING	the inspector (CR-050); REQ-903
+extraction-probe-html.docx	0	counts	-	comments	PENDING	the inspector (CR-050); REQ-903
 extraction-probe.docx	0	golden:extraction-probe.accepted.txt	accepted	default	PASS	
 extraction-probe.docx	0	golden:extraction-probe.original.txt	original	default	PASS	
 extraction-probe.docx	0	golden:extraction-probe.markup.txt	markup	default	PASS	

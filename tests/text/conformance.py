@@ -1,11 +1,14 @@
-"""docx4j's text-extraction conformance harness, ported. CR-011 sections 3.6 and 4.
+"""docx4j's text-extraction conformance harness, ported. CR-011 sections 3.6 and 4; CR-027 section 4.4.
 
 Not a test: the port of ``org.docx4j.textextraction.ExtractionConformance`` at
-docx4j ``198d015a3``, with the constants of ``ExtractionInspection`` it uses.
-It checks an :class:`Engine`'s extraction of the suite's five fixtures
-(``tests/fixtures/text-extraction/phase0/``, copied from docx4j at that
-commit) against the suite's tables and goldens. ``GOLDENS.md`` and
-``INSPECTION.md`` beside the suite are its contract. In order:
+docx4j's release tag ``docx4j-17.3.5`` (``64fae4cd0``), with the constants of
+``ExtractionInspection`` and ``ExtractionFixtureChecks`` it uses. It checks an
+:class:`Engine`'s extraction of a suite against its tables and goldens: the
+five fixtures of ``tests/fixtures/text-extraction/phase0/`` and, beside it,
+docx4j CR-069's ``dpp/`` (Word's re-save of a probe, each case alone, Word's
+caps measurements, and Word's own plain-text saves of each), both copied from
+docx4j at that tag. ``GOLDENS.md`` and ``INSPECTION.md`` beside the suites, and
+``dpp/README.md``, are its contract. In order:
 
 * each token row of ``expected-tokens.tsv`` in the three views, under its
   default scenario and its option column's, then under the supplemental
@@ -13,24 +16,32 @@ commit) against the suite's tables and goldens. ``GOLDENS.md`` and
 * each row of ``expected-findings.tsv`` (warnings, metadata and inspection
   findings, an ``inspect`` row in ``accepted`` only) and of
   ``expected-order.tsv``;
-* each fixture's whole inspection (REQ-1204), the HTML reader's fixture's,
-  and REQ-903's counts under the six outputs;
-* each golden of ``goldens.tsv``, compared after REQ-1201's normalisation.
+* each fixture's whole inspection (REQ-1204) against its rows of ``any`` and
+  of the engine's environment (an HTML reader present or absent), the other
+  environment's rows pending by count, and REQ-903's counts under the six
+  outputs;
+* each golden of ``goldens.tsv``, compared after REQ-1201's normalisation;
+* each row of ``word-saves.tsv``: Word's Save As plain text of a fixture
+  against the extraction under the row's scenario (``profile: word-text``),
+  read as WD REQ-1002's NOTE reads one (:func:`verify_word_save`).
 
 A check **pends** when the engine does not advertise every statement it needs
 (:meth:`Engine.implemented`): the row's statements and its scenario's, and for
-a golden ``html reader absent``. The report is a TSV in docx4j's form
-(:data:`HEADER`), one row per check.
+a golden ``html reader absent``. Its reason names the CR-069 phase that builds
+a missing statement of that CR, else docx4j CR-046's phase or the inspector
+(:func:`pending_reason`). The report is a TSV in docx4j's form
+(:data:`HEADER`), one row per check, a report per suite.
 
 **The first departure** (CR-011 section 11): docx4j's run stops at the first
 check that fails, since every check docx4j makes passes, so its report has
 ``PASS`` and ``PENDING`` rows only. This port records a failing check as a
 ``FAIL`` row with its reason and goes on, and an engine's exception fails the
 checks that read its output, so that today's readers can be measured.
-``test_conformance.py`` holds the run to the committed report,
-``tests/text/conformance.tsv``, which this module rewrites when run::
+``test_conformance.py`` holds each run to its committed report,
+``tests/text/conformance.tsv`` and ``tests/text/conformance-dpp.tsv``, which
+this module rewrites when run::
 
-    .venv-fork/bin/python tests/text/conformance.py      # the adapter, the report rewritten
+    .venv-fork/bin/python tests/text/conformance.py      # the adapter, both reports rewritten
 
 Every FAIL reason is this port's own (docx4j writes none): its assertion
 message without the context the row's columns already give.
@@ -43,11 +54,14 @@ engine names none, so its run is unchanged.
 
 from __future__ import annotations
 
+import codecs
 import collections
 import functools
+import io
 import re
 import sys
 import unicodedata
+import zipfile
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -55,6 +69,11 @@ from pathlib import Path
 from typing import NamedTuple
 
 __all__ = [
+    "ANY",
+    "CR069",
+    "DOS_1980",
+    "DPP",
+    "DPP_REPORT",
     "FIELDS",
     "HEADER",
     "HTML_READER_ABSENT",
@@ -64,6 +83,7 @@ __all__ = [
     "OUTPUTS",
     "PHASE0",
     "REPORT",
+    "WORD_SAVES",
     "Check",
     "CheckFailed",
     "Engine",
@@ -72,9 +92,11 @@ __all__ = [
     "Run",
     "compare_inspection",
     "count",
+    "entries",
     "image_destinations",
     "main",
     "normalize",
+    "pending_reason",
     "phase",
     "read_report",
     "requirements",
@@ -86,16 +108,21 @@ __all__ = [
     "verify",
     "verify_golden",
     "verify_order",
+    "verify_word_save",
+    "word_save_lines",
 ]
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-#: The suite as copied from docx4j at ``198d015a3`` (``tests/README.md``).
+#: The suite as copied from docx4j at ``docx4j-17.3.5`` (``tests/README.md``, ``SHA1SUMS``).
 SUITE = ROOT / "tests" / "fixtures" / "text-extraction"
 #: The fixtures, the tables and the goldens.
 PHASE0 = SUITE / "phase0"
-#: The committed report: the adapter's run, which ``test_conformance.py`` holds.
+#: docx4j CR-069's suite beside it (``dpp/README.md``): the same tables, and Word's own text saves.
+DPP = SUITE / "dpp"
+#: The committed reports: the adapter's runs, which ``test_conformance.py`` holds.
 REPORT = HERE / "conformance.tsv"
+DPP_REPORT = HERE / "conformance-dpp.tsv"
 
 #: The class path's capabilities (CR-053, WD 0.27): whether an HTML reader is
 #: present, a parser of the [HTML] algorithm and a reader of its tree as
@@ -107,12 +134,19 @@ HTML_READER_ABSENT = "html reader absent"
 
 INSPECTION_TABLE = "expected-inspection.tsv"
 INSPECTION_STATUS = "expected-inspection-status.tsv"
-#: An inspector with an HTML reader, on the fixture whose chunks it reads.
+#: The rows an inspector with an HTML reader makes on the fixture whose chunks it
+#: reads, written by hand (CR-053 phase 3). Since CR-050 phase 4 (``4a37702eb``)
+#: they are folded into :data:`INSPECTION_TABLE` under ``capability`` ``html
+#: reader present``; this file is their source, and the harness does not read it.
 HTML_TABLE = "expected-inspection-html.tsv"
-HTML_STATUS = "expected-inspection-html-status.tsv"
+#: The ``capability`` column of both inspection tables (CR-050 phase 4): a row
+#: every inspector makes, else one of an environment, :data:`HTML_READER_ABSENT`
+#: or :data:`HTML_READER_PRESENT`; a status row per (fixture, capability) too.
+ANY = "any"
 #: A finding's identity: its kind and its stored location.
 KEY = ("kind", "chain", "part", "path", "start", "end_path", "end")
-#: The fields compared for a finding whose identity matched.
+#: The fields compared for a finding whose identity matched (``parsed``: how an
+#: HTML chunk was read, CR-053).
 FIELDS = (
     "address",
     "visible",
@@ -125,6 +159,7 @@ FIELDS = (
     "comments",
     "excerpt_length",
     "excerpt_cut",
+    "parsed",
 )
 #: What an inspection row needs: WD section 9, less REQ-903's counts, which
 #: have their own check.
@@ -413,6 +448,10 @@ _OPTION_STATEMENTS = {
     "markup_detail": "REQ-702",
     "page_markers": "REQ-708",
     "layout": "REQ-709",
+    # docx4j CR-069 (993e385e7): the dpp suite's options, and the preset its Word saves are read under
+    "drop_caps": "REQ-521",
+    "small_caps": "REQ-607",
+    "profile": "REQ-1002",
 }
 
 
@@ -485,6 +524,25 @@ def phase(statements: Iterable[str]) -> int:
         if number in (703, 704, 705):
             result = max(result, 3)
     return result
+
+
+#: docx4j CR-069's statements (WD 0.44) and the phase of that CR each lands in:
+#: REQ-607 the case mapping (1), REQ-521 the drop-cap join (2), REQ-710 the
+#: superscript tags (3), the inspector kind ``text.formatting_join`` (4), a
+#: capability as ``CR-047`` is.
+CR069 = {"REQ-607": 1, "REQ-521": 2, "REQ-710": 3, "text.formatting_join": 4}
+
+
+def pending_reason(statements: Iterable[str], missing: Iterable[str]) -> str:
+    """Why a check pends: CR-069's latest phase among the missing statements, else CR-046's phase or the inspector.
+
+    docx4j's ``pendingReason``; the report writes the missing statements after it.
+    """
+    cr069 = max((CR069.get(statement, 0) for statement in missing), default=0)
+    if cr069:
+        return f"CR-069 phase {cr069}"
+    n = phase(statements)
+    return "the inspector (CR-050)" if n == 9 else f"phase {n}"
 
 
 # the inspection ---------------------------------------------------------------
@@ -577,7 +635,11 @@ class Run:
         self.checks.append(Check(row["fixture"], row["case"], item, view, scenario, status, _reason(reason)))
 
     def ready(self, row: Row, item: str, view: str, scenario: str, statements: Iterable[str]) -> bool:
-        """Whether the engine advertises every statement a check needs; if not, the check pends."""
+        """Whether the engine advertises every statement a check needs; if not, the check pends.
+
+        A pending check's reason is :func:`pending_reason`'s, then the missing
+        statements.
+        """
         statements = list(dict.fromkeys(statements))
         implemented = set(self.engine.implemented())
         missing = [s for s in statements if s not in implemented]
@@ -587,9 +649,7 @@ class Run:
                 return True
             self.pend(row, item, view, scenario, reason)
             return False
-        n = phase(statements)
-        owner = "the inspector (CR-050)" if n == 9 else f"phase {n}"
-        self._add(row, item, view, scenario, "PENDING", f"{owner}; {', '.join(missing)}")
+        self._add(row, item, view, scenario, "PENDING", f"{pending_reason(statements, missing)}; {', '.join(missing)}")
         return False
 
     def pend(self, row: Row, item: str, view: str, scenario: str, reason: str) -> None:
@@ -764,33 +824,65 @@ def _by_fixture(rows: Iterable[Row]) -> dict[str, list[Row]]:
 
 
 def _inspections(run: Run) -> None:
-    """Each fixture's inspection by occurrence, the HTML reader's, and REQ-903's counts.
+    """Each fixture's inspection by occurrence, and REQ-903's counts, in the engine's environment.
 
-    The table is an inspector's with no HTML reader (CR-053 phase 3), so the
-    comparisons and the counts need ``html reader absent``.
+    Since CR-050 phase 4 (``4a37702eb``) the tables carry a ``capability``
+    column: a fixture is compared against its rows of ``any`` and of the
+    engine's environment (an HTML reader present or absent, which the engine
+    advertises), with that environment's status row; the other environment's
+    rows pend, by count. A row resting on a rule not yet ruled on (its
+    ``pending``) is left out on both sides and pends. A fixture with rows of an
+    environment needs REQ-513 too (the chunk read, or skipped).
     """
     path = run.directory / INSPECTION_TABLE
     if not path.exists():
         return
-    expected = _by_fixture(table(path))
-    statuses = table(run.directory / INSPECTION_STATUS)
-    for status in statuses:
-        fixture = status["fixture"]
-        statements = INSPECTOR_STATEMENTS + ", REQ-1204"
+    environment = HTML_READER_PRESENT if HTML_READER_PRESENT in set(run.engine.implemented()) else HTML_READER_ABSENT
+    other = HTML_READER_ABSENT if environment == HTML_READER_PRESENT else HTML_READER_PRESENT
+    expected: dict[str, list[Row]] = collections.defaultdict(list)
+    others: dict[str, list[Row]] = collections.defaultdict(list)
+    environmental: dict[str, bool] = {}
+    for row in table(path):
+        capability = row.get("capability", ANY)
+        environmental[row["fixture"]] = environmental.get(row["fixture"], False) or capability != ANY
+        (expected if capability in (ANY, environment) else others)[row["fixture"]].append(row)
+    statuses: dict[str, Row] = {}
+    for status in table(run.directory / INSPECTION_STATUS):
+        if status.get("capability", ANY) in (ANY, environment):
+            statuses[status["fixture"]] = status
+    for fixture, status in statuses.items():
+        statements = INSPECTOR_STATEMENTS + ", REQ-1204" + (", REQ-513" if environmental.get(fixture) else "")
         row = {"fixture": fixture, "case": "0", "statements": statements}
-        if not run.ready(row, "inspection", "-", "default", [*requirements(statements), HTML_READER_ABSENT]):
+        if fixture in others:
+            n = len(others[fixture])
+            reason = f"{n} {'row' if n == 1 else 'rows'} of {other}, not this run's environment"
+            run.pend(row, "inspection", "-", other, reason)
+        if not run.ready(row, "inspection", "-", environment, requirements(statements)):
             continue
+        checked, pending = [], set()
+        for finding in expected.get(fixture, []):
+            if not finding.get("pending", ""):
+                checked.append(finding)
+            else:
+                pending.add(_key(finding))
+                item = f"inspect:{finding['kind']}:{finding['selector']}"
+                run.pend(finding, item, "-", environment, finding["pending"])
 
-        def check(fixture: str = fixture, status: Row = status) -> None:
-            compare_inspection(expected.get(fixture, []), status, run.inspection(fixture))
+        def check(
+            fixture: str = fixture, status: Row = status, checked: list[Row] = checked, pending: set[str] = pending
+        ) -> None:
+            actual = run.inspection(fixture)
+            found = [f for f in actual.findings if _key(f) not in pending]
+            compare_inspection(
+                checked, status, Inspection(found, actual.status, actual.skipped, actual.undecided, actual.limitations)
+            )
 
-        run.outcome(row, "inspection", "-", "default", check)
-    _html_inspections(run)
-    for status in statuses:
-        fixture = status["fixture"]
+        run.outcome(row, "inspection", "-", environment, check)
+    # REQ-903's counts, for each output the table groups a finding under: the rows of this run's environment
+    for fixture, status in statuses.items():
         row = {"fixture": fixture, "case": "0", "statements": "REQ-903"}
         for output in OUTPUTS:
-            if not run.ready(row, "counts", "-", output, ["REQ-903", HTML_READER_ABSENT]):
+            if not run.ready(row, "counts", "-", output, ["REQ-903"]):
                 continue
 
             def check(fixture: str = fixture, status: Row = status, output: str = output) -> None:
@@ -802,43 +894,6 @@ def _inspections(run: Run) -> None:
                 _equal(want, run.counts(fixture, output), f"counts under {output}")
 
             run.outcome(row, "counts", "-", output, check)
-
-
-def _html_inspections(run: Run) -> None:
-    """An inspector with an HTML reader, on the fixture whose chunks it reads (CR-053 phase 3).
-
-    ``parsed`` is compared with the other fields; a row resting on a rule not
-    yet ruled on (its ``pending``) is left out on both sides and pends.
-    """
-    path = run.directory / HTML_TABLE
-    if not path.exists():
-        return
-    expected = _by_fixture(table(path))
-    for status in table(run.directory / HTML_STATUS):
-        fixture = status["fixture"]
-        statements = INSPECTOR_STATEMENTS + ", REQ-1204, REQ-513"
-        row = {"fixture": fixture, "case": "0", "statements": statements}
-        needs = [*requirements(statements), HTML_READER_PRESENT]
-        if not run.ready(row, "inspection", "-", HTML_READER_PRESENT, needs):
-            continue
-        checked, pending = [], set()
-        for finding in expected.get(fixture, []):
-            if not finding["pending"]:
-                checked.append(finding)
-            else:
-                pending.add(_key(finding))
-                item = f"inspect:{finding['kind']}:{finding['selector']}"
-                run.pend(finding, item, "-", HTML_READER_PRESENT, finding["pending"])
-
-        def check(
-            fixture: str = fixture, status: Row = status, checked: list[Row] = checked, pending: set[str] = pending
-        ) -> None:
-            actual = run.inspection(fixture)
-            found = [f for f in actual.findings if _key(f) not in pending]
-            others = Inspection(found, actual.status, actual.skipped, actual.undecided, actual.limitations)
-            compare_inspection(checked, status, others, (*FIELDS, "parsed"))
-
-        run.outcome(row, "inspection", "-", HTML_READER_PRESENT, check)
 
 
 def _goldens(run: Run) -> None:
@@ -858,8 +913,111 @@ def _goldens(run: Run) -> None:
         run.outcome(row, item, row["view"], row["scenario"], check)
 
 
+# Word's own text saves (docx4j CR-069 phase 0) --------------------------------
+
+#: The table of Word's Save As plain text of a fixture (``dpp/README.md``):
+#: ``fixture``, ``case``, ``save``, ``encoding``, ``scenario``, ``statements``, ``note``.
+WORD_SAVES = "word-saves.tsv"
+
+_WORD_LINE = re.compile(r"\r\n|\r|\n|\t")
+
+
+def word_save_lines(text: str) -> list[str]:
+    """A text's lines as :func:`verify_word_save` compares them: ended at CR LF, CR, LF or a tab, trailing empties dropped."""
+    lines = _WORD_LINE.split(text)
+    while lines and not lines[-1]:
+        lines.pop()
+    return lines
+
+
+def verify_word_save(save: Path, encoding: str, actual: str) -> None:
+    """Word's Save As plain text of a fixture against an extraction, as WD REQ-1002's NOTE reads one.
+
+    docx4j's ``verifyWordSave``. The save is decoded by its byte order mark
+    (the table's encoding ``UTF-8``, which must have one), else in the saving
+    system's ANSI code page, which the row names (``windows-1252``, and the
+    file must have no mark). The extraction is passed through that encoding,
+    so that a character the code page lacks is Word's ``?`` on both sides.
+    The two are then compared line by line (:func:`word_save_lines`): Word
+    ends a paragraph CR LF and a cell CR, where the specification writes LF
+    and a tab, the residue the NOTE names. Every other character, and every
+    break between paragraphs or cells, must agree.
+
+    Raises:
+        CheckFailed: the mark and the table disagree, or a line differs.
+    """
+    data = save.read_bytes()
+    bom = data[:3] == b"\xef\xbb\xbf"
+    utf8 = codecs.lookup(encoding).name == "utf-8"
+    if bom != utf8:
+        raise CheckFailed(
+            f"a byte order mark, but the table says {encoding}"
+            if bom
+            else "no byte order mark, but the table says UTF-8"
+        )
+    word = data[3:].decode("utf-8", errors="replace") if bom else data.decode(encoding, errors="replace")
+    # Java's String.getBytes writes ? for a character the charset lacks
+    passed = actual.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    expected, got = word_save_lines(word), word_save_lines(passed)
+    for i in range(max(len(expected), len(got))):
+        e = expected[i] if i < len(expected) else "<end>"
+        g = got[i] if i < len(got) else "<end>"
+        if e != g:
+            raise CheckFailed(f"line {i + 1}: Word wrote [{e}], the extraction [{g}]")
+
+
+def _word_saves(run: Run) -> None:
+    """Each row of :data:`WORD_SAVES` against the text in ``accepted`` under its scenario (``profile: word-text``)."""
+    path = run.directory / WORD_SAVES
+    if not path.exists():
+        return
+    for row in table(path):
+        item = "word save:" + row["save"]
+        if not run.ready(row, item, "accepted", row["scenario"], row_requirements(row)):
+            continue
+
+        def check(row: Row = row) -> None:
+            text = run.output(row, "accepted", row["scenario"], "txt").text
+            verify_word_save(run.directory / row["save"], row["encoding"], text)
+
+        run.outcome(row, item, "accepted", row["scenario"], check)
+
+
+# the fixtures' packages (ExtractionFixtureChecks) ----------------------------------
+
+#: 1980-01-01 00:00 as a ZIP entry's DOS date (high 16 bits) and time (low 16
+#: bits): the fixed timestamp docx4j's ``ExtractionProbeBuilder`` writes.
+DOS_1980 = ((1 << 5) | 1) << 16
+
+
+def entries(data: bytes, built: bool = True) -> dict[str, bytes]:
+    """A package's members by name. docx4j ``ExtractionFixtureChecks.entries``.
+
+    With `built`, a package the suite's builder wrote, each entry also carries
+    its fixed timestamp (:data:`DOS_1980`); a package Word saved or another tool
+    made, as most of ``dpp/`` is, need not (CR-069). The DOS fields are read
+    from the central directory, as docx4j's ``dosTimes`` reads them since
+    ``4e4f8ce49``, so the check holds in every time zone.
+
+    Raises:
+        ValueError: a member named twice, or a built package's entry with
+            another timestamp.
+    """
+    out: dict[str, bytes] = {}
+    with zipfile.ZipFile(io.BytesIO(data)) as package:
+        for info in package.infolist():
+            if info.filename in out:
+                raise ValueError("Duplicate ZIP member")
+            year, month, day, hour, minute, second = info.date_time
+            dos = ((year - 1980) << 25 | month << 21 | day << 16) | (hour << 11 | minute << 5 | second // 2)
+            if built and dos != DOS_1980:
+                raise ValueError(f"ZIP timestamp {info.filename}")
+            out[info.filename] = package.read(info)
+    return out
+
+
 def run(engine: Engine, directory: Path = PHASE0) -> Run:
-    """The suite over an engine: every check, in docx4j's order, with its outcome."""
+    """A suite over an engine (``phase0/`` or ``dpp/``): every check, in docx4j's order, with its outcome."""
     tokens = table(directory / "expected-tokens.tsv")
     result = Run(engine, directory, tuple(dict.fromkeys(row["token"] for row in tokens)))
     _tokens(result, tokens)
@@ -867,21 +1025,24 @@ def run(engine: Engine, directory: Path = PHASE0) -> Run:
     _orders(result)
     _inspections(result)
     _goldens(result)
+    _word_saves(result)
     return result
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the adapter over the suite, print the summary and write the report.
+    """Run the adapter over both suites, print each summary and write each report.
 
-    ``conformance.py [report.tsv]``: the committed report by default.
+    ``conformance.py [report.tsv [dpp-report.tsv]]``: the committed reports by default.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
-    report = Path(arguments[0]) if arguments else REPORT
+    reports = [Path(a) for a in arguments[:2]] + [REPORT, DPP_REPORT][len(arguments[:2]) :]
     from adapter import TextsAdapter
 
-    result = run(TextsAdapter())
-    report.write_text(result.report(), encoding="utf-8", newline="\n")
-    print(f"{result.summary()}; {report}")
+    engine = TextsAdapter()
+    for directory, report in zip((PHASE0, DPP), reports, strict=True):
+        result = run(engine, directory)
+        report.write_text(result.report(), encoding="utf-8", newline="\n")
+        print(f"{result.summary()}; {report}")
     return 0
 
 

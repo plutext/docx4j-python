@@ -1,7 +1,7 @@
 # The inspection oracle (CR-050 phase 0)
 
 `phase0/expected-inspection.tsv` lists every finding an inspector (WD section 9; docx4j CR-050) must
-make on the suite's four fixtures, one row a finding; `phase0/expected-inspection-status.tsv` gives
+make on the suite's five fixtures, one row a finding; `phase0/expected-inspection-status.tsv` gives
 each fixture's status, what was not inspected, and what the inspector could not decide. The harness
 (`ExtractionConformance`) compares an engine's findings with them as multisets of (kind, location), so
 a finding missing, a finding unexpected, and two findings of one kind where one is expected all fail;
@@ -30,22 +30,26 @@ is marked **(phase 2)**, and moves none either.
   derives the inspect rows of `expected-findings.tsv`, and checks every row against its fixture: the
   path resolves, the range lies in the run's text, the excerpt's length is the text's
   (`ExtractionConformanceTest`).
-- Both tables are an inspector's **with no HTML reader**: it skips each HTML, XHTML or MHT chunk as
-  `not_decoded` (CR-053 phase 3, WD 0.27), so with a reader on the class path their comparison
-  pends. An inspector **with one** runs the chunk's import (WD 0.26's REQ-901) and is compared instead on
-  `extraction-probe-html.docx` (`ExtractionHtmlCases`: four chunks, A to D) with
-  `phase0/expected-inspection-html.tsv` and `expected-inspection-html-status.tsv`, read only under
-  `html reader present`. Those rows are written by hand, not by the oracle, which has no reader: each
-  cites its statements and the Word probe it rests on (`evidence`), and is checked against Word 365's
-  save of the fixture (round 10, 21 October 2026: every row agrees). A row resting on a rule not yet
-  in the WD would name the WD it waits for in `pending`, and be left out of the comparison on both
-  sides; since WD 0.27 none does. The table adds `parsed` (compared), `statements`, `evidence` and
-  `pending`. A chunk's
-  `text.hidden` is one finding for its outermost hidden element with text, at the element's path in the
-  tree jsoup builds (unprefixed, `/html[1]/body[1]/div[2]`), with no range; its excerpt is the text the
-  import made, a block a line feed apart; its address the block that holds its text under
-  `hidden: true`, from the same import. `ExtractionInspection` checks each path in the jsoup tree of the
-  fixture's chunk.
+- An inspector's findings differ by one capability of the class path: an **HTML reader** (jsoup and
+  docx4j-ImportXHTML; WD 0.27's `html reader present`). Without one it skips each HTML, XHTML or MHT
+  chunk as `not_decoded`; with one it runs the chunk's import (WD 0.26's REQ-901) and finds the chunk's
+  hidden text. Since CR-050 phase 4 both tables carry a `capability` column, `any`, `html reader absent`
+  or `html reader present`, and the harness compares a fixture against its rows of `any` and of the
+  engine's environment, with the status row of that environment, reporting the other environment's
+  rows pending by count; a reader-present engine therefore checks every row that does not depend on the
+  reader, and the reader-dependent ones of its own environment. The oracle, which has no reader, writes
+  the `any` and `html reader absent` rows; each HTML chunk's `altchunk` row is `html reader absent`, and
+  the oracle writes its reader-present twin (`parsed` `html`, the chunk read). The rest of the
+  reader-present rows, a chunk's `text.hidden`, are written by hand in `phase0/expected-inspection-html.tsv`
+  (`ExtractionHtmlCases`'s fixture, `extraction-probe-html.docx`: four chunks, A to D), which the oracle
+  folds in: each cites its statements and the Word probe it rests on (`evidence`), and is checked
+  against Word 365's save of the fixture (round 10, 21 October 2026: every row agrees). A row resting on
+  a rule not yet in the WD would name the WD it waits for in `pending`, and be left out of the
+  comparison on both sides; since WD 0.27 none does. A chunk's `text.hidden` is one finding for its
+  outermost hidden element with text, at the element's path in the tree jsoup builds (unprefixed,
+  `/html[1]/body[1]/div[2]`), with no range; its excerpt is the text the import made, a block a line
+  feed apart; its address the block that holds its text under `hidden: true`, from the same import.
+  `ExtractionInspection` checks each such path in the jsoup tree of the fixture's chunk.
 
 After `ExtractionProbeBuilder` (into a scratch directory, its text files copied; never its rebuilt
 fixtures, which are not byte-identical, `GOLDENS.md`), from the repository root:
@@ -62,15 +66,17 @@ java -cp <test classes and dependencies> org.docx4j.textextraction.ExtractionIns
 `expected-inspection.tsv`: `fixture`, `case` (0 for a finding of the fixture as a whole), `kind`,
 the location (`chain`, `part`, `path`, `start`, `end_path`, `end`), `address`, `visible`, `reveal`,
 the group under six outputs (`plain`, `markdown`, `blocks`, `hidden`, `embedded`, `comments`),
-`excerpt_length`, `excerpt_cut`, `selector`, `summary` (informative, not compared). The address is
+`excerpt_length`, `excerpt_cut`, `selector`, `summary` (informative, not compared), `capability` (above),
+`parsed` (compared: how an HTML, XHTML or MHT chunk was read, `html`, else empty), `evidence` and
+`pending` (a reader-present row's, informative). The address is
 the REQ-518/519 address of the block that holds the finding's selector in the output its reveal
 names, as docx4j's text model gives it; empty for an unextractable finding, a property part, an
 author, or a finding no block holds. The selector names what the finding is about: the marker token
 in or around it, else its target, its name, its excerpt when short, or its part.
 
-`expected-inspection-status.tsv`: `fixture`, `status` (`COMPLETE` or `PARTIAL`), `skipped` and
-`undecided`, each a `; `-separated sorted list of `reason@location`, a location written
-`chain|part|path`.
+`expected-inspection-status.tsv`: `fixture`, `capability` (`any` where every row of the fixture is,
+else one row per environment), `status` (`COMPLETE` or `PARTIAL`), `skipped` and `undecided`, each a
+`; `-separated sorted list of `reason@location`, a location written `chain|part|path`.
 
 ## Locations
 
@@ -124,6 +130,13 @@ points before the 200-code-point bound (D5), `excerpt_cut` whether that length e
   finding, and no `text.hidden` for its runs.
 - A part is found once however many references it has; a relationship is one finding per
   relationship element.
+- An image part is found once (`image.svg_text`, `image.metafile_text`) however many pictures show
+  it, where the walk first meets one; the pictures are counted in the finding's summary.
+- An out-of-range integer attribute (`value.out_of_range`) is one finding per attribute occurrence: a
+  paragraph whose indent and spacing are both out of range is two findings at two elements; the same
+  value in a style and in a paragraph is two findings in two parts. A run property's finding merges with
+  the one before it when the two runs are adjacent among their parent's runs and the attribute and value
+  are the same (a split run copies its `w:rPr`).
 
 ## The branch read, and the outputs
 
@@ -185,6 +198,7 @@ Each row: what is one finding, its location, its excerpt (where it is not the el
 | `paragraph.hidden` | as Identity says | `w:p` | |
 | `text.near_background` | a run with display text that is not all whitespace, its colour (not `auto`) within WCAG 1.5:1 of its background | run | Background: the highlight; else the run's shading; else the paragraph's (direct or style); else the cell's (direct, then table style); else a text box's solid fill; else the page colour (`w:background`); else white. On the page colour, `visible` is `differently` where the settings have `w:displayBackgroundShape` (Word 365 shows the colour then, measured 19 October 2026) and `indeterminate` otherwise (D15). A shading pattern other than `clear`/`solid`/`nil`, or a gradient, picture or pattern fill, is a background docx4j cannot determine: no finding, and `background.indeterminate@` in `undecided`. A fill of `auto` is no fill. |
 | `text.tiny` | a run every non-space character of which is drawn under 2pt | run | The size is `w:szCs` for a character in the complex-script slot (the run's `w:cs` or `w:rtl` on, or the character in a complex script), `w:sz` otherwise; 20 half-points when neither is set. |
+| `text.formatting_join` **(CR-069 phase 4)** | a token the plain text fuses: two runs adjacent as the default plain text joins a paragraph's runs (a hidden, deleted or unselected run leaves no text; a run's `w:tab`, `w:ptab`, `w:br`, `w:cr`, `w:noBreakHyphen`, `w:softHyphen`, note reference, picture or other child not text separates, and an `m:r` does; its `w:fldChar`, `w:instrText`, `w:delInstrText`, `w:lastRenderedPageBreak`, `w:commentReference` and `w:annotationRef` do neither), the left one's last character and the right one's first decimal digits (Unicode Nd), the two differing in struck (`w:strike` or `w:dstrike` in effect, the last layer's) or in `w:vertAlign`; one finding a token, however many such boundaries it holds | runs, range: the token, from the boundary to a whitespace character or a separator either side | `visible` `differently`; requirements both runs'. Its group is by format: unseen in plain text, info in Markdown and the block model, which show the parts apart (WD 9.2). No subject; the selector is the excerpt. |
 | `chars.zero_width`, `chars.tag`, `chars.bidi`, `chars.private_use` | a run whose display text holds characters of the kind | run, range: first such character to the last | The CR's ranges. A private-use character is excepted when its font (the `w:sym`'s `w:font`, else the run's for the character's slot) is on D17's list (the list alone: Word 365 did not draw an embedded symbol-encoded face, so a face's own mapping exempts nothing, D17 as revised). |
 | `font.glyph_blank` | a run with characters its embedded face maps to a glyph with no outline (whitespace and categories Cf, Mn, Mc, Me excepted; a character the face does not map is not tested) | run, range | The face: the font for the character's slot, its style from the run's bold and italic; only faces the package embeds. |
 | `font.glyph_mismatch` | a run with a letter or digit one of D18's tests finds drawn as another | run, range | The tests consider glyphs with an outline only, and a letter or digit that is no compatibility character (one NFKC changes: a presentation form, a ligature, a width variant, a superscript, whose glyph is a variant by design). "Drawn as" another character `d` is evidence only where `d` is a letter or digit, no compatibility character, and not **the same letter**: two characters are the same letter when their bases are equal, either has no base (a mark-like letter), or their scripts differ (the script read from the character's Unicode name's first word **(phase 0)**). A character's base is its NFKD with marks (Mn, Mc, Me), modifier letters (Lm) and spaces dropped, each character upper- then lower-cased (one-character mappings), and ı, ȷ, ĸ, ð and đ folded to i, j, k, d and d. (1) another character maps to the same glyph; (2) a letter's advance is 0, or over 1.5 em, a modifier letter excepted and a titlecase letter from the second; (3) post format 2 names the glyph for a single other character (fontTools' `agl.toUnicode`: the full AGL, `uniXXXX`, `uXXXX[XX]`, a suffix after a full stop stripped); (4) a single (type 1) or multiple (type 2) substitution, directly in a feature Word applies, gives a glyph the cmap gives another character: `ccmp`, `locl` and `rlig` always **(phase 0, until the Word check measures it)**, `liga`, `clig`, `hlig`, `dlig` as `w14:ligatures` says, `calt` under `w14:cntxtAlts`. Ligature and contextual lookups are not tested. Fonts on D17's list are excepted. The base, compatibility and titlecase rules are **phase 1's calibration** (CR-050 section 5): as first written, the tests found 27 runs in four real documents drawn in faces as their foundries made them (an all-capitals face draws a and A alike), and as calibrated none. |
@@ -211,6 +225,8 @@ Each row: what is one finding, its location, its excerpt (where it is not the el
 | `relationship.external` | every other relationship with `TargetMode="External"`, in any relationships part | the `rel:Relationship` in its part | |
 | `alt_text.description`, `alt_text.title`, `alt_text.name` | a non-empty `wp:docPr` `descr`, `title`, `name`; a VML shape's `alt`, an `v:imagedata`'s `o:title` | the `wp:docPr` (or VML element) | A description is extractable for a picture (`pic:pic`) not decorative; a name where it is that picture's description (`descr` empty); a title never. A name is a finding only where it is that description, or where it is not a default name: one matching `[^0-9]+ [0-9]+` in full ("Text Box 3", "Picture 7"), D19 (b). |
 | `chart.cached` | a chart a drawing shows | the chart part | Excerpt: its `c:strCache` values and `a:t` text, LF apart. |
+| `image.svg_text` | an SVG image part a picture shows (the `asvg:svgBlip`'s target, else the `a:blip`'s) holding a `<text>` element with characters **(phase 3, D21)** | the part | Excerpt: each `<text>` element's characters (`<tspan>` and `<textPath>` included), one per line in document order, white space collapsed as SVG's default `xml:space` collapses it. Once per part, at the first picture showing it; summary `pictures=n texts=m`, and `raster=<part>` where that picture also names a raster copy. Whether the text is painted where the picture shows it is not judged (`image.text`); Word 365 draws an SVG's `<text>` and `<tspan>` but not its `<textPath>` (measured 21 October 2026, case 68), which other viewers draw. |
+| `image.metafile_text` | a WMF or EMF image part a picture shows (`a:blip`, `v:imagedata`) whose text records hold characters **(phase 3, D21)** | the part | Excerpt: each `META_TEXTOUT`, `META_EXTTEXTOUT`, `EMR_EXTTEXTOUTA` or `EMR_EXTTEXTOUTW` record's text, one per line in record order; a W record is UTF-16, the others are in the character set of the font selected when the record plays (the object table as GDI keeps it: a WMF object takes the lowest free slot, an EMF object the slot its record names; a stock font is ANSI), decoded with the Windows code page of that character set from a fixed table (ANSI, DEFAULT and OEM windows-1252; SHIFTJIS cp932, GB2312 cp936, CHINESEBIG5 cp950, the other sets their windows-125x, 874, 949 or Johab page; an unlisted value windows-1252); trailing NULs dropped; an all-white-space record left out. Left out, `image.text`: a glyph-index record (`ETO_GLYPH_INDEX`), a record drawn with a SYMBOL-charset font, `EMR_POLYTEXTOUT`, `EMR_SMALLTEXTOUT`, EMF+ `DrawString`. A file the decoder cannot parse is skipped, `unreadable`. Once per part, summary as `image.svg_text`. |
 | `doc_vars`, `rsids`, `settings.update_fields` | `w:docVars`; `w:rsids`; `w:updateFields` on | the element in the settings part | Excerpts: the variables' values; none; none. |
 | `custom_xml` | a custom XML part (`application/xml`, a `customXml` relationship) | the part | Excerpt: its text nodes, trimmed, LF apart. |
 | `properties` | a core, app or custom properties part with a value | the part | Excerpt as `custom_xml`. In an embedded package, never in an output. |
@@ -222,6 +238,7 @@ Each row: what is one finding, its location, its excerpt (where it is not the el
 | `embedded.sheet_hidden`, `embedded.sheet_very_hidden` | a `x:sheet` of state `hidden`, `veryHidden` | the `x:sheet` in the workbook part | Excerpt: its cells, tab apart, rows LF apart. In the output under `embedded` and `hidden`. |
 | `embedded.row_hidden`, `embedded.column_hidden` | a `x:row` or `x:col` with `hidden` on | it, in the worksheet part | Under `embedded` (and `hidden` in a hidden sheet). |
 | `embedded.slide_hidden`, `embedded.notes` | a slide with `show="0"`; a notes slide with text (placeholders for the slide image, number, header, footer and date excepted) | the `p:sld`, the `p:notes` | Notes are never in an output (REQ-512). |
+| `value.out_of_range` | an integer attribute whose value is outside the width Word stores it in (CR-066 sections 3.1 and 3.4; `docx4j-core/src/main/resources/org/docx4j/model/text/word-integer-storage.tsv`, the one table the inspector and the oracle read), in any WordprocessingML XML part, an unselected branch included **(CR-066 phase 4)** | the element carrying the attribute | One finding per attribute occurrence; a run's property merges into the same finding in the run before it (adjacent runs of one parent, the same attribute and value), as Identity says of every run kind; a paragraph's, a mark's or a style's never merges; no excerpt. Summary, `; ` apart: `attribute=w:ind/@w:left`, the deciding sibling where the row has one (`type=dxa`, `lineRule=exact`, `hRule=exact`), `value=`, `storage=` (`int16`, `uint16`, `int32`, `8 bits`, `5 bits`, `15 bits`; `16 bits` for an `ST_TwipsMeasure` attribute no round measured), `range=` (what Word keeps as written: the storage range, or the clamp for a tab stop and the page size), `word_reads=` (what Word shows, in the attribute's terms: a number; `hanging 1` for a first-line indent; `atLeast 1` or `exact 1` where the sign is the rule; `h=28809 hRule dropped` for a frame height; `computed` for a negative column width; `changed` where unmeasured). `visible` `-`, reveal unextractable, group info in every output (not content). Not checked: ids, counts, EMUs, `w:fitText` (not 16-bit), a `w:trHeight` under `hRule="auto"` and a table width under `auto` or `nil` (Word discards the value), `w:legacy` (Word 365 drops it). |
 
 ## Status
 

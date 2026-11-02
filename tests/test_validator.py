@@ -779,18 +779,42 @@ def _corpus() -> list[Path]:
     return sorted(p for p in (*(ROOT / "samples").rglob("*"), *FIXTURES.rglob("*")) if p.suffix.lower() in suffixes)
 
 
+#: The text-extraction probe whose cases 75 to 82 are docx4j CR-066 phase 4's out-of-range values (``338beec18``).
+INSPECT_PROBE = FIXTURES / "text-extraction" / "phase0" / "extraction-probe-inspect.docx"
+
+
 def test_the_corpus_holds_nothing_but_the_probes_values():
     """``samples/`` and every fixture: no misplaced content and no cell that does not end with a paragraph; the only
-    findings are the out-of-range values of docx4j CR-066's probe files, in their case parts."""
+    findings are the out-of-range values of docx4j CR-066's probe files, in their case parts, and of the
+    text-extraction probe's cases 75 to 82 (CR-066 phase 4, in the suite since CR-027 Phase A)."""
     files = _corpus()
     assert len(files) > 380
     other = []
     for path in files:
         for finding in misplaced(load(path)):
-            probe = LIMITS in path.parents and not path.name.endswith("-word365.docx")
+            probe = (LIMITS in path.parents and not path.name.endswith("-word365.docx")) or path == INSPECT_PROBE
             if not (probe and isinstance(finding, ValueOutOfRange)):
                 other.append((path.name, finding))
     assert other == []
+
+
+def test_the_text_extraction_probes_values_are_the_inspectors():
+    """The probe's out-of-range values are docx4j's inspector's ``value.out_of_range`` rows, part and element, less
+    ``w:gridCol``, which no round measured (the inspector's ``word_reads=changed``; ``integer-limits.json`` leaves it
+    out, Word recomputing the grid)."""
+    rows = [
+        line.split("\t")
+        for line in (INSPECT_PROBE.parent / "expected-inspection.tsv").read_text(encoding="utf-8").splitlines()[1:]
+    ]
+    # the inspector writes the root's position (/w:document[1]/...), the validator does not
+    expected = sorted(
+        (row[4], re.sub(r"^(/[^/\[]+)\[1\]", r"\1", row[5]))
+        for row in rows
+        if row[2] == "value.out_of_range" and "/w:gridCol[" not in row[5]
+    )
+    found = [f for f in misplaced(load(INSPECT_PROBE)) if isinstance(f, ValueOutOfRange)]
+    assert sorted((f.part_name, f.path.rsplit("/@", 1)[0]) for f in found) == expected
+    assert len(found) == 16
 
 
 def test_misplaced_never_marks_a_part_for_re_marshalling():

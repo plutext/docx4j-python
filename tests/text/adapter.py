@@ -1,4 +1,4 @@
-"""docx4j's ``TextsAdapter``, over this package's text model. CR-011 sections 3.6 and 12.
+"""docx4j's ``TextsAdapter``, over this package's text model. CR-011 sections 3.6 and 12; CR-027 section 4.4.
 
 Not a test: the :class:`~conformance.Engine` the conformance harness runs,
 :meth:`TextsAdapter.implemented` and :meth:`TextsAdapter.extract`, with no
@@ -18,14 +18,17 @@ Since Phase B it reads the text model, as docx4j's adapter reads its own:
   each core, application and custom property by its own name, as docx4j's
   adapter flattens them).
 
-It advertises what docx4j's adapter advertises at ``198d015a3``, less the
-inspector's statements, and ``html reader absent``: the target, not what the
-package meets. So every check docx4j makes is made here, a gap is a ``FAIL``
+It advertises what docx4j's adapter advertises at ``docx4j-17.3.5``
+(:data:`DOCX4J_IMPLEMENTED`), less the inspector's statements and what this
+package does not build yet (:data:`NOT_ADVERTISED`, each with its reason), and
+``html reader absent``: the target, not what the package meets. So every check
+docx4j makes over what this package builds is made here, a gap is a ``FAIL``
 row rather than a pending one, and a phase's progress shows as checks going
-from ``FAIL`` to ``PASS`` in the committed report (CR-011 sections 3.6 and
-11). Pending are docx4j's 19, which need an HTML reader, the inspector's 214,
-and the 60 checks of the content CR-011 Q7 defers (embedded SpreadsheetML and
-PresentationML packages and OLE 1.0 objects), each named in :data:`DEFERRED`.
+from ``FAIL`` to ``PASS`` in the committed reports (CR-011 sections 3.6 and
+11). Pending are the checks that need an HTML reader, the inspector's, those of
+the statements in :data:`NOT_ADVERTISED`, and the 60 checks of the content
+CR-011 Q7 defers (embedded SpreadsheetML and PresentationML packages and OLE
+1.0 objects), each named in :data:`DEFERRED`.
 """
 
 from __future__ import annotations
@@ -39,11 +42,13 @@ from conformance import HTML_READER_ABSENT, Engine, Output
 from docx4j_py import load
 from docx4j_py.model.text import TextOptions, extract, markdown, plain_text
 
-__all__ = ["DEFERRED", "DOCX4J_IMPLEMENTED", "INSPECTOR", "TextsAdapter"]
+__all__ = ["DEFERRED", "DOCX4J_IMPLEMENTED", "INSPECTOR", "NOT_ADVERTISED", "TextsAdapter"]
 
-#: docx4j's ``TextsAdapter.IMPLEMENTED`` at ``198d015a3``: the statements its
-#: CR-046 phases 1 to 3 implement, the chart description case 34 needs
-#: (``CR-047``), and the inspector's (CR-050) with the suite's check of it.
+#: docx4j's ``TextsAdapter.IMPLEMENTED`` at ``docx4j-17.3.5``: the statements
+#: its CR-046 phases 1 to 3 implement, ``profile: word-text`` (REQ-1002), CR-069's
+#: case mapping, drop-cap join, superscript tags and inspector kind (REQ-607,
+#: REQ-521, REQ-710, ``text.formatting_join``), the chart description case 34
+#: needs (``CR-047``), and the inspector's (CR-050) with the suite's check of it.
 DOCX4J_IMPLEMENTED = frozenset(
     {
         *(
@@ -57,9 +62,12 @@ DOCX4J_IMPLEMENTED = frozenset(
                 601, 602, 603, 604, 605, 606,
                 701, 702, 703, 704, 705, 706, 707, 708, 709,
                 801, 802, 1001, 1202, 1203,
+                1002,
+                607, 521, 710,
                 901, 902, 903, 904, 905, 906, 907, 1204,
             )
         ),
+        "text.formatting_join",
         "CR-047",
     }
 )  # fmt: skip
@@ -67,6 +75,17 @@ DOCX4J_IMPLEMENTED = frozenset(
 #: The inspector's statements (WD section 9) and REQ-1204, its check: out of
 #: scope here (CR-011 section 3.7), so never advertised.
 INSPECTOR = frozenset({*(f"REQ-{n}" for n in range(901, 908)), "REQ-1204"})
+
+#: What docx4j advertises at the tag that this package does not build yet, and
+#: why: their checks pend, with the CR-069 phase docx4j built them in
+#: (``conformance.pending_reason``), until the CR named here advertises them.
+NOT_ADVERTISED = {
+    "REQ-1002": "profile: word-text, CR-027 Phase D",
+    "REQ-607": "w:caps by the run's language and small_caps, the port of docx4j CR-069 (CR-029)",
+    "REQ-521": "a drop cap joined to its word and drop_caps, the port of docx4j CR-069 (CR-029)",
+    "REQ-710": "<sup> and <sub> in Markdown, the port of docx4j CR-069 (CR-029)",
+    "text.formatting_join": "an inspector kind (CR-069 phase 4): the inspector is not ported (CR-011 section 3.7)",
+}
 
 _WORKBOOK = "deferred (CR-011 Q7): an embedded SpreadsheetML package"
 _PRESENTATION = "deferred (CR-011 Q7): an embedded PresentationML package"
@@ -127,8 +146,8 @@ class TextsAdapter(Engine):
         self._packages: dict[Path, Any] = {}
 
     def implemented(self) -> Collection[str]:
-        """docx4j's statements less the inspector's, and the class path's ``html reader absent``."""
-        return (DOCX4J_IMPLEMENTED - INSPECTOR) | {HTML_READER_ABSENT}
+        """docx4j's statements less the inspector's and :data:`NOT_ADVERTISED`, and ``html reader absent``."""
+        return (DOCX4J_IMPLEMENTED - INSPECTOR - NOT_ADVERTISED.keys()) | {HTML_READER_ABSENT}
 
     def deferred(self, fixture: str, case: str, item: str, scenario: str) -> str | None:
         """The checks of CR-011 Q7's deferred content (:data:`DEFERRED`), pending by name."""

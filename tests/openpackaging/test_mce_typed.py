@@ -498,7 +498,9 @@ def test_the_facade_still_lists_a_drawing_in_a_run():
     from docx4j_py.docx import Document
 
     shapes = Document(str(FIXTURES / "text-extraction" / "phase0" / "extraction-probe-inspect.docx")).inline_shapes
-    assert len(shapes) == 2
+    # case 66's two pictures, and since the copy at docx4j-17.3.5 (CR-027 Phase A) six of CR-050 phase 3's cases 68
+    # to 74 (case 71's is in a header, case 72's VML)
+    assert len(shapes) == 8
 
 
 # ---------------------------------------------------------------------------
