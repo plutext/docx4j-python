@@ -1,6 +1,6 @@
 # CR-029: docx4j CR-069 in the text model --- All Caps in capitals by the run's language, a drop cap joined to its word, `<sup>` and `<sub>` in Markdown, and `w:dstrike` struck
 
-**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"). It ports the text-model half of docx4j CR-069
+**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1 to Q5 as recommended (section 8). It ports the text-model half of docx4j CR-069
 (WD REQ-607, REQ-521, REQ-710, and REQ-703's strikethrough) to `model/text/`, phase for phase:
 - A, `w:caps` in capitals by the run's language, `w:smallCaps` as stored unless `small_caps: upper` (docx4j phase 1);
 - B, a drop cap joined to its word, with `paragraph.drop_cap_joined` and `drop_caps` (phase 2);
