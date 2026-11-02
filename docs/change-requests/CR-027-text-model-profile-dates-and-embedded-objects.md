@@ -448,8 +448,9 @@ threw a `NullPointerException` for the notes, and passed over the rest silently.
     `R, 2026-10-31T11:00:00`), the parts built as docx4j's test builds them.
   - `TextsTest`'s TC9 dates as `fc71f12e6` changed them (`{++Probe, 2026-10-17T00:00:00: TC9_INSERTED ++}`, the
     `Z` gone).
-  - The fixture `manual-redline-dates.docx` is copied from docx4j's `revisions/cr068/` into
-    `tests/fixtures/manual-redline-dates/`, with `SHA1SUMS`.
+  - The fixture `manual-redline-dates.docx` is read from `tests/fixtures/revisions/cr068/`, docx4j's
+    `revisions/cr068/` copied once at the tag with `SHA1SUMS` (CR-028 Q11, decided 2026-11-02). Whichever of this Phase B
+    and CR-028 Phase A lands first makes the copy.
 - **Phase C: `EmbeddedObjectsTest`'s nine.**
   - The probe's five objects described.
   - An OLE 1.0 package's names, and none for a binary that is not one.

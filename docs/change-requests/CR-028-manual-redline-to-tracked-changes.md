@@ -2,7 +2,8 @@
 
 **Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"). docx4j CR-068's phase 3 handed the port to
 this repository on 2026-10-31 (its section 13, docx4j-python-64). Five phases (section 6). The questions are in
-section 8, each with a recommendation. Nothing built.
+section 8, each with a recommendation. **Decided 2026-11-02** (the user: "CR-028's questions Q1 to Q11 as recommended.  For Q10 we'll do the script lab read"; section 8): Q1 to Q11 as
+recommended, Q10's Script Lab read part of Phase D. Nothing built.
 
 *The number:* CR-027's status line names CR-028 as the proposed number for this port.
 
@@ -204,8 +205,8 @@ Measured with scratchpad scripts reading docx4j's files at the tag; nothing in t
   adds the part.
 - **`description.py`** is `DocumentDescription` at `00614748e` with `d18693760`, which is the class at the tag.
 - **Fixtures.** `tests/fixtures/revisions/` holds copies of `cr043/`, `editor/`, `core-ts/` and `python/`, and
-  nothing from `cr068/`; `tests/revisions/conftest.py` reads the rest from the sibling checkout. CR-027 Phase B plans
-  `tests/fixtures/manual-redline-dates/` for one file of `cr068/`.
+  nothing from `cr068/`; `tests/revisions/conftest.py` reads the rest from the sibling checkout. CR-027 Phase B planned
+  `tests/fixtures/manual-redline-dates/` for one file of `cr068/`, until Q11 moved it into this CR's copy.
 - **Acceptance.** `scripts/acceptance.py` writes twelve artefacts; 8 is tracked changes, with the engine's accepted
   and rejected copies.
 
@@ -333,9 +334,8 @@ engine's fidelity rule applied. The new caller joins the `read_contents` callers
 `docx4j-core-tests/src/test/resources/revisions/cr068/` at `docx4j-17.3.5` is copied unedited into
 `tests/fixtures/revisions/cr068/`, beside `cr043/`, with a `SHA1SUMS` and a `tests/README.md` row naming the tag. It
 is 54 files, about 560 KB: every file but the four screenshots, which the row names as left in docx4j.
-`manual-redline-dates.docx` is among them. CR-027 Phase B would read it there rather than in
-`tests/fixtures/manual-redline-dates/`, so it is copied once, by whichever CR lands first (Q11); deciding Q11
-includes amending CR-027 section 5.
+`manual-redline-dates.docx` is among them. CR-027 Phase B reads it there, so it is copied once, by whichever CR
+lands first (Q11, decided 2026-11-02; CR-027 section 5 amended the same day).
 
 ### 5.2 docx4j's tests ported (Phases B and C)
 
@@ -404,6 +404,12 @@ The user opens each in Word 365 under All Markup. What Word should show, from do
    - M16's card shows the "Missing content" notice, and the Revisions pane `withdrawn remark,` struck. That is
      predicted from `comment-cards.docx`'s C2: docx4j did not look at this file's card.
    - File > Info > Properties > Advanced Properties > Custom lists `docx4j:manualRedline`.
+6. **The Script Lab read (Q10).** In Word 365, with `13-manual-redline-optins.docx` open, Script Lab runs
+   `context.document.body.getTrackedChanges()` (WordApi 1.6) and logs each change's `type`, `text` and `author`.
+   This shows how Office JS lists D15's `w:ins` holding `w:del`. The read is set beside this package's
+   `tracked_changes` over the main story: an empty insertion plus a one-space deletion for each such pair today.
+   The result goes into CR-010 and `tests/README.md`. If Office JS groups the pair differently, changing CR-010's
+   listing is taken to the user; it is not changed in this CR.
 
 Differences go into `tests/README.md`'s checklist. A hang or a quiet refusal also goes into
 `../docx4j-portfolio/docs/word-hangs.md`.
@@ -420,7 +426,7 @@ The suite; `scripts/roundtrip.py`, 50 of 50; `compare_acceptance.py`, differing 
 | A | The oracle copied (5.1), with `SHA1SUMS` and its `tests/README.md` row; `text.addresses` (4.5) and its tests | ½ day |
 | B | `manual_redline.py`'s default walk (4.2), ids, author and date (4.3), the private read (4.4), the report, `preview` and idempotence; `TrackedChangeFilter.range(every_story=)`; `test_manual_redline.py` (15) and 5.3's tests; held to `word-phase1-*` and `word-d9-*` | 1½ days |
 | C | The opt-ins (2.2) and the custom-properties additions (4.6); `test_manual_redline_opt_ins.py` (12); held to `word-phase2-*` and `word-phase2b-*` | 1 day |
-| D | Artefact 13 (5.4), `out/acceptance/` regenerated and compared; the user's Word check, recorded in `tests/README.md` | ½ day, and the user's check |
+| D | Artefact 13 (5.4), `out/acceptance/` regenerated and compared; the user's Word check and Script Lab read (Q10, 5.4 item 6), recorded in `tests/README.md` and CR-010 | ½ day, and the user's check |
 | E | The records: CHANGELOG's Added (`manual_redline`, `text.addresses`, the custom-properties methods); a `README.md` fence, which `tests/test_readme.py` runs; CLAUDE.md's status and file list; the index's row; Q10's note in CR-010; the portfolio's `python/CR-028.*` entries through the docx4j-portfolio session | ¼ day |
 
 ## 7. Risks
@@ -437,7 +443,9 @@ The suite; `scripts/roundtrip.py`, 50 of 50; `compare_acceptance.py`, differing 
   Where docx4j's own output disagrees with Word, the finding goes to docx4j, as core-ts's section 7 says.
 - **D15 in the listing** (section 3, Q10): more changes than Word's pane after an opt-in conversion.
 
-## 8. Questions for the user
+## 8. Questions (decided 2026-11-02)
+
+The user, 2026-11-02: "CR-028's questions Q1 to Q11 as recommended.  For Q10 we'll do the script lab read". Every question below is decided as recommended. Q10's optional Script Lab read is to be done, at Phase D (5.4 item 6).
 
 | Q | Question | Recommendation |
 |---|---|---|
@@ -450,7 +458,7 @@ The suite; `scripts/roundtrip.py`, 50 of 50; `compare_acceptance.py`, differing 
 | Q7 | A public `docx4j_py.model.text.addresses(pkg, options=None, **more)`, an identity mapping from a block's source to its address? | Yes. It is docx4j's `Texts.addresses` (public since 17.3.5) and core-ts's D3, and it is one pass over `TextBlock.source`. |
 | Q8 | Convert inside a kept `mc:AlternateContent`, at every level and in every branch, although the content API refuses edits inside a kept branch (`address.read_only`)? | Yes. That refusal guards a single edit at an address that a branch may not show. The conversion, like `accept_all`, treats the whole document, and docx4j converts every branch. |
 | Q9 | `OpcPackage.add_doc_props_custom_part()` and `DocPropsCustomPart.set_property` / `get_property` as new engine API, with the property `docx4j:manualRedline` and docx4j's value text? | Yes. These are docx4j's names (core-ts's D5 adds the same), and the property then reads the same whichever port wrote it. `audit_property` is off by default. |
-| Q10 | The listing of D15's `w:ins` holding `w:del`, as an empty insertion plus a one-space deletion where Word's pane folds the space into its neighbours: leave it, or change CR-010's grouping? | Leave it, and note it in CR-010. Office JS's grouping, which CR-010 follows, is unmeasured on this shape. A Script Lab read of `trackedChanges` on `13-manual-redline-optins.docx` at Phase D would settle it, if the user wants one. Accept All and Reject All are right either way. |
+| Q10 | The listing of D15's `w:ins` holding `w:del`, as an empty insertion plus a one-space deletion where Word's pane folds the space into its neighbours: leave it, or change CR-010's grouping? | Leave it, and note it in CR-010. Office JS's grouping, which CR-010 follows, is unmeasured on this shape. A Script Lab read of `trackedChanges` on `13-manual-redline-optins.docx` at Phase D would settle it, if the user wants one. Accept All and Reject All are right either way. **Decided 2026-11-02:** as recommended, and the Script Lab read is done at Phase D (5.4 item 6; the user: "For Q10 we'll do the script lab read"). |
 | Q11 | One copy of `revisions/cr068/` at the tag, without the screenshots, in `tests/fixtures/revisions/cr068/`, with CR-027 Phase B reading `manual-redline-dates.docx` there instead of from its own directory? | Yes. Each docx4j directory then has one copy here, beside `cr043/`. If CR-027 is to stay as written, copy `cr068/` without that file, and leave it to CR-027's directory. |
 
 ## 9. Effort
