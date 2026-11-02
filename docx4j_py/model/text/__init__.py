@@ -191,9 +191,22 @@ def extract(
     Raises:
         TextOptionError: an unknown option, an invalid value, or one refused
             (REQ-1001).
+        Docx4JException: the main document part cannot be read (its XML is
+            not well formed, docx4j CR-065 D1), read as a package or as the
+            part; or the header or footer read as a part cannot be: ``The
+            content of /word/document.xml could not be read, so it cannot be
+            read as text: <reason>``, the reason the deepest cause's message,
+            the part's own exception the ``__cause__`` (CR-027 section 4.6,
+            docx4j ``4fdd80063``). Any other story part that cannot be read
+            (the notes, the comments, a header or footer of the package, the
+            glossary, an embedded document's or a chunk's main part)
+            contributes nothing and raises ``content.not_read`` (REQ-801,
+            REQ-512): the rest is read.
+        TypeError: a part that is no story part (use the package), or one
+            that belongs to no package.
     """
     from docx4j_py.model.text.extractor import Extractor
-    from docx4j_py.model.text.trees import PackageTrees
+    from docx4j_py.model.text.trees import PackageTrees, not_readable
 
     opts = _options(options, more)
     if getattr(target, "main_document_part", None) is not None:
@@ -208,13 +221,19 @@ def extract(
         # a content API Paragraph or Table
         body = target.parent_body
         content, part, owner = target.element, body.part, owner or body.package
-    elif hasattr(target, "contents") and hasattr(target, "part_name"):
+    elif hasattr(type(target), "contents") and hasattr(target, "part_name"):
         # a story part, docx4j's Texts.of(Part): the main document part (its story and its text
-        # boxes, addressed body; no notes), a header or a footer (header:rId4); no first reading
+        # boxes, addressed body; no notes), a header or a footer (header:rId4); no first reading.
+        # Asked of the class: the part's contents property would unmarshal it (REQ-204), and raise
+        # for a part that cannot be read
         owner = owner or _package_of(target)
         if owner is None:
             raise TypeError(f"{target.part_name} belongs to no package; read its content with extract(content)")
         trees = PackageTrees(owner)
+        error = trees.unreadable_error(target)
+        if error is not None:
+            # a story part that cannot be read is named, with why (docx4j's Texts.readable): CR-027 section 4.6
+            raise not_readable(target, error) from error
         if target is getattr(owner, "main_document_part", None):
             return Extractor(trees, opts).extract_content(trees.document, target, "body", "MAIN")
         found = trees.headers_footers.get(id(target))

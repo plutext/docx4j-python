@@ -44,6 +44,13 @@ and table docx4j's ``ChartDescription`` and ``ChartTable`` (REQ-511, CR-047);
 SmartArt as its data part's lines in reading order (REQ-511); content that
 cannot be read raises ``content.not_read`` (REQ-801).
 
+A story part that cannot be read (its XML not well formed) is named (CR-027
+section 4.6, docx4j ``4fdd80063``): the main part raises ``Docx4JException``
+saying which part and why, and one level down raises ``content.not_read`` at
+the nested reading's root; the notes, the comments, a header or footer and
+the glossary each contribute nothing and raise ``content.not_read``, the body
+still read.
+
 A plain-text, WordprocessingML or Flat OPC ``altChunk`` is expanded where it
 is (REQ-513), and under ``embedded: true`` an embedded WordprocessingML package
 is read after its anchor (REQ-512), each one level down
@@ -89,7 +96,7 @@ from docx4j_py.model.text.result import (
     TextRunSource,
     TextWarning,
 )
-from docx4j_py.model.text.trees import Context, PackageTrees
+from docx4j_py.model.text.trees import Context, PackageTrees, not_readable
 from docx4j_py.model.values import effective, integer, is_on, on_off, xsd_boolean
 
 __all__ = ["Extractor", "normalize"]
@@ -631,6 +638,16 @@ class Extractor:
             from docx4j_py.model.text import metadata as properties
 
             properties.read(self.trees.package, metadata)
+        main = self.trees.main
+        error = self.trees.unreadable_error(main)
+        if error is not None:
+            # a main part that cannot be read (CR-027 section 4.6, docx4j 4fdd80063): no text at all, so the
+            # caller is told which part and why; one level down it contributes nothing and raises
+            # content.not_read at the nested reading's root (REQ-512), which read_nested names for the outer part
+            if not self.nested:
+                raise not_readable(main, error) from error
+            self.not_read(self.root.removesuffix("/"), main)
+            return TextResult(out, comments, self.warnings, metadata, self.options)
         body = self.trees.body
         if body is None:
             return TextResult(out, comments, self.warnings, metadata, self.options)
@@ -758,7 +775,8 @@ class Extractor:
             return
         try:
             tree = part.read_contents()
-        except Exception:  # noqa: BLE001 - a glossary that will not read holds no text here
+        except Exception:  # noqa: BLE001 - a glossary that will not read contributes nothing, and says so
+            self.not_read(None, part)
             return
         doc_parts = getattr(tree, "doc_parts", None)
         state = self.context.numbering_states.for_part(part)
@@ -1986,9 +2004,19 @@ class Extractor:
                 self.warn(TextWarning(TextWarning.MCE_BRANCHES_DIFFER, address, branch=label))
                 return
 
-    def not_read(self, anchor: str, part: Any) -> None:
+    def not_read(self, anchor: str | None, part: Any) -> None:
         """Content that cannot be read contributes nothing and raises ``content.not_read`` (REQ-801)."""
         self.warn(TextWarning(TextWarning.CONTENT_NOT_READ, anchor, part_name=_part_name(part)))
+
+    def _story_not_read(self, part: Any, anchor: str | None) -> None:
+        """A story part that could not be read: ``content.not_read`` with its name (docx4j's ``storyContent``).
+
+        The notes, the comments and the glossary at no address, a header or a
+        footer at its prefix; the body is read. Before CR-027 each was passed
+        over silently.
+        """
+        if self.trees.unreadable_error(part) is not None:
+            self.not_read(anchor, part)
 
     def warn(self, warning: TextWarning) -> None:
         """A warning, kept once (REQ-801)."""
@@ -2037,11 +2065,12 @@ class Extractor:
         if rel_id is None or rel_id in emitted:
             return
         emitted.add(rel_id)
+        prefix = f"{self.root}{'header' if kind == 'HEADER' else 'footer'}:{rel_id}"
         found = self.trees.header_or_footer(rel_id)
         if found is None:
+            self._story_not_read(self.trees.related(self.trees.main, rel_id), prefix)
             return
         part = found[0]
-        prefix = f"{self.root}{'header' if kind == 'HEADER' else 'footer'}:{rel_id}"
         story = _Story(kind, prefix, part, self.context.numbering_states.for_part(part))
         self.blocks(rtrees.block_items(found[1]), prefix, story, out)
 
@@ -2050,7 +2079,10 @@ class Extractor:
     def _notes(self, note_type: str, out: list[TextBlock]) -> None:
         holder = self.trees.footnotes if note_type == "footnote" else self.trees.endnotes
         numbers = self.context.footnotes if note_type == "footnote" else self.context.endnotes
-        if holder is None or not numbers:
+        if holder is None:
+            self._story_not_read(getattr(self.trees.main, f"{note_type}s_part", None), None)
+            return
+        if not numbers:
             return
         part, tree = holder
         by_id = {str(note.id): note for note in getattr(tree, note_type, None) or () if note.id is not None}
@@ -2092,6 +2124,7 @@ class Extractor:
     def _comments(self, out: dict[str, TextComment]) -> None:
         holder = self.trees.comments
         if holder is None:
+            self._story_not_read(getattr(self.trees.main, "comments_part", None), None)
             return
         part, tree = holder
         extended: dict[str, Any] = {}

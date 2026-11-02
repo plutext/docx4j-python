@@ -15,8 +15,9 @@ from __future__ import annotations
 from typing import Any
 
 from docx4j_py.model.revisions import trees as rtrees
+from docx4j_py.openpackaging.exceptions import Docx4JException
 
-__all__ = ["Context", "PackageTrees"]
+__all__ = ["Context", "PackageTrees", "not_readable"]
 
 
 def _real(part: Any) -> Any:
@@ -24,14 +25,46 @@ def _real(part: Any) -> Any:
     return getattr(part, "_wrapped", part)
 
 
-def _read(part: Any) -> Any:
-    """``read_contents()``, None for a part that is absent or cannot be read."""
+def _read(part: Any, unreadable: dict[int, tuple[Any, Exception]] | None = None) -> Any:
+    """``read_contents()``: None for a part that is absent, and for one that cannot be read.
+
+    A part that cannot be read is told from one that is absent (CR-027
+    section 4.6): `unreadable`, where given, keeps it and its exception, by
+    the real part (a trial's copy stands for its real part).
+    """
     if part is None:
         return None
     try:
         return part.read_contents()
-    except Exception:  # noqa: BLE001 - a part that will not read holds no text here
+    except Exception as error:  # noqa: BLE001 - a part that will not read is kept, and its story says so
+        if unreadable is not None:
+            unreadable[id(_real(part))] = (part, error)
         return None
+
+
+def _root_reason(error: BaseException) -> str:
+    """The deepest ``__cause__``'s message on one line, its whitespace collapsed; its class's name where it has none."""
+    root, seen = error, {id(error)}
+    while root.__cause__ is not None and id(root.__cause__) not in seen:
+        root = root.__cause__
+        seen.add(id(root))
+    message = " ".join(str(root).split())
+    if message:
+        return message
+    kind = type(root)
+    return kind.__qualname__ if kind.__module__ == "builtins" else f"{kind.__module__}.{kind.__qualname__}"
+
+
+def not_readable(part: Any, error: BaseException) -> Docx4JException:
+    """Why a story part's text cannot be read, naming it. docx4j ``JaxbXmlPart.getReadableContents("read as text")``.
+
+    ``The content of /word/document.xml could not be read, so it cannot be
+    read as text: <reason>``, the reason the deepest cause's message on one
+    line. The caller raises it from `error`, the part's own exception.
+    """
+    return Docx4JException(
+        f"The content of {part.part_name} could not be read, so it cannot be read as text: {_root_reason(error)}"
+    )
 
 
 class PackageTrees:
@@ -50,15 +83,23 @@ class PackageTrees:
         "package",
         "resolver",
         "settings",
+        "unreadable",
     )
 
     def __init__(self, package: Any) -> None:
-        """Read every story's tree, the settings, and the resolver and emulator where the package has their parts."""
+        """Read every story's tree, the settings, and the resolver and emulator where the package has their parts.
+
+        A story part that cannot be read (the main part, the notes, the
+        comments, a header or a footer) is kept in :attr:`unreadable`, its tree
+        None as an absent part's is.
+        """
         self.package = package
         main = getattr(package, "main_document_part", None) if package is not None else None
+        #: The story parts that could not be read, by ``id`` of the real part: (part, exception).
+        self.unreadable: dict[int, tuple[Any, Exception]] = {}
         #: The main document part, and its ``w:document``.
         self.main = main
-        self.document = _read(main)
+        self.document = _read(main, self.unreadable)
         self.resolver: Any = None
         self.emulator: Any = None
         self.settings: Any = None
@@ -71,7 +112,9 @@ class PackageTrees:
         #: real part (a trial's copy stands for its real part): (part, tree).
         self.headers_footers: dict[int, tuple[Any, Any]] = {}
         self._anchored: set[str] | None = None
-        if main is None or self.document is None:
+        # an unreadable main part's package is read still: the reading raises, or (nested) says so, and a
+        # header or footer of it can be read alone (docx4j's Texts.of(Part))
+        if main is None:
             return
         if getattr(package, "style_definitions_part", None) is not None:
             try:
@@ -88,7 +131,7 @@ class PackageTrees:
         self.settings = _read(getattr(main, "document_settings_part", None))
         for name in ("footnotes", "endnotes", "comments"):
             part = getattr(main, f"{name}_part", None)
-            tree = _read(part)
+            tree = _read(part, self.unreadable)
             if tree is not None:
                 setattr(self, name, (part, tree))
         self.comments_extended = _read(getattr(main, "comments_extended_part", None))
@@ -97,9 +140,14 @@ class PackageTrees:
         except Exception:  # noqa: BLE001 - no relationships: no headers
             parts = []
         for part in parts:
-            tree = _read(part)
+            tree = _read(part, self.unreadable)
             if tree is not None:
                 self.headers_footers[id(_real(part))] = (part, tree)
+
+    def unreadable_error(self, part: Any) -> Exception | None:
+        """Why `part` could not be read, or None: it was read, it is absent, or it is no story part."""
+        found = None if part is None else self.unreadable.get(id(_real(part)))
+        return None if found is None else found[1]
 
     @property
     def body(self) -> Any:
