@@ -1,6 +1,6 @@
 # CR-029: docx4j CR-069 in the text model --- All Caps in capitals by the run's language, a drop cap joined to its word, `<sup>` and `<sub>` in Markdown, and `w:dstrike` struck
 
-**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1, Q2, Q4 and Q5 as recommended and Q3 as docx4j does (section 8). It ports the text-model half of docx4j CR-069
+**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1, Q2, Q4 and Q5 as recommended and Q3 as docx4j does (section 8); **amended 2026-11-02**: runs at a deleted-mark join merge as docx4j's do too (section 4.5a). It ports the text-model half of docx4j CR-069
 (WD REQ-607, REQ-521, REQ-710, and REQ-703's strikethrough) to `model/text/`, phase for phase:
 - A, `w:caps` in capitals by the run's language, `w:smallCaps` as stored unless `small_caps: upper` (docx4j phase 1);
 - B, a drop cap joined to its word, with `paragraph.drop_cap_joined` and `drop_caps` (phase 2);
@@ -55,6 +55,14 @@ Measured 2026-11-02 at `ed12ae7` on the `dpp/` fixtures at the tag (read from a 
 - **Superscripts.** `bisect/C07.docx`'s Markdown here is `C07\_ Revenue 48,2103 in the period.`; docx4j's is
   `48,210<sup>3</sup>`. The block model here has one run where docx4j has three.
 - **Double strikethrough.** `extractor.py` line 1268 reads `w:strike` alone, so a double-struck run has no `~~`.
+- **Runs at a deleted-mark join** (measured 2026-11-02 at `80e5910`, after the user's ruling on Q3). The probe has
+  three pairs of paragraphs. Here, where two paragraphs are one block because the view deletes the first's mark
+  (CR-043's join), two runs of the same formatting stay two runs: `["J1_Alpha ", "beta J1_END"]` in the accepted view
+  (a deleted mark), and `["J2_Gamma ", "delta J2_END"]` in the original view (an inserted mark). docx4j 17.3.5, run by
+  its session on the released jar, gives one run each, `"J1_Alpha beta J1_END"` and `"J2_Gamma delta J2_END"`. Its
+  `VERSION_17_3_6` gives the same. A bold run beside a plain one stays two runs in both engines. The block addresses
+  and boundaries agree. Only the runs differ, because this package merges by `office_offset` contiguity within one
+  `w:p` (CR-011 section 16.5) and docx4j's `addText` on kind, flags, revision and formatting alone.
 - **The suite.** Once CR-027 Phase A copies `dpp/`, these rows pend on statements this CR builds:
   - 33 of the 34 token rows (REQ-607 or REQ-710);
   - 2 of the 8 findings rows (REQ-521; the other 6 are the inspector's);
@@ -310,7 +318,7 @@ CR-069's own implementation sections (11.2, 12.2, 13.2, 14.2) record each of the
 
   The letter's run merges into its word's first run as `joinDropCap` merges them (Q3): where the frame's last run and
   the block's first have the same kind, hidden flag, placeholder flag, revision and formatting (`same_format`),
-  docx4j's merge rule, not this package's contiguity rule of CR-011 section 16.5. Word's C02 is then one run,
+  docx4j's merge rule, not this package's contiguity rule of CR-011 section 16.5 (section 4.5a, which also covers the word's later runs). Word's C02 is then one run,
   `The C02_ modern ...`, as in docx4j.
   - The merged run keeps the letter's `source`, as a merge keeps the first run's.
   - Its `office_offset` is None: its text is two paragraphs' (the frame's `Paragraph.text` and the next one's), which
@@ -320,6 +328,32 @@ CR-069's own implementation sections (11.2, 12.2, 13.2, 14.2) record each of the
 - **`TextWarning.DROP_CAP_JOINED`** (`"paragraph.drop_cap_joined"`) is the seventh kind. Its docstring says that the
   selector is the paragraphs' part. Under CR-027's selector order (the branch, else the part name, else the content
   type) the selector is the part name.
+
+### 4.5a Runs across two paragraphs of one block (Phase B)
+
+The user, 2026-11-02, after Q3's ruling: "check it against a document, but subjectto that, yes  deleted-mark joins changed to match docx4j as well". The probe (section 1) confirmed the difference. So the two
+joins that make one block of two `w:p` merge runs as docx4j's `addText` does:
+- **The joins:**
+  - a joined drop cap (4.5);
+  - CR-043's join, where the view deletes a paragraph's mark (a deleted mark in `accepted`, an inserted one in
+    `original`, and either in a chain).
+- **The rule.** Where the last run and the next come from two different `w:p` of the block, they merge on docx4j's
+  rule alone: the same kind, hidden flag, placeholder flag and revision, and `same_format`. Contiguity is not
+  required. Within one `w:p`, CR-011 section 16.5's contiguity rule stays as it is.
+- **The merged run's provenance.**
+  - It keeps the first run's `source`, as any merge does.
+  - Its `office_offset` is None: its text is two paragraphs', and no one offset into one `Paragraph.text`
+    describes it. CR-011 section 12.6's invariant holds, since a run with no offset claims none.
+  - `TextRun.office_offset`'s docstring names the case.
+- **Later runs.** A merged run takes later runs of the second `w:p` on the same rule, so a run split again inside
+  the second paragraph (an `rsid` boundary, a bookmark) still joins it, as in docx4j. Without this, the merged run's
+  missing offset would stop the next merge under the contiguity rule. Word's C02, `The C02_ modern ...`, is one run
+  only with it.
+- **What moves.** The block model's runs at every such join where the formatting agrees, and those runs'
+  `office_offset`. Plain text, Markdown and every golden are unchanged, since a merge changes no text. Phase B
+  records the moves over `samples/`, the text-extraction suite and the revisions fixtures, as CR-011 section 16.5
+  recorded its own. Any caller that reads `office_offset` at a join, the content API's readers among them, is listed
+  there.
 
 ### 4.6 The tags (Phase C)
 
@@ -392,6 +426,9 @@ Each phase is held to docx4j's test at the tag and to `dpp/`'s rows. The counts 
   Every character the tests map has had the same simple uppercase since Unicode 10.0. The table is held to its
   `_source` (15.0.0, 1,450 code points). In `dpp/`, the 25 REQ-607 token rows become checks, and 13 `word-saves.tsv`
   rows (C05 and the 12 caps-probe saves) are compared with Word's own text.
+- **Phase B, the joins' runs (4.5a):** the probe built in the test, with `MiniDocx`, as section 1 describes it. J1
+  accepted and J2 original are each one run with no `office_offset`; J3 is two runs; a second run inside the
+  second paragraph joins the merged run. Then the moves over `samples/` and the fixtures are recorded.
 - **Phase B**, `DropCapJoinTest`'s seven text-model cases:
   - Word's C02 joined in every view, at `body/0`, `body/2` and `body/3`, the warning at `body/1`, the selector
     `/word/document.xml`;
@@ -424,7 +461,7 @@ No Word check: extraction output is not a saved file, and nothing this CR change
 | Phase | What | Effort |
 |---|---|---|
 | A (docx4j phase 1) | `generate_case_mapping.py` and `resources/case-mapping.json`; `model/text/case_mapping.py`; `TextRun.caps`, `small_caps`, `vertical_alignment` and `language`, read in `_run`; plain text and Markdown in capitals; `small_caps` and the preset's `upper`; REQ-607 advertised; the harness's three scenarios if CR-027 Phase A lacks them; `CaseMappingTest`'s ten | 1 day |
-| B (phase 2) | The drop-cap join in `blocks()` and `_paragraph`; `TextWarning.DROP_CAP_JOINED`; `drop_caps` and the preset's `asis`; REQ-521 advertised; `DropCapJoinTest`'s seven | ½ day |
+| B (phase 2) | The drop-cap join in `blocks()` and `_paragraph`; `TextWarning.DROP_CAP_JOINED`; `drop_caps` and the preset's `asis`; REQ-521 advertised; `DropCapJoinTest`'s seven; runs across two paragraphs of one block merged as docx4j's (4.5a), the deleted-mark join's included, and the moves recorded | ¾ day |
 | C (phase 3) | `<sup>` and `<sub>` in `_InlineSink` and `_text`; REQ-710 advertised; `MarkdownVerticalAlignTest`'s six | ¼ day |
 | D (phase 4) | `strike` taking `w:dstrike`; `text.formatting_join` in `INSPECTOR`; the dstrike test | ¼ day |
 | E | The records: CHANGELOG (Added: the four run members, `small_caps`, `drop_caps`, `paragraph.drop_cap_joined`, `case_mapping`; Changed: capitals for `w:caps`, the drop cap joined, the tags, `w:dstrike` struck); CLAUDE.md's status and file list; `tests/README.md`'s rows and the index's row; the portfolio's `python/CR-029.*` entries through the docx4j-portfolio session | ¼ day |
@@ -437,6 +474,9 @@ No Word check: extraction output is not a saved file, and nothing this CR change
 - **Word's own table is unmeasured.** Word uses Windows' casing at an unknown version. For example, 15.0 maps Georgian
   Mkhedruli under `w:caps` to Mtavruli capitals, and docx4j on Java 11 does not. Word is unmeasured for both. The pinned
   version is a stated choice, not a measurement (Q1).
+- **Offsets at joins.** Runs merged across two paragraphs lose their `office_offset` (4.5a). A reader that maps a
+  model run back to Office JS text has nothing for them. Phase B lists the readers that use the offset, and how many
+  runs lose it.
 - **Departures from docx4j.** An invalid own `w:vertAlign` (section 4.3) makes the block model differ from docx4j's.
   It changes neither plain text nor Markdown. The drop cap's letter follows docx4j (Q3), at the cost of the merged
   run's `office_offset`.
@@ -452,7 +492,8 @@ No Word check: extraction output is not a saved file, and nothing this CR change
 
 The user, 2026-11-02: "CR-029's questions Q1 to Q5 as recommended." Then, the same day, on Q3: "you and core-ts should handle a drop-cap letter as docx4j does!" So Q1,
 Q2, Q4 and Q5 are decided as recommended, and Q3 against its recommendation: the letter merges as docx4j's
-`joinDropCap` merges it (section 4.5). The ruling covers core-ts too (its section 24.3 and D6).
+`joinDropCap` merges it (section 4.5). The ruling covers core-ts too (its section 24.3 and D6). Later, the same day:
+"check it against a document, but subjectto that, yes  deleted-mark joins changed to match docx4j as well". The probe confirmed it (section 1), so a deleted-mark join's runs merge as docx4j's do (4.5a).
 
 | Q | Question | Recommendation |
 |---|---|---|
@@ -464,4 +505,4 @@ Q2, Q4 and Q5 are decided as recommended, and Q3 against its recommendation: the
 
 ## 9. Effort
 
-2¼ days: A 1, B ½, C ¼, D ¼, E ¼.
+2½ days: A 1, B ¾, C ¼, D ¼, E ¼.
