@@ -8,7 +8,7 @@
 - D, `strike` taking `w:dstrike` (phase 4; that phase's inspector kind, `text.formatting_join`, is named and left out);
 - E, the records.
 
-The questions are in section 8, each with a recommendation. Nothing built.
+The questions are in section 8, each with a recommendation. **Decided 2026-11-02** (the user: "CR-029's questions Q1 to Q5 as recommended."; section 8): the case table at Unicode 15.0, generated and committed; a drop cap's letter its own run (a named departure from docx4j); docx4j's member names; after CR-027 Phases A and D. Nothing built.
 
 *The number:* CR-027 is the latest CR here. CR-028 is the number proposed for the port of docx4j CR-068 (manual redline
 to tracked changes).
@@ -441,7 +441,9 @@ No Word check: extraction output is not a saved file, and nothing this CR change
 - **CR-027 first.** Without its Phase A, `dpp/`'s rows cannot be run here. Without its Phase D, the 16 saves cannot be
   compared. CR-029's own tests hold either way.
 
-## 8. Questions for the user
+## 8. Questions (decided 2026-11-02)
+
+The user, 2026-11-02: "CR-029's questions Q1 to Q5 as recommended." Every question below is decided as recommended. Q3's departure is this port's: core-ts decides its own (its section 24.3).
 
 | Q | Question | Recommendation |
 |---|---|---|
