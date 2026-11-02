@@ -345,15 +345,14 @@ CR-069's own implementation sections (11.2, 12.2, 13.2, 14.2) record each of the
 
 ### 4.9 The harness
 
-- **The scenarios.** CR-027 section 4.4 lists the harness changes Phase A takes from docx4j, but not the scenario names
-  docx4j's `ExtractionConformance.requirements` has mapped since `993e385e7`:
+- **The scenarios.** docx4j's `ExtractionConformance.requirements` has mapped three scenario names since `993e385e7`:
   - `small_caps` to REQ-607;
   - `drop_caps` to REQ-521;
   - `profile` to REQ-1002.
 
   Without them `scenario_requirements` raises on `dpp/`'s 8 `small_caps: upper` token rows and its 22
-  `profile: word-text` rows. CR-029 takes them as part of CR-027 Phase A. If Phase A lands without them, CR-029 Phase A
-  adds them first.
+  `profile: word-text` rows. CR-027 section 4.4 takes them in its Phase A (since its review of 2026-11-02), so CR-029
+  starts with them in place. If CR-027 Phase A lands without them, CR-029 Phase A adds them first.
 - **What CR-029 adds on top:**
   - the adapter advertises REQ-607 from Phase A, REQ-521 from Phase B and REQ-710 from Phase C, each only once its
     phase is built, whatever `DOCX4J_IMPLEMENTED` records of docx4j's. That turns `dpp/`'s pending rows into checks
