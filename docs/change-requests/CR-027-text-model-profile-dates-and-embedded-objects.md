@@ -1,17 +1,20 @@
 # CR-027: the text model's WD 0.41 to 0.49 additions --- `profile: word-text`, revision and comment dates as the author's clock, embedded objects for a host, and the conformance suite re-pinned
 
-**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"). It covers four
+**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"). It covers five
 pieces of the text model (CR-011's `model/text/`) that the WD and docx4j have added since this repository's suite
 copy was pinned at docx4j `198d015a3`:
 - WD 0.41's `profile` (REQ-1002);
 - WD 0.46 and 0.49's date form (REQ-702, REQ-706);
 - docx4j CR-070's embedded objects (WD 0.47's REQ-512, REQ-522, REQ-513 and REQ-801);
+- a part the text model cannot read, named (REQ-801, REQ-512; docx4j `4fdd80063`, added 2026-11-02);
 - the suite re-pinned so that its rows show them.
 
 Five phases (section 6). The questions are in section 8, each with a recommendation. Q6 decided 2026-11-01 (the user:
 "CR-027 should copy docx4j's test suite from the 17.3.5 tag"). **Decided 2026-11-02** (the user: "CR-027's questions  Q1 to Q5 and Q7 as recommended"): Q1 to Q5 and Q7 as
 recommended. Nothing built. **Reviewed 2026-11-02** by docx4j's session: its corrections are folded in below, and
-no decision changes; Q5 is carried out differently (section 4.1).
+no decision changes; Q5 is carried out differently (section 4.1). **Amended 2026-11-02** (the user: "yes", to adding
+docx4j's change for a part that cannot be read): Phase A also names a part the text model cannot read (sections 2.4
+and 4.6), ¼ day more.
 
 *The number:* CR-026 is the latest CR here. CR-028 is the proposed number for the port of docx4j CR-068 (manual
 redline to tracked changes), which the user has not yet decided.
@@ -29,6 +32,10 @@ redline to tracked changes), which the user has not yet decided.
   `expected-findings.tsv` re-keyed; `EmbeddedObjectsTest` (9). docx4j-12 handed it on the same day.
 - **docx4j 17.3.5** (Maven Central 2026-11-01; tag `docx4j-17.3.5` on origin at `64fae4cd0`): the release holding all
   three, and the suite this CR copies (section 4.4, Q6).
+- **docx4j `4fdd80063`** (`VERSION_17_3_6`, unpushed, after the tag; docx4j CR-065 section 9, 2026-11-02; Jason:
+  "make those three throw a Docx4JException naming the part and its cause"): a main part the text model cannot read
+  raises, naming the part and why; in a nested reading, and for every other story part, `content.not_read` instead.
+  `UnreadablePartTest`'s four text-model tests (section 2.4). No suite row changes, so the copy stays at the tag.
 - **The WD** (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`): 0.34 to 0.42 committed at portfolio
   `e49964f`, 0.46 and 0.47 at `fb26239`, 0.48 at `fb3cfcb`, 0.49 at `a993e46`; this CR follows that text.
 - **This repository:**
@@ -202,6 +209,25 @@ Where they are used:
   - Case 36's row of count 2 splits into `/word/afchunk.htm` (`html reader absent`, 1) and `/word/chunk47.docx`
     (`default`, 1).
 
+### 2.4 A part that cannot be read (`4fdd80063`; REQ-801, REQ-512)
+
+docx4j's load returns for a part whose XML cannot be read (CR-065 D1): `getJaxbElement()` is null, and an untouched
+save keeps its bytes. The text model now says so, where before 17.3.6 it gave an empty result for the main part,
+threw a `NullPointerException` for the notes, and passed over the rest silently.
+- **`JaxbXmlPart.getReadableContents(purpose)`**: the content, or a `Docx4JException` "The content of
+  /word/document.xml could not be read, so it cannot be read as text: <reason>". The reason is the deepest cause's
+  message on one line, its whitespace collapsed, or the cause's class name where it has none.
+- **The main part.** `Extractor.extract` (`Texts.of(pkg)`), and `Texts.of(part)` for the main part, a header or a
+  footer, throw it as a `Docx4JRuntimeException`, the part's own exception its cause.
+- **Nested** (an embedded or chunked document): the main part gives `content.not_read` at the nested reading's root
+  (its trailing `/` dropped), selector the part name, and the nested result is otherwise empty (REQ-512).
+- **Every other story part** (`Extractor.storyContent`): footnotes, endnotes, comments and the glossary (no address),
+  and a header or footer (its prefix as address), that cannot be read contribute nothing and raise
+  `content.not_read` with the part name (REQ-801). The body is still read.
+- **Tests:** `UnreadablePartTest`'s `theTextModelSaysWhichPartCouldNotBeReadAndWhy`,
+  `theTextModelOfAHeaderSaysWhichPartCouldNotBeRead`, `anEmbeddedDocumentThatCannotBeReadIsContentNotRead` and
+  `unreadableHeadersAndNotesAreContentNotRead`. Its others (CR-065's saves, `toHTML`) have no counterpart here.
+
 ## 3. What exists here (measured 2026-10-31 at `5cbc01b`)
 
 - **`TextOptions`** (`model/text/options.py`) is a slotted class whose options are plain attributes. They are set by
@@ -225,6 +251,13 @@ Where they are used:
   - No module reads an OLE compound file, and nothing here parses `Ole10Native`.
   - `TextWarning` has `branch`, `content_type` and `part_name`, and its `selector` is the branch, else the content
     type, else the part name.
+- **A part that cannot be read** (measured 2026-11-02 at `8f9e618`). `trees._read` (`model/text/trees.py`) returns
+  None for a part that is absent and for one that cannot be read alike.
+  - An unreadable main part gives an empty result with no warning.
+  - Unreadable footnotes, endnotes, comments, headers and footers are left out with none (`PackageTrees.__init__`),
+    and so is the glossary (`extractor._glossary`). That breaks REQ-801 as `extractor.py`'s own docstring states it.
+  - `extract(header_part)` over an unreadable header raises `TypeError("not a story part ...")`, which names the
+    wrong cause.
 - **The harness** (`tests/text/conformance.py`, `test_conformance.py`) is docx4j's `ExtractionConformance` at
   `198d015a3`, over the copy in `tests/fixtures/text-extraction/`. CR-011's status records 1,291 pass, 0 fail and 293
   pending: docx4j's 19 that need an HTML reader, the inspector's 214 (CR-011 section 3.7) and Q7's 60.
@@ -382,6 +415,21 @@ Where they are used:
 - **docx4j `02f9fc333`** (`VERSION_17_3_6`, after the tag) adds phase0 cases 83 to 85 in a sixth fixture there,
   `extraction-probe-opaque.docx`. It is outside this copy and comes with a later re-pin.
 
+### 4.6 A part that cannot be read (Phase A)
+
+- `trees._read` tells a part that is absent (None) from one that cannot be read, keeping the part and its exception
+  (`PackageTrees.unreadable`).
+- **The main part**, read at the top level by `extract(pkg)` or `extract(part)` (the main part, a header or a
+  footer), raises `Docx4JException` (`openpackaging/exceptions.py`, the base `TextOptionError` already uses here)
+  with docx4j's message, the part's exception its `__cause__`. Python has no unchecked exceptions, so docx4j's
+  `Docx4JRuntimeException` has no other counterpart. The reason is the deepest `__cause__`'s message on one line, as
+  `getReadableContents` writes it.
+- **Nested**, `read_nested` gives `content.not_read` at the nested root, named for the outer part as 4.3's rule
+  says, and reads nothing more of that package.
+- **Every other story part** gives `content.not_read` with its part name, at docx4j's address (none for the notes,
+  comments and glossary, the prefix for a header or footer), once per part; the body is read.
+- No engine API is added: `XmlPart.read_contents` already raises, and the message is the text model's.
+
 ## 5. Tests and oracles
 
 - **Phase A: the re-pinned suite.** `test_conformance.py` over the new copy, `phase0/` and `dpp/`, CR-070's twelve
@@ -389,6 +437,9 @@ Where they are used:
   its reason, `pendingReason`'s CR-069 phase among them; the three new scenarios mapped to their statements. The
   part names in the warnings, in `test_alt_chunks` (docx4j's `TextsPhase2Test.altChunks`). The nested chunk's warning
   names `/word/chunk47.docx`.
+- **Phase A: a part that cannot be read.** `UnreadablePartTest`'s four text-model tests (2.4), over a package whose
+  part's XML is broken as docx4j's test breaks it: the main part's message and cause; a header's; an embedded
+  document's `content.not_read`; unreadable headers and notes as `content.not_read` with the body read.
 - **Phase B: the dates.**
   - `RevisionDatesTest` ported whole (section 2.2's cases), with `trackedChanges` over `manual-redline-dates.docx`:
     D1's local time and no offset, D2's none, D3's `+00:00`, D4's `+11:00`, and the instant recovered from the two.
@@ -439,7 +490,7 @@ No Word check: extraction output is not a file, and nothing this CR adds is writ
 
 | Phase | What | Effort |
 |---|---|---|
-| A | The suite re-pinned at `docx4j-17.3.5` (4.4) and the harness's changes, `dpp/`, `word-saves.tsv`, the three scenarios and `pendingReason` included; `altchunk.not_expanded`'s part name and the nested warnings' outer part (4.3); every row's state recorded against 293 pending | 1 day |
+| A | The suite re-pinned at `docx4j-17.3.5` (4.4) and the harness's changes, `dpp/`, `word-saves.tsv`, the three scenarios and `pendingReason` included; `altchunk.not_expanded`'s part name and the nested warnings' outer part (4.3); a part that cannot be read (4.6, `UnreadablePartTest`'s four); every row's state recorded against 293 pending | 1¼ days |
 | B | The dates: `model/revisions/dates.py`, `TrackedChange.author_local_time` and `author_offset`, `TextRevision.date` and `TextComment.date` in REQ-702's form, `author: ` alone; the two tests | ½ day |
 | C | `TextObject` on every object run, the OLE 1.0 names (`model/text/ole.py`), `embedded_filter`, the JSON's `object` member; `EmbeddedObjectsTest`, four of its tests over OOXML objects, and the OLE 1.0 test bytes (5) | 1 day |
 | D | `profile: word-text`; `TextOptionsProfileTest` | ¼ day |
@@ -448,7 +499,10 @@ No Word check: extraction output is not a file, and nothing this CR adds is writ
 Phase E's CHANGELOG entries:
 - **Added:** `profile`, `TextObject` and `embedded_filter`, `TrackedChange.author_local_time` and `author_offset`.
 - **Changed:** `TextRevision.date` and `TextComment.date` in REQ-702's form; `altchunk.not_expanded`'s selector the
-  part name; a nested warning naming the outer part.
+  part name; a nested warning naming the outer part; a main part that cannot be read raises `Docx4JException`
+  naming it, where the result was empty.
+- **Fixed:** footnotes, endnotes, comments, a header, a footer or the glossary that cannot be read raise
+  `content.not_read` (REQ-801), where they were left out silently.
 
 ## 7. Risks
 
@@ -478,4 +532,4 @@ The user, 2026-11-02: "CR-027's questions  Q1 to Q5 and Q7 as recommended". With
 
 ## 9. Effort
 
-3 days: A 1, B ½, C 1, D ¼, E ¼.
+3¼ days: A 1¼, B ½, C 1, D ¼, E ¼.
