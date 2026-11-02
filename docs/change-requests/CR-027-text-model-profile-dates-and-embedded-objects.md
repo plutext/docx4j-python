@@ -534,3 +534,222 @@ The user, 2026-11-02: "CR-027's questions  Q1 to Q5 and Q7 as recommended". With
 ## 9. Effort
 
 3¼ days: A 1¼, B ½, C 1, D ¼, E ¼.
+
+## 10. Phase A (implementation notes, 2026-11-02)
+
+Phase A as built: section 4.4 (the suite re-pinned and the harness's changes), section 4.3's warnings and
+section 4.6 (a part that cannot be read), with section 5's two Phase A bullets. docx4j was read at its tag
+`docx4j-17.3.5` (`64fae4cd0`), by `git show`, and at `4fdd80063` for section 4.6 only.
+
+**Commits.** `1065287` (the copy and the harness, 10.1 to 10.4), `5844c0b` (the warnings, 10.5), `c7d4c81` (a part
+that cannot be read, 10.6), and this section's.
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the copy | `tests/fixtures/text-extraction/` | the files CR-011 took, as they stand at the tag, and `dpp/` whole; `SHA1SUMS` (84 files); `phase0/expected-inspection-html-status.tsv` removed |
+| `.gitattributes` | the repository's root | `dpp/**/*.txt -text`, as docx4j's: Word's saves are compared as Word wrote them |
+| the harness | `tests/text/conformance.py` | docx4j's changes from `198d015a3` to the tag (10.3); a run over `dpp/`; `main` writes both reports |
+| the reports | `tests/text/conformance.tsv`, `conformance-dpp.tsv` (new) | `phase0/`'s and `dpp/`'s runs, in docx4j's form |
+| the adapter | `tests/text/adapter.py` | `DOCX4J_IMPLEMENTED` at the tag (70), `NOT_ADVERTISED` (5, each with its reason) |
+| the warnings | `model/text/result.py`, `extractor.py`, `embedded.py` | 10.5 |
+| a part that cannot be read | `model/text/trees.py`, `extractor.py`, `__init__.py` | 10.6 |
+| the tests | `tests/text/test_conformance.py`, `test_unreadable_parts.py` (new), `test_texts_phase2.py`; `tests/test_validator.py`, `tests/openpackaging/test_mce_typed.py` | 10.7, 10.9 |
+
+No file under `docx4j_py/` is new, so `KEEP` is unchanged.
+
+### 10.2 The copy
+
+- Each file is `git show docx4j-17.3.5:docx4j-core-tests/src/test/resources/text-extraction/<path>`, byte for byte.
+  `SHA1SUMS` lists them, and `test_conformance.py` holds the folder to it and, with the sibling checkout, each file to
+  docx4j's blob at the tag.
+- Changed since `198d015a3`: `GOLDENS.md`, `INSPECTION.md`, and in `phase0/` `case-statements.tsv`,
+  `expected-findings.tsv`, `expected-inspection.tsv`, `expected-inspection-status.tsv`, `expected-tokens.tsv` and
+  `extraction-probe-inspect.docx`. The rest are the same blobs.
+- The tables: 319 token rows (+34), 257 findings (+56, 242 of them the inspector's), 82 case statements (+15), 2
+  orders, 12 goldens; 242 inspection rows (+56) and 8 status rows, one per fixture and capability. `dpp/`: 34 token
+  rows, 8 findings, 2 goldens, 22 Word saves. These are section 1's numbers.
+- `phase0/expected-inspection-html.tsv` is kept: unchanged at the tag, the source of the reader-present rows, which
+  `expected-inspection.tsv` now holds. The harness no longer reads it.
+- Not copied, as before: `phase0/README.md`, `RUN.txt`, `baseline/`, `evidence/` and `support/`; the folder root's
+  `README.md`, `expected-tokens.tsv`, `extraction-probe.docx` and `run-phase0.sh`; and `bind-props.docx` (section 1).
+- `level-owner/` and `understood-namespaces.txt` stay as they were.
+
+### 10.3 The harness
+
+docx4j's `ExtractionConformance`, `ExtractionFixtureChecks` and `ExtractionConformanceTest`, `198d015a3` to the tag,
+and `ExtractionInspection`'s constants:
+
+- **The capability column** (`4a37702eb`). A fixture is compared against its rows of `any` and of the engine's
+  environment, with that environment's status row. The other environment's rows pend by count ("15 rows of html reader
+  present, not this run's environment"). A fixture with rows of an environment needs REQ-513. The inspection's
+  scenario is the environment, where it was `default`. `_html_inspections` and `HTML_STATUS` are gone, `parsed` is
+  one of `FIELDS`, and REQ-903's counts no longer need `html reader absent`.
+- **The findings keyed by part name**: no harness change; the tables carry them.
+- **The new case statements**: 82 cases, each token row citing its case's statements and fixture, tested.
+- **CR-069's scenarios** `drop_caps`, `small_caps` and `profile` (REQ-521, REQ-607, REQ-1002).
+- **`pending_reason`**: CR-069's latest phase among the missing statements, else CR-046's phase or the inspector.
+- **`word-saves.tsv`**, through `verify_word_save`: the save decoded by its byte order mark, else in the row's code
+  page; the extraction passed through that encoding; the lines split at CR LF, CR, LF or a tab, trailing empty lines
+  dropped. Its tests are docx4j's `wordSaveIsReadByItsEncodingAndComparedByLine`.
+- **A run over `dpp/`** beside `phase0/`, reported in `conformance-dpp.tsv`, as docx4j's test writes `dpp.tsv`.
+- **`entries(data, built=True)`**: a package's members, with the builder's fixed 1980 timestamp where `built`.
+  `phase0/`'s five carry it; `dpp/`'s bisect and caps files do not, and are read with `built=False`. No reader here
+  needs it, as docx4j's adapter does for the inspector's selectors; it is tested as a fixture check.
+
+**The adapter** advertises `DOCX4J_IMPLEMENTED`, docx4j's 70 at the tag, less the inspector's 8 and `NOT_ADVERTISED`:
+
+- REQ-1002 (`profile: word-text`): Phase D;
+- REQ-521, REQ-607, REQ-710: the port of docx4j CR-069 (CR-029);
+- `text.formatting_join`: an inspector kind, CR-069 phase 4.
+
+**The port's gate.** With docx4j's statements advertised and nothing behind them, the harness makes 1,772 checks over
+`phase0/` (36 pending with no HTML reader, 40 with one) and 192 over `dpp/` (0 and 2). docx4j's own last run here
+(`docx4j-core-tests/target/text-extraction/`, read only) was checked against them, less what came after the tag (the
+sixth fixture's 28 checks, `02f9fc333`; the 12 reader-present goldens, `27887b28a`). The checks are the same 1,772 and
+192, in docx4j's order, with docx4j's 36 and 0 pending checks and their reasons.
+
+### 10.4 Every row, against 1,291 pass, 0 fail and 293 pending
+
+| report | before (`198d015a3`'s copy) | after the copy (`1065287`) | after Phase A (`5844c0b`, `c7d4c81`) |
+|---|---|---|---|
+| `phase0/` | 1,291 pass, 0 fail, 293 pending of 1,584; goldens 12 of 12 | 1,258, 36, 478 of 1,772 | **1,294, 0, 478 of 1,772**; goldens 12 of 12 |
+| `dpp/` | --- | 3, 0, 189 of 192 | **3, 0, 189 of 192**; goldens 0 of 2 |
+
+The moves in `phase0/`, by check (fixture, case, item, view, scenario):
+
+- **33 passing checks gone, 36 new ones passing.** The 11 `altchunk.not_expanded` rows keyed by content type, each
+  checked in three views, are now docx4j CR-070's 12 keyed by the chunk's part name. Case 47's row was `html reader
+  present` and is now `default`, so checked. The 36 failed after the copy ("expected 1, got None") and pass with the
+  warnings (10.5).
+- **10 pending checks gone.** The inspector's `inspect:altchunk` rows of cases 36, 44 and 63 under `default`, now one
+  row per environment (3); case 47's `html reader present` warning in three views (3); the four inspections under
+  `default`, now under the environment (4).
+- **1 pending check's reason changed.** The HTML fixture's inspection under `html reader present`: the inspector's
+  before, now "15 rows of html reader present, not this run's environment".
+- **195 new pending checks.** The token checks of cases 68 to 82, which cite REQ-904 (CR-050 phase 3, CR-066 phase 4;
+  123); new inspector rows of `default` and `html reader absent` (41) and of `html reader present` (18); the five
+  inspections under the environment (5); the fifth fixture's counts (6); the other environment's rows by count (2).
+- No check that passed fails. No row moved for a reason outside this CR.
+
+Pending at the end, `phase0/`, 478:
+
+- the inspector's 400: 382, and 18 that also need an HTML reader (CR-011 section 3.7);
+- Q7's 60, by name (`adapter.DEFERRED`);
+- docx4j's 15 extraction checks under `html reader present`;
+- the other environment's rows, by count, for 3 fixtures.
+
+docx4j's own 36 pending checks are among them. Nothing pends for `NOT_ADVERTISED` in `phase0/`.
+
+`dpp/`: case 5's `H₂O`, stored as U+2082 in `caps/caps-lang5.docx`, passes in three views (REQ-602). The 189 pending:
+
+| reason | checks |
+|---|---|
+| CR-069 phase 1 (REQ-607; with REQ-1002 for 13 Word saves) | 118 |
+| CR-069 phase 2 (REQ-521: the two `paragraph.drop_cap_joined` rows in three views, and C02's save) | 7 |
+| CR-069 phase 3 (REQ-710; the two goldens; two saves) | 52 |
+| CR-069 phase 4 (`text.formatting_join`) | 4 |
+| the inspector (`text.near_background`) | 2 |
+| phase 1 or 2; REQ-1002 alone: the six saves Phase D makes checks | 6 |
+
+### 10.5 The warnings (section 4.3)
+
+- `altchunk.not_expanded` carries `part_name`, the chunk's, beside `content_type`.
+- `TextWarning.selector` is the branch, else the part name, else the content type.
+- `Extractor.read_nested(package, prefix, story, outer)`: every warning of the nested reading that names a part names
+  `outer` instead, whatever its kind. `chunk_blocks` and `package_blocks` pass the chunk's or the embedded package's
+  part. The probe's case 47 chunk holds `/word/nested.html`; its warning names `/word/chunk47.docx`.
+- `TextWarning.__str__` is docx4j's `toString`: the kind, ` at ` and the address, then the branch, the content type and
+  the part name, each in brackets where present. It wrote the selector alone, which after the change would have lost
+  the content type. `test_alt_chunks` asserts docx4j's strings.
+- Today the warnings that name a part are `content.not_read`, `altchunk.not_expanded` and `image.not_described`.
+
+### 10.6 A part that cannot be read (section 4.6)
+
+- `trees._read(part, unreadable)` records a part that cannot be read, with its exception, in
+  `PackageTrees.unreadable`; `unreadable_error(part)` asks it. An absent part is still None.
+- `PackageTrees` reads the rest of a package whose main part cannot be read, where it stopped. So a header of such a
+  package can be read alone, as docx4j's `Texts.of(Part)` reads it.
+- `trees.not_readable(part, error)` is docx4j's message: "The content of /word/document.xml could not be read, so it
+  cannot be read as text: <reason>". The reason is the deepest `__cause__`'s message on one line, its whitespace
+  collapsed, or the class's name where there is none. Here it is the parser's, "Failed to create target class
+  `Document`".
+- `Extractor.extract`: at the top level it raises that, from the part's exception. Nested, it gives `content.not_read`
+  at the nested root (`body/0/object:0`, `body/1/altchunk:0`), which `read_nested` names for the outer part, and reads
+  nothing more of that package. A chunk so read gives no `altchunk.not_expanded`: it was read.
+- `extract(part)`, for the main part, a header or a footer, raises it too. A header that cannot be read raised
+  `TypeError("not a story part")`.
+- The footnotes, endnotes, comments, a header or footer and the glossary that cannot be read each give
+  `content.not_read` with the part's name, once, at docx4j's address: a header's or footer's prefix, else none. Each is
+  checked only where the options read it (`notes`, `comments` or markup, `include`), as docx4j's `storyContent` is.
+- `extract()`'s docstring "Raises" names `Docx4JException` and `TypeError`.
+
+### 10.7 The tests and the numbers
+
+- `test_conformance.py`: 59 (24 before). The ratchet over both reports; the pending checks by cause; `dpp/`'s checks;
+  the port's gate in four runs; the copy (`SHA1SUMS`, docx4j's blobs, the tables' counts, the case statements,
+  `entries`); the harness's rules, with CR-069's three scenarios, `pending_reason`, the Word saves and the inspection
+  by capability.
+- `test_unreadable_parts.py`, new, 13: `UnreadablePartTest`'s four text-model tests; each other story part (6); a
+  chunk; a header of an unreadable package; the part's route left as it was.
+- `test_texts_phase2.py`: `test_alt_chunks` is docx4j's `altChunks` at the tag, the probe's nested chunk folded in
+  (it was a test of its own); a nested `image.not_described` naming its chunk.
+- The fast suite: 7,104 passed, 8 skipped; 7,055 at `80e5910` by count (49 new tests: 35, 13 and the validator's 1).
+- The full suite: 8,803 passed, 8 skipped (10.10).
+- ruff (`check`, `format --check`, at the files' 120 columns) on every file changed: no new finding. The findings there
+  before are left as they were: `check`'s in `extractor.py` and `test_texts_phase2.py` (one each), and the formatter's
+  hunks in `conformance.py`, `result.py`, `extractor.py`, `test_conformance.py`, `test_texts_phase2.py`,
+  `test_validator.py` and `test_mce_typed.py`.
+
+### 10.8 Departures, with why
+
+1. **The tests' break.** docx4j cuts a closing tag short (`</w:body>` to `</w:body`). This package's parse recovers
+   from that and reads the part: xsdata's lxml handler parses with `recover=True`. So the tests break the root's start
+   tag (`<w:document` to `<<w:document`), which no recovery mends. 10.11 says what the recovery means.
+2. **The exception.** docx4j throws a `Docx4JRuntimeException` whose cause is the `Docx4JException` naming the part,
+   whose cause is the read's. Here it is the `Docx4JException`, its `__cause__` the part's own (`Problem with part
+   /word/document.xml: ...`): Python has no unchecked exceptions (section 4.6).
+3. **The reason's class name**, where a cause has no message, is the module-qualified name (bare for a builtin), not
+   Java's.
+4. **A failing Word save's reason** is `line n: Word wrote [...], the extraction [...]`, without docx4j's path: the
+   port's reasons leave out what the row's columns give.
+5. **`entries`** reads the DOS fields through `zipfile`, which gives the central directory's. docx4j's `dosTimes` reads
+   them so since `4e4f8ce49`; before, the JDK's extended timestamp made the check depend on the time zone.
+6. **The two reports** are this port's committed files. docx4j's test writes `conformance.tsv` and `dpp.tsv` under
+   `target/`.
+
+The harness's two departures (CR-011): a failing check is a `FAIL` row, and `Engine.deferred`.
+
+### 10.9 Pre-existing tests whose expectation changed, and why
+
+- `tests/openpackaging/test_mce_typed.py::test_the_facade_still_lists_a_drawing_in_a_run`: the inspect probe has 8
+  inline pictures at the tag, case 66's 2 and 6 of cases 68 to 74. It asserted 2.
+- `tests/test_validator.py::test_the_corpus_holds_nothing_but_the_probes_values`: the inspect probe's cases 75 to 82
+  are CR-066 phase 4's out-of-range values, and `misplaced()` reports them. They are exempted as the CR-066 probes'
+  are, and a new test holds them to the inspector's `value.out_of_range` rows: 16, the inspector's 17 less `w:gridCol`,
+  which no round measured and `integer-limits.json` leaves out.
+- `test_texts_phase2.py::test_alt_chunks` (10.5).
+
+### 10.10 The gates
+
+| gate | after |
+|---|---|
+| the fast suite | 7,104 passed, 8 skipped, 0 failed |
+| the full suite | 8,803 passed, 8 skipped, 0 failed (6 min 32 s), at `c7d4c81`. A first run, beside other work, failed `test_performance.py`'s list check by 1.4 ms against its 201.6 ms limit; alone, and in the second run, it passed |
+| `conformance.py` | `phase0/` 1,294, 0, 478 of 1,772; `dpp/` 3, 0, 189 of 192 |
+| ruff on the changed files | no new finding |
+
+No Word check: no file this package saves changes.
+
+### 10.11 Found, and left open
+
+1. **A part's XML is mended silently.** The lenient parse recovers from XML that is not well formed and reads what it
+   can, with no skipped report, even under `LoadOptions(strict=True)`. A `word/document.xml` cut after "SEC" of its
+   second paragraph reads as `FIRST PARAGRAPH`, `SEC`, its third paragraph gone. That breaks this repository's rule
+   that nothing is dropped silently, and docx4j refuses such a part (CR-065 D1). It is the engine's and the fork's
+   (`recover=True` in xsdata's lxml handler), not this CR's: for the user.
+2. **`extract(part)` unmarshalled the part.** Telling a story part from content asked `hasattr(target, "contents")`,
+   which unmarshals the part for real (REQ-204) and raised the part's own exception before the text model could name
+   it. It now asks the class. Fixed, since section 4.6 needs it; a test holds both routes.
+3. **`dpp/`'s 189 pending checks** wait on CR-029 and Phase D; the inspector's 400 on a CR of their own (section 4.5).
