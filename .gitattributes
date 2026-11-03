@@ -1,3 +1,7 @@
 # docx4j CR-069's oracle (CR-027 Phase A): Word's own Save As text, compared as Word wrote it (windows-1252 or
 # UTF-8 with a byte order mark, CR LF lines, CR cells): never converted, as docx4j's .gitattributes has it.
 tests/fixtures/text-extraction/dpp/**/*.txt -text
+
+# docx4j CR-068's oracle (CR-027 Phase B, CR-028): copied byte for byte at docx4j-17.3.5 and held to SHA1SUMS, Word's
+# Save As text among it (CR LF lines, CR cells): never converted.
+tests/fixtures/revisions/cr068/** -text

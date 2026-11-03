@@ -1,0 +1,54 @@
+CR-068 phase 0 (docx4j): Word on a manual redline converted to tracked changes.
+
+On the VM, in Windows PowerShell (Word closed):
+
+  powershell -ExecutionPolicy Bypass -File X:\revisions\cr068\cr068-probe.ps1
+
+Add -Visible to watch Word (a dialog then shows). Expected time: about a minute.
+
+What it does: opens copies (in %TEMP%\cr068-probe) of the docx4j-built inputs here. First, in the base,
+manual-redline.docx, Word makes its own tracked deletion of the struck text (the same texts the default
+conversion deletes, and M11's paragraph whole) and saves manual-redline-word.docx. Then for each of the
+base, the three predicted conversions (manual-redline-default.docx, -optins.docx, -d9.docx) and Word's own:
+lists every revision story by story (type, author, date, text: what the Review pane shows), saves it as
+plain text as it is (word-<key>-asis.txt), and saves Word's Accept All and Reject All of it as docx and as
+plain text (word-<key>-accept-all.docx/.txt, word-<key>-reject-all.docx/.txt). Last it lists the revisions
+of manual-redline-dates.docx (which date Word shows). Everything goes to cr068-log.txt here, Word's version
+and build first. Word's user name is not changed.
+
+If it hangs: end WINWORD.EXE in Task Manager and run it again. Outputs already here are skipped, so it
+resumes; to redo everything, delete manual-redline-word.docx, the word-* files and cr068-log.txt.
+
+Then, by hand (a minute): open manual-redline-default.docx and manual-redline-optins.docx in Word. Does
+either ask to repair? Does the Review pane (Review > Reviewing Pane) list the changes under "manual redline"?
+A screenshot of each with the pane open is welcome (save as cr068-default.png, cr068-optins.png here).
+Close without saving.
+
+Then tell the docx4j session "cr068 done".
+
+Second run (CR-068 phase 1, 2026-10-31): the same command. It adds manual-redline-phase1.docx, docx4j's own
+conversion of the base (the separating space taken, the struck mark of M11 deleted), and saves Word's Accept
+All and Reject All of it (word-phase1-*); everything the first run made is skipped. About half a minute. Then
+tell the docx4j session "cr068 phase1 done".
+
+Third run (CR-068 phase 2, 2026-10-31): the same command. It adds the opt-ins: manual-redline-phase2.docx (the
+base converted with style strike, underline and red as insertions, and the comments) and manual-redline-2-phase2.docx
+(the second base, manual-redline-2.docx, cases N01 to N10, converted the same way), saving Word's Accept All and
+Reject All of each (word-phase2-*, word-phase2b-*); everything earlier is skipped. About a minute.
+
+Then, by hand (a minute): open manual-redline-phase2.docx and manual-redline-2-phase2.docx, and look at the comment
+cards (M16, N10): is the deleted text shown struck and the inserted text underlined in the card? A screenshot of
+each card is welcome (cr068-phase2-comment.png, cr068-phase2b-comment.png here). Close without saving.
+
+Then tell the docx4j session "cr068 phase2 done".
+
+Comment cards (CR-068 section 12.7, 2026-10-31): by hand, no script. Open comment-cards.docx in Word (Review >
+All Markup). Each of its five comments, C1 to C5, holds one form of the same change, the word "withdrawn" or "added":
+  C1 struck text, untracked (the manual redline)
+  C2 a tracked deletion keeping its strike (D14, as built)
+  C3 a tracked deletion, its strike removed (D6)
+  C4 a tracked insertion keeping its underline (D14)
+  C5 a tracked insertion, its underline removed (D7)
+For each card: how does "withdrawn" / "added" show (struck, underlined, coloured, plain, missing)? A screenshot of
+the five cards (cr068-comment-cards.png here), and one with Review > Reviewing Pane open
+(cr068-comment-cards-pane.png), are what is needed. Close without saving.
