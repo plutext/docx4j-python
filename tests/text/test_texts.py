@@ -223,6 +223,32 @@ def test_the_views(probe):
     assert "{++TC14_INS_KEPT ++}{--TC14_DEL_IN_INS--}" in markup  # flat, never nested
 
 
+def _block_with(result, token: str):
+    """docx4j ``TextsTest.blockWith``: the first block whose text holds `token`."""
+    return next(b for b in result.blocks if token in b.text)
+
+
+def test_markup(probe):
+    """docx4j ``TextsTest.markup`` at the tag (REQ-702, REQ-706): the detail in the marker's opening; runs carry their revision.
+
+    TC9's dates are ``fc71f12e6``'s (CR-027 Phase B): ``w:date``'s ``Z`` is not written.
+    """
+    by_type = plain_text(extract(probe, view="markup"))
+    assert "TC9_BASE {++TC9_INSERTED ++}{--TC9_DELETED--}" in by_type
+    assert "{~~" not in by_type
+    author = plain_text(extract(probe, view="markup", markup_detail="author"))
+    assert "{++Probe: TC9_INSERTED ++}{--Probe: TC9_DELETED--}" in author
+    date = plain_text(extract(probe, view="markup", markup_detail="author_date"))
+    assert "{++Probe, 2026-10-17T00:00:00: TC9_INSERTED ++}" in date  # w:date's Z not written (WD 0.46 REQ-702)
+    block = _block_with(extract(probe, view="markup"), "TC9_INSERTED")
+    inserted = [r.revision for r in block.runs if "TC9_INSERTED" in r.text][-1]
+    assert inserted.type == "INSERTION"
+    assert inserted.author == "Probe"
+    assert inserted.date == "2026-10-17T00:00:00"
+    assert block.revisions == 2
+    assert all(r.revision is None for r in _block_with(extract(probe), "TC9_INSERTED").runs)
+
+
 # ---------------------------------------------------------------------------
 # the plain-text goldens, exact since Phase C (CR-011 section 13)
 # ---------------------------------------------------------------------------

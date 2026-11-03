@@ -80,6 +80,7 @@ from docx4j_py.child import (
     requires_of,
     wildcard_child_name,
 )
+from docx4j_py.model.revisions import dates as revision_dates
 from docx4j_py.model.revisions import trees as rtrees
 from docx4j_py.model.text.images import TextImage
 from docx4j_py.model.text.options import TextOptions
@@ -194,21 +195,24 @@ def _attr(item: Any, local: str) -> Any:
     return rtrees.attribute(item, local)
 
 
-def _date_text(value: Any) -> str | None:
-    """A ``w:date`` as the package wrote it."""
-    if value is None:
-        return None
-    to_string = getattr(value, "to_string", None)
-    if callable(to_string):
-        try:
-            return to_string()
-        except Exception:  # noqa: BLE001 - fall back to str
-            return str(value)
-    return str(value)
+_W16DU_DATE_UTC = "{http://schemas.microsoft.com/office/word/2023/wordml/word16du}dateUtc"
+
+
+def _date_utc(holder: Any) -> Any:
+    """A revision's ``w16du:dateUtc``, of a typed or a wildcard node; None where it has none."""
+    if rtrees.is_any_element(holder):
+        return (holder.attributes or {}).get(_W16DU_DATE_UTC)
+    return getattr(holder, "date_utc", None)
 
 
 def _revision(holder: Any, kind: str) -> TextRevision:
-    return TextRevision(kind, _attr(holder, "author"), _date_text(_attr(holder, "date")))  # type: ignore[arg-type]
+    """A revision with its author and its stamp as REQ-702 writes it: the author's local time, the offset where known.
+
+    docx4j ``Extractor.revision`` since ``fc71f12e6``: ``RevisionDates.text``
+    over ``w:date`` and ``w16du:dateUtc`` (CR-027 Phase B).
+    """
+    date = revision_dates.text(_attr(holder, "date"), _date_utc(holder))
+    return TextRevision(kind, _attr(holder, "author"), date)  # type: ignore[arg-type]
 
 
 def _is_monospace(font: str | None) -> bool:
@@ -2132,6 +2136,7 @@ class Extractor:
         for ex in getattr(ex_tree, "comment_ex", None) or ():
             if ex.para_id:
                 extended[str(ex.para_id).upper()] = ex
+        dates_utc = _comment_dates_utc(self.trees.main, part, tree)
         by_para_id: dict[str, str] = {}
         anchored = self.trees.anchored_comments()
         state = self.context.numbering_states.for_part(part)
@@ -2142,10 +2147,13 @@ class Extractor:
             # a comment with no anchor in the document is none of its text: Word drops it on save (REQ-504)
             if comment_id not in anchored:
                 continue
-            comment = TextComment(comment_id, author=c.author, initials=c.initials, date=_date_text(c.date))
+            comment = TextComment(comment_id, author=c.author, initials=c.initials)
             prefix = f"{self.root}comment:{comment_id}"
             self.blocks(c.content, prefix, _Story("COMMENT", prefix, part, state), comment.blocks)
             para_id = _last_para_id(c.content)
+            # REQ-702: w:date as the author's clock, the offset where the last paragraph's dateUtc gives it
+            date_utc = dates_utc.get(para_id.upper()) if para_id is not None else None
+            comment.date = revision_dates.text(c.date, date_utc)
             if para_id is not None:
                 by_para_id[para_id.upper()] = comment_id
                 ex = extended.get(para_id.upper())
@@ -2716,6 +2724,31 @@ def _branch_text(branch: list) -> str:
         if not isinstance(item, str):
             rtrees.walk(item, enter)
     return normalize("".join(out))
+
+
+def _comment_dates_utc(main: Any, part: Any, tree: Any) -> dict[str, Any]:
+    """Each comment's ``w16cex:dateUtc``, by its last paragraph's ``w14:paraId`` (upper case).
+
+    docx4j ``Extractor.commentDatesUtc`` (``fc71f12e6``): the comments ids part
+    gives the paragraph's durable id, the comments extensible part the durable
+    id's date. Here :func:`~docx4j_py.openpackaging.parts.wml.comments.dates_utc`,
+    the content API's own reader, over a holder of the tree this reading read
+    privately, so that no part is unmarshalled (REQ-204); empty where either
+    part is absent or cannot be read, as docx4j's is. ``dates_utc`` keeps
+    microseconds, and ``RevisionDates`` reads ``dateUtc`` to the second, which
+    :func:`docx4j_py.model.revisions.dates.text` does with what it is given.
+    """
+    from docx4j_py.openpackaging.parts.wml.comments import CommentParts, dates_utc
+
+    if main is None:
+        return {}
+    holder = CommentParts(main, part, tree)
+    try:
+        holder.ids_part = getattr(main, "comments_ids_part", None)
+        holder.extensible_part = getattr(main, "comments_extensible_part", None)
+        return dates_utc(holder)
+    except Exception:  # noqa: BLE001 - a part that cannot be read gives no date, as docx4j's null part does
+        return {}
 
 
 def _last_para_id(content: list | None) -> str | None:

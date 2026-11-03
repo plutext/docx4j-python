@@ -30,7 +30,10 @@ properties: name: value]``. In the ``markup`` view insertions are
 ``{++text++}``, deletions ``{--text--}`` and comments ``{>>text<<}`` at their
 references, replies after them (REQ-702, REQ-504), each run's marker its own,
 flat, never one inside another; under ``markup_detail`` a marker's opening is
-followed by ``author:`` or ``author, date:``.
+followed by ``author:`` or ``author, date:``, the date the author's local time
+with the UTC offset where the mark lets it be known
+(``2026-10-31T11:00:00+11:00``, :attr:`TextRevision.date`), and ``author:``
+alone where the mark has no date (REQ-702).
 
 Under ``layout: indent`` (REQ-709) a paragraph outside a table begins with
 four spaces for each tab stop (720 twips) of its first line's indent, its left
@@ -268,8 +271,8 @@ class _Writer:
     def _detail(self, author: str | None, date: str | None) -> None:
         if self.detail == "author":
             self.out.append(f"{author or ''}: ")
-        elif self.detail == "author_date":
-            self.out.append(f"{author or ''}, {date or ''}: ")
+        elif self.detail == "author_date":  # REQ-702: a mark with no date writes its author alone
+            self.out.append(f"{author or ''}{'' if date is None else ', ' + date}: ")
 
     def run(self, run: TextRun) -> None:
         kind = run.kind

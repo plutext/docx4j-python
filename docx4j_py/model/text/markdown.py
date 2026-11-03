@@ -968,8 +968,8 @@ class _WmlToMarkdown:
         detail = self.text_options.markup_detail
         if detail == "author":
             return f"{author or ''}: "
-        if detail == "author_date":
-            return f"{author or ''}, {date or ''}: "
+        if detail == "author_date":  # REQ-702: a mark with no date writes its author alone
+            return f"{author or ''}{'' if date is None else ', ' + date}: "
         return ""
 
     def _image(self, run: TextRun, sink: _InlineSink) -> None:

@@ -35,6 +35,7 @@ KEEP = {
     "model/content/placeholders.py",  # CR-019 Phase B: the glossary's placeholder entries (inside "model" too)
     "model/word_integers.py",  # CR-020 Phase B: Word's reading of an integer, per row of the limits table (inside "model" too)
     "model/dates.py",  # CR-025 Phase A: the package's time zone, where an instant meets a clock (inside "model" too)
+    "model/revisions/dates.py",  # CR-027 Phase B: RevisionDates, a stamp as the author's clock (inside "model" too)
     "model/fields/instruction.py",  # CR-025 Phase B: FieldInstruction, docx4j's one parser (inside "model" too)
     "model/fields/context.py",  # CR-025 Phase B: FieldContext and FieldUser (inside "model" too)
     "model/fields/evaluators.py",  # CR-025 Phase B: the field evaluators by name (inside "model" too)

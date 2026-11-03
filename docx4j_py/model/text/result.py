@@ -50,15 +50,22 @@ class TextRevision:
     """A run's revision in the ``markup`` view (REQ-706). docx4j ``TextRevision``.
 
     ``w:ins`` and ``w:moveTo`` are insertions, ``w:del`` and ``w:moveFrom``
-    deletions, each with its author and its date as the package wrote it.
+    deletions, each with its author and its date.
     """
 
     type: Literal["INSERTION", "DELETION"]
     author: str | None = None
+    #: The date as WD REQ-702 writes it: the author's local time from
+    #: ``w:date``, its ``Z`` not written (``2026-10-31T11:00:00``), with the
+    #: author's UTC offset where ``w16du:dateUtc`` gives it
+    #: (``2026-10-31T11:00:00+11:00``); ``dateUtc`` with ``Z`` where there is
+    #: no ``w:date``; None for neither. Until CR-027 Phase B, ``w:date`` as
+    #: stored, its ``Z`` included. :mod:`docx4j_py.model.revisions.dates` has
+    #: the rule.
     date: str | None = None
 
     def __str__(self) -> str:
-        """``INSERTION by Author A 2026-10-01T00:00:00Z``."""
+        """``INSERTION by Author A 2026-10-01T00:00:00``."""
         return self.type + (f" by {self.author}" if self.author else "") + (f" {self.date}" if self.date else "")
 
 
@@ -444,7 +451,11 @@ class TextComment:
     id: str
     author: str | None = None
     initials: str | None = None
-    #: The date as the package wrote it.
+    #: The date as WD REQ-702 writes it (:attr:`TextRevision.date`): ``w:date``
+    #: as the author's local time, with the offset where the comments
+    #: extensible part's ``w16cex:dateUtc`` gives it, through the comment's
+    #: last paragraph carrying a ``w14:paraId``; None for none. Until CR-027
+    #: Phase B, ``w:date`` as stored.
     date: str | None = None
     #: The ``w:id`` of the comment this one replies to (``w15:paraIdParent``).
     parent_id: str | None = None

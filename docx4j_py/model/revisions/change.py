@@ -442,11 +442,45 @@ class TrackedChange:
         (:func:`date_of`), in the package's zone (``pkg.date_time_zone``, else
         the process's; CR-025, docx4j ``TrackedChange.getDate()`` since D12); a
         date alone as local midnight (CR-025 Phase B2). A group's is its first
-        piece's; None when there is none.
+        piece's; None when there is none. The author's own clock, as Word shows
+        it: :attr:`author_local_time` and :attr:`author_offset`.
         """
         from docx4j_py.model.dates import package_zone
 
         return date_of(self.target.value(), package_zone(getattr(self.story, "package", None)))
+
+    @property
+    def author_local_time(self) -> datetime.datetime | None:
+        """The author's local time when the change was made, naive. docx4j ``getAuthorLocalTime()``.
+
+        ``w:date`` as stored, its ``Z`` not read, since Word writes the
+        author's wall clock there and its Reviewing Pane shows it so (WD 0.46
+        REQ-702; :func:`docx4j_py.model.revisions.dates.local_time`). None
+        where there is no ``w:date`` (a mark with ``dateUtc`` alone, which Word
+        shows with no date). A group's is its first piece's. CR-027 Phase B.
+        """
+        from docx4j_py.model.revisions.dates import local_time
+
+        value = self.target.value()
+        return None if value is None else local_time(getattr(value, "date", None))
+
+    @property
+    def author_offset(self) -> datetime.timezone | None:
+        """The author's UTC offset when the change was made. docx4j ``getAuthorOffset()``.
+
+        ``w:date`` less ``w16du:dateUtc``, where the change carries both and
+        they differ as a clock's offset can; else None
+        (:func:`docx4j_py.model.revisions.dates.offset`). With
+        :attr:`author_local_time` it gives the instant too, with no zone
+        assumed: ``author_local_time.replace(tzinfo=author_offset)`` is
+        :attr:`date`. A group's is its first piece's. CR-027 Phase B.
+        """
+        from docx4j_py.model.revisions.dates import offset
+
+        value = self.target.value()
+        if value is None:
+            return None
+        return offset(getattr(value, "date", None), getattr(value, "date_utc", None))
 
     @property
     def id(self) -> int | None:
