@@ -47,11 +47,17 @@ reached over the documents.
   The placeholders, and every reader that reads a body.
 - ``validator.py``, ``_tree_of``: every typed part a package has, where it is
   not unmarshalled (CR-020 Phase B). ``package.misplaced()``.
+- ``model/listnumbering/emulator.py``, ``_root_of``: the numbering or the
+  styles, only where lxml cannot read the part or it holds the record of a
+  read refused, for the part's own refusal (CR-031 section 4.6, Phase A2); its
+  tree, where there is one, goes unused. The content API's list readers, over
+  docx4j's ``part-not-read`` fixtures (:data:`REFUSED`).
 
 The numbering emulator reads ``/word/numbering.xml`` and the styles' numbering
 with lxml from ``get_xml()``, and ``describe()`` reads every part with lxml
-from ``part.xml``: neither calls ``read_contents`` on its own account, and both
-are run here regardless, the emulator through the property resolver it uses.
+from ``part.xml``: neither calls ``read_contents`` on its own account over a
+part that is well formed, and both are run here regardless, the emulator
+through the property resolver it uses.
 
 **The check.** After each reader, every typed part holding a tree --- private,
 or live where the reader unmarshalled it (``fonts_in_use`` and ``outline()`` do,
@@ -86,6 +92,8 @@ sys.path.insert(0, str(ROOT))
 
 import docx4j_py
 from docx4j_py import load
+from docx4j_py.openpackaging.exceptions import Docx4JException
+from docx4j_py.openpackaging.parts.xml_part import syntax_error_of
 from docx4j_py.child import Child, ChildList
 from docx4j_py.model import style_util
 from docx4j_py.model.listnumbering import NumberingStates, emulator_of
@@ -123,6 +131,14 @@ CORPUS = sorted(
 #: what reach the resolver's ``Keywords`` and ``fields.formatting._decimal_symbol``
 #: under ``fields: update``. Built by :func:`_with_fields`.
 WITH_FIELDS = "2010-sample1-with-fields.docx"
+
+#: docx4j's ``part-not-read`` fixtures whose numbering or styles part is not well
+#: formed: where the emulator asks the part's own read for its refusal (CR-031
+#: Phase A2), which no well-formed document reaches.
+REFUSED: list[Path] = [
+    FIXTURES / "part-not-read" / "part-not-read-numbering.docx",
+    FIXTURES / "part-not-read" / "part-not-read-styles.docx",
+]
 
 #: The fast suite's documents: the probe (charts, SmartArt, a glossary, fields,
 #: properties, text boxes, notes, comments, revisions), a revisions fixture with
@@ -389,6 +405,14 @@ def read_validator(pkg: Any) -> None:
     pkg.misplaced()
 
 
+def read_lists_refused(pkg: Any) -> None:
+    """``body.lists`` and ``is_list_item``, refused where the numbering or styles part is not well formed (CR-031 Phase A2)."""
+    for read in (lambda: pkg.body.lists, lambda: [p.is_list_item for p in pkg.body.paragraphs]):
+        with pytest.raises(Docx4JException) as raised:
+            read()
+        assert syntax_error_of(raised.value) is not None
+
+
 READERS: dict[str, Callable[[Any], None]] = {
     "resolver": read_resolver,
     "numbering": read_numbering,
@@ -558,6 +582,7 @@ CALLERS: frozenset[str] = frozenset(
         "model/content/placeholders.py::GlossaryEntries.load",
         "model/content/placeholders.py::has_placeholder_styles",
         "validator.py::_tree_of",
+        "model/listnumbering/emulator.py::_root_of",
     }
 )
 
@@ -602,8 +627,8 @@ def test_every_read_contents_caller_is_listed() -> None:
     assert _callers_in_source() == set(CALLERS)
 
 
-def _reached(sources: list[Path | str]) -> set[str]:
-    """The callers the readers reach over `sources`, by the frame that called ``read_contents``."""
+def _reached(sources: list[Path | str], readers: list[Callable[[Any], None]] | None = None) -> set[str]:
+    """The callers `readers` (every reader of :data:`READERS`) reach over `sources`, by the frame that called ``read_contents``."""
     package = PACKAGE
     reached: set[str] = set()
     original = XmlPart.read_contents
@@ -619,7 +644,7 @@ def _reached(sources: list[Path | str]) -> set[str]:
     XmlPart.read_contents = recording  # type: ignore[method-assign]
     try:
         for source in sources:
-            for reader in READERS.values():
+            for reader in READERS.values() if readers is None else readers:
                 reader(_open(source))
     finally:
         XmlPart.read_contents = original  # type: ignore[method-assign]
@@ -627,6 +652,14 @@ def _reached(sources: list[Path | str]) -> set[str]:
 
 
 def test_every_listed_caller_is_reached() -> None:
-    """Each caller of the table runs, over the fast documents, under one reader or another."""
-    reached = _reached(FAST)
+    """Each caller of the table runs, over the fast documents under one reader or another, or over :data:`REFUSED`."""
+    reached = _reached(FAST) | _reached(list(REFUSED), [read_lists_refused])
     assert set(CALLERS) - reached == set()
+
+
+@pytest.mark.parametrize("source", REFUSED, ids=_id)
+def test_a_refused_list_reader_leaves_its_trees_as_parsed(source: Path) -> None:
+    """The emulator's ask of a part's own read for its refusal (CR-031 Phase A2) leaves every tree as parsed."""
+    pkg = _open(source)
+    read_lists_refused(pkg)
+    assert changed_trees(pkg, source) == []

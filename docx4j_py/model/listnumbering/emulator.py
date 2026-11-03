@@ -34,6 +34,15 @@ styles are read with lxml from the bytes the parts would be saved as, so a
 document whose list labels are only *read* is still written back byte for byte
 (CR-003 section 13 made that promise for the markdown exporter, which now reads
 its markers from here).
+
+A numbering or styles part whose XML is not well formed is **refused**, not read
+as absent (CR-031 section 4.6, Phase A2): the reading raises the part's own
+``Docx4JException`` ("Problem with part /word/numbering.xml: <lxml's message>"),
+kept on the part as its ``unreadable``. The styles part raises at the first read
+of the styles; the numbering part only where a definition is needed, so a
+paragraph that names no list (:meth:`Emulator.names_a_list`) raises nothing for
+it. The text model reads such a part as absent, with ``part.not_read``: it
+hands the emulator neither part (``Emulator(package, read_styles=False)``).
 """
 
 from __future__ import annotations
@@ -84,15 +93,38 @@ def _root_of(part: Any) -> Any:
     both use: ``get_xml()`` is the part's own marshalling, so an untouched part
     is its source bytes and a part the caller has edited is what it now holds,
     and neither is unmarshalled by being read here.
+
+    A part whose XML is not well formed raises its own refusal (CR-031 section
+    4.6): the ``Docx4JException`` its read raises, which the part keeps as its
+    ``unreadable``, so that a later read raises it again without a parse. The
+    part's read is asked only where lxml could not read the bytes, or where the
+    part already holds that record, so a well-formed part costs nothing more.
+    A part that will not parse here for another reason defines nothing, as
+    before.
+
+    Raises:
+        Docx4JException: the part's XML is not well formed.
     """
     if part is None:
         return None
     from lxml import etree
 
-    try:
-        return etree.fromstring(part.get_xml().encode("utf-8"))
-    except Exception:  # noqa: BLE001 - a part that will not parse defines nothing
+    from docx4j_py.openpackaging.parts.xml_part import syntax_error_of
+
+    if syntax_error_of(getattr(part, "unreadable", None)) is None:
+        try:
+            return etree.fromstring(part.get_xml().encode("utf-8"))
+        except Exception:  # noqa: BLE001, S110 - not well formed, or not read here: the part's own read says which
+            pass
+    if not hasattr(part, "read_contents"):
         return None
+    try:
+        # a private read, whose tree nothing here uses: it raises where the XML is not well formed
+        part.read_contents()
+    except Exception as error:
+        if syntax_error_of(error) is not None:
+            raise  # the part's refusal, kept as its unreadable (CR-031 D8)
+    return None  # a part that will not parse here for another reason defines nothing
 
 
 # ---------------------------------------------------------------------------
@@ -244,12 +276,21 @@ class Emulator:
         "_numbering_state",
         "_package",
         "_read",
+        "_read_styles",
         "_styles",
     )
 
-    def __init__(self, package: Any) -> None:
-        """Build the emulator over a package; the definitions are read on demand."""
+    def __init__(self, package: Any, *, read_styles: bool = True) -> None:
+        """Build the emulator over a package; the definitions are read on demand.
+
+        `read_styles` False reads the numbering as for a package without a
+        styles part: no property resolver and no style map. The text model's
+        emulator where the styles part could not be read (CR-031 section 4.6),
+        docx4j's ``resolverOf`` fix (a); every other reader reads the styles,
+        and raises the part's refusal where they cannot be read.
+        """
         self._package = package
+        self._read_styles = read_styles
         self._abstract: dict[str, AbstractListNumberingDefinition] = {}
         self._instances: dict[str, ListNumberingDefinition] = {}
         self._styles: dict[str, StyleNumbering] | None = None
@@ -293,8 +334,13 @@ class Emulator:
         if self._read:
             return
         self._read = True
-        root = _root_of(self.part)
-        self._abstract, self._instances = read_definitions(root, self.styles)
+        try:
+            root = _root_of(self.part)
+            self._abstract, self._instances = read_definitions(root, self.styles)
+        except BaseException:
+            # a part that could not be read (CR-031 section 4.6): the next read raises again, from the part's record
+            self._read = False
+            raise
 
     @property
     def abstract_list_definitions(self) -> dict[str, AbstractListNumberingDefinition]:
@@ -317,9 +363,17 @@ class Emulator:
 
     @property
     def styles(self) -> dict[str, StyleNumbering]:
-        """Every paragraph style's ``w:numPr`` and ``w:basedOn``, by style id."""
+        """Every paragraph style's ``w:numPr`` and ``w:basedOn``, by style id.
+
+        Raises:
+            Docx4JException: the styles part's XML is not well formed (CR-031
+                section 4.6); none for an emulator that reads no styles.
+        """
         if self._styles is None:
-            self._styles, self._default_style_id = _read_styles(self._package)
+            if not self._read_styles:
+                self._styles, self._default_style_id = {}, None
+            else:
+                self._styles, self._default_style_id = _read_styles(self._package)
         return self._styles
 
     @property
@@ -332,14 +386,16 @@ class Emulator:
         resolver = self.resolver
         if resolver is not None:
             return resolver.default_paragraph_style_id
-        if self._styles is None:
-            self._styles, self._default_style_id = _read_styles(self._package)
+        self.styles  # noqa: B018 - read for its effect: the default's id with it
         return self._default_style_id
 
     @property
     def resolver(self) -> Any:
-        """The package's property resolver, or None. docx4j's ``propertyResolver``."""
-        return _resolver_of(self._package)
+        """The package's property resolver, or None. docx4j's ``propertyResolver``.
+
+        None for an emulator that reads no styles (``read_styles=False``).
+        """
+        return _resolver_of(self._package) if self._read_styles else None
 
     def effective_numbering(self, style_id: str) -> StyleNumbering:
         """A style's effective ``w:numPr``. docx4j ``getEffectivePPr(styleId).getNumPr()``.
@@ -474,6 +530,76 @@ class Emulator:
         direct_num_pr: bool,
     ) -> NumRef:
         """Which list and level to count a paragraph in. docx4j ``Emulator.resolve``."""
+        named = self._named(p_style_val, num_id, ilvl, direct_num_pr)
+        if isinstance(named, NumRef):
+            return named
+        num_id, ilvl, direct_num_pr, style_id = named
+
+        # the reason strings from here on are docx4j's at VERSION_17_1_1
+        # 7fba7a150, the shared contract of the three implementations
+        # (CR-003 section 18.10); the two cases never appear in a golden
+        origin = "the paragraph's own" if direct_num_pr else f"from style {style_id!r}"
+        definition = self.instance_list_definitions.get(num_id)
+        if definition is None:
+            return NumRef(not_numbered=True, reason=f"no w:num for numId {num_id} ({origin})")
+
+        if not ilvl:
+            ilvl = "0"
+
+        if not definition.level_exists(ilvl):
+            return NumRef(
+                not_numbered=True, reason=f"no w:lvl {ilvl} in w:num {num_id} ({origin})"
+            )
+
+        if not direct_num_pr and self.style_linked_elsewhere(num_id, ilvl, style_id):
+            return NumRef(
+                not_numbered=True,
+                reason=(
+                    f"level {ilvl} of numId {num_id} is linked to a paragraph style "
+                    f"other than {style_id!r}"
+                ),
+            )
+        return NumRef(num_id=num_id, ilvl=ilvl, direct=direct_num_pr)
+
+    def names_a_list(self, p_pr: Any) -> bool:
+        """Whether a paragraph names a list: a ``w:numId`` other than 0, its own or its style's.
+
+        :meth:`resolve`'s first half, which reads the styles and **no**
+        numbering definition: where this is False, :meth:`number` is None for
+        the paragraph. What a list reader over one paragraph asks before it
+        counts the paragraph's story, so that over a paragraph that names no
+        list it needs no definition, and a numbering part that cannot be read
+        raises nothing there (CR-031 section 4.6).
+        """
+        return not isinstance(self._named(*self._arguments(p_pr)), NumRef)
+
+    @staticmethod
+    def _arguments(p_pr: Any) -> tuple[str | None, str | None, str | None, bool]:
+        """A ``w:pPr``'s style, ``w:numId`` and ``w:ilvl``, and whether the ``w:numId`` is its own: :meth:`number`'s reading."""
+        p_style_val = _value(getattr(p_pr, "p_style", None))
+        num_pr = getattr(p_pr, "num_pr", None)
+        num_id = None
+        ilvl = None
+        if num_pr is not None:
+            num_id = _value(getattr(num_pr, "num_id", None))
+            ilvl = _value(getattr(num_pr, "ilvl", None))
+        # each as Word reads it (CR-021): "1.0" is list 1; a refused form is unset
+        num_id = decimal(num_id)
+        ilvl = decimal(ilvl)
+        return p_style_val, num_id, ilvl, bool(num_id)
+
+    def _named(
+        self,
+        p_style_val: str | None,
+        num_id: str | None,
+        ilvl: str | None,
+        direct_num_pr: bool,
+    ) -> NumRef | tuple[str, str | None, bool, str | None]:
+        """The list a paragraph names, before any definition is read: ``(num_id, ilvl, direct, style_id)``.
+
+        A not-numbered :class:`NumRef` where it names none: no ``w:numId``, its
+        own or its style's, or a ``w:numId`` of 0.
+        """
         style_id = p_style_val or None
 
         if not num_id:
@@ -521,32 +647,7 @@ class Emulator:
                 else f"style {style_id!r}'s w:numId 0 turns numbering off"
             )
             return NumRef(not_numbered=True, reason=reason)
-
-        # the reason strings from here on are docx4j's at VERSION_17_1_1
-        # 7fba7a150, the shared contract of the three implementations
-        # (CR-003 section 18.10); the two cases never appear in a golden
-        origin = "the paragraph's own" if direct_num_pr else f"from style {style_id!r}"
-        definition = self.instance_list_definitions.get(num_id)
-        if definition is None:
-            return NumRef(not_numbered=True, reason=f"no w:num for numId {num_id} ({origin})")
-
-        if not ilvl:
-            ilvl = "0"
-
-        if not definition.level_exists(ilvl):
-            return NumRef(
-                not_numbered=True, reason=f"no w:lvl {ilvl} in w:num {num_id} ({origin})"
-            )
-
-        if not direct_num_pr and self.style_linked_elsewhere(num_id, ilvl, style_id):
-            return NumRef(
-                not_numbered=True,
-                reason=(
-                    f"level {ilvl} of numId {num_id} is linked to a paragraph style "
-                    f"other than {style_id!r}"
-                ),
-            )
-        return NumRef(num_id=num_id, ilvl=ilvl, direct=direct_num_pr)
+        return num_id, ilvl, direct_num_pr, style_id
 
     # -- counting ----------------------------------------------------------
 
@@ -556,19 +657,8 @@ class Emulator:
         A paragraph with no ``w:pPr`` is resolved as an empty one, against the
         default paragraph style, which may be numbered (docx4j ``c283dffdb``).
         """
-        p_style_val = _value(getattr(p_pr, "p_style", None))
-        num_pr = getattr(p_pr, "num_pr", None)
-        num_id = None
-        ilvl = None
-        if num_pr is not None:
-            num_id = _value(getattr(num_pr, "num_id", None))
-            ilvl = _value(getattr(num_pr, "ilvl", None))
-        # each as Word reads it (CR-021): "1.0" is list 1; a refused form is unset
-        num_id = decimal(num_id)
-        ilvl = decimal(ilvl)
-        return self.number_of(
-            p_style_val, num_id, ilvl, bool(num_id), state
-        )
+        p_style_val, num_id, ilvl, direct = self._arguments(p_pr)
+        return self.number_of(p_style_val, num_id, ilvl, direct, state)
 
     def number_of(
         self,
@@ -729,7 +819,7 @@ class Emulator:
         """
         from docx4j_py.child import deep_copy
 
-        resolver = _resolver_of(self._package)
+        resolver = self.resolver
         seen: set[str] = set()
         current: str | None = style_id
         while current is not None and current not in seen:

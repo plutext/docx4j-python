@@ -603,7 +603,17 @@ class _WmlToMarkdown:
         left = 0
         if self.resolver is not None:
             try:
-                effective = self.resolver.get_effective_ppr(style_id)
+                try:
+                    effective = self.resolver.get_effective_ppr(style_id)
+                except Exception as error:
+                    # a numbering part that could not be read: the style as without it (CR-031 section 4.6)
+                    from docx4j_py.model.text.trees import without_numbering
+
+                    fallback = without_numbering(self.resolver, error)
+                    if fallback is None:
+                        raise
+                    self.resolver = fallback
+                    effective = fallback.get_effective_ppr(style_id)
                 ind = getattr(effective, "ind", None) if effective is not None else None
                 if ind is not None:
                     value = ind.left if ind.left is not None else ind.start

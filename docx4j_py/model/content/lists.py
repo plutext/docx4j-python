@@ -851,6 +851,8 @@ class ListItem:
 
     @property
     def _label(self) -> ItemLabel | None:
+        if not _names_a_list(self.paragraph):
+            return None
         return labels_for(self.paragraph.parent_body).get(id(self.paragraph.element))
 
     # -- reading -----------------------------------------------------------
@@ -920,10 +922,10 @@ class ListItem:
         with `parent_only`, only when that level is exactly one shallower.
         None where there is none (CR-003 section 3.1: no null objects).
         """
-        ordered = _ordered_items(self.paragraph.parent_body)
         label = self._label
         if label is None:
             return None
+        ordered = _ordered_items(self.paragraph.parent_body)
         position = _position_of(ordered, self.paragraph.element)
         if position < 0:
             return None
@@ -943,10 +945,10 @@ class ListItem:
         item at this level or shallower; with `direct_children_only`, only those
         exactly one level deeper.
         """
-        ordered = _ordered_items(self.paragraph.parent_body)
         label = self._label
         if label is None:
             return []
+        ordered = _ordered_items(self.paragraph.parent_body)
         position = _position_of(ordered, self.paragraph.element)
         if position < 0:
             return []
@@ -1007,6 +1009,8 @@ def lists_of(body: Body) -> list[List]:
 
 def list_of(paragraph: Paragraph) -> List | None:
     """Office JS ``Paragraph.list``: the list this paragraph is an item of."""
+    if not _names_a_list(paragraph):
+        return None
     label = labels_for(paragraph.parent_body).get(id(paragraph.element))
     if label is None:
         return None
@@ -1015,8 +1019,24 @@ def list_of(paragraph: Paragraph) -> List | None:
 
 def list_item_of(paragraph: Paragraph) -> ListItem | None:
     """Office JS ``Paragraph.listItem``: None when the paragraph is not one."""
+    if not _names_a_list(paragraph):
+        return None
     label = labels_for(paragraph.parent_body).get(id(paragraph.element))
     return None if label is None else ListItem(paragraph)
+
+
+def _names_a_list(paragraph: Paragraph) -> bool:
+    """Whether the paragraph names a list, its own ``w:numId`` or its style's, other than 0 (``Emulator.names_a_list``).
+
+    Where it does not, it is no list item, and that is known without a
+    numbering definition, so a reader over it never counts its story: a
+    numbering part that cannot be read raises nothing there, and raises its
+    refusal over a paragraph that names a list (CR-031 section 4.6).
+    """
+    emulator = emulator_of(paragraph.parent_body.package)
+    if emulator is None or emulator.part is None:
+        return False
+    return emulator.names_a_list(paragraph.element.p_pr)
 
 
 def start_new_list(

@@ -165,14 +165,20 @@ def test_a_part_that_cannot_be_read_reads_as_a_part_that_is_absent(part: str, vi
 
 
 def test_the_emulator_counts_direct_numbering_without_readable_styles():
-    """docx4j's ``theEmulatorCountsDirectNumberingWithoutReadableStyles`` (its fix (a), which holds here already):
-    outside the text model, a paragraph's own numbering is counted where the styles part cannot be read."""
+    """docx4j's ``theEmulatorCountsDirectNumberingWithoutReadableStyles`` (its fix (a)), as the text model's emulator
+    reads (``read_styles=False``): a paragraph's own numbering is counted where the styles part cannot be read. The
+    package's emulator, the content API's, raises the styles part's refusal instead (CR-031 section 4.6, Phase A2:
+    docx4j's emulator reads on)."""
     pkg = load(FIXTURES / "part-not-read-styles.docx")
     body = pkg.main_document_part.contents.body.content
-    first = Emulator.get_number(pkg, body[2].p_pr)
+    emulator = Emulator(pkg, read_styles=False)
+    first = emulator.number(body[2].p_pr)
     assert first is not None and first.num_string == "1."
-    assert Emulator.get_number(pkg, body[3].p_pr).num_string == "2."
-    assert Emulator.get_number(pkg, body[0].p_pr) is None  # numbered by its style, which is lost
+    assert emulator.number(body[3].p_pr).num_string == "2."
+    assert emulator.number(body[0].p_pr) is None  # numbered by its style, which is lost
+    with pytest.raises(Docx4JException) as raised:
+        Emulator.get_number(pkg, body[2].p_pr)
+    assert raised.value is pkg.style_definitions_part.unreadable
 
 
 def test_the_unreadable_part_is_kept():

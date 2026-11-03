@@ -13,16 +13,22 @@ The styles, numbering and settings parts are consulted, not emitted: one that
 cannot be read (its XML not well formed, CR-031) is read as if the package
 lacked it, and the reading says so with ``part.not_read`` where it first needs
 the part (WD 0.66 REQ-801, CR-031 section 4.6; :meth:`PackageTrees.part_not_read`).
+Neither such part reaches the numbering emulator or the property resolver's
+numbering seam, which raise its refusal for the content API (CR-031 Phase A2):
+the emulator is built without the styles (``read_styles=False``), and a
+paragraph whose resolution meets the numbering part's refusal is resolved over a
+resolver that reads no numbering (:func:`without_numbering`).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from docx4j_py.model.property_resolver import PropertyResolver
 from docx4j_py.model.revisions import trees as rtrees
 from docx4j_py.openpackaging.exceptions import Docx4JException
 
-__all__ = ["Context", "PackageTrees", "not_readable"]
+__all__ = ["Context", "PackageTrees", "not_readable", "without_numbering"]
 
 
 def _real(part: Any) -> Any:
@@ -108,6 +114,41 @@ def not_readable(part: Any, error: BaseException) -> Docx4JException:
     )
 
 
+def without_numbering(resolver: Any, error: BaseException) -> Any:
+    """A resolver over `resolver`'s package that reads no numbering, where `error` is its numbering part's refusal; else None.
+
+    The property resolver asks the numbering emulator for a numbered
+    paragraph's level indent, and the emulator raises the numbering part's own
+    ``Docx4JException`` where its XML is not well formed, as the content API's
+    list readers do (CR-031 section 4.6, Phase A2). A reading that reads such
+    a part as absent (the text model, ``part.not_read``) resolves the paragraph
+    again over this one, which is what the merge gives a package whose
+    numbering defines nothing: no level's indent. `error` is the part's own
+    record (``XmlPart.unreadable``), never another failure.
+    """
+    package = getattr(resolver, "package", None)
+    try:
+        # through the main part, as PackageTrees finds it: a trial's copy of the part could not be made
+        main = getattr(package, "main_document_part", None) if package is not None else None
+        part = getattr(main, "numbering_definitions_part", None) if main is not None else None
+    except Exception:  # noqa: BLE001 - no numbering part to ask: not its refusal
+        return None
+    if part is None or error is not getattr(_real(part), "unreadable", None):
+        return None
+    return _WithoutNumbering(package)
+
+
+class _WithoutNumbering(PropertyResolver):
+    """A property resolver whose paragraph merge asks no numbering level for its indent (:func:`without_numbering`)."""
+
+    __slots__ = ()
+
+    @property
+    def numbering_indents(self) -> Any:
+        """None: the merge as for a package whose numbering defines nothing."""
+        return None
+
+
 class PackageTrees:
     """The trees and resolution utilities of one package, as one reading sees them."""
 
@@ -183,10 +224,15 @@ class PackageTrees:
                 self.resolver = None
         self.numbering_part = getattr(main, "numbering_definitions_part", None)
         if self.numbering_part is not None:
-            from docx4j_py.model.listnumbering.emulator import emulator_of
+            from docx4j_py.model.listnumbering.emulator import Emulator, emulator_of
 
             try:
-                self.emulator = emulator_of(package)
+                if self.known_not_read(self.styles_part):
+                    # the numbering read as without styles, where the emulator's own reading of them would raise
+                    # their refusal (CR-031 section 4.6): docx4j's Emulator.resolverOf, fix (a)
+                    self.emulator = Emulator(package, read_styles=False)
+                else:
+                    self.emulator = emulator_of(package)
             except Exception:  # noqa: BLE001 - lists then not counted
                 self.emulator = None
         self.settings_part = getattr(main, "document_settings_part", None)

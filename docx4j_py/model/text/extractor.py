@@ -104,7 +104,7 @@ from docx4j_py.model.text.result import (
     TextRunSource,
     TextWarning,
 )
-from docx4j_py.model.text.trees import Context, PackageTrees, not_readable
+from docx4j_py.model.text.trees import Context, PackageTrees, not_readable, without_numbering
 from docx4j_py.model.values import effective, integer, is_on, on_off, xsd_boolean
 
 __all__ = ["Extractor", "normalize"]
@@ -1138,8 +1138,8 @@ class Extractor:
         if self.resolver is not None:
             try:
                 effective = self.resolver.get_effective_ppr(own)
-            except Exception:  # noqa: BLE001 - not resolved: the paragraph's own properties
-                effective = own
+            except Exception as error:  # noqa: BLE001 - not resolved: the paragraph's own properties
+                effective = self._without_numbering(own, error)
         if effective is None:
             return
         ind = effective.ind
@@ -1158,6 +1158,24 @@ class Extractor:
             block.contextual_spacing = _on(effective.contextual_spacing)
         direct = own is not None and own.num_pr is not None and own.num_pr.num_id is not None
         block.numbering = self._numbering(effective.num_pr, direct, block.style)
+
+    def _without_numbering(self, own: Any, error: Exception) -> Any:
+        """A paragraph's properties where resolving them met the numbering part's refusal: resolved as without the part.
+
+        The numbering part could not be read (CR-031 section 4.6), so the rest
+        of the reading resolves over a resolver that reads no numbering, as for
+        a package that lacks the part; ``part.not_read`` is :meth:`consult`'s,
+        where a paragraph needs the numbering. Any other failure: the
+        paragraph's own properties, as before.
+        """
+        fallback = without_numbering(self.trees.resolver, error)
+        if fallback is None:
+            return own
+        self.trees.resolver = fallback
+        try:
+            return fallback.get_effective_ppr(own)
+        except Exception:  # noqa: BLE001 - not resolved: the paragraph's own properties
+            return own
 
     def _numbering(self, num_pr: Any, direct: bool, p_style: str | None) -> TextNumbering | None:
         """A paragraph's numbering; None for none, for ``w:numId`` 0, and where Word numbers it not (REQ-510)."""
