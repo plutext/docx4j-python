@@ -1,0 +1,5 @@
+{
+  "adapterName": "docx4j-python",
+  "adapterCommand": ["adapters/docx4j-python/.venv/bin/python", "-I", "adapters/docx4j-python/run_adapter.py"],
+  "adapterVersionCommand": ["adapters/docx4j-python/.venv/bin/python", "-I", "-c", "import importlib.metadata as m; print(m.version('docx4j') + ' (docx4j-xsdata ' + m.version('docx4j-xsdata') + ')')"]
+}
