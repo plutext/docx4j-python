@@ -41,6 +41,7 @@ __all__ = [
     "BRANCH_CHILD_NAMES",
     "EXACT_TYPES",
     "LEXICAL_TYPES",
+    "RECOVER",
     "UncheckedXmlParser",
     "branch_child_class",
     "container_binding",
@@ -96,6 +97,18 @@ LEXICAL_TYPES: frozenset[type] = frozenset({float, bytes})
 #: drops it (:mod:`docx4j_py.openpackaging.normalise`).
 EXACT_TYPES: frozenset[type] = frozenset({bool, Enum, int})
 
+#: Whether the parse recovers from XML that is not well formed (the fork's
+#: ``ParserConfig(recover=)``, stage 15, item 33, docx4j-xsdata 26.2.5; CR-031
+#: D1). False: a part whose XML is not well formed is refused, its first fatal
+#: error raised (``ParserError`` from lxml's ``XMLSyntaxError``), where upstream's
+#: ``recover=True`` let libxml2 read past the error, keep what it guessed and drop
+#: the rest with no report, even under ``LoadOptions(strict=True)``: a cut part
+#: read as far as the cut, a stray ``&`` or an undefined entity dropped, a second
+#: root lost (CR-031 section 2.2). XML 1.0 makes such an error fatal, and docx4j
+#: refuses the part (its CR-065 D1). No parser in this package recovers
+#: (``tests/openpackaging/test_not_well_formed.py``'s census).
+RECOVER: bool = False
+
 
 def parser_config(
     *, lenient: bool = True, skipped_report: bool = True, **kwargs: Any
@@ -149,11 +162,18 @@ def parser_config(
     package goes through this function** (``tests/test_parser_configs.py``), so
     that no parse reads ``" false"`` as ``False``.
 
+    ``recover`` is the fork's stage 15 (CR-031 D1, :data:`RECOVER`): False, so
+    XML that is not well formed raises at its first fatal error instead of being
+    mended. The engine names the part (``Docx4JException``, "Problem with part
+    /word/document.xml: <lxml's message>"), lxml's ``XMLSyntaxError`` the deepest
+    ``__cause__``.
+
     **One config per thread.** The report is mutable state on the config and is
     cleared at the start of every parse.
     """
     kwargs.setdefault("lexical_types", LEXICAL_TYPES)
     kwargs.setdefault("exact_types", EXACT_TYPES)
+    kwargs.setdefault("recover", RECOVER)
     if "on_bind" not in kwargs:
         from functools import partial
 

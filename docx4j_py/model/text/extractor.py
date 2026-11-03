@@ -49,7 +49,14 @@ section 4.6, docx4j ``4fdd80063``): the main part raises ``Docx4JException``
 saying which part and why, and one level down raises ``content.not_read`` at
 the nested reading's root; the notes, the comments, a header or footer and
 the glossary each contribute nothing and raise ``content.not_read``, the body
-still read.
+still read. A styles, numbering or settings part that cannot be read is read as
+if the package lacked it, and raises ``part.not_read`` once, where the reading
+first needs it (WD 0.66 REQ-801, CR-031 section 4.6, docx4j CR-046 section 10's
+``consult``): the styles where a paragraph or run is first resolved, the
+numbering for the first paragraph with a ``w:numId`` (its own or its style's),
+the settings for ``fields_update_on_open`` (so at every reading but one level
+down), forms protection and, where a section has an even header or footer,
+``w:evenAndOddHeaders``.
 
 A plain-text, WordprocessingML or Flat OPC ``altChunk`` is expanded where it
 is (REQ-513), and under ``embedded: true`` an embedded WordprocessingML package
@@ -564,6 +571,17 @@ def _restory(blocks: list[TextBlock], story: str) -> None:
                 _restory(cell.blocks, story)
 
 
+def _even_reference(sections: list[Any]) -> bool:
+    """Whether a section has an even header or footer, so that the settings' ``w:evenAndOddHeaders`` matters."""
+    for sect_pr in sections:
+        if sect_pr is None:
+            continue
+        for ref in sect_pr.header_reference_or_footer_reference or ():
+            if _v(getattr(ref, "type_value", None)) == "even":
+                return True
+    return False
+
+
 def _is_chart_part(part: Any) -> bool:
     """A chart part or a chartex one (docx4j ``ChartRef``: anything else places no chart)."""
     return part is not None and type(part).__name__ in ("ChartPart", "ChartExSpacePart")
@@ -604,7 +622,6 @@ class Extractor:
         self.planless = package_trees.document is None and not resolved
         if not resolved and self.view != "markup" and package_trees.document is not None:
             self.plan = self.context.plan(self.view == "accepted")
-        self.resolver = package_trees.resolver
         self.warnings: list[TextWarning] = []
         self._warned: set[tuple[Any, ...]] = set()
         self._style_rpr: dict[tuple[Any, Any], Any] = {}
@@ -637,7 +654,8 @@ class Extractor:
         """The package's text: REQ-501's order."""
         out: list[TextBlock] = []
         comments: dict[str, TextComment] = {}
-        metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: self._fields_update_on_open()}
+        # one level down the settings' updateFields is not the result's, nor are the settings needed for it
+        metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: not self.nested and self._fields_update_on_open()}
         if not self.nested:
             from docx4j_py.model.text import metadata as properties
 
@@ -738,7 +756,7 @@ class Extractor:
     def _is_forms_protected(self) -> bool:
         """``w:documentProtection w:edit="forms"``, enforced (the attribute as written)."""
         if self._forms_protected is None:
-            settings = self.trees.settings
+            settings = self._settings()
             protect = getattr(settings, "document_protection", None) if settings is not None else None
             self._forms_protected = (
                 protect is not None and _v(protect.edit) == "forms" and on_off(effective(protect, "enforcement"))
@@ -870,8 +888,66 @@ class Extractor:
         return TextResult(out, comments, self.warnings, metadata, self.options)
 
     def _fields_update_on_open(self) -> bool:
-        settings = self.trees.settings
+        settings = self._settings()
         return _on(getattr(settings, "update_fields", None)) if settings is not None else False
+
+    # -- parts consulted, not emitted (REQ-801's part.not_read, WD 0.66; CR-031 section 4.6) ----------
+
+    @property
+    def resolver(self) -> Any:
+        """The property resolver; None without styles, and where the styles part could not be read.
+
+        In that case ``part.not_read`` the first time a paragraph or run asks:
+        the reading goes on as for a package without styles.
+        """
+        trees = self.trees
+        if trees.resolver is None and trees.styles_part is not None:
+            self.consult(trees.styles_part)
+        return trees.resolver
+
+    def _numbering_emulator(self) -> Any:
+        """The numbering emulator, asked for a paragraph with a ``w:numId``, the one that needs the part.
+
+        None where there is no numbering part, and where it could not be read,
+        as for a package that lacks it, with ``part.not_read``.
+        """
+        part = self.trees.numbering_part
+        if part is not None and not self.consult(part):
+            return None
+        return self.trees.emulator
+
+    def _counting_emulator(self) -> Any:
+        """The emulator a paragraph is counted with: none where the numbering part was found unreadable, silently.
+
+        docx4j's ``count``: a numbering part that could not be read counts
+        nothing, as none does, and a document numbering no paragraph raises
+        nothing (``part.not_read`` is :meth:`_numbering_emulator`'s).
+        """
+        if self.trees.known_not_read(self.trees.numbering_part):
+            return None
+        return self.trees.emulator
+
+    def _settings(self) -> Any:
+        """The settings' ``w:settings``; None where there are none, and where they could not be read, with ``part.not_read``."""
+        part = self.trees.settings_part
+        if part is not None and not self.consult(part):
+            return None
+        return self.trees.settings
+
+    def consult(self, part: Any) -> bool:
+        """Whether a part the reading consults but does not emit can be read. docx4j ``Extractor.consult``.
+
+        The styles, the numbering and the settings; not the font table, which
+        the text model does not read. Where it can't (CR-031), the reading goes
+        on as for a package that lacks it, and the result is marked with
+        ``part.not_read``, its selector the part's name, once a part. Asked only
+        where this document needs the part, so that a part it does not need
+        raises nothing (REQ-801). No log line: the warning is the record.
+        """
+        if self.trees.part_not_read(part) is None:
+            return True
+        self.warn(TextWarning(TextWarning.PART_NOT_READ, None, part_name=_part_name(part)))
+        return False
 
     def comments_included(self) -> bool:
         return self.view == "markup" or self.options.comments
@@ -1025,7 +1101,7 @@ class Extractor:
             self._end_section(last, story)
             return
         # one count per paragraph: the label (list_labels) and the numbering's value come from it
-        if self.trees.emulator is not None and (self.options.list_labels or block.numbering is not None):
+        if self._counting_emulator() is not None and (self.options.list_labels or block.numbering is not None):
             counted = self._count(last, story)
             if self.options.list_labels:
                 block.list_label = _list_label(counted)
@@ -1095,7 +1171,7 @@ class Extractor:
             return None
         ilvl_value = _v(num_pr.ilvl.val) if num_pr.ilvl is not None else None
         ilvl = integer(ilvl_value) or 0  # as Word reads it (CR-021); absent or refused, level 0
-        emulator = self.trees.emulator
+        emulator = self._numbering_emulator()
         fmt: str | None = None
         text: str | None = None
         abstract: str | None = None
@@ -1123,7 +1199,7 @@ class Extractor:
 
     def _count(self, p: Any, story: _Story) -> Any:
         try:
-            return self.trees.emulator.number(self._p_pr_of(p), story.state)
+            return self._counting_emulator().number(self._p_pr_of(p), story.state)
         except Exception:  # noqa: BLE001 - not counted
             return None
 
@@ -2035,7 +2111,8 @@ class Extractor:
     def _sections_with_headers(
         self, sections: list[Any], main_blocks: list[TextBlock], headers: bool, footers: bool, out: list[TextBlock]
     ) -> None:
-        settings = self.trees.settings
+        # the settings' w:evenAndOddHeaders, asked where a section has an even header or footer, which needs it
+        settings = self._settings() if _even_reference(sections) else None
         even_and_odd = _on(getattr(settings, "even_and_odd_headers", None)) if settings is not None else False
         emitted: set[str] = set()
         last_header: dict[str, str] = {}

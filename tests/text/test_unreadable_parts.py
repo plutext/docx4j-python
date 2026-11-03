@@ -17,12 +17,15 @@ Then every other story part (the endnotes, the comments, a footer, the
 glossary) as docx4j's ``storyContent`` has it, a chunk whose main part cannot
 be read, and the part's route leaving a part as it was (REQ-204).
 
-**The break** is this package's, not docx4j's (CR-027 section 10): docx4j cuts
-a closing tag short (``</w:body>`` to ``</w:body``), which its parser refuses.
-This package's parse recovers from that (lxml's ``recover``, under the xsdata
-fork's handler) and reads the part, so the tests break the root's start tag
-instead (``<w:document`` to ``<<w:document``), which no recovery mends: the
-part then cannot be read at all, as docx4j's cannot.
+**The break** is docx4j's: a closing tag cut short (``</w:body>`` to
+``</w:body`` in the main part, the root's own elsewhere, ``</w:hdr>`` to
+``</w:hdr``), and the reason lxml's for it (``expected '>'``, at the cut's line
+and column). Until CR-031 this package's parse recovered from that (lxml's
+``recover``, under the xsdata fork's handler) and read the part, so the tests
+broke the root's start tag instead (``<w:document`` to ``<<w:document``), with
+the parser's reason "Failed to create target class"; since the fork's stage 15
+nothing recovers (CR-031 section 4.7), which retires CR-027 section 10.8's
+departure 1.
 """
 
 from __future__ import annotations
@@ -61,13 +64,35 @@ def _zip(entries: dict[str, bytes]) -> bytes:
     return out.getvalue()
 
 
+def _cut(xml: bytes, part: str) -> int:
+    """Where docx4j's break goes: after ``</w:body`` in the main part, after the root's closing tag's name elsewhere."""
+    if part.endswith("word/document.xml") and b"</w:body>" in xml:
+        return xml.index(b"</w:body>") + len(b"</w:body")
+    return xml.rindex(b">")
+
+
 def _break(data: bytes, part: str) -> bytes:
-    """The package with `part`'s root start tag broken (``<w:hdr`` to ``<<w:hdr``), which no recovery mends."""
+    """The package with docx4j's break in `part`: a closing tag cut short, ``</w:body>`` to ``</w:body`` in the main
+    part and the root's (``</w:hdr>`` to ``</w:hdr``) elsewhere."""
     entries = _unzip(data)
-    xml = entries[part].decode("utf-8")
-    start = xml.index("<w:")  # the root's start tag, after any declaration
-    entries[part] = (xml[:start] + "<" + xml[start:]).encode("utf-8")
+    xml = entries[part]
+    at = _cut(xml, part)
+    assert xml[at : at + 1] == b">"
+    entries[part] = xml[:at] + xml[at + 1 :]
     return _zip(entries)
+
+
+def _expected_reason(data: bytes, part: str) -> str:
+    """lxml's reason for docx4j's break in `data`: ``expected '>'`` at the first byte after the cut, 1-based."""
+    xml = _unzip(data)[part]
+    if part.endswith("word/document.xml") and b"</w:body<" in xml:
+        at = xml.index(b"</w:body<") + len(b"</w:body")
+    else:
+        assert not xml.endswith(b">")  # the root's closing tag, cut short at the end
+        at = len(xml)
+    line = xml.count(b"\n", 0, at) + 1
+    column = at - (xml.rfind(b"\n", 0, at) + 1) + 1
+    return f"expected '>', line {line}, column {column}"
 
 
 def _saved(pkg) -> bytes:
@@ -76,9 +101,9 @@ def _saved(pkg) -> bytes:
     return out.getvalue()
 
 
-def fixture(part: str) -> bytes:
-    """docx4j's ``fixture``: a document this package made and saved, a paragraph and a header with the same
-    paragraph, with `part`'s XML broken."""
+def _made() -> bytes:
+    """docx4j's ``fixture`` before the break: a document this package made and saved, a paragraph and a header with
+    the same paragraph."""
     pkg = create_package()
     mdp = pkg.main_document_part
     mdp.contents.body.content.append(wml(PARAGRAPH))
@@ -87,7 +112,12 @@ def fixture(part: str) -> bytes:
     header.set_contents(wml(f"<w:hdr {W}>{PARAGRAPH}</w:hdr>"))
     reference = wml(f'<w:headerReference {W} {R} w:type="default" r:id="{rel.id}"/>')
     mdp.contents.body.sect_pr.header_reference_or_footer_reference.append(reference)
-    return _break(_saved(pkg), part)
+    return _saved(pkg)
+
+
+def fixture(part: str) -> bytes:
+    """docx4j's ``fixture``: :func:`_made`, with `part`'s XML broken as docx4j breaks it."""
+    return _break(_made(), part)
 
 
 def _header(pkg) -> HeaderPart:
@@ -95,18 +125,15 @@ def _header(pkg) -> HeaderPart:
     return header
 
 
-def _assert_names_the_part(read, part_name: str, root: str) -> None:
+def _assert_names_the_part(read, part_name: str, reason: str) -> None:
     """docx4j's ``assertNamesThePart``: refused, naming the part and why, the part's own exception the cause."""
     with pytest.raises(Docx4JException) as raised:
         read()
-    # the reason: the deepest cause's message, on one line (here the parse's, which names the class it made)
-    assert str(raised.value) == (
-        f"The content of {part_name} could not be read, so it cannot be read as text: "
-        f"Failed to create target class `{root}`"
-    )
-    # the part's own exception, which names it, is the cause
+    # the reason: the deepest cause's message, on one line: lxml's (its msg, CR-031 section 4.7)
+    assert str(raised.value) == f"The content of {part_name} could not be read, so it cannot be read as text: {reason}"
+    # the part's own exception, which names it, is the cause, and gives the same reason
     cause = raised.value.__cause__
-    assert isinstance(cause, Docx4JException) and str(cause).startswith(f"Problem with part {part_name}: ")
+    assert isinstance(cause, Docx4JException) and str(cause) == f"Problem with part {part_name}: {reason}"
 
 
 def _assert_not_read(result, part_name: str) -> None:
@@ -123,15 +150,20 @@ def _assert_not_read(result, part_name: str) -> None:
 
 def test_the_text_model_says_which_part_could_not_be_read_and_why():
     """docx4j's ``theTextModelSaysWhichPartCouldNotBeReadAndWhy``: the package's text and the main part's."""
-    pkg = load(fixture("word/document.xml"))
-    _assert_names_the_part(lambda: extract(pkg), "/word/document.xml", "Document")  # before CR-027, empty
-    _assert_names_the_part(lambda: extract(pkg.main_document_part), "/word/document.xml", "Document")
+    data = fixture("word/document.xml")
+    reason = _expected_reason(data, "word/document.xml")
+    assert reason.startswith("expected '>', line 2, column ")
+    pkg = load(data)
+    _assert_names_the_part(lambda: extract(pkg), "/word/document.xml", reason)  # before CR-027, empty
+    _assert_names_the_part(lambda: extract(pkg.main_document_part), "/word/document.xml", reason)
 
 
 def test_the_text_model_of_a_header_says_which_part_could_not_be_read():
     """docx4j's ``theTextModelOfAHeaderSaysWhichPartCouldNotBeRead``; before CR-027, ``TypeError("not a story part")``."""
-    pkg = load(fixture("word/header1.xml"))
-    _assert_names_the_part(lambda: extract(_header(pkg)), "/word/header1.xml", "Hdr")
+    data = fixture("word/header1.xml")
+    pkg = load(data)
+    reason = _expected_reason(data, "word/header1.xml")
+    _assert_names_the_part(lambda: extract(_header(pkg)), "/word/header1.xml", reason)
 
 
 def test_an_embedded_document_that_cannot_be_read_is_content_not_read():

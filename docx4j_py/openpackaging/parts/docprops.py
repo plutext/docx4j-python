@@ -108,7 +108,10 @@ class CustomXmlDataStoragePropertiesPart(DefaultXmlPart):
 
         Read off a *throwaway* parse of the root element, not off
         :attr:`tree`: the loader asks every custom XML part for this, and a part
-        whose tree has been built is no longer written back byte for byte.
+        whose tree has been built is no longer written back byte for byte. The
+        parse never recovers (CR-031 D4): lxml yields the root's start event
+        before an error later in the bytes, so a part whose root start tag is
+        well formed gives its id, and one whose root start tag is broken None.
         """
         import io
 
@@ -119,7 +122,6 @@ class CustomXmlDataStoragePropertiesPart(DefaultXmlPart):
                 io.BytesIO(self.bytes_for_save),
                 events=("start",),
                 resolve_entities=False,
-                recover=True,
             ):
                 return element.get(f"{{{DS_NS}}}itemID") or element.get("itemID")
         except etree.XMLSyntaxError:

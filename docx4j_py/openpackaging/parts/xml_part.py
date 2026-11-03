@@ -20,6 +20,13 @@ outside a ``w:r``, or an element inside a text element, the part is read as
 Word reads it (CR-030, :mod:`~docx4j_py.openpackaging.breaks`): the bytes are
 repaired and parsed again, and the part's :attr:`warnings` says so.
 
+**Refused, not mended.** A part whose XML is not well formed raises
+``Docx4JException`` naming it and lxml's reason when its content is first read
+(CR-031, docx4j CR-065 D1): the fork's parser never recovers
+(:data:`docx4j_py.runtime.RECOVER`), and the failure is kept on the part
+(:attr:`XmlPart.unreadable`), raised again by every later read without another
+parse. The load stays lazy, and a save writes such a part's bytes as read.
+
 **Untouched means byte for byte.** :attr:`bytes_for_save` returns the source
 bytes unless the part was unmarshalled or had bytes set on it. Only a part the
 caller actually touched is re-serialised, which is what makes a round trip of a
@@ -44,7 +51,7 @@ from docx4j_py.openpackaging.exceptions import Docx4JException
 from docx4j_py.openpackaging.part_name import PartName
 from docx4j_py.openpackaging.parts.part import Part
 
-__all__ = ["XML_DECLARATION", "XmlPart"]
+__all__ = ["XML_DECLARATION", "XmlPart", "syntax_error_of"]
 
 T = TypeVar("T")
 
@@ -108,6 +115,8 @@ class XmlPart(Part, Generic[T]):
         "_private_contents",
         "_private_settings",
         "_source_ns_map",
+        "_unreadable",
+        "_unreadable_settings",
         "kept",
         "resolved_alternate_content",
         "root_name",
@@ -129,6 +138,9 @@ class XmlPart(Part, Generic[T]):
         #: The settings the private tree was parsed under (CR-002 section 16.2).
         self._private_settings: _ParseSettings | None = None
         self._bytes: bytes | None = None
+        #: The ``Docx4JException`` of the read that failed, and the settings it was read under (CR-031 D8).
+        self._unreadable: Docx4JException | None = None
+        self._unreadable_settings: _ParseSettings | None = None
         #: ``{namespace}localName`` of the root, when the class alone does not say.
         self.root_name = root_name
         self._source_ns_map: dict[str, str] = {}
@@ -214,6 +226,32 @@ class XmlPart(Part, Generic[T]):
         return self._contents is not None or self._bytes is not None
 
     @property
+    def unreadable(self) -> Docx4JException | None:
+        """Why the part's content could not be read, or None. docx4j ``JaxbXmlPart``'s ``unreadable``.
+
+        The ``Docx4JException`` the read that failed raised (CR-031 D8): its
+        XML is not well formed ("Problem with part /word/document.xml: Premature
+        end of data in tag t line 2, line 2, column 351", lxml's
+        ``XMLSyntaxError`` the deepest ``__cause__``), or the parse failed
+        otherwise. A later :attr:`contents` or :meth:`read_contents` raises it
+        again without parsing, unless the parse settings have changed since
+        (``strict``, ``mce_preprocess``, ``mc_load_mode``); :meth:`set_contents`,
+        :meth:`set_bytes` and :meth:`set_xml` clear it. None for a part never
+        read, one read, and one whose content was replaced.
+        """
+        return self._unreadable
+
+    @property
+    def is_content_unreadable(self) -> bool:
+        """Whether the last read of the content failed. docx4j ``isContentUnreadable()``.
+
+        Tells a part that could not be read from one with no content yet (a
+        part made in code before :meth:`set_contents`), for which
+        :attr:`contents` raises too.
+        """
+        return self._unreadable is not None
+
+    @property
     def contents(self) -> T:
         """The typed content, unmarshalled on first access. docx4j ``getContents()``.
 
@@ -235,7 +273,9 @@ class XmlPart(Part, Generic[T]):
         Raises:
             Docx4JException: the part has no content and no source container, or
                 no model class to unmarshal as, or `strict` was asked for and
-                something was skipped.
+                something was skipped; or its content cannot be read, its XML
+                not well formed (CR-031): :attr:`unreadable`, raised again
+                without a parse.
         """
         if self._contents is None:
             if self._private_contents is not None and self._private_settings == self._parse_settings():
@@ -287,6 +327,8 @@ class XmlPart(Part, Generic[T]):
         self._private_settings = None
         self._contents = value
         self._bytes = None
+        self._unreadable = None
+        self._unreadable_settings = None
         if value is not None:
             link_parents(value, context=context())
 
@@ -301,6 +343,8 @@ class XmlPart(Part, Generic[T]):
         self._empty_value = False
         self.resolved_alternate_content = []
         self.warnings = []
+        self._unreadable = None
+        self._unreadable_settings = None
 
     def set_xml(self, xml: str) -> None:
         """Replace the content with an XML string."""
@@ -323,12 +367,17 @@ class XmlPart(Part, Generic[T]):
         compares what a part holds now with what its source held, to tell what a
         session introduced from what the file already had. The part is not
         touched: not its tree, its private tree, its reports nor its bytes. None
-        for a part with no source container (one made in code).
+        for a part with no source container (one made in code), and for a source
+        that cannot be read, its XML not well formed (CR-031 D9): it held
+        nothing readable, so every finding in the part now is the session's.
         """
         data = self._source_bytes()
         if data is None or self.model_class is None:
             return None
-        obj, _parser, _resolved, _warnings = self._parse(data, self._parse_settings())
+        try:
+            obj, _parser, _resolved, _warnings = self._parse(data, self._parse_settings())
+        except Docx4JException:
+            return None
         return obj
 
     def _parse(self, data: bytes, settings: _ParseSettings) -> tuple[Any, Any, list[Any], list[Any]]:
@@ -340,28 +389,33 @@ class XmlPart(Part, Generic[T]):
         through :func:`~docx4j_py.openpackaging.breaks.repair_bytes`, and the
         fork parses the result, whose tree and report are the part's. A clean
         part pays the test of an empty report.
+
+        XML that is not well formed is refused by whichever parser meets it
+        first, the ``mc`` passes' or the fork's, which never recovers (CR-031
+        D2): ``Docx4JException`` "Problem with part <name>: <lxml's message>",
+        lxml's ``XMLSyntaxError`` the deepest ``__cause__``.
         """
         from docx4j_py.runtime import parser
 
         clazz = self.model_class
         resolved: list[Any] = []
-        if settings.mc_load_mode == "word":
-            # CR-012 Phase A: block-, row- and cell-level mc:AlternateContent
-            # replaced by the branch Word reads; a part without the element
-            # pays one substring test
-            from docx4j_py.openpackaging.mc_load_mode import splice_word
-
-            data, resolved = splice_word(data)
-        if settings.mce_preprocess:
-            from docx4j_py.openpackaging.mce import mce_preprocess_bytes
-
-            data = mce_preprocess_bytes(data)
-
-        xml_parser = parser(lenient=True, skipped_report=True)
         try:
+            if settings.mc_load_mode == "word":
+                # CR-012 Phase A: block-, row- and cell-level mc:AlternateContent
+                # replaced by the branch Word reads; a part without the element
+                # pays one substring test
+                from docx4j_py.openpackaging.mc_load_mode import splice_word
+
+                data, resolved = splice_word(data)
+            if settings.mce_preprocess:
+                from docx4j_py.openpackaging.mce import mce_preprocess_bytes
+
+                data = mce_preprocess_bytes(data)
+
+            xml_parser = parser(lenient=True, skipped_report=True)
             obj = xml_parser.from_bytes(data, clazz)
         except Exception as exc:  # noqa: BLE001 - the part name is the useful half
-            raise Docx4JException(f"Problem with part {self.part_name}: {exc}") from exc
+            raise Docx4JException(f"Problem with part {self.part_name}: {_reason(exc)}") from exc
         warnings: list[Any] = []
         items = getattr(xml_parser.skipped, "items", None)
         if items:
@@ -377,7 +431,7 @@ class XmlPart(Part, Generic[T]):
                     try:
                         obj = xml_parser.from_bytes(repaired, clazz)
                     except Exception as exc:
-                        raise Docx4JException(f"Problem with part {self.part_name}: {exc}") from exc
+                        raise Docx4JException(f"Problem with part {self.part_name}: {_reason(exc)}") from exc
         if xml_parser.config.on_bind is None:
             # No post-bind hook on this config, so the parse left the parent
             # pointers unwired and the second walk is still needed. With the
@@ -396,13 +450,23 @@ class XmlPart(Part, Generic[T]):
                 f"Part {self.part_name} ({self.content_type}) has no model class; "
                 "it is a generic XML part, use .tree"
             )
+        settings = self._parse_settings()
+        if self._unreadable is not None and self._unreadable_settings == settings:
+            # docx4j's unreadable: the read that failed, raised again without a second parse (CR-031 D8)
+            raise self._unreadable.with_traceback(None)
         data = self._raw_bytes()
         self._source_ns_map = _root_ns_map(data)
         # an empty attribute value, either quote and any spacing round "=": two substring tests
         self._empty_value = b'""' in data or b"''" in data
 
-        settings = self._parse_settings()
-        obj, xml_parser, resolved, warnings = self._parse(data, settings)
+        try:
+            obj, xml_parser, resolved, warnings = self._parse(data, settings)
+        except Docx4JException as error:
+            self._unreadable = error
+            self._unreadable_settings = settings
+            raise
+        self._unreadable = None
+        self._unreadable_settings = None
 
         report = xml_parser.skipped
         self.skipped = list(getattr(report, "items", ()) or ())
@@ -559,11 +623,43 @@ def _element_name(obj: Any) -> str | None:
     return element_name(obj)
 
 
+def syntax_error_of(error: BaseException | None) -> etree.XMLSyntaxError | None:
+    """lxml's ``XMLSyntaxError``, `error` or one of its causes (``__cause__``), or None: why XML was not well formed.
+
+    The engine's refusal of such a part is a ``Docx4JException`` from the
+    fork's ``ParserError``, from lxml's error (CR-031 Q8), or from lxml's error
+    directly where an ``mc`` pass met it first. Its ``position`` is the line
+    and the column.
+    """
+    seen: set[int] = set()
+    while error is not None and id(error) not in seen:
+        if isinstance(error, etree.XMLSyntaxError):
+            return error
+        seen.add(id(error))
+        error = error.__cause__
+    return None
+
+
+def _reason(error: BaseException) -> str:
+    """Why a parse failed: lxml's message where the XML is not well formed, else the error's own.
+
+    lxml's ``msg``, without the ``(<string>, line 2)`` its ``str()`` appends
+    for a source with no file name (CR-031 section 4.2).
+    """
+    syntax = syntax_error_of(error)
+    if syntax is not None and syntax.msg:
+        return str(syntax.msg)
+    return str(error)
+
+
 def _root_ns_map(data: bytes) -> dict[str, str]:
     """The namespace declarations on a part's root element.
 
     Parsed with ``iterparse`` and abandoned at the root's start tag, so this
-    costs the root element and not the document.
+    costs the root element and not the document. It never recovers (CR-031
+    D4): lxml yields the root's start event before an error later in the
+    bytes, so a part whose root start tag is well formed gives the same, and
+    one whose root start tag is broken gives ``{}``.
     """
     import io
 
@@ -573,7 +669,6 @@ def _root_ns_map(data: bytes) -> dict[str, str]:
             events=("start",),
             resolve_entities=False,
             huge_tree=True,
-            recover=True,
         ):
             return {p: u for p, u in element.nsmap.items() if p is not None}
     except etree.XMLSyntaxError:

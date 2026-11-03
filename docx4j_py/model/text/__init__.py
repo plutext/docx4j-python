@@ -201,7 +201,10 @@ def extract(
             (the notes, the comments, a header or footer of the package, the
             glossary, an embedded document's or a chunk's main part)
             contributes nothing and raises ``content.not_read`` (REQ-801,
-            REQ-512): the rest is read.
+            REQ-512): the rest is read. A styles, numbering or settings part
+            that cannot be read is read as if the package lacked it, with one
+            ``part.not_read`` naming it where the reading first needs it (WD
+            0.66 REQ-801, CR-031 section 4.6).
         TypeError: a part that is no story part (use the package), or one
             that belongs to no package.
     """

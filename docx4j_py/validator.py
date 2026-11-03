@@ -31,6 +31,11 @@ is Word's sentinel; a row height under ``hRule="auto"``, an unmeasured
 attribute and an attribute with no row (a table width under ``auto``) are not
 checked; the write side's 65,534 cap is not a read limit.
 
+**A part whose XML is not well formed** (``part.not_well_formed``,
+:class:`PartNotWellFormed`; CR-031 D9): a part the walk cannot read is reported,
+with lxml's message, its line and its column, and the walk goes on to the next
+part. Its content is refused when read (CR-031), so there is no tree to walk.
+
 Nothing is raised for a finding, and nothing is rewritten: a finding is plain
 data with ``to_dict()``. A part never unmarshalled is read privately
 (:meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart.read_contents`), so it
@@ -50,6 +55,7 @@ __all__ = [
     "CellWithoutEndParagraph",
     "Finding",
     "MisplacedContent",
+    "PartNotWellFormed",
     "ValueOutOfRange",
     "check_for_save",
     "findings_in",
@@ -194,6 +200,32 @@ class ValueOutOfRange(Finding):
     range: tuple[int, int] | None = None
     read_as: str | None = None
     rule: str | None = None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class PartNotWellFormed(Finding):
+    """A part whose XML is not well formed, so that nothing in it could be walked (CR-031 D9): ``part.not_well_formed``.
+
+    The part's content is refused when read (``Docx4JException``, "Problem with
+    part /word/document.xml: ..."); the validator reports it and goes on. Its
+    :attr:`message` is lxml's (``"Premature end of data in tag t line 2, line 2,
+    column 351"``), and a save writes the part's bytes as read.
+
+    Attributes:
+        line: the line of lxml's first fatal error, 1-based.
+        column: its column, as lxml's message gives it.
+    """
+
+    code: ClassVar[str] = "part.not_well_formed"
+
+    line: int | None = None
+    column: int | None = None
+
+    @classmethod
+    def of(cls, part: Any, syntax: Any) -> PartNotWellFormed:
+        """The finding for `part`, from lxml's ``XMLSyntaxError``."""
+        line, column = getattr(syntax, "position", None) or (None, None)
+        return cls(message=str(syntax.msg), part_name=str(part.part_name), line=line, column=column, node=part)
 
 
 # ---------------------------------------------------------------------------
@@ -718,10 +750,25 @@ def _tree_of(part: Any) -> Any:
 
 
 def part_findings(part: Any, tree: Any = None) -> list[Finding]:
-    """Every finding in one XML part (`tree`, else its own tree), with the part's name and its addresses."""
+    """Every finding in one XML part (`tree`, else its own tree), with the part's name and its addresses.
+
+    A part whose own tree cannot be read, its XML not well formed, is one
+    :class:`PartNotWellFormed` (CR-031 D9); a read that fails otherwise raises.
+    """
+    from docx4j_py.openpackaging.exceptions import Docx4JException
+    from docx4j_py.openpackaging.parts.xml_part import syntax_error_of
     from docx4j_py.traversal import element_name
 
-    root = _tree_of(part) if tree is None else tree
+    if tree is None:
+        try:
+            root = _tree_of(part)
+        except Docx4JException as error:
+            syntax = syntax_error_of(error)
+            if syntax is None:
+                raise
+            return [PartNotWellFormed.of(part, syntax)]
+    else:
+        root = tree
     if root is None:
         return []
     container, prefix = _body_of(part, root)
@@ -766,6 +813,9 @@ def misplaced(root: Any, *, unmarshalled_only: bool = False) -> list[Finding]:
         unmarshalled_only: for a package, only the parts already unmarshalled:
             those a save re-marshals. Otherwise a part never unmarshalled is
             read privately and stays as it was, written byte for byte.
+
+    A part whose XML is not well formed is reported as ``part.not_well_formed``
+    and the walk goes on to the next part (CR-031 D9).
     """
     from docx4j_py.openpackaging.parts.xml_part import XmlPart
 

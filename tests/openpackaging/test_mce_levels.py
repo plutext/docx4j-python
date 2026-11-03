@@ -1159,8 +1159,11 @@ def test_a_corrupt_part_still_raises_in_word_mode():
         "</w:body>", ""
     )
     pkg = made.load("word")
-    with pytest.raises((Docx4JException, etree.XMLSyntaxError)):
+    # since CR-031 (D2) the splice is inside the part's parse: the engine's refusal naming the part, lxml's error the
+    # cause, where lxml's own XMLSyntaxError came out of contents naming no part
+    with pytest.raises(Docx4JException, match="^Problem with part /word/document.xml: ") as raised:
         assert pkg.main_document_part.contents is not None
+    assert isinstance(raised.value.__cause__, etree.XMLSyntaxError)
 
 
 def _branch_warnings(pkg: Any) -> list[tuple[str | None, str | None]]:

@@ -489,8 +489,8 @@ class TextWarning:
 
     A kind, the address of the block it is in where there is one, and its
     selector: for ``mce.branches_differ`` the branch selected; for
-    ``altchunk.not_expanded``, ``content.not_read`` and ``image.not_described``
-    the part's name (an ``altchunk.not_expanded``'s is the chunk's since
+    ``altchunk.not_expanded``, ``content.not_read``, ``part.not_read`` and
+    ``image.not_described`` the part's name (an ``altchunk.not_expanded``'s is the chunk's since
     CR-027, WD 0.47 and docx4j CR-070; it was the chunk's content type, which
     the warning still carries). Never the document's text (REQ-802).
 
@@ -513,6 +513,11 @@ class TextWarning:
     #: story part (the notes, the comments, a header or footer, the glossary, an
     #: embedded document's main part); it contributes nothing (REQ-511, REQ-512, REQ-801).
     CONTENT_NOT_READ = "content.not_read"
+    #: A part the reading consulted and needed for this document but does not emit (the styles, the numbering, the
+    #: settings) that cannot be read, its XML not well formed: the text is read as for a package that lacks it
+    #: (REQ-801, WD 0.66; CR-031 section 4.6, docx4j CR-046 section 10). Once a part, with no address; its selector
+    #: is the part's name.
+    PART_NOT_READ = "part.not_read"
     #: An image the describer failed to describe: it has no description (REQ-514, REQ-801).
     IMAGE_NOT_DESCRIBED = "image.not_described"
 
@@ -522,7 +527,7 @@ class TextWarning:
     branch: str | None = None
     #: For ``altchunk.not_expanded``: the chunk's content type as the package declares it.
     content_type: str | None = None
-    #: For ``content.not_read``: the part's name; for ``image.not_described``,
+    #: For ``content.not_read`` and ``part.not_read``: the part's name; for ``image.not_described``,
     #: the image part's; for ``altchunk.not_expanded``, the chunk's
     #: (``/word/afchunk.rtf``), so that a host can read it itself (CR-027). One
     #: level down, the embedded package part's or the chunk's.

@@ -8,6 +8,11 @@ emulator, which read their parts without unmarshalling them; and what a story
 needs from the rest of the document: the note references' order (``[n]``),
 the numbering states per story, the islands of wildcard text boxes, and each
 view's plan, made once.
+
+The styles, numbering and settings parts are consulted, not emitted: one that
+cannot be read (its XML not well formed, CR-031) is read as if the package
+lacked it, and the reading says so with ``part.not_read`` where it first needs
+the part (WD 0.66 REQ-801, CR-031 section 4.6; :meth:`PackageTrees.part_not_read`).
 """
 
 from __future__ import annotations
@@ -42,13 +47,49 @@ def _read(part: Any, unreadable: dict[int, tuple[Any, Exception]] | None = None)
         return None
 
 
+class _NoTree:
+    """An lxml parser target that builds nothing: the parse checks that the XML is well formed, no more."""
+
+    def close(self) -> None:
+        return None
+
+
+def _well_formed(part: Any) -> bool:
+    """Whether a part's content is well-formed XML, without reading it: a parse of its bytes that builds no tree.
+
+    True for a part already read (unmarshalled), False for one whose read
+    failed (``XmlPart.is_content_unreadable``) and for one with no bytes.
+    """
+    from lxml import etree
+
+    real = _real(part)
+    if getattr(real, "is_content_unreadable", False):
+        return False
+    if getattr(real, "is_unmarshalled", False):
+        return True
+    try:
+        etree.fromstring(real.xml, etree.XMLParser(target=_NoTree(), resolve_entities=False, huge_tree=True))
+    except Exception:  # noqa: BLE001 - not well formed, or no bytes: the typed read says which
+        return False
+    return True
+
+
 def _root_reason(error: BaseException) -> str:
-    """The deepest ``__cause__``'s message on one line, its whitespace collapsed; its class's name where it has none."""
+    """The deepest ``__cause__``'s message on one line, its whitespace collapsed; its class's name where it has none.
+
+    For XML that is not well formed the deepest cause is lxml's
+    ``XMLSyntaxError``, and its ``msg`` is read, without the ``(<string>,
+    line 2)`` its ``str()`` appends: the same text as the engine's "Problem with
+    part ..." message (CR-031 section 4.7).
+    """
+    from lxml import etree
+
     root, seen = error, {id(error)}
     while root.__cause__ is not None and id(root.__cause__) not in seen:
         root = root.__cause__
         seen.add(id(root))
-    message = " ".join(str(root).split())
+    text = root.msg if isinstance(root, etree.XMLSyntaxError) and root.msg else str(root)
+    message = " ".join(str(text).split())
     if message:
         return message
     kind = type(root)
@@ -72,6 +113,7 @@ class PackageTrees:
 
     __slots__ = (
         "_anchored",
+        "_consulted",
         "comments",
         "comments_extended",
         "document",
@@ -80,9 +122,13 @@ class PackageTrees:
         "footnotes",
         "headers_footers",
         "main",
+        "numbering_part",
         "package",
+        "parts_not_read",
         "resolver",
         "settings",
+        "settings_part",
+        "styles_part",
         "unreadable",
     )
 
@@ -91,12 +137,24 @@ class PackageTrees:
 
         A story part that cannot be read (the main part, the notes, the
         comments, a header or a footer) is kept in :attr:`unreadable`, its tree
-        None as an absent part's is.
+        None as an absent part's is. A styles or settings part that cannot be
+        read is kept in :attr:`parts_not_read`, and no resolver is built over
+        such a styles part; the numbering part is read the first time a
+        paragraph needs it (:meth:`part_not_read`).
         """
         self.package = package
         main = getattr(package, "main_document_part", None) if package is not None else None
         #: The story parts that could not be read, by ``id`` of the real part: (part, exception).
         self.unreadable: dict[int, tuple[Any, Exception]] = {}
+        #: The parts the reading consults and does not emit (the styles, the numbering, the settings) that could not
+        #: be read, by ``id`` of the real part: (part, exception). CR-031 section 4.6.
+        self.parts_not_read: dict[int, tuple[Any, Exception]] = {}
+        #: The parts :meth:`part_not_read` has read, by ``id`` of the real part: the tree, or None.
+        self._consulted: dict[int, Any] = {}
+        #: The styles, numbering and settings parts, where the package has them.
+        self.styles_part: Any = None
+        self.numbering_part: Any = None
+        self.settings_part: Any = None
         #: The main document part, and its ``w:document``.
         self.main = main
         self.document = _read(main, self.unreadable)
@@ -116,19 +174,23 @@ class PackageTrees:
         # header or footer of it can be read alone (docx4j's Texts.of(Part))
         if main is None:
             return
-        if getattr(package, "style_definitions_part", None) is not None:
+        self.styles_part = getattr(package, "style_definitions_part", None)
+        # a styles part that cannot be read: no resolver over it, the reading as for a package without styles
+        if self.styles_part is not None and self.part_not_read(self.styles_part) is None:
             try:
                 self.resolver = package.get_property_resolver()
             except Exception:  # noqa: BLE001 - hidden text and indents then not resolved through styles
                 self.resolver = None
-        if getattr(main, "numbering_definitions_part", None) is not None:
+        self.numbering_part = getattr(main, "numbering_definitions_part", None)
+        if self.numbering_part is not None:
             from docx4j_py.model.listnumbering.emulator import emulator_of
 
             try:
                 self.emulator = emulator_of(package)
             except Exception:  # noqa: BLE001 - lists then not counted
                 self.emulator = None
-        self.settings = _read(getattr(main, "document_settings_part", None))
+        self.settings_part = getattr(main, "document_settings_part", None)
+        self.settings = self._consult(self.settings_part)
         for name in ("footnotes", "endnotes", "comments"):
             part = getattr(main, f"{name}_part", None)
             tree = _read(part, self.unreadable)
@@ -148,6 +210,54 @@ class PackageTrees:
         """Why `part` could not be read, or None: it was read, it is absent, or it is no story part."""
         found = None if part is None else self.unreadable.get(id(_real(part)))
         return None if found is None else found[1]
+
+    def part_not_read(self, part: Any) -> Exception | None:
+        """Why `part`, a part the reading consults and does not emit, could not be read; None where it was or is absent.
+
+        The styles, the numbering and the settings (CR-031 section 4.6): read
+        privately the first time it is asked (``read_contents()``, so a part
+        that cannot be read is parsed once, the engine keeping its failure,
+        ``XmlPart.unreadable``), and kept in :attr:`parts_not_read` where its
+        content could not be read. The reading then goes on as for a package
+        without the part, and says so with ``part.not_read``. A read refused
+        for another reason (a strict load's skipped content) is not this: the
+        caller reads as before, without the part, silently.
+        """
+        if part is None:
+            return None
+        self._consult(part)
+        found = self.parts_not_read.get(id(_real(part)))
+        return None if found is None else found[1]
+
+    def _consult(self, part: Any) -> Any:
+        """A consulted part's tree, read privately once; None where it is absent or will not read (:meth:`part_not_read`).
+
+        The numbering part is the exception: nothing in the text model reads
+        it typed (the emulator reads it with lxml), so where its XML is well
+        formed (:func:`_well_formed`, a parse that builds no tree) it is not
+        read here, and is consulted as readable; only where it is not is it
+        read, for the engine's record of why.
+        """
+        if part is None:
+            return None
+        key = id(_real(part))
+        if key in self._consulted:
+            return self._consulted[key]
+        if self.numbering_part is not None and _real(part) is _real(self.numbering_part) and _well_formed(part):
+            self._consulted[key] = None
+            return None
+        tree = None
+        try:
+            tree = part.read_contents()
+        except Exception as error:  # noqa: BLE001 - the part's own record says whether its content could not be read
+            if getattr(_real(part), "unreadable", None) is error:
+                self.parts_not_read[key] = (part, error)
+        self._consulted[key] = tree
+        return tree
+
+    def known_not_read(self, part: Any) -> bool:
+        """Whether `part` was consulted already and could not be read; reads nothing."""
+        return part is not None and id(_real(part)) in self.parts_not_read
 
     @property
     def body(self) -> Any:

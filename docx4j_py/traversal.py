@@ -290,7 +290,7 @@ def find(
 def misplaced(root: Any, *, unmarshalled_only: bool = False) -> list[Any]:
     """Every finding of the validator in a tree, a part or a package, in document order (CR-020 D7, Q5).
 
-    Three kinds, each a frozen :class:`docx4j_py.validator.Finding` with
+    Four kinds, each a frozen :class:`docx4j_py.validator.Finding` with
     ``to_dict()``, its code, a message, the part's name and a path from the
     part's root (``/w:document/w:body[1]/w:p[3]/w:pPr[1]/w:ind[1]/@w:left``),
     and the content API's address where the part has a body:
@@ -306,7 +306,11 @@ def misplaced(root: Any, *, unmarshalled_only: bool = False) -> list[Any]:
       whose last block, as Word reads it, is not a paragraph (CR-016);
     * ``value.out_of_range`` (:class:`~docx4j_py.validator.ValueOutOfRange`):
       an integer measurement Word 365 reads otherwise than written (CR-022's
-      table, read side), with ``word_reads``, ``storage`` and ``range``.
+      table, read side), with ``word_reads``, ``storage`` and ``range``;
+    * ``part.not_well_formed`` (:class:`~docx4j_py.validator.PartNotWellFormed`):
+      a part (of a package, or the part given) whose XML is not well formed,
+      so that it could not be read, with lxml's message, ``line`` and
+      ``column``; the walk goes on to the next part (CR-031 D9).
 
     It never raises for a finding and never rewrites anything; a part never
     unmarshalled is read privately, so it is still written byte for byte.

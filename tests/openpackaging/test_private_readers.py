@@ -23,8 +23,11 @@ reached over the documents.
 - ``openpackaging/parts/wml/__init__.py``, ``MainDocumentPart.fonts_in_use``:
   the numbering. The fonts.
 - ``model/text/trees.py``, ``_read``: the main document, the headers and
-  footers, the notes, the comments and ``commentsExtended``, the settings.
-  The text model, Markdown and the outline.
+  footers, the notes, the comments and ``commentsExtended``;
+  ``PackageTrees._consult``: the styles, the settings, and the numbering
+  where a paragraph needs it, each read once to know whether it can be
+  (CR-031 section 4.6, ``part.not_read``). The text model, Markdown and the
+  outline.
 - ``model/text/extractor.py``, ``_SmartArt.emit``: the diagram data parts
   (``smartart``); ``Extractor._glossary``: the glossary document
   (``include: glossary``). The text model.
@@ -545,6 +548,7 @@ CALLERS: frozenset[str] = frozenset(
         "openpackaging/packages/wordprocessingml_package.py::WordprocessingMLPackage.set_font_mapper",
         "openpackaging/parts/wml/__init__.py::MainDocumentPart.fonts_in_use",
         "model/text/trees.py::_read",
+        "model/text/trees.py::PackageTrees._consult",
         "model/text/extractor.py::_SmartArt.emit",
         "model/text/extractor.py::Extractor._glossary",
         "model/chart/model.py::ChartModel.read",

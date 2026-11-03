@@ -49,6 +49,7 @@ from docx4j_py.validator import (
     CellWithoutEndParagraph,
     Finding,
     MisplacedContent,
+    PartNotWellFormed,
     ValueOutOfRange,
     findings_in,
 )
@@ -783,20 +784,44 @@ def _corpus() -> list[Path]:
 #: The text-extraction probe whose cases 75 to 82 are docx4j CR-066 phase 4's out-of-range values (``338beec18``).
 INSPECT_PROBE = FIXTURES / "text-extraction" / "phase0" / "extraction-probe-inspect.docx"
 
+#: docx4j CR-046 section 10's fixture (``3ad164bdf``, CR-031 Phase A): four of its files each hold a part that is not
+#: well formed on purpose, cut to two thirds.
+PART_NOT_READ = FIXTURES / "part-not-read"
+
 
 def test_the_corpus_holds_nothing_but_the_probes_values():
     """``samples/`` and every fixture: no misplaced content and no cell that does not end with a paragraph; the only
     findings are the out-of-range values of docx4j CR-066's probe files, in their case parts, and of the
-    text-extraction probe's cases 75 to 82 (CR-066 phase 4, in the suite since CR-027 Phase A)."""
+    text-extraction probe's cases 75 to 82 (CR-066 phase 4, in the suite since CR-027 Phase A), and the parts not
+    well formed of docx4j's part-not-read fixture (CR-031 Phase A)."""
     files = _corpus()
     assert len(files) > 380
     other = []
     for path in files:
         for finding in misplaced(load(path)):
             probe = (LIMITS in path.parents and not path.name.endswith("-word365.docx")) or path == INSPECT_PROBE
-            if not (probe and isinstance(finding, ValueOutOfRange)):
-                other.append((path.name, finding))
+            if probe and isinstance(finding, ValueOutOfRange):
+                continue
+            if path.parent == PART_NOT_READ and isinstance(finding, PartNotWellFormed):
+                continue
+            other.append((path.name, finding))
     assert other == []
+
+
+def test_the_part_not_read_fixture_holds_its_four_parts_not_well_formed():
+    """The corpus's only parts not well formed (CR-031 section 2.5 measured none before the copy): each is one
+    ``part.not_well_formed``, the part the file's name says, read on the way to the next part."""
+    found = sorted(
+        (path.name, finding.part_name)
+        for path in sorted(PART_NOT_READ.glob("*.docx"))
+        for finding in misplaced(load(path))
+    )
+    assert found == [
+        ("part-not-read-numbering-unneeded.docx", "/word/numbering.xml"),
+        ("part-not-read-numbering.docx", "/word/numbering.xml"),
+        ("part-not-read-settings.docx", "/word/settings.xml"),
+        ("part-not-read-styles.docx", "/word/styles.xml"),
+    ]
 
 
 def test_the_text_extraction_probes_values_are_the_inspectors():

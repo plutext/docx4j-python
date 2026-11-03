@@ -18,6 +18,12 @@ carry it --- which is also what Word does when it rewrites a file.
 
 **Nothing is unmarshalled here.** Loading a package costs the central directory
 and the relationship parts; every other part's content waits for ``.contents``.
+A part whose XML is not well formed is refused when its content is first read,
+not here (CR-031), except a **relationships part**: without it the load cannot
+know which parts exist, so one that is not well formed refuses the load, naming
+it (CR-031 D5, Q3). Reading its relationships as far as the error, or reading
+none (docx4j's), would lose the parts the rest named, and an untouched save
+would drop them.
 """
 
 from __future__ import annotations
@@ -70,7 +76,11 @@ class LoadOptions:
         strict: raise on the first piece of content the parser skips, instead of
             reporting it on the part. Off by default (decided question 5):
             lenient with the report is what real documents need, and strict is
-            for tests and for callers who prefer to fail.
+            for tests and for callers who prefer to fail. It adds nothing for a
+            part whose XML is not well formed, which is refused when read at
+            every setting (CR-031 D10), and it does not make the load eager:
+            ``package.misplaced()`` reads every part and reports such a one as
+            ``part.not_well_formed``.
         mce_preprocess: resolve ``mc:AlternateContent`` before unmarshalling, as
             docx4j does. Off by default (decided question 1): the model holds
             both branches, so resolving is a *view* (``mce="resolve"`` on the
@@ -126,6 +136,15 @@ def load_package(
 
     Returns:
         The package, with every reachable part created but none unmarshalled.
+
+    Raises:
+        InvalidFormatException: ``[Content_Types].xml`` is missing or not well
+            formed ("Bad [Content_Types].xml: ..."), ``_rels/.rels`` is
+            missing, or no relationship names the main part.
+        Docx4JException: a relationships part, the package's or a part's, is
+            not well formed: "Problem with part /word/_rels/document.xml.rels:
+            <lxml's message>" (CR-031 D5); or a relationship names a part the
+            container does not hold.
     """
     options = options or LoadOptions()
 

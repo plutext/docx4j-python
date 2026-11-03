@@ -88,7 +88,15 @@ class DefaultXmlPart(Part):
 
     @property
     def tree(self) -> etree._Element:
-        """The root element, parsed on first access. Reading does not modify."""
+        """The root element, parsed on first access. Reading does not modify.
+
+        Raises:
+            Docx4JException: the part has no content; or its XML is not well
+                formed (CR-031 D3): "Problem with part /customXml/item1.xml:
+                <lxml's message>", lxml's ``XMLSyntaxError`` the ``__cause__``.
+                The part is refused when read, not at load (Q9), and a save
+                writes its bytes as read.
+        """
         if self._tree is None:
             data = self._bytes if self._bytes is not None else self._source_bytes()
             if data is None:
@@ -96,7 +104,10 @@ class DefaultXmlPart(Part):
                     f"Part {self.part_name} has no content: set a tree, or load it "
                     "from a container"
                 )
-            self._tree = etree.fromstring(data, _PARSER)
+            try:
+                self._tree = etree.fromstring(data, _PARSER)
+            except etree.XMLSyntaxError as error:
+                raise Docx4JException(f"Problem with part {self.part_name}: {error.msg}") from error
         return self._tree
 
     def set_tree(self, tree: etree._Element) -> None:

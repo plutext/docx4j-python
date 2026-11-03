@@ -516,8 +516,9 @@ class OpcPackage:
 
         :func:`docx4j_py.traversal.misplaced` over the package: misplaced
         content (``target.misplaced``), a table cell that does not end with a
-        paragraph (``cell.no_end_paragraph``) and an integer measurement past
-        what Word stores (``value.out_of_range``), each a
+        paragraph (``cell.no_end_paragraph``), an integer measurement past
+        what Word stores (``value.out_of_range``) and a part whose XML is not
+        well formed (``part.not_well_formed``, CR-031 D9), each a
         :class:`docx4j_py.validator.Finding` with ``to_dict()``, in part and
         document order. Nothing is raised for a finding and nothing is
         rewritten: a part never unmarshalled is read privately

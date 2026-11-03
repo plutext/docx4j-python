@@ -102,6 +102,34 @@ def test_the_engine_s_config_reads_exactly() -> None:
     assert parser().config.exact_types == EXACT_TYPES
 
 
+def test_the_engine_s_config_never_recovers() -> None:
+    """CR-031 D1: the fork's stage 15 (``ParserConfig(recover=)``, docx4j-xsdata 26.2.5), set False by the engine.
+
+    So a parse of XML that is not well formed raises at its first fatal error, with lxml's ``XMLSyntaxError`` the
+    cause, where upstream's ``recover=True`` mended it with no report (CR-031 section 2.2).
+    """
+    from lxml import etree
+
+    from docx4j_py.runtime import RECOVER, parser, parser_config
+    from docx4j_py.wml import Document
+
+    assert RECOVER is False
+    assert parser_config().recover is False
+    assert parser().config.recover is False
+    assert parser(skipped_report=False, on_bind=None).config.recover is False
+    w = b'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    cut = b"<w:document " + w + b"><w:body><w:p><w:r><w:t>SEC"
+    try:
+        parser().from_bytes(cut, Document)
+    except Exception as error:  # noqa: BLE001 - the fork's ParserError
+        assert isinstance(error.__cause__, etree.XMLSyntaxError)
+        assert str(error.__cause__.msg).startswith("Premature end of data in tag t")
+    else:
+        raise AssertionError("a cut document was read")
+    mended = parser(recover=True).from_bytes(cut, Document)  # the option is the fork's, upstream's reading on request
+    assert mended.body.content
+
+
 def test_a_kept_value_is_recorded_and_written_as_read() -> None:
     """``" false"`` kept on purpose (no warning), ``"off"`` kept as invalid; both in ``part.kept``, saved as read."""
     import io

@@ -37,6 +37,11 @@ def load(
     The class of the result follows the main part's content type, so a ``.docx``
     comes back as a
     :class:`~docx4j_py.openpackaging.packages.wordprocessingml_package.WordprocessingMLPackage`.
+
+    The load is lazy: it reads the content types and the relationships, and a
+    part whose XML is not well formed is refused only when its content is first
+    read (``Docx4JException`` naming it, CR-031), its bytes saved as read. A
+    relationships part that is not well formed refuses the load, naming it.
     """
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 

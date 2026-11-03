@@ -12,6 +12,7 @@ keeps as their text once the engine reads integers exactly (phase 0).
 from __future__ import annotations
 
 import io
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -203,7 +204,13 @@ def test_an_empty_rsid_is_dropped_where_nothing_was_kept() -> None:
 
     source = zipfile.ZipFile(SAMPLES / "2010-sample1.docx").read("word/document.xml")
     assert b'w:rsidR=""' not in source
-    edited = source.replace(b"<w:p ", b'<w:p w:rsidR="" ', 1)
+    # into a paragraph with no rsid: the first paragraph's own w:rsidR taken off first, so that the attribute is not
+    # given twice (CR-031 section 2.6; before CR-031 lxml's recovery kept the first of the two and the test passed)
+    tag = re.search(rb"<w:p [^>]*>", source).group()
+    bare = re.sub(rb' w:rsidR="[^"]*"', b"", tag)
+    assert b"w:rsidR=" not in bare
+    edited = source.replace(tag, bare.replace(b"<w:p ", b'<w:p w:rsidR="" ', 1), 1)
+    etree.fromstring(edited)  # well formed
     package = load(io.BytesIO(_docx_with(edited)))
     part = package.main_document_part
     _ = part.contents
