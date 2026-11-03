@@ -92,8 +92,9 @@ def test_a_finding_is_plain_data_with_to_dict():
         "hint": placement._TABLE_SIBLING,
     }
     assert "node" not in repr(finding)
+    # a field: 3.12 raises TypeError for a name that isn't one, such as the ClassVar code (CPython gh-90562)
     with pytest.raises(AttributeError):
-        finding.code = "x"  # type: ignore[misc]
+        finding.path = "x"  # type: ignore[misc]
 
 
 def test_the_message_and_hint_are_the_add_time_error_s():
