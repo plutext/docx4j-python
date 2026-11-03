@@ -398,6 +398,11 @@ So upstream's handlers disagree, and only the default one mends. It is upstream 
   (...)`. Today nothing is logged (`except Exception: self.resolver = None`).
 - **No `TextWarning`:** REQ-801 names the story parts. Whether the WD should name a styles or numbering part that
   could not be read is the portfolio's question for the WD, and docx4j's and core-ts's together (Q4).
+  Asked 2026-11-03: an open item of WD 0.65 under REQ-801 (portfolio `9adc24c`), the user's to rule. The
+  portfolio recommends a new warning `part.not_read`, its selector the part's name, once per part the reading
+  consults but does not emit (styles, numbering, settings, font table), the reading going on as for a package
+  without the part. Until the ruling this section stands as decided; if the user takes the recommendation it is a
+  `TextWarning` in all three engines, through the portfolio's hand-off.
 
 ### 4.7 The text model (D7)
 
