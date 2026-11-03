@@ -1,6 +1,6 @@
 # CR-030: A `w:br` outside a run, read as Word reads it (the port of docx4j CR-073)
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days).
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. Nothing built.
 
 *The number:* CR-029 is the latest CR here. CR-031 is being drafted beside this one.
 
@@ -16,8 +16,9 @@
 
 **Settled before the questions** (these are not open):
 - **The warning.** The code is `br.outside_run`, one per part, with the fields `part_name`, `breaks` and `text_elements`
-  (core-ts: `partName`, `breaks`, `textElements`). It was agreed with core-ts through the portfolio, provisional on the
-  user's word on each CR. Its message is docx4j's WARN after the part name, less docx4j's own CR number (section 3.2).
+  (core-ts: `partName`, `breaks`, `textElements`). It was agreed with core-ts through the portfolio, and stands with the
+  user's word on each CR (core-ts's D1 to D6 and this CR's questions, both 2026-11-03). Its message is docx4j's WARN
+  after the part name, less docx4j's own CR number (section 3.2).
 - **The counts are the stylesheet's** (`mc-preprocessor.xslt` lines 834 to 837 at `95c6b42d3`):
   - `breaks` counts every `w:br` whose parent is a run container or `w:body`. A `w:br` directly in a block-level
     `w:sdtContent` is counted but left where it is.
@@ -499,9 +500,10 @@ A field's code is whole, so `fields: update` evaluates all of it (`br2-2`).
 - **Shapes neither engine has measured:** a body `w:br` before a table or at the body's end; a `w:br` first in a
   `w:hyperlink` with no run before it. Both are ported as docx4j builds them.
 - **The `mce_preprocess=True` departure** (section 4.7), for an unseen shape.
-- **The message's suffix** differs from core-ts's until the portfolio settles it (section 3.2).
 
-## 8. Questions
+## 8. Questions (decided 2026-11-03)
+
+All seven are decided as recommended (the user: "CR-030 and CR-031 both decided as recommended").
 
 | Q | Question | Recommendation |
 |---|---|---|

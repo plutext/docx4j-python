@@ -1,6 +1,6 @@
 # CR-031: A part not well formed is refused when read, not silently mended --- the fork's lxml handler without recovery, docx4j CR-065 D1's refusal
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1¼ to 1¾ days here and ½ day in the fork; eleven questions, each with a recommendation (section 8); nothing built.
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1¼ to 1¾ days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles or numbering part with the WD asked about a `TextWarning`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Nothing built: phase 0 is the fork's, then the user's 26.2.5 release.
 
 *The number:* CR-030 is the latest CR here, drafted beside this one the same day.
 
@@ -536,7 +536,9 @@ marked to skip, as CR-021's were before its phase 0, and the rest of D2 to D10 r
 - **The other ports are unmeasured.** Whether docx4j-core-ts's or docx4j-generated-objects-ts's parser recovers is
   for the portfolio to ask, with section 2.2's cases as the probe.
 
-## 8. Questions
+## 8. Questions (decided 2026-11-03)
+
+All eleven are decided as recommended (the user: "CR-030 and CR-031 both decided as recommended").
 
 | Q | Question | Recommendation |
 |---|---|---|
