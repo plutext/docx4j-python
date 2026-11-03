@@ -1,6 +1,6 @@
 # CR-027: the text model's WD 0.41 to 0.49 additions --- `profile: word-text`, revision and comment dates as the author's clock, embedded objects for a host, and the conformance suite re-pinned
 
-**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending. It covers five
+**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending; **Phase B implemented 2026-11-03** (section 11: `a21e8cc`, `7f42fa1`): revision and comment dates in REQ-702's form, `TrackedChange.author_local_time` and `author_offset`, docx4j's `revisions/cr068/` copied at the tag; no suite row, agreement row or golden moved. It covers five
 pieces of the text model (CR-011's `model/text/`) that the WD and docx4j have added since this repository's suite
 copy was pinned at docx4j `198d015a3`:
 - WD 0.41's `profile` (REQ-1002);
@@ -753,3 +753,164 @@ No Word check: no file this package saves changes.
    which unmarshals the part for real (REQ-204) and raised the part's own exception before the text model could name
    it. It now asks the class. Fixed, since section 4.6 needs it; a test holds both routes.
 3. **`dpp/`'s 189 pending checks** wait on CR-029 and Phase D; the inspector's 400 on a CR of their own (section 4.5).
+
+## 11. Phase B (implementation notes, 2026-11-03)
+
+Phase B as built: section 4.2 (the dates), with section 5's Phase B bullets. The user ordered it on 2026-11-03 ("do
+CR-027 phase b, then CR-030"). docx4j was read at its tag `docx4j-17.3.5` (`64fae4cd0`), by `git show`:
+`RevisionDates`, `RevisionDatesTest`, `MarkupDatesTest`, `TextsTest`, and `fc71f12e6`'s changes to `TrackedChange`,
+`Extractor`, `PlainText`, `TextRevision`, `TextComment` and `WmlToMarkdown`. None of what this phase ports changed
+between `fc71f12e6` and the tag.
+
+**Commits.** `a21e8cc` (the copy, 11.2), `7f42fa1` (the code and the tests, 11.1, 11.3 and 11.4), and this section's.
+
+### 11.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the rule | `model/revisions/dates.py` (new; in `KEEP`) | docx4j's `RevisionDates`: `local_time`, `offset` and `text`, with `MIN_OFFSET` and `MAX_OFFSET` |
+| the change | `model/revisions/change.py` | `TrackedChange.author_local_time` and `author_offset` (Q1), a group's its first piece's; `date` unchanged |
+| the extractor | `model/text/extractor.py` | `_revision` reads `w:date` and `w16du:dateUtc` from the mark, typed or wildcard; the comment reader takes `dateUtc` by `_last_para_id` (`_comment_dates_utc`); `_date_text` is gone |
+| the writers | `model/text/plain.py`, `markdown.py` | under `author_date`, `author: ` alone where the date is None; the plain writer's docstring |
+| the block model | `model/text/result.py` | `TextRevision.date` and `TextComment.date` document the form, and the old one before it |
+| the copy | `tests/fixtures/revisions/cr068/`, `.gitattributes` | 11.2 |
+| the tests | `tests/revisions/test_revision_dates.py`, `tests/text/test_markup_dates.py` (new); `tests/text/test_texts.py` | 11.4 |
+
+The content API's `Comment.creation_date` and `TrackedChange.date` are untouched.
+
+### 11.2 The copy
+
+- `git archive docx4j-17.3.5 docx4j-core-tests/src/test/resources/revisions/cr068 | tar -x` into a scratch directory,
+  then copied into `tests/fixtures/revisions/cr068/`. That is 54 files, about 566 KB: every file there but the four
+  screenshots, which Q11 leaves in docx4j (CR-028 section 5.1). This is the one copy of that directory here, and
+  CR-028 Phase A reads it rather than making its own.
+- `SHA1SUMS` lists the 54. The `README.md` is this package's: it names the tag and its commit, each file, and the
+  four left out. It is not in `SHA1SUMS`. Every file's git blob id is docx4j's at the tag.
+- `.gitattributes` marks the whole directory `-text`, after Phase A's `dpp/**/*.txt` rule. The `.txt` files are
+  Word's Save As text (CR LF lines, a bare CR between cells), and `cr068-log.txt` is UTF-8 with a byte order mark and
+  CR LF lines. Marking the whole directory keeps every file to `SHA1SUMS` on a checkout with `core.autocrlf`.
+- The sdist takes `tests/` whole (`pyproject.toml`), so it needs no exclude. The wheel holds no test.
+
+### 11.3 The rule, as built
+
+- **The inputs.** Each function takes an `XmlDateTime`, its lexical form or a `datetime`, read by
+  `values.date_time`, CR-025's reader of a `w:date`'s form. The model keeps a `w:date` as an `XmlDateTime`, or as
+  its text where the exact parse refuses it, a date alone among them (CR-025 Phase B2). `values.date_time` trims
+  the value, reads a date alone as midnight, and reads anything else that is no `xsd:dateTime` as no date.
+- **Fractions** of a second are dropped from every input, in `_clock`. `dates_utc` gives an aware `datetime` that
+  keeps microseconds, so the truncation section 4.2 asks for is the rule's own, not a step in the comment reader. A
+  `dateUtc` of `...:00.5Z` gives the offset (a test holds it).
+- **`24:00:00`**, which `xsd:dateTime` allows, is the next day's midnight. That is how Java's
+  `XMLGregorianCalendar` reads it (checked with JDK 21: `2026-10-31T24:00:00Z` reads as 2026-11-01 0:00:00).
+- **`offset`** is `datetime.UTC` for zero, else a fixed `datetime.timezone`. **`text`** writes the local time with
+  `isoformat(timespec="seconds")` (Java's `uuuu-MM-dd'T'HH:mm:ss`) and the offset as `+HH:MM` (Java's `xxx`).
+- **The marks.** `_revision` serves every mark the text model reads: a run-level revision, a row's and a cell's
+  marker, and an equation's `w:ins` and `w:del`. docx4j's `revision()` serves the same, the equation's since
+  `fc71f12e6`. Every typed class among them is a `CTTrackChange`, which carries `date_utc`. A wildcard mark is read
+  by its `{w16du}dateUtc` attribute.
+- **A comment's `dateUtc`.** `_comment_dates_utc` builds a `CommentParts` over the comments tree this reading read
+  privately, and asks `dates_utc`, the content API's own reader, so that one chain reads the two parts.
+  `comment_parts_of` would unmarshal the comments part (`contents`) and break REQ-204. Neither lxml part is parsed:
+  `_root_for_read` parses its bytes aside. A part that cannot be read gives no date, as docx4j's null part does.
+- **`_last_para_id`** is unchanged: the last paragraph carrying a `w14:paraId`, descending into the `mc` branch the
+  walk reads, as docx4j's `lastParaId` does. That is not `creation_date`'s last paragraph with an entry, and a test
+  holds the difference. The two differ only where that paragraph has no entry. Every comment in this repository's
+  fixtures that has a `commentsIds` entry has one paragraph, so none differs.
+
+### 11.4 The tests and the numbers
+
+- `tests/revisions/test_revision_dates.py`, new, 19 tests:
+  - `RevisionDatesTest` whole: `measuredCases`, `offsets` and `otherForms`, each over the model's form (an
+    `XmlDateTime`, or a date alone as text) and over the lexical form (6), and `trackedChanges` over
+    `manual-redline-dates.docx` (1);
+  - the copy: every file in `SHA1SUMS` and nothing else but the README, and each file docx4j's blob at the tag,
+    the tag's other four the screenshots (2);
+  - what is no date (6);
+  - `24:00:00` (1);
+  - a `datetime` read to the second (1);
+  - a group's stamp, its first piece's (1);
+  - `date` as CR-025 read it, in the engine and the content API (1).
+- `tests/text/test_markup_dates.py`, new, 8 tests:
+  - `MarkupDatesTest`'s two;
+  - the comments in Markdown;
+  - `markup_detail: author` unchanged;
+  - the last paragraph carrying a `w14:paraId`, against `creation_date`;
+  - a `dateUtc` with a fraction;
+  - the block model's JSON in the `markup` view (Q2);
+  - a reading that parses neither side part (REQ-204).
+- `tests/text/test_texts.py`: `test_markup`, docx4j's `TextsTest.markup` at the tag. This repository had ported
+  only its first assertion (in `test_the_views`), so TC9's `author` and `author_date` lines, the run's revision and
+  the block's count are new here, TC9's date as `fc71f12e6` writes it (`{++Probe, 2026-10-17T00:00:00: TC9_INSERTED
+  ++}`, the `Z` gone; `inserted.date == "2026-10-17T00:00:00"`).
+- The fast suite: 7,132 passed, 8 skipped. Phase A's was 7,104, and the 28 are this phase's (19, 8 and 1).
+- The full suite: 9,128 passed, 8 skipped. Phase A's was 8,803.
+  - Of the 325 more, 28 are this phase's tests.
+  - The other 297 come from `openpackaging/test_private_readers.py`: its corpus globs `tests/fixtures/revisions/`,
+    so its eleven readers now read the copy's 27 documents, and all pass.
+  - `revisions/test_every_fixture.py` already read the sibling's `cr068/`, and is unchanged.
+- ruff (`check`, `format --check`, at 120 columns) on every file changed: no new finding. `dates.py`'s one `DTZ001`
+  carries a `noqa`, since the author's clock is naive by design. The formatter would change the same number of lines
+  in the five existing files as before (11, 61, 22, 20 and 37), and the new files are formatted. `extractor.py`'s one
+  `check` finding (S110) is 10.7's, left as it was.
+
+### 11.5 The suite, the agreement table and the goldens
+
+- **The conformance suite.** No row of `phase0/` or `dpp/` cites REQ-702 or REQ-706, and none pends on either: the
+  478 and 189 pending checks are 10.4's, for 10.4's reasons. `conformance.py`'s two reports are byte for byte the
+  committed ones: `phase0/` 1,294 pass, 0 fail, 478 pending of 1,772, goldens 12 of 12; `dpp/` 3, 0 and 189 of 192.
+  Nothing moves.
+- **The inspector's rows.** The two `revision.author` rows (cases 9 and 14, under `options: view: markup;
+  markup_detail: author_date`) carry docx4j's inspector's own date range, `2026-10-17T00:00:00Z to
+  2026-10-17T00:00:00Z`. They pend with the inspector (CR-011 section 3.7), and this phase leaves them alone.
+- **`tests/text/agreement-docx4j.tsv`** compares the plain text of the accepted and original views, which write no
+  date. No line moves.
+- **The goldens.** `phase0/`'s `.markup.txt` and `.md` are written under `markup_detail: type`, which writes no date.
+  None moves, as docx4j's commit says of its own ("No suite golden moves").
+
+### 11.6 Departures, with why
+
+1. **A year outside 1 to 9999** is no date here. Python's `datetime` cannot hold one, and Java's `LocalDateTime` can.
+   No producer writes one.
+2. **One `dateUtc` per durable id.** `dates_utc` maps a durable id to the paragraph id of the last
+   `w16cid:commentId` naming it. docx4j's `commentDatesUtc` maps each `commentId`'s paragraph id. So where two
+   paragraph ids share one durable id, both get its date in docx4j and only the last here. Word writes one durable id
+   per comment, and section 4.2 reads `dates_utc`, so the content API and the text model keep one reader.
+3. **`dateUtc`'s lexical forms** are `dates_utc`'s `datetime.fromisoformat`, which also takes ISO 8601's basic form
+   (`20261031T000000Z`). `XMLGregorianCalendar` refuses that form. Word writes the extended form.
+4. **The types.** The local time is a naive `datetime`, for Java's `LocalDateTime`. The offset is a
+   `datetime.timezone` (`datetime.UTC` for zero), for Java's `ZoneOffset`. With both known,
+   `author_local_time.replace(tzinfo=author_offset) == date`, as section 4.2 has it.
+5. **The inputs** are an `XmlDateTime`, its text or a `datetime`, where docx4j's are an `XMLGregorianCalendar`. The
+   model keeps a date alone as text (CR-025 Phase B2), and `dates_utc` gives a `datetime`.
+6. **docx4j's test helper `x(s)`** is ported twice: each case of the first three tests runs over the model's form and
+   over the lexical form.
+
+### 11.7 Pre-existing tests whose expectation changed, and why
+
+None. No test pinned `TextRevision.date` or `TextComment.date` in the old form. No plain-text or Markdown test wrote
+`author_date`: `test_private_readers.py` reads under it, but checks only the trees. `test_markup` is a new test in
+`test_texts.py`, and none of that file's other tests changed.
+
+### 11.8 The gates
+
+| gate | after (`7f42fa1`) |
+|---|---|
+| the full suite | 9,128 passed, 8 skipped, 0 failed (6 min 42 s) |
+| the fast suite | 7,132 passed, 8 skipped, 0 failed |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`) |
+| `codegen/generate.sh --check` | two generations byte identical; the generated tree unchanged and `dates.py` kept |
+| `scripts/compare_acceptance.py` | `out/acceptance/` built by `scripts/acceptance.py` before the change (at `9825b87`) and after it: 17 artefacts, 246 entries, 0 differ beyond the wall-clock dates |
+| `conformance.py` | as 11.5, both reports byte for byte the committed ones |
+| ruff on the changed files | no new finding |
+
+No Word check: extraction output is not a file, and nothing this package saves changes.
+
+### 11.9 Found, and left open
+
+1. **`tests/README.md`'s `test_private_readers.py` row** says "the 71 of `samples/`, `fixtures/text-extraction/` and
+   `fixtures/revisions/`". It was 96 before this phase and is 123 with the copy. It is not this phase's row, so it is
+   left as it was.
+2. **The inspector's date.** docx4j's inspector at the tag writes a mark's `w:date` with its `Z` (11.5). When the
+   inspector is ported (section 4.5), its form is docx4j's inspector's, not REQ-702's.
+3. Phase E's CHANGELOG entries for this phase are section 6's, and CLAUDE.md's status follows at Phase E. The index's
+   row records Phase B now. The portfolio's `python/CR-027.B` goes through the docx4j-portfolio session.
