@@ -1,6 +1,6 @@
 # CR-031: A part not well formed is refused when read, not silently mended --- the fork's lxml handler without recovery, docx4j CR-065 D1's refusal
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1¼ to 1¾ days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles or numbering part with the WD asked about a `TextWarning`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Nothing built: phase 0 is the fork's, then the user's 26.2.5 release.
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Nothing built: phase 0 is the fork's, then the user's 26.2.5 release. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more).
 
 *The number:* CR-030 is the latest CR here, drafted beside this one the same day.
 
@@ -19,7 +19,8 @@
   - CR-012's `splice_word` and the MCE preprocessor, which parse with lxml before the fork does;
   - CR-030 (proposed today) puts its `w:br` pass in `XmlPart._parse` after the fork's parse. The two compose
     (section 4.4).
-- **Counterparts:** docx4j as above. docx4j-core-ts and docx4j-generated-objects-ts are not measured here (section 7).
+- **The WD's REQ-801 at 0.66** (portfolio `bfcd03a`, the user's ruling of 2026-11-03): `part.not_read` (section 4.6).
+- **Counterparts:** docx4j as above; the portfolio sent `part.not_read`'s hand-offs to docx4j and core-ts with 0.66. docx4j-core-ts and docx4j-generated-objects-ts are not measured here (section 7).
 
 ## 1. Why
 
@@ -387,22 +388,50 @@ So upstream's handlers disagree, and only the default one mends. It is upstream 
   `load()`'s docstring.
 - **`[Content_Types].xml`** is refused as today (`InvalidFormatException`, "Bad [Content_Types].xml: ...").
 
-### 4.6 Styles and numbering (D6, Q4)
+### 4.6 Styles, numbering and settings (D6, Q4; amended 2026-11-03)
 
 - **The content API refuses.** `get_property_resolver()` raises the styles part's `Docx4JException` (docx4j: an
   NPE), and so does every content API reader that resolves styles (`body.text` and the rest). A numbering part not
   well formed raises in the readers that need the numbering, and nothing else.
-- **The text model reads without them.** That is docx4j's behaviour and CR-027's `PackageTrees` code, unchanged. It
-  logs one warning per part, naming the part and the reason:
-  `docx4j_py.model.text: /word/styles.xml could not be read: hidden text and indents are not resolved through styles
-  (...)`. Today nothing is logged (`except Exception: self.resolver = None`).
-- **No `TextWarning`:** REQ-801 names the story parts. Whether the WD should name a styles or numbering part that
-  could not be read is the portfolio's question for the WD, and docx4j's and core-ts's together (Q4).
-  Asked 2026-11-03: an open item of WD 0.65 under REQ-801 (portfolio `9adc24c`), the user's to rule. The
-  portfolio recommends a new warning `part.not_read`, its selector the part's name, once per part the reading
-  consults but does not emit (styles, numbering, settings, font table), the reading going on as for a package
-  without the part. Until the ruling this section stands as decided; if the user takes the recommendation it is a
-  `TextWarning` in all three engines, through the portfolio's hand-off.
+- **The text model reads as for a package that lacks the part, and says so** with `part.not_read` (WD 0.66 REQ-801;
+  the user, 2026-11-03: "part.not_read as recommended"). Q4 first asked the WD, and this section first proposed a
+  logged line and no `TextWarning`.
+
+**Measured 2026-11-03** at `9825b87`, with the fork's handler patched to `recover=False` as in section 2.6. The
+document is made in code:
+- a heading numbered through its style, a directly numbered paragraph, and a paragraph hidden by its style;
+- a run in Symbol, and a plain paragraph;
+- a default header and an even one, under `w:evenAndOddHeaders`.
+
+Each of its styles, numbering and settings parts is cut to two thirds, and also removed:
+
+| Part | Not well formed | Absent |
+|---|---|---|
+| styles | the heading's label gone, the hidden text shown; the direct label kept (`1.`, since the heading is no longer counted) | the same |
+| numbering | every label gone, by style and direct | the same |
+| settings | the even header gone; `fields_update_on_open` false; forms protection off | the same |
+| font table | not consulted: nothing under `model/text/` reads one, and `create_package` makes none | the same |
+
+So the reading here already proceeds as for a package that lacks the part. docx4j's defect is not here: there, an
+unreadable styles part loses the direct labels too. Nor is its side finding: there, reading a package with no styles
+part adds one. Each cut part's read raises with recovery off. Today, with recovery on, the cut settings part is
+mended and keeps the even header, which came before the cut.
+
+**The warning:**
+- **Its form:** `TextWarning.PART_NOT_READ = "part.not_read"`, with no address and `part_name` its selector, once
+  per part.
+- **When:** where the reading first needs the part, not when `PackageTrees` is built:
+  - **styles:** the first paragraph or run whose properties the reading resolves.
+  - **numbering:** the first paragraph with a `w:numPr`, direct or through a style the reading could read. A
+    document with no numbered paragraph raises nothing.
+  - **settings:** the first read of the even header, forms protection or `fields_update_on_open`. Every result
+    carries `fields_update_on_open` (REQ-801), so an unreadable settings part always raises it. With CR-029, the caps
+    language (`w:themeFontLang`) joins these reads; today the text model maps no case.
+  - **the font table:** never, until a reading consults it.
+- **What raises it:** `PackageTrees` records each such part whose read failed, by name, with the part's exception
+  (D8's `unreadable`), beside its story parts. A resolver or emulator that fails for any other reason is not this
+  warning, and reads as today.
+- **No log line:** the warning is the text model's one record of the failure.
 
 ### 4.7 The text model (D7)
 
@@ -471,9 +500,11 @@ such reading, and a mended part saved after an edit writes what libxml2 guessed.
   recovery read the part up to its first error, or around it, and dropped the rest with no report, even under
   `LoadOptions(strict=True)`. So a file that read before, wrongly, now raises. The load is still lazy: a part never
   read costs nothing and is saved byte for byte, as docx4j does (CR-065 D1). The text model raises for a main part
-  so read and gives `content.not_read` for another story part (CR-027), and reads without a styles or numbering part
-  so read, with a warning logged. `misplaced()` reports such a part as `part.not_well_formed`. Needs docx4j-xsdata
+  so read and gives `content.not_read` for another story part (CR-027), and reads as for a package without a styles,
+  numbering or settings part so read, marked by the new warning `part.not_read` (WD 0.66 REQ-801). `misplaced()` reports such a part as `part.not_well_formed`. Needs docx4j-xsdata
   26.2.5.
+- **Added:** `TextWarning.PART_NOT_READ` (`part.not_read`): a styles, numbering or settings part the reading needed
+  and could not read, once per part, its selector the part's name.
 - **Fixed:** a relationships part that is not well formed refuses the load. Before, the relationships after its first
   error were lost and an untouched save dropped the parts they named. `LoadOptions(mce_preprocess=True)` and
   `mc_load_mode="word"` raise `Docx4JException` naming the part, where they raised lxml's `XMLSyntaxError`, and Word
@@ -500,8 +531,14 @@ such reading, and a mended part saved after an edit writes what libxml2 guessed.
   `w:defaultTabStop` left open): the main part's and a header's reads refused, with the body still read; the
   settings refused; a replacement accepted and saved; a created package's parts unaffected. CR-027 ported its four
   text-model tests already.
-- **The text model:** cases 14 to 16 give `content.not_read` for the header, read without styles and without
-  numbering, and log one warning each for styles and numbering (`caplog`); CR-027's tests with docx4j's breaks.
+- **The text model:**
+  - case 14 gives `content.not_read` for the header;
+  - section 4.6's measurement is a test: each cut part's reading equals its absent part's, with one `part.not_read`
+    naming the part;
+  - none for a numbering part in a document with no numbered paragraph;
+  - one only, over a reading that needs the part many times;
+  - nothing logged by the text model (`caplog`);
+  - CR-027's tests with docx4j's breaks.
 - **The census of section 4.4.**
 - **The fixed fixture:** `test_an_empty_rsid_is_dropped_where_nothing_was_kept` inserts into a paragraph with no rsid.
 - **The gates:**
@@ -519,7 +556,7 @@ such reading, and a mended part saved after an edit writes what libxml2 guessed.
 | Phase | What | Effort |
 |---|---|---|
 | 0 | The fork's stage 15 (item 33, `ParserConfig(recover=...)`, `ParserError` from lxml's error), its tests, `CHANGES.md`, and the docx4j-xsdata 26.2.5 release, which the user publishes; `docs/UPSTREAM.md` row 29 here | ½ day in the fork |
-| A | D1's engine half (`runtime.RECOVER`, the pin, `test_parser_configs.py`) once 26.2.5 is out; D2 to D10: `_parse`'s `try`, `DefaultXmlPart.tree`, the sniffs, `unreadable`, the validator's finding, `source_tree()`, the text model's log and reason, the census, the tests of section 5, the three fixed tests | 1 to 1½ days |
+| A | D1's engine half (`runtime.RECOVER`, the pin, `test_parser_configs.py`) once 26.2.5 is out; D2 to D10: `_parse`'s `try`, `DefaultXmlPart.tree`, the sniffs, `unreadable`, the validator's finding, `source_tree()`, the text model's `part.not_read` and reason, the census, the tests of section 5, the three fixed tests | 1¼ to 1¾ days |
 | B | The records: CHANGELOG (section 4.13), CLAUDE.md (the status, and "Round-trip and fidelity rules"' "Nothing may be dropped silently" gaining the refusal), `tests/README.md`'s map, the index row, the portfolio's entries through the docx4j-portfolio session, and the docx4j hand-off of section 3.4 | ¼ day |
 
 Everything in Phase A except D1's line can land before 26.2.5. Under 26.2.4 the tests of the refusal itself are
@@ -550,7 +587,7 @@ All eleven are decided as recommended (the user: "CR-030 and CR-031 both decided
 | Q1 | The rule: a part whose XML is not well formed is refused when its content is read, never mended, and the load stays lazy, with an untouched save writing its bytes (docx4j CR-065 D1)? | Yes. It is CLAUDE.md's "nothing dropped silently", XML 1.0's fatal error and docx4j's rule, and it costs nothing (section 2.7). |
 | Q2 | Where: (a) the fork's stage 15, `ParserConfig(recover=...)`, which the engine sets False; (b) the engine alone, a strict lxml tree handed to the fork's `iterwalk` path; (c) the engine alone, a subclass of the fork's handler; (d) a strict pre-pass? | (a). It is free, keeps the parse streaming, follows CLAUDE.md's rule that the fork is where runtime behaviour changes, and is the patch to offer upstream. (b) is the fallback if the release should wait: no release, 5% faster, but about 9 MiB more peak memory per 790 KB part. |
 | Q3 | A relationships part not well formed, the package's or a part's: refuse the load, naming it? And hand docx4j's reading of a part's relationships as none (section 3.4) to docx4j? | Yes to both. Without its relationships the load cannot know the parts, and both today's partial reading and docx4j's empty one lose parts on an untouched save. |
-| Q4 | A styles or numbering part not well formed: the content API raises (the resolver cannot be built), and the text model reads without it, as docx4j does, logging one warning naming the part? A `TextWarning` for it goes to the WD as a question? | Yes, as written. The content API writes, so it must not resolve without styles. The text model is a reader, and docx4j's reading is the oracle. Whether REQ-801 should cover non-story parts is the portfolio's question for the WD. |
+| Q4 | A styles or numbering part not well formed: the content API raises (the resolver cannot be built), and the text model reads without it, as docx4j does, logging one warning naming the part? A `TextWarning` for it goes to the WD as a question? | Yes, as written. The content API writes, so it must not resolve without styles. The text model is a reader, and docx4j's reading is the oracle. Whether REQ-801 should cover non-story parts is the portfolio's question for the WD. **Amended 2026-11-03:** asked as WD 0.65's open item, and ruled by the user as `part.not_read` ("part.not_read as recommended"; WD 0.66 REQ-801): a `TextWarning` for a part the reading needed and could not read, in place of the log line (section 4.6). |
 | Q5 | Record the failure on the part (`unreadable`, `is_content_unreadable`), raised again without a second parse until the content is replaced (docx4j's `unreadable` and `isContentUnreadable()`)? | Yes. It is docx4j's design, and it saves a parse per reader of a large broken part. |
 | Q6 | The validator: `misplaced()` reports a part it cannot read as `part.not_well_formed` and goes on, and `source_tree()` gives None for a source that is not well formed? | Yes. `misplaced()` reports and never raises for content; the code goes to docx4j-core-ts through the portfolio, as CR-020's codes did. |
 | Q7 | An opt-in to lxml's mended reading, `LoadOptions(recover=True)`, each part so read reported as recovered in `skipped`? | No, unless someone asks. docx4j has no such reading, and it needs more of the fork (lxml's error log in the report). |
@@ -561,4 +598,5 @@ All eleven are decided as recommended (the user: "CR-030 and CR-031 both decided
 
 ## 9. Effort
 
-1¼ to 1¾ days here (A 1 to 1½, B ¼), and ½ day in the fork for phase 0. No Word run.
+1½ to 2 days here (A 1¼ to 1¾, B ¼; `part.not_read` added ¼ day to A on 2026-11-03), and ½ day in the fork for
+phase 0. No Word run.
