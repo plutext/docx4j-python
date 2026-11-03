@@ -297,7 +297,10 @@ default.
   and small caps under `small_caps: upper`. `word-text` (CR-027 Phase D) leaves it at `en-US`.
 - **Here**, `TextOptions.default_language`: a string, stripped. A blank or non-string value is refused with
   `TextOptionError` naming REQ-607. It is matched as a `w:lang` is (section 4.2's `dotted_i`), so `tr`, `tr-TR` and
-  `az-Latn-AZ` give `İ`; no fuller BCP 47 check is made. It is not one of `_CHOICES`, since it's a free tag.
+  `az-Latn-AZ` give `İ`. It is not one of `_CHOICES`, since it's a free tag. **A malformed tag:** docx4j refuses
+  one (`7af22e9dd`, CR-046 section 10.1), and the WD's open item recommends that every port do so. Phase A follows
+  the item as ruled, refusing a malformed tag with `TextOptionError` if the recommendation stands, with docx4j's tests
+  as the oracle.
 - **docx4j at the tag** reads `w:themeFontLang` (section 2.1). The ruling moves docx4j too, so the port follows the WD,
   not `75b9bdb54`.
 - **The settings part** is no longer consulted for case mapping. CR-031's `part.not_read` for settings stays on its other
