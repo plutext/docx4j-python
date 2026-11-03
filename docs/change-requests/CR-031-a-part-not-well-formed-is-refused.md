@@ -1,6 +1,6 @@
 # CR-031: A part not well formed is refused when read, not silently mended --- the fork's lxml handler without recovery, docx4j CR-065 D1's refusal
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. Phase B, the records, next. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more).
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. Phase B, the records, next. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more). **Amended again 2026-11-03** (the user: "make the list readers refuse; start phase B"; section 10.8 item 1): the content API's list readers refuse a numbering or styles part that is not well formed, as section 4.6 said, where Phase A's list emulator read it as absent; Phase A2, ¼ day, then Phase B.
 
 *The number:* CR-030 is the latest CR here, drafted beside this one the same day.
 
@@ -376,7 +376,8 @@ So upstream's handlers disagree, and only the default one mends. It is upstream 
   `parser_config().recover` is False.
 - **CR-030's pass** (`breaks.repair_bytes`) runs only after the fork's parse succeeds, so on bytes already well
   formed. Its lxml parser must not recover either, and the census holds it to that.
-- **The model's own raw readers** (section 2.1's last row) are strict already, and each keeps its handling.
+- **The model's own raw readers** (section 2.1's last row) are strict already, and each keeps its handling, except
+  the list emulator's, which refuses (section 4.6, amended 2026-11-03).
 
 ### 4.5 Relationships and content types (D5, Q3)
 
@@ -391,8 +392,24 @@ So upstream's handlers disagree, and only the default one mends. It is upstream 
 ### 4.6 Styles, numbering and settings (D6, Q4; amended 2026-11-03)
 
 - **The content API refuses.** `get_property_resolver()` raises the styles part's `Docx4JException` (docx4j: an
-  NPE), and so does every content API reader that resolves styles (`body.text` and the rest). A numbering part not
-  well formed raises in the readers that need the numbering, and nothing else.
+  NPE), and so does every content API reader that resolves styles (`body.text` and the rest).
+- **The list readers refuse too** (amended 2026-11-03; the user: "make the list readers refuse"; section 10.8 item
+  1). `Paragraph.is_list_item`, `list_item` and every other reader over the list emulator read the numbering and
+  styles parts with lxml (`listnumbering/emulator.py`'s `_root_of`, under `_ensure` and `_read_styles`). Phase A kept
+  that reader by section 4.4, and it reads a part not well formed as absent: a numbered paragraph is no list item,
+  with nothing said. Instead they raise the part's own refusal: the `Docx4JException` its `contents` raises
+  ("Problem with part /word/numbering.xml: <lxml's message>", lxml's `XMLSyntaxError` the deepest cause), the same
+  text, and recorded as its `unreadable` (D8).
+  - **A styles part:** at the emulator's first read of the styles, so at the first list reader, as the resolver's
+    readers refuse.
+  - **A numbering part:** only where a reader needs a definition, at the same paragraphs as the text model's
+    `part.not_read` (a `w:numPr`, direct or through a style; section 10.3). A list reader over a paragraph with no
+    numbering raises nothing for the numbering part.
+  - **The writers** refuse already: they read `contents`.
+  - **The text model is unchanged.** It hands the emulator no part its consult recorded as not read, so it still
+    reads as for a package that lacks the part, with one `part.not_read`, held by docx4j's fixture.
+  - **The other raw readers** of section 2.1's last row keep their handling (section 4.4). Phase A2 measures how each
+    reads a part not well formed and records it, unchanged.
 - **The text model reads as for a package that lacks the part, and says so** with `part.not_read` (WD 0.66 REQ-801;
   the user, 2026-11-03: "part.not_read as recommended"). Q4 first asked the WD, and this section first proposed a
   logged line and no `TextWarning`.
@@ -517,8 +534,8 @@ such reading, and a mended part saved after an edit writes what libxml2 guessed.
   from one document this package makes and saves, each a replacement in the saved bytes as docx4j's `fixture` does.
   Over every case and at both `strict` settings:
   - `load()` returns, except for cases 17 to 20, which raise naming the part;
-  - `contents`, `read_contents()` and `source_tree()` raise the part's `Docx4JException` with lxml's message, its
-    deepest cause an `XMLSyntaxError`;
+  - `contents` and `read_contents()` raise the part's `Docx4JException` with lxml's message, its deepest cause an
+    `XMLSyntaxError`, and `source_tree()` gives None (section 4.9; corrected 2026-11-03, section 10.5 item 5);
   - `unreadable` and `is_content_unreadable` are set, and a second read raises the same exception without a parse;
   - an untouched save, a save after a read of another part, and a save after an edit of another part are each byte
     for byte for the broken part;
@@ -564,7 +581,8 @@ such reading, and a mended part saved after an edit writes what libxml2 guessed.
 |---|---|---|
 | 0 | The fork's stage 15 (item 33, `ParserConfig(recover=...)`, `ParserError` from lxml's error), its tests, `CHANGES.md`, and the docx4j-xsdata 26.2.5 release, which the user publishes; `docs/UPSTREAM.md` row 29 here | ½ day in the fork |
 | A | D1's engine half (`runtime.RECOVER`, the pin, `test_parser_configs.py`) once 26.2.5 is out; D2 to D10: `_parse`'s `try`, `DefaultXmlPart.tree`, the sniffs, `unreadable`, the validator's finding, `source_tree()`, the text model's `part.not_read` and reason, the census, the tests of section 5, the three fixed tests | 1¼ to 1¾ days |
-| B | The records: CHANGELOG (section 4.13), CLAUDE.md (the status, and "Round-trip and fidelity rules"' "Nothing may be dropped silently" gaining the refusal), `tests/README.md`'s map, the index row, the portfolio's entries through the docx4j-portfolio session, and the docx4j hand-off of section 3.4 | ¼ day |
+| A2 | The list readers' refusal (section 4.6, amended 2026-11-03): the emulator's reads of the styles and numbering parts raise the part's own `Docx4JException`, the text model handing it no part it recorded as not read; its tests; the other raw readers' handling measured and recorded | ¼ day |
+| B | The records: CHANGELOG (section 4.13), CLAUDE.md (the status, and "Round-trip and fidelity rules"' "Nothing may be dropped silently" gaining the refusal), `tests/README.md`'s map, the index row, the portfolio's entries through the docx4j-portfolio session, the docx4j hand-off of section 3.4, and `part.not_well_formed` to docx4j-core-ts through the portfolio (Q6) | ¼ day |
 
 Everything in Phase A except D1's line can land before 26.2.5. Under 26.2.4 the tests of the refusal itself are
 marked to skip, as CR-021's were before its phase 0, and the rest of D2 to D10 runs.
@@ -605,7 +623,8 @@ All eleven are decided as recommended (the user: "CR-030 and CR-031 both decided
 
 ## 9. Effort
 
-1½ to 2 days here (A 1¼ to 1¾, B ¼; `part.not_read` added ¼ day to A on 2026-11-03), and ½ day in the fork for
+1¾ to 2¼ days here (A 1¼ to 1¾, A2 ¼, B ¼; `part.not_read` added ¼ day to A on 2026-11-03, and A2 ¼ day the
+same day), and ½ day in the fork for
 phase 0. No Word run.
 
 ## 10. Phase A (implementation notes, 2026-11-03)
@@ -799,7 +818,10 @@ No Word check (Q11): no save of a well-formed file changes, and a part not well 
    numbering part not well formed "raises in the readers that need the numbering". The writers do (they unmarshal
    the part), but the readers (`Paragraph.is_list_item`, `list_item`) go through the emulator, whose reader parses
    `get_xml()` with lxml and defines nothing for a part that will not parse; section 4.4 keeps each such reader's
-   handling. So `is_list_item` is False there, silently. Measured on `part-not-read-numbering.docx`; not changed.
+   handling. So `is_list_item` is False there, silently. Measured on `part-not-read-numbering.docx`; not changed. With the
+   styles part not well formed, the two headings numbered through their style read False too, while
+   `paragraph.text` refuses (measured by hand). **Decided 2026-11-03** (the user: "make the list readers refuse"):
+   section 4.6 as amended, Phase A2.
 2. **The fork logs skipped items met before the fatal error.** The settings fixture cut inside
    `<w:compatSetting` logs "Skipped unknown element {w}compatSettin in CT_Compat" on `docx4j_xsdata`'s logger,
    from the parse that then fails: libxml2 reports the start of the cut element before the error. The part reports
