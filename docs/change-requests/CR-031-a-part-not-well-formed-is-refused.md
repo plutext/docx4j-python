@@ -539,6 +539,13 @@ such reading, and a mended part saved after an edit writes what libxml2 guessed.
   - one only, over a reading that needs the part many times;
   - nothing logged by the text model (`caplog`);
   - CR-027's tests with docx4j's breaks.
+  - **docx4j's fixture** for `part.not_read` (its CR-046 section 10, `3ad164bdf`, unpushed; WD 0.68 Appendix A.8,
+    portfolio `6ffa998`): `docx4j-core-tests/src/test/resources/text-extraction/part-not-read/`, copied, not depended
+    on, at the commit Phase A starts from. Its eight files are the intact document; styles, numbering and settings,
+    each not well formed and absent; and numbering unneeded. Each is held to `expected/<fixture>.<view>.txt` in the
+    three views (`list_labels` on, `small_caps: upper`) and to `expected-warnings.tsv`: each not-well-formed file
+    reads as its absent twin, plus one `part.not_read`. The settings fixture's caps run under `themeFontLang` tr-TR is
+    recorded pending until CR-029 lands.
 - **The census of section 4.4.**
 - **The fixed fixture:** `test_an_empty_rsid_is_dropped_where_nothing_was_kept` inserts into a paragraph with no rsid.
 - **The gates:**
