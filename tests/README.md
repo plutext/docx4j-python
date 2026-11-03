@@ -727,7 +727,7 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > Double leave At blank.
 
 > **2026-11-03, CR-030 Phase B (the files built at `5cdb3fb`, `out/cr030-word-check/`, for
-> `__tmp/python-cr030/`): awaiting the user's Word check.** CR-030 Phase A reads a `w:br` outside a `w:r` as
+> `__tmp/python-cr030/`): passed** (the user's result: "all opened cleanly and were identical to the word 365 saves"). CR-030 Phase A reads a `w:br` outside a `w:r` as
 > Word reads it, and a save writes the repaired shape (CR-030 section 10). Thirteen files, docx4j's
 > `br-placement` probes (`fixtures/br-placement/`), each loaded, every story part unmarshalled and saved by a
 > default save, each reading back under `strict=True` with nothing skipped and no warning; Word's own saves of
@@ -735,7 +735,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > prompt; each line or page break where Word's save shows it, with all the text either side; `br2-1`'s breaks at
 > Word's sizes (R3 and R5 14 pt, R6 20 pt bold, the rest the default) in the Home tab's font size box;
 > `br2-2`'s field code split round its break under Toggle Field Codes; and what `br2-3`'s header shows, its
-> lines kept as a bare `w:instrText` (Q6), which Word showed as text in the source.
+> lines kept as a bare `w:instrText` (Q6), which Word showed as text in the source. All thirteen opened with no repair prompt and looked the same as Word's saves, `br2-3`'s header
+> included: Word shows the bare `w:instrText` as text in our save too (CR-030 section 10.10).
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown

@@ -1,6 +1,6 @@
 # CR-030: A `w:br` outside a run, read as Word reads it (the port of docx4j CR-073)
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done, its Word check waiting on the user (`out/cr030-word-check/`).
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done; **the Word check passed 2026-11-03** (the user: "all opened cleanly and were identical to the word 365 saves"; section 10.10). **CR-030 is complete.**
 
 *The number:* CR-029 is the latest CR here. CR-031 is being drafted beside this one.
 
@@ -723,3 +723,15 @@ docstring; its tests are unchanged, since no sample triggers.
    wildcard holding a misplaced break is unmeasured.
 4. Section 4.11's two findings stand: the QUOTE evaluator dropping a `w:br` in a field code (CR-025's evaluators),
    and the fork's `parent_qname` for a choice class (the fork's own feature; nothing in the fork changed).
+
+### 10.10 The Word check (2026-11-03): passed
+
+The thirteen saves were staged at `vbShares/Office 2016/__tmp/python-cr030/` (built at `5cdb3fb`, `SHA1SUMS` checked
+on the share). The user's result, in Word 365: "all opened cleanly and were identical to the word 365 saves".
+- **No repair prompt** on any of the thirteen.
+- **Each looked the same as Word's own save of its source** (`word365/`), against the per-file list in its
+  `README.txt`.
+- **`br2-3`:** its header looked the same as Word's save too, so Word shows our bare `w:instrText` as text, as it
+  showed the source's. Q6's difference is in this package's reading (the text model keeps it a field code), not in
+  what the save writes.
+- **No hang** and no quiet refusal, so nothing for `../docx4j-portfolio/docs/word-hangs.md`.
