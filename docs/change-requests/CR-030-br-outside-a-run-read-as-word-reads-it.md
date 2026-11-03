@@ -17,7 +17,7 @@
 **Settled before the questions** (these are not open):
 - **The warning.** The code is `br.outside_run`, one per part, with the fields `part_name`, `breaks` and `text_elements`
   (core-ts: `partName`, `breaks`, `textElements`). It was agreed with core-ts through the portfolio, provisional on the
-  user's word on each CR. Its message is docx4j's WARN verbatim, after the part name (section 4.3).
+  user's word on each CR. Its message is docx4j's WARN after the part name, less docx4j's own CR number (section 3.2).
 - **The counts are the stylesheet's** (`mc-preprocessor.xslt` lines 834 to 837 at `95c6b42d3`):
   - `breaks` counts every `w:br` whose parent is a run container or `w:body`. A `w:br` directly in a block-level
     `w:sdtContent` is counted but left where it is.
@@ -243,9 +243,10 @@ Its trigger has to differ from this one. Its runtime refuses a text element hold
 (`PartUnmarshalException`), so it can't parse first and look. Instead, a detection walk runs over every part's DOM, at
 0.4% of parse and unmarshal. Here the fork's report already names every shape (section 2.3), so no walk is needed.
 
-**One wording to align.** core-ts's message (`breaks.mts` line 140) ends at "read as Word reads them". docx4j's WARN
-ends "read as Word reads them (CR-073)". This CR writes docx4j's verbatim. The portfolio session should settle which
-one both ports write.
+**The wording, settled.** docx4j's WARN ends "read as Word reads them (CR-073)"; core-ts's message (`breaks.mts`
+line 140) ends at "read as Word reads them", the wording this repository proposed to the portfolio when the code was
+agreed. Both ports write that: the rest is docx4j's verbatim, and "(CR-073)" is docx4j's own CR number, which names
+nothing in a port.
 
 core-ts also holds its rules to check 72's 72e and 72j (its CR-016 section 7.1): a third Word run giving the same rule,
 cited here and not copied.
@@ -319,8 +320,8 @@ The pass keeps:
 `BrOutsideRun` is a frozen dataclass:
 - `code: ClassVar[str] = "br.outside_run"`;
 - `part_name: str`, `breaks: int` and `text_elements: int`;
-- `message`, the part name and docx4j's WARN verbatim:
-  `"/word/document.xml: w:br outside a w:r: 8 outside a run, 1 text elements holding elements; read as Word reads them (CR-073)"`;
+- `message`, the part name and docx4j's WARN, less its " (CR-073)" (section 3.2), as core-ts writes it:
+  `"/word/document.xml: w:br outside a w:r: 8 outside a run, 1 text elements holding elements; read as Word reads them"`;
 - `to_dict()`, with those five keys, for the MCP server's JSON.
 
 Where it is kept:
