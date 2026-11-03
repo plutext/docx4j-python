@@ -785,3 +785,13 @@ At the user's "go on CR-020 Phase C". Records only: no code, test or generated f
   element-name half: a check by name alone lets the `sdt`, `customXml`, `ins` and `del` forms stand in for each other), and
   the two test files as reference. 11.12's codes went to docx4j and docx4j-core-ts the same day.
 - **The portfolio:** `python/CR-020.C` and `python/CR-020` done, through the docx4j-portfolio session.
+
+## 13. The parse guard loosened (2026-11-03)
+
+At the user's "the parse-time guard: loosen it by about 5%". Section 5 held `Symbols.docx`'s parse within 5% of its
+parse before the list check (192.0 ms, so 201.6 ms). The margin was too narrow for a long run: a full suite run at
+`82800fd` failed it at 201.8 ms (11.6, 11.11), and run alone it measured 193.4 to 198.4 ms then and 196.2 to 198.6 ms on
+2026-11-03, best of nine. The guard now allows 10% (`MAX_PARSE_GROWTH = 0.10`, 211.2 ms), and the test is renamed
+`test_the_list_check_leaves_the_parse_within_ten_percent` (it was `..._within_five_percent`, sections 10.9 and 11). The
+reference, 192.0 ms at `eb8f2d5`, is unchanged, and no code changed: the guard still catches a change of kind, not of
+degree.

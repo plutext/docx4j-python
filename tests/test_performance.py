@@ -168,14 +168,16 @@ def test_link_parents_stays_within_its_budget(document_bytes: bytes) -> None:
 #: machine, in this test and outside it, interleaved with the code after (CR-020 section 10.9).
 SYMBOLS_PARSE_BEFORE_MS = 192.0
 
-#: CR-020 section 5: the parse within 5% of that. A parse is not checked (the check is off for its duration,
-#: one context-variable set per parse, Q3), so what is left is the check's machinery in the lists the parse
-#: builds: a context-variable read per non-empty list and the owner comparison in ``set_owner``.
-MAX_PARSE_GROWTH = 0.05
+#: CR-020 section 5: the parse within 5% of that, loosened to 10% on 2026-11-03 (section 13): the best of nine
+#: measured 193 to 199 ms, and a full run at ``82800fd`` failed it at 201.8 ms against 201.6 ms, the margin too
+#: narrow for a long run. A parse is not checked (the check is off for its duration, one context-variable set per
+#: parse, Q3), so what is left is the check's machinery in the lists the parse builds: a context-variable read per
+#: non-empty list and the owner comparison in ``set_owner``.
+MAX_PARSE_GROWTH = 0.10
 
 
-def test_the_list_check_leaves_the_parse_within_five_percent() -> None:
-    """CR-020 section 5: ``Symbols.docx``'s parse within 5% of its parse before the check (best of nine)."""
+def test_the_list_check_leaves_the_parse_within_ten_percent() -> None:
+    """CR-020 sections 5 and 13: ``Symbols.docx``'s parse within 10% of its parse before the check (best of nine)."""
     from docx4j_py.runtime import parser
     from docx4j_py.wml import Document
 
