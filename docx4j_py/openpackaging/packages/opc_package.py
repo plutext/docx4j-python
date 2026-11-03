@@ -409,6 +409,22 @@ class OpcPackage:
         return out
 
     @property
+    def warnings(self) -> list[Any]:
+        """What the parses read otherwise than as written, over every part that has been parsed (CR-030 Q2).
+
+        Each record names its part: a
+        :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun` where a part held
+        a ``w:br`` outside a ``w:r``, or a text element holding elements, and
+        was read as Word reads them. A private read counts, as it does for
+        :attr:`skipped`. Empty is the usual answer. core-ts's ``pkg.warnings``.
+        """
+        out: list[Any] = []
+        for part in self.parts.parts():
+            if isinstance(part, XmlPart):
+                out.extend(part.warnings)
+        return out
+
+    @property
     def kept(self) -> list[tuple[PartName, Any]]:
         """The values the parse bound as the text they were read with, over every part that was unmarshalled.
 

@@ -153,12 +153,45 @@ def _parse_one(node: etree._Element, wrapper: type | str | None, lenient: bool) 
     return obj
 
 
-def _all(xml: str, *, wrapper: type | str | None = None, lenient: bool = False) -> list[Any]:
+def _all(
+    xml: str,
+    *,
+    wrapper: type | str | None = None,
+    lenient: bool = False,
+    _breaks: list[Any] | None = None,
+) -> list[Any]:
+    """:func:`wml`'s siblings. `_breaks` is ``insert_ooxml``'s (CR-030 Q4), and private.
+
+    Given a list, the fragment is read as Word reads a file: a ``w:br`` outside
+    a ``w:r``, and a text element holding elements, go through
+    :func:`docx4j_py.openpackaging.breaks.repair` before the parse, and the
+    list receives its :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun`,
+    named ``"the fragment"``. In a ``w:body``'s scope the synthetic root stands
+    for the body during the pass, so that a ``w:br`` directly in it is rule 3's.
+    :func:`wml` itself never passes it: code's own fragments are refused.
+    """
     root = _wrap(xml)
+    if _breaks is not None:
+        _repair_breaks(root, wrapper, _breaks)
     children = [child for child in root if isinstance(child.tag, str)]
     if not children:
         raise FragmentError("the fragment holds no element")
     return [_parse_one(child, wrapper, lenient) for child in children]
+
+
+def _repair_breaks(root: etree._Element, wrapper: type | str | None, out: list[Any]) -> None:
+    """CR-030's pass over a wrapped fragment, its record appended to `out` where it found anything."""
+    from docx4j_py.openpackaging.breaks import BrOutsideRun, repair
+
+    in_body = wrapper is not None and _scope_class(wrapper) is class_for(f"{{{WML_NS}}}body")
+    if in_body:
+        root.tag = f"{{{WML_NS}}}body"
+    try:
+        breaks, texts = repair(root)
+    finally:
+        root.tag = _WRAPPER
+    if breaks or texts:
+        out.append(BrOutsideRun("the fragment", breaks, texts))
 
 
 def wml(xml: str, *, wrapper: type | str | None = None, lenient: bool = False) -> Any:

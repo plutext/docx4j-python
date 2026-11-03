@@ -132,7 +132,12 @@ def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[A
             document part of its own.
     """
     if not is_flat_opc(ooxml):
-        return list(wml.all(ooxml, wrapper="body"))
+        # read as Word reads OOXML (CR-030 Q4): a w:br outside a w:r put in a run, and reported
+        found: list[Any] = []
+        elements = list(wml.all(ooxml, wrapper="body", _breaks=found))
+        for record in found:
+            current_recorder(package).warn(record.message)
+        return elements
     if target is None:
         raise ContentError(
             "a pkg:package can only be inserted into a body that has a part",
@@ -162,6 +167,9 @@ def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[A
             hint=hint,
         )
     document = main.contents
+    for record in main.warnings:
+        # the load read it as Word reads it (CR-030); the source package goes, so the call says so
+        current_recorder(package).warn(f"the pkg:package's {record.message}")
     body = getattr(document, "body", None)
     content = list(getattr(body, "content", None) or ())
     if not content:

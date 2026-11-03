@@ -125,8 +125,12 @@ class DiffReport:
     #: ``word-normal-form`` (CR-018 section 4.7, CR-021 section 4.3) is a value
     #: a normalising save wrote in Word's normal form: :func:`compare` with
     #: ``normalise=True`` writes the same normal form into the source first,
-    #: counting each, so that the diff proves nothing else moved
-    BENIGN = ("boolean-spelling", "word-normal-form")
+    #: counting each, so that the diff proves nothing else moved.
+    #: ``br-outside-run`` (CR-030 section 4.6) is a ``w:br`` outside a ``w:r``, or
+    #: a text element holding elements, that the parse read as Word reads it:
+    #: :func:`compare` with ``repaired=True`` runs the source through the same
+    #: pass first, counting the warning's two counts
+    BENIGN = ("boolean-spelling", "word-normal-form", "br-outside-run")
 
     def add(self, category: str, path: str, detail: str, limit: int = 400) -> None:
         self.counts[category] = self.counts.get(category, 0) + 1
@@ -254,7 +258,14 @@ def sort_children(el: etree._Element) -> None:
         el.append(child)
 
 
-def compare(orig: bytes, new: bytes, *, unordered_root: bool = False, normalise: bool = False) -> DiffReport:
+def compare(
+    orig: bytes,
+    new: bytes,
+    *,
+    unordered_root: bool = False,
+    normalise: bool = False,
+    repaired: bool = False,
+) -> DiffReport:
     """Diff two parts.
 
     Args:
@@ -271,8 +282,23 @@ def compare(orig: bytes, new: bytes, *, unordered_root: bool = False, normalise:
             ``w:date`` and ``w:fullDate``), each rewrite counted as ``word-normal-form``, so that
             any other difference is still one. An integer the serialiser
             re-spells (``"+240"`` as ``240``) is counted there too.
+        repaired: `new` is a save of a part whose parse read a ``w:br``
+            outside a ``w:r`` as Word reads it (CR-030 section 4.6,
+            ``part.warnings`` holding ``br.outside_run``): run the source through
+            the same pass first (:func:`docx4j_py.openpackaging.breaks.repair_bytes`),
+            each break and each text element it counts counted as
+            ``br-outside-run``, so that any other difference is still one. It
+            comes before ``normalise``, as the parse comes before the save.
     """
     rep = DiffReport()
+    if repaired:
+        from docx4j_py.openpackaging.breaks import repair_bytes
+
+        orig, breaks, texts = repair_bytes(orig)
+        for _ in range(breaks):
+            rep.add("br-outside-run", "/", "a w:br outside a run, read as Word reads it")
+        for _ in range(texts):
+            rep.add("br-outside-run", "/", "a text element holding elements, split as Word reads it")
     a, b = normalize_tree(orig), normalize_tree(new)
     if normalise:
         from docx4j_py.openpackaging.normalise import normalise_tree

@@ -24,6 +24,15 @@ no sample here has such an element, so the tests below are the same in both
 modes. ``tests/openpackaging/test_mce_levels.py`` holds both modes over docx4j's
 probes.
 
+**The second exception (CR-030 section 4.6).** A part whose parse read a
+``w:br`` outside a ``w:r``, or a text element holding elements, as Word reads it
+(``part.warnings`` holding ``br.outside_run``) is saved in the repaired shape,
+which is Word's own save's (docx4j CR-073's D4). ``canon.compare(...,
+repaired=True)`` runs the source through the same pass first and counts it as
+``br-outside-run``; every other category is still zero. No sample has the shape,
+so the tests below are unchanged; ``tests/openpackaging/test_br_outside_run.py``
+holds it over docx4j's ``br-placement`` probe.
+
     .venv-fork/bin/python -m pytest tests/openpackaging/test_round_trip.py -q
 """
 

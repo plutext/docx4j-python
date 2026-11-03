@@ -15,7 +15,10 @@ that tree (CR-002 section 16).
 per thread, CR-001 section 14 --- that is lenient and carries the fork's
 skipped-content report. What lenience cost is kept on the part as
 :attr:`skipped` and logged at warning level with the part's name;
-``LoadOptions(strict=True)`` raises instead.
+``LoadOptions(strict=True)`` raises instead. Where the report names a ``w:br``
+outside a ``w:r``, or an element inside a text element, the part is read as
+Word reads it (CR-030, :mod:`~docx4j_py.openpackaging.breaks`): the bytes are
+repaired and parsed again, and the part's :attr:`warnings` says so.
 
 **Untouched means byte for byte.** :attr:`bytes_for_save` returns the source
 bytes unless the part was unmarshalled or had bytes set on it. Only a part the
@@ -109,6 +112,7 @@ class XmlPart(Part, Generic[T]):
         "resolved_alternate_content",
         "root_name",
         "skipped",
+        "warnings",
     )
 
     def __init__(
@@ -147,6 +151,12 @@ class XmlPart(Part, Generic[T]):
         #: the element whole and where it stood. Empty in ``"preserve"`` mode.
         #: docx4j ``JaxbXmlPart.getResolvedAlternateContent()``.
         self.resolved_alternate_content: list[Any] = []
+        #: What the last parse read otherwise than as written, one record a kind, at most one a part (CR-030 Q2):
+        #: a :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun` where it found a ``w:br`` outside a ``w:r``,
+        #: or a text element holding elements, and read them as Word reads them. Set by every parse, as
+        #: :attr:`skipped` is, cleared by :meth:`set_bytes`; empty is the usual answer. core-ts's
+        #: ``XmlPart.warnings``.
+        self.warnings: list[Any] = []
 
     # -- the class to unmarshal as -----------------------------------------
 
@@ -290,6 +300,7 @@ class XmlPart(Part, Generic[T]):
         self.kept = []
         self._empty_value = False
         self.resolved_alternate_content = []
+        self.warnings = []
 
     def set_xml(self, xml: str) -> None:
         """Replace the content with an XML string."""
@@ -317,11 +328,19 @@ class XmlPart(Part, Generic[T]):
         data = self._source_bytes()
         if data is None or self.model_class is None:
             return None
-        obj, _parser, _resolved = self._parse(data, self._parse_settings())
+        obj, _parser, _resolved, _warnings = self._parse(data, self._parse_settings())
         return obj
 
-    def _parse(self, data: bytes, settings: _ParseSettings) -> tuple[Any, Any, list[Any]]:
-        """Parse `data` under `settings`: the tree, the parser (its skipped report) and the ``mc`` content resolved."""
+    def _parse(self, data: bytes, settings: _ParseSettings) -> tuple[Any, Any, list[Any], list[Any]]:
+        """Parse `data` under `settings`: the tree, the parser (its skipped report), the ``mc`` content resolved, and the warnings.
+
+        After the ``mc`` passes and the fork's parse, a part whose skipped
+        report names a ``w:br`` outside a ``w:r``, or an element in a text
+        element, is read as Word reads it (CR-030 section 4.1): its bytes go
+        through :func:`~docx4j_py.openpackaging.breaks.repair_bytes`, and the
+        fork parses the result, whose tree and report are the part's. A clean
+        part pays the test of an empty report.
+        """
         from docx4j_py.runtime import parser
 
         clazz = self.model_class
@@ -343,6 +362,22 @@ class XmlPart(Part, Generic[T]):
             obj = xml_parser.from_bytes(data, clazz)
         except Exception as exc:  # noqa: BLE001 - the part name is the useful half
             raise Docx4JException(f"Problem with part {self.part_name}: {exc}") from exc
+        warnings: list[Any] = []
+        items = getattr(xml_parser.skipped, "items", None)
+        if items:
+            # CR-030: docx4j's parse, repair and parse again, keyed on the report rather than on a failure
+            from docx4j_py.openpackaging import breaks
+
+            if breaks.triggers(items):
+                repaired, found, texts = breaks.repair_bytes(data)
+                if found or texts:
+                    warnings.append(breaks.BrOutsideRun(str(self.part_name), found, texts))
+                if repaired is not data:
+                    xml_parser = parser(lenient=True, skipped_report=True)
+                    try:
+                        obj = xml_parser.from_bytes(repaired, clazz)
+                    except Exception as exc:
+                        raise Docx4JException(f"Problem with part {self.part_name}: {exc}") from exc
         if xml_parser.config.on_bind is None:
             # No post-bind hook on this config, so the parse left the parent
             # pointers unwired and the second walk is still needed. With the
@@ -352,7 +387,7 @@ class XmlPart(Part, Generic[T]):
             from docx4j_py.runtime import context
 
             link_parents(obj, context=context())
-        return obj, xml_parser, resolved
+        return obj, xml_parser, resolved, warnings
 
     def _unmarshal(self, private: bool = False) -> None:
         clazz = self.model_class
@@ -367,12 +402,16 @@ class XmlPart(Part, Generic[T]):
         self._empty_value = b'""' in data or b"''" in data
 
         settings = self._parse_settings()
-        obj, xml_parser, resolved = self._parse(data, settings)
+        obj, xml_parser, resolved, warnings = self._parse(data, settings)
 
         report = xml_parser.skipped
         self.skipped = list(getattr(report, "items", ()) or ())
         self.kept = list(getattr(report, "kept", ()) or ())
         self.resolved_alternate_content = resolved
+        self.warnings = warnings
+        for warning in warnings:
+            # once a part, as docx4j's WARN (its CR-073 D3)
+            logger.warning("%s", warning.message)
         if self.skipped:
             for item in self.skipped:
                 logger.warning("%s: skipped %s", self.part_name, item)
@@ -394,9 +433,9 @@ class XmlPart(Part, Generic[T]):
     def _adopt(self) -> None:
         """The private tree made the live one: what :meth:`_unmarshal` would leave, without the parse.
 
-        :attr:`skipped`, :attr:`kept`, :attr:`resolved_alternate_content` and
-        ``_source_ns_map`` are already that parse's: the private parse set them
-        from the same bytes under the same settings.
+        :attr:`skipped`, :attr:`kept`, :attr:`resolved_alternate_content`,
+        :attr:`warnings` and ``_source_ns_map`` are already that parse's: the
+        private parse set them from the same bytes under the same settings.
         """
         self._contents = self._private_contents
         self._bytes = None

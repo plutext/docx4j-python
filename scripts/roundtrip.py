@@ -16,6 +16,12 @@ compares with ``canon.compare(..., normalise=True)``, which counts those as
 ``word-normal-form``; ``--no-normalise`` writes them as read. The upstream runtime (``--runtime
 xsdata``, the pre-Phase-B baseline) has neither, and builds its own config.
 
+With the fork runtime a part whose skipped report names a ``w:br`` outside a ``w:r``, or an
+element in a text element, is read as Word reads it, as ``XmlPart`` reads it (CR-030 Q5,
+:mod:`docx4j_py.openpackaging.breaks`): repaired and parsed again, its two counts printed, and
+compared with ``canon.compare(..., repaired=True)``, which counts the repair as
+``br-outside-run``. No sample has the shape.
+
 Writes per-part artefacts to out/<docx>/<part>/{orig.xml,rt.xml,diff.txt}
 and prints a markdown results table.
 """
@@ -242,11 +248,13 @@ class PartResult:
     skipped: list = field(default_factory=list)
     kept: list = field(default_factory=list)
     normalised: list = field(default_factory=list)
+    #: CR-030: ``(breaks, text_elements)`` where the parse read a w:br outside a w:r as Word reads it
+    br_outside_run: tuple = ()
 
 
 def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
              parser, serializer, strict_parser, nsmap_from_source=False,
-             repeat: int = 3, normalise: bool = False) -> PartResult:
+             repeat: int = 3, normalise: bool = False, repair: bool = False) -> PartResult:
     res = PartResult(docx=docx, part=part, bytes_in=len(data))
 
     # --- strict pass (informational) ---
@@ -270,10 +278,28 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
         (out_dir / "error.txt").write_text(traceback.format_exc())
         return res
 
+    # --- CR-030: a w:br outside a w:r read as Word reads it, as XmlPart._parse reads it ---
+    # the report triggers the pass; the repaired bytes are parsed again, and that parse's
+    # tree and report are the part's (the timing stays the first parse's)
+    report = getattr(parser, "skipped", None)
+    if repair and report is not None and len(report):
+        from docx4j_py.openpackaging import breaks
+
+        if breaks.triggers(report):
+            try:
+                fixed, found, texts = breaks.repair_bytes(data)
+                res.br_outside_run = (found, texts)
+                if fixed is not data:
+                    obj = parser.from_bytes(fixed, klass)
+                    report = getattr(parser, "skipped", None)
+            except Exception as exc:  # noqa: BLE001
+                res.error = f"repair: {type(exc).__name__}: {exc}"[:500]
+                (out_dir / "error.txt").write_text(traceback.format_exc())
+                return res
+
     # --- skipped content (fork ParserConfig(skipped_report=True)) ---
     # parser.skipped is cleared at the start of every parse, so this is
     # the report of the last of the timed passes, one part's worth.
-    report = getattr(parser, "skipped", None)
     if report is not None:
         res.skipped = [(n.kind, n.path, n.parent_class or "") for n in report]
     kept = list(getattr(report, "kept", None) or ())  # the fork's stage 13 (CR-018 Q16)
@@ -333,7 +359,7 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     except Exception:  # noqa: BLE001
         pass
 
-    rep = canon.compare(data, new, normalise=normalise)
+    rep = canon.compare(data, new, normalise=normalise, repaired=bool(res.br_outside_run))
     res.identical = rep.identical
     res.counts = dict(rep.counts)
     res.samples = [(d.category, d.path[-110:], d.detail[:160]) for d in rep.diffs[:60]]
@@ -346,6 +372,11 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
         fh.write(f"mc:Ignorable rt   = {res.ignorable_rt!r}\n")
         fh.write(f"prefixes orig = {sorted(res.orig_prefixes)}\n")
         fh.write(f"prefixes rt   = {sorted(res.rt_prefixes)}\n")
+        if res.br_outside_run:
+            fh.write(
+                f"br outside a run = {res.br_outside_run[0]} outside a run, "
+                f"{res.br_outside_run[1]} text elements holding elements (repaired)\n"
+            )
         fh.write(f"skipped       = {len(res.skipped)}\n")
         for kind, path, owner in res.skipped:
             fh.write(f"    SKIPPED {kind} {path} (in {owner})\n")
@@ -474,13 +505,15 @@ def main() -> int:
                 r = run_part(docx.name, name, data, klass, od, parser,
                              serializer, strict_parser,
                              args.nsmap_from_source, args.repeat,
-                             normalise=args.normalise)
+                             normalise=args.normalise,
+                             repair=args.runtime == "docx4j_xsdata")
                 results.append(r)
                 flag = "OK " if r.ok else "ERR"
                 same = "SAME" if r.identical else "diff"
+                br = f" br.outside_run={r.br_outside_run[0]}/{r.br_outside_run[1]}" if r.br_outside_run else ""
                 print(f"{flag} {same} {docx.name:38s} {name:26s} "
                       f"{r.bytes_in/1024:7.1f}K parse={r.parse_ms:7.1f}ms "
-                      f"ser={r.ser_ms:7.1f}ms {r.error}")
+                      f"ser={r.ser_ms:7.1f}ms{br} {r.error}")
 
     print(f"\nmodel import: {import_ms:.0f} ms")
     if MISSING_REQUIRED:
@@ -546,6 +579,7 @@ def main() -> int:
           f"\n  benign respellings       {sum(benign.values())}"
           f" {sorted(benign) if benign else ''}"
           f"\n  skipped content          {total_skipped}"
+          f"\n  br outside a run         {sum(1 for r in results if r.br_outside_run)} part(s) repaired"
           f"\n  kept values              {sum(len(r.kept) for r in results)}"
           f"\n  normalised               {sum(len(r.normalised) for r in results)}"
           f" ({'on' if args.normalise else 'off'})")

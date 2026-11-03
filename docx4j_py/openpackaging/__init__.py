@@ -27,6 +27,7 @@ listed in CR-002 section 12.
 from __future__ import annotations
 
 from docx4j_py.openpackaging.api import create_package, load
+from docx4j_py.openpackaging.breaks import BrOutsideRun
 from docx4j_py.openpackaging.content_types import (
     ContentTypeManager,
     ContentTypes,
@@ -140,6 +141,7 @@ __all__ = [
     "AddPartBehaviour",
     "AlternativeFormatInputPart",
     "BinaryPart",
+    "BrOutsideRun",
     "ChartColorStylePart",
     "ChartExSpacePart",
     "ChartPart",
