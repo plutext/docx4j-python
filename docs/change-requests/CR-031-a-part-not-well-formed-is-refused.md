@@ -1,6 +1,6 @@
 # CR-031: A part not well formed is refused when read, not silently mended --- the fork's lxml handler without recovery, docx4j CR-065 D1's refusal
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Nothing built: phase 0 is the fork's, then the user's 26.2.5 release. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more).
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. Phase B, the records, next. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more).
 
 *The number:* CR-030 is the latest CR here, drafted beside this one the same day.
 
@@ -607,3 +607,210 @@ All eleven are decided as recommended (the user: "CR-030 and CR-031 both decided
 
 1½ to 2 days here (A 1¼ to 1¾, B ¼; `part.not_read` added ¼ day to A on 2026-11-03), and ½ day in the fork for
 phase 0. No Word run.
+
+## 10. Phase A (implementation notes, 2026-11-03)
+
+Phase A as built. The user ordered it on 2026-11-03 ("do the remain fork work and start CR-031 phase A"), after
+phase 0: the fork's stage 15 (`77398949`), docx4j-xsdata 26.2.5 on PyPI, and `docs/UPSTREAM.md` row 29 (`1fc04d3`).
+docx4j was read at `3ad164bdf` (its CR-046 section 10, local and unpushed) by `git show` and `git archive`,
+read-only: `Extractor`'s `consult()` and its callers, `TextWarning.PART_NOT_READ`, `Emulator.resolverOf`,
+`PartNotReadTest` and the `part-not-read` fixture; and `UnreadablePartTest` for the engine's five tests. Every
+question is as decided (section 8), section 4.6 as amended. Phase B's records (CHANGELOG, CLAUDE.md, the docx4j
+hand-off of section 3.4, the portfolio's entries) are not here.
+
+**Commits.** `0f73213` (the copy, 10.2), `57c0b94` (the code and the tests, 10.1, 10.3 to 10.6), and this
+section's (the records).
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| D1 | `runtime.py`; `pyproject.toml`, `RELEASING.md` | `RECOVER = False` beside `EXACT_TYPES`, set by `parser_config()` (`recover=`, the fork's stage 15); the pin `docx4j-xsdata[lxml]>=26.2.5,<26.3` in `dependencies` and the `dev` extra, and `RELEASING.md`'s statement of it. Nothing else names the floor (CI installs the dev extra; `release_check.sh` and the readmes name no version); CLAUDE.md's is Phase B's |
+| D2 | `openpackaging/parts/xml_part.py` | `_parse`'s `try` holds `splice_word`, `mce_preprocess_bytes` and the fork's parse: "Problem with part <name>: <reason>", the reason lxml's `msg` (`_reason`) where an `XMLSyntaxError` is among the causes, else the error's own text as before; `syntax_error_of(error)` finds it |
+| D3 | `openpackaging/parts/default_xml_part.py` | `DefaultXmlPart.tree` raises `Docx4JException` naming the part, from lxml's error |
+| D4 | `xml_part._root_ns_map`, `CustomXmlDataStoragePropertiesPart.item_id` | the sniffs without `recover=True` (lxml's default, strict) |
+| D5 | `openpackaging/load.py`, `api.py` | no code: `rels.list` reads the part at load, so the refusal of D2 refuses the load; the module, `load_package` and `load()` docstrings say so |
+| D8 | `xml_part.py` | `XmlPart.unreadable` and `is_content_unreadable`; `_unmarshal` keeps the failure of `_parse` with the `_ParseSettings` it was read under and raises it again (`with_traceback(None)`) without a parse while they hold; a parse that succeeds, `set_contents`, `set_bytes` and `set_xml` clear it |
+| D9 | `validator.py`, `traversal.py`, `opc_package.py`; `xml_part.source_tree()` | `PartNotWellFormed` (`part.not_well_formed`: `message` lxml's, `line`, `column` from lxml's `position`, `node` the part), made by `part_findings` where the part's own tree cannot be read for an `XMLSyntaxError`, so `misplaced()` of a package or a part reports it and goes on; `source_tree()` gives None where the source's parse fails |
+| D7 | `model/text/trees.py` | `_root_reason` reads an `XMLSyntaxError`'s `msg` |
+| D6 (`part.not_read`) | `model/text/trees.py`, `extractor.py`, `result.py`, `__init__.py` | `TextWarning.PART_NOT_READ`; `PackageTrees.styles_part`, `numbering_part`, `settings_part`, `parts_not_read`, `part_not_read(part)` and `known_not_read(part)`; the extractor's `consult(part)`, through `resolver` (now a property), `_numbering_emulator()`, `_counting_emulator()` and `_settings()` (10.3) |
+| D10 | `load.py` | `LoadOptions.strict`'s docstring: it adds nothing for well-formedness, and does not make the load eager |
+| the census | `tests/openpackaging/test_not_well_formed.py` | 10.4 |
+
+### 10.2 The copy
+
+- `git archive 3ad164bdf docx4j-core-tests/src/test/resources/text-extraction/part-not-read | tar -x` into the
+  session's scratchpad, then copied into `tests/fixtures/part-not-read/`, not under `tests/fixtures/text-extraction/`,
+  whose copy is pinned at `docx4j-17.3.5` (CR-027 Q6): the eight `.docx`, `expected/` (24 files),
+  `expected-warnings.tsv` and the README as `docx4j-README.md`. Each file's git blob id is docx4j's at `3ad164bdf`
+  (`git hash-object` against `git rev-parse 3ad164bdf:<path>`), and a test holds each to `SHA1SUMS` (34 files).
+- The builder, `build_part_not_read.py`, stays in docx4j, as `br-placement/`'s do. The `README.md` is this
+  package's: the commit, each file, and the pending lines (10.5 item 1). Every text file is LF, so no
+  `.gitattributes` rule is needed.
+
+### 10.3 `part.not_read`, as built
+
+- **Where the parts are read.** `PackageTrees` reads the styles and the settings when it is built, as it did, now
+  through `_consult(part)`: `read_contents()` once, the tree kept, and the part recorded in `parts_not_read` only where
+  its own record says its content could not be read (`part.unreadable is error`). A read refused otherwise (a strict
+  load's skipped content) is not this warning, and reads as before, silently. A styles part so recorded gets no
+  resolver (docx4j's constructor), so the reading is as without styles.
+- **The numbering**, read by nothing typed in the text model (the emulator reads it with lxml), is checked by a
+  parse that builds no tree (`_well_formed`, an lxml target that builds nothing, 0.1 ms on a 20 KB part); only where
+  that fails is it read typed, for the engine's record. A typed read on every consult cost a first reading of
+  `NumberingIndents.docx` 7 ms (18.5 ms before, 25.8 ms; best of fifteen); with the check it is 19.0 ms.
+- **When the warning is raised** (`Extractor.consult`, docx4j's): the styles where `resolver` is asked (every
+  paragraph's properties, a run's style, a paragraph mark, a run's Office JS span), so at the first paragraph; the
+  numbering in `_numbering` for a paragraph whose effective `w:numPr` has a `w:numId` other than 0 (direct, or
+  through a style read); the settings in `_fields_update_on_open` (at the start of every top-level reading and at the
+  end of a part's or content's), `_is_forms_protected` (FORMTEXT under `fields: update`) and `_sections_with_headers`,
+  there only where a section has an even header or footer reference (`_even_reference`). Counting checks only the
+  record already made (`known_not_read`), never reads: a document with no numbered paragraph raises nothing.
+- **One level down**, `fields_update_on_open` is False without consulting the settings (docx4j's `!nested &&`); the
+  nested result's metadata was never used (`read_nested` takes blocks and warnings), and the first reading under
+  `fields: update` is nested too. `read_nested` names the warning for the embedded package's part, as for
+  `content.not_read`.
+- **The warning**: kind `part.not_read`, no address, `part_name` the part's (the selector), kept once a part by
+  `warn`'s key. `to_dict()` gives `{"kind", "address": None, "selector"}`; `str()` `part.not_read (/word/styles.xml)`.
+
+### 10.4 The tests and the numbers
+
+`tests/openpackaging/test_not_well_formed.py`, new, 145 tests (3.8 s):
+
+- **section 2.2's twenty** (the base document made in code; each case's libxml2 message pinned by its start, as
+  section 2.3 gives it): the load returning and every read refused, at both `strict` settings (32: `read_contents()`
+  and `contents` the same exception, lxml's error the deepest cause, the message its `msg` with no `(<string>`, the
+  line and column in it, nothing skipped, `source_tree()` None); a second read with `_parse` patched to fail (16); a
+  change of `mc_load_mode` parsing once more (1); the three saves byte for byte for the broken part, a failed read
+  among them (16); `set_contents` and `set_bytes` clearing the record, the replacement saved (5); `misplaced()`'s
+  finding, for the package and the part, its `to_dict()`, and nothing changed (16); two parts not well formed, two
+  findings (1); a cell finding in a replacement over a source not well formed refused by the save's check (1);
+- **the load** (8): cases 17 to 20 at both settings, three `Docx4JException`s naming the relationships part and the
+  content types' `InvalidFormatException`;
+- **the `mc` passes** (6): `mce_preprocess=True`, `mc_load_mode="word"` and the default, with and without a
+  block-level `mc:AlternateContent`, each reading the well-formed part and refusing the cut one alike;
+- **a custom XML part** (1): `samples/invoice2013.docx`'s item cut in half, still registered by its id, `tree`
+  refused naming it, the view's readers as before (Q10), saved as read;
+- **docx4j's `UnreadablePartTest`, its five engine tests** (5), over its own breaks;
+- **the sniffs** (18): over the corpus (`samples/` and every fixture's `.docx`, `.docm` and `.dotx`: 5,671 XML parts
+  and 44 custom XML properties parts) as the recovering sniffs read them; each of the sixteen part cases read as far
+  as its root (`{}` for case 13 alone); a properties part cut after its root still giving its id;
+- **the census** (2): no `recover=` keyword but `False` or `RECOVER`, no `HTMLParser` or `lxml.html` in
+  `docx4j_py/`; `RECOVER`, `parser_config().recover` and `parser().config.recover` False; the module-level parsers
+  (`breaks`, `mce`, `mc_load_mode`, `default_xml_part`, `fragments`) refusing a cut document;
+- **downstream** (17): the text model's refusal of cases 1 to 13 with lxml's reason; case 14's `content.not_read at
+  header:rId5`; case 15's resolver and `body.text` raising the styles part's own exception, and case 16's
+  `body.text` reading; the python-docx facade refusing case 1; the base document read whole (1).
+
+`tests/text/test_part_not_read.py`, new, 52 tests (0.8 s):
+
+- **the copy** (2) and **every row of `expected-warnings.tsv`** (24): the warnings exactly; the text exactly but for
+  the case-mapping lines, each held to be the capitals of this package's line (Turkish under the settings'
+  `themeFontLang`, where they can be read) and their number pinned per fixture (51 lines in all), so that CR-029
+  turns them;
+- **`PartNotReadTest`'s other four** (12): each not-well-formed file read as its absent twin in each view (9); the
+  emulator counting direct numbering without readable styles; the unreadable part kept by an untouched save; one
+  level down the embedded package's part named;
+- **the routes** (8): one level down the settings not needed; a part's reading consulting them; a numbering part no
+  paragraph needs raising nothing, with and without labels (2); nothing logged by the text model; the content API
+  refusing an unreadable styles part while the text model reads on; a strict refusal not `part.not_read`; a
+  well-formed numbering part never read typed;
+- **section 4.6's measurement** (6): the document read whole; each part cut to two thirds reading as it removed,
+  with its one warning (3); the font table never consulted; one warning a part over twenty numbered paragraphs, both
+  headers, every view and markdown, in the order first needed (settings, styles, numbering).
+
+`tests/test_parser_configs.py` gains `test_the_engine_s_config_never_recovers` (1); `tests/test_validator.py`
+gains `test_the_part_not_read_fixture_holds_its_four_parts_not_well_formed` (1). 199 new tests in all.
+
+Two mutations show the tests bite: `Extractor.consult` patched to answer True fails 26 of `test_part_not_read.py`'s
+52; `recover=True` put back under `parser_config` fails 155 across it, `test_not_well_formed.py` and
+`test_unreadable_parts.py`.
+
+ruff (`check`, `format --check`, at the files' 120 columns): the two new files are formatted and clean. On the
+changed files `check` finds what it found before (2 in `xml_part.py`, 1 in `load.py`, 2 in `opc_package.py`, 1 in
+`extractor.py`, none elsewhere), and the formatter would change the same lines as before.
+
+### 10.5 Departures, with why
+
+1. **The case-mapping lines of docx4j's fixture are pending.** Its expected text maps case (`w:caps` by the run's
+   language, the settings' `themeFontLang` tr-TR giving "İSTANBUL", the default "ISTANBUL"; `w:smallCaps` under
+   `small_caps: upper`), and this package maps none yet: CR-029's, and there is no `small_caps` option here
+   either. Phase A's order named the settings fixture's run under tr-TR; every case-mapping line differs, in seven
+   of the eight files (three a file,
+   one in the two without styles, where only the direct `w:caps` maps), 51 in all, and each is exactly the capitals
+   of this package's line. Every other line and every warning is docx4j's. So the fixture is read with
+   `list_labels: true` alone.
+2. **No log line.** docx4j's `consult` logs WARN "Read as text without <part>, which could not be read" once a part;
+   section 4.6 has none: the warning is the record.
+3. **The numbering's consult checks well-formedness before a typed read** (10.3). docx4j's `readable` unmarshals the
+   part, which costs it nothing extra since its emulator reads the same JAXB tree; here it would be a parse no reader
+   made. A well-formed numbering part whose typed parse would fail otherwise (the model's binding, not the XML) is
+   therefore read by the emulator, as before, without the warning.
+4. **Counting asks the record, not the part.** docx4j's `count` calls `readable(numbering)` for every paragraph it
+   counts; here `_counting_emulator` reads only the record `consult` made, and the emulator's own lxml reading of an
+   unreadable part defines nothing anyway (section 4.4's "each keeps its handling"). The labels are the same.
+5. **`source_tree()` gives None** for a source that cannot be read, as section 4.9 and the brief say; section 5's
+   list has it raise with `contents`. A source whose parse fails for any reason held nothing readable, so it is None
+   for any `_parse` failure, not only an `XMLSyntaxError`.
+6. **The record is `_parse`'s failure only.** `unreadable` keeps a parse that failed (its XML, or the binding), not a
+   strict load's refusal of skipped content, which re-parses as before; nor a part with no content yet (docx4j's
+   "no content yet"), for which `contents` still raises "has no content". The record is keyed by `_ParseSettings`,
+   which docx4j has no counterpart of.
+7. **`misplaced()` reports only a part not well formed.** A part whose read fails otherwise (not seen: the lenient
+   parse binds what it can) still raises, as before.
+8. **docx4j's settings conveniences** (`removeEnforcement`, `attachTemplate`) have no counterpart here; the port of
+   `settingsThatCannotBeReadAreNotReplaced` refuses `set_compat_setting` and `set_default_compat_settings`.
+9. **The corpus of the sniffs' test** is `samples/` and `tests/fixtures/` one level deep (5,671 XML parts), not
+   section 2.5's 7,126 with the nested packages and the rest of `tests/`.
+
+### 10.6 Pre-existing tests whose expectation changed, and why
+
+- `tests/content/test_integer_normal_form.py::test_an_empty_rsid_is_dropped_where_nothing_was_kept`: the fixture
+  takes the first paragraph's own `w:rsidR` off before putting `w:rsidR=""` in, so the attribute is not given twice
+  (section 2.6), and checks the edit is well formed. Its expectations are unchanged.
+- `tests/text/test_unreadable_parts.py`: docx4j's breaks again (`</w:body>` to `</w:body` in the main part, the
+  root's closing tag cut short elsewhere, `</w:hdr>` to `</w:hdr`), and the reason lxml's, `expected '>', line 2,
+  column N` at the byte after the cut, the same text in the part's own exception. CR-027 section 10.8's departure 1
+  is retired.
+- `tests/openpackaging/test_mce_levels.py::test_a_corrupt_part_still_raises_in_word_mode` accepted lxml's
+  `XMLSyntaxError` or `Docx4JException`; it now asks the engine's refusal, naming the part, lxml's error its cause.
+- `tests/test_validator.py::test_the_corpus_holds_nothing_but_the_probes_values`: the copy's four parts not well
+  formed are each a `part.not_well_formed`, exempted as the CR-066 probes' values are and held exactly by the new
+  test.
+- `tests/openpackaging/test_private_readers.py`: `PackageTrees._consult` is a `read_contents` caller, listed and
+  reached; the settings moved to it from `_read`.
+
+### 10.7 The gates
+
+| gate | result |
+|---|---|
+| the full suite, slow included, the save check on (`tests/conftest.py`) | 9,495 passed, 8 skipped, 0 failed (6 min 47 s); the 13 warnings the fork's `ConverterWarning`s of other tests, as before. CR-030 Phase A's tree had 9,296 (its 9,295 and its 168th test); the 199 are this phase's |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`), 0 parts repaired |
+| `scripts/compare_acceptance.py` | `out/acceptance/` built by `scripts/acceptance.py` before the change (at `1fc04d3`, `out/acceptance-before-cr031a/`) and after it (`out/acceptance-after-cr031a/`): 17 artefacts, 246 entries, 0 differ beyond the wall-clock dates |
+| `codegen/generate.sh --check` | two generations byte identical (318 modules); no generated file changed |
+| `scripts/release_check.sh`, the fork from PyPI at 26.2.5 | passed, at `57c0b94`: the wheel and the sdist of docx4j 0.2.0 built into `dist/`, `twine check --strict` passed; a clean CPython 3.12.13 environment with the wheel and docx4j-xsdata 26.2.5 from PyPI; the smoke script; the fast suite against the installed wheel, 6,831 passed and 53 skipped, every skip a sibling checkout (`../docx4j`, docx4j-core-ts), python-docx or ruff not found from the scratch directory, which was in the session's scratchpad rather than beside the checkouts (this phase's four files there: 215 passed); `out/acceptance/` from the wheel against the checkout's, 17 artefacts, 246 entries, 0 differ |
+| the parse guard, `tests/test_performance.py` | Symbols' parse 199.8 ms against the limit of 211.2 ms (192.0 + 10%); the validator 34.1 ms, 17% of the parse. `recover=False` costs nothing measurable (section 2.7); the text model's first reading of a package with numbered paragraphs is within noise of before (10.3) |
+
+No Word check (Q11): no save of a well-formed file changes, and a part not well formed is written as read.
+
+### 10.8 Found, and left open
+
+1. **The content API's list readers read an unreadable numbering part as absent.** Section 4.6's first bullet says a
+   numbering part not well formed "raises in the readers that need the numbering". The writers do (they unmarshal
+   the part), but the readers (`Paragraph.is_list_item`, `list_item`) go through the emulator, whose reader parses
+   `get_xml()` with lxml and defines nothing for a part that will not parse; section 4.4 keeps each such reader's
+   handling. So `is_list_item` is False there, silently. Measured on `part-not-read-numbering.docx`; not changed.
+2. **The fork logs skipped items met before the fatal error.** The settings fixture cut inside
+   `<w:compatSetting` logs "Skipped unknown element {w}compatSettin in CT_Compat" on `docx4j_xsdata`'s logger,
+   from the parse that then fails: libxml2 reports the start of the cut element before the error. The part reports
+   nothing (the parse raised), and the text model logs nothing. It is the fork's skipped-report log (`log=True`),
+   CR-030 section 10.9 item 1's question again.
+3. **A package with no styles part logs the resolver's warnings** ("No default paragraph style!!", "Style definition
+   not found: Heading1") when the text model reads it (`part-not-read-styles-absent.docx`); one whose styles part
+   cannot be read logs none, since no resolver is built over it. Before CR-031 too; docx4j's fix (b), a styles part
+   added to a package without one, is not reproduced here (no part is added).
+4. **WD 0.67 and 0.69's further parts** (`commentsExtended`, `commentsIds`, `commentsExtensible`, the docProps parts,
+   the custom XML stores) await the user's ruling: none raises `part.not_read`. Such a part not well formed reads as
+   before: `commentsExtended` through `_read` (none), the docProps through `metadata.py`'s and the field resolvers'
+   own handling, a custom XML store through its view (Q10).
+5. **The registry**, through the docx4j-portfolio session: `python/CR-031.A` implemented.
