@@ -11,6 +11,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **`TextWarning.PART_NOT_READ`** (`part.not_read`; [CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 4.6, WD 0.66 REQ-801, docx4j CR-046
+  section 10): a styles, numbering or settings part the text model needed and could not read, its XML not well
+  formed. The reading goes on as for a package without the part, and says so once a part, where it first needs it,
+  the warning's selector the part's name. Held to docx4j's `part-not-read` fixture (`tests/fixtures/part-not-read/`).
+- **`XmlPart.unreadable` and `is_content_unreadable`** (docx4j's `unreadable` and `isContentUnreadable()`): the
+  `Docx4JException` of the read that failed, raised again by every later read without another parse until the
+  content is replaced. The validator's **`part.not_well_formed`** (`PartNotWellFormed`: the part, lxml's message,
+  `line` and `column`) is what `misplaced()` reports for a part it cannot read, going on to the next.
+
 - **`part.warnings` and `package.warnings`**, and their first kind, **`BrOutsideRun`** (`docx4j_py.openpackaging`;
   [CR-030](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md) Q2, section
   [10](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md#10-phase-a-and-phase-bs-records-implementation-notes-2026-11-03); docx4j-core-ts's
@@ -66,6 +75,25 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   untouched. The default is `check=False`; the test suite saves checked throughout.
 
 ### Changed
+
+- **A part whose XML is not well formed is refused when read, not mended** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md), sections
+  [10](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md#10-phase-a-implementation-notes-2026-11-03) and [11](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md#11-phase-a2-and-phase-b-implementation-notes-2026-11-03); docx4j CR-065 D1). `contents`, `read_contents()` and a generic XML part's `tree`
+  raise `Docx4JException` naming the part and lxml's reason (`Problem with part /word/document.xml: Premature end of
+  data in tag t line 2, line 2, column 351`), lxml's `XMLSyntaxError` its deepest cause. Before, lxml's recovery read
+  the part up to its first error, or around it, and dropped the rest with no report, even under
+  `LoadOptions(strict=True)`, and a save after any read or edit wrote the mended part. So a file that read before,
+  wrongly, now raises. The load is still lazy: a part never read costs nothing and is saved byte for byte, as docx4j
+  does.
+  - **The text model** raises for a main part so read and gives `content.not_read` for another story part
+    (CR-027). It reads as for a package without a styles, numbering or settings part so read, marked by
+    `part.not_read`.
+  - **The content API** raises the part's own exception where it needs such a part: the property resolver and
+    every reader that resolves styles, and the list readers (`is_list_item`, `list_item`, `list`, `body.lists`, the
+    `List` and `ListItem` views), which read a numbering or styles part that would not parse as absent, so that a
+    numbered paragraph was no list item with nothing said. A numbering part raises only over a paragraph that
+    names a list (a `w:numId` other than 0, its own or its style's). The resolver's readers raise there too
+    (`left_indent`, `outline_level` and the rest), since the merge asks for the level's indent.
+  - Needs docx4j-xsdata 26.2.5 (below).
 
 - **`CREATEDATE` and `SAVEDATE` under `fields: update` show what Word shows** ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) Phases B and B2,
   sections 12 and [13](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md#13-phase-b2-implementation-notes-2026-10-28)). They gave the core property's raw W3CDTF
@@ -148,6 +176,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **A relationships part that is not well formed refuses the load** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 4.5), the package's or
+  a part's, naming it. Before, the relationships after its first error were lost, and an untouched save dropped the
+  parts they named. `LoadOptions(mce_preprocess=True)` and `mc_load_mode="word"` raise `Docx4JException` naming the
+  part, where they raised lxml's `XMLSyntaxError`, and Word mode no longer mends a part that holds no
+  `mc:AlternateContent`.
+
 - **A `w:br` outside a `w:r` is read as Word 365 reads it** ([CR-030](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md), the port of docx4j CR-073 at
   `95c6b42d3`, 17.3.6; a defect 0.1.0 and 0.2.0 shared). docx4j's load survey found one in 206,351 of 3.7 million
   documents, most of them a web-to-docx generator's blank line, `<w:p><w:br/></w:p>`: a break directly in a
@@ -225,9 +259,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Dependencies
 
-- `docx4j-xsdata[lxml] >=26.2.4,<26.3`: the fork's
-  [docx4j-xsdata 26.2.4](https://pypi.org/project/docx4j-xsdata/26.2.4/), published 2026-10-26 (its
-  `docs/fork/CHANGES.md` stage 14, item 32: `ParserConfig(exact_types=)` takes `int`).
+- `docx4j-xsdata[lxml] >=26.2.5,<26.3`: the fork's
+  [docx4j-xsdata 26.2.5](https://pypi.org/project/docx4j-xsdata/26.2.5/), published 2026-11-03 (its
+  `docs/fork/CHANGES.md` stage 15, item 33: `ParserConfig(recover=)`, which the engine sets False,
+  `runtime.RECOVER`, so that its lxml handler refuses XML that is not well formed, lxml's error the
+  `ParserError`'s cause; CR-031). It carries 26.2.4's stage 14 (item 32: `ParserConfig(exact_types=)` takes
+  `int`; CR-021 phase 0), published 2026-10-26.
 
 ## [0.2.0] --- 2026-10-25
 

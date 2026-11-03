@@ -35,7 +35,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   trusted publishing from a GitHub release (`RELEASING.md`; the fork's is its `REBASING.md`
   "Releasing"). The gates are
   `scripts/release_check.sh` plus the Word check. `pyproject.toml` depends on
-  `docx4j-xsdata[lxml]>=26.2.4,<26.3` (since CR-021 phase 0, unreleased here); `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
+  `docx4j-xsdata[lxml]>=26.2.5,<26.3` (since CR-031 Phase A, unreleased here); `CHANGELOG.md` is the record, and `docs/pypi-readme.md`
   the PyPI page, every fence executed by `tests/test_readme.py`.
 - **CR-008** (table conditional formatting): proposed. **CR-009** (theme colours): Phase A
   implemented; B implemented 2026-10-24 (`model/color/`, the WordprocessingML half of docx4j's
@@ -340,7 +340,8 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 
 `docx4j_py/openpackaging/` mirrors docx4j's `org.docx4j.openpackaging` and `io3`, layer by layer:
 `PartStore` / `PartSink` (zip, directory, memory) in `stores.py`; `PartName`; `ContentTypeManager`;
-`parts/` (`Part`, `BinaryPart`, `XmlPart[T]` with lazy `contents`, `DefaultXmlPart` as an lxml tree,
+`parts/` (`Part`, `BinaryPart`, `XmlPart[T]` with lazy `contents`, a read that fails kept as its
+`unreadable` (CR-031), `DefaultXmlPart` as an lxml tree,
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
@@ -390,7 +391,12 @@ CR-002 section 12.3.
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
   `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. A part the
   CR-030 pass fully repaired is not skipped content, so it loads under `strict=True`; `wml(...)` still
-  refuses a misplaced `w:br`, while `insert_ooxml`'s fragment route repairs it. Empty is
+  refuses a misplaced `w:br`, while `insert_ooxml`'s fragment route repairs it. A part whose XML is
+  not well formed is refused when its content is read (CR-031): `Docx4JException` naming it and lxml's
+  reason, never mended (`runtime.RECOVER`, the fork's `recover=False`), kept as `part.unreadable`. The
+  load stays lazy and an untouched save writes its bytes; a relationships part not well formed refuses
+  the load. The text model reads around such a styles, numbering or settings part with `part.not_read`;
+  the content API's resolver and list readers raise; `misplaced()` reports it as `part.not_well_formed`. Empty is
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
   fixed by a marked schema patch rather than by loosening the check.
 - Booleans serialise numeric (`1`/`0`), as Word writes them; the docProps parts use

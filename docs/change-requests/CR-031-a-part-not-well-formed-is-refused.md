@@ -1,6 +1,6 @@
 # CR-031: A part not well formed is refused when read, not silently mended --- the fork's lxml handler without recovery, docx4j CR-065 D1's refusal
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. Phase B, the records, next. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more). **Amended again 2026-11-03** (the user: "make the list readers refuse; start phase B"; section 10.8 item 1): the content API's list readers refuse a numbering or styles part that is not well formed, as section 4.6 said, where Phase A's list emulator read it as absent; Phase A2, ¼ day, then Phase B.
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more). **Amended again 2026-11-03** (the user: "make the list readers refuse; start phase B"; section 10.8 item 1): the content API's list readers refuse a numbering or styles part that is not well formed, as section 4.6 said, where Phase A's list emulator read it as absent; Phase A2, ¼ day, then Phase B. **Phase A2 implemented 2026-11-03** (section 11: `f1cfa01`): every reader over the list emulator raises the part's own `Docx4JException`, its `unreadable`, the styles part at the first read of the styles and the numbering part only over a paragraph that names a list (`Emulator.names_a_list`), the property resolver's readers there too (section 11.3); the text model unchanged, its emulator reading no styles it could not read and a paragraph meeting the numbering part's refusal resolved without it; the other raw readers measured and left as they are, the accept and reject engine's reading of an unreadable story part as empty put to the user (section 11.4); 294 tests, full suite 9,789 passed. **Phase B done 2026-11-03** (section 11.7: CHANGELOG, CLAUDE.md, `tests/README.md`, the index; the hand-offs to docx4j and docx4j-core-ts sent through the portfolio and answered, section 11.8). **CR-031 complete** (no Word check, Q11).
 
 *The number:* CR-030 is the latest CR here, drafted beside this one the same day.
 
@@ -836,3 +836,240 @@ No Word check (Q11): no save of a well-formed file changes, and a part not well 
    before: `commentsExtended` through `_read` (none), the docProps through `metadata.py`'s and the field resolvers'
    own handling, a custom XML store through its view (Q10).
 5. **The registry**, through the docx4j-portfolio session: `python/CR-031.A` implemented.
+
+## 11. Phase A2 and Phase B (implementation notes, 2026-11-03)
+
+Phase A2 and Phase B as built. The user ordered both on 2026-11-03 ("make the list readers refuse; start phase B"),
+after section 4.6's amendment (`51f89dd`, section 10.8 item 1). Every question is as decided (section 8), section
+4.6 as amended. No Word check (Q11): no save of a well-formed file changes, and a part not well formed is written as
+read.
+
+**Commits.** `f1cfa01` (Phase A2: the code, the tests and their map in `tests/README.md`), and this section's (Phase
+B: the records).
+
+### 11.1 What landed (Phase A2)
+
+| piece | where | what |
+|---|---|---|
+| the refusal | `model/listnumbering/emulator.py`, `_root_of` | where lxml cannot read the part's bytes (`get_xml()`), or the part already holds the record of a read refused for its XML (`syntax_error_of(part.unreadable)`), it asks the part's own read (`read_contents()`), which raises the part's `Docx4JException` and keeps it as its `unreadable` (D8), or raises that record again without a parse. A well-formed part is read with lxml as before, its read never asked. A part that lxml cannot read here for another reason defines nothing, as before |
+| the next read | `Emulator._ensure` | a read that raised is not marked done, so the next one raises again, from the part's record |
+| a paragraph that names no list | `Emulator.names_a_list(p_pr)`; `resolve` split into `_named` (the style walk and `w:numId` 0, reading no definition) and the definitions half; `_arguments(p_pr)`, `number()`'s reading (CR-021's `decimal`), shared by both | where it is False, `number()` is None for the paragraph |
+| the list readers | `model/content/lists.py`: `list_of`, `list_item_of`, `ListItem._label` (`_names_a_list`) | ask `names_a_list` before they count the paragraph's story (`labels_for` walks it whole), so a reader over a paragraph that names no list needs no definition; `ListItem.get_ancestor` and `get_descendants` read the label before they count. `is_list_item` already resolved first (`_resolve`) |
+| the text model's emulator | `Emulator(package, read_styles=False)`; `model/text/trees.py`, `PackageTrees.__init__` | where the styles part is recorded not read (`known_not_read`), the numbering is read as for a package without styles: no style map, no resolver (docx4j's `resolverOf`, its fix (a)). `_ind_from_style_chain` asks `self.resolver` rather than the package's |
+| the text model's resolver | `trees.without_numbering(resolver, error)`, `_WithoutNumbering`; `Extractor._without_numbering`, from `_properties`; `markdown._WmlToMarkdown._style_indent_left` | the paragraph merge asks the emulator for a numbered paragraph's level indent, so the shared resolver now raises the numbering part's refusal there. Where the error is that part's own record, the paragraph is resolved again over a resolver whose `numbering_indents` is None, which is what the merge gave a numbering that defines nothing, and the rest of the reading resolves over it. Found through the main part, as `PackageTrees` finds it, so that a trial works too. `part.not_read` stays `consult`'s |
+| the census | `tests/openpackaging/test_private_readers.py` | `model/listnumbering/emulator.py::_root_of` listed, its docstring row, and reached over `REFUSED` (docx4j's numbering and styles fixtures not well formed) by `read_lists_refused` |
+
+### 11.2 The list readers, fixture by fixture
+
+Each reader from a fresh load of docx4j's `part-not-read` fixture (`tests/fixtures/part-not-read/`): ten paragraphs,
+two `Heading1` numbered by their style (0, 1), two numbered directly (2, 3), six naming no list (4 to 9). "Raises"
+is the part's own `Docx4JException`, its `unreadable`, with lxml's message and lxml's error the deepest cause:
+"Problem with part /word/styles.xml: AttValue: ' expected, line 2, column 625" and "Problem with part
+/word/numbering.xml: Specification mandates value for attribute w, line 2, column 395".
+
+| reader | `-styles` | `-numbering`, 0 to 3 | `-numbering`, 4 to 9 | `-numbering-unneeded` | intact, `-absent` twins, `-settings` |
+|---|---|---|---|---|---|
+| `Paragraph.is_list_item` | raises | raises | False, as absent | False | as before |
+| `Paragraph.list_item`, `Paragraph.list` | raises | raises | None, as absent | None | as before |
+| `Paragraph.to_dict()` (its `list_item`) | raises (Phase A: its `alignment`) | raises | as absent | as absent | as before |
+| a `ListItem`'s `list_string`, `level`, `sibling_index`, `get_ancestor`, `get_descendants`, `to_dict` | raises | raises | `""`, 0, 0, None, `[]`: as absent | as absent | as before |
+| `Emulator.get_number`, `Emulator.peek` | raises | raises | None | None | as before |
+| `Paragraph.to_api_script()` | raises at 2, 3 (its own `w:numPr`); 0, 1 and 4 to 9 as absent | raises at 2, 3; 0, 1 as absent | as absent | as absent | as before |
+| `body.lists` | raises | raises | | `[]` | as before |
+| a `List`'s `definition`, `level_types`, `paragraphs`, `level_exists`, `get_level_paragraphs`, `get_level_string`, `to_dict` | raises | raises | | | as before |
+| the emulator's `instance_list_definitions`, `abstract_list_definitions` | raises | raises | | raises | as before |
+| `body.to_api_script()` | raises | raises | | reads | as before |
+| `attach_to_list`, `detach_from_list` | raises | raises | | | as before |
+
+Readers that do not reach the emulator's refusal, each identical to its reading at `51f89dd` over all seven fixtures
+(`HEAD`'s tree archived into the session's scratchpad): the text model (`extract` in the three views with
+`list_labels`, its warnings, `markdown`, `to_markdown()`), `outline()` and `describe()` as dictionaries, and the
+python-docx facade (`docx4j_py.docx.Document`, which has no list reader). The facade, `paragraph.text` and the
+resolver's readers still raise the styles part's refusal over `-styles`, as in Phase A.
+
+### 11.3 Readers that now raise beyond section 4.6's list
+
+Section 4.6 names the list readers. The emulator's refusal reaches these too; each is recorded here, and none is
+routed around:
+
+1. **The property resolver's paragraph readers, over a paragraph that names a list**, the numbering part not well
+   formed: `effective_p_pr`, `left_indent`, `first_line_indent`, `outline_level`, `alignment` (and every reader of
+   `get_effective_ppr`), at the same four paragraphs. The paragraph merge asks the emulator for the level's
+   `w:ind` (`StyleUtil`'s `NumberingIndents` seam, `Emulator.get_ind`), which needs a definition. Before, they read
+   with no level indent, silently. Over the six other paragraphs they read as before, and `text` reads everywhere
+   (run properties never ask the numbering).
+2. **`Paragraph.to_dict()`**, through its `list_item`; **`to_api_script`**, for a paragraph with a `w:numPr` of its
+   own (the list verbs it writes read the list), and so `body.to_api_script()`.
+3. **The writers** `attach_to_list` and `detach_from_list` raise the part's refusal at the emulator, where they
+   would have raised the same exception at `contents`.
+4. **A dry run's text reading changed, for the better.** A trial cannot copy a part that cannot be read, so a
+   trial's resolver met the part's refusal in its numbering seam before Phase A2 too, and the text model fell back
+   to each numbered paragraph's own properties: over `-numbering`, `trial.to_markdown()` lost the two headings'
+   `#`. It now resolves them as without the numbering, so the trial reads as the package does.
+
+### 11.4 The other raw readers, unchanged
+
+Section 2.1's last row, each over its part cut to two thirds (or as noted), measured from a fresh load; nothing here
+changed in Phase A2. The probe is in this session's scratchpad (`cr031a2/raw_readers.py`), not in the repository.
+
+| # | reader | part | returns or raises | its caller then |
+|---|---|---|---|---|
+| 1 | `content/styles.py`, `style_ids_of` | `styles.xml` (`part-not-read-styles.docx`) | `set()` | `ensure_style`, `insert_markdown` and `insert_comment` raise the styles part's refusal; an untouched save keeps its bytes |
+| 2 | `content/reports.py`, `comments_in` | `comments.xml` (`comments-modern.docx`) | 0 | the outline's count, but `pkg.outline()` raises the part's refusal first (11.10 item 3); `body.get_comments()` raises it |
+| 3 | `content/describe.py`, `_root` | `styles.xml`; `settings.xml`; `comments.xml` | None: `styles` is `[]` (6 intact), `compatibility_mode` 12 (15 intact), the comment authors `[]` (one intact); the part still in `parts` | a description; nothing acts on it |
+| 4 | `customxml/template.py`, `_from_bytes` | `document.xml` (`invoice2013.docx`) | `()`: `describe_template` and `custom_xml_parts.describe()` give 0 bindings (20 intact) | `fill` and `apply_bindings` raise the main part's refusal |
+| 5 | `customxml/parts.py`, `_properties_of` | `itemProps1.xml` cut after its root | the item id the load registered the data part by, which it lower-cases (`load.py`; `{5d7ba57f-...}` where intact gives `{5D7BA57F-...}`), and no schema refs (none intact) | `apply_bindings` applies 16 of 20, as intact. Cut inside its root's start tag, the load's sniff (D4) gives no id, the store is not registered, and `apply_bindings` applies 0 of 20, each skipped with "no custom XML part with store item id ...", the body canonically unchanged |
+| 6 | `text/metadata.py`, `_core_dates` | `docProps/core.xml` (`invoice2013.docx`) | `{}` | the text model's `metadata` has no `core`, with no warning (section 10.8 item 4: WD 0.67 and 0.69's further parts await the user's ruling) |
+| 7 | `text/bound_values.py`, `_parse` | `docProps/core.xml`, a plain-text control bound to `dc:title` | lxml's error, which `BoundValues._root` catches: no store | the text model reads the control's surface ("Old title", where intact it reads "Core title" with `sdt.binding_differs`), with no warning; `apply_bindings` applies 0 of 1 and says why |
+| 8 | `revisions/removals.py`, `Removals._index` | a header with no revision markup, cut after a `w:commentReference` | an empty index: the header holds nothing | **acts on it**: `accept_all()` removes comment 7, which the unreadable header still references, and the save writes the comments part without it (the header byte for byte). Measured on a document made for it (`Headers.docx`, comment 7 referenced in a tracked deletion in the body and again in a header): with the header intact the comment is kept. The same reading counts a note's or a comment's reference in any story part nobody has read (11.10 item 1) |
+| 9 | `chart/model.py`, `root_tag` | `charts/chart1.xml` (`charts/bar-chart.docx`) | the root's tag (libxml2 reports the root's start before the error); None where the cut is inside the root's start tag | the text model reads the chart (`ChartModel.read`, `read_contents`) and gives `content.not_read` either way |
+| 10 | `parts/wml/comments.py`, `_root_for_read` | `commentsIds.xml`; `commentsExtensible.xml` (`comments-modern.docx`) | None: no `dateUtc` read | `Comment.creation_date` is read from `w:date` in the package's zone (08:21 UTC here, where intact `dateUtc` gives 23:21 UTC), with nothing said; `reply` raises the part's refusal (`tree`); `resolved` and `content` write other parts, the broken part saved as read |
+| 11 | `openpackaging/load.py`, `_item_id`'s fallback | a properties part of another content type (`application/xml`), cut | None, and a `WARNING` "could not read ds:itemID" | the store is not registered: `apply_bindings` applies 0 of 20, each skipped with its reason |
+
+**For the user:** row 8 is the one that reads silently as empty where its caller then acts: the accept and reject
+engine removes a comment (measured) or a note (`_flush_notes` reads the same index; not measured) whose reference
+stands in a story part it cannot read, and saves. Rows 7 and 10
+read silently otherwise (a bound control's surface for its value; a comment's `w:date` in the package's zone for its
+`dateUtc`), and nothing acts on either.
+
+### 11.5 Tests and numbers
+
+`tests/content/test_list_readers_refused.py`, new, 292 tests (1.1 s):
+
+- **the styles part** (134): each of the twelve paragraph readers at each of the ten paragraphs, and each of the
+  thirteen body and list readers, raising the part's own record, its message and lxml's error the cause; the
+  emulator's first read of the styles refused, and refused again without a parse;
+- **the numbering part** (137): each paragraph reader at the four paragraphs that name a list, raising; each at the
+  six that name none reading as over the absent part, the part neither read nor unmarshalled; each body and list
+  reader raising; `part-not-read-numbering-unneeded.docx` refusing nothing but the definitions themselves; the
+  refusal raised again without a parse, at every reader; the record another read made raised as it is; a
+  replacement read again;
+- **`to_api_script`** (2): refused at the two paragraphs with a `w:numPr` of their own, as before elsewhere;
+- **the resolver's readers** (6): each refusing the four paragraphs that name a list and reading the six others as
+  over the absent part; `text` reading;
+- **the twins** (7): the intact, `-styles-absent`, `-numbering-absent` and `-settings` fixtures reading their
+  labels, lists and items as before; a well-formed numbering part neither parsed typed nor unmarshalled by the list
+  readers (three fixtures);
+- **the text model** (6): each broken fixture reading as its absent twin with its one `part.not_read`, before and
+  after a list reader's refusal, the same record raised either way; the text model's emulator reading no styles
+  part; `without_numbering` answering the numbering part's own record and nothing else; a dry run reading as the
+  package; a numbered quote style's Markdown depth as without the numbering.
+
+`tests/openpackaging/test_private_readers.py`: `_root_of` in `CALLERS`; `test_every_listed_caller_is_reached` reaches
+it over `REFUSED`; `test_a_refused_list_reader_leaves_its_trees_as_parsed` (2). `tests/text/test_part_not_read.py`'s
+`test_the_emulator_counts_direct_numbering_without_readable_styles` now asks the text model's emulator
+(`read_styles=False`) for docx4j's oracle, and the package's for the refusal (11.6 item 1).
+
+Mutations show the tests bite: Phase A's reading put back in `_root_of` fails 198 of the new file's 292, 1 of `test_part_not_read.py`'s 52
+and 3 of `test_private_readers.py`'s fast 52; without the `names_a_list` guard, 54 of the new file's fail; the
+text model's emulator reading the styles fails 8 of `test_part_not_read.py`'s 52 and 1 of the new file's; with no
+resolver without numbering, 3 of the new file's fail (the dry run, the quote style, `without_numbering`).
+
+**The cost**, best of fifteen, interleaved with `HEAD` (`51f89dd`) twice, CPython 3.14.6:
+
+| | `HEAD` | Phase A2 |
+|---|---|---|
+| `extract(list_labels=True)`, `NumberingIndents.docx` | 18.78, 18.85 ms | 18.81, 18.75 ms |
+| the same, `samples/Symbols.docx` | 248.4, 249.0 ms | 248.0, 246.6 ms |
+| every paragraph's `is_list_item` and `list_item`, `NumberingIndents.docx` | 12.08, 12.07 ms | 12.22, 12.10 ms |
+| the same, `part-not-read-intact.docx` | 2.76, 2.76 ms | 2.81, 2.79 ms |
+
+The text model's first reading is unchanged; the list readers pay `names_a_list`'s style walk once a paragraph,
+1 to 2% on a document whose every paragraph is asked. No well-formed part is parsed more often, and none is marked for
+re-marshalling (held by the twins' test and by `test_private_readers.py`).
+
+ruff (`check`, `format --check`, at the files' 120 columns): the new file is formatted and clean; on the changed
+files `check` finds nothing new (the one `try`-`except`-`pass` added is marked `S110`, with its reason), and the
+formatter would change no line this phase wrote.
+
+### 11.6 Departures, with why
+
+1. **docx4j's emulator reads on; this one refuses.** docx4j's `Emulator.resolverOf` (its fix (a), `3ad164bdf`) reads
+   the numbering with no property resolver where the styles part cannot be read, for every caller. Here the content
+   API's emulator raises the part's refusal (the user's ruling, section 4.6 as amended), and the text model's is
+   built with `read_styles=False`, which is docx4j's reading. So docx4j's
+   `theEmulatorCountsDirectNumberingWithoutReadableStyles` holds for the text model's emulator, and its port asks
+   that one for the count and the package's for the refusal.
+2. **The resolver's readers raise for a paragraph that names a list** (11.3 item 1). Section 4.6 named the list
+   readers; the resolver's seam is the same emulator, and reading on there would read a numbered paragraph's indent
+   without its level, silently, which is what the amendment refused for the list readers.
+3. **The refusal comes from the part's own read**, asked only where lxml cannot read the bytes, so a well-formed
+   part costs nothing and the exception is the one `contents` raises. A part lxml cannot read here for another
+   reason (`get_xml()` decodes UTF-8, so a part in UTF-16 is one) is read typed once, privately, and defines nothing,
+   as before; its tree goes unused.
+4. **A dry run reads differently** (11.3 item 4): as the package does, where it lost its style-numbered headings.
+5. **The text model's fallback resolver is made per reading**, only where the numbering part's refusal is met, and
+   rebuilds its style caches; the shared resolver never caches what it computed without the numbering.
+
+### 11.7 Phase B: the records
+
+- **`CHANGELOG.md`**, `[Unreleased]`: under Changed, the refusal (section 4.13), with the text model's reading and the
+  content API's refusals, the list readers and the resolver's readers over a paragraph that names a list among them;
+  under Added, `TextWarning.PART_NOT_READ`, `XmlPart.unreadable` and `is_content_unreadable`, and
+  `part.not_well_formed`; under Fixed, a relationships part refusing the load and the `mc` passes' exception; under
+  Dependencies, the floor docx4j-xsdata 26.2.5 for stage 15's `recover`, 26.2.4's stage 14 with it.
+- **`CLAUDE.md`**: the pin `docx4j-xsdata[lxml]>=26.2.5,<26.3` (since CR-031 Phase A, unreleased here); "Round-trip
+  and fidelity rules"' "Nothing may be dropped silently" gaining the refusal; one clause in "The engine" (a read
+  that fails kept as `unreadable`). No status bullet, as for CR-026 to CR-030: the index is the status record.
+- **`tests/README.md`**: Phase A's rows checked against the tests (`test_not_well_formed.py`,
+  `test_part_not_read.py`, `test_parser_configs.py`, `test_validator.py`, `test_unreadable_parts.py`,
+  `test_integer_normal_form.py`, the `part-not-read/` fixture row): they hold, unchanged. Phase A2's rows (the new
+  file's, `test_private_readers.py`'s sixteen callers, `test_part_not_read.py`'s changed oracle) landed with the code,
+  as Phase A's did.
+- **`docs/change-requests/README.md`**: CR-031's row, A2 and B done, complete.
+- **The status line** of this CR.
+
+### 11.8 The hand-offs
+
+Both went through the docx4j-portfolio session on 2026-11-03, sent by this repository's session.
+
+1. **Section 3.4's, to docx4j**: `Load3` reads a part's relationships that are not well formed as none, so an
+   untouched save drops every part they named (case 17). The reproduction was staged at `out/cr031-handoff/`
+   (git-ignored): `base.docx`, `document-rels-cut.docx`, `Cr031Probe.java`, a README and `SHA1SUMS`.
+   **Received and confirmed** (docx4j's session, through the portfolio): on docx4j's own fixtures, docx4j-core
+   17.3.6-SNAPSHOT (`Load3` and `RelationshipsPart` unchanged since `4fdd80063`), so the staged files were not
+   needed. A cut `word/_rels/document.xml.rels` loads with no relationships for the main part, the parse error on
+   stderr only, and an untouched save loses the relationships part and every part it named; a cut `_rels/.rels` is
+   refused, but by a `NullPointerException`, not the parse error. The cause is `RelationshipsPart.unmarshal(InputStream)`,
+   which catches every `Exception` and prints it. Both files are now docx4j's `broken-part-document-rels.docx` and
+   `broken-part-package-rels.docx`, in its broken-part family, staged for the user's Word run (not yet started).
+   **docx4j's fix awaits Word's reading of the two files**: if Word refuses both, docx4j refuses, naming the part and
+   the parse error, as this package does; if Word repairs, keeping what it can, Q3 ("refuses the load") becomes a
+   specification question, which comes back here through the portfolio. The fix is the user's to rule, as a docx4j
+   CR-065 follow-on; no registry change yet.
+2. **Q6's, `part.not_well_formed` to docx4j-core-ts**: **received, and deferred to the user**, with no counterpart
+   report in core-ts yet. core-ts wrote no CR: it has no validator report, its nearest codes being its load-time part
+   warnings, `PartUnmarshalException`, and `part.not_read` for the text model (proposed in its CR-012 section 28).
+   Adopting the code is on the user's list under core-ts.
+
+### 11.9 The gates
+
+| gate | result |
+|---|---|
+| the full suite, slow included, the save check on (`tests/conftest.py`) | 9,789 passed, 8 skipped, 0 failed (6 min 53 s); the 13 warnings the fork's `ConverterWarning`s of other tests, as before. Phase A's tree had 9,495; the 294 are this phase's (the new file's 292, `test_private_readers.py`'s 2) |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`), 0 parts repaired |
+| `scripts/compare_acceptance.py` | `out/acceptance/`'s artefacts built by `scripts/acceptance.py` from `HEAD`'s tree (`51f89dd`, archived into the session's scratchpad: `out/acceptance-before-cr031a2/`) and from the change (`out/acceptance-after-cr031a2/`): 17 artefacts, 246 entries, 0 differ beyond the wall-clock dates |
+| `codegen/generate.sh --check` | two generations byte identical (318 modules); no generated file changed |
+| the parse guard, `tests/test_performance.py` | Symbols' parse 198.5 ms against the limit of 211.2 ms (192.0 + 10%); the validator 35.0 ms, 18% of the parse |
+| `scripts/release_check.sh` | not run: no packaging or dependency change since Phase A's run at `57c0b94` |
+
+### 11.10 Found, and left open
+
+1. **The accept and reject engine counts a story part it cannot read as holding nothing** (11.4 row 8). `Removals`
+   scans a story part nobody has read in its bytes, with lxml, and reads one not well formed as empty, so a
+   comment or a note whose reference stands in it can be removed with the reference the resolution took, and saved.
+   A part with revision markup in its bytes is unmarshalled by the listing, so it refuses the resolution instead;
+   the case is a part with no revision markup. Not changed (section 4.4: each raw reader keeps its handling); for the
+   user.
+2. **`is_list_item` reads a `w:numId` as written, `list_item` as Word reads it** (CR-021). `lists._resolve` passes
+   the `w:numId`'s text, and `Emulator.number` its `decimal`: a paragraph with `w:numId w:val="1.0"` is no list item to
+   `is_list_item` and has the label "1." through `list_item` (measured on `part-not-read-intact.docx`). Before Phase
+   A2 too; `names_a_list` reads as `number` does, so the new guard agrees with `list_item`.
+3. **`pkg.outline()` raises an unreadable comments part's refusal**, through `package_bodies` (`body_of` reads the
+   part's `contents`), where the text model's reading would give `content.not_read`. Phase A's; not changed.
+4. **A dry run over a package whose styles part is not well formed raises at its text reading**: the trial cannot
+   copy the part. Phase A's; not changed.
+5. **A custom XML properties part cut after its root gives its item id in lower case** (11.4 row 5): the fallback is
+   the id the load registered the data part by, which it lower-cases. The bindings resolve as before.
+6. **The registry**, through the docx4j-portfolio session: `python/CR-031.A2` and `python/CR-031.B` done, and
+   CR-031 complete.
