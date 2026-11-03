@@ -726,6 +726,17 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > overlapping; F 24 in 28 pt type, Double. The dialog shows lines, never the points: Single, 1.5 lines and
 > Double leave At blank.
 
+> **2026-11-03, CR-030 Phase B (the files built at `5cdb3fb`, `out/cr030-word-check/`, for
+> `__tmp/python-cr030/`): awaiting the user's Word check.** CR-030 Phase A reads a `w:br` outside a `w:r` as
+> Word reads it, and a save writes the repaired shape (CR-030 section 10). Thirteen files, docx4j's
+> `br-placement` probes (`fixtures/br-placement/`), each loaded, every story part unmarshalled and saved by a
+> default save, each reading back under `strict=True` with nothing skipped and no warning; Word's own saves of
+> the sources beside them in `word365/`. The question, per file (its `README.txt`, with Show/Hide on): no repair
+> prompt; each line or page break where Word's save shows it, with all the text either side; `br2-1`'s breaks at
+> Word's sizes (R3 and R5 14 pt, R6 20 pt bold, the rest the default) in the Home tab's font size box;
+> `br2-2`'s field code split round its break under Toggle Field Codes; and what `br2-3`'s header shows, its
+> lines kept as a bare `w:instrText` (Q6), which Word showed as text in the source.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and

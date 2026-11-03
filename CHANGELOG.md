@@ -11,6 +11,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **`part.warnings` and `package.warnings`**, and their first kind, **`BrOutsideRun`** (`docx4j_py.openpackaging`;
+  [CR-030](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md) Q2, section
+  [10](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md#10-phase-a-and-phase-bs-records-implementation-notes-2026-11-03); docx4j-core-ts's
+  `XmlPart.warnings` and `pkg.warnings`): what a parse read otherwise than as written, at most one record a part, set
+  by every parse as `part.skipped` is and logged once at `WARNING` on `docx4j_py.openpackaging`. A `BrOutsideRun` has
+  the code `br.outside_run`, `part_name`, `breaks`, `text_elements` (docx4j's counts), `message` and `to_dict()`.
+  `scripts/canon.py`'s `compare(..., repaired=True)` and `scripts/roundtrip.py` hold such a part's save to its source
+  run through the same pass (`br-outside-run`).
+
 - **The package's time zone, `pkg.date_time_zone`** ([CR-025](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md) Phase A, section
   [11](docs/change-requests/CR-025-dates-in-the-packages-zone-and-tier-one-fields.md#11-phase-a-implementation-notes-2026-10-28); the ports' one date rule,
   `docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6, with docx4j CR-067 D12 and docx4j-core-ts
@@ -138,6 +147,26 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   as before.
 
 ### Fixed
+
+- **A `w:br` outside a `w:r` is read as Word 365 reads it** ([CR-030](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md), the port of docx4j CR-073 at
+  `95c6b42d3`, 17.3.6; a defect 0.1.0 and 0.2.0 shared). docx4j's load survey found one in 206,351 of 3.7 million
+  documents, most of them a web-to-docx generator's blank line, `<w:p><w:br/></w:p>`: a break directly in a
+  paragraph, a hyperlink or another run container, inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`,
+  or directly in `w:body`. The parse skipped it and listed it in `part.skipped`, so every reader ran the text either
+  side together, a save after unmarshalling dropped the break, a `w:t` lost the text after its break and a `w:t`
+  nested in a `w:t` all its text, a field code was cut, and `strict=True` refused the file. Now such a part is read
+  as Word reads it, with docx4j's three rules:
+  - the break goes in a run of its own, with the paragraph mark's run properties while no run precedes it in its
+    paragraph and none after one;
+  - a text element holding breaks is split round them, all its text kept, a nested `w:t` giving its text;
+  - a break directly in `w:body` becomes the next paragraph's first run.
+
+  Each of docx4j's thirteen probes reads as Word 365's save of it (`tests/fixtures/br-placement/`), `strict=True`
+  loads them, and a save writes the repaired shape, which is Word's. The rules run only where the fork's skipped
+  report names the shape, so a normal part pays nothing measurable and an affected one is parsed twice. The part's
+  `warnings` says what was read so. `insert_ooxml` reads a fragment the same way and says so in its report's
+  `warnings`; `wml()` still refuses one. A `w:instrText` with no field round it stays a field code, as in docx4j
+  (Word shows it as text: CR-030 Q6).
 
 - **`tables: grid` sizes its columns in code points**, not UTF-16 units, so a cell holding an emoji or another
   character beyond the BMP no longer pads one short (WD 0.48 REQ-605, REQ-205; docx4j `1a0b5315c`;

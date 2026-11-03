@@ -1,6 +1,6 @@
 # CR-030: A `w:br` outside a run, read as Word reads it (the port of docx4j CR-073)
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. Nothing built.
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done, its Word check waiting on the user (`out/cr030-word-check/`).
 
 *The number:* CR-029 is the latest CR here. CR-031 is being drafted beside this one.
 
@@ -518,3 +518,208 @@ All seven are decided as recommended (the user: "CR-030 and CR-031 both decided 
 ## 9. Effort
 
 1½ days: A 1, B ½, then the user's Word run.
+
+## 10. Phase A, and Phase B's records (implementation notes, 2026-11-03)
+
+Phase A as built, with Phase B's records and the Word check's files; Phase B's Word run is the user's. The user
+ordered it on 2026-11-03 ("do CR-027 phase b, then CR-030"). docx4j was read at `95c6b42d3` by `git show` and
+`git archive`, read-only: `mc-preprocessor.xslt` lines 830 to 951, `BrOutsideARunTest` and the `br-placement`
+probe. core-ts's `src/opc/repair/breaks.mts` (uncommitted in its working tree) was read as a cross-check of the
+rules, and section 2.6's prototype was the starting point. Every question is as decided (section 8), and nothing in
+the stylesheet disagreed with this CR.
+
+**Commits.** `fb07618` (the copy, 10.2), `5cdb3fb` (the code and the tests, 10.1, 10.3 and 10.4), and this
+section's (the records, 10.8).
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the rules | `openpackaging/breaks.py` (new; `openpackaging/` is in `KEEP` whole) | `triggers(skipped)`, `repair_bytes(data)`, `repair(root)`, `BrOutsideRun` and `CODE`; lxml only, no model class imported |
+| the pass | `openpackaging/parts/xml_part.py` | `_parse` runs it after `splice_word`, `mce_preprocess_bytes` and the fork's parse, where the report triggers, and returns the warnings as a fourth value; the `warnings` slot, set by `_unmarshal` and logged there, cleared by `set_bytes`, kept by `_adopt` |
+| the package | `openpackaging/packages/opc_package.py` | `package.warnings`, over every `XmlPart` |
+| the export | `openpackaging/__init__.py` | `BrOutsideRun` |
+| fragments | `fragments.py` | `wml.all(..., _breaks=)`, private: the pass over the wrapped fragment, its record appended; `wml()` unchanged |
+| `insert_ooxml` | `model/content/ooxml.py` | `content_of`: the fragment route passes `_breaks` and warns in the call's report; the flat OPC route warns the pasted main part's records (10.5 item 5) |
+| the harness | `scripts/canon.py`, `scripts/roundtrip.py` | `compare(..., repaired=True)` and the `br-outside-run` category, benign; the round trip runs the pass as `XmlPart` does, prints `br.outside_run=n/m` and compares repaired |
+| the copy | `tests/fixtures/br-placement/` | 10.2 |
+| the tests | `tests/openpackaging/test_br_outside_run.py` (new); `test_round_trip.py`'s docstring | 10.4 |
+
+### 10.2 The copy
+
+- `git archive 95c6b42d3 docx4j-core-tests/src/test/resources/br-placement | tar -x` into the session's scratchpad,
+  then copied into `tests/fixtures/br-placement/`: the 26 `.docx` (the thirteen probes and Word 365's saves) and the
+  README as `docx4j-README.md`. Each file's git blob id is docx4j's at `95c6b42d3` (checked with `git hash-object`
+  against `git rev-parse 95c6b42d3:<path>`), and a test holds each to `SHA1SUMS`.
+- `SHA1SUMS` lists the 27. The `README.md` is this package's, after `field-probe-cr067/`'s: the commit, the two
+  rounds, each file, and the two builders left in docx4j, with Word's PDFs on the share. It is not in `SHA1SUMS`.
+- Every text file is LF, so no `.gitattributes` rule is needed. The sdist takes `tests/` whole.
+
+### 10.3 The rules, as built
+
+- **The trigger.** `triggers` takes each skipped **element** and reads the last step but one of its `path`, the
+  fork's `/`-joined Clark names (a regular expression over `@?({uri})?local` steps, since a URI holds `/`). It
+  fires on a `w:br` whose parent is one of rule 1's twelve containers or `w:body`, and on any element whose parent is
+  a text element. `parent_qname` is not read: for the probes it is `{w}RT` for a `w:t`, `{w}PHyperlink` for a
+  `w:hyperlink` (section 2.3), and a test pins the first.
+- **The pass in `_parse`.** Only where the first parse's report is non-empty is `breaks` imported and `triggers`
+  called, so a clean part pays a truth test of an empty list. Where it fires, `repair_bytes` parses the bytes the
+  fork read with lxml (the `splice_word` parser's settings), counts, decides and applies. Where it changed nothing it
+  returns `data` itself, and the first parse stands (10.5 item 2). Otherwise the fork parses the result with a fresh
+  parser, and that parse's tree, report and kept list are the part's. `_root_ns_map` and `_empty_value` still read
+  the original bytes. lxml reconciles a new element's namespace with the declarations in scope, so the rewritten
+  bytes keep the source's `w:` prefix.
+- **Decided on the tree as read.** Every break and text element is classified before anything moves. Rule 1's run
+  properties and rule 3's are copied from the input's `w:pPr/w:rPr` (every `w:pPr`, every `w:rPr`, the element
+  children less the five a mark alone has, tails dropped); `w:rPr` is written only where something is left. So two
+  breaks first in a paragraph both take the mark's properties (a test).
+- **Rule 1.** The nearest of the ten paragraph-or-block ancestors must be a `w:p`. "No run before it" walks from the
+  break up to that paragraph, and at each step asks whether an earlier sibling element is or holds a `w:r`, the
+  stylesheet's `ancestor-or-self::*[...]/preceding-sibling::*[descendant-or-self::w:r]`. The run is `w:r`, then the
+  copy, then a new `w:br` with every attribute of the old one and no content. It takes the break's place, and the
+  break's tail.
+- **Rule 2.** The outermost text element holding an element is split. Its text, each tail and each nested element's
+  text become pieces under its local name. A piece takes the nearest `xml:space` at or above the text's parent,
+  written only where there is one, and a piece of XML whitespace alone is kept only under `preserve`
+  (`str.strip(" \t\r\n")`, so U+00A0 is text). A `w:br` at any depth becomes a bare break. A comment or processing
+  instruction gives nothing, and the text either side of it is two pieces, as two XPath text nodes are. The pieces
+  take the element's place in its run, its tail after the last.
+- **Rule 3.** For each `w:br` child of `w:body`, the next sibling element that is not a `w:br`. A `w:p` that docx4j's
+  nested-paragraph template would not split (`w:hyperlink/w:p`, `w:r/w:p`, `w:hyperlink/w:r/w:p`, `w:r/w:r/w:p`)
+  takes the breaks, in order, after its first `w:pPr` (or first, with none), each with its own copy of that mark's
+  properties. Anything else, or nothing, makes each break `<w:p><w:r><w:br/></w:r></w:p>` in place.
+- **The counts** are the stylesheet's `count()`s (lines 834 to 837): a `w:br` whose parent is a container or
+  `w:body`, and a text element with an element child, at any depth. The record is made wherever either is non-zero.
+- **The record.** `BrOutsideRun` is a frozen, slotted dataclass. `message` is a property, the part name and docx4j's
+  WARN less " (CR-073)", and `str()` gives it. `to_dict()` gives `code`, `part_name`, `breaks`, `text_elements`
+  and `message`. `_unmarshal` logs each record once, `logger.warning("%s", message)` on `docx4j_py.openpackaging`.
+  A private read then `contents` logs once, since `_adopt` does not parse.
+- **`canon.compare(..., repaired=True)`** runs `repair_bytes` over the source first, before `normalise`'s rows, and
+  adds one `br-outside-run` entry per break and per text element it counts (path `/`). The category is in
+  `DiffReport.BENIGN`, so `identical` and the round trip's verdict leave it out.
+
+### 10.4 The tests and the numbers
+
+`tests/openpackaging/test_br_outside_run.py`, new, 168 tests (1.4 s):
+
+- **the copy** (1): thirteen probes, each with Word's save, 27 files to `SHA1SUMS`;
+- **each probe against Word's save** (31): `BrOutsideARunTest`'s comparison (`tokens`, a port of its `walk`, over
+  the main part, then each header and footer) for the twelve (12) and plain text through `extract(..., include=
+  "headers, footers")` for the twelve (12); `br2-3` with its `w:instrText` read as `w:t` (1) and its header's plain
+  text pinned as Q6's difference, `"\n\n\nI2 body..."` against Word's `" \n I2 line one \n I2 line two \nI2 body..."`
+  (1); `br2-1`'s run properties, two breaks at `sz28`, one bold at `sz40`, six bare (1); `br2-2`'s `fields: update`,
+  `I1 start I1 code beforeI1 code after I1 end`, as Word's save (1); `Paragraph.text` across the break for three (3);
+- **the records** (29): each probe's warnings by part with docx4j's counts and nothing skipped (13); the record, its
+  message, `to_dict()` and frozenness (1); the log, once, at `WARNING` (1); no warning on Word's thirteen saves (13);
+  none on a sample with every part unmarshalled (1);
+- **strict and the saves** (66): `strict=True` loading every story part of all thirteen (13); a `check=True` save
+  read back with the same tokens, no warning and nothing skipped (13); `canon.compare(..., repaired=True)` identical,
+  normalising and not, the category's count the warning's, and the raw comparison not identical where the pass ran
+  (26); the untouched save byte for byte (13); `repair_bytes` returning `data` itself (1);
+- **docx4j's edges** (5): `legalBreaksUntouched`, `whitespaceInTextWithoutPreserve`, `markPropertiesWithoutTheMarksOwn`,
+  `deletedText` and `bodyBreakWithoutParagraphAfter`, each with docx4j's tokens;
+- **section 2.6's edges and section 4.7** (12): a `br` in no namespace; U+00A0; the double count (0 and 2); the
+  nearest `xml:space` in the bytes; a `w:tab` in a `w:t`; a block-level `w:sdtContent`'s `w:br` counted 1 and 0,
+  left, skipped and refused under strict; a kept block-level branch repaired in place and saved inside its Choice;
+  the same branch under `mc_load_mode="word"` and `mce_preprocess=True` (2); section 4.7's departure (a `w:br` in a
+  run-level Choice untouched in `preserve`, repaired under `mce_preprocess`); two breaks first in a paragraph; body
+  breaks after a `w:pPr` with its mark's bold;
+- **the routes** (7): `source_tree()` carrying the cell finding (section 2.6's document), and the save raising
+  `SaveCheckError` with a `source_tree` monkeypatched to skip the pass; `read_contents()` then `contents` adopting
+  the repaired tree with its warning, one `_unmarshal`; `set_bytes` clearing it; `insert_ooxml` of a fragment with
+  all three shapes, its report's warning exactly and the save read back clean; a clean fragment warning nothing;
+  `wml()` and `wml.all` refusing;
+- **the trigger and the cost** (17): every probe's affected part triggering by the first parse's report (13);
+  `parent_qname` `{w}RT` for `br-3`'s `w:t` and the path naming `w:r/w:t/w:br` (1); an attribute, a `w:r/w:br` and
+  a non-WordprocessingML parent never triggering (1); Symbols' main part (790,857 bytes) parsed once with
+  `triggers` and `repair_bytes` never called, both monkeypatched to raise (1); and `br2-1`'s main part parsed twice
+  (1).
+
+The full suite: 9,295 passed, 8 skipped (6 min 42 s), at the tree of `5cdb3fb` less section 4.7's test, which came
+after the run (the file then 167; the 168th passes). CR-027 Phase B's was 9,128 passed; the 167 are this file's.
+
+The cost, measured on the checkout machine (best of nine): Symbols' main part through `XmlPart._parse`, 197.3 ms,
+against the fork's parser alone, 197.2 ms. With one stray `<w:p><w:br/></w:p>` added, `_parse` takes 418.3 ms
+(2.12x; `repair_bytes` alone 17.2 ms), section 2.5's 413.7 ms and 2.07x.
+
+ruff (`check` and `format --check`, at the files' 120 columns): `breaks.py`, the test file and the Word check's
+builder are formatted and clean. On the eight existing files changed, `check` finds what it found before (2, 1, 0,
+2, 0, 1, 7 and 6). The formatter would change the same number of lines as before in seven; `scripts/roundtrip.py`,
+written in its own continuation style, goes from 213 to 218, the five being existing statements this phase extended
+in that style (`run_part`'s signature, its call, the verdict).
+
+### 10.5 Departures, with why
+
+1. **Only an element triggers.** Section 4.1 says "any item whose parent ... is a text element". An attribute's
+   path also ends at its element, so an unknown attribute on a `w:t` would have fired the pass for nothing to repair.
+   Rule 2 matches a text element's element children (`w:t[*]`), so `triggers` takes `kind == "element"` only.
+2. **A pass that changes nothing keeps the first parse.** Where the report triggers on a `w:br` that no rule takes
+   (one directly in a block-level `w:sdtContent`), the record is made with the stylesheet's counts (1 and 0), as
+   docx4j's WARN is, but `repair_bytes` returns `data` itself and the fork does not parse it again. The break stays in
+   `part.skipped`, and `strict=True` still raises (a test).
+3. **A `w:br` inside a text element is rule 2's alone.** Rules 1 and 3 skip a break with a text element among its
+   ancestors, as the stylesheet's `split-text` mode takes the whole subtree and core-ts's `insideText` does. The
+   prototype wrapped such a break first. It matters only for a run container inside a text element
+   (`w:t/w:hyperlink/w:br`), and the result is the stylesheet's.
+4. **The fragment's record and rule 3 there.** A fragment has no part, so its record's `part_name` is
+   `"the fragment"` and its message begins so. The synthetic root (`w:fragment`) stands for `w:body` during the pass
+   where the scope is the body's (always, for `insert_ooxml`), so a body-level break in a fragment is rule 3's, as in
+   core-ts, whose fragment wrapper is a `w:body`.
+5. **The flat OPC route reports too.** Section 4.9 says that route "has it already, through `load()`", which holds
+   for the repair. But the pasted package is discarded once its content is taken, so its main part's records go into
+   the call's `ChangeReport.warnings`, prefixed `the pkg:package's `, as the fragment route's go. Otherwise they would
+   only be logged.
+6. **`_parse` returns the warnings.** It is the one parse every route shares, but `source_tree()` must not touch the
+   part's reports (CR-020 Phase B). So `_parse` returns a fourth value and `_unmarshal` alone records and logs; a
+   check's `source_tree()` logs nothing.
+7. **`message` is a property.** Section 4.3 lists it with the fields; as a property it cannot disagree with them.
+   `to_dict()` has the five keys.
+8. **`roundtrip.py`'s timing** stays the first parse's median; the second parse of an affected part is not timed.
+
+### 10.6 Pre-existing tests whose expectation changed, and why
+
+None. No test pinned a misplaced `w:br` (section 2.4). `test_round_trip.py` gains the second exception in its
+docstring; its tests are unchanged, since no sample triggers.
+
+### 10.7 The gates
+
+| gate | result |
+|---|---|
+| the full suite, slow included, the save check on (`tests/conftest.py`) | 9,295 passed, 8 skipped, 0 failed (6 min 42 s); the 13 warnings the fork's `ConverterWarning`s of other tests, as before |
+| `codegen/generate.sh --check` | two generations byte identical (318 modules); no generated file changed, `breaks.py` kept |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`), 0 parts repaired; over `tests/fixtures/br-placement/` the thirteen affected parts repaired and every part identical |
+| `scripts/compare_acceptance.py` | `out/acceptance/` built by `scripts/acceptance.py` before the change (at `4ba3a99`) and after it: 17 artefacts, 246 entries, 0 differ beyond the wall-clock dates |
+| the parse guard, `tests/test_performance.py` | Symbols' parse 195.5 ms against the limit of 211.2 ms (192.0 + 10%); it times `runtime.parser()`, outside the pass, so 10.4's two numbers are the pass's own |
+
+### 10.8 Phase B's records, and the Word check's files
+
+- **The records.** CHANGELOG under Unreleased (Fixed: a `w:br` outside a run read as Word reads it; Added:
+  `part.warnings`, `package.warnings`, `BrOutsideRun`); CLAUDE.md's second round-trip exception, its strict-loading
+  note and its engine paragraph (its CR status list is left as it is); `tests/README.md`'s two rows (in `5cdb3fb`) and
+  its Word acceptance entry, awaiting the user; the index row; this section and the Status line.
+- **The Word check's files**, `out/cr030-word-check/`, built by its `build.py` at `5cdb3fb`, for the coordinator to
+  stage at `vbShares/Office 2016/__tmp/python-cr030/`. Each of the thirteen probes is loaded, every story part
+  unmarshalled and saved by a default save with `check=True`, as `cr030-<name>.docx`; each save is well formed and
+  reads back under `strict=True` with nothing skipped and no warning (`BUILD-LOG.txt`). `word365/` holds Word's
+  thirteen saves for the side-by-side look; `README.txt` says what to open, what to look for (no repair prompt; each
+  break where Word's save shows it; `br2-1`'s sizes in the font size box; `br2-2`'s code under Toggle Field Codes;
+  what `br2-3`'s header shows, its lines kept as a bare field code under Q6), and what to send back; `SHA1SUMS` lists
+  the 26 files.
+- **The registry**, through the docx4j-portfolio session: `python/CR-030.A` implemented, `python/CR-030.B` the
+  records done with the Word check waiting on the user.
+
+### 10.9 Found, and left open
+
+1. **The fork's own log of the first parse.** The engine's parser keeps the skipped report's `log=True`, so the
+   first parse of an affected part logs "Skipped unknown element {w}br in {w}p" on `docx4j_xsdata`'s logger for each
+   item the pass then repairs, before the part's own `br.outside_run` line. The part's records are right (nothing
+   skipped, one warning). Silencing it means a first parse with `log=False`, which would also drop the fork's
+   duplicate line for every other part with skipped content (`_unmarshal` logs each on `docx4j_py.openpackaging`
+   too). That is a logging decision for the user, so it is left.
+2. **`insert_xml`** (`Body` and `Paragraph`) parses with `wml.all` and so still refuses a misplaced `w:br`, as `wml()`
+   does. This CR names `insert_ooxml` alone (Q4).
+3. **Other parses of WordprocessingML** are internal re-parses of typed content (`model/revisions/props.py`) or of a
+   wildcard text box (`islands.py`), which raise where content would be lost; neither runs the pass. A text box in a
+   wildcard holding a misplaced break is unmeasured.
+4. Section 4.11's two findings stand: the QUOTE evaluator dropping a `w:br` in a field code (CR-025's evaluators),
+   and the fork's `parent_qname` for a choice class (the fork's own feature; nothing in the fork changed).

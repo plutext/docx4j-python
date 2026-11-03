@@ -344,9 +344,12 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
-`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `api.py`, `load()`
-and `create_package()`. Everything is synchronous. Departures from docx4j are listed in CR-002
-section 12.3.
+`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `breaks.py`, CR-030's
+reading of a `w:br` outside a `w:r` (docx4j CR-073's three rules over lxml, run by `XmlPart._parse`
+only where the fork's skipped report names one, so a clean part pays the test of an empty list; the
+record is `BrOutsideRun`, `br.outside_run`, on `part.warnings` and `package.warnings`); `api.py`,
+`load()` and `create_package()`. Everything is synchronous. Departures from docx4j are listed in
+CR-002 section 12.3.
 
 ## Round-trip and fidelity rules
 
@@ -357,10 +360,15 @@ section 12.3.
   already breaks the rule is never repaired on load or save, only when an edit touches that cell.
 - An unmarshalled part saved unchanged must be **canonically identical** to the source
   (`scripts/canon.py`'s prefix-insensitive normal form). The one tolerated category is
-  `boolean-spelling` (`1` against `true`). Every other difference category must be zero. The one
-  exception is a load in `LoadOptions(mc_load_mode="word")` (CR-012 section 4.1 item 3): a part
-  holding a block-, row- or cell-level `mc:AlternateContent` is saved as Word's own save writes it,
-  the branches Word does not read gone. The default, `preserve`, keeps the rule. Since CR-018 Phase A
+  `boolean-spelling` (`1` against `true`). Every other difference category must be zero. There are
+  two exceptions. One is a load in `LoadOptions(mc_load_mode="word")` (CR-012 section 4.1 item 3): a
+  part holding a block-, row- or cell-level `mc:AlternateContent` is saved as Word's own save writes
+  it, the branches Word does not read gone. The default, `preserve`, keeps the rule. The other is a
+  part whose parse read a `w:br` outside a `w:r`, or a text element holding elements, as Word reads
+  it (CR-030 section 4.6; `part.warnings` holds `br.outside_run`): it is saved in the repaired shape,
+  Word's own save's, under `normalise=False` too, and `canon.compare(..., repaired=True)` runs the
+  source through the same pass first, counting it as `br-outside-run`, so every other category must
+  still be zero (`scripts/roundtrip.py` does both). Since CR-018 Phase A
   a second category is tolerated, `word-normal-form`: the parse is exact (`runtime.parser_config()`
   sets the fork's `exact_types={bool, Enum}`, so a value not exactly a lexical form is kept as its
   text and listed in `part.kept`), and a save normalises by default (`package.save(normalise=True)`,
@@ -380,7 +388,9 @@ section 12.3.
   for exactly `false`, `off` or `0`; an enumeration value outside it unset; a colour six hex digits,
   a classic HTML name, or exactly `auto`).
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
-  `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. Empty is
+  `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. A part the
+  CR-030 pass fully repaired is not skipped content, so it loads under `strict=True`; `wml(...)` still
+  refuses a misplaced `w:br`, while `insert_ooxml`'s fragment route repairs it. Empty is
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
   fixed by a marked schema patch rather than by loosening the check.
 - Booleans serialise numeric (`1`/`0`), as Word writes them; the docProps parts use
