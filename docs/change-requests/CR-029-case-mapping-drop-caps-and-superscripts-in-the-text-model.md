@@ -1,6 +1,6 @@
 # CR-029: docx4j CR-069 in the text model --- All Caps in capitals by the run's language, a drop cap joined to its word, `<sup>` and `<sub>` in Markdown, and `w:dstrike` struck
 
-**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1, Q2, Q4 and Q5 as recommended and Q3 as docx4j does (section 8); **amended 2026-11-02**: runs at a deleted-mark join merge as docx4j's do too (section 4.5a). It ports the text-model half of docx4j CR-069
+**Status:** Proposed 2026-11-02, at the user's word ("draft those 2 CRs"); **decided 2026-11-02**, Q1, Q2, Q4 and Q5 as recommended and Q3 as docx4j does (section 8); **amended 2026-11-02**: runs at a deleted-mark join merge as docx4j's do too (section 4.5a); **amended 2026-11-04** for WD 0.80, the user's ruling of REQ-607's chain: `w:themeFontLang` is struck from the language chain, which ends at a new option, `default_language` (section 4.3b). It ports the text-model half of docx4j CR-069
 (WD REQ-607, REQ-521, REQ-710, and REQ-703's strikethrough) to `model/text/`, phase for phase:
 - A, `w:caps` in capitals by the run's language, `w:smallCaps` as stored unless `small_caps: upper` (docx4j phase 1);
 - B, a drop cap joined to its word, with `paragraph.drop_cap_joined` and `drop_caps` (phase 2);
@@ -85,7 +85,8 @@ Measured 2026-11-02 at `ed12ae7` on the `dpp/` fixtures at the tag (read from a 
   - vertical alignment: the run's own `w:vertAlign`, else its styles'. So a note reference, which is not a text run,
     is baseline whatever its style raises (REQ-710).
   - language, on a caps or small-caps run only: the run's own `w:lang/@w:val`, else its styles' together with the
-    document defaults', else the settings' `w:themeFontLang/@w:val`, else `en-US` (`CaseMapping.DEFAULT_LANGUAGE`). A
+    document defaults', else the settings' `w:themeFontLang/@w:val` (struck by WD 0.80: section 4.3b), else `en-US`
+    (`CaseMapping.DEFAULT_LANGUAGE`). A
     blank value counts as none. A `w:lang` alone therefore never splits runs.
   - `sameFormat` and `copyFormat` take all four, so runs merge only where they agree.
 - **`CaseMapping`**:
@@ -278,10 +279,32 @@ CR-069's own implementation sections (11.2, 12.2, 13.2, 14.2) record each of the
 - **`language`** is set where `caps or small_caps`:
   - the run's own `w:lang/@w:val` (stripped, a blank value none);
   - else `styles.lang`'s;
-  - else the settings part's `w:themeFontLang/@w:val`, read once per extraction;
-  - else `DEFAULT_LANGUAGE`.
+  - else the `default_language` option, `DEFAULT_LANGUAGE` (`en-US`) unless set (WD 0.80; section 4.3b). The settings
+    part is not read for the language.
 - The text stays the stored text, so the block model, addresses, excerpts and `office_offset` never move (REQ-607). The
   content API's Office JS readers, `text_of` and the python-docx facade keep the stored characters.
+
+### 4.3b The language of last resort (amended 2026-11-04, WD 0.80)
+
+WD 0.80 (portfolio `df66c75`) rules REQ-607's chain. The user struck `w:themeFontLang` from it: a caps run's language is
+its own `w:lang`, else its styles', else `w:docDefaults`', else the option `default_language`, a BCP 47 tag, `en-US` by
+default.
+
+- **Measured.** docx4j's screen-caps probe, Word 365, 2026-11-04: a `w:caps` run with no language anywhere is cased by
+  the installation's editing language, on screen, in the PDF and in the text save alike. A file with `w:themeFontLang`
+  and one without behave identically, under an English and under a Turkish editing language.
+- **The option** stands in for the editing language, which a library cannot see. It reaches only this mapping: caps,
+  and small caps under `small_caps: upper`. `word-text` (CR-027 Phase D) leaves it at `en-US`.
+- **Here**, `TextOptions.default_language`: a string, stripped. A blank or non-string value is refused with
+  `TextOptionError` naming REQ-607. It is matched as a `w:lang` is (section 4.2's `dotted_i`), so `tr`, `tr-TR` and
+  `az-Latn-AZ` give `İ`; no fuller BCP 47 check is made. It is not one of `_CHOICES`, since it's a free tag.
+- **docx4j at the tag** reads `w:themeFontLang` (section 2.1). The ruling moves docx4j too, so the port follows the WD,
+  not `75b9bdb54`.
+- **The settings part** is no longer consulted for case mapping. CR-031's `part.not_read` for settings stays on its other
+  three consults.
+- **The oracles move.** docx4j's A.8 intact fixture, whose style-cased run stands under `w:themeFontLang` tr-TR, now
+  reads `ISTANBUL`. Goldens taken from that fixture move with it.
+- **Effort:** unchanged, one option for one consult fewer.
 
 ### 4.4 The writers (Phase A; the tags in Phase C)
 
@@ -382,6 +405,8 @@ joins that make one block of two `w:p` merge runs as docx4j's `addText` does:
   defaults are `join` and `asis`.
 - `word-text` (CR-027 Phase D) gains `small_caps: upper` (Phase A) and `drop_caps: asis` (Phase B), giving docx4j's 26
   values at the tag. `TextOptions`' docstring lists both.
+- `OPTION_NAMES` gains `default_language` (Phase A; WD 0.80, section 4.3b) in WD section 10's order. It's a free tag,
+  not a choice; `word-text` leaves it at `en-US`.
 
 ### 4.9 The harness
 
@@ -420,7 +445,8 @@ Each phase is held to docx4j's test at the tag and to `dpp/`'s rows. The counts 
   - the length kept, as a check over the whole table (one code point to one, none across the BMP's edge);
   - the flags and the language on Word's probe, a paragraph style's caps, a run under both, and runs merged by
     language;
-  - the language of last resort (`w:themeFontLang`, else `en-US`; a `tr-TR` theme language gives `İ`);
+  - the language of last resort: `default_language`, `en-US` unless set; `tr-TR` gives `İ`; a `w:themeFontLang`
+    changes nothing (WD 0.80, section 4.3b);
   - a note reference baseline, and the option.
 
   Every character the tests map has had the same simple uppercase since Unicode 10.0. The table is held to its
