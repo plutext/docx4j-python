@@ -17,7 +17,9 @@ The rules of CR-003 section 4 that land here:
 
 * :attr:`type` is ``"RichText"`` when ``w:sdtPr`` names no kind and
   ``"PlainText"`` for ``w:text`` --- Phase A's
-  :func:`~docx4j_py.wml.sdt.sdt_kind_of`, unchanged;
+  :func:`~docx4j_py.wml.sdt.sdt_kind_of` --- but ``"PlainText"`` for a bound
+  block control Word reads as plain text (CR-014 section 3.5a,
+  :func:`is_bound_block_control`);
 * :meth:`get_range` is **exact** for a run-level control and the first
   paragraph's range for the block, row and cell forms;
 * a row- or cell-level control **refuses** ``insert_paragraph`` at ``"Start"``
@@ -34,7 +36,12 @@ from typing import TYPE_CHECKING, Any
 from docx4j_py.child import ChildList, is_alternate_content, link_parents
 from docx4j_py.model.content.addresses import ordinal_of
 from docx4j_py.model.content.enums import RangeLocation, TextLocation
-from docx4j_py.model.content.errors import ContentError, InvalidTargetError, SpanError
+from docx4j_py.model.content.errors import (
+    BindingError,
+    ContentError,
+    InvalidTargetError,
+    SpanError,
+)
 from docx4j_py.model.content.reports import recording
 from docx4j_py.model.content.table import Table
 from docx4j_py.model.content.text_model import (
@@ -71,6 +78,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.range import Range
 
 __all__ = [
+    "FLAT_OPC_NS",
     "SDT_PR_ORDER",
     "ContentControl",
     "ContentControlForm",
@@ -81,9 +89,13 @@ __all__ = [
     "controls_of_types",
     "holds_one_paragraph",
     "is_bound_block_control",
+    "one_paragraph_error",
+    "other_blocks_of",
     "paragraph_lines_of",
     "parent_control_of",
     "plain_text_lines_of",
+    "refuse_second_block",
+    "value_control_of",
 ]
 
 #: Which of the four ``w:sdt`` forms a control is (CR-003 section 3.2).
@@ -307,8 +319,16 @@ class ContentControl:
 
     @property
     def type(self) -> str:
-        """The Office JS ``Word.ContentControlType`` (``"RichText"`` for an untyped one)."""
-        return sdt_kind_of(self.sdt_pr)
+        """The Office JS ``Word.ContentControlType`` (``"RichText"`` for an untyped one).
+
+        A block control bound by ``w:dataBinding``, untyped or ``w:richText``,
+        reads ``"PlainText"``, as Office JS reports it (CR-014 section 3.5a, Q9;
+        core-ts's H4, check 56: on open Word gives one a ``<w:text/>``). The
+        file is left as it is: :func:`~docx4j_py.wml.sdt.sdt_kind_of` still
+        reads the element, and anything deciding what a control *is* reads that.
+        """
+        kind = sdt_kind_of(self.sdt_pr)
+        return "PlainText" if kind == "RichText" and is_bound_block_control(self) else kind
 
     @property
     def tag(self) -> str:
@@ -749,11 +769,23 @@ class ContentControl:
         either form, as Word's (core-ts check 64 cases 6 and 27, check 63's run
         2 cases 3 and 29).
 
+        **A bound block control Word reads as plain text**
+        (:func:`is_bound_block_control`) holds one paragraph (CR-014 section
+        3.2, Q3; core-ts's H2, check 56): at ``"Start"`` or ``"End"`` of a
+        single-line one the text joins its paragraph, as Word's
+        ``insertParagraph`` writes it, the node following the control, and that
+        paragraph is what comes back. A multi-line one refuses, since Word's
+        own second paragraph there makes a file Word can't open.
+
         Raises:
             InvalidTargetError: a row- or cell-level control asked for
                 ``"Start"`` or ``"End"``; the message names what it holds.
+            BindingError: ``binding.one_paragraph``, a multi-line bound block
+                control at ``"Start"`` or ``"End"``; nothing has changed.
         """
         form = self.form
+        if location in ("Start", "End") and form == "block" and is_bound_block_control(self):
+            return self._join_paragraph(drop_unwritable(text), location, options.get("style"))
         if form in ("row", "cell") and location in ("Start", "End"):
             holds = "rows" if form == "row" else "cells"
             raise self._holds(
@@ -779,6 +811,35 @@ class ContentControl:
                 view.style = options["style"]
             return view
         return self.body().insert_paragraph(text, location=location, **options)
+
+    def _join_paragraph(self, text: str, location: str, style: str | None) -> Paragraph:
+        """:meth:`insert_paragraph` at ``"Start"`` or ``"End"`` of a bound block control: the text joins its paragraph.
+
+        core-ts ``insertParagraph`` at ``6285dfa`` (its H2; check 56 cases 1, 9
+        and 13: ``start1NEWPARA1``). Word's node took ``start1\\r\\nNEWPARA1``;
+        here, as in core-ts, it follows the control (F3). A placeholder goes as
+        any text write takes it (CR-019 section 4.2), so the look is the
+        control's own (D11), where core-ts's takes the runs out first; the
+        refusal comes before anything changes, where core-ts's comes after that.
+        """
+        if self.is_multi_line:
+            raise one_paragraph_error(
+                "insert_paragraph",
+                hint="insert_text with a line feed writes a line break, or call xml_mapping.delete() first",
+            )
+        with recording(self.parent_body, "insert_paragraph") as change:
+            if self.is_showing_placeholder:
+                self._write_placeholder(text, breaks="line")
+                paragraph = self._first_paragraph()
+            else:
+                paragraphs = self.paragraphs
+                paragraph = (paragraphs[0] if location == "Start" else paragraphs[-1]) if paragraphs else self._first_paragraph()
+                paragraph.insert_text(text, location=location)  # type: ignore[arg-type]
+            if style is not None:
+                paragraph.style = style
+            change.touched(paragraph)
+            change.text(after=text)
+            return paragraph
 
     def delete(self, *, keep_content: bool = True) -> None:
         """Remove the control, keeping what it held by default (Office JS ``delete``).
@@ -1628,7 +1689,12 @@ class ContentControl:
 
     @property
     def is_multi_line(self) -> bool:
-        """``w:text/@w:multiLine``: whether a plain-text control takes newlines."""
+        """``w:text/@w:multiLine``: whether a plain-text control takes newlines.
+
+        False for a bound block control with no type or ``w:richText``, which
+        :attr:`type` reads as plain text: single-line, since Word gives one a
+        ``<w:text/>`` on open (CR-014 section 3.5a).
+        """
         text = sdt_property(self.sdt_pr, "text", W_NS)
         if text is None:
             return self.type != "PlainText"
@@ -1692,8 +1758,17 @@ class ContentControl:
         CR-003 section 4 records: the runs go into the **first paragraph** of a
         block, row or cell control, keeping its ``w:pPr`` and everything around
         it, rather than reducing a ``w:tr`` or a ``w:tbl`` to one cell.
+
+        **But a bound block control Word reads as plain text**
+        (:func:`is_bound_block_control`) keeps that one paragraph alone: every
+        other block it holds goes, as docx4j's ``bind.xslt`` replaces its
+        content and as Word's repair left it (CR-014 section 3.4, Q5; core-ts
+        section 61.6), what those blocks took with them going when the pass
+        ends (:func:`~.span_edits.queue_removed`). A marker beside the paragraph
+        stays (:func:`holds_one_paragraph`).
         """
         items = self.content
+        extra = other_blocks_of(self)
         if self.form == "run":
             items[:] = list(runs)
         else:
@@ -1706,6 +1781,12 @@ class ContentControl:
             holder = run_items_of(paragraph)
             if holder is not None:
                 holder[:] = list(runs)
+        if extra:
+            from docx4j_py.model.content.span_edits import queue_removed
+
+            for block in extra:
+                del items[next(i for i, item in enumerate(items) if item is block)]
+                queue_removed(self.parent_body, block)
         link_parents(self.element)
         if showing_placeholder:
             self.put_property(el.showingPlcHdr())
@@ -2013,7 +2094,10 @@ def is_bound_block_control(control: ContentControl) -> bool:
     node holds a flat OPC package, Word's own rich-text binding (not measured).
     ``w15:dataBinding`` isn't this, as in core-ts. Word can't open a file where
     such a control holds a second block (CR-013 section 10.10; check 56's four
-    files), and reads every one as plain text on open.
+    files), and reads every one as plain text on open. This is CR-014's **value
+    control** (its section 3.1). What it is reads the element
+    (:func:`~docx4j_py.wml.sdt.sdt_kind_of`), never :attr:`ContentControl.type`,
+    which reads this.
     """
     from docx4j_py.model.customxml.bindings import is_container
 
@@ -2022,12 +2106,79 @@ def is_bound_block_control(control: ContentControl) -> bool:
     sdt_pr = control.sdt_pr
     if sdt_property(sdt_pr, "dataBinding", W_NS) is None:
         return False
-    plain = sdt_property(sdt_pr, "text", W_NS) is not None
-    rich = sdt_property(sdt_pr, "richText", W_NS) is not None
-    untyped = control.type == "RichText" and not rich
-    if not (plain or rich or untyped):
+    if sdt_kind_of(sdt_pr) not in ("RichText", "PlainText"):
         return False
     return not is_container(control) and not _node_holds_flat_opc(control)
+
+
+def other_blocks_of(control: ContentControl) -> list[Any]:
+    """What a bound block control holds besides its first paragraph, which the binding pass takes away (CR-014 section 3.4)."""
+    if not is_bound_block_control(control):
+        return []
+    items = control.content
+    first = next((item for item in items if isinstance(item, P)), None)
+    return [item for item in items if item is not first and _is_block_item(item)]
+
+
+def value_control_of(holder: Any, body: Body) -> ContentControl | None:
+    """The bound block control whose ``w:sdtContent`` `holder` is, or None (:func:`is_bound_block_control`). Extension."""
+    sdt = getattr(holder, "parent", None) if isinstance(holder, SdtContentBlock) else None
+    if not isinstance(sdt, SdtBlock):
+        return None
+    control = control_view_of(sdt, body) or ContentControl(sdt, [sdt], body)
+    return control if is_bound_block_control(control) else None
+
+
+def one_paragraph_error(operation: str, word_error: str | None = None, *, hint: str | None = None) -> BindingError:
+    """CR-014 section 3.7's refusal: ``BindingError``, ``binding.one_paragraph``, naming Word's own error where measured.
+
+    `word_error` is what core-ts's check 56 measured Word answering for this
+    write (Q6; its H3): ``InvalidArgument`` for a table, ``GeneralException``
+    for OOXML. A write Word wasn't given names none.
+    """
+    answered = f"; Word's own answer here is {word_error} (core-ts check 56)" if word_error else ""
+    return BindingError(
+        f"{operation} refused: a content control bound to custom XML holds one paragraph: "
+        f"Word reads it as plain text{answered}",
+        code="binding.one_paragraph",
+        hint=hint or "write the text into its paragraph, or call xml_mapping.delete() first",
+    )
+
+
+def refuse_second_block(
+    body: Body,
+    holder: Any,
+    container: Any,
+    elements: Any,
+    *,
+    replacing: Any = None,
+    word_error: str | None = None,
+    operation: str | None = None,
+) -> None:
+    """Refuse, before anything changes, a write that would leave a bound block control holding anything but one paragraph.
+
+    CR-014 section 3.2, core-ts's ``assertControlHolds`` (``6285dfa``): the one
+    helper every block writer answers to. `holder` is what the blocks would go
+    into, `container` what it holds now, `elements` what goes in (a stand-in
+    will do, for a caller that hasn't built them yet) and `replacing` a block
+    the write takes away after. A holder that is no such control's
+    ``w:sdtContent`` passes, and so does a write that leaves one paragraph: into
+    an empty control, or in place of its paragraph. Word can't open such a file,
+    and its repair loses the extra blocks (check 56's four files).
+
+    Raises:
+        BindingError: ``binding.one_paragraph``.
+    """
+    if not isinstance(holder, SdtContentBlock) or value_control_of(holder, body) is None:
+        return
+    blocks = [item for item in (*container, *elements) if item is not replacing and _is_block_item(item)]
+    if len(blocks) == 1 and isinstance(blocks[0], P):
+        return
+    if operation is None:
+        from docx4j_py.model.content.reports import current_recorder
+
+        operation = getattr(current_recorder(getattr(body, "package", None)), "operation", None) or "this write"
+    raise one_paragraph_error(operation, word_error)
 
 
 def plain_text_lines_of(control: ContentControl) -> str | None:
@@ -2038,9 +2189,8 @@ def plain_text_lines_of(control: ContentControl) -> str | None:
     where not (CR-013 section 11, item 2 of the review's four); a bound block
     control Word reads as plain text (:func:`is_bound_block_control`) is
     single-line, since Word gives one with no type or ``w:richText`` a
-    ``<w:text/>`` on open (check 56; H4). :attr:`ContentControl.is_multi_line`
-    and :attr:`ContentControl.type` still read the file as it is: their reading
-    of such a control is CR-014's.
+    ``<w:text/>`` on open (check 56; H4), as :attr:`ContentControl.type` and
+    :attr:`ContentControl.is_multi_line` read it (CR-014 section 3.5a).
     """
     text = sdt_property(control.sdt_pr, "text", W_NS)
     if text is not None:
@@ -2082,7 +2232,7 @@ def controls_of_types(controls: list[ContentControl], types: Collection[str] | N
 
 
 #: The namespace of a flat OPC package, which Word's rich-text binding stores in its node.
-_FLAT_OPC_NS = "http://schemas.microsoft.com/office/2006/xmlPackage"
+FLAT_OPC_NS = "http://schemas.microsoft.com/office/2006/xmlPackage"
 
 
 def _node_holds_flat_opc(control: ContentControl) -> bool:
@@ -2092,7 +2242,7 @@ def _node_holds_flat_opc(control: ContentControl) -> bool:
     except Exception:  # noqa: BLE001 - an unusable binding is no package
         return False
     text = getattr(node, "text", None) if node is not None else None
-    return bool(text) and (_FLAT_OPC_NS in text or "pkg:package" in text)
+    return bool(text) and (FLAT_OPC_NS in text or "pkg:package" in text)
 
 
 def holds_one_paragraph(control: ContentControl) -> bool:
@@ -2102,13 +2252,16 @@ def holds_one_paragraph(control: ContentControl) -> bool:
     ``w:altChunk`` or a kept ``mc:AlternateContent``; a bookmark or another
     marker beside the paragraph is none.
     """
-    blocks = [
-        item
-        for item in control.content
-        if element_name(item) in (W_P, W_TBL, W_SDT, f"{{{W_NS}}}customXml", f"{{{W_NS}}}altChunk")
-        or is_alternate_content(item)
-    ]
+    blocks = [item for item in control.content if _is_block_item(item)]
     return not blocks or (len(blocks) == 1 and isinstance(blocks[0], P))
+
+
+def _is_block_item(item: Any) -> bool:
+    """Whether an item of a control's content is a block: :func:`holds_one_paragraph`'s list."""
+    return (
+        element_name(item) in (W_P, W_TBL, W_SDT, f"{{{W_NS}}}customXml", f"{{{W_NS}}}altChunk")
+        or is_alternate_content(item)
+    )
 
 
 def control_view_of(element: Any, body: Body) -> ContentControl | None:

@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 from docx4j_py.model.customxml.parts import normalise_id
 from docx4j_py.model.customxml.xpath import canonical_xpath_of, format_prefix_mappings
 from docx4j_py.wml import el
-from docx4j_py.wml.sdt import W15_NS, W_NS, sdt_property
+from docx4j_py.wml.sdt import W15_NS, W_NS, sdt_kind_of, sdt_property
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.controls import ContentControl
@@ -129,6 +129,10 @@ class XmlMapping:
 
         Returns:
             Whether a binding was written.
+
+        Raises:
+            BindingError: ``binding.one_paragraph``, a block control of a value
+                kind holding more than one paragraph (CR-014 section 3.3).
         """
         with self._recording("xml_mapping.set_mapping") as change:
             for candidate in [part] if part is not None else self._candidates():
@@ -146,7 +150,11 @@ class XmlMapping:
     def set_mapping_by_node(self, node: CustomXmlNode) -> bool:
         """Bind the control to a node, by its canonical XPath. Office JS ``setMappingByNode``.
 
-        Always succeeds: the node is there, so its own path resolves.
+        Succeeds but for :meth:`set_mapping`'s refusal: the node is there, so
+        its own path resolves.
+
+        Raises:
+            BindingError: ``binding.one_paragraph``, as :meth:`set_mapping`.
         """
         with self._recording("xml_mapping.set_mapping_by_node") as change:
             if node.attribute is not None:
@@ -208,6 +216,15 @@ class XmlMapping:
         replacing it with ``w:dataBinding`` would leave Word with two bindings
         or a container it no longer repeats. Everything else gets
         ``w:dataBinding``, which is what Word writes for a text control.
+
+        **``w:dataBinding`` makes a block control plain text to Word**, which
+        holds it to one paragraph, so a control of a value kind (no type,
+        ``w:text`` or ``w:richText``) holding anything else is refused, before
+        anything changes (CR-014 section 3.3, Q4; core-ts section 61.6): Word
+        could not open the file.
+
+        Raises:
+            BindingError: ``binding.one_paragraph``.
         """
         existing = self.data_binding
         namespace = W_NS
@@ -217,6 +234,8 @@ class XmlMapping:
             name = element_name(existing) or ""
             if name.startswith(f"{{{W15_NS}}}"):
                 namespace = W15_NS
+        if namespace == W_NS:
+            self._refuse_second_block()
         self.control.remove_property("dataBinding", (W_NS, W15_NS))
         if namespace == W15_NS:
             from docx4j_py.model.content.compatibility import warn_below
@@ -237,6 +256,23 @@ class XmlMapping:
         if prefix_mappings:
             binding.prefix_mappings = prefix_mappings
         self.control.put_property(binding)
+
+
+    def _refuse_second_block(self) -> None:
+        """A block control of a value kind holding more than one paragraph takes no ``w:dataBinding`` (CR-014 section 3.3)."""
+        from docx4j_py.model.content.controls import (
+            holds_one_paragraph,
+            one_paragraph_error,
+        )
+
+        control = self.control
+        if control.form != "block" or sdt_kind_of(control.sdt_pr) not in ("RichText", "PlainText"):
+            return
+        if not holds_one_paragraph(control):
+            raise one_paragraph_error(
+                "xml_mapping.set_mapping",
+                hint="reduce the control to one paragraph first, or leave it unbound",
+            )
 
 
 def mappings_string(mappings: dict[str, str]) -> str:

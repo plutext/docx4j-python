@@ -34,7 +34,12 @@ from docx4j_py.model.content.addresses import (
     paragraph_at,
     prefix_for_part,
 )
-from docx4j_py.model.content.controls import ContentControl, controls_in
+from docx4j_py.model.content.controls import (
+    ContentControl,
+    controls_in,
+    refuse_second_block,
+    value_control_of,
+)
 from docx4j_py.model.content.enums import (
     BodyLocation,
     BodyRangeLocation,
@@ -575,7 +580,10 @@ class Body(Sequence):
         U+0002 and the other characters XML 1.0 excludes are dropped (E3). At
         ``"End"`` the text goes after everything the last paragraph holds, as
         Word 365 writes there (:meth:`Paragraph.insert_text`; CR-019 Phase D,
-        core-ts's checks 69 and 70), a cell body's too.
+        core-ts's checks 69 and 70), a cell body's too. ``"Replace"`` in a bound
+        block control Word reads as plain text writes in place of its text,
+        tracked or not, its paragraph kept, since clearing a tracked body leaves
+        what it held and a new paragraph would be its second (CR-014 section 3.2).
 
         Returns:
             The :class:`~docx4j_py.model.content.Range` of the inserted text; where
@@ -586,6 +594,8 @@ class Body(Sequence):
         text = drop_unwritable(text)
         with recording(self, "insert_text") as change:
             paragraphs = self.paragraphs
+            if location == "Replace" and paragraphs and value_control_of(self._owner(), self) is not None:
+                return self.get_range("Content").insert_text(text, location="Replace")
             if location == "Replace" or not paragraphs:
                 if location == "Replace":
                     change.text(before=self.text)
@@ -660,6 +670,7 @@ class Body(Sequence):
             elements = wml.all(xml, wrapper="body")
             if not elements:
                 return []
+            self.refuse_blocks(elements, location=location, target=target, word_error="GeneralException")
             self.insert_element(elements, location=location, target=target)
             return [self.view_for(element) for element in elements]
 
@@ -920,6 +931,7 @@ class Body(Sequence):
         *,
         location: Location = "End",
         target: Any = None,
+        replacing: Any = None,
     ) -> Any:
         """Insert block-level elements (docx4j ``addObject``), parents linked.
 
@@ -940,12 +952,19 @@ class Body(Sequence):
         anywhere else docx4j's repair, an empty paragraph after any wrapper,
         plain under tracking.
 
+        **A bound block control Word reads as plain text holds one paragraph**
+        (CR-014 section 3.2; :func:`~.controls.refuse_second_block`): anything
+        else going into one is refused here, before anything changes, whatever
+        verb asked.
+
         Args:
             element: one element or a list of them.
             location: ``"Start"``, ``"End"`` (the default), ``"Before"`` or
                 ``"After"``.
             target: for ``"Before"`` and ``"After"``, the paragraph or block to
                 go next to.
+            replacing: a block the caller takes away after this, which the rule
+                above doesn't count.
 
         Returns:
             The view of the first inserted element.
@@ -953,19 +972,13 @@ class Body(Sequence):
         Raises:
             InvalidTargetError: the container cannot hold one of the elements.
             ContentError: ``"Before"`` or ``"After"`` with no target.
+            BindingError: ``binding.one_paragraph``.
         """
         with recording(self, "insert_element") as change:
-            return self._insert_element(element, location, target, change)
+            return self._insert_element(element, location, target, change, replacing)
 
-    def _insert_element(self, element: Any, location: Location, target: Any, change: Any) -> Any:
-        elements = list(element) if isinstance(element, (list, tuple)) else [element]
-        if not elements:
-            raise ContentError(
-                "nothing to insert",
-                code="insert.empty",
-                hint="pass an element, or a list with at least one in it",
-            )
-
+    def _place_for(self, location: Location, target: Any) -> tuple[list, int, Any]:
+        """Where a block goes: the list holding it, its index, and the object that list is on."""
         if location in ("Before", "After"):
             if target is None:
                 raise ContentError(
@@ -983,19 +996,53 @@ class Body(Sequence):
             )
             if location == "After":
                 index += 1
-            owner = getattr(element_of, "parent", None) or self._owner()
-        elif location in ("Start", "End"):
+            return container, index, getattr(element_of, "parent", None) or self._owner()
+        if location in ("Start", "End"):
             container = self.content
-            index = 0 if location == "Start" else len(container)
+            return container, 0 if location == "Start" else len(container), self._owner()
+        raise ContentError(
+            f"insert_element takes Start, End, Before or After, not {location!r}",
+            code="location.invalid",
+            hint="Replace is for insert_text and for a Range",
+        )
+
+    def refuse_blocks(
+        self,
+        elements: Any,
+        *,
+        location: Location = "End",
+        target: Any = None,
+        word_error: str | None = None,
+    ) -> None:
+        """:func:`~.controls.refuse_second_block` for what a verb is about to put at `location`. Extension.
+
+        For a verb with work of its own to do first (a part to copy, a style to
+        define, a run to remove), so that its refusal comes before any of it,
+        and so that it can name Word's own error. `location` may be
+        ``"Replace"``, which clears this body first; under change tracking what
+        it holds stays, so it is counted.
+        """
+        if location == "Replace":
             owner = self._owner()
+            container: Any = self.content if self.change_tracker is not None else ()
         else:
+            container, _index, owner = self._place_for(location, target)
+        refuse_second_block(self, owner, container, elements, word_error=word_error)
+
+    def _insert_element(
+        self, element: Any, location: Location, target: Any, change: Any, replacing: Any = None
+    ) -> Any:
+        elements = list(element) if isinstance(element, (list, tuple)) else [element]
+        if not elements:
             raise ContentError(
-                f"insert_element takes Start, End, Before or After, not {location!r}",
-                code="location.invalid",
-                hint="Replace is for insert_text and for a Range",
+                "nothing to insert",
+                code="insert.empty",
+                hint="pass an element, or a list with at least one in it",
             )
 
+        container, index, owner = self._place_for(location, target)
         self._check(elements, owner)
+        refuse_second_block(self, owner, container, elements, replacing=replacing)
         # a cell ends with a paragraph, as Word reads it: the cells of what goes in (D3), and the
         # cell it goes in (CR-016 Phase A)
         end_cells_with_paragraphs(elements)

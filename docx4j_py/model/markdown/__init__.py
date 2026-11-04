@@ -99,7 +99,9 @@ def insert_markdown_into(
     from docx4j_py.model.content.reports import recording
 
     with recording(body, "insert_markdown") as change:
-        elements, touched = blocks_for(body, markdown, change)
+        elements, touched = blocks_for(
+            body, markdown, change, check=lambda blocks: body.refuse_blocks(blocks, location=location, target=target)
+        )
         if not elements:
             return []
         body.insert_element(elements, location=location, target=target)

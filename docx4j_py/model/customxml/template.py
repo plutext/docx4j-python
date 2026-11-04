@@ -47,6 +47,7 @@ from typing import TYPE_CHECKING, Any
 
 from lxml import etree
 
+from docx4j_py.model.content.controls import FLAT_OPC_NS
 from docx4j_py.model.content.errors import BindingError
 from docx4j_py.model.customxml.bindings import (
     BindingResult,
@@ -463,6 +464,8 @@ def _from_bytes(
         if binding is None or not xpath:
             continue
         value, part_name = _value_for(collection, store_item_id, xpath, mappings, limit)
+        if kind == "RichText" and _reads_as_plain_text(pr, binding, value):
+            kind = "PlainText"
         bindings.append(
             BindingInfo(
                 xpath=xpath,
@@ -495,6 +498,27 @@ def _kind_of(pr: Any) -> str:
         if kind is not None:
             return kind
     return "RichText"
+
+
+def _reads_as_plain_text(pr: Any, binding: Any, value: str | None) -> bool:
+    """:attr:`ContentControl.type`'s reading, with lxml: a block control bound by ``w:dataBinding`` Word reads as plain text.
+
+    :func:`~docx4j_py.model.content.controls.is_bound_block_control` over the
+    bytes, so that ``describe()`` says the same of a part read and of one not
+    (CR-014 section 3.5a).
+    """
+    sdt = pr.getparent()
+    holder = sdt.getparent() if sdt is not None else None
+    content = sdt.find(f"{_W}sdtContent") if sdt is not None else None
+    if binding.tag != f"{_W}dataBinding" or content is None or holder is None:
+        return False
+    if holder.tag in (f"{_W}p", f"{_W}tr", f"{_W}tbl"):
+        return False  # a run-, cell- or row-level control
+    if any(child.tag in (f"{_W}r", f"{_W}tc", f"{_W}tr") for child in content):
+        return False  # a run-level control held at block level, or a row or cell one
+    if content.find(f".//{_W}sdt") is not None or content.find(f"{_W}tbl") is not None:
+        return False  # a container
+    return not value or not (FLAT_OPC_NS in value or "pkg:package" in value)
 
 
 def _val(pr: Any, local_name: str) -> str:

@@ -112,7 +112,7 @@ def is_flat_opc(ooxml: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[Any]:
+def content_of(ooxml: str, *, target: Any = None, package: Any = None, check: Any = None) -> list[Any]:
     """The block-level content of `ooxml`, ready to insert.
 
     A flat OPC package's body content with its parts copied and its references
@@ -126,6 +126,9 @@ def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[A
         package: the *caller's* package, which may be a
             :class:`~docx4j_py.model.content.trial.TrialPackage`; a part copied
             in is reported to it so that a dry run can un-add it.
+        check: called with the elements once they are read, before any part is
+            copied: a refusal there leaves the package as it was (CR-014
+            section 3.2).
 
     Raises:
         ContentError: a ``pkg:package`` with no target part, or with no main
@@ -137,6 +140,8 @@ def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[A
         elements = list(wml.all(ooxml, wrapper="body", _breaks=found))
         for record in found:
             current_recorder(package).warn(record.message)
+        if check is not None and elements:
+            check(elements)
         return elements
     if target is None:
         raise ContentError(
@@ -174,6 +179,8 @@ def content_of(ooxml: str, *, target: Any = None, package: Any = None) -> list[A
     content = list(getattr(body, "content", None) or ())
     if not content:
         return []
+    if check is not None:
+        check(content)
     rewrites = _copy_referenced_parts(content, main, target, package)
     if rewrites:
         rewrite_relationship_ids(content, rewrites)
@@ -422,10 +429,15 @@ def insert_ooxml_into_body(
     target: Any = None,
 ) -> list[Any]:
     """What :meth:`Body.insert_ooxml` is. See its docstring."""
+
+    def check(elements: list[Any]) -> None:
+        # into a bound block control, Word's GeneralException (CR-014 section 3.2, Q6; check 56)
+        body.refuse_blocks(elements, location=location, target=target, word_error="GeneralException")
+
     with recording(body, "insert_ooxml") as change:
         part = getattr(body, "part", None)
         elements = content_of(
-            ooxml, target=getattr(part, "_wrapped", part), package=body.package
+            ooxml, target=getattr(part, "_wrapped", part), package=body.package, check=check
         )
         if not elements:
             return []
@@ -472,7 +484,10 @@ def insert_ooxml_into_paragraph(
             paragraph.refuse_whole_text("insert_ooxml")
         part = getattr(body, "part", None)
         elements = content_of(
-            ooxml, target=getattr(part, "_wrapped", part), package=body.package
+            ooxml,
+            target=getattr(part, "_wrapped", part),
+            package=body.package,
+            check=lambda items: paragraph.refuse_beside(items, location, "GeneralException"),
         )
         if not elements:
             return []
@@ -482,11 +497,12 @@ def insert_ooxml_into_paragraph(
             paragraph.insert_items_at(
                 0 if location == "Start" else len(paragraph.text), list(only.content)
             )
+            paragraph.write_bound_nodes()
             change.touched(paragraph)
             change.text(before=before, after=paragraph.text)
             return [paragraph]
         if location == "Replace":
-            body.insert_element(elements, location="Before", target=paragraph)
+            body.insert_element(elements, location="Before", target=paragraph, replacing=paragraph.replaced_block)
             views = [body.view_for(element) for element in elements]
             paragraph.delete()
             return views
@@ -543,10 +559,17 @@ def insert_ooxml_into_range(
         target = paragraph if location == "Before" else span.end_paragraph
         at = span.start if location == "Before" else span.end
         target.refuse_branch_text(at, at, "insert_ooxml")
+    def check(items: list[Any]) -> None:
+        # several blocks beside the range; one paragraph's runs go into it (CR-014 section 3.2, Q6)
+        if not (len(items) == 1 and isinstance(items[0], P)):
+            (span.end_paragraph if location == "After" else paragraph).refuse_beside(
+                items, "After" if location == "After" else "Before", "GeneralException"
+            )
+
     with recording(body, "insert_ooxml") as change:
         part = getattr(body, "part", None)
         elements = content_of(
-            ooxml, target=getattr(part, "_wrapped", part), package=body.package
+            ooxml, target=getattr(part, "_wrapped", part), package=body.package, check=check
         )
         if not elements:
             return []
@@ -560,6 +583,7 @@ def insert_ooxml_into_range(
             else:
                 into, offset = span.end_paragraph, span.end
             into.insert_items_at(offset, list(only.content))
+            into.write_bound_nodes()
             change.touched(into)
             change.text(before=before, after=into.text)
             return [into]

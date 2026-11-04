@@ -656,7 +656,7 @@ def test_a_bound_block_control_holds_one_paragraph(label, kind, bound, paragraph
     else:
         control.paragraphs[0].insert_text("x\ny\r\nz", location="End")
     assert [p.text for p in control.paragraphs] == paragraphs
-    assert control.type == ("PlainText" if "w:text" in kind else "RichText"), "the reader is CR-014's (H4)"
+    assert control.type == ("PlainText" if bound or "w:text" in kind else "RichText"), "CR-014 section 3.5a (H4)"
     strict_reload(package)
 
 
@@ -679,7 +679,6 @@ CHECK_56 = [
 #: Where this package's node is not Word's, and why.
 CHECK_56_NODES = {
     7: ("start7x\ny", "F1: a node's break \\n"),
-    15: ("start15", "update_from_content_controls skips an explicit w:richText (CR-003 section 4); H4 is CR-014's"),
 }
 
 

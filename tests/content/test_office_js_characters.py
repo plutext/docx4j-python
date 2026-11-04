@@ -50,7 +50,7 @@ from docx4j_py.model.content.text_model import (
 )
 from docx4j_py.model.text import extract
 from docx4j_py.traversal import element_name, text_of
-from docx4j_py.wml import to_xml
+from docx4j_py.wml import el, to_xml
 
 OFFICE_JS = ROOT / "tests" / "office_js"
 
@@ -630,7 +630,8 @@ def test_a_bound_controls_write_back_keeps_docx4js_characters():
         package.body.insert_xml(xml)
         control = package.body.content_controls[0]
         part = package.custom_xml_parts.add(greeting)
-        control.xml_mapping.set_mapping(path, namespaces, part)
+        # the binding as a file made elsewhere holds it: set_mapping refuses a block control of two (CR-014 section 3.3)
+        control.put_property(el.dataBinding(xpath=path, prefix_mappings=namespaces, store_item_id=part.id))
         assert "\u000b" in control.text, "Office JS's text holds the U+000B"
         package.custom_xml_parts.update_from_content_controls()
         assert part.select_single_node(path).text == expected

@@ -1205,6 +1205,8 @@ def insert_table_into(
     # what no element carries is dropped (CR-013 section 11, E3)
     values = [[drop_unwritable(value) for value in row] for row in values] if values is not None else None
     with recording(body, "insert_table") as change:
+        # into a bound block control, refused before a style is defined, with Word's error (CR-014 section 3.2, Q6)
+        body.refuse_blocks([Tbl()], location=location, target=target, word_error="InvalidArgument")
         rows = [
             [
                 (values[r][c] if values is not None and r < len(values) and c < len(values[r]) else "")

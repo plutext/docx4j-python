@@ -266,8 +266,12 @@ class Paragraph:
             if r_pr is not None:
                 run.r_pr = r_pr
                 r_pr.parent = run
+            # every text write into a bound control writes its node (CR-019 D7): this one is no splice
+            bound = self._bound_controls_at(0, len(self.text))
             self.element.content[:] = [run]
             link_parents(self.element)
+            for control in bound:
+                control.write_through()
             change.touched(self)
 
     @property
@@ -326,6 +330,41 @@ class Paragraph:
                 add(current)
                 current = getattr(current, "parent", None)
         return out
+
+    def write_bound_nodes(self) -> None:
+        """Write the node of every bound control around this paragraph's text. Extension.
+
+        What :meth:`splice` does after its edit, for a write that merged runs
+        into this paragraph without one (CR-019 section 4.7; CR-014 section 3.2).
+        """
+        for control in self._bound_controls_at(0, len(self.text)):
+            control.write_through()
+
+    def refuse_beside(self, elements: list[Any], location: str, word_error: str | None = None) -> None:
+        """Refuse, before anything changes, the blocks a paragraph-level insert would put beside this one. Extension.
+
+        :func:`~.controls.refuse_second_block` for :meth:`insert_xml`,
+        :meth:`insert_ooxml` and :meth:`insert_markdown`: one ``w:p`` at
+        ``"Start"`` or ``"End"`` merges its runs here and passes, and at
+        ``"Replace"`` this paragraph goes (:attr:`replaced_block`).
+        """
+        if location in ("Start", "End") and len(elements) == 1 and isinstance(elements[0], P):
+            return
+        from docx4j_py.model.content.controls import refuse_second_block
+
+        refuse_second_block(
+            self.parent_body,
+            getattr(self.element, "parent", None),
+            self.container,
+            elements,
+            replacing=self.replaced_block if location == "Replace" else None,
+            word_error=word_error,
+        )
+
+    @property
+    def replaced_block(self) -> Any:
+        """The block a ``"Replace"`` of this paragraph takes away: this ``w:p``, but for one that stays, deleted, tracked."""
+        return self.element if self.change_tracker is None else None
 
     def _placeholder_controls_in(self, start: int, end: int, whole: bool | tuple[bool, bool] = False) -> list[Any]:
         """The run-level controls showing their placeholder that ``[start, end)`` holds whole (core-ts ``placeholderControlsIn``).
@@ -1366,19 +1405,23 @@ class Paragraph:
             elements = wml.all(xml, wrapper="body")
             if not elements:
                 return []
+            self.refuse_beside(elements, location, "GeneralException")
             only = elements[0] if len(elements) == 1 and isinstance(elements[0], P) else None
             if only is not None and location in ("Start", "End"):
                 before = self.text
                 self.insert_items_at(
                     0 if location == "Start" else len(self.text), list(only.content)
                 )
+                self.write_bound_nodes()
                 change.touched(self)
                 change.text(before=before, after=self.text)
                 return [self]
             if location == "Replace":
                 if self.change_tracker is not None:
                     self.refuse_whole_text("insert_xml")
-                self.parent_body.insert_element(elements, location="Before", target=self)
+                self.parent_body.insert_element(
+                    elements, location="Before", target=self, replacing=self.replaced_block
+                )
                 views = [self.parent_body.view_for(e) for e in elements]
                 self.delete()
                 return views
@@ -1404,7 +1447,9 @@ class Paragraph:
         from docx4j_py.model.markdown import blocks_for
 
         with recording(self.parent_body, "insert_markdown") as change:
-            elements, touched = blocks_for(self.parent_body, markdown, change)
+            elements, touched = blocks_for(
+                self.parent_body, markdown, change, check=lambda blocks: self.refuse_beside(blocks, location)
+            )
             parts = getattr(change, "parts", None)
             if parts is not None:
                 for name in sorted(touched):
@@ -1418,6 +1463,7 @@ class Paragraph:
                 self.insert_items_at(
                     0 if location == "Start" else len(self.text), list(only.content)
                 )
+                self.write_bound_nodes()
                 change.touched(self)
                 change.text(before=before, after=self.text)
                 return [self]
@@ -1898,7 +1944,7 @@ class Paragraph:
         ``w:richText``), which Word reads as plain text, a break is a ``w:br`` in a
         multi-line ``w:text`` one and nothing in any other (docx4j-core-ts CR-002
         section 61, ``80a933d``, widened by its check 56, ``38dcae9``;
-        :func:`~.controls.bound_plain_text_control`). With `breaks`
+        :func:`~.controls.plain_text_lines_of`). With `breaks`
         ``"line"`` (the one-paragraph writers, section 11's E2) ``\\n`` and
         ``\\r\\n`` are a ``w:br`` and ``\\r`` a ``w:cr``.
 

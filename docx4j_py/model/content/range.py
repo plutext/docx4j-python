@@ -64,6 +64,7 @@ from docx4j_py.model.content.text_model import (
     MarkedSegments,
     canonical_view,
     drop_unwritable,
+    for_writer,
     office_matches,
     paragraph_mark_pieces,
     refuse_mark_replacement,
@@ -1149,6 +1150,7 @@ class Range:
 
     def _replace(self, text: str) -> Range:
         """``insert_text(text, "Replace")`` across paragraphs, holding a whole table, and any under tracking (core-ts's ``replaceAcross``)."""
+        from docx4j_py.model.content.controls import paragraph_lines_of
         from docx4j_py.model.content.span_edits import (
             assert_trackable,
             delete_span,
@@ -1161,6 +1163,11 @@ class Range:
 
         extent = self._replaceable_extent("insert_text")
         text = drop_unwritable(text)
+        lines = paragraph_lines_of(self.paragraph)
+        if lines is not None:
+            # in a control Word reads as plain text a break makes no paragraph (CR-013 section 11; CR-014 section 3.6),
+            # across paragraphs too, a file made elsewhere: the deletion joins them and the text is one line
+            text = for_writer(text, "multi-line" if lines == "multi" else "single-line")
         tracker = self.paragraph.change_tracker
         body = self.paragraph.parent_body
         self._refuse_edge_pieces("insert_text")

@@ -40,7 +40,7 @@ from docx4j_py.openpackaging.content_types import ContentTypes
 from docx4j_py.openpackaging.part_name import PartName
 from docx4j_py.openpackaging.parts.binary_part import ImagePart
 from docx4j_py.traversal import element_name
-from docx4j_py.wml import R, el, emu_for, image_size, inline_picture, to_xml
+from docx4j_py.wml import P, R, el, emu_for, image_size, inline_picture, to_xml
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
@@ -546,6 +546,8 @@ def insert_picture_into_body(
 ) -> InlinePicture:
     """What :meth:`Body.insert_inline_picture` is. See its docstring."""
     with recording(body, "insert_inline_picture") as change:
+        # a paragraph of its own: into a bound block control, refused before the image part is added (CR-014 section 3.2)
+        body.refuse_blocks([P()], location=location)
         made = add_image(body, data, **options)
         paragraph = body.insert_paragraph("", location=location)
         paragraph.element.content.append(made.run)

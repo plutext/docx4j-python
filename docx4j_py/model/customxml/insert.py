@@ -52,10 +52,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import link_parents
+from docx4j_py.model.content.controls import refuse_second_block
 from docx4j_py.model.content.errors import BindingError, ContentError
 from docx4j_py.model.content.placeholders import shows_placeholder_when_made
 from docx4j_py.model.content.reports import recording
 from docx4j_py.traversal import element_name
+from docx4j_py.wml import SdtBlock
 from docx4j_py.wml.sdt import next_sdt_id, sdt
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -113,6 +115,8 @@ def insert_content_control_in_body(body: Any, kind: str = "RichText") -> Content
                 code="control.empty_body",
                 hint="insert a paragraph first, then wrap it",
             )
+        # around a bound block control's paragraph it would hold a control (CR-014 section 3.2)
+        refuse_second_block(body, body._owner(), (), [SdtBlock()], operation="insert_content_control")
         _warn_if_w15(body, kind, change)
         identifier = next_sdt_id(_root_of(body))
         items = list(content)
@@ -144,6 +148,14 @@ def insert_content_control_in_paragraph(paragraph: Any, kind: str = "RichText") 
                 code="address.not_found",
                 hint="read it again from body.paragraphs",
             )
+        # checked before the control takes the paragraph (CR-014 section 3.2; core-ts Paragraph.insertContentControl)
+        refuse_second_block(
+            body,
+            getattr(paragraph.element, "parent", None),
+            [item for item in container if item is not paragraph.element],
+            [SdtBlock()],
+            operation="insert_content_control",
+        )
         _warn_if_w15(body, kind, change)
         # around an empty paragraph, a control showing Word's default placeholder, as Word's (CR-019 section 4.8, D8;
         # core-ts check 64): nothing at all in it, no text and no drawn object
@@ -281,9 +293,17 @@ def wrap_paragraphs(span: Any, kind: str = "RichText") -> ContentControl:
         refuse_read_only(paragraph.parent_body, "insert_content_control")
     body = span.paragraph.parent_body
     with recording(body, "insert_content_control") as change:
+        parent = getattr(items[first], "parent", None)
+        # around a bound block control's paragraphs, in a file already holding two (CR-014 section 3.2)
+        refuse_second_block(
+            body,
+            parent,
+            [item for index, item in enumerate(items) if not first <= index <= last],
+            [SdtBlock()],
+            operation="insert_content_control",
+        )
         _warn_if_w15(body, kind, change)
         identifier = next_sdt_id(_root_of(body))
-        parent = getattr(items[first], "parent", None)
         control = sdt(list(items[first : last + 1]), kind=kind, id=identifier, form="block")
         items[first : last + 1] = [control]
         link_parents(control)

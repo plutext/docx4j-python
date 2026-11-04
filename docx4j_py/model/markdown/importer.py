@@ -758,17 +758,34 @@ def parser() -> Any:
     return _parser
 
 
-def blocks_for(body: Any, markdown: str, recorder: Any) -> tuple[list[Any], set[str]]:
+def blocks_for(body: Any, markdown: str, recorder: Any, check: Any = None) -> tuple[list[Any], set[str]]:
     """Parse markdown and build the block-level elements it describes.
 
     The parser is :func:`parser`, which imports ``markdown-it-py`` on first use.
+
+    `check` is called with stand-ins for the blocks once the text is parsed and
+    before anything is built, since building defines styles and numbering: a
+    refusal there leaves the package as it was (CR-014 section 3.2).
 
     Returns:
         The elements, and the names of the parts the call changed besides the
         body's own.
     """
+    tokens = parser().parse(markdown)
+    if check is not None:
+        check(_stand_ins(tokens))
     importer = _Importer(body, recorder)
-    elements = importer.run(parser().parse(markdown))
+    elements = importer.run(tokens)
     if not elements:
         recorder.warn("this markdown produced no block-level content")
     return elements, importer.touched
+
+
+def _stand_ins(tokens: list[Any]) -> list[Any]:
+    """What a refusal is to count, from the parse alone: one ``w:p`` for one simple block, none for none, else two."""
+    opening = [token for token in tokens if token.level == 0 and token.nesting >= 0]
+    if not opening:
+        return []
+    if len(opening) == 1 and opening[0].type in ("paragraph_open", "heading_open", "fence", "code_block"):
+        return [P()]
+    return [P(), P()]

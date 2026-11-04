@@ -11,7 +11,8 @@ departures CR-003 section 4 makes rules:
   ``w15:repeatingSection`` to one run;
 * **pictures and explicitly rich-text controls are counted as skipped**, not
   failed: replacing an ``a:blip`` from base64 and unpacking a flat OPC package
-  are separate work;
+  are separate work; but a block control bound by ``w:dataBinding`` is plain
+  text to Word, ``w:richText`` or not, and is bound as text (CR-014 Q9);
 * a **date** is formatted with ``w:dateFormat`` in the ``w:lid`` locale and
   ``w:fullDate`` is set; a **checkbox** gets ``w14:checked`` *and* the glyph run
   from ``w14:checkedState`` / ``uncheckedState``; a **list** shows the
@@ -19,7 +20,8 @@ departures CR-003 section 4 makes rules:
   ``false``, the entry's ``w:value`` and the stored ``w:fullDate``, where docx4j
   writes the rendered glyph and skips dates altogether;
 * the value goes into the control's **first paragraph** for a block, row or cell
-  control, and ``w:placeholder`` is kept.
+  control, and ``w:placeholder`` is kept; a bound block control Word reads as
+  plain text keeps that paragraph alone, as docx4j does (CR-014 section 3.4).
 
 Everything else is docx4j's: the value is trimmed, the run properties come from
 ``w:sdtPr/w:rPr``, an empty value becomes the placeholder run and
@@ -46,9 +48,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList
+from docx4j_py.model.content.controls import other_blocks_of
 from docx4j_py.model.customxml.kinds import format_date
 from docx4j_py.wml import R, el, t
-from docx4j_py.wml.sdt import W_NS, sdt_property
+from docx4j_py.wml.sdt import W_NS, sdt_kind_of, sdt_property
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.controls import ContentControl
@@ -59,6 +62,7 @@ __all__ = [
     "PLACEHOLDER_STYLE",
     "PLACEHOLDER_TEXT",
     "BindingEntry",
+    "BindingNote",
     "BindingResult",
     "apply_bindings",
     "bound_bodies",
@@ -100,6 +104,20 @@ MAX_VALUE_CHARS = 200
 
 
 @dataclass(frozen=True, slots=True)
+class BindingNote:
+    """Something a binding that was applied did beyond its value: the entry saying so (CR-014 sections 3.4, Q10 and Q11)."""
+
+    #: A stable code: ``"binding.blocks_removed"``, ``"binding.store_item_repaired"``, ….
+    code: str
+    #: What happened, in a sentence.
+    message: str
+
+    def to_dict(self) -> dict[str, str]:
+        """The JSON-ready view."""
+        return {"code": self.code, "message": self.message}
+
+
+@dataclass(frozen=True, slots=True)
 class BindingEntry:
     """One binding, and what became of it. CR-003 section 3.1's frozen result."""
 
@@ -121,6 +139,8 @@ class BindingEntry:
     reason: str = ""
     #: A stable code for the reason: ``"container"``, ``"picture"``, ….
     code: str = ""
+    #: What the write did beyond the value; empty for nearly every binding.
+    notes: tuple[BindingNote, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """The JSON-ready view."""
@@ -136,6 +156,8 @@ class BindingEntry:
         if self.reason:
             out["reason"] = self.reason
             out["code"] = self.code
+        if self.notes:
+            out["notes"] = [note.to_dict() for note in self.notes]
         return out
 
 
@@ -222,8 +244,12 @@ def controls_of(package: Any) -> list[ContentControl]:
 
 
 def is_container(control: ContentControl) -> bool:
-    """Whether a control holds other controls rather than a value (CR-003 section 4)."""
-    if control.type in CONTAINER_KINDS:
+    """Whether a control holds other controls rather than a value (CR-003 section 4).
+
+    Reads the element and not :attr:`ContentControl.type`, whose reading of a
+    bound block control asks this (CR-014 section 3.5a).
+    """
+    if sdt_kind_of(control.sdt_pr) in CONTAINER_KINDS:
         return True
     if control.content_controls:
         return True
@@ -273,7 +299,9 @@ def runs_for_value(value: str, run_properties: Any, multiline: bool) -> list[Any
 # ---------------------------------------------------------------------------
 
 
-def _entry(control: ContentControl, value: str = "", reason: str = "", code: str = "") -> Any:
+def _entry(
+    control: ContentControl, value: str = "", reason: str = "", code: str = "", notes: tuple[BindingNote, ...] = ()
+) -> Any:
     mapping = control.xml_mapping
     if len(value) > MAX_VALUE_CHARS:
         value = value[:MAX_VALUE_CHARS] + "\u2026"
@@ -287,6 +315,7 @@ def _entry(control: ContentControl, value: str = "", reason: str = "", code: str
         value=value,
         reason=reason,
         code=code,
+        notes=notes,
     )
 
 
@@ -294,7 +323,9 @@ def _skip_reason(control: ContentControl) -> tuple[str, str] | None:
     """Why this bound control is not written, or None."""
     if control.type == "Picture":
         return "a picture binding replaces the image, which this phase does not do", "picture"
-    if sdt_property(control.sdt_pr, "richText", W_NS) is not None:
+    if sdt_property(control.sdt_pr, "richText", W_NS) is not None and control.type == "RichText":
+        # a block control bound by w:dataBinding is plain text to Word, w:richText or not, and is bound as text, both
+        # ways (CR-014 Q9; core-ts's H4): what stays is one at run level, one by w15:dataBinding, or over flat OPC
         return "an explicitly rich-text binding carries a package, not a value", "rich_text"
     if is_container(control):
         return "a container is never bound; its items are", "container"
@@ -317,12 +348,18 @@ def iso_of(when: datetime.datetime) -> str:
     return when.replace(tzinfo=None, microsecond=0).isoformat()
 
 
-def apply_binding_to(control: ContentControl) -> tuple[bool, str, str, str]:
+def apply_binding_to(control: ContentControl, notes: list[BindingNote] | None = None) -> tuple[bool, str, str, str]:
     """Push one control's data into it.
+
+    Args:
+        control: the bound control.
+        notes: what the write did beyond the value is added to this.
 
     Returns:
         ``(applied, value, reason, code)``.
     """
+    if notes is None:
+        notes = []
     mapping = control.xml_mapping
     node = mapping.custom_xml_node
     if node is None:
@@ -369,6 +406,17 @@ def apply_binding_to(control: ContentControl) -> tuple[bool, str, str, str]:
                     date_view.date_display_locale or "en-US",
                 )
 
+    others = len(other_blocks_of(control))
+    if others:
+        # a file made elsewhere, as Word itself would not open: one paragraph, as docx4j's bind.xslt writes it and as
+        # Word's repair left it (CR-014 section 3.4, Q5; core-ts section 61.6)
+        notes.append(
+            BindingNote(
+                "binding.blocks_removed",
+                f"the control held {others} other block{'' if others == 1 else 's'} besides its first paragraph, "
+                "removed: Word holds a bound block control to one paragraph",
+            )
+        )
     if display == "" and control.shows_words_form_placeholder:
         # an empty value shows the control's placeholder in Word's form: the entry its w:placeholder names, else the
         # kind's default entry, written into the glossary on save (CR-019 section 4.8, Q3; core-ts aefc41f and b12e0c5,
@@ -399,11 +447,15 @@ def apply_bindings(package: Any) -> BindingResult:
             for control in body.content_controls:
                 if not control.xml_mapping.is_mapped:
                     continue
-                done, value, reason, code = apply_binding_to(control)
-                (applied if done else skipped).append(_entry(control, value, reason, code))
+                notes: list[BindingNote] = []
+                done, value, reason, code = apply_binding_to(control, notes)
+                entry = _entry(control, value, reason, code, tuple(notes))
+                (applied if done else skipped).append(entry)
                 if done:
                     change.touched(control.address)
                     change.part(getattr(body, "part", None))
+                for note in notes:
+                    change.warn(f"{entry.xpath or entry.kind}: {note.message}")
         change.text(after=f"{len(applied)} of {len(applied) + len(skipped)} bindings applied")
         for entry in skipped:
             change.warn(f"{entry.xpath or entry.kind}: {entry.reason}")

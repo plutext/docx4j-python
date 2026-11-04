@@ -430,9 +430,17 @@ def refuse_split(paragraph: Paragraph, offset: int, keep: str = "head", operatio
             ``range.cuts_equation``.
         AddressError: ``address.read_only``, the split is strictly inside text
             read from a kept ``mc:AlternateContent`` branch.
+        BindingError: ``binding.one_paragraph``, the paragraph is in a bound
+            block control Word reads as plain text.
     """
+    from docx4j_py.model.content.controls import refuse_second_block
     from docx4j_py.model.content.text_model import refuse_equation
+    from docx4j_py.wml import P
 
+    # a split gives a bound block control a second paragraph (CR-014 sections 3.2 and 3.6)
+    refuse_second_block(
+        paragraph.parent_body, getattr(paragraph.element, "parent", None), paragraph.container, [P()], operation=operation
+    )
     segments = paragraph.segments()
     refuse_equation(segments, offset, offset)
     inside = next((s for s in segments if s.start < offset < s.end), None)
