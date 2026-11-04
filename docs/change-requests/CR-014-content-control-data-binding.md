@@ -417,6 +417,10 @@ From docx4j (`VERSION_17_3_6`):
 19. **The ID is written back only for a control the pass applied.** A skipped one keeps it: a picture, a container, a `w:richText` one at run level. docx4j's NonXSLT traverser writes it for a picture and its XSLT one doesn't.
 20. **A part that fits and selects nothing is `no_match`, the control and its ID left.** Word's no-part probes have no root match, so this shape is unmeasured.
 
+From core-ts again (found by the Word check, section 13.2):
+
+21. **A placeholder write makes no styles part.** Where a package has no `word/styles.xml`, `require_placeholder_style` leaves it as it is, so the placeholder isn't grey in Word. core-ts's `requireStyles` makes the part on save, with its whole default style set and `PlaceholderText` (measured there 2026-11-05 at `b07134f`; that file not opened in Word). Kept (the user, 2026-11-05: "decision stands"), and to be recorded in the portfolio's list of differences between implementations.
+
 ## 13. The gates, the Word check and what's open
 
 ### 13.1 The gates
@@ -453,7 +457,7 @@ Two things neither port had measured:
 
 The notes, none a fault of the output:
 - **`cr014-3-dates-nominal.docx`, DF2 to DF4.** Reported against the table's "cr014-3 wrote" column, because Word showed `2:05 AM`, `11:05 PM` and `02:05`. The file holds `3:05 PM`, `12:05 PM` and `15:05` (read from its `document.xml`, the SHA-1 as staged), and Word replaces them from the node on open, as step 5 says. So a bound file can't show that column in Word: `README.txt`'s table misled here. Only the unbound `cr014-3e` and `cr014-3f` can, and both passed step 7.
-- **A placeholder not grey: DF10 in `cr014-3e`, B5 in `cr014-4-store-item-repaired.docx`.** `README.txt` was wrong to promise grey. The nine files built from docx4j's fixtures have no `word/styles.xml`, so `w:rStyle` names `PlaceholderText` in a file that doesn't define it, and `require_placeholder_style` leaves a package with no styles part as it is (CR-019 section 12). The text and bindings are right. **Kept as it is** (the user, 2026-11-05: "grey behaviour ok as is"): a placeholder write makes no styles part.
+- **A placeholder not grey: DF10 in `cr014-3e`, B5 in `cr014-4-store-item-repaired.docx`.** `README.txt` was wrong to promise grey. The nine files built from docx4j's fixtures have no `word/styles.xml`, so `w:rStyle` names `PlaceholderText` in a file that doesn't define it, and `require_placeholder_style` leaves a package with no styles part as it is (CR-019 section 12). The text and bindings are right. **Kept as it is** (the user, 2026-11-05: "grey behaviour ok as is"): a placeholder write makes no styles part (departure 21, where core-ts does).
 - **Case 15, tracked (step 4).** The inserted pilcrow shows before "second paragraph 15". That is the file's markup and Word's own rule at the end of a container: the preceding paragraph's mark is the inserted one, the final mark left alone (CR-003 section 16.10).
 
 ### 13.3 Open points
