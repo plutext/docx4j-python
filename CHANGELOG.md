@@ -257,6 +257,11 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **`update_from_content_controls` keeps a date node's form while the date is the same** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) section 13.3, O10). It wrote
+  `2026-10-22T15:05:00Z` back as `2026-10-22T15:05:00`, which Word reads as local time. A changed date is written in Word's form, as before.
+- **`describe()` and `fill()` read a stale `w:storeItemID` as the binding pass does** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) section 13.3, O1): the value comes from the part
+  the XPath fits, and `fill` writes that node, where it skipped the key as `no_part`. `no_part` stays where no part fits.
+
 - **A write into a bound control reaches its node by every route** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) section
   [9.6](docs/change-requests/CR-014-content-control-data-binding.md#96-found-and-fixed-here)): `Paragraph.text = ...` untracked and one `w:p` merged by
   `insert_xml`, `insert_ooxml` or `insert_markdown` wrote none, so Word put the old value back on open, and a `Range`'s

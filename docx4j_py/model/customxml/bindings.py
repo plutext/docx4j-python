@@ -592,6 +592,19 @@ def bound_value_of(control: ContentControl) -> str:
     return control.docx4j_text.replace("\u2011", "-")
 
 
+def _stored_date(control: ContentControl, stored: str | None, full: datetime.datetime) -> str:
+    """What a date control's node holds after a write back: as it stands while it reads as the control's date, else Word's form.
+
+    Rewriting an unchanged ``...T15:05:00Z`` as ``...T15:05:00`` would turn an
+    instant into local time, which Word shows differently, and a date alone
+    into a date and time (CR-014 section 13.3, O10). The reading is the one the
+    binding gives the control (:func:`date_of`, with the package's opt-in).
+    """
+    read = date_of(stored or "", bound_date_zone(getattr(control.parent_body, "package", None)))
+    same = read is not None and read.replace(microsecond=0) == full.replace(tzinfo=None, microsecond=0)
+    return stored if same and stored is not None else iso_of(full)
+
+
 def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
     """Write one control's value back into its node.
 
@@ -628,7 +641,7 @@ def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
         date_view = control.date_picker_content_control
         full = date_view.full_date if date_view is not None else None
         if full is not None:
-            value = iso_of(full)
+            value = _stored_date(control, node.text, full)
 
     if node.text == value:
         return False, value, "the node already holds this value", "unchanged"

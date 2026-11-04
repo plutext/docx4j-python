@@ -329,3 +329,26 @@ def test_bound_values_reads_each_xpath_of_a_stale_id_in_its_own_part():
     assert reader.value(b7) == "B7_XML_VALUE_PART1"
     assert reader.value(b11) == "B11_XML_VALUE_PART2"
     assert reader.value(b7) == "B7_XML_VALUE_PART1"
+
+
+# --- describe() and fill() read as the pass does (section 13.3, O1) ---
+
+
+def test_describe_reads_a_stale_binding_from_the_part_its_xpath_fits():
+    package = fixture("bind-plain.docx")
+    b7 = next(binding for binding in package.custom_xml_parts.describe().bindings if binding.tag == "B7")
+    assert b7.value == "B7_XML_VALUE"
+    assert b7.store_item_id == STALE, "a read writes nothing, and reports the binding as it stands"
+
+
+def test_fill_writes_a_stale_keys_node_and_the_pass_after_it_repairs_the_id():
+    package = fixture("bind-plain.docx")
+    package.custom_xml_parts.fill({"B7": "FILLED"})
+    shows(package, "B7", "FILLED", PART1)
+
+
+def test_fill_still_skips_a_key_no_part_fits():
+    package = fixture("bind-plain-no-part.docx")
+    result = package.custom_xml_parts.fill({"B7": "FILLED"})
+    assert [entry.code for entry in result.skipped] == ["no_part"]
+    assert by_alias(package, "B7").text == "B7_STALE_SURFACE"

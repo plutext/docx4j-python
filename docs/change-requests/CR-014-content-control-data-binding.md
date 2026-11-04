@@ -420,6 +420,7 @@ From docx4j (`VERSION_17_3_6`):
 From core-ts again (found by the Word check, section 13.2):
 
 21. **A placeholder write makes no styles part.** Where a package has no `word/styles.xml`, `require_placeholder_style` leaves it as it is, so the placeholder isn't grey in Word. core-ts's `requireStyles` makes the part on save, with its whole default style set and `PlaceholderText` (measured there 2026-11-05 at `b07134f`; that file not opened in Word). Kept (the user, 2026-11-05: "decision stands"). The portfolio's `docs/differences_between_implementations.md` holds it as DI-001.
+22. **A date control's write back keeps a node whose date didn't change** (`bindings._stored_date`; O10). core-ts's `isoOf` rewrites every one, its zone marker dropped. The node here is what the file held, so nothing new goes to Word.
 
 ## 13. The gates, the Word check and what's open
 
@@ -464,7 +465,7 @@ The notes, none a fault of the output:
 
 Each is unmeasured or undecided; none blocks the phases.
 
-- **O1. `describe()` and `fill()` stay strict.** Q11 names three readers and they aren't among them, so a stale binding reads no value, and `fill` of its key is skipped `no_part` while the pass after repairs it. Going through the resolver is two lines.
+- **O1. `describe()` and `fill()` stay strict.** **Closed 2026-11-05** (the user, as recommended): both go through `store_items.resolve` now, so a stale binding reads its value from the part its XPath fits, `fill` writes that node, and the pass after it writes the ID back. `no_part` stays where no part fits. `describe()` writes nothing and reports the ID as it stands.
 - **O2. `Paragraph.delete` and `Body.clear` leave the node.** A value control emptied that way refills from its node in Word. core-ts's do the same. A `"Content"` range's delete writes it.
 - **O3. `Paragraph.insert_break("Line" or "Page")` at `"Start"` or `"End"`** of a single-line value control writes the `w:br`, and no node. It is no block and no text writer; F3 drops such a break from text. Office JS's `insertBreak` there is unmeasured.
 - **O4. A run-level control made inside a value control's paragraph** isn't refused: it holds no block. It makes the outer control a container. Word's answer is unmeasured.
@@ -473,4 +474,4 @@ Each is unmeasured or undecided; none blocks the phases.
 - **O7. `tt` and double quotes** in a `w:dateFormat`: departure 14, Word unmeasured.
 - **O8. The names are CLDR's, not Word's, in places**, as docx4j's: German `Sept` where Word writes `Sep`, `en-AU`'s `Sept`, `June` and `July`, a German weekday's `Do.`. And five locales; another is one line of the script.
 - **O9. The date and list kinds, and the row and cell forms,** stay outside the rule: 2.8's unmeasured.
-- **O10. `update_from_content_controls` drops a date node's `Z`** (`iso_of`, since CR-003): `2026-10-22T15:05:00Z` goes back as `2026-10-22T15:05:00`, which Word reads as local. Not changed by this CR.
+- **O10. `update_from_content_controls` dropped a date node's `Z`** (`iso_of`, since CR-003): `2026-10-22T15:05:00Z` went back as `2026-10-22T15:05:00`, which Word reads as local. **Closed 2026-11-05** (the user, as recommended): a node keeps its own form while it reads as the control's date (`bindings._stored_date`), so a `Z`, an offset or a date alone stays, and a changed date is written in Word's form as before. Two controls sharing a node still write in document order. Departure 22.

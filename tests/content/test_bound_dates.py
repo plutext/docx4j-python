@@ -442,3 +442,29 @@ def test_a_bad_zone_is_still_refused():
     package = create_package()
     with pytest.raises(ContentError):
         package.date_time_zone = "not/a/zone"
+
+
+# --- the write back keeps a node whose date didn't change (CR-014 section 13.3, O10) ---
+
+
+def written_back(alias: str, *, prepare=None, date=None) -> str:
+    package, _result = bound(prepare=prepare)
+    view = control(package, alias)
+    if date is not None:
+        view.date_picker_content_control.full_date = date
+    package.custom_xml_parts.update_from_content_controls()
+    return view.xml_mapping.custom_xml_node.text
+
+
+@pytest.mark.parametrize("prepare", [None, in_sydney], ids=["nominal", "as Word"])
+def test_an_unchanged_date_keeps_its_nodes_z(prepare):
+    assert written_back("DF2", prepare=prepare) == "2026-10-22T15:05:00Z"
+
+
+def test_an_unchanged_date_alone_stays_a_date_alone():
+    assert written_back("DF11") == "2026-10-22"
+
+
+def test_a_changed_date_is_written_in_words_form():
+    # DF3: its node is its own, where DF2 shares one with DF4, whose unchanged date would write after it
+    assert written_back("DF3", date=datetime.datetime(2027, 1, 2, 3, 4)) == "2027-01-02T03:04:00"  # noqa: DTZ001 - a wall clock

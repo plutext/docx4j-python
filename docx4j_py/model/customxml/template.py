@@ -57,6 +57,7 @@ from docx4j_py.model.customxml.bindings import (
 )
 from docx4j_py.model.customxml.nodes import CustomXmlNode
 from docx4j_py.model.customxml.parts import custom_xml_parts_of
+from docx4j_py.model.customxml.store_items import resolve
 from docx4j_py.model.customxml.xpath import canonical_xpath_of
 from docx4j_py.wml.sdt import KIND_BY_QNAME, W15_NS, W_NS
 
@@ -359,7 +360,7 @@ def _repeat_infos(
 
 def _repeat_node(collection: Any, xpath: str, mappings: str, store_item_id: str) -> Any:
     """The lxml element a repeat's XPath selects, or None."""
-    part = collection.get_item(store_item_id) if store_item_id else None
+    part = resolve(collection, store_item_id, xpath, mappings)
     if part is None:
         return None
     try:
@@ -374,8 +375,8 @@ def _repeat_node(collection: Any, xpath: str, mappings: str, store_item_id: str)
 def _value_for(
     collection: Any, store_item_id: str, xpath: str, mappings: str, limit: int | None
 ) -> tuple[Any, str]:
-    """The value an XPath reads now, cut to `limit`, and the part it read it from."""
-    part = collection.get_item(store_item_id) if store_item_id else None
+    """The value an XPath reads now, cut to `limit`, and the part it read it from, as Word resolves a stale ID (CR-014 O1)."""
+    part = resolve(collection, store_item_id, xpath, mappings)
     if part is None:
         return None, ""
     try:
@@ -707,7 +708,7 @@ def _fill(package: Any, data: dict[str, Any] | str, change: Any) -> FillResult:
             continue
         wrote = False
         for binding in matches:
-            part = collection.get_item(binding.store_item_id)
+            part = resolve(collection, binding.store_item_id, binding.xpath, binding.prefix_mappings)
             if part is None:
                 skipped.append(
                     FillEntry(
@@ -782,7 +783,7 @@ def _fill_repeat(
                 "(or the parent of its items), and a plain value under any other key"
             ),
         )
-    part = collection.get_item(repeat.store_item_id) if repeat.store_item_id else None
+    part = resolve(collection, repeat.store_item_id, repeat.xpath, repeat.prefix_mappings)
     template = _repeat_node(collection, repeat.xpath, repeat.prefix_mappings, repeat.store_item_id)
     if part is None or template is None:
         raise BindingError(
