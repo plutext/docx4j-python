@@ -349,7 +349,9 @@ Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`
 reading of a `w:br` outside a `w:r` (docx4j CR-073's three rules over lxml, run by `XmlPart._parse`
 only where the fork's skipped report names one, so a clean part pays the test of an empty list; the
 record is `BrOutsideRun`, `br.outside_run`, on `part.warnings` and `package.warnings`); `api.py`,
-`load()` and `create_package()`. Everything is synchronous. Departures from docx4j are listed in
+`load()` and `create_package()`. Every store keeps the first entry of a name, compared without case
+as its lookup is, and counts the rest (`duplicates()`), which `load_package` refuses before reading
+anything (CR-032). Everything is synchronous. Departures from docx4j are listed in
 CR-002 section 12.3.
 
 ## Round-trip and fidelity rules
@@ -396,7 +398,10 @@ CR-002 section 12.3.
   reason, never mended (`runtime.RECOVER`, the fork's `recover=False`), kept as `part.unreadable`. The
   load stays lazy and an untouched save writes its bytes; a relationships part not well formed refuses
   the load. The text model reads around such a styles, numbering or settings part with `part.not_read`;
-  the content API's resolver and list readers raise; `misplaced()` reports it as `part.not_well_formed`. Empty is
+  the content API's resolver and list readers raise; `misplaced()` reports it as `part.not_well_formed`. A
+  container holding two entries of one name is refused (`DuplicateEntryException`, WD REQ-206), unless
+  `LoadOptions(duplicate_entries="first")`, which reads the first of each, records a `DuplicateEntry` per name
+  first on `package.warnings` and saves only the copy read. Empty is
   the norm for WordprocessingML over `samples/`. A non-empty report is a fidelity bug, usually
   fixed by a marked schema patch rather than by loosening the check.
 - Booleans serialise numeric (`1`/`0`), as Word writes them; the docProps parts use

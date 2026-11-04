@@ -11,6 +11,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **`LoadOptions(duplicate_entries="first")`** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
+  [10](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#10-phase-a-implementation-notes-2026-11-04); WD REQ-206): a container holding two entries of one name is
+  read, the first entry of each name in the zip's central directory (Word's reading after its repair), and a save
+  writes only the copy read. Each name is recorded once as a **`DuplicateEntry`** (`package.duplicate_entry`:
+  `entry`, the first copy's spelling, `count`, `message`, `to_dict()`), first on `package.warnings`, logged at
+  `WARNING`, and carried by the text model into `TextResult.warnings`, its selector the entry and its count in the
+  new **`TextWarning.detail`** (in `to_dict()` only where set). `strict=True` does not refuse it. `TextOptions`
+  accepts `duplicate_entries` (`refuse`, `first`) by name, as REQ-1001 requires: it is the load's option, which a
+  reading does not decide again. Every store answers `duplicates()`.
+
 - **`TextWarning.PART_NOT_READ`** (`part.not_read`; [CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 4.6, WD 0.66 REQ-801, docx4j CR-046
   section 10): a styles, numbering or settings part the text model needed and could not read, its XML not well
   formed. The reading goes on as for a package without the part, and says so once a part, where it first needs it,
@@ -76,6 +86,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **A package holding two entries of one name is refused** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
+  [10](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#10-phase-a-implementation-notes-2026-11-04); WD REQ-206): OPC part names compared without case, as the
+  store looks them up (a backslash folded, the leading slash dropped), over every entry, `[Content_Types].xml` and
+  the relationships parts included, in a zip, a directory, a flat OPC document and a memory store's mapping alike.
+  The load raises **`DuplicateEntryException`** (an `InvalidFormatException`; `code` `package.duplicate_entry`,
+  `entries` each name's count) naming each entry, before it reads anything, the message naming the option. It was
+  the last copy read silently, and an untouched save dropped the first; where the copy was a relationships part, the
+  save lost the parts the first named. An embedded document or an `altChunk` holding one is refused by its own load
+  (`content.not_read`, `altchunk.not_expanded`), and `insert_ooxml` refuses such a flat OPC fragment
+  (`ooxml.no_main_part`).
 - **A part whose XML is not well formed is refused when read, not mended** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md), sections
   [10](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md#10-phase-a-implementation-notes-2026-11-03) and [11](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md#11-phase-a2-and-phase-b-implementation-notes-2026-11-03); docx4j CR-065 D1). `contents`, `read_contents()` and a generic XML part's `tree`
   raise `Docx4JException` naming the part and lxml's reason (`Problem with part /word/document.xml: Premature end of

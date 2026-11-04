@@ -9,7 +9,12 @@ with its five details ruled as recommended the same day (WD 0.77, portfolio `b0d
 day (section 9). **Decided 2026-11-04** (the user: "CR-032 as recommended, please build"): Q1 to Q8 as
 recommended, Q3 as revised the same day to match docx4j-core-ts's CR-024 D4, a `DuplicateEntryException` subclass of
 `InvalidFormatException` (section 8). Word check 75, run by the user for core-ts the same day, confirms the key
-(section 3.1).
+(section 3.1). **Phase A implemented 2026-11-04** (section 10: `beef1cf`): every store keeps the first
+entry of a name and counts the rest, the zip store reading and sizing by the first `ZipInfo`; the load refuses a
+duplicate before reading anything, `DuplicateEntryException` naming each; `duplicate_entries="first"` reads the first,
+`DuplicateEntry` first on `package.warnings`, and saves only the copy read; the text model's `package.duplicate_entry`
+with `TextWarning.detail`, and `duplicate_entries` by name in `TextOptions`; 67 tests, full suite 9,900 passed.
+**Phase B done 2026-11-04** (section 10: the records). **Complete** (no Word check, Q8).
 
 **Depends on:** nothing in another repository. The statement is the WD's REQ-206 at 0.77
 (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`). docx4j and core-ts each build their own, and since
@@ -288,3 +293,149 @@ revised.
 ## 9. Effort
 
 About ½ day: Phase A ⅜, Phase B ⅛. No fork change, no Word check.
+
+## 10. Phase A (implementation notes, 2026-11-04)
+
+Phase A as built, with Phase B's records. Every question is as decided (section 8), Q3 as revised. No Word check
+(Q8): a package with no duplicate loads and saves as before, the refusal writes nothing, and the option's save is an
+ordinary package from the same writer.
+
+**Commits.** `beef1cf` (the code and the tests), and this section's (the records: this section, the status line, the
+index row, CHANGELOG, CLAUDE.md, `tests/README.md`).
+
+### 10.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the index | `openpackaging/stores.py`, `_CaseInsensitiveIndex` | `add` indexes a container's entry: a key already held keeps its first spelling and position, and the entry is counted and gets None; `put` is a sink's write, a key already held keeping its first spelling, nothing counted; `duplicates()` gives `{first spelling: count}` in listing order. The key is unchanged (`_normalise`, then `str.lower()`), and `remove` forgets a key's count |
+| the zip store | `ZipPartStore._index_entries` | the index and each key's first `ZipInfo` from `infolist()`, the central directory's order; `load` reads `self._zip.read(info)` and `size` the info's `file_size`, never by name; `reopen()` rebuilds both the same way |
+| the other stores | `DirectoryPartStore`, `MemoryPartStore._fill`, `FlatOpcStore.parse` | the directory's sorted walk counts through the index's constructor; a memory store's constructor mapping and a flat OPC document's `pkg:part`s fill through `_fill`, which keeps the first of a name and its content type, so a second `pkg:part`'s type never becomes an override; `MemoryPartStore.put` keeps its replace semantics. Each store answers `duplicates()`, which is not a member of the `PartStore` protocol (a third-party store stays one, unchecked; its docstring says so) |
+| the refusal | `openpackaging/exceptions.py`, `DuplicateEntryException(InvalidFormatException)` | `code = "package.duplicate_entry"`, `entries` (`{name: count}`); the message section 4.4's for one name, and `Duplicate entries in this package: _rels/.rels, 3 entries; word/document.xml, 2 entries (REQ-206). LoadOptions(duplicate_entries="first") reads the first of each` for several. Exported from `docx4j_py.openpackaging` beside `InvalidFormatException` |
+| the check | `openpackaging/load.py`, `load_package` | the store's `duplicates()` through `getattr`, before `[Content_Types].xml` is read; any value but `"first"` refuses |
+| the option | `LoadOptions.duplicate_entries` | `"refuse"` (the default) or `"first"`, `DUPLICATE_ENTRIES`; `__post_init__` raises `ValueError` naming WD REQ-206 for any other value, as `check_mode` does |
+| the record | `load.py`, `DuplicateEntry` | frozen, `code` (`package.duplicate_entry`), `entry`, `count`, `message`, `to_dict()`, as `BrOutsideRun`; one per name under `"first"`, kept in the package's `_duplicate_entries` slot (`opc_package.py`), listed first by `package.warnings`, logged once at `WARNING` on `docx4j_py.openpackaging`. Not skipped content, so `strict=True` loads (Q4) |
+| the text model | `model/text/result.py`, `options.py`, `extractor.py` | `TextWarning.detail` (`int \| None`, in `to_dict` only where set, in `__str__` bracketed) and `PACKAGE_DUPLICATE_ENTRY`; `Extractor._duplicate_entries` carries the package's records into the result first on a package's reading (`extract(pkg)`, `extract_resolved`), the selector the entry (`part_name`), `detail` the count; `TextOptions.duplicate_entries` (`refuse`, `first`, REQ-206) in `_CHOICES` and last in `OPTION_NAMES`, after `warnings` as in WD section 10's table, documented as the load's option and acted on by no reading |
+| the adapter | `tests/text/adapter.py` | a scenario's `duplicate_entries` passed to `LoadOptions`, the package cached per fixture and value; `BEYOND_DOCX4J` advertises REQ-206 (section 5's "the adapter advertises REQ-206") |
+| `load()` | `openpackaging/api.py` | its docstring names the refusal and the option |
+
+### 10.2 Before and after
+
+Measured with a probe in this session's scratchpad (`cr032/probe/before_after.py`), over the tests' zips (section
+5's cases, built from a package made here), against `0cb5cde`'s package (archived into the scratchpad) and the change.
+
+| case | at `0cb5cde` | Phase A |
+|---|---|---|
+| `word/document.xml` twice | the last copy read, nothing said; an untouched save one entry, the last | refused, `DuplicateEntryException` naming it; under `"first"` the first read, `DuplicateEntry(word/document.xml, 2)`, the save one entry, the first's bytes |
+| `Word/Document.xml` after it | the last spelling's bytes read through either name; `part_names()` the first spelling | the same refusal, the first spelling named; under `"first"` the first read |
+| `Word/Document.xml` first (core-ts's decoy-first) | the second, the relationship's exact spelling | refused; under `"first"` the decoy's bytes, as Word's 75a reads it |
+| check 75a, `headerA.xml` then `headera.xml` | `headera.xml`'s header | refused; under `"first"` `headerA.xml`'s, Word's reading, saved as `word/headera.xml` |
+| `[Content_Types].xml` twice, the second typing the main part a template | the second's types | refused; under `"first"` the first's, the save writing them |
+| `_rels/.rels` twice, the second naming `word/other.xml` | `word/other.xml` the main part, `word/document.xml` dropped by an untouched save | refused; under `"first"` `word/document.xml`, the save without `word/other.xml` |
+| `word/_rels/document.xml.rels` twice | the second's relationships | refused; under `"first"` the first's |
+| a media binary twice | the last copy, saved | refused; under `"first"` the first, saved |
+| an entry no relationship names, twice | not read, not saved | refused (the rule covers every entry); under `"first"` not carried |
+| a flat OPC document, two `pkg:part` of one name | the last, its content type the override | refused; under `"first"` the first, with its type |
+| `insert_ooxml` of it | the last part's body inserted | refused, `ooxml.no_main_part` (10.3 item 4) |
+
+### 10.3 Departures, with why
+
+1. **`DuplicateEntry` is in `load.py`**, beside `LoadOptions`, rather than a module of its own as `BrOutsideRun` has
+   (`breaks.py`, which holds CR-030's pass): the record is the load's, and an existing module was preferred. It is
+   exported from `docx4j_py.openpackaging`, as `BrOutsideRun` is.
+2. **The index has two entry points**: `add` for a container's entry, which counts, and `put` for a sink's write,
+   which replaces. A put of a case variant now keeps the first spelling, where before the index took the new
+   spelling and the store kept the old bytes under the old one, unreachable; no caller wrote a case variant through a
+   sink (a save writes each part name once, `PartName` folding case).
+3. **Several names in one message** (section 4.4 gives one): `Duplicate entries in this package: <name>, <count>
+   entries; ... (REQ-206). LoadOptions(duplicate_entries="first") reads the first of each`, in listing order.
+4. **`insert_ooxml`'s refusal keeps its one code**, `ooxml.no_main_part`, quoting the refusal in its message with the
+   exception as `__cause__` (CR-003 section 12.1 item 11: one code for an incoming package that cannot be read). The
+   quoted message names `LoadOptions(duplicate_entries="first")`, which `insert_ooxml` does not take (10.7 item 3).
+5. **An embedded document holding a duplicate is `content.not_read` at its object's paragraph** (`body/0`), not at a
+   nested root, since its load is refused before a nested reading starts: the address of any embedded package that
+   will not load (`embedded.py`'s `package_blocks`). A chunk is `altchunk.not_expanded`, as for any chunk that will
+   not load (Q6).
+6. **The warning is carried on a package's reading only**, `extract(pkg)` and `extract_resolved`, at the start, so it
+   comes first; a part's or content's reading carries none. Its selector is `TextWarning.part_name`, holding the
+   entry's name as the store spells it, with no leading slash (`word/document.xml`, `[Content_Types].xml`), where the
+   other kinds' part names have one: the WD's "the entry name as the first entry spells it".
+7. **The load logs each record** at `WARNING`, as CR-030's parse logs `BrOutsideRun`; section 4.6 says nothing of
+   a log.
+8. **Any value but `"first"` refuses at the load**, so a `LoadOptions` whose field is set after construction, past
+   `__post_init__`, can never read a duplicate silently.
+9. **The adapter advertises REQ-206 beyond docx4j's statement set** (`BEYOND_DOCX4J`), where it advertised docx4j's
+   at `docx4j-17.3.5` less what this package lacks: no check of the copied suites names REQ-206, so neither committed
+   report moves. `platform-tests-adapter/run_adapter.py` loads with no options, so it is unchanged.
+
+### 10.4 Tests and numbers
+
+`tests/openpackaging/test_duplicate_entries.py`, new, 56 tests (0.5 s), each zip built in the test from a package
+made here (a paragraph, a header and an image), the first copy holding `FIRST`:
+
+- **the main part** (6): the same name twice, the case variant and three copies, each refused with the message,
+  `code` and `entries`, and under `"first"` read, warned with its count, saved as one entry of the first's bytes;
+- **the decoy first** (1), **check 75a** (2), **an untouched save** (1) writing the first copy's bytes unparsed;
+- **the content types, the package's and a part's relationships twice** (3), the first's holding and saved;
+- **a media binary, an orphan, several names** (3): the first copy saved, the orphan not carried, one message listing
+  every name in listing order;
+- **the refusal reads nothing** (1, a counting store); **the warning** (1) first on `package.warnings` ahead of the
+  first copy's `BrOutsideRun`, logged, `to_dict()`; **strict** (2); **the option** (4 values refused, the default);
+  **a clean package** (1);
+- **the key** (9): over the zip store, check 75's pairs (75a one name, `%C3%89` against `%C3%A9` two, `%c3%a9`
+  against `%C3%A9` one, a raw `É` against `é` one), an encoded against a decoded spelling two, a backslash and a
+  leading slash folded (7); a backslash twin of the main part refused, and an encoded and a decoded name loading (2);
+- **the zip store** (2): `part_names`, `load` and `size` agreeing on the first `ZipInfo` where `zipfile` reads the
+  last; `reopen()`;
+- **the other stores** (6): a directory's case variants (skipped where the file system folds case; it does not
+  here), a memory store's mapping counted and `put` replacing uncounted, a memory store refused, a flat OPC document
+  (the first's content type kept), `insert_ooxml` refusing, and a third-party store without `duplicates()` loading
+  unchecked;
+- **our own saves** (13): every `.docx` in `samples/`, loaded, saved and re-read, holding no duplicate.
+
+`tests/text/test_duplicate_entry_warnings.py`, new, 11 tests (0.5 s): `extract` under `"first"` carrying the warning
+(`detail` 2, `to_dict`, `__str__`), first and once in every view; a warning without a count writing no `detail`; a
+reading not deciding again; the option by name (its values, case, `to_dict`, `repr`, `copy`) and refused (3 values);
+the adapter loading under the scenario's value, advertising REQ-206, refusing by default; an embedded document
+`content.not_read` and a chunk `altchunk.not_expanded`.
+
+67 new tests in all. Mutations show they bite (runtime patches, `cr032/plugin/mut_plugin.py`): the zip store reading
+by name fails 12; `duplicates()` returning nothing fails 38; a duplicate taking the index's spelling fails 3; `put`
+counting fails 1; the text model's carry off fails 4; `package.warnings` listing the records last fails 1. At
+`0cb5cde` both files fail at collection (none of the names exist).
+
+**The cost**, best of thirty, CPython 3.14.6, interleaved with `0cb5cde`'s package twice (`cr032/probe/cost.py`): a `ZipPartStore` over `samples/Symbols.docx` 0.049 and 0.047 ms at `0cb5cde`, 0.047 and 0.049 ms with the change; `load()` 0.511 and 0.511 ms against 0.518 and 0.525 ms. `Headers.docx` 0.709 and 0.699 ms against 0.714 and 0.706 ms, `2010-sample1.docx` 0.485 and 0.486 ms against 0.499 and 0.505 ms: the index is built once, as before, with a second dictionary of `ZipInfo`s; within noise, at most 3%.
+
+ruff (`check`): the two new test files clean; the changed files find what they found before (4 in `stores.py`, 1 in
+`load.py`, 2 in `opc_package.py`, 2 in `extractor.py`, 1 in `test_conformance.py`).
+
+### 10.5 Pre-existing tests whose expectation changed, and why
+
+1. `tests/text/test_texts.py::test_the_options_are_section_10s_names`: 27 option names, not 26, the last two
+   `warnings` and `duplicate_entries`, section 10's order (Q5).
+2. `tests/text/test_conformance.py::test_the_adapter_advertises_the_target_less_the_inspector`: the adapter's
+   statements gain `BEYOND_DOCX4J`'s REQ-206 (10.3 item 9), which the test now holds is in no docx4j set.
+
+No existing test builds a zip holding a duplicate: the fast suite run with `zipfile`'s `Duplicate name` warning made
+an error (`-W "error:Duplicate name:UserWarning"`) passed whole, and so did the full suite with the refusal in. No
+test was skipped or loosened.
+
+### 10.6 The gates
+
+| gate | result |
+|---|---|
+| the full suite, slow included, the save check on (`tests/conftest.py`) | 9,900 passed, 8 skipped, 0 failed (6 min 43 s) at `beef1cf`, and the same again (6 min 46 s) before this section's commit; the 13 warnings the fork's `ConverterWarning`s of other tests, as before; `test_performance.py` passed in both. `0cb5cde` had 9,833 passed and 8 skipped (7 min 38 s), run this session first: the 67 are this phase's. The fast suite with `-W "error:Duplicate name:UserWarning"` passed whole (10.5) |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`), 0 parts repaired |
+| `codegen/generate.sh --check`, `scripts/compare_acceptance.py`, `scripts/release_check.sh` | not run: no generated file, no marshalling, no packaging and no save of a package without a duplicate changed |
+
+### 10.7 Found, and left open
+
+1. **The conformance harness does not know the option.** `tests/text/conformance.py` is the port of docx4j's harness
+   at its tag, and its `_OPTION_STATEMENTS` has no `duplicate_entries`, so a scenario naming it would be refused there
+   as unknown. No row of the copied suites names it; when a suite carries REQ-206's rows, the harness's table needs
+   the row `duplicate_entries: REQ-206`, as docx4j's will.
+2. **Word drops a part whose name holds a non-ASCII character** (section 3.1), where this package reads it. Not
+   REQ-206's, and recorded for the WD; nothing here changes.
+3. **`insert_ooxml`'s message names an option its caller cannot pass** (10.3 item 4). A host pasting a flat OPC
+   fragment with a duplicate has no `"first"`; whether it should is the WD's question, not this CR's.
+4. **`package.multiple_main_parts`** (section 4.10) stays open with the user; it would fit this option as Phase A2.
+5. **The registry**, through the docx4j-portfolio session: `python/CR-032` complete.
