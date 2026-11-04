@@ -104,6 +104,11 @@ def accept_all(package: Any, filter: Filter | None = None) -> int:
     With a `filter` (a :class:`TrackedChangeFilter`, or a callable over single
     changes), only the pieces it matches are accepted, and nothing is swept;
     the count is of the changes it matched.
+
+    Raises:
+        Docx4JException: a story part the resolution would consult cannot be
+            read, its XML not well formed: that part's own refusal, raised
+            before anything changes (CR-031 section 4.6b; :func:`resolve_all`).
     """
     return resolve_all(package, True, filter)
 
@@ -143,6 +148,19 @@ def resolve_all(
     never listed is swept. Both branches of a text box's
     ``mc:AlternateContent`` are walked. A filter's range is read once, before
     anything is resolved.
+
+    **Before the listing, before anything changes**, every story part the
+    settling may consult is checked (CR-031 section 4.6b,
+    :meth:`~docx4j_py.model.revisions.removals.Removals.refuse_unreadable`): one
+    that cannot be read refuses the resolution with its own refusal, where the
+    settling read it as holding nothing and could take away a comment or a note
+    it still referenced. The check unmarshals nothing, and is remembered on the
+    package for a part's source bytes. A detached body or a dry run's resolves
+    locally, and checks nothing.
+
+    Raises:
+        Docx4JException: that part's own refusal ("Problem with part <name>:
+            <lxml's message>"), its ``unreadable`` (CR-031 D8).
     """
     from docx4j_py.model.revisions.lister import Lister
     from docx4j_py.model.revisions.removals import Removals
@@ -151,6 +169,7 @@ def resolve_all(
     match = matcher(filter, package)
     count = 0
     removals = Removals(package)
+    removals.refuse_unreadable()
     left = None
     stalled = 0
     for round_ in range(20):

@@ -84,6 +84,7 @@ class OpcPackage:
         "_split_runs",
         "_split_spaces",
         "_tracked_change_date",
+        "_well_formed_sources",
         "content_type_manager",
         "custom_xml_data_storage_parts",
         "doc_props_core_part",
@@ -207,6 +208,12 @@ class OpcPackage:
         # write ends through the revisions engine's ``Removals``. A plain
         # container again: the content API puts it here and settles it.
         self._pending_removals: Any = None
+        # CR-031 Phase A3 (section 4.6b): the names of the story parts nobody had
+        # read whose source bytes a resolution's check parsed and found well
+        # formed, so that the next resolution parses none of them again. A plain
+        # container again: the revisions engine fills it, and a part holding
+        # bytes set since, not its source's, is checked afresh.
+        self._well_formed_sources: set[str] = set()
         #: What a save runs before it writes anything (CR-019 section 4.9): each
         #: callable is given the package and returns the names of the parts it
         #: added, or None. The content API registers one where it has writes

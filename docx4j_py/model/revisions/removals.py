@@ -24,7 +24,12 @@ Two things docx4j does not need:
 * **parts not unmarshalled.** A story part nobody has read is scanned in its
   bytes (with lxml) and unmarshalled only when something in it has to go, so
   that a part the resolution never touches is still written back byte for
-  byte (CR-002's round-trip rule).
+  byte (CR-002's round-trip rule). One whose bytes cannot be parsed, or whose
+  read failed, is **unknown** (CR-031 section 4.6b): never an empty index, so
+  that what it might reference is kept, and it is neither consulted nor
+  changed. A resolution of every story refuses such a part before it changes
+  anything (:meth:`Removals.refuse_unreadable`), so only a content API
+  write's settle, which comes after its edit, meets one.
 
 A body that is not a real package's --- a dry run's copy, a detached container
 --- is resolved **locally**: nothing outside its own part is touched (no note,
@@ -94,7 +99,7 @@ class Removals:
         self.relationships: dict[int, tuple[Any, set[str]]] = {}
         #: the typed islands resolved, written back before anything is settled
         self.islands: list[Any] = []
-        self._index_cache: dict[int, dict[str, set[int]]] = {}
+        self._index_cache: dict[int, dict[str, set[int]] | None] = {}
 
     @classmethod
     def for_story(cls, story: Story) -> Removals:
@@ -206,29 +211,71 @@ class Removals:
 
         return story_parts(self.package)
 
-    def _index(self, part: Any) -> dict[str, set[int]]:
-        """``local name -> {w:id}`` of every WordprocessingML element in a part, typed or not."""
+    def refuse_unreadable(self) -> None:
+        """Raises, before anything changes, the refusal of a story part the flush may consult and cannot read.
+
+        CR-031 section 4.6b: what a resolution of every story --- ``resolve_all``,
+        a single change's ``accept()`` or ``reject()`` --- asks before its
+        listing. Of every story part (:meth:`story_parts`): one whose read
+        already failed raises its record (``XmlPart.unreadable``, D8) again; one
+        nobody has read is parsed as :meth:`_index` parses it, and one not well
+        formed raises its own refusal, which its read records (D8). Nothing is
+        unmarshalled, so a well-formed part is still written byte for byte; and
+        a parse that succeeds over a part's source bytes is remembered on the
+        package by part name, so that the next resolution parses none of them
+        again. Nothing when resolving locally: a dry run's copy or a detached
+        body touches no other part.
+
+        Raises:
+            Docx4JException: the part's own refusal, "Problem with part <name>:
+                <lxml's message>", lxml's ``XMLSyntaxError`` the deepest cause.
+        """
+        if self.local:
+            return
+        checked: set[str] = self.package._well_formed_sources
+        for part in self.story_parts():
+            if not _unread(part):
+                continue
+            if getattr(part, "is_content_unreadable", False):
+                part.read_contents()  # its record, raised again without a parse (D8)
+                continue
+            name = str(part.part_name)
+            source = not part.is_loaded  # it holds its source's bytes, not bytes set since
+            if source and name in checked:
+                continue
+            if _raw_root(part) is None:
+                # the part's own read, which raises lxml's refusal and records it as the part's unreadable (D8)
+                part.read_contents()
+                continue
+            if source:
+                checked.add(name)
+
+    def _index(self, part: Any) -> dict[str, set[int]] | None:
+        """``local name -> {w:id}`` of every WordprocessingML element in a part, typed or not; None for unknown.
+
+        A part nobody has read is scanned in its bytes. One whose bytes cannot
+        be parsed, or whose read failed, is unknown (CR-031 section 4.6b), never
+        an empty index: its callers keep what it might hold.
+        """
         key = id(part)
-        found = self._index_cache.get(key)
-        if found is not None:
-            return found
+        if key in self._index_cache:
+            return self._index_cache[key]
         index: dict[str, set[int]] = {}
         if _unread(part):
-            try:
-                root = etree.fromstring(part._raw_bytes())
-            except Exception:  # noqa: BLE001 - unreadable: nothing found in it
-                root = None
-            if root is not None:
-                id_attribute = f"{{{_W}}}id"
-                for element in root.iter():
-                    tag = element.tag
-                    if not isinstance(tag, str) or not tag.startswith(f"{{{_W}}}"):
-                        continue
-                    # as Word reads it (CR-021), as trees.marker_id reads a typed one: "3.0" is 3
-                    value = integer(element.get(id_attribute))
-                    if value is None:
-                        continue
-                    index.setdefault(tag.rpartition("}")[2], set()).add(value)
+            root = None if getattr(part, "is_content_unreadable", False) else _raw_root(part)
+            if root is None:
+                self._index_cache[key] = None
+                return None
+            id_attribute = f"{{{_W}}}id"
+            for element in root.iter():
+                tag = element.tag
+                if not isinstance(tag, str) or not tag.startswith(f"{{{_W}}}"):
+                    continue
+                # as Word reads it (CR-021), as trees.marker_id reads a typed one: "3.0" is 3
+                value = integer(element.get(id_attribute))
+                if value is None:
+                    continue
+                index.setdefault(tag.rpartition("}")[2], set()).add(value)
         else:
 
             def enter(node: Any) -> bool:
@@ -257,6 +304,10 @@ class Removals:
         if self.local:
             return
         parts = self.story_parts()
+        if self._any_unknown(parts):
+            # CR-031 section 4.6b: a story part that cannot be read might reference any comment or hold any range's
+            # markers, and an unreadable comments part cannot lose an entry: every comment is kept, markers and all
+            return
         if if_emptied:
             from docx4j_py.model.revisions.resolver import marker_at, range_is_empty
 
@@ -275,7 +326,7 @@ class Removals:
         starts: set[int] = set()
         ends: set[int] = set()
         for part in parts:
-            index = self._index(part)
+            index = self._index(part) or {}
             references |= index.get("commentReference", set())
             starts |= index.get("commentRangeStart", set())
             ends |= index.get("commentRangeEnd", set())
@@ -306,10 +357,23 @@ class Removals:
             self._drop_empty_comment_parts()
 
     def _list_holding_start(self, part: Any, comment_id: int) -> list | None:
-        """The list in a part holding a comment's range start; a part not read is read only if it holds one."""
-        if _unread(part) and comment_id not in self._index(part).get("commentRangeStart", set()):
-            return None
+        """The list in a part holding a comment's range start; a part not read is read only if it holds one.
+
+        None for a part that cannot be read (CR-031 section 4.6b), which is not consulted.
+        """
+        if _unread(part):
+            index = self._index(part)
+            if index is None or comment_id not in index.get("commentRangeStart", set()):
+                return None
         return _list_holding(_root_of(part), lambda item: _is_comment_start(item, comment_id))
+
+    def _cannot_read(self, part: Any) -> bool:
+        """Whether a part's content cannot be read: unknown to :meth:`_index`. A part already read can be."""
+        return _unread(part) and self._index(part) is None
+
+    def _any_unknown(self, parts: list[Any]) -> bool:
+        """Whether any of `parts` cannot be read, so that what it might reference is kept (CR-031 section 4.6b)."""
+        return any(self._cannot_read(part) for part in parts)
 
     def _drop_empty_comment_parts(self) -> None:
         """With the last comment a resolution takes away, the comment parts go (docx4j ``dropEmptyCommentParts``).
@@ -432,7 +496,8 @@ class Removals:
         """A note whose reference went is removed from its part, unless a reference to it still stands.
 
         Word: the editor's ``review/`` saves for footnotes, C12 and C12b for
-        endnotes. Separators are never referenced and never go.
+        endnotes. Separators are never referenced and never go. Where a story
+        part cannot be read, every note is kept (CR-031 section 4.6b).
         """
         if not self.footnotes and not self.endnotes:
             return
@@ -441,10 +506,15 @@ class Removals:
         self.endnotes.clear()
         if self.local:
             return
+        parts = self.story_parts()
+        if self._any_unknown(parts):
+            # CR-031 section 4.6b: a story part that cannot be read might reference any note, and an unreadable notes
+            # part cannot lose one: every note is kept
+            return
         fn_standing: set[int] = set()
         en_standing: set[int] = set()
-        for part in self.story_parts():
-            index = self._index(part)
+        for part in parts:
+            index = self._index(part) or {}
             fn_standing |= index.get("footnoteReference", set())
             en_standing |= index.get("endnoteReference", set())
         main = self.package.main_document_part
@@ -497,7 +567,7 @@ class Removals:
 
         package = self.package
         for part, ids in todo:
-            if not _is_part(part) or package.get_part(part.part_name) is not part:
+            if not _is_part(part) or package.get_part(part.part_name) is not part or self._cannot_read(part):
                 continue
             rels = part.relationships_part
             if rels is None:
@@ -551,9 +621,14 @@ class Removals:
     # -- removing from every list --------------------------------------------
 
     def _remove_from_part(self, part: Any, names: set[str], ids: set[int] | None, match: Callable[[Any], bool]) -> int:
-        """Removes what `match` matches from every list of a part; a part not read is read only if it holds one."""
+        """Removes what `match` matches from every list of a part; a part not read is read only if it holds one.
+
+        A part that cannot be read is not changed (CR-031 section 4.6b): nothing is removed from it.
+        """
         if _is_part(part) and _unread(part):
             index = self._index(part)
+            if index is None:
+                return 0
             if not any((ids is None and name in index) or (ids is not None and index.get(name, set()) & ids) for name in names):
                 return 0
         removed = _remove_from(_root_of(part), match)
@@ -588,6 +663,18 @@ def _is_part(value: Any) -> bool:
 def _unread(part: Any) -> bool:
     """True for an XML part whose tree nobody has unmarshalled."""
     return _is_part(part) and not getattr(part, "is_unmarshalled", True)
+
+
+def _raw_root(part: Any) -> Any:
+    """A part's bytes parsed with lxml, a tree nothing else reads; None where they cannot be (CR-031 section 4.6b).
+
+    How :meth:`Removals._index` reads a part nobody has read, and so how
+    :meth:`Removals.refuse_unreadable` checks one: the two parse alike.
+    """
+    try:
+        return etree.fromstring(part._raw_bytes())
+    except Exception:  # noqa: BLE001 - not well formed, or no bytes: unknown
+        return None
 
 
 def _root_of(target: Any) -> Any:

@@ -555,11 +555,19 @@ class TrackedChange:
         Raises:
             TrackedChangeError: ``tracking.gone`` when the package has been
                 changed by an accept or reject since this was listed.
+            Docx4JException: a story part the resolution would consult cannot
+                be read, its XML not well formed: that part's own refusal,
+                raised before anything changes (CR-031 section 4.6b).
         """
         self._resolve(True)
 
     def reject(self) -> None:
-        """Put back what was there; either half of a move rejects the whole move."""
+        """Put back what was there; either half of a move rejects the whole move.
+
+        Raises:
+            TrackedChangeError: ``tracking.gone``, as :meth:`accept`.
+            Docx4JException: a story part it cannot read, as :meth:`accept`.
+        """
         self._resolve(False)
 
     def _resolve(self, accept: bool) -> None:
@@ -576,6 +584,8 @@ class TrackedChange:
                 hint="call get_tracked_changes() again after accepting or rejecting others",
             )
         removals = Removals.for_story(self.story)
+        # CR-031 section 4.6b: a story part the flush cannot read refuses before anything changes
+        removals.refuse_unreadable()
         resolve(self, accept, removals)
         for twin in self.twins:
             resolve(twin, accept, removals)

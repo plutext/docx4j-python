@@ -1159,15 +1159,22 @@ def is_list_item(paragraph: Paragraph) -> bool:
 
 
 def _resolve(paragraph: Paragraph, emulator: Emulator) -> Any:
-    """Where this paragraph's numbering comes from, as a ``NumRef``."""
+    """Where this paragraph's numbering comes from, as a ``NumRef``.
+
+    Its ``w:numId`` and ``w:ilvl`` as Word reads them (CR-021), as the
+    emulator's ``number()`` and so ``list_item`` read them: ``"1.0"`` and
+    ``"1.5"`` are list 1, and a form Word refuses is unset (CR-031 section
+    4.6b; it passed the text as written, so ``is_list_item`` and ``list_item``
+    disagreed).
+    """
     p_pr = paragraph.element.p_pr
     p_style = _value(getattr(p_pr, "p_style", None)) if p_pr is not None else None
     num_pr = getattr(p_pr, "num_pr", None) if p_pr is not None else None
-    num_id = _value(getattr(num_pr, "num_id", None)) if num_pr is not None else None
-    ilvl = _value(getattr(num_pr, "ilvl", None)) if num_pr is not None else None
-    num_id = None if num_id is None else str(num_id)
-    ilvl = None if ilvl is None else str(ilvl)
-    return emulator.resolve(p_style, num_id, ilvl, bool(num_id))
+    num_id = integer(_value(getattr(num_pr, "num_id", None))) if num_pr is not None else None
+    ilvl = integer(_value(getattr(num_pr, "ilvl", None))) if num_pr is not None else None
+    num_id_text = None if num_id is None else str(num_id)
+    ilvl_text = None if ilvl is None else str(ilvl)
+    return emulator.resolve(p_style, num_id_text, ilvl_text, bool(num_id_text))
 
 
 def _set_num_pr(paragraph: Paragraph, num_id: int, ilvl: int) -> None:

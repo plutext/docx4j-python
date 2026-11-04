@@ -11,10 +11,12 @@ still byte for byte.
 from __future__ import annotations
 
 import datetime
+import io
 import re
+import zipfile
 
 import pytest
-from conftest import fixture, part_bytes, reloaded, sample
+from conftest import FIXTURES, fixture, part_bytes, reloaded, sample
 
 from docx4j_py import WordprocessingMLPackage, create_package
 from docx4j_py.model.content import Author, List, ListItem
@@ -61,6 +63,48 @@ def test_a_paragraph_knows_whether_it_is_a_list_item():
     assert all(isinstance(p.list_item, ListItem) for p in items)
     assert all(p.list is not None and p.list.id == 1 for p in items)
     assert all(p.list_item is None and p.list is None for p in plain)
+
+
+def _lists_with(old: bytes, new: bytes):
+    """``lists.docx`` with every `old` in its main part written `new`, loaded."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(FIXTURES / "lists.docx") as source, zipfile.ZipFile(out, "w") as target:
+        for info in source.infolist():
+            data = source.read(info)
+            if info.filename == "word/document.xml":
+                assert data.count(old) == 4
+                data = data.replace(old, new)
+            target.writestr(info, data)
+    return WordprocessingMLPackage.load(out.getvalue())
+
+
+@pytest.mark.filterwarnings("ignore::docx4j_xsdata.exceptions.ConverterWarning")  # each value kept as its text
+@pytest.mark.parametrize(
+    ("element", "value", "labels"),
+    [
+        ("numId", "1", ["1.", "2.", "3.", "4."]),
+        ("numId", "1.0", ["1.", "2.", "3.", "4."]),
+        ("numId", "1.5", ["1.", "2.", "3.", "4."]),
+        ("numId", "abc", []),
+        ("ilvl", "0.9", ["1.", "2.", "3.", "4."]),
+        ("ilvl", "abc", ["1.", "2.", "3.", "4."]),
+    ],
+)
+def test_is_list_item_reads_w_numId_and_w_ilvl_as_list_item_does(element: str, value: str, labels: list[str]) -> None:
+    """CR-031 section 4.6b (its section 11.10 item 2): each as Word reads it (CR-021), a decimal truncated.
+
+    ``is_list_item`` passed the text as written, so ``w:numId="1.0"`` was no list
+    item to it while ``list_item`` gave its label; a form Word refuses is unset,
+    a ``w:numId`` so read naming no list and a ``w:ilvl`` level 0.
+    """
+    package = _lists_with(
+        f'<w:{element} w:val="{"1" if element == "numId" else "0"}"/>'.encode(),
+        f'<w:{element} w:val="{value}"/>'.encode(),
+    )
+    paragraphs = package.body.paragraphs
+    assert [p.is_list_item for p in paragraphs] == [p.list_item is not None for p in paragraphs]
+    assert [p.list_item.list_string for p in paragraphs if p.is_list_item] == labels
+    assert all(p.list_item.level == 0 for p in paragraphs if p.is_list_item)
 
 
 def test_list_string_is_the_label_word_paints():

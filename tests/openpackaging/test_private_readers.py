@@ -52,6 +52,11 @@ reached over the documents.
   read refused, for the part's own refusal (CR-031 section 4.6, Phase A2); its
   tree, where there is one, goes unused. The content API's list readers, over
   docx4j's ``part-not-read`` fixtures (:data:`REFUSED`).
+- ``model/revisions/removals.py``, ``Removals.refuse_unreadable``: a story part
+  nobody has read whose bytes lxml cannot parse, or whose read already failed,
+  for the part's own refusal (CR-031 section 4.6b, Phase A3); a part that can be
+  read is parsed raw and never read typed. A resolution of every story, over
+  ``Headers.docx`` with its first header cut short (:data:`HEADER_CUT`).
 
 The numbering emulator reads ``/word/numbering.xml`` and the styles' numbering
 with lxml from ``get_xml()``, and ``describe()`` reads every part with lxml
@@ -140,6 +145,11 @@ REFUSED: list[Path] = [
     FIXTURES / "part-not-read" / "part-not-read-styles.docx",
 ]
 
+#: ``Headers.docx`` with ``word/header1.xml`` short by its last three bytes: where
+#: a resolution's check asks the header's own read for its refusal (CR-031
+#: Phase A3), which no well-formed document reaches. Built by :func:`_header_cut`.
+HEADER_CUT = "Headers-header1-cut.docx"
+
 #: The fast suite's documents: the probe (charts, SmartArt, a glossary, fields,
 #: properties, text boxes, notes, comments, revisions), a revisions fixture with
 #: lists, a sample with headers, and :data:`WITH_FIELDS`.
@@ -172,7 +182,24 @@ def _with_fields() -> bytes:
     return _WITH_FIELDS_BYTES[0]
 
 
+_HEADER_CUT_BYTES: list[bytes] = []
+
+
+def _header_cut() -> bytes:
+    """:data:`HEADER_CUT`."""
+    if not _HEADER_CUT_BYTES:
+        out = io.BytesIO()
+        with zipfile.ZipFile(SAMPLES / "Headers.docx") as source, zipfile.ZipFile(out, "w") as target:
+            for info in source.infolist():
+                data = source.read(info)
+                target.writestr(info, data[:-3] if info.filename == "word/header1.xml" else data)
+        _HEADER_CUT_BYTES.append(out.getvalue())
+    return _HEADER_CUT_BYTES[0]
+
+
 def _open(source: Path | str) -> Any:
+    if source == HEADER_CUT:
+        return load(_header_cut())
     return load(_with_fields()) if source == WITH_FIELDS else load(source)
 
 
@@ -413,6 +440,16 @@ def read_lists_refused(pkg: Any) -> None:
         assert syntax_error_of(raised.value) is not None
 
 
+def read_resolution_refused(pkg: Any) -> None:
+    """``accept_all`` and ``reject_all``, refused where a story part is not well formed (CR-031 Phase A3)."""
+    from docx4j_py.model import revisions
+
+    for resolve in (revisions.accept_all, revisions.reject_all):
+        with pytest.raises(Docx4JException) as raised:
+            resolve(pkg)
+        assert syntax_error_of(raised.value) is not None
+
+
 READERS: dict[str, Callable[[Any], None]] = {
     "resolver": read_resolver,
     "numbering": read_numbering,
@@ -583,6 +620,7 @@ CALLERS: frozenset[str] = frozenset(
         "model/content/placeholders.py::has_placeholder_styles",
         "validator.py::_tree_of",
         "model/listnumbering/emulator.py::_root_of",
+        "model/revisions/removals.py::Removals.refuse_unreadable",
     }
 )
 
@@ -653,7 +691,11 @@ def _reached(sources: list[Path | str], readers: list[Callable[[Any], None]] | N
 
 def test_every_listed_caller_is_reached() -> None:
     """Each caller of the table runs, over the fast documents under one reader or another, or over :data:`REFUSED`."""
-    reached = _reached(FAST) | _reached(list(REFUSED), [read_lists_refused])
+    reached = (
+        _reached(FAST)
+        | _reached(list(REFUSED), [read_lists_refused])
+        | _reached([HEADER_CUT], [read_resolution_refused])
+    )
     assert set(CALLERS) - reached == set()
 
 
@@ -663,3 +705,11 @@ def test_a_refused_list_reader_leaves_its_trees_as_parsed(source: Path) -> None:
     pkg = _open(source)
     read_lists_refused(pkg)
     assert changed_trees(pkg, source) == []
+
+
+def test_a_refused_resolution_leaves_its_trees_as_parsed() -> None:
+    """A resolution's check of its story parts (CR-031 Phase A3) leaves every tree as parsed, and reads no header typed."""
+    pkg = _open(HEADER_CUT)
+    read_resolution_refused(pkg)
+    assert changed_trees(pkg, HEADER_CUT) == []
+    assert all(part._private_contents is None for part in pkg.main_document_part.header_parts())
