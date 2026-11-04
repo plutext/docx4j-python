@@ -11,7 +11,8 @@ date field's instant. The switches, in docx4j's order:
 * ``\\@`` (date and time): a value in one of the formats docx4j infers
   (international day-first, ISO 8601, ``dd MMM yyyy`` ...) written in Word's
   pattern converted to Java's (``MMMM``, ``dddd``, ``h``/``H``, ``am/pm``,
-  ``'text'``); a value it cannot infer is left as it is;
+  ``'text'``; ``h`` 1 to 12, as Word 365 showed it, docx4j ``9b9d053cb``); a value
+  it cannot infer is left as it is;
 * ``\\#`` (number), where the value is no date: Word's ``0``, ``#``, ``x``,
   ``.``, ``,``, ``%`` and literal text as a Java ``DecimalFormat`` (rounding
   half even, as Java's does), the number drawn out of a ``DOCPROPERTY``'s
@@ -52,13 +53,16 @@ __all__ = [
     "FieldFormattingError",
     "FieldValueError",
     "FldSimpleModel",
+    "UnsupportedFormat",
     "apply_formatting_switch",
     "convert_date_pattern",
     "determine_date_format",
     "extract_number",
     "find_first_switch_value",
     "format_date",
+    "format_word_date",
     "split_parameters",
+    "uses_date_names",
 ]
 
 SWITCH_ARGUMENT_MISSING = "Error! Switch argument not specified."
@@ -260,7 +264,7 @@ _DATE_ITEMS = {
     "M": "M", "MM": "MM", "MMM": "MMM", "MMMM": "MMMM",
     "d": "d", "D": "d", "dd": "dd", "DD": "dd", "ddd": "EEE", "DDD": "EEE", "dddd": "EEEE", "DDDD": "EEEE",
     "yy": "yy", "YY": "yy", "yyyy": "yyyy", "YYYY": "yyyy",
-    "h": "K", "H": "H", "hh": "KK", "HH": "HH",
+    "h": "h", "H": "H", "hh": "hh", "HH": "HH",
     "m": "m", "mm": "mm", "s": "s", "ss": "ss",
 }  # fmt: skip
 
@@ -277,6 +281,34 @@ def _is_am_pm(text: str, i: int) -> bool:
         and text[i + 3] in "pP"
         and text[i + 4] in "mM"
     )
+
+
+def format_word_date(picture: str, when: datetime.datetime, lang: str | None = None) -> str:
+    """A date in Word's date picture language, in a language's names. docx4j ``formatDate(String, Date, String)``.
+
+    The language of a DATE field's ``\\@`` switch and of a date control's
+    ``w:dateFormat`` (ECMA-376 17.16.4.1 and 17.5.2.9; docx4j CR-058 D1): one
+    converter for both (:func:`convert_date_pattern`). `lang` is a ``w:lid`` or
+    ``w:lang`` tag; a language with no names here (:func:`~.date_names.date_names`)
+    is written in English, where docx4j's would be the JVM's data for it.
+
+    Raises:
+        UnsupportedFormat: a letter of the picture that Java's format takes and
+            this one does not, or that neither does.
+    """
+    from docx4j_py.model.fields.date_names import date_names
+
+    return simple_date_format(convert_date_pattern(picture), when, date_names(lang) if lang else None)
+
+
+#: What of a Java pattern writes a name: a month's, a weekday's, AM or PM's, quoted text aside.
+_NAMED = re.compile(r"M{3,}|E|a")
+_QUOTED = re.compile(r"'[^']*'?")
+
+
+def uses_date_names(picture: str) -> bool:
+    """Whether a picture writes a name at all, so whether its language's names matter (CR-014 Q10)."""
+    return _NAMED.search(_QUOTED.sub("", convert_date_pattern(picture))) is not None
 
 
 def format_date(instruction: FieldInstruction, when: datetime.datetime) -> str:

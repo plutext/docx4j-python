@@ -34,6 +34,7 @@ from docx4j_py.model.fields.formatting import (
     extract_number,
     find_first_switch_value,
     format_date,
+    format_word_date,
 )
 from docx4j_py.model.fields.instruction import (
     FieldInstruction,
@@ -59,6 +60,7 @@ __all__ = [
     "extract_number",
     "find_first_switch_value",
     "format_date",
+    "format_word_date",
     "parse_w3cdtf",
     "register",
     "split_parameters",

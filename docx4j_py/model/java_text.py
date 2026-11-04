@@ -7,7 +7,8 @@ locale, for the patterns those callers write: :class:`DecimalFormat` (prefix
 and suffix, quotes, integer and fraction digits, grouping, ``%`` and ``‰``, a
 negative subpattern, scientific notation; Java's rule that ``#.##`` keeps a
 leading zero and ``.00`` does not, and its negative zero) and
-:func:`simple_date_format` (``y M d E H h K m s S a`` and quotes, English names).
+:func:`simple_date_format` (``y M d E H h K m s S a`` and quotes, English names
+unless it is given a language's, CR-014 phase 1b).
 What they do not take raises :class:`UnsupportedFormat`.
 
 Not imported by ``import docx4j_py``.
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 import datetime
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 __all__ = ["DAYS", "MONTHS", "DecimalFormat", "UnsupportedFormat", "simple_date_format"]
 
@@ -260,8 +262,13 @@ DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sun
 
 
 
-def simple_date_format(pattern: str, when: datetime.datetime) -> str:
-    """``java.text.SimpleDateFormat`` in the US locale, for the letters POI's conversion writes."""
+def simple_date_format(pattern: str, when: datetime.datetime, names: Any = None) -> str:
+    """``java.text.SimpleDateFormat`` for the letters POI's conversion writes, in the US locale.
+
+    `names`, a :class:`~docx4j_py.model.fields.date_names.DateNames`, writes
+    another language's month, weekday and AM/PM names (CR-014 phase 1b).
+    Anything but an ASCII letter is literal, as in Java.
+    """
     out: list[str] = []
     i = 0
     n = len(pattern)
@@ -274,7 +281,7 @@ def simple_date_format(pattern: str, when: datetime.datetime) -> str:
             out.append("'" if end == i + 1 else pattern[i + 1 : end])
             i = end + 1
             continue
-        if not c.isalpha():
+        if not ("a" <= c <= "z" or "A" <= c <= "Z"):
             out.append(c)
             i += 1
             continue
@@ -287,16 +294,19 @@ def simple_date_format(pattern: str, when: datetime.datetime) -> str:
             out.append(f"{when.year % 100:02d}" if count == 2 else str(when.year).rjust(count, "0"))
         elif c == "M":
             if count >= 4:
-                out.append(MONTHS[when.month - 1])
+                out.append((names.months if names else MONTHS)[when.month - 1])
             elif count == 3:
-                out.append(MONTHS[when.month - 1][:3])
+                out.append(names.months_short[when.month - 1] if names else MONTHS[when.month - 1][:3])
             else:
                 out.append(str(when.month).rjust(count, "0"))
         elif c == "d":
             out.append(str(when.day).rjust(count, "0"))
         elif c == "E":
-            day = DAYS[when.weekday()]
-            out.append(day if count >= 4 else day[:3])
+            if names:
+                out.append((names.days if count >= 4 else names.days_short)[when.weekday()])
+            else:
+                day = DAYS[when.weekday()]
+                out.append(day if count >= 4 else day[:3])
         elif c == "H":
             out.append(str(when.hour).rjust(count, "0"))
         elif c == "h":
@@ -310,7 +320,7 @@ def simple_date_format(pattern: str, when: datetime.datetime) -> str:
         elif c == "S":
             out.append(str(when.microsecond // 1000).rjust(count, "0"))
         elif c == "a":
-            out.append("AM" if when.hour < 12 else "PM")
+            out.append((names.am_pm if names else ("AM", "PM"))[when.hour >= 12])
         else:
             raise UnsupportedFormat(f"{pattern!r}: the letter {c!r}")
     return "".join(out)

@@ -13,6 +13,8 @@ one), with ISO 8601 input as its ``testDateIso*``.
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 
 from docx4j_py.model.fields import (
@@ -22,6 +24,7 @@ from docx4j_py.model.fields import (
     convert_date_pattern,
     determine_date_format,
     extract_number,
+    format_date,
 )
 
 REFUSED = "class org.docx4j.model.fields.FieldFormattingException"
@@ -205,12 +208,23 @@ def test_dates(switch, value, expected):
     assert apply_formatting_switch(None, FldSimpleModel(f"DOCPROPERTY foo {switch}"), value) == expected
 
 
+@pytest.mark.parametrize(
+    ("hour", "expected"),
+    [(0, "12:05 AM"), (1, "1:05 AM"), (11, "11:05 AM"), (12, "12:05 PM"), (13, "1:05 PM"), (23, "11:05 PM")],
+)
+def test_a_date_fields_h_runs_one_to_twelve(hour, expected):
+    """CR-014 phase 1b, docx4j's finding 2: Java's ``K`` wrote ``0:05 PM`` at noon; Word's own ``12:05 PM`` (``9b9d053cb``)."""
+    when = datetime.datetime(2026, 10, 22, hour, 5)  # noqa: DTZ001 - a wall clock
+    assert format_date(FldSimpleModel('DATE \\@ "h:mm am/pm"'), when) == expected
+    assert format_date(FldSimpleModel('DATE \\@ "hh:mm AM/PM"'), when) == expected.rjust(8, "0")
+
+
 def test_the_helpers():
     assert FldSimpleModel(' TITLE  \\* Upper ').name == "TITLE"
     assert FldSimpleModel(' QUOTE "a b" \\* Caps').parameters == ['"a b"', "\\*", "Caps"]
     assert FldSimpleModel("=2+3").name == "="
     # the spaces after a closing quote go inside it, as docx4j's convertDatePattern moves them
-    assert convert_date_pattern("dddd d MMMM yyyy h:mm AM/PM 'at' HH") == "EEEE d MMMM yyyy K:mm a 'at 'HH"
+    assert convert_date_pattern("dddd d MMMM yyyy h:mm AM/PM 'at' HH") == "EEEE d MMMM yyyy h:mm a 'at 'HH"
     assert determine_date_format("2013-04-15t09:30") == "yyyy-MM-dd'T'HH:mm"
     assert determine_date_format("13/04/2013") == "dd/MM/yyyy"
     assert extract_number("€180,000.00 EUR") == "180000.00"

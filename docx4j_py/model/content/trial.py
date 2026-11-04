@@ -217,6 +217,7 @@ class TrialPackage:
         "_custom_xml_parts",
         "_date_time_zone",
         "_glossary_entries",
+        "bound_dates_converted_as_word",
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
@@ -260,6 +261,8 @@ class TrialPackage:
         self._tracked_change_date: Any = package.tracked_change_date
         #: The trial's client zone (CR-025): the real package's unless the trial is given one.
         self._date_time_zone: Any = package.date_time_zone
+        #: The trial's opt-in to Word's bound-date conversion (CR-014 Q10): the real package's unless set here.
+        self.bound_dates_converted_as_word: bool = package.bound_dates_converted_as_word
         #: The halves the trial's own splits made (CR-003 section 16.12).
         self._split_runs: dict[int, int] = {}
         #: The paragraphs the trial inserted (CR-003 section 16.12).

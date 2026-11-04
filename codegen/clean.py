@@ -40,6 +40,7 @@ KEEP = {
     "model/fields/context.py",  # CR-025 Phase B: FieldContext and FieldUser (inside "model" too)
     "model/fields/evaluators.py",  # CR-025 Phase B: the field evaluators by name (inside "model" too)
     "model/fields/sources.py",  # CR-025 Phase B: note numbers, bookmark texts, the W3CDTF parser (inside "model" too)
+    "model/fields/date_names.py",  # CR-014 phase 1b: the names of a language, from resources/date-names.json (inside "model" too)
     "docx",  # CR-003 Phase J: the python-docx facade, all hand written
 }
 

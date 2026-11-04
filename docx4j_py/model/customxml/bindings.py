@@ -13,8 +13,12 @@ departures CR-003 section 4 makes rules:
   failed: replacing an ``a:blip`` from base64 and unpacking a flat OPC package
   are separate work; but a block control bound by ``w:dataBinding`` is plain
   text to Word, ``w:richText`` or not, and is bound as text (CR-014 Q9);
-* a **date** is formatted with ``w:dateFormat`` in the ``w:lid`` locale and
-  ``w:fullDate`` is set; a **checkbox** gets ``w14:checked`` *and* the glyph run
+* a **date** is formatted as Word formats it (CR-014 phase 1b, docx4j CR-058 phase
+  1): ``w:dateFormat`` is a DATE field's picture language, in the names of
+  ``w:lid``, else the document's default language, else English, and ``w:fullDate``
+  is set; a stored value that is not a date is shown as stored. The time is the
+  stored value's nominal time unless the package opts into Word's conversion
+  (``pkg.bound_dates_converted_as_word``); a **checkbox** gets ``w14:checked`` *and* the glyph run
   from ``w14:checkedState`` / ``uncheckedState``; a **list** shows the
   ``w:displayText`` whose ``w:value`` matches. The reverse writes ``true`` /
   ``false``, the entry's ``w:value`` and the stored ``w:fullDate``, where docx4j
@@ -44,12 +48,18 @@ from __future__ import annotations
 import datetime
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache, partial
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList
 from docx4j_py.model.content.controls import other_blocks_of
 from docx4j_py.model.customxml.kinds import format_date
+from docx4j_py.model.dates import bound_date_zone, wall_clock
+from docx4j_py.model.fields.date_names import date_names
+from docx4j_py.model.fields.formatting import uses_date_names
+from docx4j_py.model.java_text import UnsupportedFormat
 from docx4j_py.wml import R, el, t
 from docx4j_py.wml.sdt import W_NS, sdt_kind_of, sdt_property
 
@@ -58,6 +68,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = [
     "CONTAINER_KINDS",
+    "DEFAULT_DATE_LANGUAGE",
     "MAX_VALUE_CHARS",
     "PLACEHOLDER_STYLE",
     "PLACEHOLDER_TEXT",
@@ -68,6 +79,7 @@ __all__ = [
     "bound_bodies",
     "bound_value_of",
     "controls_of",
+    "document_language",
     "runs_for_value",
     "update_from_content_controls",
     "write_control_to_node",
@@ -85,8 +97,13 @@ CONTAINER_KINDS: frozenset[str] = frozenset(
     {"RepeatingSection", "RepeatingSectionItem", "Group", "BuildingBlockGallery"}
 )
 
-#: What a date value has to look like before it is read as one.
-_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?")
+#: A stored ``xs:dateTime`` or ``xs:date``, Java's ``ISO_DATE_TIME`` and ``ISO_DATE`` (docx4j ``parseStoredDate``): the
+#: date, a time, and a ``Z`` or an offset.
+_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?))?(Z|[+-]\d{2}:\d{2}(?::\d{2})?)?", re.IGNORECASE)
+
+#: The language a bound date is written in where neither ``w:lid`` nor the document names one: docx4j's is the JVM's
+#: (CR-058 D2 revised), which a Python process has no counterpart of (CR-014 section 12).
+DEFAULT_DATE_LANGUAGE = "en-US"
 
 #: The strings Word reads as a ticked box.
 _TRUE = frozenset({"true", "1", "on", "yes"})
@@ -332,15 +349,28 @@ def _skip_reason(control: ContentControl) -> tuple[str, str] | None:
     return None
 
 
-def date_of(value: str) -> datetime.datetime | None:
-    """A bound value read as a date, or None. Word's stored form, ``Z`` and all."""
-    if not _DATE.match(value):
+def date_of(value: str, zone: datetime.tzinfo | None = None) -> datetime.datetime | None:
+    """A bound value read as a date, naive, or None. docx4j ``parseStoredDate``.
+
+    The stored value is an ``xs:dateTime`` or ``xs:date`` (``2012-08-19T00:00:00Z``,
+    ``2012-08-19Z``, ``2012-08-19T10:00:00+10:00``, ``2012-08-19``): its nominal
+    fields, any offset read past. With `zone`, Word's reading: a date and time
+    carrying a ``Z`` or an offset is an instant, shown in `zone`, and the rest
+    stay nominal (docx4j CR-058's ``bind-typed-twelve``: an offset honoured, no
+    offset local; a date alone not shifted).
+    """
+    found = _DATE.fullmatch(value.strip())
+    if found is None:
         return None
-    text = value.rstrip("Z").replace(" ", "T")
+    day, time, offset = found.groups()
     try:
-        return datetime.datetime.fromisoformat(text)
+        nominal = datetime.datetime.fromisoformat(f"{day}T{time or '00:00'}")
+        if zone is None or time is None or offset is None:
+            return nominal
+        instant = datetime.datetime.fromisoformat(f"{day}T{time}{'+00:00' if offset in 'Zz' else offset}")
     except ValueError:
         return None
+    return wall_clock(instant, zone)
 
 
 def iso_of(when: datetime.datetime) -> str:
@@ -348,18 +378,78 @@ def iso_of(when: datetime.datetime) -> str:
     return when.replace(tzinfo=None, microsecond=0).isoformat()
 
 
-def apply_binding_to(control: ContentControl, notes: list[BindingNote] | None = None) -> tuple[bool, str, str, str]:
+def document_language(package: Any) -> str | None:
+    """``w:docDefaults/w:rPrDefault/w:rPr/w:lang/@w:val``, or None. docx4j ``documentDefaultLanguage``.
+
+    Read with lxml from the bytes the part would be saved as, so that binding a
+    date leaves a styles part nobody read as it is, and None for one that will
+    not read (CR-031).
+    """
+    part = getattr(package, "style_definitions_part", None) if package is not None else None
+    if part is None:
+        return None
+    from lxml import etree
+
+    try:
+        root = etree.fromstring(part.xml, etree.XMLParser(resolve_entities=False, huge_tree=True))
+    except Exception:  # noqa: BLE001 - a styles part that will not read names no language
+        return None
+    lang = root.find(f"{{{W_NS}}}docDefaults/{{{W_NS}}}rPrDefault/{{{W_NS}}}rPr/{{{W_NS}}}lang")
+    value = lang.get(f"{{{W_NS}}}val") if lang is not None else None
+    return value.strip() or None if value else None
+
+
+def _date_display(control: ContentControl, value: str, notes: list[BindingNote], language: Callable[[], str | None]) -> str:
+    """What a date control shows for a stored value, as Word shows it; ``w:fullDate`` set where it is a date.
+
+    docx4j's ``xpathDateRun`` (CR-058 phase 1, ``d8d8bfb71``, and its amendment,
+    ``c3e9920e5``). A value that is no date is shown as stored (D3); so is a date
+    under a picture this can't write, where docx4j's gives ``[missing!]``, with a
+    note. The language is ``w:lid``, else the document default's (`language`), else
+    English (D2 revised); one this has no names for is shown in English, with a
+    note, where the picture writes a name (Q10).
+    """
+    date_view = control.date_picker_content_control
+    parsed = date_of(value, bound_date_zone(getattr(control.parent_body, "package", None)))
+    if date_view is None or parsed is None:
+        return value
+    date_view.full_date = parsed
+    picture = date_view.date_display_format
+    if not picture:
+        return value
+    lang = date_view.date_display_locale.strip() or language() or DEFAULT_DATE_LANGUAGE
+    try:
+        display = format_date(picture, parsed, lang)
+    except UnsupportedFormat as error:
+        notes.append(
+            BindingNote("binding.date_picture_unsupported", f"w:dateFormat {picture!r} can't be written ({error}): shown as stored")
+        )
+        return value
+    if date_names(lang) is None and uses_date_names(picture):
+        notes.append(BindingNote("binding.date_language_missing", f"no month or weekday names for {lang!r}: shown in English"))
+    return display
+
+
+def apply_binding_to(
+    control: ContentControl,
+    notes: list[BindingNote] | None = None,
+    language: Callable[[], str | None] | None = None,
+) -> tuple[bool, str, str, str]:
     """Push one control's data into it.
 
     Args:
         control: the bound control.
         notes: what the write did beyond the value is added to this.
+        language: the document's default language; read from the package where
+            not given, a pass reading it once.
 
     Returns:
         ``(applied, value, reason, code)``.
     """
     if notes is None:
         notes = []
+    if language is None:
+        language = partial(document_language, getattr(control.parent_body, "package", None))
     mapping = control.xml_mapping
     node = mapping.custom_xml_node
     if node is None:
@@ -395,16 +485,7 @@ def apply_binding_to(control: ContentControl, notes: list[BindingNote] | None = 
                 display = match.display_text
             listing.last_value = value
     elif control.type == "DatePicker":
-        date_view = control.date_picker_content_control
-        parsed = date_of(value)
-        if date_view is not None and parsed is not None:
-            date_view.full_date = parsed
-            if date_view.date_display_format:
-                display = format_date(
-                    date_view.date_display_format,
-                    parsed,
-                    date_view.date_display_locale or "en-US",
-                )
+        display = _date_display(control, value, notes, language)
 
     others = len(other_blocks_of(control))
     if others:
@@ -440,6 +521,7 @@ def apply_bindings(package: Any) -> BindingResult:
     """
     from docx4j_py.model.content.reports import recording_on
 
+    language = cache(partial(document_language, package))
     with recording_on(package, "apply_bindings") as change:
         applied: list[BindingEntry] = []
         skipped: list[BindingEntry] = []
@@ -448,7 +530,7 @@ def apply_bindings(package: Any) -> BindingResult:
                 if not control.xml_mapping.is_mapped:
                     continue
                 notes: list[BindingNote] = []
-                done, value, reason, code = apply_binding_to(control, notes)
+                done, value, reason, code = apply_binding_to(control, notes, language)
                 entry = _entry(control, value, reason, code, tuple(notes))
                 (applied if done else skipped).append(entry)
                 if done:

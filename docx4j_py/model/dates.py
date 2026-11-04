@@ -9,7 +9,8 @@ section 3.6, the user's ruling of 2026-10-28), after docx4j CR-067 D12
   written and converts nothing;
 * an instant is shown, and a ``w:date`` without ``dateUtc`` read, in the
   **package's zone** (``pkg.date_time_zone``), the client's for this package;
-  unset, in the process's (``TZ``), and nothing between (CR-025 D2);
+  unset, in the process's (``TZ``), and nothing between (CR-025 D2); a bound date
+  only where the package opts in (:func:`bound_date_zone`, CR-014 Q10);
 * a new revision or comment is stamped to the minute, as Word writes it.
 
 Word writes a ``w:date`` as the author's local wall-clock time labelled ``Z``
@@ -31,6 +32,7 @@ from typing import Any
 __all__ = [
     "PROCESS_ZONE",
     "ProcessZone",
+    "bound_date_zone",
     "effective_zone",
     "instant_of",
     "package_zone",
@@ -140,6 +142,21 @@ def effective_zone(package: Any) -> datetime.tzinfo:
     """The zone an instant in `package` is shown in: its own, else :data:`PROCESS_ZONE`. docx4j ``effectiveDateTimeZone()``."""
     zone = package_zone(package)
     return zone if zone is not None else PROCESS_ZONE
+
+
+def bound_date_zone(package: Any) -> datetime.tzinfo | None:
+    """The zone a bound date's instant is converted to, or None for its nominal fields. docx4j ``conversionZone``.
+
+    A bound date holds a nominal day: only a package that opts in with
+    ``pkg.bound_dates_converted_as_word`` reads a stored ``Z`` or offset as an
+    instant, and then in its effective zone, as Word converts to the machine's.
+    Setting ``pkg.date_time_zone`` alone does not turn it on, and nothing
+    process-wide does (the ports' date rule, point 3; CR-014 Q10 as amended,
+    CR-025 D2).
+    """
+    if package is None or not getattr(package, "bound_dates_converted_as_word", False):
+        return None
+    return effective_zone(package)
 
 
 def wall_clock(instant: datetime.datetime, zone: datetime.tzinfo | None = None) -> datetime.datetime:

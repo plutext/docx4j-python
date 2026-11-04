@@ -98,6 +98,7 @@ class OpcPackage:
         "save_hooks",
         "source_part_store",
         "was_strict",
+        "bound_dates_converted_as_word",
         "write_times_on_save",
     )
 
@@ -179,6 +180,12 @@ class OpcPackage:
         #: none. ``last_save.times`` is the stamp written
         #: (:func:`~docx4j_py.openpackaging.save.write_core_times`).
         self.write_times_on_save = False
+        #: Whether a bound date's stored ``Z`` or offset is read as an instant and shown in
+        #: ``effective_date_time_zone``, as Word converts it to the machine's: False, the default, shows its
+        #: nominal fields, the day it says on every machine. The ports' date rule, point 3 (CR-014 Q10 as amended;
+        #: docx4j's ``OpcPackage.setBoundDatesConvertedAsWord``): off unless asked for, ``date_time_zone`` alone
+        #: does not turn it on, and there is no process-wide setting. Never saved.
+        self.bound_dates_converted_as_word = False
         # CR-003 section 3.4 (2026-09-17): the Word version the document
         # declares, over ``w:compatSetting compatibilityMode``, cached here for
         # the same reason and read the same way --- with lxml, so that a read

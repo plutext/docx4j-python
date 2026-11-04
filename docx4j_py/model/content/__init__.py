@@ -498,7 +498,8 @@ def _package_date_time_zone(self: object) -> object:
 
     It is the client's for this package, not the document's, and reaches no
     saved file as such: a server reusing a loaded package sets it per request.
-    A bound date has no zone (CR-014). ``dateUtc`` stays UTC.
+    A bound date has no zone, unless ``pkg.bound_dates_converted_as_word`` opts
+    into Word's conversion (CR-014 Q10). ``dateUtc`` stays UTC.
     """
     return self._date_time_zone  # type: ignore[attr-defined]
 

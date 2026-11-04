@@ -28,6 +28,7 @@ import re
 from typing import TYPE_CHECKING, Any, Literal
 
 from docx4j_py.model.content.errors import BindingError
+from docx4j_py.model.fields.formatting import format_word_date
 from docx4j_py.model.values import effective, is_on, on_off
 from docx4j_py.wml import el
 from docx4j_py.wml.sdt import CHECKBOX_FONT, W14_NS, W15_NS, W_NS, sdt_property
@@ -224,68 +225,33 @@ class CheckboxContentControl(_KindView):
 # the date picker
 # ---------------------------------------------------------------------------
 
-#: Month and weekday names. English only, and a ``w:lid`` of another language
-#: falls back to them: no locale dependency was taken (CR-003 section 17), and
-#: ``en-AU``, ``en-GB`` and ``en-US`` --- which is what Word writes in practice
-#: --- name the months the same way.
-_MONTHS = (
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-)
-_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-#: The .NET date-format tokens Word's ``w:dateFormat`` uses.
-_TOKEN = re.compile(r"d{1,4}|M{1,4}|y{2,4}|H{1,2}|h{1,2}|m{1,2}|s{1,2}|tt|'[^']*'|\"[^\"]*\"")
+#: What ``format_date`` read before CR-014 phase 1b and Word's picture language doesn't name: .NET's ``tt``, and text in
+#: double quotes. Quoted text is passed over, a ``tt`` inside it being none.
+_SPELLED_OTHERWISE = re.compile(r"""'[^']*'|"([^"]*)"|tt""")
 
 
 def format_date(pattern: str, when: datetime.datetime, locale: str = "en-US") -> str:
-    """A date in Word's ``w:dateFormat`` pattern (.NET's, not ``strftime``'s).
+    """A date in Word's date picture language, a ``w:dateFormat`` (CR-014 phase 1b, docx4j CR-058 D1).
 
     ``d MMMM yyyy`` gives ``29 January 2015``, which is what
-    ``samples/invoice2013.docx`` shows. Text in single or double quotes is
-    literal. `locale` is accepted and recorded but only English names are
-    offered (CR-003 section 17).
+    ``samples/invoice2013.docx`` shows, ``h:mm am/pm`` gives ``2:05 PM`` and
+    ``'on' d MMMM`` ``on 29 January``:
+    :func:`~docx4j_py.model.fields.formatting.format_word_date`, a DATE field's
+    ``\\@`` language, in `locale`'s month, weekday and AM/PM names. A language with
+    no names is written in English. ``tt`` and text in double quotes, which this
+    read as .NET does until then, are kept, each unmeasured in Word.
+
+    Raises:
+        UnsupportedFormat: a letter of the picture this can't write.
     """
-    del locale  # see the module note: English names, no locale dependency
 
-    def replace(match: re.Match[str]) -> str:
+    def respell(match: re.Match[str]) -> str:
         token = match.group(0)
-        if token[:1] in ("'", '"'):
-            return token[1:-1]
-        hour12 = when.hour % 12 or 12
-        return {
-            "d": str(when.day),
-            "dd": f"{when.day:02d}",
-            "ddd": _DAYS[when.weekday()][:3],
-            "dddd": _DAYS[when.weekday()],
-            "M": str(when.month),
-            "MM": f"{when.month:02d}",
-            "MMM": _MONTHS[when.month - 1][:3],
-            "MMMM": _MONTHS[when.month - 1],
-            "yy": f"{when.year % 100:02d}",
-            "yyy": str(when.year),
-            "yyyy": str(when.year),
-            "H": str(when.hour),
-            "HH": f"{when.hour:02d}",
-            "h": str(hour12),
-            "hh": f"{hour12:02d}",
-            "m": str(when.minute),
-            "mm": f"{when.minute:02d}",
-            "s": str(when.second),
-            "ss": f"{when.second:02d}",
-            "tt": "AM" if when.hour < 12 else "PM",
-        }.get(token, token)
+        if token == "tt":
+            return "am/pm"
+        return f"'{match.group(1)}'" if token.startswith('"') else token
 
-    return _TOKEN.sub(replace, pattern)
+    return format_word_date(_SPELLED_OTHERWISE.sub(respell, pattern), when, locale)
 
 
 class DatePickerContentControl(_KindView):
