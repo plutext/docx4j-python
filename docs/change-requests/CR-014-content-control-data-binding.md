@@ -419,7 +419,7 @@ From docx4j (`VERSION_17_3_6`):
 
 From core-ts again (found by the Word check, section 13.2):
 
-21. **A placeholder write makes no styles part.** Where a package has no `word/styles.xml`, `require_placeholder_style` leaves it as it is, so the placeholder isn't grey in Word. core-ts's `requireStyles` makes the part on save, with its whole default style set and `PlaceholderText` (measured there 2026-11-05 at `b07134f`; that file not opened in Word). Kept (the user, 2026-11-05: "decision stands"), and to be recorded in the portfolio's list of differences between implementations.
+21. **A placeholder write makes no styles part.** Where a package has no `word/styles.xml`, `require_placeholder_style` leaves it as it is, so the placeholder isn't grey in Word. core-ts's `requireStyles` makes the part on save, with its whole default style set and `PlaceholderText` (measured there 2026-11-05 at `b07134f`; that file not opened in Word). Kept (the user, 2026-11-05: "decision stands"). The portfolio's `docs/differences_between_implementations.md` holds it as DI-001.
 
 ## 13. The gates, the Word check and what's open
 
