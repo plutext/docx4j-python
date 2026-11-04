@@ -58,8 +58,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   (keep parity). Each phase that changed output is Word-checked. The Office JS subset is read from
   core-ts's committed `HEAD` (246 members).
 - **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058): decided 2026-11-02 (every
-  question as recommended); phases 1, 1b and 1c implemented 2026-11-05, for the next release, their Word check staged in
-  `out/cr014-word-check/`, not yet run. A bound block control Word reads as plain text holds one paragraph
+  question as recommended); phases 1, 1b and 1c done 2026-11-05 (Word-checked), for the next release. A bound block control Word reads as plain text holds one paragraph
   (`controls.refuse_second_block` under every block writer, `binding.one_paragraph`; `insert_paragraph` joins a
   single-line one; `set_mapping` refuses more; `apply_bindings` writes one, `BindingEntry.notes` saying so; such a control
   reads `PlainText`, and a `w:richText` one is bound as text); a bound date is formatted through the field code's

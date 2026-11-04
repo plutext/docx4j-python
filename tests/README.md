@@ -305,9 +305,11 @@ Record each run here, in the form docx4j-core-ts's `test/README.md` uses. When a
 markup that makes Word **hang** or quietly refuse an operation, also add an entry to
 `../docx4j-portfolio/docs/word-hangs.md`, the log shared across the three engines.
 
-> **CR-014's Word check, staged 2026-11-05, not yet run.** `out/cr014-word-check/`: `apply_bindings`' output over 3a's
-> shape, a value control after each allowed write, untracked and tracked, bound dates nominal and as Word at UTC+11, and a
-> repaired store item ID. Its `README.txt` says, per file, what Word should show. CR-014 section 13.2 records it.
+> **CR-014's Word check passed on 2026-11-05** (the user; the share's `__tmp/cr014-word-check/`). `out/cr014-word-check/`:
+> `apply_bindings`' output over 3a's shape, a value control after each allowed write, untracked and tracked, bound dates
+> nominal and as Word at UTC+11, and a repaired store item ID. Every file opened without a repair prompt. It measured two
+> things new to both ports: Word keeps a bound control's bold and centring through its refresh, and its revisions. A
+> placeholder in a file with no styles part isn't grey, kept as it is. CR-014 section 13.2 records it.
 
 > Artefact 11 (`11-python-docx-facade.docx`, CR-003 Phase J) was checked on 2026-09-18: everything
 > as listed except the two list-style paragraphs, where Word painted a decimal `1.` on the
