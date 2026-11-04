@@ -11,7 +11,9 @@ policy (`../docx4j-portfolio/docs/repair_policy_across_ports.md`), whose P1 to P
   error. The WD allows it and no longer requires it, so CR-031's refusal stays conforming.
 
 Four phases (section 6); C is optional. About 1⅛ days without C, 1⅝ with it (section 9). The questions are in section
-8, Q1 being the repair policy's open P7. Nothing built.
+8, Q1 being the repair policy's open P7. Nothing built. **Decided in part 2026-11-05** (the user: "decisions as recommend"):
+Q1 yes, Q5 as recommended, and two new ones after core-ts's CR-025 (`5c75758`), Q8 and Q9; Q2 to Q4, Q6 and Q7 are still open,
+with P4's name. A part read and not changed is copied (section 4.3), and `part.skipped` is the shared code.
 
 **Depends on:**
 - **CR-032**, for `TextWarning.detail` (Phase C's count kept) and for the repair policy's carve-out: a duplicate entry is
@@ -155,8 +157,15 @@ of that part's source per package, not one per save.
   > Saving would lose content: /word/document.xml holds 1 item the load skipped (part.skipped). LoadOptions(repair="word") writes the part without it
 
 - **Under `repair="word"`.** The save writes, and records each loss in `last_save.repaired`.
+- **A part read and not changed is copied** (Q8, core-ts's CR-025 section 2.2). There is no dirty tracking, so reading a part
+  marks it for re-marshalling, and as first drafted a reader of a file with skipped content would have been refused for
+  content they never touched. For a part with skipped content, and only such a part, the save unmarshals the source again and
+  compares the two marshals. Where they are equal, the source bytes are written, as for an untouched part, so that part
+  also skips the save's normaliser and its checks. Phase B holds this over every fixture with skipped content injected:
+  core-ts has tried it on one part.
 - **What the gate never refuses:**
   - a part never re-marshalled, which is written byte for byte;
+  - a part read and not changed (above);
   - an unreadable part, which is written byte for byte (CR-031).
 - **What the gate never sees:** what the caller removed through the API, which is the caller's edit, not a loss.
 - **The code** is a proposal for the WD's vocabulary (R2).
@@ -169,6 +178,9 @@ of that part's source per package, not one per save.
   argument: the switch is the caller's Yes to Word's prompt, given in advance.
 - **The load reads the same either way** (R1: read-only operations get the repaired reading). The switch decides only
   whether a lossy save may be written.
+- **Kept as `repair`** (Q5, the user, 2026-11-05). core-ts uses a switch of its own for this one question,
+  `pkg.checkLossOnSave`, reported on `lastSave.lost`. That is a recorded difference between the ports. If P4 folds
+  `duplicate_entries` into `repair`, it would change how a file is read, and this choice should be looked at again.
 
 ### 4.5 A relationships part read as far as its error (Phase C, optional; D5, Q6)
 
@@ -262,13 +274,15 @@ their Word 365 saves:
 
 | # | Question | Recommendation |
 |---|---|---|
-| Q1 | The repair policy's P7: does the gate cover content a lenient load skipped? | **Yes, from the start**: it's python's one lossy write today, and dropping an element Word does not understand is the engine's own repair (R4). |
+| Q1 | The repair policy's P7: does the gate cover content a lenient load skipped? | **Decided 2026-11-05: yes.** **Yes, from the start**: it's python's one lossy write today, and dropping an element Word does not understand is the engine's own repair (R4). |
 | Q2 | `check=False` given explicitly: skip the walk, or still record? | **Skip it**, as a named, documented opt-out; the default `None` records. |
 | Q3 | The log line as well as `last_save.introduced`? | **Yes, one line per save**, as the load logs a skip, so a caller who never reads `last_save` still sees it. |
 | Q4 | The gate's code, `save.content_lost`, and `SaveLossError`. | **As proposed**, sent to the WD as R2's vocabulary. |
-| Q5 | The switch: on the load (`LoadOptions(repair=)`, `pkg.repair`), or also per save? | **On the load and the package only**: it is the Yes to Word's prompt, given in advance. |
+| Q5 | The switch: on the load (`LoadOptions(repair=)`, `pkg.repair`), or also per save? | **Decided 2026-11-05: as recommended, and `repair` kept (4.4).** **On the load and the package only**: it is the Yes to Word's prompt, given in advance. |
 | Q6 | Build Phase C, the relationships prefix? | **Yes**: an extraction then reads what Word reads where today it reads nothing, and the gate keeps the save safe. Either reading conforms. |
 | Q7 | A Word check of Phase C's repaired save? | **One, optional**: the two files saved under `repair="word"`, opened for a prompt. |
+| Q8 | A part read and not changed: copied, or refused? (core-ts's CR-025 section 2.2.) | **Decided 2026-11-05: copied** (4.3). |
+| Q9 | `part.skipped` as the code shared with core-ts's warning? (Its CR-025 D1.) | **Decided 2026-11-05: yes.** It fits `part.not_read` and `part.not_well_formed`. |
 
 ## 9. Effort
 
