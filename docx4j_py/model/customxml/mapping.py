@@ -91,7 +91,9 @@ class XmlMapping:
 
         The three well-known docProps store item ids are **not** special-cased
         (CR-003 section 4): a binding to one resolves only when the document
-        really carries that custom XML part.
+        really carries that custom XML part. **Only the part the ID names**: it is
+        Office JS's read, and what Office JS gives for a stale ID is unmeasured
+        (CR-014 Q11); :attr:`resolved_part` is the part Word would read.
         """
         collection = self._collection()
         item_id = self.store_item_id
@@ -107,6 +109,26 @@ class XmlMapping:
         through the same mapping straight away.
         """
         part = self.custom_xml_part
+        if part is None or not self.xpath:
+            return None
+        return part.select_single_node(self.xpath, self.prefix_mappings)
+
+    @property
+    def resolved_part(self) -> CustomXmlPart | None:
+        """The part the binding is evaluated against, as Word resolves it, or None. Extension.
+
+        :attr:`custom_xml_part` where the ID names one, else the part the XPath
+        fits (CR-014 phase 1c; :func:`~.store_items.resolve`): what the binding
+        passes and a control's write read, as Word repairs a stale ID.
+        """
+        from docx4j_py.model.customxml.store_items import resolve
+
+        return resolve(self._collection(), self.store_item_id, self.xpath, self.prefix_mappings)
+
+    @property
+    def resolved_node(self) -> CustomXmlNode | None:
+        """The node the binding resolves to in :attr:`resolved_part`, or None. Extension."""
+        part = self.resolved_part
         if part is None or not self.xpath:
             return None
         return part.select_single_node(self.xpath, self.prefix_mappings)

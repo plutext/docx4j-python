@@ -4,10 +4,12 @@ docx4j's ``org.docx4j.model.text.BoundValues``: ``BindingTraverser``'s rule,
 read-only. The binding's XPath is evaluated, with its own prefix mappings,
 against the custom XML part its ``w:storeItemID`` names (through the content
 API's :mod:`docx4j_py.model.customxml`, whose parts parse without being
-modified) or against the core or application properties by their well-known
-store item ids (their bytes as they would be saved, parsed privately); the
-value is the string value of the first node selected. A binding resolves when
-the part exists and the XPath selects a node; one that does not resolve gives
+modified), or where that names no part the one its XPath fits, as Word repairs it
+(CR-014 phase 1c, :mod:`~docx4j_py.model.customxml.store_items`; docx4j CR-058 D4;
+this writes nothing back), or against the core or application properties by their
+well-known store item ids (their bytes as they would be saved, parsed privately);
+the value is the string value of the first node selected. A binding resolves when
+a part is found and the XPath selects a node; one that does not resolve gives
 None, and the control's surface is read instead.
 
 The content API's ``XmlMapping.custom_xml_part`` deliberately does not
@@ -35,7 +37,7 @@ class BoundValues:
     def __init__(self, package: Any) -> None:
         """A reader over a package."""
         self.package = package
-        self._roots: dict[str, Any] = {}
+        self._roots: dict[Any, Any] = {}
 
     def value(self, binding: Any) -> str | None:
         """The bound value of a ``w:dataBinding``, or None where the binding does not resolve."""
@@ -43,13 +45,16 @@ class BoundValues:
         store = getattr(binding, "store_item_id", None) if binding is not None else None
         if self.package is None or not xpath or not store:
             return None
+        mappings = getattr(binding, "prefix_mappings", None)
         root = self._root(store)
+        if root is None:
+            root = self._repaired_root(store, xpath, mappings)
         if root is None:
             return None
         from docx4j_py.model.customxml.xpath import parse_prefix_mappings, select
 
         try:
-            nodes = select(root, xpath, parse_prefix_mappings(getattr(binding, "prefix_mappings", None)))
+            nodes = select(root, xpath, parse_prefix_mappings(mappings))
         except Exception:  # noqa: BLE001 - a binding that will not evaluate does not resolve
             return None
         if not nodes:
@@ -76,6 +81,23 @@ class BoundValues:
 
                 part = custom_xml_parts_of(self.package).get_item(store)
                 root = part.tree if part is not None else None
+        except Exception:  # noqa: BLE001 - a store that will not read resolves nothing
+            root = None
+        self._roots[key] = root
+        return root
+
+    def _repaired_root(self, store: str, xpath: str, mappings: str | None) -> Any:
+        """The tree of the part a stale ID's XPath fits, each XPath's own: one ID fits two parts (docx4j's two-parts probe)."""
+        key = (store.upper(), xpath)
+        if key in self._roots:
+            return self._roots[key]
+        root = None
+        try:
+            from docx4j_py.model.customxml.parts import custom_xml_parts_of
+            from docx4j_py.model.customxml.store_items import resolve
+
+            part = resolve(custom_xml_parts_of(self.package), store, xpath, mappings)
+            root = part.tree if part is not None else None
         except Exception:  # noqa: BLE001 - a store that will not read resolves nothing
             root = None
         self._roots[key] = root

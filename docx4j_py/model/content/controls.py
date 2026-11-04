@@ -2238,7 +2238,7 @@ FLAT_OPC_NS = "http://schemas.microsoft.com/office/2006/xmlPackage"
 def _node_holds_flat_opc(control: ContentControl) -> bool:
     """Whether the node a control is bound to holds a flat OPC package (core-ts's H1 leaves such a control as it is)."""
     try:
-        node = control.xml_mapping.custom_xml_node
+        node = control.xml_mapping.resolved_node
     except Exception:  # noqa: BLE001 - an unusable binding is no package
         return False
     text = getattr(node, "text", None) if node is not None else None

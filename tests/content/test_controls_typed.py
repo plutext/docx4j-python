@@ -668,6 +668,8 @@ def test_a_binding_whose_part_is_gone_is_reported_not_raised(new_package):
     part2 = new_package.custom_xml_parts.add(GREETING)
     control.xml_mapping.set_mapping(GREETING_PATH, GREETING_NS, part2)
     control.xml_mapping.data_binding.store_item_id = "{00000000-0000-0000-0000-000000000000}"
+    # a root no part has: a stale ID a part fits is repaired, as Word repairs it (CR-014 phase 1c)
+    control.xml_mapping.data_binding.xpath = "/ns0:gone[1]/ns0:to[1]"
 
     result = new_package.custom_xml_parts.apply_bindings()
 

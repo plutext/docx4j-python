@@ -27,6 +27,12 @@ departures CR-003 section 4 makes rules:
   control, and ``w:placeholder`` is kept; a bound block control Word reads as
   plain text keeps that paragraph alone, as docx4j does (CR-014 section 3.4).
 
+**A store item ID that names no part** is resolved as Word repairs it (CR-014
+phase 1c, :mod:`~docx4j_py.model.customxml.store_items`): both passes read the part
+the XPath fits, and :func:`apply_bindings` writes that part's ID into the
+``w:dataBinding`` and says so in the entry. Where no part fits the control is left,
+its surface and its ID as they are.
+
 Everything else is docx4j's: the value is trimmed, the run properties come from
 ``w:sdtPr/w:rPr``, an empty value becomes the placeholder run and
 ``w:showingPlcHdr``, ``xml:space="preserve"`` is written only for a leading or
@@ -56,6 +62,7 @@ from typing import TYPE_CHECKING, Any
 from docx4j_py.child import ChildList
 from docx4j_py.model.content.controls import other_blocks_of
 from docx4j_py.model.customxml.kinds import format_date
+from docx4j_py.model.customxml.store_items import resolved_store_item_id
 from docx4j_py.model.dates import bound_date_zone, wall_clock
 from docx4j_py.model.fields.date_names import date_names
 from docx4j_py.model.fields.formatting import uses_date_names
@@ -451,23 +458,16 @@ def apply_binding_to(
     if language is None:
         language = partial(document_language, getattr(control.parent_body, "package", None))
     mapping = control.xml_mapping
-    node = mapping.custom_xml_node
+    node = mapping.resolved_node
     if node is None:
-        part = mapping.custom_xml_part
-        if part is None:
-            return (
-                False,
-                "",
-                f"no custom XML part with store item id {mapping.store_item_id}",
-                "no_part",
-            )
-        return False, "", f"{mapping.xpath!r} selects nothing in {part.part.part_name}", "no_match"
+        return _no_node(mapping)
 
     skip = _skip_reason(control)
     if skip is not None:
         return False, node.text.strip(), skip[0], skip[1]
 
     value = node.text.strip()
+    _repair_store_item(mapping, notes)
 
     if control.type == "CheckBox":
         checkbox = control.checkbox_content_control
@@ -510,6 +510,37 @@ def apply_binding_to(
         display == "",
     )
     return True, display, "", ""
+
+
+def _no_node(mapping: Any) -> tuple[bool, str, str, str]:
+    """A binding with no node, reported: no part fits it (Word leaves the control and its ID), or its XPath selects nothing."""
+    part = mapping.resolved_part
+    if part is None:
+        return False, "", f"no custom XML part with store item id {mapping.store_item_id}", "no_part"
+    return False, "", f"{mapping.xpath!r} selects nothing in {part.part.part_name}", "no_match"
+
+
+def _repair_store_item(mapping: Any, notes: list[BindingNote]) -> None:
+    """A stale ``w:storeItemID`` rewritten to the part the XPath fits, as Word's save writes it (CR-014 Q11; docx4j's D5).
+
+    In memory: whether the document is saved is the caller's, as with every
+    other write of the pass. The binding in either namespace.
+    """
+    if mapping.custom_xml_part is not None:
+        return
+    part = mapping.resolved_part
+    stale = mapping.store_item_id
+    fresh = resolved_store_item_id(mapping._collection(), stale, mapping.xpath, mapping.prefix_mappings)
+    if part is None or fresh is None or fresh == stale:
+        return
+    mapping.data_binding.store_item_id = fresh
+    notes.append(
+        BindingNote(
+            "binding.store_item_repaired",
+            f"w:storeItemID {stale} names no custom XML part: {part.part.part_name}, which the XPath fits, was read, "
+            f"and its ID {fresh} written, as Word's save does",
+        )
+    )
 
 
 def apply_bindings(package: Any) -> BindingResult:
@@ -568,17 +599,9 @@ def update_from_control(control: ContentControl) -> tuple[bool, str, str, str]:
         ``(written, value, reason, code)``.
     """
     mapping = control.xml_mapping
-    node = mapping.custom_xml_node
+    node = mapping.resolved_node
     if node is None:
-        part = mapping.custom_xml_part
-        if part is None:
-            return (
-                False,
-                "",
-                f"no custom XML part with store item id {mapping.store_item_id}",
-                "no_part",
-            )
-        return False, "", f"{mapping.xpath!r} selects nothing in {part.part.part_name}", "no_match"
+        return _no_node(mapping)
 
     skip = _skip_reason(control)
     if skip is not None:
@@ -633,7 +656,7 @@ def update_from_content_controls(package: Any) -> BindingResult:
             (applied if done else skipped).append(_entry(control, value, reason, code))
             if done:
                 change.touched(control.address)
-                part = mapping.custom_xml_part
+                part = mapping.resolved_part
                 change.part(part.part if part is not None else None)
         change.text(after=f"{len(applied)} of {len(applied) + len(skipped)} nodes written")
         for entry in skipped:
@@ -661,7 +684,7 @@ def write_control_to_node(control: ContentControl) -> bool:
         # the ``insert_text`` that caused it (CR-003 section 17.9)
         from docx4j_py.model.content.reports import current_recorder
 
-        part = mapping.custom_xml_part
+        part = mapping.resolved_part
         if part is not None:
             current_recorder(getattr(control.parent_body, "package", None)).part(part.part)
     return done
