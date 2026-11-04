@@ -1282,7 +1282,8 @@ listed, as its rule asks; the list, the reach and one test are added. `test_list
    `fixtures/revisions/python/artefact8/8-tracked-changes.docx` with either part cut by three bytes: `reject_all`
    raises "Problem with part /word/commentsExtended.xml: ..." (or `commentsIds.xml`) with every change already
    resolved and the comment entry gone, at `HEAD` and with the change (`cr031a3/extended.py`). Section 4.6b names the
-   story parts. For the user: the check could take the three parts in, as the settle consults them.
+   story parts. For the user: the check could take the three parts in, as the settle consults them. **Fixed 2026-11-04,
+   section 12.8.**
 2. **`Paragraph.delete()` takes no comment and no note with it.** Untracked, it removes the paragraph from its list
    and queues nothing (`del self.container[index]`), where a range's delete queues what the content referenced
    (`span_edits.queue_removed`). So a paragraph holding a comment's only reference leaves the comment's entry, and
@@ -1293,3 +1294,43 @@ listed, as its rule asks; the list, the reach and one test are added. `test_list
    once for the check and once for the settle's index; the memo saves the first at every later resolution. Keeping
    the index with the memo would save the second.
 4. **The registry**, through the docx4j-portfolio session: `python/CR-031.A3` implemented.
+
+### 12.8 A comment's extension parts (2026-11-04, after the review)
+
+Section 12.7 item 1 is fixed. The gap was the one this phase exists to close: a resolution raising after it had
+changed the package.
+
+**What changed:**
+- **`Removals.comment_extension_parts()`** lists the main part's comments extended, ids and extensible parts. They are
+  not story parts, but `_remove_comment_whole` edits each.
+- **`refuse_unreadable`** checks them after the story parts:
+  - the extended part, which is typed, as a story part, through the same `_refuse_if_unreadable`;
+  - the ids and extensible parts, which are lxml trees (`DefaultXmlPart`), by their `tree`. That is parsed on first
+    access, which is not modifying, and raises the part's own refusal.
+- **`_flush_comments`** keeps every comment where one of the three cannot be read, as it does for a story part.
+  `_cannot_read` answers for an lxml part by its `tree`.
+- `test_private_readers.py`'s listing names `_refuse_if_unreadable`, the caller of `read_contents()` since the
+  refactor.
+
+**Measured** on artefact 8 (`fixtures/revisions/python/artefact8/8-tracked-changes.docx`), with `commentsExtended.xml`
+or `commentsIds.xml` cut by three bytes:
+- `reject_all` raises "Problem with part /word/commentsExtended.xml: expected '>', line 2, column 147" (or
+  `commentsIds.xml`'s);
+- the comments part is unchanged, and all 9 tracked changes are left.
+
+Before, it raised the same message after resolving every change and removing the comment entry.
+
+**Tests,** in `tests/revisions/test_unreadable_story_part.py`:
+- the resolution's refusal over either part cut, with nothing changed (2);
+- a content API delete of the first paragraph, untracked, keeping comment 0 and the cut part byte for byte (2);
+- the control: with nothing cut, the same delete takes comment 0 and the comment parts with it (1).
+
+The four fail without the change and pass with it. The control passes either way.
+
+**The full suite**, slow included, ran twice:
+- **First run:** 9,831 passed, 8 skipped, and 2 failed. The two were `test_private_readers.py`'s listing, before the
+  renamed caller was listed.
+- **Second run:** 9,832 passed, 8 skipped, and 1 failed: `test_performance.py`'s parse guard, at 216.0 ms against the
+  211.2 ms limit, under the suite's own load. Run alone three times, it passed at 197.1, 200.2 and 197.8 ms. This
+  change does not touch the parse, and the first run passed it.
+

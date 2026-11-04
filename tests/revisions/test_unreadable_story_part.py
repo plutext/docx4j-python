@@ -16,6 +16,8 @@ comment that a cut header still referenced, and saved the header as read. Now:
 - ``Removals._index`` of a part that cannot be parsed is None, "unknown", never
   an empty index;
 - a dry run's body resolves **locally** (CR-010 section 10.3), and checks nothing.
+- **a comment's extended, ids and extensible parts** are checked too, and a delete
+  over one that cannot be read keeps every comment (section 12.8, on artefact 8).
 
 A content API deletion, which settles after its edit and keeps instead, is
 ``tests/content/test_unreadable_story_part_deletes.py``'s.
@@ -328,3 +330,60 @@ def test_the_index_of_a_part_that_cannot_be_parsed_is_unknown() -> None:
     with pytest.raises(Docx4JException):
         header.read_contents()
     assert Removals(cut)._index(header) is None
+
+
+# ---------------------------------------------------------------------------
+# a comment's extension parts (section 12.7 item 1)
+# ---------------------------------------------------------------------------
+
+ARTEFACT_8 = ROOT / "tests" / "fixtures" / "revisions" / "python" / "artefact8" / "8-tracked-changes.docx"
+
+
+def _artefact_8_cut(name: str) -> bytes:
+    """Artefact 8 with one part cut short by its last three bytes."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(ARTEFACT_8) as source, zipfile.ZipFile(out, "w") as target:
+        for info in source.infolist():
+            data = source.read(info)
+            target.writestr(info, data[:-3] if info.filename == name else data)
+    return out.getvalue()
+
+
+@pytest.mark.parametrize("name", ["word/commentsExtended.xml", "word/commentsIds.xml"])
+def test_a_resolution_refuses_a_cut_comment_extension_part_and_changes_nothing(name: str) -> None:
+    """Not a story part, but taking a comment away whole edits it: the check takes it in, before the listing."""
+    pkg = load(_artefact_8_cut(name))
+    main = pkg.main_document_part
+    comments = main.comments_part.get_xml()
+    count = len(revisions.tracked_changes(pkg))
+    with pytest.raises(Docx4JException) as raised:
+        revisions.reject_all(pkg)
+    assert str(raised.value).startswith(f"Problem with part /{name}: ")
+    assert syntax_error_of(raised.value) is not None
+    assert main.comments_part.get_xml() == comments
+    assert len(revisions.tracked_changes(pkg)) == count
+
+
+def _deleted_first_paragraph(data: bytes) -> bytes:
+    """Artefact 8 with its first paragraph, which holds comment 0's range and reference, deleted untracked."""
+    pkg = load(data)
+    pkg.change_tracking_mode = "Off"
+    pkg.body.paragraphs[0].get_range("Whole").delete()
+    out = io.BytesIO()
+    pkg.save(out, check=False)
+    return out.getvalue()
+
+
+def test_with_nothing_cut_the_delete_takes_comment_0_and_the_comment_parts() -> None:
+    """The control: the delete takes the comment's only reference, so the comment goes, its parts with it."""
+    saved = _deleted_first_paragraph(ARTEFACT_8.read_bytes())
+    assert load(saved).main_document_part.comments_part is None
+
+
+@pytest.mark.parametrize("name", ["word/commentsExtended.xml", "word/commentsIds.xml"])
+def test_a_delete_over_a_cut_comment_extension_part_keeps_every_comment(name: str) -> None:
+    """A content API delete settles after its edit: a comment's extension part that cannot be read keeps them all."""
+    data = _artefact_8_cut(name)
+    saved = _deleted_first_paragraph(data)
+    assert [comment.id for comment in load(saved).main_document_part.comments_part.contents.comment] == [0]
+    assert entry(saved, name) == entry(data, name)

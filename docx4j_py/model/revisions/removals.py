@@ -223,8 +223,10 @@ class Removals:
         unmarshalled, so a well-formed part is still written byte for byte; and
         a parse that succeeds over a part's source bytes is remembered on the
         package by part name, so that the next resolution parses none of them
-        again. Nothing when resolving locally: a dry run's copy or a detached
-        body touches no other part.
+        again. A comment's extended, ids and extensible parts are checked too
+        (:meth:`comment_extension_parts`, section 12.8): not story parts, but
+        taking a comment away whole edits each. Nothing when resolving locally:
+        a dry run's copy or a detached body touches no other part.
 
         Raises:
             Docx4JException: the part's own refusal, "Problem with part <name>:
@@ -234,21 +236,51 @@ class Removals:
             return
         checked: set[str] = self.package._well_formed_sources
         for part in self.story_parts():
-            if not _unread(part):
-                continue
-            if getattr(part, "is_content_unreadable", False):
-                part.read_contents()  # its record, raised again without a parse (D8)
-                continue
-            name = str(part.part_name)
-            source = not part.is_loaded  # it holds its source's bytes, not bytes set since
-            if source and name in checked:
-                continue
-            if _raw_root(part) is None:
-                # the part's own read, which raises lxml's refusal and records it as the part's unreadable (D8)
-                part.read_contents()
-                continue
-            if source:
-                checked.add(name)
+            self._refuse_if_unreadable(part, checked)
+        for part in self.comment_extension_parts():
+            if _is_lxml_part(part):
+                part.tree  # noqa: B018 - parsed on first access, which is not modifying; raises the part's refusal
+            else:
+                self._refuse_if_unreadable(part, checked)
+
+    def _refuse_if_unreadable(self, part: Any, checked: set[str]) -> None:
+        """:meth:`refuse_unreadable` for one typed part: its record, or its own refusal, raised; else remembered."""
+        if not _unread(part):
+            return
+        if getattr(part, "is_content_unreadable", False):
+            part.read_contents()  # its record, raised again without a parse (D8)
+            return
+        name = str(part.part_name)
+        source = not part.is_loaded  # it holds its source's bytes, not bytes set since
+        if source and name in checked:
+            return
+        if _raw_root(part) is None:
+            # the part's own read, which raises lxml's refusal and records it as the part's unreadable (D8)
+            part.read_contents()
+            return
+        if source:
+            checked.add(name)
+
+    def comment_extension_parts(self) -> list[Any]:
+        """A comment's extended, ids and extensible parts: what taking one away whole edits beside the story parts.
+
+        CR-031 section 12.7 item 1: they are not story parts, so
+        :meth:`story_parts` does not name them, but
+        :meth:`_remove_comment_whole` reads each, so :meth:`refuse_unreadable`
+        checks them and a settle that cannot read one keeps every comment. The
+        extended part is typed; the ids and extensible parts are lxml trees
+        (``DefaultXmlPart``). None when resolving locally.
+        """
+        if self.local:
+            return []
+        main = getattr(self.package, "main_document_part", None)
+        if main is None:
+            return []
+        return [
+            part
+            for part in (main.comments_extended_part, main.comments_ids_part, main.comments_extensible_part)
+            if part is not None
+        ]
 
     def _index(self, part: Any) -> dict[str, set[int]] | None:
         """``local name -> {w:id}`` of every WordprocessingML element in a part, typed or not; None for unknown.
@@ -304,9 +336,11 @@ class Removals:
         if self.local:
             return
         parts = self.story_parts()
-        if self._any_unknown(parts):
+        if self._any_unknown(parts) or self._any_unknown(self.comment_extension_parts()):
             # CR-031 section 4.6b: a story part that cannot be read might reference any comment or hold any range's
-            # markers, and an unreadable comments part cannot lose an entry: every comment is kept, markers and all
+            # markers, and an unreadable comments part cannot lose an entry: every comment is kept, markers and all;
+            # so too where a comment's extended, ids or extensible part cannot be read (section 12.7 item 1), since
+            # taking a comment away whole edits each
             return
         if if_emptied:
             from docx4j_py.model.revisions.resolver import marker_at, range_is_empty
@@ -368,7 +402,19 @@ class Removals:
         return _list_holding(_root_of(part), lambda item: _is_comment_start(item, comment_id))
 
     def _cannot_read(self, part: Any) -> bool:
-        """Whether a part's content cannot be read: unknown to :meth:`_index`. A part already read can be."""
+        """Whether a part's content cannot be read: unknown to :meth:`_index`. A part already read can be.
+
+        An lxml part (a comment's ids or extensible part) cannot be read where
+        its tree, parsed on first access, raises its refusal.
+        """
+        if _is_lxml_part(part):
+            from docx4j_py.openpackaging.exceptions import Docx4JException
+
+            try:
+                part.tree  # noqa: B018 - parsed on first access, which is not modifying
+            except Docx4JException:
+                return True
+            return False
         return _unread(part) and self._index(part) is None
 
     def _any_unknown(self, parts: list[Any]) -> bool:
@@ -658,6 +704,13 @@ def _is_part(value: Any) -> bool:
     from docx4j_py.openpackaging.parts.part import Part
 
     return isinstance(value, Part)
+
+
+def _is_lxml_part(part: Any) -> bool:
+    """True for a part held as an lxml tree (``DefaultXmlPart``): a comment's ids and extensible parts."""
+    from docx4j_py.openpackaging.parts.default_xml_part import DefaultXmlPart
+
+    return isinstance(part, DefaultXmlPart)
 
 
 def _unread(part: Any) -> bool:

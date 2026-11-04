@@ -52,7 +52,8 @@ reached over the documents.
   read refused, for the part's own refusal (CR-031 section 4.6, Phase A2); its
   tree, where there is one, goes unused. The content API's list readers, over
   docx4j's ``part-not-read`` fixtures (:data:`REFUSED`).
-- ``model/revisions/removals.py``, ``Removals.refuse_unreadable``: a story part
+- ``model/revisions/removals.py``, ``Removals._refuse_if_unreadable``, through
+  ``refuse_unreadable``: a story part, or a comment's extended part (section 12.8),
   nobody has read whose bytes lxml cannot parse, or whose read already failed,
   for the part's own refusal (CR-031 section 4.6b, Phase A3); a part that can be
   read is parsed raw and never read typed. A resolution of every story, over
@@ -620,7 +621,7 @@ CALLERS: frozenset[str] = frozenset(
         "model/content/placeholders.py::has_placeholder_styles",
         "validator.py::_tree_of",
         "model/listnumbering/emulator.py::_root_of",
-        "model/revisions/removals.py::Removals.refuse_unreadable",
+        "model/revisions/removals.py::Removals._refuse_if_unreadable",
     }
 )
 
