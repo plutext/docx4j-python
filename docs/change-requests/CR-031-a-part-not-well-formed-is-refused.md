@@ -1,6 +1,6 @@
 # CR-031: A part not well formed is refused when read, not silently mended --- the fork's lxml handler without recovery, docx4j CR-065 D1's refusal
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more). **Amended again 2026-11-03** (the user: "make the list readers refuse; start phase B"; section 10.8 item 1): the content API's list readers refuse a numbering or styles part that is not well formed, as section 4.6 said, where Phase A's list emulator read it as absent; Phase A2, ¼ day, then Phase B. **Phase A2 implemented 2026-11-03** (section 11: `f1cfa01`): every reader over the list emulator raises the part's own `Docx4JException`, its `unreadable`, the styles part at the first read of the styles and the numbering part only over a paragraph that names a list (`Emulator.names_a_list`), the property resolver's readers there too (section 11.3); the text model unchanged, its emulator reading no styles it could not read and a paragraph meeting the numbering part's refusal resolved without it; the other raw readers measured and left as they are, the accept and reject engine's reading of an unreadable story part as empty put to the user (section 11.4); 294 tests, full suite 9,789 passed. **Phase B done 2026-11-03** (section 11.7: CHANGELOG, CLAUDE.md, `tests/README.md`, the index; the hand-offs to docx4j and docx4j-core-ts sent through the portfolio and answered, section 11.8). **CR-031 complete** (no Word check, Q11). **Amended 2026-11-04** (the user: "do the accept_all fix"; section 11.10 items 1 and 2): Phase A3, section 4.6b. A resolution of every story refuses, before changing anything, a story part it cannot read; a content API deletion keeps what such a part might reference; `is_list_item` reads `w:numId` as Word does.
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). A part whose XML is not well formed raises `Docx4JException`, naming the part and the parser's reason, when its content is first read, as docx4j's does (CR-065 D1), where today the xsdata fork's lxml handler recovers, reads what it can and drops the rest with no report, even under `LoadOptions(strict=True)`; the load stays lazy, an untouched save still writes the part's bytes, and a relationships part not well formed refuses the load. Three phases (section 6): 0, the fork's stage 15 (`ParserConfig(recover=...)`), released as docx4j-xsdata 26.2.5; A, the engine; B, the records. 1½ to 2 days here and ½ day in the fork; eleven questions, each with a recommendation (section 8). **Decided 2026-11-03**, Q1 to Q11 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): the refusal through the fork's stage 15, a relationships part not well formed refusing the load and docx4j's reading of one as none handed to docx4j, the text model reading without an unreadable styles, numbering or settings part, marked by `part.not_read`, the failure recorded on the part, `part.not_well_formed` in the validator, no mended reading on request, `Docx4JException` with no new class, a generic part refused when read, the custom XML view left as it is, and no Word check. Phase 0 done 2026-11-03 (the fork's stage 15, `77398949`; docx4j-xsdata 26.2.5 on PyPI; `docs/UPSTREAM.md` row 29, `1fc04d3`). **Phase A implemented 2026-11-03** (section 10: `0f73213`, `57c0b94`): `runtime.RECOVER` False and the pin at 26.2.5; every read of a part not well formed refused with `Docx4JException` naming it and lxml's reason, the `mc` passes' too; `XmlPart.unreadable` and `is_content_unreadable`; a relationships part refusing the load; `part.not_well_formed` in the validator; `source_tree()` None; `part.not_read` held to docx4j's `part-not-read` fixture at `3ad164bdf`, its case-mapping lines pending until CR-029; 199 tests, full suite 9,495 passed. **Amended 2026-11-03** (the user: "part.not_read as recommended", WD 0.66 REQ-801): where the text model needed such a part and could not read it, it warns `part.not_read`, in place of a logged line (section 4.6; Phase A ¼ day more). **Amended again 2026-11-03** (the user: "make the list readers refuse; start phase B"; section 10.8 item 1): the content API's list readers refuse a numbering or styles part that is not well formed, as section 4.6 said, where Phase A's list emulator read it as absent; Phase A2, ¼ day, then Phase B. **Phase A2 implemented 2026-11-03** (section 11: `f1cfa01`): every reader over the list emulator raises the part's own `Docx4JException`, its `unreadable`, the styles part at the first read of the styles and the numbering part only over a paragraph that names a list (`Emulator.names_a_list`), the property resolver's readers there too (section 11.3); the text model unchanged, its emulator reading no styles it could not read and a paragraph meeting the numbering part's refusal resolved without it; the other raw readers measured and left as they are, the accept and reject engine's reading of an unreadable story part as empty put to the user (section 11.4); 294 tests, full suite 9,789 passed. **Phase B done 2026-11-03** (section 11.7: CHANGELOG, CLAUDE.md, `tests/README.md`, the index; the hand-offs to docx4j and docx4j-core-ts sent through the portfolio and answered, section 11.8). **CR-031 complete** (no Word check, Q11). **Amended 2026-11-04** (the user: "do the accept_all fix"; section 11.10 items 1 and 2): Phase A3, section 4.6b. A resolution of every story refuses, before changing anything, a story part it cannot read; a content API deletion keeps what such a part might reference; `is_list_item` reads `w:numId` as Word does. **Phase A3 implemented 2026-11-04** (section 12: `baa8241`): `resolve_all` (`accept_all`, `reject_all`, `Body.accept_all` and `reject_all`) and a single change's `accept()` and `reject()` refuse a story part that cannot be read with its own refusal, before anything changes, the check unmarshalling nothing and remembered on the package; where a story part cannot be read, a content API deletion keeps every comment and note and changes nothing in that part; `is_list_item` agrees with `list_item`; 39 tests, full suite 9,828 passed. Found and left open: a comment's extension parts are not checked, and `Paragraph.delete()` takes no comment or note with it (section 12.7).
 
 *The number:* CR-030 is the latest CR here, drafted beside this one the same day.
 
@@ -1137,3 +1137,159 @@ Both went through the docx4j-portfolio session on 2026-11-03, sent by this repos
    the id the load registered the data part by, which it lower-cases. The bindings resolve as before.
 6. **The registry**, through the docx4j-portfolio session: `python/CR-031.A2` and `python/CR-031.B` done, and
    CR-031 complete.
+
+## 12. Phase A3 (implementation notes, 2026-11-04)
+
+Phase A3 as built. The user ordered it on 2026-11-04 ("do the accept_all fix"), on section 11.10 items 1 and 2,
+after section 4.6b's amendment (`8a8aab9`). Every question is as decided (section 8), section 4.6b as amended. No
+Word check (Q11): no save of a well-formed file changes, and a part not well formed is still written as read. What
+changes is that a resolution refuses a package holding one, and that a content API deletion over one keeps a comment
+or a note it removed before.
+
+**Commits.** `baa8241` (the code and the tests), and this section's (the records: this section, the status line, the
+index row, CHANGELOG, `tests/README.md`).
+
+### 12.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the check | `model/revisions/removals.py`, `Removals.refuse_unreadable` | over `story_parts()`, none when resolving locally: a part already read passes; one whose read failed (`is_content_unreadable`) asks `read_contents()`, which raises its record again without a parse (D8); one nobody has read is parsed raw (`_raw_root`), and where that fails asks `read_contents()`, which raises lxml's refusal and records it as the part's `unreadable` |
+| its callers | `model/revisions/__init__.py`, `resolve_all`; `model/revisions/change.py`, `TrackedChange._resolve` | as soon as the `Removals` is made: in `resolve_all` before the first listing, so `accept_all`, `reject_all`, a filtered resolution and `Body.accept_all` and `reject_all` (`tracked_change.py:422`) refuse; in `_resolve` after the generation's check (`tracking.gone` comes first), so the engine's `accept()` and `reject()` and the content API's view over them refuse. Their docstrings say so under `Raises` |
+| the memo | `openpackaging/packages/opc_package.py`, `OpcPackage._well_formed_sources` | a slot beside `_pending_removals`, a set of part names, filled by the check where a raw parse succeeded over the part's source bytes (`not part.is_loaded`) and consulted only for such a part, so a part given bytes since (`set_bytes`) is parsed afresh. A part read since needs no check |
+| the raw parse | `removals._raw_root` | `_index`'s own parse in one function, `etree.fromstring(part._raw_bytes())` as before, so the check and the index parse alike; None for bytes that will not parse, and for a part with none. lxml's defaults agree with the fork's `iterparse` on what is well formed (neither `huge_tree`) |
+| unknown | `Removals._index` | None for a part nobody has read whose read failed or whose bytes will not parse, cached as an index is; `_cannot_read(part)` and `_any_unknown(parts)` ask it. A part already read is never unknown, and is not indexed to say so |
+| the keeps | `_flush_comments`, `_flush_notes`, `_list_holding_start`, `_remove_from_part`, `_flush_relationships` | where any story part is unknown, the comments' flush settles nothing: every comment is kept, its entry, its markers and its references, in every part (12.3 item 2). The notes' flush likewise keeps every note. A part that cannot be read is never asked for a range's start, never has anything removed from it, and its relationships are not walked. `_comment_entry`, `_prune` and `_drop_empty_comment_parts`, which read the comments and notes parts typed, are reached only when no story part is unknown |
+| `is_list_item` | `model/content/lists.py`, `_resolve` | `w:numId` and `w:ilvl` through `values.integer` (CR-021), then as text, the emulator's keys as `definitions.decimal` writes them; `detach_from_list`, `_resolve`'s other caller, with it |
+| the census | `tests/openpackaging/test_private_readers.py` | `Removals.refuse_unreadable` a `read_contents` caller: in `CALLERS` and the docstring, reached by `read_resolution_refused` over `Headers.docx` with its first header cut (`HEADER_CUT`, built in the test), where the refused resolution leaves every tree as parsed and reads no header typed |
+
+### 12.2 Before and after
+
+Measured over the tests' fixtures with probes in this session's scratchpad (`cr031a3/probe.py`, `probe_delete.py`),
+against `HEAD`'s package (`8a8aab9`, archived into the scratchpad) and the change. Each probe loads afresh.
+
+| case | at `8a8aab9` | Phase A3 |
+|---|---|---|
+| `accept_all`, `header1.xml` cut | comment 3 removed, the header saved as read, still referencing it | the header's refusal, raised before the listing; nothing changed |
+| `reject_all`, the same | resolved, nothing removed | the same refusal |
+| `accept_all`, `footnotes.xml` cut | the body's deletions accepted, then `Docx4JException` at the note (`_prune` reads `contents`): the body changed when it raised | the footnotes part's refusal before the listing; the body unchanged |
+| a delete of comment 3's anchor (a paragraph's `Whole` or `Content` range, a replace of its `Whole` range), `header1.xml` cut | comment 3 removed | kept; the header and the comments part saved as read, the header neither read nor recorded unreadable |
+| the same, the cut header holding no reference to comment 3 | removed | kept (12.3 item 2) |
+| a delete of footnote 1's paragraph (its `Whole` range), `footnotes.xml` cut | `Docx4JException` at the settle, after the edit | the note kept, the part saved as read |
+| the same, `header1.xml` cut | the note removed | kept (12.3 item 3) |
+| a delete of comment 3's anchor, `comments.xml` cut, no other reference | `Docx4JException` at the settle (`_comment_entry`), after the edit | no entry removed, the part saved as read |
+| `is_list_item` over `lists.docx`'s four items, `w:numId` `"1.0"` or `"1.5"`, or `w:ilvl` `"0.9"` or `"abc"` | False, while `list_item` gave "1." to "4." | True, as `list_item` |
+| the same, `w:numId="abc"` | False, `list_item` None | the same |
+
+### 12.3 Departures, with why
+
+1. **The fixture is made in the tests.** Section 4.6b says that `Headers.docx` has comment 3; the sample has no
+   comments part, and section 11.4 row 8's measurement made one (as comment 7). The tests build it at the zip level
+   from the sample (`built()`): comment 3 in a new comments part with its relationship and content type, referenced
+   from a tracked deletion in the body and from `header1.xml`; footnote 1 in the footnotes part, referenced from a
+   second deletion; and the part a test cuts, short by its last three bytes, after the reference. The measurement
+   dropped four; either leaves the root's closing tag cut. The content API's file builds its own, with the
+   references outside any deletion, since a delete of a tracked deletion's content is not what it tests.
+2. **Kept means kept whole.** Section 4.6b keeps "a comment or a note it might reference" and the markers of a range
+   it might hold "there". A part that cannot be read might reference any comment and hold the other half of any
+   range, so where one is unknown the settle judges no comment: every comment keeps its entry, and its markers and
+   references in every part, the readable ones too; and every note stays. To judge a comment one by one needs what
+   the part holds, which is what cannot be read; to remove a readable part's half of a range, or a comment whose
+   reference the unknown part might hold, is what section 4.6b refuses. So a cut header keeps even a comment it does
+   not reference (`test_a_delete_keeps_the_comment_even_where_the_cut_header_holds_no_reference`): section 4.6b's
+   "at worst".
+3. **A note is kept for an unknown part of any kind.** The settle has always counted every story part's
+   `w:footnoteReference` and `w:endnoteReference`, a header's among them, though Word puts none in a header; an
+   unknown header therefore keeps every note (`test_a_cut_header_keeps_a_note_too`), where before the note went. To
+   narrow the rule by the part's kind would read its kind as what it holds.
+4. **A part with no bytes**, a part made in code and never given content, which `_index` read as empty, is unknown
+   too, and refuses a resolution with `read_contents()`'s "has no content". No test or sample has one.
+5. **The memo holds names, for source bytes only.** A name is remembered only where the part holds its source's
+   bytes, which never change; a part given bytes since is parsed at every resolution, and a parse that fails is not
+   remembered, since the part's own record holds it (D8).
+
+### 12.4 Tests and numbers
+
+`tests/revisions/test_unreadable_story_part.py`, new, 20 tests (0.5 s):
+
+- **the fixture** (1) and **the control** (1): with the header intact, `accept_all` removes footnote 1 with its
+  reference and keeps comment 3 by the header's, the headers never unmarshalled and saved byte for byte;
+- **the refusal over nine routes** (9): `accept_all`, `reject_all`, a filtered `accept_all`, the engine's `accept()`
+  and `reject()`, `Body.accept_all` and `reject_all`, and the content API's view's `accept()` and `reject()`, each
+  raising the cut header's `unreadable`, "Problem with part /word/header1.xml: ...", lxml's error the cause; the
+  main, comments and footnotes parts' XML as before, no story part unmarshalled, the listing still two changes, the
+  three parts saved as read;
+- **the record** (2): a second refusal raising the same exception without a raw parse; a part another read failed
+  never parsed raw;
+- **the footnotes part cut** (2): `accept_all` and the note's own `accept()` refused up front, the body unchanged;
+- **a dry run** (1): resolved locally, the cut header neither read nor recorded, the package unchanged;
+- **the memo** (3): a second `accept_all`, then `reject_all` and `Body.accept_all`, parsing no story part raw,
+  `_well_formed_sources` the nine story parts nobody had read, the headers never unmarshalled and saved byte for
+  byte; a `reject_all` that settles nothing parsing each story part once and unmarshalling none; bytes set since
+  parsed afresh and refused;
+- **the index** (1): None for a part not well formed, and for a part whose read failed.
+
+`tests/content/test_unreadable_story_part_deletes.py`, new, 12 tests (0.4 s):
+
+- **comment 3's anchor deleted** three ways (a paragraph's `Whole` range, the span route's `queue_removed`; its
+  `Content` range, the splice's `queue_comment_removal`; a replace of its `Whole` range), with the header cut: the
+  comment kept, the header neither read nor changed, the comments part byte for byte, the saved file reloading with
+  the entry (3); and kept where the cut header holds no reference (3);
+- **the controls** (2): the header intact, the comment kept by the header's reference, and gone without it, the
+  comment parts with it;
+- **the note** (2): kept with the footnotes part cut, gone with it intact; **a cut comments part** losing no entry
+  (1); **a cut header keeping a note** (1).
+
+`tests/content/test_lists.py` gains `test_is_list_item_reads_w_numId_and_w_ilvl_as_list_item_does` (6), and
+`tests/openpackaging/test_private_readers.py` `test_a_refused_resolution_leaves_its_trees_as_parsed` (1) and the
+reach. 39 new tests in all.
+
+Mutations show the tests bite, over the four files' 146 fast tests: the check made a no-op fails 18; `_index`
+reading an unknown part as empty again fails 10; the memo off fails 1; `_resolve` passing the text as written fails
+4. With `HEAD`'s package (`git stash` of `docx4j_py/`), 21 of the 31 tests the two new files then held fail and 4
+error (the counter's `_raw_root` is absent); the twelfth delete test, `test_a_cut_header_keeps_a_note_too`, came
+after, and holds what `HEAD` did not (12.2).
+
+**The cost**, best of fifteen, CPython 3.14.6, interleaved with `HEAD`'s package twice (`cr031a3/cost.py`; the check
+timed with the main part already read). `accept_all` from a fresh load of `samples/Headers.docx`, whose six headers
+and two notes parts nobody has read are each parsed raw by the check: 2.17 ms at `HEAD` twice, 2.48 and 2.40 ms with
+the change; the check itself 0.36 and 0.34 ms, and 0.06 and 0.05 ms once remembered. `samples/Symbols.docx` 211.8 and
+200.7 ms against 200.9 and 201.5 ms, and `samples/2010-sample1.docx` 1.37 and 1.27 ms against 1.29 and 1.31 ms:
+within noise, the check there 0.03 ms or less.
+
+ruff (`check`, `format --check`, at the files' 120 columns): the three new test files' additions are formatted and
+clean; on the changed files `check` finds what it found before (2 in `opc_package.py`, and `test_private_readers.py`'s
+unsorted import block of Phase A2), and the formatter would change the same lines as before.
+
+### 12.5 Pre-existing tests whose expectation changed, and why
+
+None. `test_private_readers.py`'s `test_every_read_contents_caller_is_listed` failed until `refuse_unreadable` was
+listed, as its rule asks; the list, the reach and one test are added. `test_lists.py` gains six cases.
+
+### 12.6 The gates
+
+| gate | result |
+|---|---|
+| the full suite, slow included, the save check on (`tests/conftest.py`) | 9,828 passed, 8 skipped, 0 failed (6 min 58 s), and the same again at `baa8241` before this section's commit (7 min 28 s); the 13 warnings the fork's `ConverterWarning`s of other tests, as before. `HEAD` (`8a8aab9`) had 9,789 passed and 8 skipped (7 min 17 s), run this session first: the 39 are this phase's |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`), 0 parts repaired |
+| `codegen/generate.sh --check`, `scripts/compare_acceptance.py`, `scripts/release_check.sh` | not run: no generated file, no marshalling, no packaging and no save of a well-formed file changed |
+
+### 12.7 Found, and left open
+
+1. **A comment's extension parts are not checked.** `commentsExtended`, `commentsIds` and `commentsExtensible` are not
+   story parts, so the check does not read them, and a resolution that removes a comment whole over one not well
+   formed raises its refusal mid-settle (`_remove_comment_whole` reads `extended.contents`; `remove_comment_id` and
+   `remove_extensible` read `tree`), after the story parts and the comments part have changed. Measured on
+   `fixtures/revisions/python/artefact8/8-tracked-changes.docx` with either part cut by three bytes: `reject_all`
+   raises "Problem with part /word/commentsExtended.xml: ..." (or `commentsIds.xml`) with every change already
+   resolved and the comment entry gone, at `HEAD` and with the change (`cr031a3/extended.py`). Section 4.6b names the
+   story parts. For the user: the check could take the three parts in, as the settle consults them.
+2. **`Paragraph.delete()` takes no comment and no note with it.** Untracked, it removes the paragraph from its list
+   and queues nothing (`del self.container[index]`), where a range's delete queues what the content referenced
+   (`span_edits.queue_removed`). So a paragraph holding a comment's only reference leaves the comment's entry, and
+   one holding a note's reference leaves the note: measured on the content API's fixture, intact, its header
+   holding no reference, at `HEAD` and with the change (`cr031a3/pdelete.py`). Not this phase's; found while
+   choosing the deletes.
+3. **The check's tree is not kept.** A resolution that settles something parses a story part nobody has read twice,
+   once for the check and once for the settle's index; the memo saves the first at every later resolution. Keeping
+   the index with the memo would save the second.
+4. **The registry**, through the docx4j-portfolio session: `python/CR-031.A3` implemented.

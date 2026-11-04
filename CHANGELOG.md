@@ -182,6 +182,19 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   part, where they raised lxml's `XMLSyntaxError`, and Word mode no longer mends a part that holds no
   `mc:AlternateContent`.
 
+- **`accept_all`, `reject_all` and a single tracked change's `accept()` or `reject()` refuse a package with a story
+  part not well formed** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 4.6b,
+  Phase A3), before changing anything, raising that part's refusal, its `unreadable`; so do `Body.accept_all()` and
+  `reject_all()` and the content API's `TrackedChange`. They removed a comment or a note such a part still
+  referenced, reading it as holding nothing, and saved the part as read; over a notes part so cut they raised after
+  the body had changed. The check parses each story part nobody has read once a package and unmarshals none, so a
+  well-formed part is still saved byte for byte.
+- **A content API deletion keeps what such a part might reference**: where a story part cannot be read, a delete, a
+  replace or a block removed takes no comment and no note with it, and changes nothing in that part or in an
+  unreadable comments or notes part, which are saved as read. Before, it removed them, or raised after the edit.
+- **`Paragraph.is_list_item` reads `w:numId` as Word does**, a decimal truncated, as `list_item` does, and `w:ilvl`
+  the same: a paragraph with `w:numId w:val="1.0"` is a list item to both.
+
 - **A `w:br` outside a `w:r` is read as Word 365 reads it** ([CR-030](docs/change-requests/CR-030-br-outside-a-run-read-as-word-reads-it.md), the port of docx4j CR-073 at
   `95c6b42d3`, 17.3.6; a defect 0.1.0 and 0.2.0 shared). docx4j's load survey found one in 206,351 of 3.7 million
   documents, most of them a web-to-docx generator's blank line, `<w:p><w:br/></w:p>`: a break directly in a
