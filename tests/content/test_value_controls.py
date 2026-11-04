@@ -15,7 +15,7 @@ where one holds a second block, and its repair loses it. So:
   H4), and a ``w:richText`` one is bound as text both ways (Q9).
 
 The scope is check 56's, cited by commit; no check of this package's own comes
-first (section 5). ``SWEEP`` is every block writer the audit found (section 13's
+first (section 5). ``SWEEP`` is every block writer the audit found (section 9.3's
 table): each is asked on each kind, tracked and not, and each must leave the tree,
 the parts and the reports as they were.
 """
@@ -178,7 +178,7 @@ SWEEP = {
     "Range.insert_ooxml Replace, two": (lambda c: paragraph_of(c).search("ot")[0].insert_ooxml(TWO_PARAGRAPHS), "GeneralException"),
     "Range.insert_ooxml After, two": (lambda c: paragraph_of(c).get_range("Content").insert_ooxml(TWO_PARAGRAPHS, location="After"), "GeneralException"),
     "Range.insert_ooxml Before, a package": (lambda c: paragraph_of(c).get_range("Content").insert_ooxml(FLAT_OPC_TWO, location="Before"), "GeneralException"),
-    "Range.insert_content_control, a control's range": (lambda c: c.body().get_range("Whole").insert_ooxml(A_TABLE, location="After"), "GeneralException"),
+    "Range.insert_ooxml After, a table": (lambda c: c.body().get_range("Whole").insert_ooxml(A_TABLE, location="After"), "GeneralException"),
     # Body, over the control
     "Body.insert_paragraph End": (lambda c: c.body().insert_paragraph("X"), None),
     "Body.insert_paragraph Start": (lambda c: c.body().insert_paragraph("X", location="Start"), None),
@@ -498,6 +498,17 @@ def test_a_control_holding_two_refuses_a_third(tracked):
     assert snapshot(package) == before
 
 
+def test_a_control_around_the_paragraphs_of_a_control_holding_two_is_refused():
+    """A range across its paragraphs, whole (``wrap_paragraphs``): the outer control would hold a control."""
+    package, control = holding_two()
+    span = control.body().get_range("Whole")
+    assert span.spans_paragraphs
+    before = snapshot(package)
+    with pytest.raises(BindingError):
+        span.insert_content_control()
+    assert snapshot(package) == before
+
+
 def test_a_control_holding_two_replaced_as_text_holds_one():
     """Across paragraphs (CR-013 Phase C) the deletion joins them; a break in the text makes none."""
     _package, control = holding_two()
@@ -650,6 +661,7 @@ def test_apply_bindings_takes_what_the_extra_blocks_held_with_them():
     package.custom_xml_parts.apply_bindings()
     assert blocks_of(control) == ["p"]
     assert package.body.get_comments() == []
+    assert package.main_document_part.comments_part is None, "settled as the pass ends, its last comment gone, the part with it"
 
 
 def test_apply_bindings_leaves_markers_beside_the_paragraph():

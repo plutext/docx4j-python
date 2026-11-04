@@ -1242,11 +1242,15 @@ class recording_on:
         return self.recorder
 
     def __exit__(self, *exc_info: object) -> None:
-        """Close the report and put it on the package."""
+        """Close the report and put it on the package, what the pass's removals took settled first, as :class:`recording` does."""
         package = self.package
         if package is None:
             return
         package._current_change = None
+        if getattr(package, "_pending_removals", None) is not None:
+            from docx4j_py.model.content.span_edits import settle_removals
+
+            settle_removals(package, self.recorder)
         _invalidate_list_labels(package)
         if exc_info[0] is None:
             package.changes.append(self.recorder.finish())
