@@ -1,6 +1,6 @@
 # CR-027: the text model's WD 0.41 to 0.49 additions --- `profile: word-text`, revision and comment dates as the author's clock, embedded objects for a host, and the conformance suite re-pinned
 
-**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending; **Phase B implemented 2026-11-03** (section 11: `a21e8cc`, `7f42fa1`): revision and comment dates in REQ-702's form, `TrackedChange.author_local_time` and `author_offset`, docx4j's `revisions/cr068/` copied at the tag; no suite row, agreement row or golden moved. It covers five
+**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending; **Phase B implemented 2026-11-03** (section 11: `a21e8cc`, `7f42fa1`): revision and comment dates in REQ-702's form, `TrackedChange.author_local_time` and `author_offset`, docx4j's `revisions/cr068/` copied at the tag; no suite row, agreement row or golden moved. **Amended 2026-11-05** (WD 0.84, section 4.1): `word-text` sets `list_labels: true`. It covers five
 pieces of the text model (CR-011's `model/text/`) that the WD and docx4j have added since this repository's suite
 copy was pinned at docx4j `198d015a3`:
 - WD 0.41's `profile` (REQ-1002);
@@ -115,7 +115,7 @@ update` then `profile` both give `update`.
 
 `word-text` is Word's Save As plain text as the options reach it, at `0cf4fb38a` in 24 values:
 - `view: accepted`, `include: [headers, footers, comments]`, `comments: true`, `hidden: true`;
-- `text_boxes: false`, `notes: true`, `note_references: true`, `list_labels: false`;
+- `text_boxes: false`, `notes: true`, `note_references: true`, `list_labels: true` (amended 2026-11-05, WD 0.84: `false` at `0cf4fb38a`);
 - `fields: cached`, `field_codes: false`, `toc: true`, `placeholders: true`, `bindings: bound`, `altchunks: true`;
 - `symbols: asis`, `tables: tsv`, `page_markers: false`, `layout: none`;
 - `alt_text`, `metadata`, `charts`, `smartart` and `embedded` false;
@@ -287,6 +287,11 @@ threw a `NullPointerException` for the notes, and passed over the rest silently.
   the `word-saves.tsv` rows that need them cite REQ-607 or REQ-521, which are not advertised here, and pend (4.4).
 - The NOTE's list of what the preset does not reproduce goes on `TextOptions`' docstring, with `math` among it
   (Q5).
+- **Amended 2026-11-05 (WD 0.84).** docx4j's preset sets `list_labels: true` since `87c421731` (the user's ruling of
+  2026-11-04, after the tag), so both built presets hold REQ-1002's value and this one follows. The oracle for this one value is
+  docx4j's `TextOptions` at that commit, not the tag. The NOTE's list gains what docx4j's Javadoc names: the one space Word's text
+  save writes after every label, where the text model writes the level's `w:suff`. The dpp suite's 22 Word saves hold no list,
+  so no row moves.
 
 ### 4.2 The dates (Phase B)
 
