@@ -6,7 +6,10 @@ untouched save drops the first. `LoadOptions(duplicate_entries="first")` reads t
 `package.duplicate_entry` once per name, and a save writes only the copy read. The rule is the user's (4 November 2026,
 in the docx4j-core-ts session: "refuse the package, with an optional config option to read the first copy and warn"),
 with its five details ruled as recommended the same day (WD 0.77, portfolio `b0d333d`). Two phases (section 6), about ½
-day (section 9). The questions are in section 8, each with a recommendation. Nothing built.
+day (section 9). **Decided 2026-11-04** (the user: "CR-032 as recommended, please build"): Q1 to Q8 as
+recommended, Q3 as revised the same day to match docx4j-core-ts's CR-024 D4, a `DuplicateEntryException` subclass of
+`InvalidFormatException` (section 8). Word check 75, run by the user for core-ts the same day, confirms the key
+(section 3.1).
 
 **Depends on:** nothing in another repository. The statement is the WD's REQ-206 at 0.77
 (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`). docx4j and core-ts each build their own, and since
@@ -85,6 +88,47 @@ REQ-206 at WD 0.77:
 - **The table.** WD section 10's option table has the row `duplicate_entries | refuse, first | refuse | REQ-206`, so
   REQ-1001 requires the name to be accepted.
 
+### 3.1 Word, measured: check 75 (2026-11-04)
+
+The user ran docx4j-core-ts's check 75 in three rounds (core-ts `test/README.md` item 75, `test/fixtures/check75/`).
+Every file reported unreadable content and was repaired.
+
+- **75a, an ASCII case pair** (`word/headerA.xml` then `word/headera.xml`, the relationship naming `headera.xml`):
+  - Word takes them as one name and reads the **first** entry, showing headerA's header;
+  - its save keeps that copy as `word/header1.xml`.
+
+  So `duplicate_entries: first` by central-directory order is Word's reading, even where the relationship names the
+  second spelling exactly. This package's store today reads the last copy, which shows a different part.
+- **75b to 75k, non-ASCII part names:** Word 365 reads no part whose name holds a non-ASCII character, raw UTF-8 or
+  percent-encoded, even a single entry with no twin. It reports unreadable content, and its repair drops the part.
+  - Round 3's controls show that the check's zip writer is not the cause: 75j, a single ASCII header through it,
+    opens cleanly, and 75k, the encoded name written by fflate, is dropped too.
+  - So Word can't tell `É` from `é`, and the fold of section 4.1 isn't Word's to decide.
+  - A percent-encoded name is ASCII, so lower-casing it folds ASCII letters only, which is OPC [M1.12]'s letter.
+  - A raw non-ASCII pair, which `str.lower()` also folds, is a package Word repairs anyway.
+  - The key stands as Q1 recommends.
+- **On check 75's pairs, this package's key** (`_CaseInsensitiveIndex`, measured at `97a04cb`) and core-ts's
+  (`PartName.key`) give the same counts:
+  - 75a: one key;
+  - `header%C3%89.xml` against `header%C3%A9.xml`: two;
+  - `header%c3%a9.xml` against `header%C3%A9.xml`: one;
+  - a raw `headerÉ.xml` against `headeré.xml`: one.
+- **Not here:** this package reads a part whose name holds a non-ASCII character, where Word drops it. That is a
+  question of its own for the WD, not REQ-206's.
+
+### 3.2 docx4j-core-ts's CR-024
+
+core-ts's sibling CR is CR-024, decided 2026-11-04: "decisions as recommended, subject to: Word's reading of a
+non-ASCII case pair is unmeasured - let's measure it", which check 75 then measured. It matches this CR in where the
+check sits, the stores, the option, the warning and its fields, the save, and nested packages. It differs in three
+points:
+- **Backslashes:** this package's store folds them in every lookup, and core-ts's does not. Each key is its own
+  store's lookup rule, so `word\document.xml` beside `word/document.xml` is refused here and not there.
+- **Strict loading:** core-ts has no `strict` option, so Q4 is this package's alone.
+- **The release:** core-ts ships CR-024 with its 0.7.0.
+
+The refusal's type, a difference in shape only, is aligned by Q3 as decided.
+
 ## 4. Design
 
 ### 4.1 One name (D1, Q1)
@@ -118,11 +162,11 @@ REQ-206 at WD 0.77:
 ### 4.4 The refusal (D4, Q3)
 
 `load_package` asks the store for its duplicates before it reads `[Content_Types].xml`. Under `refuse`, it raises
-`InvalidFormatException`:
+`DuplicateEntryException`, a subclass of `InvalidFormatException` (Q3 as decided, core-ts CR-024 D4):
 
 > Duplicate entry word/document.xml in this package: 2 entries (REQ-206). LoadOptions(duplicate_entries="first") reads the first
 
-Every duplicated name is listed, in listing order. The exception gains `code = "package.duplicate_entry"` and
+Every duplicated name is listed, in listing order. The exception carries `code = "package.duplicate_entry"` and
 `entries`, the `{name: count}` mapping, so a host can act on it without parsing the message. Nothing has been read at
 that point.
 
@@ -178,7 +222,7 @@ model already reads a chunk or an embedded package that will not load as not exp
 ### 4.11 The CHANGELOG lines (Phase B)
 
 - **Changed:** a package holding two entries of one name, OPC part names compared without case, is refused,
-  `InvalidFormatException` naming each entry. It was the last copy read silently, and an untouched save dropped the
+  `DuplicateEntryException` (an `InvalidFormatException`) naming each entry. It was the last copy read silently, and an untouched save dropped the
   first.
 - **Added:** `LoadOptions(duplicate_entries="first")`; `DuplicateEntry` (`package.duplicate_entry`) on
   `package.warnings` and in `TextResult.warnings`; `TextWarning.detail`.
@@ -225,13 +269,16 @@ holds `FIRST` and the second `SECOND`.
 - **A host that builds its own `PartStore`** gets no check (4.2). This is documented, not enforced.
 - **No cost.** The index is built once, as now.
 
-## 8. Questions
+## 8. Questions (decided 2026-11-04)
+
+The user, 2026-11-04: "CR-032 as recommended, please build". Every question is decided as recommended, Q3 as
+revised.
 
 | # | Question | Recommendation |
 |---|---|---|
 | Q1 | The collision key: the store's own (`str.lower()`, backslashes folded, the leading slash dropped), or OPC [M1.12]'s ASCII fold? | **The store's own**, so any two entries the store would confuse are refused; the non-ASCII pair is a named departure, unmeasured in Word. |
 | Q2 | Every store, or the zip store alone? | **Every store**: a directory's case variants and a flat OPC's repeated `pkg:name` are the same confusion. |
-| Q3 | The refusal: `InvalidFormatException` with `code` and `entries`? | **Yes**: the class `load` already raises for a malformed package, and the code is the WD's. |
+| Q3 | The refusal: `InvalidFormatException` with `code` and `entries`? | **A subclass of it, `DuplicateEntryException`**, carrying `code` and `entries`. This revises the first recommendation (the class itself) to match core-ts's CR-024 D4, so a caller can catch the case alone and still catches it as a malformed package. |
 | Q4 | Does `strict=True` refuse a duplicate under `"first"`? | **No**: the option is the caller's explicit choice, and a duplicate is not skipped content. |
 | Q5 | `TextOptions(duplicate_entries=...)`. | **Accepted** for REQ-1001 and documented as the load's option; the adapters pass it to `LoadOptions`; `extract` over a loaded package does not decide again. |
 | Q6 | A package inside a package. | **Its own load's default**, refuse, which the text model already reads as `content.not_read`. |
