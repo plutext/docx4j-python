@@ -21,7 +21,9 @@ Since Phase B it reads the text model, as docx4j's adapter reads its own:
 It advertises what docx4j's adapter advertises at ``docx4j-17.3.5``
 (:data:`DOCX4J_IMPLEMENTED`), less the inspector's statements and what this
 package does not build yet (:data:`NOT_ADVERTISED`, each with its reason), and
-``html reader absent``: the target, not what the package meets. So every check
+``html reader absent``: the target, not what the package meets; and what this
+package builds beyond docx4j's tag (:data:`BEYOND_DOCX4J`), REQ-206 since
+CR-032, whose option, ``duplicate_entries``, a scenario passes to the load. So every check
 docx4j makes over what this package builds is made here, a gap is a ``FAIL``
 row rather than a pending one, and a phase's progress shows as checks going
 from ``FAIL`` to ``PASS`` in the committed reports (CR-011 sections 3.6 and
@@ -41,8 +43,9 @@ from conformance import HTML_READER_ABSENT, Engine, Output
 
 from docx4j_py import load
 from docx4j_py.model.text import TextOptions, extract, markdown, plain_text
+from docx4j_py.openpackaging.load import LoadOptions
 
-__all__ = ["DEFERRED", "DOCX4J_IMPLEMENTED", "INSPECTOR", "NOT_ADVERTISED", "TextsAdapter"]
+__all__ = ["BEYOND_DOCX4J", "DEFERRED", "DOCX4J_IMPLEMENTED", "INSPECTOR", "NOT_ADVERTISED", "TextsAdapter"]
 
 #: docx4j's ``TextsAdapter.IMPLEMENTED`` at ``docx4j-17.3.5``: the statements
 #: its CR-046 phases 1 to 3 implement, ``profile: word-text`` (REQ-1002), CR-069's
@@ -85,6 +88,13 @@ NOT_ADVERTISED = {
     "REQ-521": "a drop cap joined to its word and drop_caps, the port of docx4j CR-069 (CR-029)",
     "REQ-710": "<sup> and <sub> in Markdown, the port of docx4j CR-069 (CR-029)",
     "text.formatting_join": "an inspector kind (CR-069 phase 4): the inspector is not ported (CR-011 section 3.7)",
+}
+
+#: What this package builds that docx4j's adapter does not advertise at the
+#: tag, and the CR that builds it. No check of the suite at the tag needs one,
+#: so the committed reports do not move.
+BEYOND_DOCX4J = {
+    "REQ-206": "two entries of one name refused, duplicate_entries: first (CR-032)",
 }
 
 _WORKBOOK = "deferred (CR-011 Q7): an embedded SpreadsheetML package"
@@ -137,17 +147,22 @@ def options(view: str, scenario: str) -> TextOptions:
 class TextsAdapter(Engine):
     """The harness's engine over the text model, in plain text and Markdown.
 
-    Each fixture is loaded once and read as often as the harness asks, as
-    docx4j's adapter caches its packages.
+    Each fixture is loaded once per ``duplicate_entries`` and read as often as
+    the harness asks, as docx4j's adapter caches its packages. That option is
+    the load's (REQ-206, CR-032 Q5), so a scenario's value is passed to
+    :class:`~docx4j_py.openpackaging.load.LoadOptions`.
     """
 
     def __init__(self) -> None:
         """An adapter with no package loaded yet."""
-        self._packages: dict[Path, Any] = {}
+        self._packages: dict[tuple[Path, str], Any] = {}
 
     def implemented(self) -> Collection[str]:
-        """docx4j's statements less the inspector's and :data:`NOT_ADVERTISED`, and ``html reader absent``."""
-        return (DOCX4J_IMPLEMENTED - INSPECTOR - NOT_ADVERTISED.keys()) | {HTML_READER_ABSENT}
+        """docx4j's statements less the inspector's and :data:`NOT_ADVERTISED`, and ``html reader absent``.
+
+        With :data:`BEYOND_DOCX4J`'s, which no check of the suites at docx4j's tag needs.
+        """
+        return (DOCX4J_IMPLEMENTED - INSPECTOR - NOT_ADVERTISED.keys()) | BEYOND_DOCX4J.keys() | {HTML_READER_ABSENT}
 
     def deferred(self, fixture: str, case: str, item: str, scenario: str) -> str | None:
         """The checks of CR-011 Q7's deferred content (:data:`DEFERRED`), pending by name."""
@@ -157,10 +172,12 @@ class TextsAdapter(Engine):
         """One fixture in one view under one scenario, as plain text or Markdown."""
         if format not in ("txt", "md"):
             raise NotImplementedError(f"format {format}")
-        package = self._packages.get(fixture)
+        opts = options(view, scenario)
+        key = (fixture, opts.duplicate_entries)
+        package = self._packages.get(key)
         if package is None:
-            package = self._packages[fixture] = load(fixture)
-        result = extract(package, options(view, scenario))
+            package = self._packages[key] = load(fixture, options=LoadOptions(duplicate_entries=opts.duplicate_entries))
+        result = extract(package, opts)
         findings: dict[str, str] = {}
         for warning in result.warnings:
             key = f"warning\t{warning.kind}\t{warning.selector or ''}"

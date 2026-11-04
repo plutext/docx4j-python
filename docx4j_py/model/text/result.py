@@ -492,7 +492,9 @@ class TextWarning:
     ``altchunk.not_expanded``, ``content.not_read``, ``part.not_read`` and
     ``image.not_described`` the part's name (an ``altchunk.not_expanded``'s is the chunk's since
     CR-027, WD 0.47 and docx4j CR-070; it was the chunk's content type, which
-    the warning still carries). Never the document's text (REQ-802).
+    the warning still carries); for ``package.duplicate_entry`` the entry's
+    name, with its count in :attr:`detail` (CR-032 D8). Never the document's
+    text (REQ-802).
 
     A warning raised one level down, in an embedded package or a chunk, that
     names a part names the outer package's or chunk's part: the one the host
@@ -520,6 +522,10 @@ class TextWarning:
     PART_NOT_READ = "part.not_read"
     #: An image the describer failed to describe: it has no description (REQ-514, REQ-801).
     IMAGE_NOT_DESCRIBED = "image.not_described"
+    #: A name the package's container holds more than one entry of, the first read, as the load's
+    #: ``duplicate_entries: first`` reads it (REQ-206; CR-032 D8). Once a name, with no address; its selector is the
+    #: entry's name as the first entry spells it, its :attr:`detail` the number of entries.
+    PACKAGE_DUPLICATE_ENTRY = "package.duplicate_entry"
 
     kind: str
     address: str | None = None
@@ -530,8 +536,12 @@ class TextWarning:
     #: For ``content.not_read`` and ``part.not_read``: the part's name; for ``image.not_described``,
     #: the image part's; for ``altchunk.not_expanded``, the chunk's
     #: (``/word/afchunk.rtf``), so that a host can read it itself (CR-027). One
-    #: level down, the embedded package part's or the chunk's.
+    #: level down, the embedded package part's or the chunk's. For ``package.duplicate_entry``, the
+    #: entry's name as its first entry spells it (``word/document.xml``, ``[Content_Types].xml``).
     part_name: str | None = None
+    #: A count, where the kind has one (CR-032 Q7): for ``package.duplicate_entry``, the number of
+    #: entries of the name. REQ-801's later counts go here too.
+    detail: int | None = None
 
     @property
     def selector(self) -> str | None:
@@ -539,14 +549,22 @@ class TextWarning:
         return self.branch or self.part_name or self.content_type
 
     def to_dict(self) -> dict[str, Any]:
-        return {"kind": self.kind, "address": self.address, "selector": self.selector}
+        """``kind``, ``address`` and ``selector``, and ``detail`` where it is set."""
+        out: dict[str, Any] = {"kind": self.kind, "address": self.address, "selector": self.selector}
+        if self.detail is not None:
+            out["detail"] = self.detail
+        return out
 
     def __str__(self) -> str:
-        """docx4j's ``toString``: the kind, its address, then its branch, content type and part name, each in brackets."""
+        """docx4j's ``toString``: the kind, its address, then branch, content type, part name and detail, each bracketed."""
         return (
             self.kind
             + (f" at {self.address}" if self.address is not None else "")
-            + "".join(f" ({value})" for value in (self.branch, self.content_type, self.part_name) if value is not None)
+            + "".join(
+                f" ({value})"
+                for value in (self.branch, self.content_type, self.part_name, self.detail)
+                if value is not None
+            )
         )
 
 

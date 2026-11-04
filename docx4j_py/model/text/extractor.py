@@ -657,6 +657,7 @@ class Extractor:
         # one level down the settings' updateFields is not the result's, nor are the settings needed for it
         metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: not self.nested and self._fields_update_on_open()}
         if not self.nested:
+            self._duplicate_entries()
             from docx4j_py.model.text import metadata as properties
 
             properties.read(self.trees.package, metadata)
@@ -695,6 +696,23 @@ class Extractor:
         if self.comments_included():
             self._comments(comments)
         return TextResult(out, comments, self.warnings, metadata, self.options)
+
+    def _duplicate_entries(self) -> None:
+        """``package.duplicate_entry``, once a name, where the load read the first of several entries (REQ-206).
+
+        CR-032 D8: the load's ``duplicate_entries: first`` decided what was
+        read, and its records (``package.warnings``) are carried here, first, the
+        selector the entry's name and ``detail`` the number of entries. A
+        package loaded under the default holding one was refused, so a reading
+        never decides again. One level down there are none: a nested load is
+        refused by its own default.
+        """
+        from docx4j_py.openpackaging.load import DuplicateEntry
+
+        for record in getattr(self.trees.package, "warnings", None) or ():
+            if isinstance(record, DuplicateEntry):
+                kind = TextWarning.PACKAGE_DUPLICATE_ENTRY
+                self.warn(TextWarning(kind, None, part_name=record.entry, detail=record.count))
 
     # -- fields: update (REQ-506) --------------------------------------------------------
 

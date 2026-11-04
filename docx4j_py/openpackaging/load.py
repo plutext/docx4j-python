@@ -24,6 +24,14 @@ know which parts exist, so one that is not well formed refuses the load, naming
 it (CR-031 D5, Q3). Reading its relationships as far as the error, or reading
 none (docx4j's), would lose the parts the rest named, and an untouched save
 would drop them.
+
+**Two entries of one name are refused** (CR-032, WD REQ-206): before
+``[Content_Types].xml`` is read, the store is asked for its duplicates, and a
+package holding any is refused, :class:`DuplicateEntryException` naming each.
+``LoadOptions(duplicate_entries="first")`` reads the first entry of each name
+instead, which is Word's reading after its repair, and records a
+:class:`DuplicateEntry` per name on ``package.warnings``. A store that does not
+answer ``duplicates()`` (one written elsewhere) is not checked.
 """
 
 from __future__ import annotations
@@ -31,10 +39,14 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from docx4j_py.openpackaging.content_types import ContentTypeManager
-from docx4j_py.openpackaging.exceptions import Docx4JException, InvalidFormatException
+from docx4j_py.openpackaging.exceptions import (
+    Docx4JException,
+    DuplicateEntryException,
+    InvalidFormatException,
+)
 from docx4j_py.openpackaging.part_name import CONTENT_TYPES_NAME, PartName
 from docx4j_py.openpackaging.parts.default_xml_part import CustomXmlDataStoragePart
 from docx4j_py.openpackaging.parts.docprops import (
@@ -56,7 +68,7 @@ from docx4j_py.openpackaging.stores import PartStore
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
-__all__ = ["LoadOptions", "load_package"]
+__all__ = ["DUPLICATE_ENTRIES", "DuplicateEntry", "LoadOptions", "load_package"]
 
 logger = logging.getLogger("docx4j_py.openpackaging")
 
@@ -66,6 +78,46 @@ _SCHEME = __import__("re").compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 def _looks_absolute(target: str | None) -> bool:
     """Whether a relationship target is an absolute URI rather than a part name."""
     return bool(target) and _SCHEME.match(target) is not None
+
+
+#: ``LoadOptions.duplicate_entries``' values, the WD's (section 10's row, REQ-206).
+DUPLICATE_ENTRIES = ("refuse", "first")
+
+
+@dataclass(frozen=True, slots=True)
+class DuplicateEntry:
+    """A name the container holds more than one entry of, the first read: ``package.duplicate_entry``, one per name.
+
+    CR-032 D6, WD REQ-206. Recorded under ``LoadOptions(duplicate_entries=
+    "first")`` only, since the default refuses the package. The code and the
+    fields are docx4j-core-ts's (its CR-024's ``DuplicateEntryWarning``:
+    ``entry``, ``count``). Not skipped content: the first entry is read, the
+    rest are not, and a save writes only the one read.
+
+    Attributes:
+        entry: the name as its first entry spells it, as the container stores
+            it (``word/document.xml``, ``[Content_Types].xml``): the WD's
+            selector.
+        count: the number of entries of that name: the WD's ``detail``.
+    """
+
+    code: ClassVar[str] = DuplicateEntryException.code
+
+    entry: str
+    count: int
+
+    @property
+    def message(self) -> str:
+        """``Duplicate entry word/document.xml in this package: 2 entries (REQ-206); the first read``."""
+        return f"Duplicate entry {self.entry} in this package: {self.count} entries (REQ-206); the first read"
+
+    def to_dict(self) -> dict[str, Any]:
+        """The JSON-ready view, for the MCP server: ``code``, the two fields and ``message``."""
+        return {"code": self.code, "entry": self.entry, "count": self.count, "message": self.message}
+
+    def __str__(self) -> str:
+        """:attr:`message`."""
+        return self.message
 
 
 @dataclass(slots=True)
@@ -100,6 +152,16 @@ class LoadOptions:
             exactly as it read the source (section 4.7,
             :mod:`docx4j_py.openpackaging.normalise`); False keeps the source's
             spelling, for a tool that must change nothing it was not asked to.
+        duplicate_entries: what a load does with a container holding two
+            entries of one name, compared without case (CR-032, WD REQ-206):
+            ``"refuse"`` (the default) raises
+            :class:`~docx4j_py.openpackaging.exceptions.DuplicateEntryException`
+            naming each, before anything is read; ``"first"`` reads the first
+            entry of each in the container's order (the zip's central
+            directory), as Word reads it after its repair, records a
+            :class:`DuplicateEntry` per name on ``package.warnings``, and a save
+            writes only the copy read. ``strict`` does not refuse under
+            ``"first"``: the option is the caller's choice (CR-032 Q4).
     """
 
     strict: bool = False
@@ -107,12 +169,17 @@ class LoadOptions:
     registry: PartRegistry | None = field(default=None)
     mc_load_mode: str = "preserve"
     normalise_on_save: bool = True
+    duplicate_entries: str = "refuse"
 
     def __post_init__(self) -> None:
-        """Refuse a mode that is neither ``"preserve"`` nor ``"word"``."""
+        """Refuse a mode that is neither ``"preserve"`` nor ``"word"``, and a ``duplicate_entries`` the WD lacks."""
         from docx4j_py.openpackaging.mc_load_mode import check_mode
 
         check_mode(self.mc_load_mode)
+        if self.duplicate_entries not in DUPLICATE_ENTRIES:
+            raise ValueError(
+                f"duplicate_entries must be one of {DUPLICATE_ENTRIES!r}, not {self.duplicate_entries!r} (WD REQ-206)"
+            )
 
     @property
     def part_registry(self) -> PartRegistry:
@@ -138,6 +205,9 @@ def load_package(
         The package, with every reachable part created but none unmarshalled.
 
     Raises:
+        DuplicateEntryException: the container holds two entries of one name,
+            under ``duplicate_entries="refuse"``, the default (CR-032 D4); an
+            :class:`InvalidFormatException`.
         InvalidFormatException: ``[Content_Types].xml`` is missing or not well
             formed ("Bad [Content_Types].xml: ..."), ``_rels/.rels`` is
             missing, or no relationship names the main part.
@@ -147,6 +217,15 @@ def load_package(
             container does not hold.
     """
     options = options or LoadOptions()
+
+    # CR-032 D4: before anything is read; a store with no duplicates() is not checked (D2)
+    duplicates = getattr(store, "duplicates", None)
+    found = duplicates() if callable(duplicates) else {}
+    if found and options.duplicate_entries != "first":
+        raise DuplicateEntryException(found)
+    records = [DuplicateEntry(name, count) for name, count in found.items()]
+    for record in records:
+        logger.warning("%s", record.message)
 
     if not store.has(CONTENT_TYPES_NAME):
         raise InvalidFormatException(f"{CONTENT_TYPES_NAME} is missing from this package")
@@ -169,6 +248,7 @@ def load_package(
     package.content_type_manager = ctm
     package.source_part_store = store
     package.load_options = options
+    package._duplicate_entries = records
     package.relationships_part = package_rels
     package_rels.source_p = package
     package_rels.package = package

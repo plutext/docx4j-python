@@ -12,6 +12,13 @@ Names in a store are as the container stores them --- ``word/document.xml``,
 :class:`~docx4j_py.openpackaging.part_name.PartName` is and a store that was not
 would put the two out of step.
 
+**Two entries of one name** (CR-032, WD REQ-206): every store keeps the first
+entry of a name, its spelling and its position, and counts the rest, which
+:func:`~docx4j_py.openpackaging.load.load_package` refuses by default. Two
+names are one where the lookup would confuse them: backslashes folded, the
+leading slash dropped, then ``str.lower()`` (D1). A store's ``duplicates()``
+gives ``{first spelling: number of entries}``, in listing order.
+
 | class | source | docx4j |
 |---|---|---|
 | :class:`ZipPartStore` | a path, bytes or a binary file object | ``ZipPartStore`` |
@@ -55,7 +62,14 @@ def _normalise(name: str) -> str:
 
 @runtime_checkable
 class PartStore(Protocol):
-    """Where a package's bytes come from. docx4j ``io3.stores.PartStore``, load half."""
+    """Where a package's bytes come from. docx4j ``io3.stores.PartStore``, load half.
+
+    Every store here also answers ``duplicates()``: each name the container
+    holds more than one entry of, as its first entry spells it, to the number
+    of entries (CR-032 D2). It is not a member of the protocol, so that a
+    store written elsewhere still is one; a store without it is not checked
+    for duplicates when loaded.
+    """
 
     def part_names(self) -> Iterable[str]:
         """Every name the container holds, in container order, as stored."""
@@ -95,23 +109,49 @@ class PartSink(Protocol):
 
 
 class _CaseInsensitiveIndex:
-    """Lower-cased name -> the name as stored. The shared half of every store."""
+    """Lower-cased name -> the name as stored. The shared half of every store.
 
-    __slots__ = ("_index", "_order")
+    The first entry of a key keeps its spelling and its position, and a later
+    one is a duplicate, counted (CR-032 D1): :meth:`add` is a container's entry,
+    :meth:`put` a sink's write, which replaces.
+    """
+
+    __slots__ = ("_counts", "_index", "_order")
 
     def __init__(self, names: Iterable[str] = ()) -> None:
         self._index: dict[str, str] = {}
         self._order: list[str] = []
+        #: Each key held more than once, to its number of entries.
+        self._counts: dict[str, int] = {}
         for name in names:
             self.add(name)
 
-    def add(self, name: str) -> str:
+    def add(self, name: str) -> str | None:
+        """Index one of the container's entries: the spelling it is stored under, or None for a duplicate, counted."""
         stored = _normalise(name)
         key = stored.lower()
-        if key not in self._index:
-            self._order.append(stored)
+        if key in self._index:
+            self._counts[key] = self._counts.get(key, 1) + 1
+            return None
         self._index[key] = stored
+        self._order.append(stored)
         return stored
+
+    def put(self, name: str) -> str:
+        """Index a sink's write: the spelling it is stored under, a key already held keeping its first."""
+        stored = _normalise(name)
+        found = self._index.get(stored.lower())
+        if found is not None:
+            return found
+        self._index[stored.lower()] = stored
+        self._order.append(stored)
+        return stored
+
+    def duplicates(self) -> dict[str, int]:
+        """Each key held more than once, as its first entry spells it, to its number of entries, in listing order."""
+        if not self._counts:
+            return {}
+        return {stored: self._counts[stored.lower()] for stored in self._order if stored.lower() in self._counts}
 
     def resolve(self, name: str) -> str | None:
         """The stored spelling of a name, trying percent-decoding as docx4j does."""
@@ -131,6 +171,7 @@ class _CaseInsensitiveIndex:
         if stored is None:
             return False
         del self._index[stored.lower()]
+        self._counts.pop(stored.lower(), None)
         self._order.remove(stored)
         return True
 
@@ -160,9 +201,15 @@ class ZipPartStore:
     and which the package's context manager guarantees.
 
     ZIP64 needs no special handling: :mod:`zipfile` reads it.
+
+    The order is the central directory's, :mod:`zipfile`'s ``infolist()``. Of
+    two entries of one name the first is kept and read **by its own**
+    ``ZipInfo``, never by name: :mod:`zipfile`'s lookup by name finds the last
+    entry of an exact name, so ``part_names``, ``load`` and ``size`` would not
+    agree (CR-032 D3).
     """
 
-    __slots__ = ("_index", "_owns_file", "_path", "_source", "_zip")
+    __slots__ = ("_index", "_infos", "_owns_file", "_path", "_source", "_zip")
 
     def __init__(self, source: str | os.PathLike[str] | bytes | IO[bytes]) -> None:
         """Open a zip from a path, a ``bytes`` object or a binary file object."""
@@ -184,7 +231,16 @@ class ZipPartStore:
             self._zip = zipfile.ZipFile(handle)
         except zipfile.BadZipFile as exc:
             raise Docx4JException(f"Not a zip container: {exc}") from exc
-        self._index = _CaseInsensitiveIndex(info.filename for info in self._zip.infolist())
+        self._index_entries()
+
+    def _index_entries(self) -> None:
+        """The index, and each key's first ``ZipInfo``, from the central directory."""
+        self._index = _CaseInsensitiveIndex()
+        self._infos: dict[str, zipfile.ZipInfo] = {}
+        for info in self._zip.infolist():
+            stored = self._index.add(info.filename)
+            if stored is not None:
+                self._infos[stored.lower()] = info
 
     @property
     def path(self) -> Path | None:
@@ -199,19 +255,23 @@ class ZipPartStore:
         """Whether the zip holds this entry."""
         return part_name in self._index
 
+    def duplicates(self) -> dict[str, int]:
+        """Each name held by more than one entry, as the first spells it, to the number of entries (CR-032)."""
+        return self._index.duplicates()
+
     def load(self, part_name: str) -> bytes:
-        """Inflate one entry."""
+        """Inflate one entry: the first of its name."""
         stored = self._index.resolve(part_name)
         if stored is None:
             raise Docx4JException(f"No part {part_name} in this zip")
-        return self._zip.read(stored)
+        return self._zip.read(self._infos[stored.lower()])
 
     def size(self, part_name: str) -> int | None:
         """The uncompressed size from the central directory."""
         stored = self._index.resolve(part_name)
         if stored is None:
             return None
-        return self._zip.getinfo(stored).file_size
+        return self._infos[stored.lower()].file_size
 
     def close(self) -> None:
         """Close the zip, and the file it owns."""
@@ -223,7 +283,7 @@ class ZipPartStore:
             raise Docx4JException("This store was not opened from a path")
         self._zip.close()
         self._zip = zipfile.ZipFile(str(self._path))
-        self._index = _CaseInsensitiveIndex(info.filename for info in self._zip.infolist())
+        self._index_entries()
 
     def __repr__(self) -> str:
         """``ZipPartStore(18 parts)``."""
@@ -254,6 +314,10 @@ class DirectoryPartStore:
     def part_names(self) -> list[str]:
         """Every file under the directory, in sorted order."""
         return self._index.names()
+
+    def duplicates(self) -> dict[str, int]:
+        """Each name held by more than one file, as the first spells it (CR-032): case variants, where case is kept."""
+        return self._index.duplicates()
 
     def has(self, part_name: str) -> bool:
         """Whether the directory holds this file."""
@@ -287,17 +351,36 @@ class MemoryPartStore:
     __slots__ = ("_index", "_parts", "content_types")
 
     def __init__(self, parts: dict[str, bytes] | None = None) -> None:
-        """Build a store, optionally filled from a mapping of name to bytes."""
+        """Build a store, optionally filled from a mapping of name to bytes.
+
+        The mapping is the store's source: of two names that are one (a case
+        variant), the first in its order is kept and the rest are counted
+        (:meth:`duplicates`, CR-032 D2).
+        """
         self._parts: dict[str, bytes] = {}
         self._index = _CaseInsensitiveIndex()
         #: Content types as they were put, for a store filled through a sink.
         self.content_types: dict[str, str] = {}
         for name, data in (parts or {}).items():
-            self.put(name, data)
+            self._fill(name, data)
+
+    def _fill(self, part_name: str, data: bytes, content_type: str | None = None) -> bool:
+        """One entry of the store's source; False for a second entry of a name, counted and not kept."""
+        stored = self._index.add(part_name)
+        if stored is None:
+            return False
+        self._parts[stored] = bytes(data)
+        if content_type is not None:
+            self.content_types[stored] = content_type
+        return True
 
     def part_names(self) -> list[str]:
         """Every name, in insertion order."""
         return self._index.names()
+
+    def duplicates(self) -> dict[str, int]:
+        """Each name the source gave more than once, as the first spelling, to the number of entries (CR-032)."""
+        return self._index.duplicates()
 
     def has(self, part_name: str) -> bool:
         """Whether the store holds this part."""
@@ -323,8 +406,8 @@ class MemoryPartStore:
         content_type: str | None = None,
         compress: bool = True,  # noqa: ARG002 - memory does not compress
     ) -> None:
-        """Store a part; the store is its own sink."""
-        stored = self._index.add(part_name)
+        """Store a part; the store is its own sink. A name already held is replaced, never counted (CR-032 D2)."""
+        stored = self._index.put(part_name)
         self._parts[stored] = bytes(data)
         if content_type is not None:
             self.content_types[stored] = content_type
@@ -382,6 +465,10 @@ class FlatOpcStore(MemoryPartStore):
         docx4j's ``FlatOpcXmlImporter`` does, so that the store is an ordinary
         package a loader can read.
 
+        Of two ``pkg:part`` of one ``pkg:name`` the first is kept, its content
+        type with it, and the rest counted (:meth:`duplicates`, CR-032 D2),
+        which the load refuses by default.
+
         Args:
             source: the XML, as text or as bytes.
 
@@ -411,7 +498,8 @@ class FlatOpcStore(MemoryPartStore):
             if not name:
                 continue
             content_type = part.get(f"{{{cls.NAMESPACE}}}contentType") or ""
-            store.put(name, _flat_opc_bytes(part, cls.NAMESPACE), content_type=content_type)
+            if not store._fill(name, _flat_opc_bytes(part, cls.NAMESPACE), content_type):
+                continue
             if content_type and types.get_content_type(name) != content_type:
                 types.add_override_content_type(name, content_type)
         store.put(CONTENT_TYPES_NAME, types.to_bytes())

@@ -41,7 +41,10 @@ def load(
     The load is lazy: it reads the content types and the relationships, and a
     part whose XML is not well formed is refused only when its content is first
     read (``Docx4JException`` naming it, CR-031), its bytes saved as read. A
-    relationships part that is not well formed refuses the load, naming it.
+    relationships part that is not well formed refuses the load, naming it, and
+    so does a container holding two entries of one name, compared without case
+    (``DuplicateEntryException``, CR-032), unless
+    ``LoadOptions(duplicate_entries="first")`` reads the first of each.
     """
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 

@@ -59,6 +59,7 @@ OPTION_NAMES: tuple[str, ...] = (
     "page_markers",
     "layout",
     "warnings",
+    "duplicate_entries",
 )
 
 #: The boolean options, with their statements.
@@ -91,6 +92,7 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
     "tables": (("auto", "tsv", "grid"), "REQ-605"),
     "markup_detail": (("type", "author", "author_date"), "REQ-702"),
     "layout": (("none", "indent"), "REQ-709"),
+    "duplicate_entries": (("refuse", "first"), "REQ-206"),
 }
 
 #: The values accepted and not yet acted on, with their statements. Empty since
@@ -169,6 +171,13 @@ class TextOptions:
     (``w:lastRenderedPageBreak``, REQ-708): the markers are current only when
     the package was last paginated after its last edit.
 
+    ``duplicate_entries`` (``refuse``, ``first``; REQ-206) is the **load's**
+    option, accepted here as REQ-1001 requires (CR-032 Q5): a reading is of a
+    package already loaded, so it does not decide again. Pass it to the load,
+    ``LoadOptions(duplicate_entries=...)``; the load's setting holds, and
+    under ``first`` the result's ``package.duplicate_entry`` warnings say what
+    was read.
+
     Beyond section 10, ``image_describer`` (REQ-514): what gives an image its
     description, the author's alt text by default; and ``field_user``
     (REQ-506, CR-025 D10): the user ``USERNAME``, ``USERINITIALS`` and
@@ -185,6 +194,7 @@ class TextOptions:
         "altchunks",
         "bindings",
         "charts",
+        "duplicate_entries",
         "embedded",
         "field_codes",
         "field_user",
@@ -241,6 +251,10 @@ class TextOptions:
         self.page_markers = False
         self.layout = "none"
         self.warnings = True
+        #: The load's option (REQ-206, CR-032 Q5): accepted, and read by whoever
+        #: loads the package (``LoadOptions(duplicate_entries=...)``); a reading
+        #: of a package loaded already does not act on it.
+        self.duplicate_entries = "refuse"
         #: What gives an image its description (REQ-514): beyond section 10, a
         #: host's hook, as docx4j's ``TextOptions.imageDescriber``. The
         #: author's alt text by default (:func:`~docx4j_py.model.text.images.alt_text_describer`).

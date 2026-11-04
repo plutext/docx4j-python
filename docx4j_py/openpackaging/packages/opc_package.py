@@ -74,6 +74,7 @@ class OpcPackage:
         "_current_change",
         "_custom_xml_parts",
         "_date_time_zone",
+        "_duplicate_entries",
         "_id_rng",
         "_id_seed",
         "_inserted_paragraphs",
@@ -114,6 +115,10 @@ class OpcPackage:
         self._custom_xml_parts: Any = None
         self.source_part_store: PartStore | None = None
         self.load_options = LoadOptions()
+        # CR-032 D6: a DuplicateEntry per name the container held more than one
+        # entry of, under LoadOptions(duplicate_entries="first"); the load puts
+        # them here, and ``warnings`` lists them first.
+        self._duplicate_entries: list[Any] = []
         #: What the last save did beyond writing the tree (CR-018 section 4.7): a
         #: :class:`~docx4j_py.openpackaging.normalise.SaveReport`, each value it
         #: wrote in Word's normal form in ``normalised``. None before the first save.
@@ -417,15 +422,19 @@ class OpcPackage:
 
     @property
     def warnings(self) -> list[Any]:
-        """What the parses read otherwise than as written, over every part that has been parsed (CR-030 Q2).
+        """What the load and the parses read otherwise than as written, over every part that has been parsed (CR-030 Q2).
 
-        Each record names its part: a
+        First the load's: a
+        :class:`~docx4j_py.openpackaging.load.DuplicateEntry` per name the
+        container held more than one entry of, in the container's order, the
+        first read (``LoadOptions(duplicate_entries="first")``, CR-032 D6).
+        Then the parts', each naming its part: a
         :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun` where a part held
         a ``w:br`` outside a ``w:r``, or a text element holding elements, and
         was read as Word reads them. A private read counts, as it does for
         :attr:`skipped`. Empty is the usual answer. core-ts's ``pkg.warnings``.
         """
-        out: list[Any] = []
+        out: list[Any] = list(self._duplicate_entries)
         for part in self.parts.parts():
             if isinstance(part, XmlPart):
                 out.extend(part.warnings)

@@ -38,7 +38,7 @@ from pathlib import Path
 
 import conformance
 import pytest
-from adapter import DEFERRED, DOCX4J_IMPLEMENTED, INSPECTOR, NOT_ADVERTISED, TextsAdapter
+from adapter import BEYOND_DOCX4J, DEFERRED, DOCX4J_IMPLEMENTED, INSPECTOR, NOT_ADVERTISED, TextsAdapter
 from conformance import (
     DPP,
     DPP_REPORT,
@@ -193,11 +193,14 @@ def test_dpp_holds_what_holds_before_cr_069(dpp_run):
 
 def test_the_adapter_advertises_the_target_less_the_inspector():
     implemented = set(TextsAdapter().implemented())
-    assert implemented == (DOCX4J_IMPLEMENTED - INSPECTOR - set(NOT_ADVERTISED)) | {HTML_READER_ABSENT}
+    want = (DOCX4J_IMPLEMENTED - INSPECTOR - set(NOT_ADVERTISED)) | set(BEYOND_DOCX4J) | {HTML_READER_ABSENT}
+    assert implemented == want
     assert HTML_READER_PRESENT not in implemented
     assert len(DOCX4J_IMPLEMENTED) == 70  # 68 statements, CR-047 and text.formatting_join
     assert set(NOT_ADVERTISED) == {"REQ-1002", "REQ-607", "REQ-521", "REQ-710", "text.formatting_join"}
     assert set(NOT_ADVERTISED) <= DOCX4J_IMPLEMENTED
+    # CR-032: REQ-206 beyond docx4j's tag, which no check of the suites at the tag needs
+    assert set(BEYOND_DOCX4J) == {"REQ-206"} and not set(BEYOND_DOCX4J) & DOCX4J_IMPLEMENTED
 
 
 def test_main_writes_the_reports(tmp_path, monkeypatch, adapter_run, dpp_run, capsys):
