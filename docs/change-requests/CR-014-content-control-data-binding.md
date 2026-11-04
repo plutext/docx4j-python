@@ -1,6 +1,6 @@
 # CR-014: Content control data binding --- a bound control Word reads as plain text holds one paragraph (phase 1); rich text, XHTML and picture bindings and the OpenDoPE processor named for later
 
-**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed. core-ts's Word check 56 (`38dcae9`) measured the rule's scope for both ports: Word can't open **any** bound block control holding a second block, whether it has no type, `w:text` or `w:richText`, and whether the second block is a paragraph or a table. On open Word reads each as plain text. So such a control keeps one paragraph: the writes that would give it a second are refused, or joined where Word joins them, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go. Phase 1b (section 2.9, Q10), a bound date formatted as Word formats it, was proposed the same day from docx4j's hand-off of its CR-058 phase 1 (`d8d8bfb71`). A probe here found `am/pm` in a `w:dateFormat` written as `a5/p5`, names in English only, and the DATE field converter's `h` running 0 to 11. Q10 was decided the same day as recommended (the user: "CR-014 Q10 agree"): phase 1b goes with phase 1, the names from a committed CLDR-derived table. Q1 to Q9 are open. Phase 1c (section 2.10, Q11), a store item ID that names no part resolved as Word repairs it, was proposed the same day from docx4j's second hand-off (`35cdeaee6`). Q11 is open. **Decided 2026-11-02** (the user: "CR-014's questions Q1 to Q9 and Q11 as recommended, noting for Q7 that 0.2.0 is already out"; section 7): Q1 to Q9 and Q11 as recommended, with Q10 decided 2026-10-23, so phases 1, 1b and 1c go together. Q7: 0.2.0 shipped on 2026-10-25 without phase 1, so it goes in the next release. **Amended 2026-10-28** (CR-025 Phase C): Q10's nominal default stands, and Word's bound-date conversion is to be a separate per-package opt-in, `pkg.bound_dates_converted_as_word`, off by default (the ports' date rule, point 3; section 7, Q10).
+**Status:** Proposed 2026-10-23, at the user's request ("draft the new CR here for content control data binding with phase 1 only proposed for now"), after CR-013 Phase A's Word check found a file this package writes that Word cannot open (CR-013 section 10.10): a block content control that has no type and a `w:dataBinding` and holds two paragraphs. 0.1.0 writes it too. Data binding here has been CR-003 Phase E's (sections 3.7, 4 and 17), and no CR has owned it since; this one does. Phase 1 (sections 3 and 4) is proposed. core-ts's Word check 56 (`38dcae9`) measured the rule's scope for both ports: Word can't open **any** bound block control holding a second block, whether it has no type, `w:text` or `w:richText`, and whether the second block is a paragraph or a table. On open Word reads each as plain text. So such a control keeps one paragraph: the writes that would give it a second are refused, or joined where Word joins them, `set_mapping` refuses a control that already holds more, and `apply_bindings` writes one paragraph, as docx4j's `bind.xslt` does. Phases 2 (rich-text, XHTML and picture bindings) and 3 (the OpenDoPE processor) are named in section 4 and not proposed. Nothing is implemented; phase 1 waits on the user's answers (section 7) and go. Phase 1b (section 2.9, Q10), a bound date formatted as Word formats it, was proposed the same day from docx4j's hand-off of its CR-058 phase 1 (`d8d8bfb71`). A probe here found `am/pm` in a `w:dateFormat` written as `a5/p5`, names in English only, and the DATE field converter's `h` running 0 to 11. Q10 was decided the same day as recommended (the user: "CR-014 Q10 agree"): phase 1b goes with phase 1, the names from a committed CLDR-derived table. Q1 to Q9 are open. Phase 1c (section 2.10, Q11), a store item ID that names no part resolved as Word repairs it, was proposed the same day from docx4j's second hand-off (`35cdeaee6`). Q11 is open. **Decided 2026-11-02** (the user: "CR-014's questions Q1 to Q9 and Q11 as recommended, noting for Q7 that 0.2.0 is already out"; section 7): Q1 to Q9 and Q11 as recommended, with Q10 decided 2026-10-23, so phases 1, 1b and 1c go together. Q7: 0.2.0 shipped on 2026-10-25 without phase 1, so it goes in the next release. **Amended 2026-10-28** (CR-025 Phase C): Q10's nominal default stands, and Word's bound-date conversion is to be a separate per-package opt-in, `pkg.bound_dates_converted_as_word`, off by default (the ports' date rule, point 3; section 7, Q10). **Phases 1, 1b and 1c implemented 2026-11-05** (sections 9 to 13; `c794583` and `871be28`, `ce7f5c1`, `d0fe5e8`): the refusals, the join, `set_mapping`'s refusal, one paragraph from `apply_bindings`, the reading and Q9's bindings as text; a bound date through the field code's converter, in CLDR's names from a committed table, with the opt-in; and `StoreItemResolver`'s port. The Word check is staged in `out/cr014-word-check/` (section 13.2) and **has not been run**. Section 2.9's "Word's documentation, not Word's run" is corrected there: docx4j's `9b9d053cb` measured `h` as 1 to 12.
 
 **Depends on:**
 - **This repository:** CR-003 Phase E (`docx4j_py/model/customxml/`, `ContentControl`; sections 3.7, 4 and 17); CR-013 (its writers: Phase A's amendment, section 11, makes `insert_text` split paragraphs, and Phase C writes across them; both must keep this rule); CR-002 Phase C's flat OPC sink, for phase 2 only.
@@ -116,7 +116,7 @@ docx4j's session sent this on 2026-10-23: docx4j CR-058 phase 1, `d8d8bfb71` on 
 | `w:dateFormat` is Word's date picture language, a DATE field's `\@` syntax; docx4j now formats with `FormattingSwitchHelper.formatDate(wordFormat, date, lang)` | its own .NET-token formatter, separate from the field code's converter (`model/fields/formatting.py`) |
 | `ddd` the weekday ("Thu"), `dddd`, `MMM`, `MMMM` | the same, in English |
 | `am/pm` and `AM/PM` both upper-case "AM"/"PM" | **wrong**: `h:mm am/pm` gives `2:05 a5/p5`, `AM/PM` gives `A10/P10`; only .NET's `tt` gives "PM" |
-| `h` runs 1 to 12: **Word's documentation, not Word's run**. The probe's noon value (`12:05Z`) showed as 11:05 PM at UTC+11, where `h` and `K` agree; docx4j CR-058 sections 1 and 8 say so, and docx4j's next probe takes a 12:xx local value | right in `format_date`. **The field code's converter maps `h` to Java's `K`** (0 to 11), which docx4j changed in the same commit (its finding 2). Probed: a DATE field's `h:mm am/pm` reads "0:05 PM" at noon and "0:05 AM" at midnight |
+| `h` runs 1 to 12. The probe's noon value (`12:05Z`) showed as 11:05 PM at UTC+11, where `h` and `K` agree, so this row said "Word's documentation, not Word's run"; **docx4j's next probe measured it** (`9b9d053cb`, `bind-typed-twelve`: `01:05Z` showed `12:05 PM` at UTC+11, section 10.2) | right in `format_date`. **The field code's converter maps `h` to Java's `K`** (0 to 11), which docx4j changed in the same commit (its finding 2). Probed: a DATE field's `h:mm am/pm` reads "0:05 PM" at noon and "0:05 AM" at midnight |
 | names in the `w:lid` language ("22 Oktober 2026", "Okt. 2026" for de-DE) | English names only; `w:lid` ignored (CR-003 section 17) |
 | no `w:lid`: Word's editing language, not the run's `w:lang`; docx4j takes the document default (`w:docDefaults/w:rPrDefault/w:rPr/w:lang/@w:val`), else the platform's | `"en-US"`, unused |
 | a stored value that is not a date (`not-a-date`, `2026-13-45`) is shown as stored, plain | the same (`date_of` gives None, the text as stored) |
@@ -186,9 +186,9 @@ For a value control holding more than one block (a document made elsewhere: Word
 
 | phase | what | status | size |
 |---|---|---|---|
-| 1 | Section 3: the rule (H1), the refusals and the join (3.2, 3.3), `apply_bindings` (3.4), the reading (3.5a); the tests; a Word check of `apply_bindings`' output and of the writes still allowed | **decided** (Q1 to Q9, 2026-11-02) | 1 to 1½ days, with the check |
-| 1b | **A bound date as Word formats it** (2.9, docx4j CR-058 phase 1, `d8d8bfb71`): the binder formats `w:dateFormat` through the field code's converter, as docx4j now does. `h` becomes 1 to 12 there (the DATE field too) and the AM/PM names upper-case; names come in the `w:lid` language, else the document default's; docx4j's `BoundDateFormatTest` (DF1 to DF13) and `DateFieldLanguageTest.twelveHourClockRunsOneToTwelve` are ported as the oracle, on docx4j's fixture | **decided** (Q10, 2026-10-23); with phase 1 | ½ to 1 day |
-| 1c | **A store item ID that names no part** (2.10, docx4j CR-058 phase 2, `35cdeaee6`): a port of `StoreItemResolver`, which `apply_bindings`, `update_from_content_controls` and the text model's `BoundValues` share. `apply_bindings` writes the resolved ID back, as Word's save does; `no_part` stays where no part fits. `StoreItemRepairTest` and its three fixtures are the oracle | **decided** (Q11, 2026-11-02); with phase 1 | ½ day |
+| 1 | Section 3: the rule (H1), the refusals and the join (3.2, 3.3), `apply_bindings` (3.4), the reading (3.5a); the tests; a Word check of `apply_bindings`' output and of the writes still allowed | **implemented 2026-11-05** (section 9; decided Q1 to Q9, 2026-11-02); Word check staged | 1 to 1½ days, with the check |
+| 1b | **A bound date as Word formats it** (2.9, docx4j CR-058 phase 1, `d8d8bfb71`): the binder formats `w:dateFormat` through the field code's converter, as docx4j now does. `h` becomes 1 to 12 there (the DATE field too) and the AM/PM names upper-case; names come in the `w:lid` language, else the document default's; docx4j's `BoundDateFormatTest` (DF1 to DF13) and `DateFieldLanguageTest.twelveHourClockRunsOneToTwelve` are ported as the oracle, on docx4j's fixture | **implemented 2026-11-05** (section 10; decided Q10, 2026-10-23, amended 2026-10-28); Word check staged | ½ to 1 day |
+| 1c | **A store item ID that names no part** (2.10, docx4j CR-058 phase 2, `35cdeaee6`): a port of `StoreItemResolver`, which `apply_bindings`, `update_from_content_controls` and the text model's `BoundValues` share. `apply_bindings` writes the resolved ID back, as Word's save does; `no_part` stays where no part fits. `StoreItemRepairTest` and its three fixtures are the oracle | **implemented 2026-11-05** (section 11; decided Q11, 2026-11-02); Word check staged | ½ day |
 | 2 | **Rich content in bound controls**, for parity with core-ts CR-005 sections 8 and 9 and with docx4j: explicitly rich-text bindings both ways (a flat OPC package in the node, docx4j's `od:progid=Word.Document`; needs CR-002 Phase C's flat OPC sink), escaped XHTML (`od:ContentType=application/xhtml+xml`, core-ts section 8, which needs an XHTML importer here), and picture bindings (core-ts section 9: the `a:blip` replaced from base64) | named, not proposed | to be estimated |
 | 3 | **The OpenDoPE processor**, core-ts CR-005 phase B and docx4j's `OpenDoPEHandler`: conditions, repeats with their contextualised XPaths, the integrity steps and removal; it needs an XPath 2 engine (core-ts uses FontoXPath; here `elementpath` would be a new dependency) | named, not proposed | weeks, as core-ts estimates its phase B |
 
@@ -236,7 +236,7 @@ The user, 2026-11-02: "CR-014's questions Q1 to Q9 and Q11 as recommended, notin
 
 10. **Q10. A bound date as Word formats it (2.9)?** *Recommended: take docx4j CR-058 phase 1 as phase 1b, with phase 1.* **Decided 2026-10-23 as recommended** (the user: "CR-014 Q10 agree"): phase 1b goes with phase 1, the names from a committed CLDR-derived table, and no `dateTimeZone` option.
     - The binder formats through `model/fields/formatting.py`'s converter, one date picture language for a control and a DATE field, as docx4j now has it.
-    - `h` maps to 1 to 12 (Java's `h`, not `K`), on Word's documentation until docx4j's next probe measures a 12:xx local value, and the AM/PM names upper-case. This moves a DATE field's text only at hours 0 and 12, and CR-011's ratchet and goldens show whether any fixture holds one.
+    - `h` maps to 1 to 12 (Java's `h`, not `K`), as docx4j's next probe measured (`9b9d053cb`; section 10.2), and the AM/PM names upper-case. This moves a DATE field's text only at hours 0 and 12, and CR-011's ratchet and goldens show whether any fixture holds one.
     - The language is `w:lid`, else the document default's. The month and day names need a locale source: either CLDR data, through a new dependency such as `babel`, or a committed table generated from it, as `resources/fonts/` is from docx4j. *Recommended: a committed table* for the languages docx4j's tests and Word's measurements name, with English where a language is missing and the result's entry saying so. That keeps the package free of a dependency.
     - No `dateTimeZone` option, unless a caller asks for one: the nominal default is docx4j's.
     - **Amended 2026-10-28** by the ports' date rule (`../docx4j-portfolio/docs/date_handling_across_ports.md` section 3.6,
@@ -264,3 +264,198 @@ The user, 2026-11-02: "CR-014's questions Q1 to Q9 and Q11 as recommended, notin
 | 1c, a store item ID that names no part (Q11) | ½ |
 | 2 | not estimated |
 | 3 | weeks (core-ts's phase B estimate) |
+
+## 9. Phase 1 (implementation notes, 2026-11-05)
+
+Commits `c794583`, on `3a884a5`, and `871be28`. Section 2's measurements were taken at `c5b466f`; the code had moved under CR-013 section 11 and CR-019, so 2.3 was measured again first.
+
+### 9.1 Section 2.3's table at `3a884a5`
+
+The same source, each write on its own, untracked and tracked:
+
+| write | untracked | tracked |
+|---|---|---|
+| `control.insert_paragraph("X", location="End")` and `"Start"` | `P`, `P` | `P`, `P` |
+| `control.paragraphs[0].insert_paragraph("X", location="After")` | `P`, `P` | `P`, `P` |
+| `control.paragraphs[0].get_range().insert_paragraph("X", location="After")` | `P`, `P` | `P`, `P` |
+| `control.body().insert_table(1, 1, values=[["X"]])` | `P`, `Tbl` | `P`, `Tbl` |
+| `control.body().insert_markdown("A\n\nB")` | `P`, `P`, `P` | `P`, `P`, `P` |
+| `control.body().insert_ooxml(<w:p>)` | `P`, `P` | `P`, `P` |
+| `control.insert_text("a\rb")` | `P`, `Noteab` (CR-013 section 11) | the same |
+| `control.insert_text("a\nb", location="Replace")` | `P`, `ab` | **`P`, `P`**, the node `\nab` |
+
+Every block write still went in. The last row is new: `Body.insert_text("Replace")` clears the body, and under tracking what it held stays, so the new paragraph was the control's second, by a write section 3.2 allows. Four more allowed writes reached no node (9.6).
+
+### 9.2 What landed
+
+| what | where | section |
+|---|---|---|
+| `is_bound_block_control` reads the element (`sdt_kind_of`), and `is_container` too, so `type` can ask it | `controls.py`, `bindings.py` | 3.5a, the brief's trap |
+| `ContentControl.type` reads `"PlainText"`, and through it `is_multi_line` false, `controls_of_types`, `to_dict`, `repr`, `BindingEntry.kind` | `controls.py` | 3.5a |
+| `describe()` from bytes reads the same (`_reads_as_plain_text`) | `template.py` | 3.5a |
+| the helper, `refuse_second_block`, with `value_control_of`, `one_paragraph_error`, `other_blocks_of` and `_is_block_item` | `controls.py` | 3.2, 3.7 |
+| `Body._insert_element` calls it; `Body._place_for` is where a block goes, shared with `Body.refuse_blocks`, the check for a verb with work of its own first; `insert_element(..., replacing=)` | `body.py` | 3.2 |
+| the verbs with work first: `insert_table_into` (a style), `insert_picture_into_body` (an image part), `content_of(check=)` (parts copied), `blocks_for(check=)` (styles and numbering, from the parse alone), `Paragraph.refuse_beside` | `table.py`, `picture.py`, `ooxml.py`, `importer.py`, `paragraph.py` | 3.2 |
+| `refuse_split`, under `split_paragraph`, `insert_paragraph_at` and `_replace` | `split.py` | 3.2, 3.6 |
+| a control around a value control's paragraph: `insert_content_control_in_paragraph`, `_in_body`, `wrap_paragraphs` | `insert.py` | 3.2 |
+| H2: `ContentControl._join_paragraph` | `controls.py` | 3.2, Q3 |
+| `XmlMapping._write` refuses first (`_refuse_second_block`) | `mapping.py` | 3.3, Q4 |
+| `set_bound_content` keeps the first paragraph alone (`other_blocks_of`, `queue_removed`); the entry says so | `controls.py`, `bindings.py` | 3.4, Q5 |
+| `BindingNote`, `BindingEntry.notes`: what a write did beyond its value, also a warning on the report | `bindings.py` | 3.4, 2.9, 2.10 |
+| `_skip_reason`: `w:richText` skipped only where `type` still reads `"RichText"` | `bindings.py` | Q9 |
+| `Body.insert_text("Replace")` in a value control writes in place of its text | `body.py` | 3.2 |
+| `Range._replace`: a break as the control takes it, across paragraphs too | `range.py` | 3.6 |
+
+**The refusal.** `BindingError`, `binding.one_paragraph`. Its message is 3.7's after the verb (`insert_table refused: a content control bound to custom XML holds one paragraph: Word reads it as plain text; Word's own answer here is InvalidArgument (core-ts check 56)`), and its hint 3.7's. `InvalidArgument` is named for `insert_table`, `GeneralException` for `insert_ooxml` and `insert_xml`, at every level; any other write names none.
+
+**What `set_mapping` tests.** The raw kind and `holds_one_paragraph`, not `is_bound_block_control`, since the control isn't bound yet, and only where it would write `w:dataBinding`: a control already holding a `w15:dataBinding` keeps that spelling (`_write`) and may hold blocks. It refuses only once a part resolves the XPath, so a path selecting nothing still answers False.
+
+### 9.3 The audit: every block writer
+
+`SWEEP` in `tests/content/test_value_controls.py` holds each of these on each of check 56's four kinds, tracked and not, with the document, the part names, the data, the styles and the report count unchanged.
+
+| module | block writers | how each is held |
+|---|---|---|
+| `controls.py` | `insert_paragraph` | H2 at `"Start"`, `"End"`; `"Before"`, `"After"` go outside, allowed |
+| `paragraph.py` | `insert_paragraph`, `insert_break` (`"Before"`, `"After"`), `insert_xml`, `insert_ooxml`, `insert_markdown`, `insert_content_control` | the helper; one `w:p` at `"Start"` or `"End"` merges and is allowed; `"Replace"` by one `w:p` allowed untracked |
+| `range.py` | `insert_paragraph`, `insert_ooxml`, `insert_content_control` across paragraphs | the helper; one `w:p` merges |
+| `body.py` | `insert_paragraph`, `insert_break`, `insert_table`, `insert_xml`, `insert_ooxml` (`"Replace"` too), `insert_markdown`, `insert_inline_picture`, `insert_element`, `insert_content_control`, `add_object`, `add_paragraph_of_text`, `add_styled_paragraph_of_text` | the helper |
+| `span_edits.py` | `insert_paragraph_at`, `place_replacement` | through `refuse_split`, `Paragraph.insert_paragraph` and `insert_element`; `place_replacement` reaches a value control with its breaks already taken out (`_replace`). `keep_cell_mark_last` is a cell's. `delete_span` joins |
+| `split.py` | `split_paragraph` | `refuse_split` |
+| `lists.py` | `List.insert_paragraph` | through `Paragraph.insert_paragraph` |
+| `table.py` | `TableCell`'s, `Table.insert_paragraph` | a table in a control makes it a container, so none reach one |
+| `docx/` | `Paragraph.insert_paragraph_before`; `add_paragraph`, `add_table`, `add_picture`, `add_heading` on a `BlockItemContainer` | through the content API; the facade's containers are the body, a header, a footer, a cell and a comment, never a control, so only the first can reach one. The direct `content.append`s are a run's, a row's or the body's own section paragraph |
+| `customxml/template.py` | none: `fill` writes nodes and calls `apply_bindings` | `_kind_of` read for 3.5a |
+| `customxml/insert.py` | the three block forms of `insert_content_control` | the helper, before the control takes anything; `insert_content_control_in_range` is run-level (13.3, O4) |
+| `kinds.py`, `insert_copy_after` | a repeating section's item, a copy of a control | beside a control, not in one |
+
+### 9.4 The writes that stay allowed
+
+`ALLOWED` holds fifteen writes on the four kinds, tracked and not: one paragraph, the text as written, and the node equal to it. `Paragraph.delete` and `Body.clear` are allowed, and leave the node (13.3, O2).
+
+### 9.5 `apply_bindings` over more
+
+File 3's shape in each of the four kinds gives one paragraph, its `w:pPr` kept. The extra blocks go through `queue_removed`, and what they held goes when the pass ends, a comment whose reference went with it: `recording_on`, which `apply_bindings` runs under, now settles a write's removals as `recording` always did. A marker beside the paragraph stays. An empty value in a value control holding more shows its placeholder in one paragraph.
+
+### 9.6 Found, and fixed here
+
+Each is a write section 3.2 allows that Word would have undone, since it refreshes a bound control from its node on open:
+
+1. **`Paragraph.text = ...` untracked** wrote no node (it is no splice); tracked it did.
+2. **One `w:p` merged** by `Paragraph.insert_xml`, `insert_ooxml` and `insert_markdown` wrote no node.
+3. **`Range.insert_ooxml` of one `w:p`** left the node empty: the removal wrote it, the merge didn't. `Paragraph.write_bound_nodes` is the node write for 2 and 3, and CR-019's D7 is now true of them.
+4. **A tracked `control.insert_text(..., "Replace")`** gave the control a second paragraph (9.1).
+
+### 9.7 Pre-existing tests whose expectation changed, and why
+
+- `test_word_writers.py`: `test_a_bound_block_control_holds_one_paragraph`'s reader line, which said "the reader is CR-014's": the bound rows now read `PlainText`. `CHECK_56_NODES` loses case 15, which pinned Q9's skip: the node is now Word's, `start15xy`.
+- `test_office_js_characters.py`: `test_a_bound_controls_write_back_keeps_docx4js_characters` bound a two-paragraph control with `set_mapping`, now refused; it binds with `put_property`, as a file made elsewhere holds it.
+
+## 10. Phase 1b (implementation notes, 2026-11-05)
+
+Commit `ce7f5c1`.
+
+### 10.1 What landed
+
+- **`format_word_date(picture, when, lang)`** (`fields/formatting.py`), docx4j's `formatDate(String, Date, String)`, with `uses_date_names`. `kinds.format_date` keeps its name and signature, over it: one picture language for a control and a DATE field. The .NET token table is gone.
+- **`h` and `hh` are 1 to 12** in `_DATE_ITEMS`, for a DATE field too. `tests/text/test_fields.py`'s pinned `K:mm` changed with it.
+- **`resources/date-names.json`**, written by `scripts/generate_date_names.py` through Babel 2.18.0, CLDR 47, and never hand-edited. Babel is the script's alone (`python3 scripts/generate_date_names.py`, `--check`): no dependency of the package, and not in `.venv-fork`. The names are CLDR's format names, as they stand; docx4j's two rules, a short month's trailing period off and AM and PM upper-cased, are `model/fields/date_names.py`'s reader. The table's strings were compared with `java.text.DateFormatSymbols` on OpenJDK 21: the same for every locale in it. `hatchling` packs everything git tracks under `docx4j_py/`, so it ships; the wheel built from this tree holds it (13.1).
+- **The languages** are Q10's, those docx4j's tests and Word's measurements name: `en`, `en-AU`, `de`, `fr`, `tr`. A tag is read whole, then by its language.
+- **`simple_date_format(pattern, when, names=None)`**: a language's names; and only an ASCII letter is a pattern letter now, as in Java, so `yyyy年M月d日` works.
+- **`date_of(value, zone=None)`** is docx4j's `parseStoredDate`, both forms: `xs:dateTime` and `xs:date`, the nominal fields, an offset read past; with a zone a date and time carrying a `Z` or offset is an instant, shown there.
+- **`document_language(package)`**: `w:docDefaults/w:rPrDefault/w:rPr/w:lang/@w:val`, read with lxml from `part.xml`, once a pass, so that binding a date leaves a styles part nobody read as it is.
+- **`pkg.bound_dates_converted_as_word`**, False, on `OpcPackage` and the trial, and `dates.bound_date_zone(package)`, docx4j's `conversionZone`: None unless the package opts in, then `effective_zone`. `pkg.date_time_zone` alone turns nothing on. No process-wide setting (CR-025 D2).
+- **`BindingNote`s**: `binding.date_language_missing` where a language the table lacks meets a picture that writes a name (a picture of numbers says nothing), and `binding.date_picture_unsupported`.
+
+### 10.2 The oracle, and the record corrected
+
+`tests/content/test_bound_dates.py` ports `BoundDateFormatTest`, at docx4j's current state on `VERSION_17_3_6`, on its fixtures: DF1 to DF13, the document default language, the opt-in, and `twelveOClockAndOffsetsAsWordShowsThem` in both readings, with `typed-controls-twelve.docx`, new since the CR's hand-off. `twelveHourClockRunsOneToTwelve` is ported whole, and `DateFieldLanguageTest`'s two language cases.
+
+**Section 2.9's "Word's documentation, not Word's run" is superseded.** docx4j's `9b9d053cb` measured it: `bind-typed-twelve`, Word 365 at UTC+11, TW1 `2026-10-22T01:05:00Z` under `h:mm AM/PM` showed `12:05 PM`, TW2 `13:05Z` under `hh:mm am/pm` `12:05 AM`; an explicit offset is honoured and no offset is local. So `h` is 1 to 12 on Word's run, and the table above and Q10 now say so.
+
+**CR-011's ratchet and the goldens: nothing moved.** The change is live only at hours 0 and 12. `tests/text/test_conformance.py` and the field probe's test pass as they stood, and the committed report is unchanged.
+
+## 11. Phase 1c (implementation notes, 2026-11-05)
+
+Commit `d0fe5e8`.
+
+`model/customxml/store_items.py` is docx4j's `StoreItemResolver`: `first_step`, `resolve`, `resolved_store_item_id`, `repair` as `_repair`. The parts considered are `collection.items` less the property stores (`built_in`), docx4j's `instanceof CustomXmlDataStoragePart`. Part order is docx4j's, the part name compared as text, so `item10` comes before `item2`; Word's rule is measured on two parts only.
+
+`XmlMapping` gains **`resolved_part`** and **`resolved_node`**, which `apply_binding_to`, `update_from_control`, `update_from_content_controls`, `write_control_to_node` and `_node_holds_flat_opc` read. `custom_xml_part` and `custom_xml_node` stay strict (Q11), and so does `to_dict()["resolves"]`. `BoundValues` asks `_repaired_root` where `_root` finds nothing, keyed by ID and XPath, since one stale ID fits two parts (B7 and B11).
+
+`apply_bindings` writes `resolved_store_item_id`, the part's ID upper-cased, into the `w:dataBinding` or `w15:dataBinding`, in memory, and says so (`binding.store_item_repaired`, naming both IDs and the part, also a warning on the report). `BindingEntry.store_item_id` is then the new ID. `update_from_content_controls` writes the fitting part's node and leaves the ID: that direction only reads the document, as docx4j's.
+
+`tests/content/test_store_item_repair.py` ports `StoreItemRepairTest`, but for `theStrictPropertyFailsTheBind` (no strict option, Q11), on its three fixtures.
+
+`test_controls_typed.py`'s `test_a_binding_whose_part_is_gone_is_reported_not_raised` had a part that fits, so its stale ID is now repaired; its XPath names a root no part has.
+
+## 12. Departures, with why
+
+From core-ts (`6285dfa`, `a18f53a`):
+
+1. **A container is no value control** (3.1). core-ts's `isBoundBlockControl` doesn't test it, so a bound block control holding a table or a control reads `PlainText` there and refuses writes; here it reads `RichText` and is left, as `apply_bindings` leaves it in both. The file is one Word can't open whichever.
+2. **A marker is no block** (`holds_one_paragraph`, CR-019 section 4.5). core-ts's `BLOCK_LEVEL_TYPES` holds bookmarks and the rest, so a bookmark beside the paragraph refuses there, and is removed by its `applyBindings`.
+3. **`set_mapping` on an unbound untyped or `w:richText` control holding more refuses** (3.3). core-ts's `usesW15` gives one `w15:dataBinding`, which may hold blocks; this package writes `w:dataBinding` there, as CR-003 built it, so 3.3's refusal is what keeps the file readable.
+4. **One error** (Q6): `BindingError` with Word's name in its message, where core-ts throws `InvalidArgument`, `GeneralException` or `NotSupportedError`.
+5. **H2 refuses first, and a placeholder goes by `_write_placeholder`.** core-ts takes the placeholder's runs before its multi-line refusal, so that refusal changes the control; and its text takes a plain run. Here nothing changes, and the text takes the control's look (CR-019's D11).
+6. **`"Replace"` of a value control writes in place, tracked or not.** core-ts's `Body.insertText` clears and inserts. Here the paragraph and its `w:pPr` stay, where 0.2.0 made a new one; tracked it was 9.1's second paragraph.
+7. **A `\n` in a Replace across a control holding two follows the control** (`Range._replace`), where core-ts's split refuses it. The deletion joins the paragraphs, so the write ends in one.
+8. **`Paragraph.text = ...` and the merges write the node** (9.6). core-ts's untracked setter doesn't either; it is CR-019's D7 applied.
+9. **A tracked `"Replace"` of the paragraph by one `w:p` is refused** (`Paragraph.replaced_block`, `Body.refuse_blocks`): the paragraph stays deleted beside the new one, two paragraphs.
+10. **`insert_markdown` counts from the parse**, to refuse before a style is defined: one paragraph, heading or code block is one; a list, a quote, a table or anything else is more, a one-item list included. core-ts has no such writer.
+
+From docx4j (`VERSION_17_3_6`):
+
+11. **No `w:lid` and no document default is English**, DF7, where docx4j takes the JVM's locale. A process's locale is no document's; `DEFAULT_DATE_LANGUAGE`, what this package always used.
+12. **A picture this can't write shows the stored text with a note**, where docx4j's traverser writes `[missing!]`.
+13. **A language the table lacks is English with a note**, where docx4j has the JVM's data. Q10.
+14. **`tt` and text in double quotes stay readable** through `kinds.format_date`, respelt to `am/pm` and single quotes before the converter: 0.2.0 read them, Java's formatter throws on them, and Word is unmeasured (O7). `h:mm tt` keeps `2:05 PM`.
+15. **`w:fullDate` is set from the value**, CR-003 section 4's departure, where docx4j's bind leaves it; a value that is no date leaves it, where Word's save drops it.
+16. **A stored value with a space before its time is no date now**, as in docx4j and `xs:dateTime`. `date_of` read it until phase 1b.
+17. **A DATE field's language stays US English** (CR-025 D8): docx4j's field path takes one, and phase 1b gives the bound date alone its language.
+18. **No `strictStoreItemIds`, no memo per document** (Q11), and the well-known IDs answer None in `resolve`: docx4j reaches its resolver past them, and this package special-cases none of them elsewhere (CR-003 section 4).
+19. **The ID is written back only for a control the pass applied.** A skipped one keeps it: a picture, a container, a `w:richText` one at run level. docx4j's NonXSLT traverser writes it for a picture and its XSLT one doesn't.
+20. **A part that fits and selects nothing is `no_match`, the control and its ID left.** Word's no-part probes have no root match, so this shape is unmeasured.
+
+## 13. The gates, the Word check and what's open
+
+### 13.1 The gates
+
+At `871be28`, on Python 3.14.7, `out/acceptance-before-cr014/` built at `3a884a5` first:
+
+| gate | result |
+|---|---|
+| the full suite | 10,619 tests, none failed (9,907 at `3a884a5`). New, 712: `test_value_controls.py` 589, the sweep 45 writers on 4 kinds, tracked and not, 360, and the allowed writes 15 on 4 kinds, tracked and not, 120; `test_bound_dates.py` 77; `test_store_item_repair.py` 40; `test_fields.py` 6 |
+| `codegen/generate.sh --check` | two generations of `docx4j_py` byte identical, 320 modules; nothing generated moved, and `KEEP` keeps the two new modules |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | `ROUND TRIP CLEAN: 50/50 parts canonically identical, 0 differences, 0 skipped (34 benign respellings)` |
+| `scripts/acceptance.py`, `scripts/compare_acceptance.py out/acceptance-before-cr014 out/acceptance` | 17 artefacts, 246 entries, 0 differ beyond the wall-clock dates, artefact 9, the filled template, among them |
+| CR-011's ratchet and goldens | as they stood (section 10.2) |
+| the wheel | built with `hatchling` in a scratch environment: `resources/date-names.json`, `model/fields/date_names.py` and `model/customxml/store_items.py` are in it. `scripts/release_check.sh` is the release's, and wasn't run |
+
+Python 3.12 and 3.13 are CI's; this ran on 3.14 alone.
+
+### 13.2 The Word check (staged 2026-11-05; not yet run)
+
+`out/cr014-word-check/`, built by its `build.py` (`BUILD-LOG.txt`, `SHA1SUMS`), each file read back strictly with nothing skipped. `README.txt` says per file what to open and what Word should show, and where:
+
+| file | what |
+|---|---|
+| `cr014-1-bind-over-two-paragraphs.docx`, `cr014-1b-3a-shape-bound.docx` | `apply_bindings`' output over 3a's shape, in each kind, and over CR-013's own source |
+| `cr014-2-allowed-writes.docx`, `cr014-2b-allowed-writes-tracked.docx` | a value control after each allowed write: fifteen cases, untracked and tracked |
+| `cr014-3-dates-nominal.docx` to `cr014-3f-twelve-as-written-unbound.docx` | bound dates, nominal and as Word at UTC+11, and two copies unbound so that Word shows what was written |
+| `cr014-4-store-item-repaired.docx`, `cr014-4b-two-parts.docx`, `cr014-4c-no-part.docx` | a repaired store item ID, two parts, and none |
+
+### 13.3 Open points
+
+Each is unmeasured or undecided; none blocks the phases.
+
+- **O1. `describe()` and `fill()` stay strict.** Q11 names three readers and they aren't among them, so a stale binding reads no value, and `fill` of its key is skipped `no_part` while the pass after repairs it. Going through the resolver is two lines.
+- **O2. `Paragraph.delete` and `Body.clear` leave the node.** A value control emptied that way refills from its node in Word. core-ts's do the same. A `"Content"` range's delete writes it.
+- **O3. `Paragraph.insert_break("Line" or "Page")` at `"Start"` or `"End"`** of a single-line value control writes the `w:br`, and no node. It is no block and no text writer; F3 drops such a break from text. Office JS's `insertBreak` there is unmeasured.
+- **O4. A run-level control made inside a value control's paragraph** isn't refused: it holds no block. It makes the outer control a container. Word's answer is unmeasured.
+- **O5. `Paragraph.insert_inline_picture`** into a value control's paragraph isn't refused, for the same reason.
+- **O6. Word binds a run-level control the same way** (core-ts section 61.7: B8's `PlainText`, RX1's bind). Section 3.5a is block-level, as core-ts's H4, so a run-level `w:richText` control stays skipped and an untyped one `RichText`, both ports alike.
+- **O7. `tt` and double quotes** in a `w:dateFormat`: departure 14, Word unmeasured.
+- **O8. The names are CLDR's, not Word's, in places**, as docx4j's: German `Sept` where Word writes `Sep`, `en-AU`'s `Sept`, `June` and `July`, a German weekday's `Do.`. And five locales; another is one line of the script.
+- **O9. The date and list kinds, and the row and cell forms,** stay outside the rule: 2.8's unmeasured.
+- **O10. `update_from_content_controls` drops a date node's `Z`** (`iso_of`, since CR-003): `2026-10-22T15:05:00Z` goes back as `2026-10-22T15:05:00`, which Word reads as local. Not changed by this CR.

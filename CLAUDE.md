@@ -58,7 +58,14 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   (keep parity). Each phase that changed output is Word-checked. The Office JS subset is read from
   core-ts's committed `HEAD` (246 members).
 - **CR-014** (content control data binding; phases 1, 1b and 1c from docx4j CR-058): decided 2026-11-02 (every
-  question as recommended; phase 1 goes in the release after 0.2.0). **CR-015** (Markdown output safety): proposed.
+  question as recommended); phases 1, 1b and 1c implemented 2026-11-05, for the next release, their Word check staged in
+  `out/cr014-word-check/`, not yet run. A bound block control Word reads as plain text holds one paragraph
+  (`controls.refuse_second_block` under every block writer, `binding.one_paragraph`; `insert_paragraph` joins a
+  single-line one; `set_mapping` refuses more; `apply_bindings` writes one, `BindingEntry.notes` saying so; such a control
+  reads `PlainText`, and a `w:richText` one is bound as text); a bound date is formatted through the field code's
+  converter (`h` 1 to 12), in `resources/date-names.json`'s names (`scripts/generate_date_names.py`, Babel, no runtime
+  dependency), `pkg.bound_dates_converted_as_word` off by default; a stale `w:storeItemID` is resolved as Word repairs it
+  (`customxml/store_items.py`, `XmlMapping.resolved_part`; `custom_xml_part` stays strict). **CR-015** (Markdown output safety): proposed.
   **CR-016** (core-ts's cell, font, placeholder and wildcard
   changes): decided 2026-10-24. Phase A (a table cell ends with a paragraph, as Word reads it:
   `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B implemented

@@ -11,6 +11,21 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **`pkg.bound_dates_converted_as_word`**, off by default ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1b, section
+  [10](docs/change-requests/CR-014-content-control-data-binding.md#10-phase-1b-implementation-notes-2026-11-05); the ports' date rule, point 3; docx4j's
+  `OpcPackage.setBoundDatesConvertedAsWord`): a bound date's stored `Z` or offset read as an instant and shown in
+  `pkg.effective_date_time_zone`, as Word converts it to the machine's, so that a server can show what Word would at
+  its user's zone. Off, a bound date is the day and time its fields say, on every machine. Setting
+  `pkg.date_time_zone` alone does not turn it on, and there is no process-wide setting.
+- **`BindingEntry.notes`** (`BindingNote`: `code`, `message`; in `to_dict()` only where there are any): what
+  `apply_bindings` did beyond a binding's value: `binding.blocks_removed`, `binding.store_item_repaired`,
+  `binding.date_language_missing`, `binding.date_picture_unsupported`. Each is a warning on the pass's report too.
+- **`XmlMapping.resolved_part` and `resolved_node`** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1c): the part and node a binding is
+  evaluated against, as Word resolves a stale ID. `custom_xml_part` and `custom_xml_node` stay the part the ID names.
+- **`docx4j_py.model.fields.format_word_date(picture, when, lang)`**, docx4j's `formatDate(String, Date, String)`, and
+  `scripts/generate_date_names.py`, which writes `resources/date-names.json` from CLDR through Babel, a tool of the
+  checkout's and no dependency of the package.
+
 - **`LoadOptions(duplicate_entries="first")`** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
   [10](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#10-phase-a-implementation-notes-2026-11-04); WD REQ-206): a container holding two entries of one name is
   read, the first entry of each name in the zip's central directory (Word's reading after its repair), and a save
@@ -85,6 +100,52 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   untouched. The default is `check=False`; the test suite saves checked throughout.
 
 ### Changed
+
+- **A bound control Word reads as plain text holds one paragraph** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1, section
+  [9](docs/change-requests/CR-014-content-control-data-binding.md#9-phase-1-implementation-notes-2026-11-05); docx4j-core-ts CR-002 section 61 and its check 56, Word 365). Word can't
+  open a file where a block control with a `w:dataBinding`, no type, `w:text` or `w:richText`, holds a second block, and
+  its repair loses it; 0.1.0 and 0.2.0 wrote such files.
+  - **A write that would add a block to one is refused**, before anything changes, tracked or not: `BindingError`, code
+    `binding.one_paragraph`, naming Word's own error where measured (`InvalidArgument` for `insert_table`,
+    `GeneralException` for `insert_ooxml` and `insert_xml`). That is every block writer of the content API, and a
+    paragraph split: `insert_paragraph` beside its paragraph, a `Range`'s, `insert_table`, `insert_xml`, `insert_ooxml`,
+    `insert_markdown`, `insert_break` and `insert_inline_picture` on a body, `insert_content_control` around its
+    paragraph. No part is copied and no style defined first. `control.xml_mapping.delete()` frees the control.
+  - **`ContentControl.insert_paragraph` at `"Start"` or `"End"`** joins the text to the paragraph of a single-line one,
+    as Word's does, and that paragraph comes back; a multi-line one refuses.
+  - **`set_mapping` and `set_mapping_by_node`** refuse a block control of those kinds that holds more than one
+    paragraph, where they wrote a binding Word could not open.
+  - **`apply_bindings`** over one that holds more writes one paragraph, as docx4j's `bind.xslt` does, keeping the
+    first's `w:pPr` and removing the other blocks, what they held going with them; its entry says so.
+  - **Such a control reads as Word reads it**: `ContentControl.type` is `"PlainText"` for one with no type or
+    `w:richText`, and `is_multi_line` false, in `get_content_controls(types=...)`, `to_dict()`, `BindingEntry.kind` and
+    `describe()` too, so `apply_bindings` drops a newline there as Word does, where it wrote a `w:br`. The file is left as
+    it is, and a file holding such a control is read and saved unchanged.
+  - **A bound `w:richText` block control is bound as text, both ways**, where both passes skipped it: Word refreshes one
+    from its node on open, so a text written there was lost. One at run level, or bound by `w15:dataBinding`, or whose
+    node holds flat OPC stays skipped.
+  - `insert_text(..., "Replace")` on such a control, or its `body()`, writes in place of its text, keeping its paragraph
+    and `w:pPr`, where it made a new paragraph.
+
+- **A bound date is formatted as Word formats it** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1b, section
+  [10](docs/change-requests/CR-014-content-control-data-binding.md#10-phase-1b-implementation-notes-2026-11-05); docx4j CR-058 phase 1, held to its `BoundDateFormatTest` on
+  Word 365's probes). `w:dateFormat` is a DATE field's picture language: `format_date` and `apply_bindings` go through
+  the field code's converter, so `h:mm am/pm` is `2:05 PM`, where it was `2:05 a5/p5`. Month, weekday and AM/PM names are
+  the language's: `w:lid`, else the document's default language, else English (`22 Oktober 2026`, `Okt. 2026`), where they
+  were English. The names come from a committed CLDR table of `en`, `en-AU`, `de`, `fr` and `tr`; a language it lacks is
+  shown in English and the entry says so. A stored value is read as an `xs:dateTime` or `xs:date`, `Z` or offset read
+  past: one with a space before its time is shown as stored, as anything else that is no date is.
+
+- **A DATE field's `h` and `hh` run 1 to 12** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1b; docx4j `9b9d053cb`, Word 365): `h:mm am/pm` at noon
+  is `12:05 PM`, where it was `0:05 PM`. Only hours 0 and 12 move.
+
+- **A store item ID that names no part is resolved as Word repairs it** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1c, section
+  [11](docs/change-requests/CR-014-content-control-data-binding.md#11-phase-1c-implementation-notes-2026-11-05); docx4j CR-058 phase 2, held to its `StoreItemRepairTest`). Where
+  a `w:storeItemID` names no part, `apply_bindings`, `update_from_content_controls`, a control's write and the text model
+  read the part whose root matches the XPath's first step, under the binding's own prefix mappings; of several, the
+  first in part-name order whose XPath selects a node. `apply_bindings` writes that part's ID into the binding, as
+  Word's save does, and says so in its entry; the text model writes nothing. Where no part fits, the control keeps its
+  surface and its ID (`no_part`), as before.
 
 - **A package holding two entries of one name is refused** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
   [10](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#10-phase-a-implementation-notes-2026-11-04); WD REQ-206): OPC part names compared without case, as the
@@ -195,6 +256,12 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   as before.
 
 ### Fixed
+
+- **A write into a bound control reaches its node by every route** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) section
+  [9.6](docs/change-requests/CR-014-content-control-data-binding.md#96-found-and-fixed-here)): `Paragraph.text = ...` untracked and one `w:p` merged by
+  `insert_xml`, `insert_ooxml` or `insert_markdown` wrote none, so Word put the old value back on open, and a `Range`'s
+  `insert_ooxml` of one `w:p` emptied the node. A tracked `ContentControl.insert_text(..., "Replace")` gave the control a
+  second paragraph.
 
 - **A relationships part that is not well formed refuses the load** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 4.5), the package's or
   a part's, naming it. Before, the relationships after its first error were lost, and an untouched save dropped the
