@@ -142,15 +142,18 @@ def _parse_one(node: etree._Element, wrapper: type | str | None, lenient: bool) 
     obj = xml_parser.from_bytes(etree.tostring(node), clazz)
     report = xml_parser.skipped
     if report is not None and not lenient:
-        lost = list(getattr(report, "items", ()) or ())
-        if lost:
-            raise FragmentError(
-                f"{len(lost)} item(s) of the fragment were skipped: "
-                + "; ".join(str(item) for item in lost[:5])
-                + " (pass lenient=True to accept the loss)"
-            )
+        _refuse_loss(list(getattr(report, "items", ()) or ()))
     link_parents(obj, context=context())
     return obj
+
+
+def _refuse_loss(lost: list[Any]) -> None:
+    if lost:
+        raise FragmentError(
+            f"{len(lost)} item(s) of the fragment were skipped: "
+            + "; ".join(str(item) for item in lost[:5])
+            + " (pass lenient=True to accept the loss)"
+        )
 
 
 def _all(
@@ -166,30 +169,35 @@ def _all(
     a ``w:r``, and a text element holding elements, go through
     :func:`docx4j_py.openpackaging.breaks.repair` before the parse, and the
     list receives its :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun`,
-    named ``"the fragment"``. In a ``w:body``'s scope the synthetic root stands
-    for the body during the pass, so that a ``w:br`` directly in it is rule 3's.
-    :func:`wml` itself never passes it: code's own fragments are refused.
+    named ``"the fragment"``. What the pass takes out with all it holds is a
+    loss, refused unless `lenient`, as what the parse skips is. In a
+    ``w:body``'s scope the synthetic root stands for the body during the pass,
+    so that a ``w:br`` directly in it is rule 3's. :func:`wml` itself never
+    passes it: code's own fragments are refused.
     """
     root = _wrap(xml)
     if _breaks is not None:
-        _repair_breaks(root, wrapper, _breaks)
+        _repair_breaks(root, wrapper, _breaks, lenient)
     children = [child for child in root if isinstance(child.tag, str)]
     if not children:
         raise FragmentError("the fragment holds no element")
     return [_parse_one(child, wrapper, lenient) for child in children]
 
 
-def _repair_breaks(root: etree._Element, wrapper: type | str | None, out: list[Any]) -> None:
+def _repair_breaks(root: etree._Element, wrapper: type | str | None, out: list[Any], lenient: bool) -> None:
     """CR-030's pass over a wrapped fragment, its record appended to `out` where it found anything."""
     from docx4j_py.openpackaging.breaks import BrOutsideRun, repair
 
     in_body = wrapper is not None and _scope_class(wrapper) is class_for(f"{{{WML_NS}}}body")
     if in_body:
         root.tag = f"{{{WML_NS}}}body"
+    dropped: list[Any] = []
     try:
-        breaks, texts = repair(root)
+        breaks, texts = repair(root, dropped)
     finally:
         root.tag = _WRAPPER
+    if not lenient:
+        _refuse_loss(dropped)
     if breaks or texts:
         out.append(BrOutsideRun("the fragment", breaks, texts))
 

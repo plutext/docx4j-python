@@ -287,11 +287,13 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
 
         if breaks.triggers(report):
             try:
-                fixed, found, texts = breaks.repair_bytes(data)
+                dropped: list = []
+                fixed, found, texts = breaks.repair_bytes(data, dropped)
                 res.br_outside_run = (found, texts)
                 if fixed is not data:
                     obj = parser.from_bytes(fixed, klass)
                     report = getattr(parser, "skipped", None)
+                    report.items.extend(dropped)
             except Exception as exc:  # noqa: BLE001
                 res.error = f"repair: {type(exc).__name__}: {exc}"[:500]
                 (out_dir / "error.txt").write_text(traceback.format_exc())

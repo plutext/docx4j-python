@@ -55,6 +55,7 @@ from docx4j_py.openpackaging import LoadOptions, XmlPart, breaks
 from docx4j_py.openpackaging.breaks import BrOutsideRun, repair_bytes, triggers
 from docx4j_py.openpackaging.exceptions import Docx4JException
 from docx4j_py.openpackaging.parts.wml import FooterPart, HeaderPart
+from docx4j_py.traversal import text_of
 
 FIXTURES = ROOT / "tests" / "fixtures" / "br-placement"
 SAMPLES = ROOT / "samples"
@@ -511,10 +512,11 @@ def test_a_piece_takes_the_nearest_xml_space():
 
 
 def test_a_tab_in_a_text_element_keeps_the_text_either_side_and_loses_the_tab():
-    """As docx4j's rule: any element other than a ``w:br`` gives its text, its tag dropped (section 7)."""
+    """Word draws no tab either (check 76's ``76z``), so the tab is gone and the part says so (section 11)."""
     got, pkg = body_tokens("<w:p><w:r><w:t>a<w:tab/>b</w:t></w:r></w:p>")
     assert got == ["t:ab", "¶"]
     assert [(w.breaks, w.text_elements) for w in pkg.warnings] == [(0, 1)]
+    assert [item.qname for item in pkg.main_document_part.skipped] == [W + "tab"]
 
 
 def test_a_break_in_a_block_level_sdt_content_is_counted_left_and_skipped():
@@ -803,3 +805,151 @@ def test_an_affected_part_is_parsed_twice(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(runtime, "parser", counting_parser)
     _ = part.contents
     assert parses == [1, 1]
+
+
+# ---------------------------------------------------------------------------
+# an element Word doesn't know in a text element (section 11, core-ts's check 76)
+# ---------------------------------------------------------------------------
+
+CHECK76 = ROOT / "tests" / "fixtures" / "check76"
+EXT = 'xmlns:ext="urn:ext"'
+MATH = 'xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"'
+OPAQUE = "{urn:docx4j:check76}opaque"
+#: Each file: what Word 365 reads in its middle paragraph, and the element that goes.
+CHECK76_FILES = {
+    "76m-ignorable-in-t": ("TARGET TEXT", OPAQUE),
+    "76n-ignorable-with-text-in-t": ("TARGET TEXT", OPAQUE),
+    "76u-madeup-with-text-in-t": ("TARGET TEXT", W + "madeUp"),
+    "76w-ignorable-holding-a-break-in-t": ("TARGET TEXT", OPAQUE),
+    "76z-tab-in-t": ("TARGETTEXT", W + "tab"),
+}
+
+
+def test_the_check_76_files_are_core_tss():
+    listed = dict(reversed(line.split()) for line in (CHECK76 / "SHA1SUMS").read_text().splitlines())
+    assert set(listed) == {path.name for path in CHECK76.glob("*.docx")}
+    assert len(listed) == 10
+    for name, digest in listed.items():
+        assert hashlib.sha1((CHECK76 / name).read_bytes()).hexdigest() == digest, name
+
+
+@pytest.mark.parametrize("stem", CHECK76_FILES)
+def test_each_check_76_file_reads_as_words_save(stem: str) -> None:
+    ours, words = load(CHECK76 / f"{stem}.docx"), load(CHECK76 / f"{stem}-word365.docx")
+    assert ours.body.paragraphs[1].text == CHECK76_FILES[stem][0]
+    assert tokens(ours) == tokens(words)
+    assert story_text(ours) == story_text(words)
+    assert words.warnings == [] and words.main_document_part.skipped == []
+
+
+@pytest.mark.parametrize("stem", CHECK76_FILES)
+def test_each_check_76_file_says_what_went(stem: str) -> None:
+    pkg = load(CHECK76 / f"{stem}.docx")
+    part = pkg.main_document_part
+    assert part.contents is not None
+    assert [(w.breaks, w.text_elements) for w in part.warnings] == [(0, 1)]
+    assert [(item.kind, item.qname, item.parent_qname) for item in part.skipped] == [
+        ("element", CHECK76_FILES[stem][1], W + "t")
+    ]
+    assert [item for _name, item in pkg.skipped] == part.skipped
+
+
+@pytest.mark.parametrize("stem", CHECK76_FILES)
+def test_a_save_of_each_check_76_file_writes_what_word_reads(stem: str) -> None:
+    pkg = load(CHECK76 / f"{stem}.docx")
+    assert pkg.main_document_part.contents is not None
+    data = saved(pkg)
+    xml = entries(data)["word/document.xml"]
+    assert b"<ext:opaque" not in xml and b"<w:madeUp" not in xml and b"<w:tab" not in xml
+    assert b">HIDDEN WORDS<" not in xml
+    again = load(data)
+    assert tokens(again) == tokens(load(CHECK76 / f"{stem}-word365.docx"))
+    assert again.warnings == [] and again.main_document_part.skipped == []
+
+
+@pytest.mark.parametrize("normalise", [True, False])
+def test_a_saved_check_76_part_is_its_repaired_source(normalise: bool) -> None:
+    source_path = CHECK76 / "76n-ignorable-with-text-in-t.docx"
+    pkg = load(source_path)
+    assert pkg.main_document_part.contents is not None
+    data = entries(saved(pkg, normalise=normalise))["word/document.xml"]
+    report = canon.compare(entries(source_path.read_bytes())["word/document.xml"], data, repaired=True, normalise=normalise)
+    assert report.identical, (report.differences, report.diffs[:5])
+
+
+@pytest.mark.parametrize(
+    ("text_element", "tokens_wanted"),
+    [
+        (f"<w:t>a<ext:o {EXT}>b<w:br/><w:t>c</w:t><ext:deeper>d</ext:deeper></ext:o>e</w:t>", ["t:ae", "¶"]),
+        (f"<w:t>a<ext:o {EXT}>b</ext:o><w:br/>c</w:t>", ["t:a", "br", "t:c", "¶"]),
+        ("<w:t>a<w:madeUp>b<w:br/><w:t>c</w:t></w:madeUp>d</w:t>", ["t:ad", "¶"]),
+        (f"<w:t><ext:o {EXT}>only</ext:o></w:t>", ["¶"]),
+        (f"<w:t>a<w:t>b<ext:o {EXT}>c</ext:o>d</w:t>e</w:t>", ["t:abde", "¶"]),
+        ("<w:t>a<w:r><w:t>b</w:t></w:r>c</w:t>", ["t:ac", "¶"]),
+    ],
+)
+def test_all_an_element_holds_goes_with_it(text_element: str, tokens_wanted: list[str]) -> None:
+    assert body_tokens(f"<w:p><w:r>{text_element}</w:r></w:p>")[0] == tokens_wanted
+
+
+def test_deleted_text_and_a_field_code_lose_it_too():
+    deleted = f'<w:p><w:del w:id="1" w:author="a"><w:r><w:delText>a<ext:o {EXT}>b</ext:o>c</w:delText></w:r></w:del></w:p>'
+    assert body_tokens(deleted)[0] == ["delText:ac", "¶"]
+    _got, pkg = body_tokens(f"<w:p><w:r><w:instrText>a<ext:o {EXT}>b</ext:o>c</w:instrText></w:r></w:p>")
+    assert b">b<" not in entries(saved(pkg))["word/document.xml"]
+
+
+@pytest.mark.parametrize(
+    ("text_element", "tokens_wanted"),
+    [
+        ("<w:t>a<span>b</span>c</w:t>", ["t:abc", "¶"]),
+        ("<w:t>a<span>b<w:br/>c</span>d</w:t>", ["t:ab", "br", "t:cd", "¶"]),
+        (f"<w:t>a<m:t {MATH}>b</m:t>c</w:t>", ["t:abc", "¶"]),
+    ],
+)
+def test_no_namespace_and_a_namespace_word_knows_give_their_text_as_docx4j(
+    text_element: str, tokens_wanted: list[str]
+) -> None:
+    """Word refuses the first two (``76x``, ``76y``), and the third is unmeasured: nothing is lost, so nothing is skipped."""
+    got, pkg = body_tokens(f"<w:p><w:r>{text_element}</w:r></w:p>")
+    assert got == tokens_wanted
+    assert pkg.main_document_part.skipped == []
+
+
+def test_each_element_taken_is_named_where_the_forks_report_stops_short():
+    """The fork names the outer ``w:t`` of two; the pass names what went, in the report's own form."""
+    _got, pkg = body_tokens(f"<w:p><w:r><w:t>a<w:t>b<ext:o {EXT}>c</ext:o>d</w:t>e<w:tab/></w:t></w:r></w:p>")
+    first, second = pkg.main_document_part.skipped
+    assert (first.qname, first.parent_qname) == ("{urn:ext}o", W + "t")
+    assert first.path == "/".join(W + step for step in ("document", "body", "p", "r", "t", "t")) + "/{urn:ext}o"
+    assert second.path == "/".join(W + step for step in ("document", "body", "p", "r", "t", "tab"))
+
+
+def test_what_the_second_parse_skips_stays_beside_what_the_pass_took():
+    _got, pkg = body_tokens("<w:p><w:madeUp/><w:r><w:t>a<w:madeUp/>b</w:t></w:r></w:p>")
+    assert [item.parent_qname for item in pkg.main_document_part.skipped] == [W + "p", W + "t"]
+
+
+@pytest.mark.parametrize("stem", CHECK76_FILES)
+def test_strict_refuses_a_part_the_pass_took_something_from(stem: str) -> None:
+    """Q3's strict load repairs, but no more than that: what went is skipped content."""
+    with pytest.raises(Docx4JException, match="strict=True"):
+        assert load(CHECK76 / f"{stem}.docx", options=LoadOptions(strict=True)).main_document_part.contents is not None
+
+
+def test_insert_ooxml_refuses_a_fragment_it_would_take_something_from():
+    """Any loss in a fragment is refused, a text element's as the parse's own."""
+    pkg = create_package()
+    before = len(pkg.body.paragraphs)
+    with pytest.raises(FragmentError, match="1 item"):
+        pkg.body.insert_ooxml(f"<w:p><w:r><w:t>a<ext:o {EXT}>b</ext:o>c</w:t></w:r></w:p>")
+    assert len(pkg.body.paragraphs) == before
+
+
+def test_a_lenient_fragment_accepts_the_loss():
+    found: list[Any] = []
+    (paragraph,) = wml.all(
+        f"<w:p><w:r><w:t>a<ext:o {EXT}>b</ext:o>c</w:t></w:r></w:p>", wrapper="body", lenient=True, _breaks=found
+    )
+    assert [(record.breaks, record.text_elements) for record in found] == [(0, 1)]
+    assert text_of(paragraph) == "ac"

@@ -339,7 +339,10 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   as Word reads it, with docx4j's three rules:
   - the break goes in a run of its own, with the paragraph mark's run properties while no run precedes it in its
     paragraph and none after one;
-  - a text element holding breaks is split round them, all its text kept, a nested `w:t` giving its text;
+  - a text element holding breaks is split round them, its text kept, a nested `w:t` giving its text. Any other `w:`
+    element in it, and one in a namespace Word doesn't know, goes with all it holds, as Word 365 reads it, and is listed
+    in `part.skipped`, where it was first read as text (CR-030 section 11, core-ts's Word check 76). `strict=True` refuses
+    such a part, and `insert_ooxml` such a fragment;
   - a break directly in `w:body` becomes the next paragraph's first run.
 
   Each of docx4j's thirteen probes reads as Word 365's save of it (`tests/fixtures/br-placement/`), `strict=True`

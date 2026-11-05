@@ -387,8 +387,9 @@ class XmlPart(Part, Generic[T]):
         report names a ``w:br`` outside a ``w:r``, or an element in a text
         element, is read as Word reads it (CR-030 section 4.1): its bytes go
         through :func:`~docx4j_py.openpackaging.breaks.repair_bytes`, and the
-        fork parses the result, whose tree and report are the part's. A clean
-        part pays the test of an empty report.
+        fork parses the result, whose tree and report are the part's, with what
+        the pass took out added to that report (section 11). A clean part pays
+        the test of an empty report.
 
         XML that is not well formed is refused by whichever parser meets it
         first, the ``mc`` passes' or the fork's, which never recovers (CR-031
@@ -423,7 +424,8 @@ class XmlPart(Part, Generic[T]):
             from docx4j_py.openpackaging import breaks
 
             if breaks.triggers(items):
-                repaired, found, texts = breaks.repair_bytes(data)
+                dropped: list[Any] = []
+                repaired, found, texts = breaks.repair_bytes(data, dropped)
                 if found or texts:
                     warnings.append(breaks.BrOutsideRun(str(self.part_name), found, texts))
                 if repaired is not data:
@@ -432,6 +434,7 @@ class XmlPart(Part, Generic[T]):
                         obj = xml_parser.from_bytes(repaired, clazz)
                     except Exception as exc:
                         raise Docx4JException(f"Problem with part {self.part_name}: {_reason(exc)}") from exc
+                    xml_parser.skipped.items.extend(dropped)
         if xml_parser.config.on_bind is None:
             # No post-bind hook on this config, so the parse left the parent
             # pointers unwired and the second walk is still needed. With the

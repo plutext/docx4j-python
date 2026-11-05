@@ -362,7 +362,8 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
 `load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `breaks.py`, CR-030's
-reading of a `w:br` outside a `w:r` (docx4j CR-073's three rules over lxml, run by `XmlPart._parse`
+reading of a `w:br` outside a `w:r` (docx4j CR-073's three rules over lxml, rule 2 narrowed to Word's
+reading by core-ts's check 76, section 11; run by `XmlPart._parse`
 only where the fork's skipped report names one, so a clean part pays the test of an empty list; the
 record is `BrOutsideRun`, `br.outside_run`, on `part.warnings` and `package.warnings`); `api.py`,
 `load()` and `create_package()`. Every store keeps the first entry of a name, compared without case
@@ -409,7 +410,9 @@ CR-002 section 12.3.
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
   `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. A part the
   CR-030 pass fully repaired is not skipped content, so it loads under `strict=True`; `wml(...)` still
-  refuses a misplaced `w:br`, while `insert_ooxml`'s fragment route repairs it. A part whose XML is
+  refuses a misplaced `w:br`, while `insert_ooxml`'s fragment route repairs it. What rule 2 takes out
+  with all it holds, an element Word doesn't know in a `w:t`, is skipped content: listed in `part.skipped`,
+  refused under strict and in a fragment (CR-030 section 11). A part whose XML is
   not well formed is refused when its content is read (CR-031): `Docx4JException` naming it and lxml's
   reason, never mended (`runtime.RECOVER`, the fork's `recover=False`), kept as `part.unreadable`. The
   load stays lazy and an untouched save writes its bytes; a relationships part not well formed refuses

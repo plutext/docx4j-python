@@ -23,10 +23,14 @@ stylesheet's templates match their input:
    without what only a mark has, where no run precedes the break in its
    paragraph, and none after one (docx4j's D1, Word's round 2);
 2. a text element holding elements becomes its stretches of text, each under
-   its own name, and its breaks, in order, in the same run; any other element in
-   it gives its text, its own tag dropped. A stretch takes the ``xml:space`` of
-   the nearest element at or above it that has one, and is kept where that is
-   ``preserve`` or it holds more than XML whitespace;
+   its own name, and its breaks, in order, in the same run. A nested text
+   element gives its text; any other ``w:`` element, and one in a namespace Word
+   doesn't know, goes with all it holds, a ``w:br`` included, as Word 365 reads
+   it (core-ts's check 76; a departure from docx4j, CR-030 section 11), and is
+   listed in ``part.skipped``. An element in no namespace, or in one Word knows,
+   gives its text, its own tag dropped, as docx4j's rule. A stretch takes the
+   ``xml:space`` of the nearest element at or above it that has one, and is kept
+   where that is ``preserve`` or it holds more than XML whitespace;
 3. a ``w:br`` directly in ``w:body`` goes into the next paragraph as its first
    run, after its ``w:pPr``, with that mark's properties; where no paragraph
    follows (or the next is one docx4j's nested-paragraph template splits), it is
@@ -58,6 +62,7 @@ import re
 from collections.abc import Iterable
 from typing import Any, ClassVar
 
+from docx4j_xsdata.formats.dataclass.parsers.skipped import SkippedNode
 from lxml import etree
 
 __all__ = ["CODE", "BrOutsideRun", "repair", "repair_bytes", "triggers"]
@@ -206,8 +211,13 @@ def triggers(skipped: Iterable[Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def repair_bytes(data: bytes) -> tuple[bytes, int, int]:
+def repair_bytes(data: bytes, dropped: list[SkippedNode] | None = None) -> tuple[bytes, int, int]:
     """A part's bytes with the rules applied, and the stylesheet's two counts.
+
+    Args:
+        data: the part's bytes.
+        dropped: given a list, receives a ``SkippedNode`` for each element rule 2
+            took out with all it holds, in the form the fork's report uses.
 
     Returns:
         ``(bytes, breaks, text_elements)``: `data` itself where the rules
@@ -216,19 +226,22 @@ def repair_bytes(data: bytes) -> tuple[bytes, int, int]:
         as :func:`~docx4j_py.openpackaging.mc_load_mode.splice_word` writes it.
     """
     root = etree.fromstring(data, _PARSER)
-    breaks, texts, changed = _repair(root)
+    breaks, texts, changed = _repair(root, dropped)
     if not changed:
         return data, breaks, texts
     return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True), breaks, texts
 
 
-def repair(root: etree._Element) -> tuple[int, int]:
-    """The rules applied to `root` in place; returns the stylesheet's two counts, ``(breaks, text_elements)``."""
-    breaks, texts, _changed = _repair(root)
+def repair(root: etree._Element, dropped: list[SkippedNode] | None = None) -> tuple[int, int]:
+    """The rules applied to `root` in place; returns the stylesheet's two counts, ``(breaks, text_elements)``.
+
+    `dropped` is as :func:`repair_bytes`'s.
+    """
+    breaks, texts, _changed = _repair(root, dropped)
     return breaks, texts
 
 
-def _repair(root: etree._Element) -> tuple[int, int, bool]:
+def _repair(root: etree._Element, dropped: list[SkippedNode] | None) -> tuple[int, int, bool]:
     breaks, texts = _counts(root)
     if breaks + texts == 0:
         return 0, 0, False
@@ -259,7 +272,7 @@ def _repair(root: etree._Element) -> tuple[int, int, bool]:
     # (2)
     for text in split:
         pieces: list[etree._Element] = []
-        _split(text, etree.QName(text).localname, pieces)
+        _split(text, etree.QName(text).localname, pieces, dropped)
         _replace(text, pieces)
     # (3): each paragraph's breaks after its w:pPr, in order
     placed: dict[etree._Element, int] = {}
@@ -413,15 +426,46 @@ def _space_of(holder: etree._Element) -> str:
     return ""
 
 
-def _split(holder: etree._Element, name: str, out: list[etree._Element]) -> None:
-    """Rule 2's ``split-text`` mode: `holder`'s text under `name`, its ``w:br`` as breaks, any other element's text."""
+def _gives_its_text(element: etree._Element) -> bool:
+    """Whether an element in a text element gives its text, ``w:br`` aside (CR-030 section 11).
+
+    Word 365 reads a nested text element's text (``br-4-t-nested``), and drops any
+    other ``w:`` element and one in a namespace it doesn't know with all it holds
+    (check 76's ``76n``, ``76u``, ``76w``, ``76z``). Word refuses a file with an
+    element in no namespace (``76x``, ``76y``), and one in a namespace it knows is
+    unmeasured, so docx4j's reading stands for both.
+    """
+    from docx4j_py.child import understood_namespaces
+
+    namespace = etree.QName(element).namespace
+    if namespace == _W:
+        return element.tag in _TEXTS
+    return not namespace or namespace in understood_namespaces()
+
+
+def _skipped(element: etree._Element) -> SkippedNode:
+    """`element`, in the form of the fork's report: its parent, and the ``/`` joined names down to it."""
+    steps = [element.tag, *(ancestor.tag for ancestor in element.iterancestors())]
+    parent = element.getparent()
+    return SkippedNode(
+        kind="element",
+        qname=element.tag,
+        parent_qname=parent.tag if parent is not None else None,
+        path="/".join(reversed(steps)),
+    )
+
+
+def _split(holder: etree._Element, name: str, out: list[etree._Element], dropped: list[SkippedNode] | None) -> None:
+    """Rule 2's ``split-text`` mode: `holder`'s text under `name`, its ``w:br`` as breaks, the text of an element that gives it."""
     _piece(holder.text, holder, name, out)
     for child in holder:
         if isinstance(child.tag, str):
             if child.tag == _BR:
                 out.append(_bare_break(child))
-            else:
-                _split(child, name, out)
+            elif _gives_its_text(child):
+                _split(child, name, out, dropped)
+            elif dropped is not None:
+                dropped.append(_skipped(child))
         # a comment or processing instruction gives nothing, the text after it its own stretch
         _piece(child.tail, holder, name, out)
 

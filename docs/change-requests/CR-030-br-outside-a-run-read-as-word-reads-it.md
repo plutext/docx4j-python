@@ -1,6 +1,6 @@
 # CR-030: A `w:br` outside a run, read as Word reads it (the port of docx4j CR-073)
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done; **the Word check passed 2026-11-03** (the user: "all opened cleanly and were identical to the word 365 saves"; section 10.10). **CR-030 is complete.**
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done; **the Word check passed 2026-11-03** (the user: "all opened cleanly and were identical to the word 365 saves"; section 10.10). **CR-030 is complete.** **Amended 2026-11-05** (the user: "fix rule 2"; section 11): after core-ts's Word check 76, an element Word doesn't know in a text element goes with all it holds and is listed in `part.skipped`. Built; its Word check is staged, not yet run.
 
 *The number:* CR-029 is the latest CR here. CR-031 is being drafted beside this one.
 
@@ -291,7 +291,7 @@ The rules are docx4j's, as section 3.1 gives them, with the stylesheet's own det
 - **Rule 2** walks the text element in document order:
   - each text node becomes an element of the outer element's name;
   - each `w:br` at any depth becomes a `w:br` with its attributes;
-  - any other element gives its text, and its own tag is dropped;
+  - any other element gives its text, and its own tag is dropped (narrowed by section 11);
   - comments and processing instructions give nothing.
 
   A stretch takes the `xml:space` of the nearest element at or above its parent that has one, and none where no
@@ -578,7 +578,7 @@ section's (the records, 10.8).
   stylesheet's `ancestor-or-self::*[...]/preceding-sibling::*[descendant-or-self::w:r]`. The run is `w:r`, then the
   copy, then a new `w:br` with every attribute of the old one and no content. It takes the break's place, and the
   break's tail.
-- **Rule 2.** The outermost text element holding an element is split. Its text, each tail and each nested element's
+- **Rule 2** (narrowed by section 11). The outermost text element holding an element is split. Its text, each tail and each nested element's
   text become pieces under its local name. A piece takes the nearest `xml:space` at or above the text's parent,
   written only where there is one, and a piece of XML whitespace alone is kept only under `preserve`
   (`str.strip(" \t\r\n")`, so U+00A0 is text). A `w:br` at any depth becomes a bare break. A comment or processing
@@ -735,3 +735,87 @@ on the share). The user's result, in Word 365: "all opened cleanly and were iden
   showed the source's. Q6's difference is in this package's reading (the text model keeps it a field code), not in
   what the save writes.
 - **No hang** and no quiet refusal, so nothing for `../docx4j-portfolio/docs/word-hangs.md`.
+
+## 11. An element Word doesn't know in a text element (amendment, 2026-11-05)
+
+Rule 2 was measured for a nested `w:t`, and docx4j's `split-text` template gives every other element's text too. core-ts's
+Word check 76 (its CR-026 sections 4.2 and 4.3 and CR-021 section 11, `33bae48`) shows Word 365 doesn't. `76n` has
+`<ext:opaque>HIDDEN WORDS</ext:opaque>` in a `w:t`, `ext` in `mc:Ignorable`. Word reads `TARGET TEXT`. This package read
+`TARGET HIDDEN WORDSTEXT`, under a warning saying "read as Word reads them", and a save wrote the words as body text, so
+content nobody had seen in Word became visible in the saved file. The user, 2026-11-05: "fix rule 2".
+
+### 11.1 The rule
+
+`_split` now takes an element in a text element by `_gives_its_text`, core-ts's `givesItsText`:
+
+| The element | Word 365 | Here |
+|---|---|---|
+| `w:br` | A break (`br-3-t-mixed`) | A break |
+| A nested text element | Its text (`br-4-t-nested`) | Its text |
+| `w:madeUp`, `w:tab` | Gone with all it holds (`76u`, `76z`) | Gone, as any other `w:` element |
+| In a namespace Word doesn't know, ignorable | Gone with all it holds, a `w:br` included (`76m`, `76n`, `76w`) | Gone |
+| The same, not ignorable | Could not repair it (`76v`) | Gone, as `76n` |
+| In no namespace | Could not repair it (`76x`, `76y`) | Its text, as docx4j |
+| In a namespace Word knows, not `w:` | Unmeasured | Its text, as docx4j |
+
+"A namespace Word knows" is `child.understood_namespaces()`, docx4j's published list. All 111 of core-ts's are in its 118.
+The seven others are one drawing and six spreadsheet namespaces.
+
+Two rows go beyond what was measured, as in core-ts: a known `w:` name holding text, a `w:r` say, goes with `w:madeUp`, since
+only `w:tab` was measured; and Word gives no reading to match in the rows it refuses.
+
+### 11.2 What goes is reported
+
+The old rule lost nothing but tags. This one loses content, so the package's rule applies: nothing is dropped silently. The
+pass lists each element it takes out in `part.skipped` (and so `package.skipped`), the code shared with core-ts (CR-033 Q9).
+
+- **The pass makes the entry.** For a nested `w:t` the fork's report names only the outer one, so filtering that report would
+  miss what went. `_skipped` writes a `SkippedNode` in the report's form, its `path` the tree as read. Its `parent_qname` is
+  `{w}t` where the fork's would be the class's `{w}RT`, and its `parent_class` is `None`.
+- **`strict=True` refuses such a part.** Q3's strict load still repairs what the pass fully repairs, the thirteen probes
+  among them. A `w:tab` in a `w:t`, which used to load under strict, is now refused, since the tab went.
+- **A fragment is refused** (`FragmentError`, unless `lenient`), since `_parse_one` already refuses any other loss. Q4's
+  `insert_ooxml` still repairs everything else.
+- **CR-033's gate needs nothing more.** Its Phase B reads `part.skipped`, so a save that would write such a part will be refused
+  unless the caller accepts the loss.
+- **What isn't listed:** an element that gives its text. Nothing read is lost, `text_elements` counts it as before, and
+  `test_a_br_in_no_namespace_keeps_the_text_whole_with_no_break` stands.
+
+`text_elements` still counts each text element. `BrOutsideRun`'s fields and message are unchanged, being agreed with core-ts.
+
+### 11.3 As built
+
+- `breaks.py`: `_gives_its_text`, `_skipped`, and a `dropped` list on `repair_bytes` and `repair`. Each still returns what it
+  did, so `canon.py` and the existing callers are unchanged.
+- `XmlPart._parse` adds the list to the second parse's report, so both callers of `_parse` see it. `scripts/roundtrip.py`
+  does the same, so its gate on skipped content holds.
+- `fragments.py`: `_repair_breaks` takes `lenient`, and `_refuse_loss` is `_parse_one`'s refusal, shared.
+
+### 11.4 Departures
+
+1. **From docx4j,** whose `split-text` template gives every element's text. Word's measurements decide, as they did for core-ts.
+   docx4j CR-073 is unreleased (17.3.6), so it can still take the same rule.
+2. **From core-ts, for now:** it doesn't yet report these (its CR-025 D9, open), and its `insertOoxml` doesn't refuse them.
+
+### 11.5 Tests and numbers
+
+- **The oracle:** `tests/fixtures/check76/`, core-ts's five readable shapes and Word's saves of them, unedited.
+- **37 new test cases** in `test_br_outside_run.py`: each file against Word's save in tokens and plain text, its report, its save
+  and its reload; the save against its repaired source; all an element holds going with it, in `w:delText` and `w:instrText` too;
+  the rows that keep docx4j's reading; the nested entry; strict; and the fragment. `test_a_tab_in_a_text_element...`'s reading
+  stands, its reason now Word's.
+- **Each half fails without its code.** Five mutants, each caught: every element giving its text, foreign namespaces keeping
+  theirs, every namespace but `w:` going, no entry in `part.skipped`, and no refusal of a fragment.
+- **Nothing Word-checked moved.** The old and new passes give the same bytes on all 201 XML parts under `word/` in the
+  `br-placement` files and `samples/`, 13 of those parts holding a shape, and report nothing dropped.
+- **The fast suite:** 8,830 passed, 8 skipped (8,793 before). `tests/test_roundtrip.py` and `tests/openpackaging/test_round_trip.py`, their slow cases included, pass.
+
+### 11.6 The Word check
+
+Staged 2026-11-05 at `vbShares/Office 2016/__tmp/python-cr030-rule2/`: this package's save of each of the five shapes. Not yet run.
+
+### 11.7 Not here
+
+- **`76t`:** a run inside an unknown `w:` element directly in a `w:p`. Word reads it, and here it is dropped and listed in
+  `part.skipped`. That's the parse, not rule 2. It waits for core-ts's third round (its CR-026 D7, open).
+- **CR-033 section 4.4's wording of `repair`,** which check 76 also bears on, is CR-033's, with the user.
