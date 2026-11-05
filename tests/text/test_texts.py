@@ -66,7 +66,7 @@ def test_the_understood_list_is_docx4js_verbatim():
 
 
 def test_the_options_are_section_10s_names():
-    assert len(OPTION_NAMES) == 28  # CR-032: duplicate_entries, after warnings; CR-027: profile, last, as in section 10's table
+    assert len(OPTION_NAMES) == 28  # CR-032: duplicate_entries, after warnings; CR-027: profile, in section 10's order
     assert OPTION_NAMES[-3:] == ("warnings", "duplicate_entries", "profile")
     assert list(TextOptions().to_dict()) == list(OPTION_NAMES)
     defaults = TextOptions().to_dict()

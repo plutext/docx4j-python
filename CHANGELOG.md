@@ -11,6 +11,29 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Added
 
+- **`profile: word-text`** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase D, section
+  [13](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md#13-phase-d-implementation-notes-2026-11-05); WD REQ-1002, docx4j `TextOptions.Profile`): `TextOptions` gains
+  `profile`, a preset of option values applied before the caller's own, so that an option set before or after it, by a
+  keyword, `set`, `of`, a mapping in any order, `include` or an attribute, stands. `word-text` is Word's Save As plain
+  text as the options reach it, list labels in; `TextOptions`' docstring lists what it does not reproduce. `math` stays
+  `latex`, since `unicodemath` is refused. Word's own text saves are an oracle for it: six of the suite's 22 pass, the
+  other 16 waiting on [CR-029](docs/change-requests/CR-029-case-mapping-drop-caps-and-superscripts-in-the-text-model.md).
+- **`TextObject`** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase C, section
+  [12](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md#12-phase-c-implementation-notes-2026-11-05); WD REQ-512, docx4j CR-070): `TextRun.object`, on every `OBJECT`
+  run whatever `embedded` says, with `kind` (`embed`, `link`, `control`), `relationship_id`, `prog_id`, `part`,
+  `part_name`, `content_type`, `source` and, for an OLE 1.0 package, its `label`, `file_name` and `command`, read by a
+  small read-only compound file reader (`model/text/ole.py`), with no new dependency. `TextRun.to_dict` writes an
+  `object` member, each member left out where None.
+- **`TextOptions(embedded_filter=...)`** (WD REQ-522): under `embedded: true`, a callable `(obj, address) -> bool` asked
+  once per object that would be read, before the reading, so that a host can read an object itself. An object declined
+  contributes nothing and keeps its run and description, and no address moves. A workbook, a presentation and an OLE 1.0
+  package are asked too, though this package does not read them; admitted, they raise `content.not_read` as before. A
+  filter that raises declines, with `content.not_read` at the paragraph.
+- **`TrackedChange.author_local_time` and `author_offset`** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase B, section
+  [11](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md#11-phase-b-implementation-notes-2026-11-03); docx4j's `getAuthorLocalTime()` and `getAuthorOffset()`): what
+  Word shows, with no zone assumed, beside `date`, the instant, which is unchanged. With both known,
+  `author_local_time.replace(tzinfo=author_offset)` is `date`.
+
 - **`pkg.bound_dates_converted_as_word`**, off by default ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1b, section
   [10](docs/change-requests/CR-014-content-control-data-binding.md#10-phase-1b-implementation-notes-2026-11-05); the ports' date rule, point 3; docx4j's
   `OpcPackage.setBoundDatesConvertedAsWord`): a bound date's stored `Z` or offset read as an instant and shown in
@@ -100,6 +123,20 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   untouched. The default is `check=False`; the test suite saves checked throughout.
 
 ### Changed
+
+- **`TextRevision.date` and `TextComment.date` are in WD REQ-702's form** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase B, Q2; docx4j
+  `fc71f12e6`), in every view, where they were `w:date` as stored: the author's local time with its offset where
+  `dateUtc` gives it (`2026-10-31T11:00:00+11:00`), with no designator where it does not (`2026-10-31T11:00:00`), `dateUtc`
+  with `Z` where it is alone. The `Z` Word stores on `w:date` is never written, and under `markup_detail: author_date` a
+  mark with no date writes `author: ` alone.
+- **`altchunk.not_expanded`'s selector is the chunk's part name** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase A, section
+  [10](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md#10-phase-a-implementation-notes-2026-11-02); WD REQ-513, docx4j CR-070), the warning still carrying the
+  content type, and `TextWarning.selector` is the branch, else the part name, else the content type.
+- **A warning raised one level down names the outer part**, the embedded package's or the chunk's (WD REQ-801), the one
+  the host package has, where it named the inner package's.
+- **A main document part that cannot be read raises `Docx4JException` naming it** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase A, section 4.6;
+  docx4j `4fdd80063`), where the result was empty. So does `extract(part)` for a header or footer, which raised
+  `TypeError`. One level down it is `content.not_read`.
 
 - **A bound control Word reads as plain text holds one paragraph** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) Phase 1, section
   [9](docs/change-requests/CR-014-content-control-data-binding.md#9-phase-1-implementation-notes-2026-11-05); docx4j-core-ts CR-002 section 61 and its check 56, Word 365). Word can't
@@ -256,6 +293,10 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   as before.
 
 ### Fixed
+
+- **Footnotes, endnotes, comments, a header, a footer or the glossary that cannot be read raise `content.not_read`**
+  ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase A, section 4.6; WD REQ-801), naming the part, where they were left out silently. The body is
+  still read.
 
 - **`update_from_content_controls` keeps a date node's form while the date is the same** ([CR-014](docs/change-requests/CR-014-content-control-data-binding.md) section 13.3, O10). It wrote
   `2026-10-22T15:05:00Z` back as `2026-10-22T15:05:00`, which Word reads as local time. A changed date is written in Word's form, as before.

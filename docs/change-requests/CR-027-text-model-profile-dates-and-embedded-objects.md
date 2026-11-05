@@ -1,6 +1,6 @@
 # CR-027: the text model's WD 0.41 to 0.49 additions --- `profile: word-text`, revision and comment dates as the author's clock, embedded objects for a host, and the conformance suite re-pinned
 
-**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending; **Phase B implemented 2026-11-03** (section 11: `a21e8cc`, `7f42fa1`): revision and comment dates in REQ-702's form, `TrackedChange.author_local_time` and `author_offset`, docx4j's `revisions/cr068/` copied at the tag; no suite row, agreement row or golden moved. **Amended 2026-11-05** (WD 0.84, section 4.1): `word-text` sets `list_labels: true`. It covers five
+**Status:** Proposed 2026-10-31, at the user's word ("fold it into CR-027 with profile and the CR-070 items"); **decided 2026-11-02**, every question as recommended (Q6 on 2026-11-01; section 8), and amended the same day (unreadable parts); **Phase A implemented 2026-11-02** (section 10: `1065287`, `5844c0b`, `c7d4c81`, `4ee1849`): the suite at the tag, `phase0/` 1,294 pass, 0 fail, 478 pending and `dpp/` 3 pass, 189 pending; **Phase B implemented 2026-11-03** (section 11: `a21e8cc`, `7f42fa1`): revision and comment dates in REQ-702's form, `TrackedChange.author_local_time` and `author_offset`, docx4j's `revisions/cr068/` copied at the tag; no suite row, agreement row or golden moved. **Amended 2026-11-05** (WD 0.84, section 4.1): `word-text` sets `list_labels: true`. **Phase C implemented 2026-11-05** (section 12: `d8f3faf`, `6f0d15a`): `TextObject` on every object run, the OLE 1.0 names (`model/text/ole.py`), `embedded_filter`, the JSON's `object` member; no suite row moved. **Phase D implemented 2026-11-05** (section 13: `1b6192c`, `6f0d15a`): `profile: word-text`, `dpp/` 9 pass, 0 fail, 183 pending, six of Word's own text saves checked. **Phase E done 2026-11-05** (section 14): the records. **Complete**; no Word check (section 5). It covers five
 pieces of the text model (CR-011's `model/text/`) that the WD and docx4j have added since this repository's suite
 copy was pinned at docx4j `198d015a3`:
 - WD 0.41's `profile` (REQ-1002);
@@ -919,3 +919,273 @@ No Word check: extraction output is not a file, and nothing this package saves c
    inspector is ported (section 4.5), its form is docx4j's inspector's, not REQ-702's.
 3. Phase E's CHANGELOG entries for this phase are section 6's, and CLAUDE.md's status follows at Phase E. The index's
    row records Phase B now. The portfolio's `python/CR-027.B` goes through the docx4j-portfolio session.
+
+## 12. Phase C (implementation notes, 2026-11-05)
+
+Phase C as built: section 4.3's objects (the warnings were Phase A's), with section 5's Phase C bullet. The user ordered
+C, D and E together on 2026-11-05. docx4j was read at its tag `docx4j-17.3.5` (`64fae4cd0`), by `git show`:
+`TextObject`, `EmbeddedFilter`, `Embedded`, `Extractor.object`, `control` and `admitted`, `EmbeddedObjectsTest`, and its
+copy of POI (`Ole10Native`, `IOUtils`, `StringUtil`, `LittleEndianByteArrayInputStream`, `DirectoryNode`). The first
+three and the test are the same at `VERSION_17_3_6`'s head.
+
+**Commits.** `d8f3faf` (the code and the tests), `6f0d15a` (two packages Word wrote, 12.3), and this section's.
+
+### 12.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the object | `model/text/result.py` | `TextObject`, `TextRun.object`, `TextRun.to_dict`'s `object` member |
+| the reader | `model/text/ole.py` (new; in `KEEP`) | `root_stream`, `record_names`, `package_names` |
+| the names | `model/text/embedded.py` | `ole10_names(part)`, docx4j's `Embedded.ole10Names` |
+| the extractor | `model/text/extractor.py` | `_object`, `_ole_object`, `_control`, `_admitted`; `_object_run` takes the description |
+| the option | `model/text/options.py` | `embedded_filter`, by name like `image_describer`; the `EmbeddedFilter` alias |
+| the exports | `model/text/__init__.py` | `TextObject`, `EmbeddedFilter` |
+| the tests | `tests/text/test_embedded_objects.py`, `test_ole.py` (new); `ole_writer.py` (new, not a test); `mini_docx.py` gains `external` | 12.5 |
+
+### 12.2 The object and the filter, as built
+
+- **`TextObject`** is a frozen slotted dataclass, as `TextImage` is. `part_name` and `content_type` are properties over
+  `part`, as docx4j's getters are. `__str__` is docx4j's `toString`, in the WD's lower-case kinds.
+- **`kind`:** a part whose content type is exactly one of the two ActiveX types is `control`, ahead of `link`, as docx4j
+  orders them, though a link has no part to test. `o:OLEObject/@Type` is `link` only as exactly `Link`: a value the exact
+  parse keeps as text reads as `embed`, as JAXB's null does.
+- **An OLE 1.0 package** is a ProgID beginning `package` in any case, whose part is a `BinaryPart` and no
+  `EmbeddedPackagePart`. Its names are read when the run is made, under every option, one level down too. Reading the
+  bytes unmarshals nothing (REQ-204; a test holds it).
+- **The filter** is asked in `_ole_object`, with the address `para.objects` gives, which counts before the question, so a
+  decline moves no address. A link, a control and a plain OLE binary are not asked and take no index. Nested, `embedded`
+  is off, so nothing is asked one level down.
+- **A filter that raises** (any `Exception`) declines, with `content.not_read` at `prefix.rpartition("/")[0]`, the
+  anchoring paragraph's address.
+- **A package the filter admits and this package defers** raises `content.not_read` from `_EmbeddedObject.emit`, as it
+  did, at the same address (Q4). One the filter declines raises nothing, so a host that takes them sees no warning.
+- **The wildcard forms.** A `w:object` in a kept branch is no root element, so a wildcard (CR-012 Phase C). `_object`
+  reads it, its `o:OLEObject` and its `w:control` by name, with the same members; `source` is then the `AnyElement`.
+
+### 12.3 The reader, as built
+
+- **`_CompoundFile`** reads the header, the FAT's sector list (the header's 109, then the DIFAT's), the directory's chain
+  and, for one stream, its chain: the FAT's, or the mini FAT's and the mini stream's under 4,096 bytes. The sector size is
+  the header's (512 or 4,096, its byte 30, as POI reads it); the mini sector and the cutoff are constants, as POI holds
+  them.
+- **The bound.** A chain or a DIFAT that meets itself, and a FAT sector listed twice, are refused, so a walk is bounded by
+  the file. A stream is read only as far as its size, itself held to POI's 100,000,000 bytes. A free sector ends a chain,
+  as one does in a damaged file POI reads.
+- **`record_names`** is `Ole10Native(byte[], int)`, its failures kept: a record that ends at its data's end gives no names
+  (POI's `readShort` throws there), and so does one whose UTF-16 names fail, though none is kept. A negative length is
+  refused at once. In POI it reads on and fails at the next read or the string's conversion; the result is the same.
+- **`label` and `file_name`** decode as Java decodes. Python's `errors="replace"` agrees with JDK 21 but for an encoded
+  surrogate (`ED A0 80`), three U+FFFD in Python and one in Java, so those three bytes are replaced first.
+- **`package_names`** catches everything, as `ole10Names` does. A compact or unparsed record gives None, where POI gives
+  three nulls: the same to `TextObject`.
+
+**Held to POI.** `EmbeddedObjectsTest`'s oracle is POI's reading, so a scratch harness, not committed, ran docx4j's
+`Ole10Native` and `POIFSFileSystem` from `docx4j-core`'s jar against this reader:
+
+| what | cases | POI gives names | differ |
+|---|---|---|---|
+| `Ole10Native` records: valid ones, each cut at every length, every limit at and past it, and 60,000 with random bytes changed | 60,327 | 22,110 | **0** |
+| intact files: POI's two, `probe41.bin`, the writer's forms, the names without case, a storage of the name, no stream | 22 | | **0** |
+| the same files damaged, 1 to 4 bytes changed, some cut short | 40,000 | | 714, 1.8%, each a damaged structure (12.6, item 5) |
+
+The harness stands in the scratch directory, and needs `docx4j-core`'s jar and commons-io, so it is no test here. What
+it found is: an encoded surrogate (12.3), a sector shift POI reads by its one byte, and counts POI reads as signed.
+
+Two packages Word wrote are in the sibling checkout, `OLE/dragged txt.docx` and `OLE/create new bitmap.docx`. POI reads the
+first's names and the second as `unparsed`, and so does this reader. `test_ole.py` reads them from `../docx4j`, skipped
+without it, since section 5 settles no copy.
+
+### 12.4 The test bytes
+
+Section 5 left it to this phase: the test writer, as recommended. `tests/text/ole_writer.py` is `ole10_record` (POI's
+`writeOut` in its parsed form) and `compound_file` (version 3 or 4, the streams under 4,096 bytes in the mini stream,
+a DIFAT past 109 FAT sectors). The harness read the writer's files through POI too, so it writes what POI reads.
+
+### 12.5 The tests and the numbers
+
+- `tests/text/test_embedded_objects.py`, new, 25 tests:
+  - `EmbeddedObjectsTest`'s nine, section 5's four over OOXML objects;
+  - the object's edges: a link with an internal relationship, a relationship that does not resolve, an absent `Type`, the
+    binary ActiveX type, a wildcard `w:object`, a run that is no object's (6);
+  - the JSON and `__str__` (3);
+  - the filter over docx4j's OLE 1.0 packages, as docx4j asks it, and declining them all; an object that would not be read;
+    one level down (4);
+  - the option (2);
+  - a reading leaving every part as it was (1).
+- `tests/text/test_ole.py`, new, 105 tests:
+  - the compound file (36): POI's file, Word's two, eight stream sizes in each sector size (16), the DIFAT, the name without
+    case, what gives no names, chains and a directory that meet themselves, 1,500 damaged files raising nothing;
+  - the record (69): the control first byte's 32 values, `flags1`, a high first byte, a malformed name, POI's limits, the
+    UTF-16 names, a record failing after its data, and the total size.
+- The fast suite after this phase: 8,751 passed, 8 skipped, at `d8f3faf` with the user's commits beside it.
+- ruff (`check`, `format --check`, at 120 columns): the new files are clean. `extractor.py` has `check`'s one S110 from
+  10.7, and `format` the hunks it had.
+
+### 12.6 Departures, with why
+
+1. **Four of `EmbeddedObjectsTest`'s nine** are section 5's: the three filter tests over embedded documents, so their
+   strings and addresses are `body/0/object:1/body/0`, where docx4j's are `body/0/object:1/0`, and `filterOverTheProbe`'s
+   admitted OLE package and presentation are `content.not_read`. docx4j's asks and declines over OLE 1.0 packages are
+   held by a test of their own.
+2. **A filter's result is its truth**: `bool(...)`, so a filter returning None declines. Java's returns a `boolean`.
+3. **`Exception`** for Java's `RuntimeException`: Python has no checked exceptions.
+4. **The kinds** are the WD's lower case, as section 4.3 has them, where docx4j's enum is upper case, in `__str__` too.
+5. **A damaged compound file.** POI reads the whole structure at load, this reader what one stream needs, so they
+   differ only on a damaged file. A broken mini FAT with the stream in FAT sectors gives names here and fails in POI; a
+   broken mini stream chain past the stream's end fails here and reads in POI. Every intact file agrees (12.3).
+6. **`source`** of a wildcard `w:object` is an `AnyElement` (12.2). docx4j's is typed.
+
+### 12.7 Pre-existing tests whose expectation changed, and why
+
+None. `test_objects_are_object_runs_with_their_progids` stands: `prog_id` is unchanged.
+
+### 12.8 Found, and left open
+
+1. **A record ending at its data's end gives no names** (12.3), by POI's `readShort`, so by docx4j's. Word's package
+   (`dragged txt.docx`) has its UTF-16 names after the data, so it reads. A writer that stops at the data would not, and
+   no measurement says one exists: section 4.3's rule is followed.
+2. **REQ-512's Markdown clause** ("the preview picture with the alt text `Embedded object: <ProgID>`") is built in neither
+   docx4j nor here: no source has the string, and no suite row asks for it. It is CR-011's clause, not this phase's.
+
+## 13. Phase D (implementation notes, 2026-11-05)
+
+Phase D as built: section 4.1, its amendment of 2026-11-05 with it, and section 5's Phase D bullet. docx4j was read at its
+tag, by `git show`: `TextOptions`, `TextOptionsProfileTest`. The one value after the tag is `87c421731`'s.
+
+**Commits.** `1b6192c` (the code, the tests, the memo and `conformance-dpp.tsv`), `6f0d15a` (one more test, 13.9), and this section's.
+
+### 13.1 What landed
+
+| piece | where | what |
+|---|---|---|
+| the option | `model/text/options.py` | `profile`, last in `OPTION_NAMES` and `to_dict`; `_explicit`; `__setattr__`; `set` over a private `_apply`; `_apply_profile`; `_WORD_TEXT`, `_PROFILES` |
+| the NOTE | `TextOptions`' docstring | what the preset does not reproduce |
+| the adapter | `tests/text/adapter.py` | REQ-1002 advertised, out of `NOT_ADVERTISED` |
+| the report | `tests/text/conformance-dpp.tsv` | 13.5 |
+| the memo | `tests/fixtures/fields-fun-cr067/` | `one-file-many-readings.docx` at the tag, `SHA1SUMS`, `README.md`: section 5's own copy, CR-026 not having landed; the blob is docx4j's |
+| the tests | `tests/text/test_text_options_profile.py` (new); `test_conformance.py`, `test_texts.py`, `test_duplicate_entry_warnings.py` | 13.6 |
+
+### 13.2 The recording, as built
+
+- **`__setattr__`** assigns, then records a name in `_RECORDED`, every option but `profile`. Beyond the options it costs
+  one set lookup.
+- **`__init__`** assigns its defaults through it and clears `_explicit` before the keywords, so a default is nobody's.
+  That is section 4.1's "past the recording" by its result.
+- **`set`** is `_apply` and a record. `_apply` writes through `object.__setattr__`, so the preset's own values record
+  nothing. `include(...)`, docx4j's builder, records `include`.
+- **`copy()`** writes every slot past the recording, `_explicit` as a new set.
+- **`_apply_profile`** normalises the name (`strip`, `lower`, `_` to `-`, which is docx4j's `profileOf` turned round), and
+  fills what `_explicit` lacks. None clears the name and takes nothing back, as docx4j's `profile(null)` does.
+- **`to_dict`** carries `profile` last, so that `TextOptions.of(options.to_dict())` gives the same options: every other
+  option is then the caller's, and the preset fills nothing.
+
+### 13.3 The preset
+
+`_WORD_TEXT` is section 2.1's 24 values, `list_labels: true` among them, and `math: latex`. `TextOptions.java`'s log after
+`0cf4fb38a`, each commit's change to `WORD_TEXT_VALUES`:
+
+| commit | the preset | here |
+|---|---|---|
+| `1560ab379` (CR-070) | nothing | |
+| `75b9bdb54` (CR-069 phase 1) | `small_caps: upper` | CR-029's (4.1) |
+| `15c66769f` (CR-069 phase 2) | `drop_caps: asis` | CR-029's (4.1) |
+| `7af22e9dd` (WD 0.80) | nothing; a new option, `default_language`, left at its default | CR-029's |
+| `87c421731` (WD 0.84) | `list_labels: true` | taken (4.1's amendment) |
+
+So nothing moved beyond what section 4.1 says. docx4j's has 26 values, this 24.
+
+### 13.4 The NOTE
+
+`TextOptions`' docstring holds section 2.1's list with 4.1's addition, each with what the text has instead: the notes' and
+comments' forms, CRLF lines and CR cells, the one space after every label, folded hyphens, Word's linear math and `math:
+latex`, and the three accidents. It adds the ANSI code page, which WD REQ-1002's NOTE lists and section 2.1 does not, since
+the WD asks for "at least those the NOTE below lists". A test holds each phrase.
+
+### 13.5 The suite, the agreement table and the goldens
+
+Against section 11.5's numbers:
+
+| report | section 11.5 | after this phase |
+|---|---|---|
+| `phase0/` | 1,294 pass, 0 fail, 478 pending of 1,772; goldens 12 of 12 | the same, byte for byte |
+| `dpp/` | 3, 0 and 189 of 192; goldens 0 of 2 | **9, 0 and 183 of 192**; goldens 0 of 2 |
+
+Every row of `conformance-dpp.tsv` that moved, 22, all `word-saves.tsv`'s:
+
+- **6 from PENDING to PASS:** `bisect/control.txt`, `C03`, `C04`, `C08`, `C09`, `C10`, as section 4.4 says. Word's own saves
+  are now an oracle for `profile: word-text`.
+- **16 still PENDING, the reason's statement list losing REQ-1002:** `C02` (REQ-521), `C05` and the twelve under `caps/`
+  (REQ-607), `C06` and `C07` (REQ-710). Their phases are unchanged.
+- The pending reasons `phase 1` (5) and `phase 2` (1) are gone. The rest are 10.4's: CR-069 phase 1, 118; phase 2, 7; phase 3,
+  52; phase 4, 4; the inspector, 2.
+
+`tests/text/agreement-docx4j.tsv` and the goldens do not move: the preset is opt-in, and no row of them uses it. The objects
+add no text: `conformance.tsv` was byte for byte the same after Phase C.
+
+**What the six do not show.** Each of the six also passes under the default options: their documents hold nothing the
+preset changes. They show the preset takes nothing away from Word's text, not that each value is Word's. The 16 are where
+the values bite, and they wait on CR-029.
+
+### 13.6 The tests and the numbers
+
+- `tests/text/test_text_options_profile.py`, new, 40 tests: `TextOptionsProfileTest`'s four, its unknown name over 5 forms;
+  the 24 values, and nothing else moved; each route in either order (6); attribute assignment and `include`; `comments:
+  false` (13.9); the defaults and `copy()` recording nothing; the name's 6 forms; `to_dict`, a round trip, `repr`;
+  `check_implemented`; the memo's copy (2); the docstring's list; a list label under each `w:suff` (3).
+- `test_conformance.py`: `test_dpp_holds_what_holds_before_cr_069` and `NOT_ADVERTISED`'s set.
+
+### 13.7 Departures, with why
+
+1. **`profile` is a property over a `_profile` slot**, where section 4.1 says a slot. As a slot, `opts.profile = "word-text"`
+   would set the name and apply nothing, and `to_dict` would then say so falsely. Assigning applies it, as `comments` is a
+   property over `_comments`.
+2. **24 values, not the tag's 26** (4.1), and `list_labels` from after the tag (4.1's amendment).
+3. **`TextOptionError`** (reason `invalid`) for Java's `IllegalArgumentException`, as every refusal here is.
+4. **The ANSI code page** in the docstring, beyond section 2.1's list (13.4).
+5. **`set` records any name it accepts**, as docx4j's does, the hooks (`image_describer`, `embedded_filter`, `field_user`)
+   among them. `__setattr__` records only section 10's names. No preset names a hook, so neither shows.
+
+### 13.8 Pre-existing tests whose expectation changed, and why
+
+- `test_texts.py::test_the_options_are_section_10s_names`: 28 names, `profile` last.
+- `test_duplicate_entry_warnings.py::test_the_option_is_accepted_by_name_with_its_two_values`: `duplicate_entries` is
+  second to last.
+- `test_conformance.py`'s two, for 13.5.
+
+### 13.9 Found, and left open
+
+1. **A caller's `comments: false` does not hold under the preset**, unless the caller sets `include` too. `comments` is
+   true where `include` names it, as docx4j's `isComments()` is, and the preset's `include` names it. That is docx4j's
+   reading, so it is built and pinned (`test_comments_false_under_the_preset_is_docx4js_reading`), but WD REQ-1002 says a
+   caller's option overrides the preset's. For the user.
+2. **The Word-save comparison splits at a tab, not at a space.** WD 0.79 has it split at a space too and tolerate Word's
+   space after a label. The harness is at the tag and `dpp/`'s 22 saves hold no list, so nothing shows. A later re-pin brings
+   it.
+3. **`default_language`** (docx4j `7af22e9dd`, after the tag) is no option here. CR-029 is amended for it.
+
+## 14. Phase E (implementation notes, 2026-11-05)
+
+The records, as section 6 lists them: `CHANGELOG.md`'s Added, Changed and Fixed entries for all of CR-027; `CLAUDE.md`'s
+status and file list; the index's row; `tests/README.md`'s rows, the three new test files, `ole_writer.py`, the memo, and
+the `dpp/` and option counts; this CR's Status line. The registry goes through the docx4j-portfolio session.
+
+**Commits.** This section's.
+
+### 14.1 The gates
+
+Run together, after Phases C and D, at `6f0d15a`. The records' commit reflows one call in `extractor.py` and one comment in
+`test_texts.py`, and `tests/text/` passed again after it.
+
+| gate | result |
+|---|---|
+| the full suite | 10,789 passed, 8 skipped, 0 failed (7 min 55 s). At `1b6192c`, 10,786 |
+| the fast suite | 8,800 collected, 8 skipped, by count, all within the full run. Its last run of its own, after Phase C: 8,751 passed, 8 skipped, 0 failed |
+| `scripts/roundtrip.py --models-module docx4j_py.wml --runtime docx4j_xsdata` | 50 of 50 parts canonically identical, 0 differences, 0 skipped, 34 benign respellings (`boolean-spelling`) |
+| `codegen/generate.sh --check` | two generations byte identical (321 modules); the generated tree unchanged, and `ole.py` kept |
+| `scripts/compare_acceptance.py` | `out/acceptance/` copied before Phase C and rebuilt by `scripts/acceptance.py` after: 17 artefacts, 246 entries, 0 differ beyond the wall-clock dates. A build at `4095345` itself gives the same |
+| `conformance.py` | as 13.5: `phase0/` 1,294, 0, 478 of 1,772, goldens 12 of 12; `dpp/` 9, 0, 183 of 192, goldens 0 of 2; each report byte for byte the committed one |
+| `tests/text/agreement-docx4j.tsv` | unchanged |
+| ruff on the changed files | no new finding. The new files are clean; `extractor.py`'s one `check` finding (S110) and the formatter's hunks in the existing files are as they were |
+
+No Word check: section 5. Extraction output is not a file, and nothing this CR adds is written to one. `compare_acceptance.py`
+says the same of what is saved.

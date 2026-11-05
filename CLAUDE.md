@@ -140,6 +140,14 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   `CREATEDATE`/`SAVEDATE` an instant in that zone to the minute, `INFO`, `SECTION`, `NOTEREF` and the user fields
   (`TextOptions(field_user=)`), held to Word's probes (`tests/fixtures/field-probe-cr067/`, `date-forms-cr067/`); a
   bare core-property date is UTC, a date-only `w:date` local midnight; the names are docx4j-core-ts's CR-018's.
+- **CR-027** (the text model's WD 0.41 to 0.49 additions, at docx4j's `docx4j-17.3.5`): decided 2026-11-02; complete
+  2026-11-05. A, the suite re-pinned at the tag with `dpp/`, part-named warnings and a part the text model cannot read
+  named; B, revision and comment dates in REQ-702's form (`model/revisions/dates.py`), `TrackedChange.author_local_time`
+  and `author_offset`; C, `TextObject` on every object run, an OLE 1.0 package's names (`model/text/ole.py`, a read-only
+  compound file reader) and `TextOptions(embedded_filter=...)` (REQ-522); D, `profile: word-text` (REQ-1002), every route
+  of setting an option recorded so that the preset fills the rest, its 24 values with `list_labels: true` after docx4j
+  `87c421731`, `drop_caps` and `small_caps` being CR-029's; E, the records. `phase0/` 1,294 pass, 0 fail, 478 pending;
+  `dpp/` 9, 0, 183, six of Word's own text saves checked. No Word check: extraction writes no file.
 
 `REPORT.md` is the original xsdata feasibility experiment. WordprocessingML only until CR-001 D
 and CR-002 C.
@@ -253,7 +261,9 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `values.py`'s; `theme_colors._slot_colour` is Phase C's seam for `DrawingMLColors`); and
   CR-018's `model/values.py` (Word's on/off, enumeration and colour readers), with CR-020's
   `model/word_integers.py` (Word's 16-bit reading of an integer, per row of CR-022's table) and CR-025's
-  `model/dates.py` (the package's zone, where an instant meets a clock)
+  `model/dates.py` (the package's zone, where an instant meets a clock), and CR-027's
+  `model/revisions/dates.py` (a stamp as the author's clock, docx4j's `RevisionDates`) and `model/text/ole.py` (an OLE
+  compound file's one stream, an OLE 1.0 package's names)
 - `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
   `understood-namespaces.txt` (docx4j's published understood list, copied at `198d015a3`; CR-011),
   and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office

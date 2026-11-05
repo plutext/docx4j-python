@@ -1947,7 +1947,9 @@ class Extractor:
                 return
             if is_any_element(item) and item.qname == _O_OLE_OBJECT:
                 attributes = item.attributes or {}
-                self._ole_object(obj, attributes.get("ProgID"), attributes.get(_R_ID), attributes.get("Type"), para, state)
+                self._ole_object(
+                    obj, attributes.get("ProgID"), attributes.get(_R_ID), attributes.get("Type"), para, state
+                )
                 return
             if is_any_element(item) and item.qname == _W_CONTROL:
                 self._control(item, obj, para, state)

@@ -157,7 +157,7 @@ def test_comments_false_under_the_preset_is_docx4js_reading():
     """docx4j's ``isComments()`` is ``comments || include.contains(COMMENTS)``, and the preset's ``include`` names them.
 
     So a caller's ``comments: false`` holds only with an ``include`` of its
-    own (section 13.8's open point).
+    own (section 13.9's open point).
     """
     assert TextOptions(comments=False, profile="word-text").comments
     assert not TextOptions(comments=False, include=[], profile="word-text").comments
