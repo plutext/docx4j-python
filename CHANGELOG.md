@@ -294,6 +294,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **`w:numId 0` clears every inherited left, hanging and first-line indent, as Word does**
+  ([CR-036](docs/change-requests/CR-036-numid-0-clears-inherited-indents.md), docx4j `9e3100351`): a style's own and a base
+  style's too, where only what equalled the level's went. The right indent stays, and only a `w:ind` stated with the
+  `w:numId 0`, or below it, counts. It applies where the inherited `w:numPr` names a list that exists. For such a
+  paragraph `Paragraph.left_indent` and the other indent getters, the text model's `indent` and Markdown's style indent
+  change; nothing saved does.
+
 - **Footnotes, endnotes, comments, a header, a footer or the glossary that cannot be read raise `content.not_read`**
   ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase A, section 4.6; WD REQ-801), naming the part, where they were left out silently. The body is
   still read.

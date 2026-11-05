@@ -17,6 +17,7 @@ TypeScript port does.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any, Protocol
 
 from docx4j_py.model.property_catalogue import (
@@ -35,6 +36,7 @@ from docx4j_py.model.property_catalogue import (
     named_property,
     unset_catalogue,
 )
+from docx4j_py.model.values import integer
 
 __all__ = [
     "CYCLE_LIMIT",
@@ -74,7 +76,12 @@ logger = logging.getLogger(__name__)
 
 
 class NumberingIndents(Protocol):
-    """What the paragraph merge needs from the numbering part: a level's ``w:ind``."""
+    """What the paragraph merge needs from the numbering part: a level's ``w:ind``, and whether a list exists."""
+
+    @property
+    def instance_list_definitions(self) -> Mapping[str, Any]:
+        """The lists by ``w:numId``, as text."""
+        ...  # pragma: no cover
 
     def get_ind(self, num_pr: Any) -> Any:
         """The indent the level a ``w:numPr`` names contributes, or None."""
@@ -308,16 +315,30 @@ def toggle(upper: Any, lower: Any, document_default: Any) -> Any:
 
 
 def numbering_off(num_pr: Any) -> bool:
-    """Whether this ``w:numPr`` says "not numbered": ``w:numId w:val="0"`` (ECMA-376 17.9.18)."""
-    return num_pr is not None and num_pr.num_id is not None and num_pr.num_id.val == 0
+    """Whether this ``w:numPr`` says "not numbered": ``w:numId w:val="0"`` (ECMA-376 17.9.18), as Word reads it (CR-021)."""
+    return num_pr is not None and num_pr.num_id is not None and integer(num_pr.num_id.val) == 0
 
 
-def _drop_numbering_ind(ind: Any, from_level: Any) -> None:
-    """Take out of an indent the components a numbering level contributed."""
-    for name in ("left", "right", "hanging", "first_line", "start", "end"):
-        contributed = getattr(from_level, name)
-        if contributed is not None and contributed == getattr(ind, name):
-            setattr(ind, name, None)
+def _drop_left_and_first_line(ind: Any) -> None:
+    """What ``w:numId`` 0 leaves of the indent it inherits: the right one. docx4j ``dropLeftAndFirstLine``."""
+    for name in (
+        "left",
+        "left_chars",
+        "start",
+        "start_chars",
+        "hanging",
+        "hanging_chars",
+        "first_line",
+        "first_line_chars",
+    ):
+        setattr(ind, name, None)
+
+
+def _names_a_list(numbering: NumberingIndents, num_pr: Any) -> bool:
+    """Whether a ``w:numPr`` names a list the numbering part defines, its ``w:numId`` as Word reads it (CR-021)."""
+    from docx4j_py.model.listnumbering.definitions import decimal
+
+    return decimal(num_pr.num_id.val) in numbering.instance_list_definitions
 
 
 def _ind_property() -> Any:
@@ -351,9 +372,11 @@ def apply_ppr_base(source: Any, destination: Any, numbering: Any = None) -> None
     apply_catalogue(PARAGRAPH, source, destination, (IND,))
 
     # ECMA-376 17.9.18: w:numId w:val="0" takes the paragraph out of the list, so
-    # neither the level's label nor its w:ind applies --- only the paragraph's
-    # own. Only the components the inherited level contributed are dropped, so a
-    # w:ind the style states itself survives.
+    # neither the level's label nor any left, hanging or first-line indent
+    # inherited so far applies, wherever it was stated. The right indent stays,
+    # and a w:ind stated with the w:numId 0 or below it counts, since it is merged
+    # after this. Where the inherited w:numPr names no list the rule doesn't apply.
+    # docx4j 9e3100351, its probe numbering-off-style-ind; CR-036.
     if (
         numbering is not None
         and numbering_off(source.num_pr)
@@ -361,12 +384,11 @@ def apply_ppr_base(source: Any, destination: Any, numbering: Any = None) -> None
         and inherited_num_pr.num_id is not None
         and not numbering_off(inherited_num_pr)
         and destination.ind is not None
+        and _names_a_list(numbering, inherited_num_pr)
     ):
-        from_level = numbering.get_ind(inherited_num_pr)
-        if from_level is not None:
-            own = copy_leaf(destination.ind)
-            _drop_numbering_ind(own, from_level)
-            destination.ind = own
+        own = copy_leaf(destination.ind)
+        _drop_left_and_first_line(own)
+        destination.ind = own
 
     # The indent of the level of the MERGED w:numPr, since a layer may state only
     # w:ilvl (the list from the style) or only w:numId (the level from the
