@@ -16,11 +16,11 @@ compares with ``canon.compare(..., normalise=True)``, which counts those as
 ``word-normal-form``; ``--no-normalise`` writes them as read. The upstream runtime (``--runtime
 xsdata``, the pre-Phase-B baseline) has neither, and builds its own config.
 
-With the fork runtime a part whose skipped report names a ``w:br`` outside a ``w:r``, or an
-element in a text element, is read as Word reads it, as ``XmlPart`` reads it (CR-030 Q5,
-:mod:`docx4j_py.openpackaging.breaks`): repaired and parsed again, its two counts printed, and
-compared with ``canon.compare(..., repaired=True)``, which counts the repair as
-``br-outside-run``. No sample has the shape.
+With the fork runtime a part whose skipped report names a ``w:br`` outside a ``w:r``, an
+element in a text element or an unknown ``w:`` element is read as Word reads it, as ``XmlPart``
+reads it (CR-030 Q5, CR-037, :mod:`docx4j_py.openpackaging.read_through`): repaired and parsed
+again, its counts printed, and compared with ``canon.compare(..., repaired=True)``, which counts
+the repair as ``br-outside-run`` and ``read-through``. No sample has either shape.
 
 Writes per-part artefacts to out/<docx>/<part>/{orig.xml,rt.xml,diff.txt}
 and prints a markdown results table.
@@ -250,6 +250,7 @@ class PartResult:
     normalised: list = field(default_factory=list)
     #: CR-030: ``(breaks, text_elements)`` where the parse read a w:br outside a w:r as Word reads it
     br_outside_run: tuple = ()
+    read_through: int = 0
 
 
 def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
@@ -278,18 +279,19 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
         (out_dir / "error.txt").write_text(traceback.format_exc())
         return res
 
-    # --- CR-030: a w:br outside a w:r read as Word reads it, as XmlPart._parse reads it ---
+    # --- CR-030 and CR-037: a w:br outside a w:r and an unknown w: element read as Word reads them, as XmlPart._parse does ---
     # the report triggers the pass; the repaired bytes are parsed again, and that parse's
     # tree and report are the part's (the timing stays the first parse's)
     report = getattr(parser, "skipped", None)
     if repair and report is not None and len(report):
-        from docx4j_py.openpackaging import breaks
+        from docx4j_py.openpackaging import breaks, read_through
 
-        if breaks.triggers(report):
+        if read_through.triggers(report) or breaks.triggers(report):
             try:
                 dropped: list = []
-                fixed, found, texts = breaks.repair_bytes(data, dropped)
-                res.br_outside_run = (found, texts)
+                fixed, res.read_through, found, texts = read_through.repair_bytes(data, dropped)
+                if found or texts:
+                    res.br_outside_run = (found, texts)
                 if fixed is not data:
                     obj = parser.from_bytes(fixed, klass)
                     report = getattr(parser, "skipped", None)
@@ -361,7 +363,7 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     except Exception:  # noqa: BLE001
         pass
 
-    rep = canon.compare(data, new, normalise=normalise, repaired=bool(res.br_outside_run))
+    rep = canon.compare(data, new, normalise=normalise, repaired=bool(res.br_outside_run or res.read_through))
     res.identical = rep.identical
     res.counts = dict(rep.counts)
     res.samples = [(d.category, d.path[-110:], d.detail[:160]) for d in rep.diffs[:60]]
@@ -379,6 +381,8 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
                 f"br outside a run = {res.br_outside_run[0]} outside a run, "
                 f"{res.br_outside_run[1]} text elements holding elements (repaired)\n"
             )
+        if res.read_through:
+            fh.write(f"read through  = {res.read_through} unknown w: elements (repaired)\n")
         fh.write(f"skipped       = {len(res.skipped)}\n")
         for kind, path, owner in res.skipped:
             fh.write(f"    SKIPPED {kind} {path} (in {owner})\n")
@@ -513,6 +517,7 @@ def main() -> int:
                 flag = "OK " if r.ok else "ERR"
                 same = "SAME" if r.identical else "diff"
                 br = f" br.outside_run={r.br_outside_run[0]}/{r.br_outside_run[1]}" if r.br_outside_run else ""
+                br += f" read_through={r.read_through}" if r.read_through else ""
                 print(f"{flag} {same} {docx.name:38s} {name:26s} "
                       f"{r.bytes_in/1024:7.1f}K parse={r.parse_ms:7.1f}ms "
                       f"ser={r.ser_ms:7.1f}ms{br} {r.error}")
@@ -582,6 +587,7 @@ def main() -> int:
           f" {sorted(benign) if benign else ''}"
           f"\n  skipped content          {total_skipped}"
           f"\n  br outside a run         {sum(1 for r in results if r.br_outside_run)} part(s) repaired"
+          f"\n  read through             {sum(1 for r in results if r.read_through)} part(s) repaired"
           f"\n  kept values              {sum(len(r.kept) for r in results)}"
           f"\n  normalised               {sum(len(r.normalised) for r in results)}"
           f" ({'on' if args.normalise else 'off'})")

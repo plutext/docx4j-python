@@ -19,7 +19,8 @@ What it writes
     element without importing every namespace; and since CR-012 Phase B
     ``ROOT_ELEMENTS``, docx4j's WordprocessingML root elements this model does
     not declare globally (``codegen/names/root_elements.json``), with
-    ``ROOT_ELEMENT_BINDINGS``, the other classes a container binds them to.
+    ``ROOT_ELEMENT_BINDINGS``, the other classes a container binds them to; and
+    since CR-037 ``WML_ELEMENTS``, every ``w:`` element name the model holds.
 ``codegen/el_tables/<name>.json``
     the committed, human-reviewed table: which class each name resolved to, the
     scopes it was seen in, and every collision with the scope-qualified name
@@ -566,8 +567,9 @@ def emit_index(
     namespaces: dict[str, str],
     roots: dict[str, str],
     bindings: dict[str, list[str]],
+    wml_names: set[str],
 ) -> None:
-    """Write ``docx4j_py/el_index.py``: the namespace URI index, and the root elements.
+    """Write ``docx4j_py/el_index.py``: the namespace URI index, the root elements and the ``w:`` names.
 
     Two tables keyed off the set of namespaces that actually have generated
     bindings:
@@ -590,6 +592,13 @@ def emit_index(
     ``ROOT_ELEMENT_BINDINGS``
         qualified name -> the other classes a container that can hold an
         ``mc:AlternateContent`` binds the name to, where there are any.
+
+    And one that CR-037 adds:
+
+    ``WML_ELEMENTS``
+        the local name of every ``w:`` element the model holds, so that the
+        read-through pass can tell a name the model doesn't hold from a known
+        element in the wrong place, which the skipped report can't.
     """
     from docx4j_py.namespaces import NAMESPACE_TO_PREFIX
 
@@ -607,7 +616,9 @@ def emit_index(
         "(``codegen/names/root_elements.json``), each name's root class, and the\n"
         "other classes a container that can hold an ``mc:AlternateContent`` binds\n"
         "it to. Class paths are strings: ``docx4j_py.runtime`` resolves them when it\n"
-        "first needs them, so that importing this module imports no model class.\n"
+        "first needs them, so that importing this module imports no model class.\n\n"
+        "``WML_ELEMENTS`` is CR-037's: the local name of every ``w:`` element the model\n"
+        "holds, read by ``docx4j_py.openpackaging.read_through``.\n"
         '"""\n\nfrom __future__ import annotations\n\n',
         "EL_MODULES: dict[str, str] = {\n",
     ]
@@ -655,13 +666,21 @@ def emit_index(
         lines.append("    ),\n")
     lines.append("}\n\n")
     lines.append(
-        '__all__ = ["EL_MODULES", "ROOT_ELEMENTS", "ROOT_ELEMENT_BINDINGS", "UNDERSTOOD"]\n'
+        "#: CR-037: the local name of every ``w:`` element the model holds, those whose\n"
+        "#: type is a simple one included.\n"
+        "WML_ELEMENTS: frozenset[str] = frozenset(\n    {\n"
+    )
+    lines.extend(f"        {json.dumps(name)},\n" for name in sorted(wml_names))
+    lines.append("    }\n)\n\n")
+    lines.append(
+        '__all__ = ["EL_MODULES", "ROOT_ELEMENTS", "ROOT_ELEMENT_BINDINGS", "UNDERSTOOD", "WML_ELEMENTS"]\n'
     )
     path.write_text("".join(lines), encoding="utf-8")
 
 
 #: CR-012 Phase B's input: docx4j's root elements, from ``codegen/derive_names.py``.
 ROOT_ELEMENTS_TABLE = ROOT / "codegen" / "names" / "root_elements.json"
+WML_URI = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
 #: The markup-compatibility wrappers, which the branch hook looks past.
 _MC_WRAPPERS = frozenset({"AlternateContent", "AlternateContentChoice", "AlternateContentFallback"})
@@ -1079,7 +1098,9 @@ def main(argv: list[str] | None = None) -> int:
         totals["collisions"] += sum(1 for i in resolved.values() if i["aliases"])
 
     roots, bindings = root_elements(resolved_by_uri, globals_, classes, metas)
-    emit_index(PACKAGE / "el_index.py", emitted, roots, bindings)
+    wml = "{" + WML_URI + "}"
+    wml_names = {q[len(wml) :] for q in (*table, *simple, *roots) if q.startswith(wml)}
+    emit_index(PACKAGE / "el_index.py", emitted, roots, bindings, wml_names)
     engine = append_engine_footer(PACKAGE / "__init__.py")
     print(f"engine re-exports on docx4j_py: {engine}")
     print(

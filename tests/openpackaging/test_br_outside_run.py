@@ -51,8 +51,9 @@ from docx4j_py import create_package, load
 from docx4j_py.child import iter_children
 from docx4j_py.fragments import FragmentError, wml
 from docx4j_py.model.text import extract, plain_text
-from docx4j_py.openpackaging import LoadOptions, XmlPart, breaks
-from docx4j_py.openpackaging.breaks import BrOutsideRun, repair_bytes, triggers
+from docx4j_py.openpackaging import LoadOptions, XmlPart, breaks, read_through
+from docx4j_py.openpackaging.breaks import BrOutsideRun, triggers
+from docx4j_py.openpackaging.read_through import repair_bytes
 from docx4j_py.openpackaging.exceptions import Docx4JException
 from docx4j_py.openpackaging.parts.wml import FooterPart, HeaderPart
 from docx4j_py.traversal import text_of
@@ -410,7 +411,7 @@ def test_an_untouched_save_is_byte_for_byte(stem: str) -> None:
 
 def test_repair_bytes_returns_the_bytes_themselves_where_nothing_changes():
     data = document_xml("<w:p><w:r><w:t>a</w:t><w:br/></w:r></w:p>")
-    assert repair_bytes(data) == (data, 0, 0)
+    assert repair_bytes(data) == (data, 0, 0, 0)
     assert repair_bytes(data)[0] is data
 
 
@@ -499,7 +500,7 @@ def test_a_nested_text_element_holding_a_break_counts_twice():
 
 def test_a_piece_takes_the_nearest_xml_space():
     """Lines 886 to 897: the nearest ancestor's ``xml:space``, else none."""
-    data, _breaks, texts = repair_bytes(
+    data, _elements, _breaks, texts = repair_bytes(
         document_xml('<w:p><w:r><w:t xml:space="preserve"><w:t> a </w:t><w:br/></w:t><w:t>b<w:br/>c</w:t></w:r></w:p>')
     )
     assert texts == 2
@@ -783,7 +784,7 @@ def test_a_clean_part_is_parsed_once_and_the_pass_never_runs(monkeypatch: pytest
     part = pkg.main_document_part
     monkeypatch.setattr(runtime, "parser", counting_parser)
     monkeypatch.setattr(breaks, "triggers", never)
-    monkeypatch.setattr(breaks, "repair_bytes", never)
+    monkeypatch.setattr(read_through, "repair_bytes", never)
     assert part.contents is not None
     assert len(part._source_bytes()) == 790_857
     assert parses == [1]
@@ -828,7 +829,7 @@ CHECK76_FILES = {
 def test_the_check_76_files_are_core_tss():
     listed = dict(reversed(line.split()) for line in (CHECK76 / "SHA1SUMS").read_text().splitlines())
     assert set(listed) == {path.name for path in CHECK76.glob("*.docx")}
-    assert len(listed) == 10
+    assert len(listed) == 67
     for name, digest in listed.items():
         assert hashlib.sha1((CHECK76 / name).read_bytes()).hexdigest() == digest, name
 

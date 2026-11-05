@@ -148,7 +148,9 @@ class XmlPart(Part, Generic[T]):
         #: rsid binds without a record, so this, as well as :attr:`kept`, sends the part through
         #: the save's typed rows (CR-021 D6, :mod:`~docx4j_py.openpackaging.normalise`).
         self._empty_value = False
-        #: What the fork's parser skipped, per entry. Empty is the good answer.
+        #: What the fork's parser skipped, per entry, and what the repairs took out: what CR-030's rule 2
+        #: dropped, and each unknown ``w:`` element read through, though what that held stays (CR-037 Q1).
+        #: Empty is the good answer.
         self.skipped: list[Any] = []
         #: The values the last parse bound as the text they were read with (CR-018 Q16): the fork's
         #: ``SkippedReport.kept``, each a ``KeptValue`` (``reason`` ``"exact"`` for a value the exact
@@ -384,12 +386,13 @@ class XmlPart(Part, Generic[T]):
         """Parse `data` under `settings`: the tree, the parser (its skipped report), the ``mc`` content resolved, and the warnings.
 
         After the ``mc`` passes and the fork's parse, a part whose skipped
-        report names a ``w:br`` outside a ``w:r``, or an element in a text
-        element, is read as Word reads it (CR-030 section 4.1): its bytes go
-        through :func:`~docx4j_py.openpackaging.breaks.repair_bytes`, and the
-        fork parses the result, whose tree and report are the part's, with what
-        the pass took out added to that report (section 11). A clean part pays
-        the test of an empty report.
+        report names a ``w:br`` outside a ``w:r``, an element in a text element
+        or a ``w:`` element the model has no name for is read as Word reads it
+        (CR-030 section 4.1, CR-037): its bytes go through
+        :func:`~docx4j_py.openpackaging.read_through.repair_bytes`, and the fork
+        parses the result, whose tree and report are the part's, with what the
+        passes took out added to that report. A clean part pays the test of an
+        empty report.
 
         XML that is not well formed is refused by whichever parser meets it
         first, the ``mc`` passes' or the fork's, which never recovers (CR-031
@@ -420,12 +423,12 @@ class XmlPart(Part, Generic[T]):
         warnings: list[Any] = []
         items = getattr(xml_parser.skipped, "items", None)
         if items:
-            # CR-030: docx4j's parse, repair and parse again, keyed on the report rather than on a failure
-            from docx4j_py.openpackaging import breaks
+            # CR-030 and CR-037: docx4j's parse, repair and parse again, keyed on the report rather than on a failure
+            from docx4j_py.openpackaging import breaks, read_through
 
-            if breaks.triggers(items):
+            if read_through.triggers(items) or breaks.triggers(items):
                 dropped: list[Any] = []
-                repaired, found, texts = breaks.repair_bytes(data, dropped)
+                repaired, _elements, found, texts = read_through.repair_bytes(data, dropped)
                 if found or texts:
                     warnings.append(breaks.BrOutsideRun(str(self.part_name), found, texts))
                 if repaired is not data:

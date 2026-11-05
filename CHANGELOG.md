@@ -294,6 +294,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **An unknown `w:` element is read as Word 365 reads it**
+  ([CR-037](docs/change-requests/CR-037-an-unknown-element-in-a-content-host-read-as-word-reads-it.md), the port of docx4j-core-ts's
+  CR-026 D7 and D8, on its Word check 76; WD REQ-308 to REQ-312): where such an element, `w:madeUp` say, stood in a `w:p`, a
+  `w:tc` or any of the fifteen hosts measured, it went with all it held, and every reader lacked the words Word shows. Now its
+  tags go and what it held stays, at any depth, and a `w:r` it holds directly in a paragraph's `w:pPr` goes to the head of the
+  paragraph, as Word reads it. Each element is listed in `part.skipped`, though no words go, so `strict=True` still refuses and
+  `insert_ooxml` refuses such a fragment unless `lenient`. A part that was read saves in that shape, as Word's own save writes
+  it; an unread part stays byte for byte. A property in `w:pPr` or `w:rPr`, anything in a `w:t` and every host not measured
+  stay as they were. `canon.compare(..., repaired=True)` and `scripts/roundtrip.py` run the pass, counted as `read-through`.
+  docx4j still drops the element until its CR-076 is built (DI-024).
 - **`w:numId 0` clears every inherited left, hanging and first-line indent, as Word does**
   ([CR-036](docs/change-requests/CR-036-numid-0-clears-inherited-indents.md), docx4j `9e3100351`): a style's own and a base
   style's too, where only what equalled the level's went. The right indent stays, and only a `w:ind` stated with the

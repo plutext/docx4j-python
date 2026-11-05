@@ -317,7 +317,8 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
   rules are CR-001 section 14.2.
 
 `generate_el.py` also turns each generated namespace module into a package of the same name (so
-`el` is `docx4j_py.wml.el`) and writes `el_index.py`. The module name never changes. This is why
+`el` is `docx4j_py.wml.el`) and writes `el_index.py`, with `WML_ELEMENTS`, every `w:` name the model holds
+(CR-037). The module name never changes. This is why
 `KEEP` holds paths: `clean.py` leaves `wml/` holding only `builders.py`, with no `__init__.py`.
 
 ## The object model
@@ -361,7 +362,10 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
-`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `breaks.py`, CR-030's
+`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `read_through.py`, CR-037's
+reading of an unknown `w:` element (what it holds stays, in the fifteen hosts core-ts's check 76 measures; a
+direct run in a paragraph's `w:pPr` goes to the paragraph's head), run before `breaks.py` on one tree, so one
+repair and one reparse serve both, and each element it takes listed in `part.skipped`; `breaks.py`, CR-030's
 reading of a `w:br` outside a `w:r` (docx4j CR-073's three rules over lxml, rule 2 narrowed to Word's
 reading by core-ts's check 76, section 11; run by `XmlPart._parse`
 only where the fork's skipped report names one, so a clean part pays the test of an empty list; the
@@ -381,14 +385,16 @@ CR-002 section 12.3.
 - An unmarshalled part saved unchanged must be **canonically identical** to the source
   (`scripts/canon.py`'s prefix-insensitive normal form). The one tolerated category is
   `boolean-spelling` (`1` against `true`). Every other difference category must be zero. There are
-  two exceptions. One is a load in `LoadOptions(mc_load_mode="word")` (CR-012 section 4.1 item 3): a
+  three exceptions. One is a load in `LoadOptions(mc_load_mode="word")` (CR-012 section 4.1 item 3): a
   part holding a block-, row- or cell-level `mc:AlternateContent` is saved as Word's own save writes
-  it, the branches Word does not read gone. The default, `preserve`, keeps the rule. The other is a
+  it, the branches Word does not read gone. The default, `preserve`, keeps the rule. Another is a
   part whose parse read a `w:br` outside a `w:r`, or a text element holding elements, as Word reads
   it (CR-030 section 4.6; `part.warnings` holds `br.outside_run`): it is saved in the repaired shape,
   Word's own save's, under `normalise=False` too, and `canon.compare(..., repaired=True)` runs the
   source through the same pass first, counting it as `br-outside-run`, so every other category must
-  still be zero (`scripts/roundtrip.py` does both). Since CR-018 Phase A
+  still be zero (`scripts/roundtrip.py` does both). The third is a part whose parse read an unknown `w:`
+  element through (CR-037 section 3.5; `part.skipped` lists it): it is saved in that shape, and the same
+  call counts it as `read-through`. Since CR-018 Phase A
   a second category is tolerated, `word-normal-form`: the parse is exact (`runtime.parser_config()`
   sets the fork's `exact_types={bool, Enum}`, so a value not exactly a lexical form is kept as its
   text and listed in `part.kept`), and a save normalises by default (`package.save(normalise=True)`,
@@ -412,7 +418,9 @@ CR-002 section 12.3.
   CR-030 pass fully repaired is not skipped content, so it loads under `strict=True`; `wml(...)` still
   refuses a misplaced `w:br`, while `insert_ooxml`'s fragment route repairs it. What rule 2 takes out
   with all it holds, an element Word doesn't know in a `w:t`, is skipped content: listed in `part.skipped`,
-  refused under strict and in a fragment (CR-030 section 11). A part whose XML is
+  refused under strict and in a fragment (CR-030 section 11). An unknown `w:` element read through keeps what
+  it held and is listed and refused the same way, since the tags are lost (CR-037 Q1); `wml(...)` runs no such
+  pass. A part whose XML is
   not well formed is refused when its content is read (CR-031): `Docx4JException` naming it and lxml's
   reason, never mended (`runtime.RECOVER`, the fork's `recover=False`), kept as `part.unreadable`. The
   load stays lazy and an untouched save writes its bytes; a relationships part not well formed refuses

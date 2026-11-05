@@ -165,12 +165,14 @@ def _all(
 ) -> list[Any]:
     """:func:`wml`'s siblings. `_breaks` is ``insert_ooxml``'s (CR-030 Q4), and private.
 
-    Given a list, the fragment is read as Word reads a file: a ``w:br`` outside
-    a ``w:r``, and a text element holding elements, go through
-    :func:`docx4j_py.openpackaging.breaks.repair` before the parse, and the
-    list receives its :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun`,
-    named ``"the fragment"``. What the pass takes out with all it holds is a
-    loss, refused unless `lenient`, as what the parse skips is. In a
+    Given a list, the fragment is read as Word reads a file: an unknown ``w:``
+    element goes through :func:`docx4j_py.openpackaging.read_through.repair`, then
+    a ``w:br`` outside a ``w:r`` and a text element holding elements through
+    :func:`docx4j_py.openpackaging.breaks.repair`, before the parse, and the
+    list receives the latter's :class:`~docx4j_py.openpackaging.breaks.BrOutsideRun`,
+    named ``"the fragment"``. What the passes take out is a loss, refused unless
+    `lenient`, as what the parse skips is, though read through it keeps what it
+    held (CR-037 Q2). In a
     ``w:body``'s scope the synthetic root stands for the body during the pass,
     so that a ``w:br`` directly in it is rule 3's. :func:`wml` itself never
     passes it: code's own fragments are refused.
@@ -185,7 +187,8 @@ def _all(
 
 
 def _repair_breaks(root: etree._Element, wrapper: type | str | None, out: list[Any], lenient: bool) -> None:
-    """CR-030's pass over a wrapped fragment, its record appended to `out` where it found anything."""
+    """CR-037's pass and CR-030's over a wrapped fragment, the latter's record appended to `out` where it found anything."""
+    from docx4j_py.openpackaging import read_through
     from docx4j_py.openpackaging.breaks import BrOutsideRun, repair
 
     in_body = wrapper is not None and _scope_class(wrapper) is class_for(f"{{{WML_NS}}}body")
@@ -193,7 +196,8 @@ def _repair_breaks(root: etree._Element, wrapper: type | str | None, out: list[A
         root.tag = f"{{{WML_NS}}}body"
     dropped: list[Any] = []
     try:
-        breaks, texts = repair(root, dropped)
+        read_through.repair(root, dropped)
+        breaks, texts, _changed = repair(root, dropped)
     finally:
         root.tag = _WRAPPER
     if not lenient:

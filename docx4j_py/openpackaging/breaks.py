@@ -42,7 +42,9 @@ The report's ``parent_qname`` is a class's name for a choice class (``{w}RT``
 for a ``w:t``), so it is not used (CR-030 section 2.3). A clean part pays a
 scan of an empty list; an affected part is parsed, rewritten and parsed again
 (:meth:`~docx4j_py.openpackaging.parts.xml_part.XmlPart._parse`), as docx4j's
-retry after a failed unmarshal.
+retry after a failed unmarshal. CR-037's pass runs first on the same tree, so that
+one repair and one reparse serve both
+(:func:`~docx4j_py.openpackaging.read_through.repair_bytes`).
 
 The counts are the stylesheet's (``count()`` at lines 834 to 837): every
 ``w:br`` whose parent is a run container or ``w:body``, and every text element
@@ -65,7 +67,7 @@ from typing import Any, ClassVar
 from docx4j_xsdata.formats.dataclass.parsers.skipped import SkippedNode
 from lxml import etree
 
-__all__ = ["CODE", "BrOutsideRun", "repair", "repair_bytes", "triggers"]
+__all__ = ["CODE", "BrOutsideRun", "parse", "repair", "skipped_node", "triggers", "write"]
 
 #: The warning's code, agreed with core-ts through the portfolio (CR-030, settled).
 CODE = "br.outside_run"
@@ -211,37 +213,32 @@ def triggers(skipped: Iterable[Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def repair_bytes(data: bytes, dropped: list[SkippedNode] | None = None) -> tuple[bytes, int, int]:
-    """A part's bytes with the rules applied, and the stylesheet's two counts.
+def parse(data: bytes) -> etree._Element:
+    """A part's bytes as the tree the repairs work on."""
+    return etree.fromstring(data, _PARSER)
+
+
+def write(root: etree._Element) -> bytes:
+    """A repaired tree as a part's bytes, as :func:`~docx4j_py.openpackaging.mc_load_mode.splice_word` writes one."""
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def repair(root: etree._Element, dropped: list[SkippedNode] | None = None) -> tuple[int, int, bool]:
+    """The rules applied to `root` in place: the stylesheet's two counts, and whether anything changed.
+
+    :func:`~docx4j_py.openpackaging.read_through.repair_bytes` runs this on a
+    part, after its own pass.
 
     Args:
-        data: the part's bytes.
+        root: the tree, as read.
         dropped: given a list, receives a ``SkippedNode`` for each element rule 2
             took out with all it holds, in the form the fork's report uses.
 
     Returns:
-        ``(bytes, breaks, text_elements)``: `data` itself where the rules
-        changed nothing (no shape, or only a ``w:br`` no rule takes, such as
-        one in a block-level ``w:sdtContent``), else the rewritten part, written
-        as :func:`~docx4j_py.openpackaging.mc_load_mode.splice_word` writes it.
+        ``(breaks, text_elements, changed)``: `changed` is False where there was
+        no shape, or only a ``w:br`` no rule takes, such as one in a block-level
+        ``w:sdtContent``.
     """
-    root = etree.fromstring(data, _PARSER)
-    breaks, texts, changed = _repair(root, dropped)
-    if not changed:
-        return data, breaks, texts
-    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True), breaks, texts
-
-
-def repair(root: etree._Element, dropped: list[SkippedNode] | None = None) -> tuple[int, int]:
-    """The rules applied to `root` in place; returns the stylesheet's two counts, ``(breaks, text_elements)``.
-
-    `dropped` is as :func:`repair_bytes`'s.
-    """
-    breaks, texts, _changed = _repair(root, dropped)
-    return breaks, texts
-
-
-def _repair(root: etree._Element, dropped: list[SkippedNode] | None) -> tuple[int, int, bool]:
     breaks, texts = _counts(root)
     if breaks + texts == 0:
         return 0, 0, False
@@ -443,7 +440,7 @@ def _gives_its_text(element: etree._Element) -> bool:
     return not namespace or namespace in understood_namespaces()
 
 
-def _skipped(element: etree._Element) -> SkippedNode:
+def skipped_node(element: etree._Element) -> SkippedNode:
     """`element`, in the form of the fork's report: its parent, and the ``/`` joined names down to it."""
     steps = [element.tag, *(ancestor.tag for ancestor in element.iterancestors())]
     parent = element.getparent()
@@ -465,7 +462,7 @@ def _split(holder: etree._Element, name: str, out: list[etree._Element], dropped
             elif _gives_its_text(child):
                 _split(child, name, out, dropped)
             elif dropped is not None:
-                dropped.append(_skipped(child))
+                dropped.append(skipped_node(child))
         # a comment or processing instruction gives nothing, the text after it its own stretch
         _piece(child.tail, holder, name, out)
 

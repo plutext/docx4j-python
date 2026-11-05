@@ -129,8 +129,10 @@ class DiffReport:
     #: ``br-outside-run`` (CR-030 section 4.6) is a ``w:br`` outside a ``w:r``, or
     #: a text element holding elements, that the parse read as Word reads it:
     #: :func:`compare` with ``repaired=True`` runs the source through the same
-    #: pass first, counting the warning's two counts
-    BENIGN = ("boolean-spelling", "word-normal-form", "br-outside-run")
+    #: pass first, counting the warning's two counts. ``read-through`` (CR-037
+    #: section 3.5) is an unknown ``w:`` element whose tags the same call takes
+    #: away, what it held standing in its place
+    BENIGN = ("boolean-spelling", "word-normal-form", "br-outside-run", "read-through")
 
     def add(self, category: str, path: str, detail: str, limit: int = 400) -> None:
         self.counts[category] = self.counts.get(category, 0) + 1
@@ -283,18 +285,22 @@ def compare(
             any other difference is still one. An integer the serialiser
             re-spells (``"+240"`` as ``240``) is counted there too.
         repaired: `new` is a save of a part whose parse read a ``w:br``
-            outside a ``w:r`` as Word reads it (CR-030 section 4.6,
-            ``part.warnings`` holding ``br.outside_run``): run the source through
-            the same pass first (:func:`docx4j_py.openpackaging.breaks.repair_bytes`),
-            each break and each text element it counts counted as
-            ``br-outside-run``, so that any other difference is still one. It
-            comes before ``normalise``, as the parse comes before the save.
+            outside a ``w:r``, or an unknown ``w:`` element, as Word reads it
+            (CR-030 section 4.6, CR-037 section 3.5): run the source through
+            the same passes first
+            (:func:`docx4j_py.openpackaging.read_through.repair_bytes`), each
+            break and each text element they count counted as ``br-outside-run``
+            and each element read through as ``read-through``, so that any other
+            difference is still one. It comes before ``normalise``, as the parse
+            comes before the save.
     """
     rep = DiffReport()
     if repaired:
-        from docx4j_py.openpackaging.breaks import repair_bytes
+        from docx4j_py.openpackaging.read_through import repair_bytes
 
-        orig, breaks, texts = repair_bytes(orig)
+        orig, elements, breaks, texts = repair_bytes(orig)
+        for _ in range(elements):
+            rep.add("read-through", "/", "an unknown w: element, read through as Word reads it")
         for _ in range(breaks):
             rep.add("br-outside-run", "/", "a w:br outside a run, read as Word reads it")
         for _ in range(texts):
