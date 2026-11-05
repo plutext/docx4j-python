@@ -6,7 +6,7 @@
 - **core-ts's check 76** (`1ffb120`, `test/check76/`, its CR-026 section 4.4): the oracle, round 6 (`76t27`, `76t28`) included.
 - **CR-030 section 11** (complete): the pass this one runs beside, and `part.skipped` for what a pass takes out.
 
-**Counterpart:** docx4j-core-ts CR-026 section 3.7, decided with its D8, not built. docx4j CR-076, proposed and uncommitted: the same rule, its D7 the same point as D8. The WD's REQ-308 to REQ-312 (0.92, uncommitted) state it. docx4j drops the element with all it holds today (its section 2.1), so until CR-076 is built this is a difference from it, recorded as DI-024.
+**Counterpart:** docx4j-core-ts CR-026 section 3.7, decided with its D8, not built. docx4j CR-076, proposed and uncommitted: the same rule, its D7 the same point as D8. The WD's REQ-308 to REQ-312 (0.92, portfolio `9bb9299`) state it. docx4j drops the element with all it holds today (its section 2.1), so until CR-076 is built this is a difference from it, recorded as DI-024.
 
 ## 1. Why
 

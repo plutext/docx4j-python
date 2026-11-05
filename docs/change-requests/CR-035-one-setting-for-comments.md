@@ -1,9 +1,9 @@
 # CR-035: One setting for comments --- `comments: true` alone turns a comment story on, and `comments` leaves `include`
 
-**Status:** Proposed 2026-11-05, at the user's word ("why do we have both `comments: true` and `include: comments`? could we have just a single setting?", then "yes" to the recommendation). It closes CR-027 section 13.9's open point 1: a caller's `comments=False` under `profile: word-text` does not hold. Two phases (section 5), about ½ day. No Word check: nothing saved changes. It waits on the WD's change (section 3.1). Questions in section 7, each with a recommendation.
+**Status:** Proposed 2026-11-05, at the user's word ("why do we have both `comments: true` and `include: comments`? could we have just a single setting?", then "yes" to the recommendation). It closes CR-027 section 13.9's open point 1: a caller's `comments=False` under `profile: word-text` does not hold. Two phases (section 5), about ½ day. No Word check: nothing saved changes. The WD's change is committed (0.91, portfolio `9bb9299`; section 3.1), so Phase A waits only on section 7's questions. Questions in section 7, each with a recommendation.
 
 **Depends on:**
-- **The WD** (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`): the change in section 3.1, sent to the docx4j-portfolio session on 2026-11-05.
+- **The WD** (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`): the change in section 3.1, sent to the docx4j-portfolio session on 2026-11-05 and committed as 0.91 at `9bb9299` on 2026-11-06, read against section 3.1.
 - **CR-027** (complete): `profile: word-text` and `_explicit`.
 
 **Counterpart:** docx4j `org.docx4j.model.text.TextOptions` and docx4j-core-ts `src/model/text/TextOptions.mts`, the same change in each, theirs to schedule. core-ts has built it, as its CR-012 section 29 (`80a4707`, local), with one `log.warn` a process where this CR has a `DeprecationWarning`. docx4j-mcp's `TextOptionsSupport` handles these options too.
@@ -87,7 +87,7 @@ This shape is also what a released `to_dict()` writes after `include=["comments"
 
 1. **Callers of the old spelling** get a warning where they had none, and an error where a test suite treats `DeprecationWarning` as one, as this repository's does. It is the point of the warning.
 2. **The ports differ for a while.** core-ts has built this, and docx4j and this package haven't, which is a difference to record while it lasts.
-3. **The order of work.** Building before the WD changes would put this package against REQ-1002's text, so Phase A waits on it (Q3).
+3. **The order of work.** Building before the WD changed would have put this package against REQ-1002's text, so Phase A waited on it (Q3). It has changed.
 
 ## 7. Questions
 
