@@ -169,25 +169,25 @@ dpp-forks-word365.docx	8	inspect:text.near_background:Marta Okonkwo	accepted	def
 dpp-forks-word365.docx	9	inspect:text.near_background:4471-9920	accepted	default	PENDING	the inspector (CR-050); REQ-901, REQ-902, REQ-904, REQ-905, REQ-906, REQ-907
 dpp-forks-word365.docx	0	golden:dpp-forks-word365.accepted.txt	accepted	default	PENDING	CR-069 phase 3; REQ-521, REQ-607, REQ-710
 dpp-forks-word365.docx	0	golden:dpp-forks-word365.md	accepted	default	PENDING	CR-069 phase 3; REQ-521, REQ-607, REQ-710
-bisect/control.docx	0	word save:bisect/control.txt	accepted	profile: word-text	PENDING	phase 1; REQ-1002
-bisect/C02.docx	2	word save:bisect/C02.txt	accepted	profile: word-text	PENDING	CR-069 phase 2; REQ-1002, REQ-521
-bisect/C03.docx	3	word save:bisect/C03.txt	accepted	profile: word-text	PENDING	phase 1; REQ-1002
-bisect/C04.docx	4	word save:bisect/C04.txt	accepted	profile: word-text	PENDING	phase 2; REQ-1002
-bisect/C05.docx	5	word save:bisect/C05.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-bisect/C06.docx	6	word save:bisect/C06.txt	accepted	profile: word-text	PENDING	CR-069 phase 3; REQ-1002, REQ-710
-bisect/C07.docx	7	word save:bisect/C07.txt	accepted	profile: word-text	PENDING	CR-069 phase 3; REQ-1002, REQ-710
-bisect/C08.docx	8	word save:bisect/C08.txt	accepted	profile: word-text	PENDING	phase 1; REQ-1002
-bisect/C09.docx	9	word save:bisect/C09.txt	accepted	profile: word-text	PENDING	phase 1; REQ-1002
-bisect/C10.docx	10	word save:bisect/C10.txt	accepted	profile: word-text	PENDING	phase 1; REQ-1002
-caps/caps-lang4b.docx	5	word save:caps/caps-lang4b.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang4b.docx	5	word save:caps/caps-lang4b-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang5.docx	5	word save:caps/caps-lang5.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang5.docx	5	word save:caps/caps-lang5-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang6a.docx	5	word save:caps/caps-lang6a.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang6b.docx	5	word save:caps/caps-lang6b.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang7b.docx	5	word save:caps/caps-lang7b.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang7c.docx	5	word save:caps/caps-lang7c.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang7d.docx	5	word save:caps/caps-lang7d-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang7e.docx	5	word save:caps/caps-lang7e-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang7f.docx	5	word save:caps/caps-lang7f-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
-caps/caps-lang7g.docx	5	word save:caps/caps-lang7g-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-1002, REQ-607
+bisect/control.docx	0	word save:bisect/control.txt	accepted	profile: word-text	PASS	
+bisect/C02.docx	2	word save:bisect/C02.txt	accepted	profile: word-text	PENDING	CR-069 phase 2; REQ-521
+bisect/C03.docx	3	word save:bisect/C03.txt	accepted	profile: word-text	PASS	
+bisect/C04.docx	4	word save:bisect/C04.txt	accepted	profile: word-text	PASS	
+bisect/C05.docx	5	word save:bisect/C05.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+bisect/C06.docx	6	word save:bisect/C06.txt	accepted	profile: word-text	PENDING	CR-069 phase 3; REQ-710
+bisect/C07.docx	7	word save:bisect/C07.txt	accepted	profile: word-text	PENDING	CR-069 phase 3; REQ-710
+bisect/C08.docx	8	word save:bisect/C08.txt	accepted	profile: word-text	PASS	
+bisect/C09.docx	9	word save:bisect/C09.txt	accepted	profile: word-text	PASS	
+bisect/C10.docx	10	word save:bisect/C10.txt	accepted	profile: word-text	PASS	
+caps/caps-lang4b.docx	5	word save:caps/caps-lang4b.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang4b.docx	5	word save:caps/caps-lang4b-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang5.docx	5	word save:caps/caps-lang5.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang5.docx	5	word save:caps/caps-lang5-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang6a.docx	5	word save:caps/caps-lang6a.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang6b.docx	5	word save:caps/caps-lang6b.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang7b.docx	5	word save:caps/caps-lang7b.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang7c.docx	5	word save:caps/caps-lang7c.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang7d.docx	5	word save:caps/caps-lang7d-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang7e.docx	5	word save:caps/caps-lang7e-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang7f.docx	5	word save:caps/caps-lang7f-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607
+caps/caps-lang7g.docx	5	word save:caps/caps-lang7g-utf8.txt	accepted	profile: word-text	PENDING	CR-069 phase 1; REQ-607

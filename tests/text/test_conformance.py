@@ -163,17 +163,19 @@ def test_only_docx4js_pending_checks_the_inspectors_and_q7s_pend(adapter_run):
 
 
 def test_dpp_holds_what_holds_before_cr_069(dpp_run):
-    """``dpp/``: the stored ``H₂O`` checked in three views; the rest pends on CR-069's phase or on REQ-1002.
+    """``dpp/``: the stored ``H₂O`` in three views and six of Word's saves checked; the rest pends on CR-069's phase.
 
     docx4j's ``dppSuiteIsCheckedOrPendingOnItsPhase``, as this package
     advertises: its CR-069 rows (REQ-607, REQ-521, REQ-710, the inspector's
-    ``text.formatting_join``) come with CR-029, ``profile: word-text`` with
-    CR-027 Phase D, so Word's 22 saves pend with them.
+    ``text.formatting_join``) come with CR-029. Since CR-027 Phase D
+    (``profile: word-text``) the six saves that cite only REQ-1002 and REQ-605
+    are checks, each Word's own save of its fixture, and the other 16 pend on
+    the statement beside it.
     """
     report = dpp_run.report()
     for view in ("accepted", "original", "markup"):
         assert f"caps/caps-lang5.docx\t5\tH\u2082O\t{view}\tdefault\tPASS\t" in report
-    assert (dpp_run.count_of("PASS"), dpp_run.count_of("FAIL"), dpp_run.count_of("PENDING")) == (3, 0, 189)
+    assert (dpp_run.count_of("PASS"), dpp_run.count_of("FAIL"), dpp_run.count_of("PENDING")) == (9, 0, 183)
     reasons = collections.Counter(c.reason.partition(";")[0] for c in dpp_run.checks if c.status == "PENDING")
     assert reasons == {
         "CR-069 phase 1": 118,
@@ -181,14 +183,20 @@ def test_dpp_holds_what_holds_before_cr_069(dpp_run):
         "CR-069 phase 3": 52,
         "CR-069 phase 4": 4,
         "the inspector (CR-050)": 2,
-        "phase 1": 5,
-        "phase 2": 1,
     }
     saves = [c for c in dpp_run.checks if c.item.startswith("word save:")]
-    assert len(saves) == 22 and all(c.status == "PENDING" and "REQ-1002" in c.reason for c in saves)
+    assert len(saves) == 22
     assert {c.scenario for c in saves} == {"profile: word-text"}
-    # the six Phase D checks: REQ-1002 alone missing
-    assert sum(c.reason.endswith("; REQ-1002") for c in saves) == 6
+    # the six Phase D checks, Word's own text saves as profile: word-text's oracle
+    assert sorted(c.item.removeprefix("word save:") for c in saves if c.status == "PASS") == [
+        "bisect/C03.txt",
+        "bisect/C04.txt",
+        "bisect/C08.txt",
+        "bisect/C09.txt",
+        "bisect/C10.txt",
+        "bisect/control.txt",
+    ]
+    assert sum(c.status == "PENDING" and "CR-069" in c.reason for c in saves) == 16
 
 
 def test_the_adapter_advertises_the_target_less_the_inspector():
@@ -197,7 +205,7 @@ def test_the_adapter_advertises_the_target_less_the_inspector():
     assert implemented == want
     assert HTML_READER_PRESENT not in implemented
     assert len(DOCX4J_IMPLEMENTED) == 70  # 68 statements, CR-047 and text.formatting_join
-    assert set(NOT_ADVERTISED) == {"REQ-1002", "REQ-607", "REQ-521", "REQ-710", "text.formatting_join"}
+    assert set(NOT_ADVERTISED) == {"REQ-607", "REQ-521", "REQ-710", "text.formatting_join"}
     assert set(NOT_ADVERTISED) <= DOCX4J_IMPLEMENTED
     # CR-032: REQ-206 beyond docx4j's tag, which no check of the suites at the tag needs
     assert set(BEYOND_DOCX4J) == {"REQ-206"} and not set(BEYOND_DOCX4J) & DOCX4J_IMPLEMENTED

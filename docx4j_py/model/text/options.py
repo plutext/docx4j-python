@@ -64,7 +64,11 @@ OPTION_NAMES: tuple[str, ...] = (
     "layout",
     "warnings",
     "duplicate_entries",
+    "profile",
 )
+
+#: What a caller sets by name, recorded so that a profile leaves it (REQ-1002): every option but ``profile`` itself.
+_RECORDED = frozenset(OPTION_NAMES) - {"profile"}
 
 #: The boolean options, with their statements.
 _BOOLEANS: dict[str, str] = {
@@ -98,6 +102,41 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
     "layout": (("none", "indent"), "REQ-709"),
     "duplicate_entries": (("refuse", "first"), "REQ-206"),
 }
+
+#: ``word-text`` (REQ-1002, WD 0.41): Word's Save As plain text as the options reach it, by the specification's
+#: names. docx4j's ``TextOptions.WORD_TEXT_VALUES`` at ``0cf4fb38a``, its 24, with ``list_labels`` as docx4j
+#: ``87c421731`` sets it (WD 0.84, CR-027 section 4.1); ``math`` is ``latex``, not the WD's ``unicodemath``, which
+#: :meth:`TextOptions.check_implemented` refuses. The tag's ``drop_caps: asis`` and ``small_caps: upper`` come with
+#: their options in the CR-069 port (CR-029).
+_WORD_TEXT: tuple[tuple[str, Any], ...] = (
+    ("view", "accepted"),
+    ("include", ("headers", "footers", "comments")),
+    ("text_boxes", False),
+    ("notes", True),
+    ("note_references", True),
+    ("comments", True),
+    ("hidden", True),
+    ("field_codes", False),
+    ("fields", "cached"),
+    ("toc", True),
+    ("placeholders", True),
+    ("bindings", "bound"),
+    ("list_labels", True),
+    ("charts", False),
+    ("smartart", False),
+    ("embedded", False),
+    ("altchunks", True),
+    ("alt_text", False),
+    ("metadata", False),
+    ("symbols", "asis"),
+    ("math", "latex"),
+    ("tables", "tsv"),
+    ("page_markers", False),
+    ("layout", "none"),
+)
+
+#: The profiles by name, as the WD writes them (REQ-1002).
+_PROFILES: dict[str, tuple[tuple[str, Any], ...]] = {"word-text": _WORD_TEXT}
 
 #: The values accepted and not yet acted on, with their statements. Empty since
 #: CR-011 Phase C (section 13), which acts on each of section 10's values but the
@@ -175,6 +214,31 @@ class TextOptions:
     (``w:lastRenderedPageBreak``, REQ-708): the markers are current only when
     the package was last paginated after its last edit.
 
+    ``profile`` (REQ-1002) names a preset of option values, applied before the
+    caller's own: an option the caller sets, before or after the profile, by a
+    keyword, :meth:`set`, :meth:`of`, a mapping in any order, :meth:`include` or
+    an attribute, stands, and the preset fills the rest. ``word-text`` (matched
+    without case, with a hyphen or an underscore) is Word's Save As plain text as
+    the options reach it: the ``accepted`` view, hidden text in, headers, footers
+    and comments in, text boxes out, notes and their references in, list labels
+    in, fields cached, no field codes, the table of contents in, placeholders in,
+    bound values, chunks expanded, symbols as they are, tables as tab-separated
+    rows, no page markers, no indentation, and no alt text, metadata, charts,
+    SmartArt or embedded packages. It is the nearest the options reach, not a
+    mimic. **What it does not reproduce** (REQ-1002's NOTE): the notes' and
+    comments' forms (Word writes the notes after the body, each led by its mark,
+    and marks a comment's anchor with the author's initials); CRLF lines and CR
+    cells, in the saving system's ANSI code page by default, where the text here
+    has U+000A, tabs and Unicode; the one space Word's text save writes after
+    every list label, where the text here has the level's ``w:suff``, as Word
+    draws it; folded hyphens, U+2011 and U+00AD kept here; and Word's linear math
+    (``math: unicodemath`` is not implemented, so the preset leaves ``math`` at
+    ``latex``, where the WD's value is ``unicodemath``). Three accidents of Word's
+    own are left out on purpose: the partial update Word's open runs where a DATE,
+    TIME or SAVEDATE field is present, the SYMBOL omission, and the stale PAGE
+    number. The WD's ``drop_caps: asis`` and ``small_caps: upper`` come with their
+    options (CR-029): until then ``w:smallCaps`` text is as stored.
+
     ``duplicate_entries`` (``refuse``, ``first``; REQ-206) is the **load's**
     option, accepted here as REQ-1001 requires (CR-032 Q5): a reading is of a
     package already loaded, so it does not decide again. Pass it to the load,
@@ -203,7 +267,9 @@ class TextOptions:
 
     __slots__ = (
         "_comments",
+        "_explicit",
         "_include",
+        "_profile",
         "alt_text",
         "altchunks",
         "bindings",
@@ -236,6 +302,9 @@ class TextOptions:
 
     def __init__(self, **options: Any) -> None:
         """The defaults, then each option given by its specification name."""
+        #: The options a caller has set, by every route: a profile leaves them (REQ-1002).
+        object.__setattr__(self, "_explicit", set())
+        self._profile: str | None = None
         self.view: TextView = "accepted"
         self._include: list[str] = []
         self.text_boxes = True
@@ -282,8 +351,15 @@ class TextOptions:
         #: section 10, a host's hook, as docx4j's ``TextOptions.embeddedFilter``.
         #: None by default: every object is read.
         self.embedded_filter: EmbeddedFilter | None = None
+        self._explicit.clear()  # a default is nobody's: past the recording, or a profile would fill nothing
         for name, value in options.items():
             self.set(name, value)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """An attribute, recorded as the caller's where it is an option (CR-027 Q5)."""
+        object.__setattr__(self, name, value)
+        if name in _RECORDED:
+            self._explicit.add(name)
 
     @classmethod
     def of(cls, options: TextOptions | Mapping[str, Any] | None = None, **more: Any) -> TextOptions:
@@ -304,35 +380,43 @@ class TextOptions:
 
     def set(self, name: str, value: Any) -> TextOptions:
         """Set one option by its specification name; raises :class:`TextOptionError` for one section 10 lacks."""
+        self._explicit.add(self._apply(name, value))
+        return self
+
+    def _apply(self, name: str, value: Any) -> str:
+        """Set one option without recording it as the caller's, as a profile's value is set; gives the name as read."""
         key = (name or "").strip()
-        if key == "view":
-            self.view = view_of(value)
+        assign = object.__setattr__
+        if key == "profile":
+            self._apply_profile(value)
+        elif key == "view":
+            assign(self, "view", view_of(value))
         elif key == "include":
             self._set_include(value)
         elif key == "comments":
-            self._comments = _bool(key, value, "REQ-504")
+            assign(self, "_comments", _bool(key, value, "REQ-504"))
         elif key in _BOOLEANS:
-            setattr(self, key, _bool(key, value, _BOOLEANS[key]))
+            assign(self, key, _bool(key, value, _BOOLEANS[key]))
         elif key in _CHOICES:
             values, statement = _CHOICES[key]
-            setattr(self, key, _choice(key, value, values, statement))
+            assign(self, key, _choice(key, value, values, statement))
         elif key == "image_describer":
             if value is not None and not callable(value):
                 raise TextOptionError(
                     f"image_describer: {value!r} is not callable (WD REQ-514)", key, "REQ-514", "invalid"
                 )
-            self.image_describer = value or alt_text_describer
+            assign(self, key, value or alt_text_describer)
         elif key == "embedded_filter":
             if value is not None and not callable(value):
                 raise TextOptionError(
                     f"embedded_filter: {value!r} is not callable (WD REQ-522)", key, "REQ-522", "invalid"
                 )
-            self.embedded_filter = value
+            assign(self, key, value)
         elif key == "field_user":
             from docx4j_py.model.fields.context import FieldUser
 
             try:
-                self.field_user = FieldUser.of(value)
+                assign(self, key, FieldUser.of(value))
             except TypeError as error:
                 raise TextOptionError(f"field_user: {error} (WD REQ-506)", key, "REQ-506", "invalid") from error
         else:
@@ -342,7 +426,31 @@ class TextOptions:
                 "REQ-1001",
                 "unknown",
             )
-        return self
+        return key
+
+    def _apply_profile(self, value: Any) -> None:
+        """A profile by name: its values for every option the caller has not set (REQ-1002). None takes nothing back."""
+        name = None if value is None else str(value).strip().lower().replace("_", "-")
+        if name is not None and name not in _PROFILES:
+            raise TextOptionError(
+                f"profile: {value!r} is not one of {', '.join(_PROFILES)} (WD REQ-1002)",
+                "profile",
+                "REQ-1002",
+                "invalid",
+            )
+        object.__setattr__(self, "_profile", name)
+        for option, preset in _PROFILES.get(name, ()):
+            if option not in self._explicit:
+                self._apply(option, preset)
+
+    @property
+    def profile(self) -> str | None:
+        """The profile applied (``word-text``), or None. Assigning one applies it, as :meth:`set` does."""
+        return self._profile
+
+    @profile.setter
+    def profile(self, value: Any) -> None:
+        self._apply_profile(value)
 
     def _set_include(self, value: Any) -> None:
         if value is None:
@@ -359,6 +467,7 @@ class TextOptions:
             name = _choice("include", story, _INCLUDES, "REQ-501")
             if name not in self._include:
                 self._include.append(name)
+        self._explicit.add("include")
         return self
 
     @property
@@ -379,11 +488,11 @@ class TextOptions:
         self._comments = bool(value)
 
     def copy(self) -> TextOptions:
-        """A copy."""
+        """A copy, with what the caller has set and the profile as they stand."""
         out = TextOptions()
         for name in self.__slots__:
             value = getattr(self, name)
-            setattr(out, name, list(value) if isinstance(value, list) else value)
+            object.__setattr__(out, name, type(value)(value) if isinstance(value, (list, set)) else value)
         return out
 
     def check_implemented(self) -> None:
@@ -416,7 +525,7 @@ class TextOptions:
         return out
 
     def to_dict(self) -> dict[str, Any]:
-        """The options by the specification's names, in section 10's order."""
+        """The options by the specification's names, in section 10's order: ``profile`` last, None for none."""
         out: dict[str, Any] = {}
         for name in OPTION_NAMES:
             if name == "include":

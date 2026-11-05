@@ -41,7 +41,7 @@ OLE10_NATIVE = "\x01Ole10Native"
 
 _SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 _HEADER = 512
-#: A chain's end; and a free sector, which a damaged chain may end at, or a directory entry's "no sibling" or "no child".
+#: A chain's end; and a free sector, where a damaged chain may end, or a directory entry's "no sibling" or "no child".
 _END_OF_CHAIN = 0xFFFFFFFE
 _NO_ENTRY = 0xFFFFFFFF
 #: A stream shorter than this is in the mini stream, of sectors this long. POI holds both constant, as [MS-CFB] does.
@@ -136,7 +136,7 @@ class _CompoundFile:
         return entry if len(entry) == _ENTRY else None
 
     def stream(self, name: str) -> bytes | None:
-        """The root storage's stream of this name, matched without case; None for none, or an entry that is a storage."""
+        """The root storage's stream of this name, matched without case; None for none, or for a storage of it."""
         root = self._entry(0)
         if root is None:
             raise _NotRead("no root entry")
@@ -306,5 +306,5 @@ def package_names(data: bytes) -> Names | None:
     try:
         record = root_stream(data, OLE10_NATIVE)
         return None if record is None else record_names(record)
-    except Exception:  # noqa: BLE001 - a file that gives no names gives none, whatever is wrong with it (CR-027 section 7)
+    except Exception:  # noqa: BLE001 - a file gives no names, whatever is wrong with it (CR-027 section 7)
         return None

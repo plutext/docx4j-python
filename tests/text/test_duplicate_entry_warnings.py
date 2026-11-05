@@ -125,8 +125,8 @@ def test_the_option_is_accepted_by_name_with_its_two_values():
     assert TextOptions().duplicate_entries == "refuse"
     assert TextOptions(duplicate_entries="first").duplicate_entries == "first"
     assert TextOptions.of({"duplicate_entries": "FIRST"}).duplicate_entries == "first"
-    assert OPTION_NAMES[-1] == "duplicate_entries"
-    assert list(TextOptions().to_dict())[-1] == "duplicate_entries"
+    assert OPTION_NAMES[-2] == "duplicate_entries"  # profile (CR-027) after it, as in section 10's table
+    assert list(TextOptions().to_dict())[-2] == "duplicate_entries"
     assert TextOptions().to_dict()["duplicate_entries"] == "refuse"
     assert repr(TextOptions(duplicate_entries="first")) == "TextOptions(duplicate_entries='first')"
     assert TextOptions(duplicate_entries="first").copy().duplicate_entries == "first"

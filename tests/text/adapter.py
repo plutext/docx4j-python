@@ -83,7 +83,6 @@ INSPECTOR = frozenset({*(f"REQ-{n}" for n in range(901, 908)), "REQ-1204"})
 #: why: their checks pend, with the CR-069 phase docx4j built them in
 #: (``conformance.pending_reason``), until the CR named here advertises them.
 NOT_ADVERTISED = {
-    "REQ-1002": "profile: word-text, CR-027 Phase D",
     "REQ-607": "w:caps by the run's language and small_caps, the port of docx4j CR-069 (CR-029)",
     "REQ-521": "a drop cap joined to its word and drop_caps, the port of docx4j CR-069 (CR-029)",
     "REQ-710": "<sup> and <sub> in Markdown, the port of docx4j CR-069 (CR-029)",
