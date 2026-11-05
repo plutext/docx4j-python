@@ -828,7 +828,7 @@ The docx4j-portfolio session ran it through the Word bridge, not by hand: Word 1
 
 - **`76t`:** a run inside an unknown `w:` element directly in a `w:p`. Word reads it, and here it is dropped and listed in
   `part.skipped`. That's the parse, not rule 2. core-ts's check 76 has finished, and its CR-026 D7 is decided, "read as Word does"
-  (`80a4707`, its section 3.7, not built): Word reads what such an element holds in fifteen content hosts and drops it in `w:pPr`,
-  `w:rPr` and `w:t`. Here 23 of the 27 `76t` files read differently from Word's save in text (measured 2026-11-06), the words each
-  listed in `part.skipped`; the four that agree are the two controls and the two property hosts. Whether this package follows is the user's.
+  (`80a4707`, its section 3.7, not built): Word reads what such an element holds in fifteen content hosts. Here 23 of the first 27 `76t`
+  files read differently from Word's save in text (measured 2026-11-06), the words each listed in `part.skipped`; the four that agree
+  are the two controls and the two with a property in `w:pPr` or `w:rPr`. This package follows, as CR-037 (the user: "yes, Python should follow D7").
 - **CR-033 section 4.4's wording of `repair`,** which check 76 also bears on, is CR-033's, with the user.
