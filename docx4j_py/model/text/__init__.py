@@ -39,8 +39,9 @@ text from it::
   one-paragraph text box (REQ-511); each
   picture an ``IMAGE`` run, described by the options' describer (the alt text
   by default; ``[image: ...]`` under ``alt_text: true``, REQ-514), and each
-  object an ``OBJECT`` run with its ProgID, an embedded WordprocessingML
-  package read one level down under ``embedded: true`` (REQ-512); a
+  object an ``OBJECT`` run with its ProgID and its :class:`TextObject`, an
+  embedded WordprocessingML package read one level down under ``embedded:
+  true`` (REQ-512) where an ``embedded_filter`` admits it (REQ-522); a
   plain-text, WordprocessingML or Flat OPC ``altChunk`` expanded where it is
   (REQ-513); the glossary last under ``include: glossary`` (REQ-516);
   equations as LaTeX
@@ -99,6 +100,7 @@ from docx4j_py.model.text.markdown import (
 from docx4j_py.model.text.options import (
     NOT_YET,
     OPTION_NAMES,
+    EmbeddedFilter,
     TextOptionError,
     TextOptions,
     TextView,
@@ -111,6 +113,7 @@ from docx4j_py.model.text.result import (
     TextComment,
     TextField,
     TextNumbering,
+    TextObject,
     TextResult,
     TextRevision,
     TextRow,
@@ -122,6 +125,7 @@ from docx4j_py.model.text.result import (
 __all__ = [
     "NOT_YET",
     "OPTION_NAMES",
+    "EmbeddedFilter",
     "ImageDescriber",
     "ImageDescription",
     "MarkdownBlock",
@@ -136,6 +140,7 @@ __all__ = [
     "TextField",
     "TextImage",
     "TextNumbering",
+    "TextObject",
     "TextOptionError",
     "TextOptions",
     "TextResult",

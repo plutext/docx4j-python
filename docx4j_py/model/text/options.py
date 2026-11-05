@@ -10,7 +10,7 @@ the suite's scenarios and an MCP tool's arguments pass through unchanged.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any, Literal, get_args
 
 from docx4j_py.model.content.enums import TextView
@@ -20,6 +20,7 @@ from docx4j_py.openpackaging.exceptions import Docx4JException
 __all__ = [
     "NOT_YET",
     "OPTION_NAMES",
+    "EmbeddedFilter",
     "TextInclude",
     "TextOptionError",
     "TextOptions",
@@ -30,6 +31,9 @@ __all__ = [
 #: The stories ``include`` adds (REQ-501, REQ-502).
 TextInclude = Literal["headers", "footers", "comments", "glossary"]
 _INCLUDES: tuple[str, ...] = get_args(TextInclude)
+
+#: Whether an object is read under ``embedded: true``, given its ``TextObject`` and address (docx4j ``EmbeddedFilter``).
+EmbeddedFilter = Callable[[Any, str], bool]
 
 #: The option names of WD section 10, in its order (docx4j ``TextOptions.NAMES``).
 OPTION_NAMES: tuple[str, ...] = (
@@ -184,7 +188,17 @@ class TextOptions:
     ``USERADDRESS`` show under ``fields: update``, a
     :class:`~docx4j_py.model.fields.FieldUser`, a name, or a mapping of
     ``name``, ``initials`` and ``address``; None by default, and then the three
-    keep their cached result, as docx4j's extraction keeps them.
+    keep their cached result, as docx4j's extraction keeps them; and
+    ``embedded_filter`` (REQ-522): under ``embedded: true``, a callable
+    ``(obj, address) -> bool`` asked once per object that would be read, before
+    the reading, with the object's
+    :class:`~docx4j_py.model.text.result.TextObject` and the address its content
+    is read at (``body/3/object:0``), every object counted, declined or not. A
+    workbook, a presentation and an OLE 1.0 package are asked too, though this
+    package does not read them (CR-011 Q7), so that a host can take them. An
+    object declined contributes nothing and keeps its run and its description; a
+    filter that raises declines, with ``content.not_read`` naming the object's
+    part at the paragraph's address. None by default: every object is read.
     """
 
     __slots__ = (
@@ -196,6 +210,7 @@ class TextOptions:
         "charts",
         "duplicate_entries",
         "embedded",
+        "embedded_filter",
         "field_codes",
         "field_user",
         "fields",
@@ -263,6 +278,10 @@ class TextOptions:
         #: beyond section 10, a host's, as docx4j's ``FieldContext.user`` is the
         #: updater's. None by default: the fields keep their cached result.
         self.field_user: Any = None
+        #: Whether an object is read under ``embedded: true`` (REQ-522): beyond
+        #: section 10, a host's hook, as docx4j's ``TextOptions.embeddedFilter``.
+        #: None by default: every object is read.
+        self.embedded_filter: EmbeddedFilter | None = None
         for name, value in options.items():
             self.set(name, value)
 
@@ -303,6 +322,12 @@ class TextOptions:
                     f"image_describer: {value!r} is not callable (WD REQ-514)", key, "REQ-514", "invalid"
                 )
             self.image_describer = value or alt_text_describer
+        elif key == "embedded_filter":
+            if value is not None and not callable(value):
+                raise TextOptionError(
+                    f"embedded_filter: {value!r} is not callable (WD REQ-522)", key, "REQ-522", "invalid"
+                )
+            self.embedded_filter = value
         elif key == "field_user":
             from docx4j_py.model.fields.context import FieldUser
 

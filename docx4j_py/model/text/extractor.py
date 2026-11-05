@@ -29,7 +29,9 @@ Nothing in the package is changed (REQ-204): every tree here was read with
 
 Phase C (CR-011 section 13) adds what a run anchors besides text boxes:
 legacy WordArt as a one-paragraph text box (REQ-511), pictures as ``IMAGE``
-runs with their descriptions (REQ-514), objects as ``OBJECT`` runs (REQ-512);
+runs with their descriptions (REQ-514), objects as ``OBJECT`` runs, each with its
+:class:`TextObject` (REQ-512, CR-027), under ``embedded: true`` read where an
+``embedded_filter`` admits them (REQ-522);
 each ``w:lastRenderedPageBreak`` of the main story a ``PAGE_MARKER`` run, its
 page numbered from 2 (REQ-708); and the document properties in the metadata
 (REQ-515).
@@ -89,6 +91,7 @@ from docx4j_py.child import (
 )
 from docx4j_py.model.revisions import dates as revision_dates
 from docx4j_py.model.revisions import trees as rtrees
+from docx4j_py.model.text.embedded import ole10_names
 from docx4j_py.model.text.images import TextImage
 from docx4j_py.model.text.options import TextOptions
 from docx4j_py.model.text.result import (
@@ -97,6 +100,7 @@ from docx4j_py.model.text.result import (
     TextComment,
     TextField,
     TextNumbering,
+    TextObject,
     TextResult,
     TextRevision,
     TextRow,
@@ -106,6 +110,7 @@ from docx4j_py.model.text.result import (
 )
 from docx4j_py.model.text.trees import Context, PackageTrees, not_readable, without_numbering
 from docx4j_py.model.values import effective, integer, is_on, on_off, xsd_boolean
+from docx4j_py.openpackaging.content_types import ContentTypes
 
 __all__ = ["Extractor", "normalize"]
 
@@ -143,6 +148,7 @@ _V_SHAPE = f"{{{_V_NS}}}shape"
 _V_TEXTPATH = f"{{{_V_NS}}}textpath"
 _V_IMAGEDATA = f"{{{_V_NS}}}imagedata"
 _O_OLE_OBJECT = "{urn:schemas-microsoft-com:office:office}OLEObject"
+_ACTIVEX_TYPES = (ContentTypes.OFFICEDOCUMENT_ACTIVEX_XML_OBJECT, ContentTypes.OFFICEDOCUMENT_ACTIVEX_OBJECT)
 #: ``adec:decorative``'s extension of ``wp:docPr`` (docx4j ``DECORATIVE_EXT``).
 DECORATIVE_EXT = "{C183D7F6-B498-43B3-948B-1728B52AA6E4}"
 #: The extension Office 2016 writes an SVG picture's SVG in, beside the PNG copy ``a:blip/@r:embed`` names.
@@ -559,6 +565,11 @@ def _is_binary(part: Any) -> bool:
     from docx4j_py.openpackaging.parts.binary_part import BinaryPart
 
     return isinstance(part, BinaryPart)
+
+
+def _is_activex(part: Any) -> bool:
+    """An ActiveX control's part: ``activeX1.xml``, or its binary."""
+    return getattr(part, "content_type", None) in _ACTIVEX_TYPES
 
 
 def _restory(blocks: list[TextBlock], story: str) -> None:
@@ -1815,7 +1826,7 @@ class Extractor:
                     self._object(node, para, state)
                     return
                 elif qname == _W_CONTROL:
-                    self._object_run(para, None, state)
+                    self._control(node, node, para, state)
                     return
                 kids = node.children or []
                 for child in list(kids):
@@ -1825,7 +1836,7 @@ class Extractor:
                 self._object(node, para, state)
                 return
             if isinstance(node, control_class):
-                self._object_run(para, None, state)
+                self._control(node, node, para, state)
                 return
             if isinstance(node, (inline_class, anchor_class)):
                 if not self._graphic(node, para, state):
@@ -1917,45 +1928,71 @@ class Extractor:
         return True
 
     def _object(self, obj: Any, para: _Paragraph, state: _RunState) -> None:
-        """A ``w:object``: an object run with its ProgID (REQ-512)."""
+        """A ``w:object``: an object run with its :class:`TextObject`, and its package to follow (REQ-512, REQ-522)."""
         if is_any_element(obj):
-            kids = [c for c in obj.children or () if not isinstance(c, str)]
-            if any(is_any_element(c) and c.qname == _W_CONTROL for c in kids):
-                self._object_run(para, None, state)
-                return
-            items = kids
+            items = [c for c in obj.children or () if not isinstance(c, str)]
+            control = next((c for c in items if is_any_element(c) and c.qname == _W_CONTROL), None)
         else:
-            if getattr(obj, "control", None) is not None:
-                self._object_run(para, None, state)
-                return
             # CT_PictureBase's one wildcard list, in document order (CR-012 section 12.15)
             items = list(getattr(obj, "any_and_any", None) or ())
+            control = getattr(obj, "control", None)
+        if control is not None:
+            self._control(control, obj, para, state)
+            return
         ole_class = _vml_classes()[3]
         for item in items:
             if isinstance(item, ole_class):
                 # o:OLEObject, typed since CR-012 Phase C
-                prog_id, rel_id = item.prog_id, item.id
-            elif is_any_element(item) and item.qname == _O_OLE_OBJECT:
+                self._ole_object(obj, item.prog_id, item.id, item.type_value, para, state)
+                return
+            if is_any_element(item) and item.qname == _O_OLE_OBJECT:
                 attributes = item.attributes or {}
-                prog_id, rel_id = attributes.get("ProgID"), attributes.get(_R_ID)
-            elif is_any_element(item) and item.qname == _W_CONTROL:
-                self._object_run(para, None, state)
+                self._ole_object(obj, attributes.get("ProgID"), attributes.get(_R_ID), attributes.get("Type"), para, state)
                 return
-            else:
-                continue
-            self._object_run(para, prog_id, state)
-            if not self.options.embedded or self.nested:
+            if is_any_element(item) and item.qname == _W_CONTROL:
+                self._control(item, obj, para, state)
                 return
-            part = self.trees.related(para.story.part, rel_id)
-            ole1 = prog_id is not None and prog_id.lower().startswith("package")
-            if type(part).__name__ == "EmbeddedPackagePart" or (ole1 and _is_binary(part)):
-                para.story.pending.append(_EmbeddedObject(part, f"{para.address}/object:{para.objects}"))
-                para.objects += 1
-            return
 
-    def _object_run(self, para: _Paragraph, prog_id: str | None, state: _RunState) -> None:
+    def _ole_object(
+        self, obj: Any, prog_id: str | None, rel_id: str | None, ole_type: Any, para: _Paragraph, state: _RunState
+    ) -> None:
+        """An ``o:OLEObject``: described, then under ``embedded: true`` queued where the filter admits it."""
+        link = getattr(ole_type, "value", ole_type) == "Link"
+        part = None if link else self.trees.related(para.story.part, rel_id)
+        kind = "control" if _is_activex(part) else "link" if link else "embed"
+        package = type(part).__name__ == "EmbeddedPackagePart"
+        ole1 = prog_id is not None and prog_id.lower().startswith("package") and _is_binary(part) and not package
+        label, file_name, command = (ole10_names(part) if ole1 else None) or (None, None, None)
+        described = TextObject(kind, rel_id, prog_id, part, label, file_name, command, obj)
+        self._object_run(para, described, state)
+        if not self.options.embedded or self.nested or not (package or ole1):
+            return
+        prefix = f"{para.address}/object:{para.objects}"
+        para.objects += 1  # counts every object that would be read, declined or not: a decline moves no address
+        if self._admitted(described, prefix):
+            para.story.pending.append(_EmbeddedObject(part, prefix))
+
+    def _control(self, control: Any, source: Any, para: _Paragraph, state: _RunState) -> None:
+        """An ActiveX control: an object run with the control's part, which is never read (REQ-512)."""
+        rel_id = (control.attributes or {}).get(_R_ID) if is_any_element(control) else control.id
+        part = self.trees.related(para.story.part, rel_id)
+        self._object_run(para, TextObject("control", rel_id, None, part, source=source), state)
+
+    def _admitted(self, described: TextObject, prefix: str) -> bool:
+        """Whether the host's filter lets an object be read (REQ-522); one that fails declines, ``content.not_read``."""
+        admits = self.options.embedded_filter
+        if admits is None:
+            return True
+        try:
+            return bool(admits(described, prefix))
+        except Exception:  # noqa: BLE001 - the host's code; the reading goes on, as for an image describer (REQ-514)
+            self.not_read(prefix.rpartition("/")[0], described.part)
+            return False
+
+    def _object_run(self, para: _Paragraph, described: TextObject, state: _RunState) -> None:
         run = TextRun("OBJECT", "", state.revision)
-        run.prog_id = prog_id
+        run.prog_id = described.prog_id
+        run.object = described
         para.block.runs.append(run)
 
     def _image(

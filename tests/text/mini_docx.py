@@ -78,6 +78,11 @@ class MiniDocx:
         self.rels.append(f'<Relationship Id="{rel_id}" Type="{rel_type}" Target="{target}"/>')
         return self
 
+    def external(self, rel_id: str, rel_type: str, target: str) -> MiniDocx:
+        """An external relationship from the main document part."""
+        self.rels.append(f'<Relationship Id="{rel_id}" Type="{rel_type}" Target="{target}" TargetMode="External"/>')
+        return self
+
     def footnotes(self, notes: str) -> MiniDocx:
         """A footnotes part holding these notes."""
         return self.part(

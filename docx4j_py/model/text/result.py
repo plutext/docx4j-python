@@ -27,6 +27,7 @@ __all__ = [
     "TextComment",
     "TextField",
     "TextNumbering",
+    "TextObject",
     "TextResult",
     "TextRevision",
     "TextRow",
@@ -69,6 +70,75 @@ class TextRevision:
         return self.type + (f" by {self.author}" if self.author else "") + (f" {self.date}" if self.date else "")
 
 
+#: What an object is (REQ-512's ``kind``; docx4j ``TextObject.Kind``), as the WD writes it.
+ObjectKind = Literal["embed", "link", "control"]
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class TextObject:
+    """An object run's object as the document gives it (REQ-512). docx4j ``TextObject``, CR-027 section 4.3.
+
+    What it is, its relationship, its part and the part's content type, its
+    ProgID and, for an OLE 1.0 package, the names its native data holds: so that
+    a host that reads embedded content itself can find the object and name it,
+    and an ``embedded_filter`` can decide whether this package reads it
+    (REQ-522). Every object run has one, whatever ``embedded`` says. Each member
+    is None where the WD's is absent.
+    """
+
+    #: ``embed`` or ``link`` from ``o:OLEObject/@Type`` (``embed`` where it is absent); ``control`` for a
+    #: ``w:control``, and for an ``o:OLEObject`` whose part's content type is an ActiveX control's.
+    kind: ObjectKind
+    #: The ``r:id`` of the ``o:OLEObject`` or ``w:control``.
+    relationship_id: str | None = None
+    #: ``o:OLEObject/@ProgID``, as :attr:`TextRun.prog_id`; None for a ``w:control``, whose class is in its part.
+    prog_id: str | None = None
+    #: The embedded part, or the control's: an ``EmbeddedPackagePart`` for an OOXML package, a binary part
+    #: for an OLE binary. None for a linked object, even one whose relationship is internal, and for a
+    #: relationship that does not resolve. Not in the JSON.
+    part: Any = field(default=None, repr=False)
+    #: For an OLE 1.0 package (ProgID ``Package``, an ``Ole10Native`` stream), the label its native data gives,
+    #: usually the file's name (``notes.txt``); else None. Tika 3.3.3 gives a package it hands on this as its
+    #: resource name.
+    label: str | None = None
+    #: For an OLE 1.0 package, the file name its native data gives, often with the path it was embedded from.
+    file_name: str | None = None
+    #: For an OLE 1.0 package, the command its native data gives, usually the file's path.
+    command: str | None = None
+    #: What the object was read from: a ``w:object``, or a ``w:control`` standing alone. Not in the JSON.
+    source: Any = field(default=None, repr=False)
+
+    @property
+    def part_name(self) -> str | None:
+        """The part's name (``/word/embeddings/oleObject1.bin``), the WD's ``part``; None where there is no part."""
+        name = getattr(self.part, "part_name", None)
+        return None if name is None else str(name)
+
+    @property
+    def content_type(self) -> str | None:
+        """The part's content type as the package declares it; None where there is no part."""
+        return getattr(self.part, "content_type", None)
+
+    def to_dict(self) -> dict[str, str]:
+        """REQ-512's members in this JSON's spelling, each left out where None. The ProgID is the run's."""
+        members = {
+            "kind": self.kind,
+            "relationship_id": self.relationship_id,
+            "part": self.part_name,
+            "content_type": self.content_type,
+            "label": self.label,
+            "file_name": self.file_name,
+            "command": self.command,
+        }
+        return {name: value for name, value in members.items() if value is not None}
+
+    def __str__(self) -> str:
+        """``embed Package /word/embeddings/oleObject1.bin (notes.txt)``, docx4j's ``toString``."""
+        prog_id = "" if self.prog_id is None else f" {self.prog_id}"
+        part = "" if self.part is None else f" {self.part_name}"
+        return f"{self.kind}{prog_id}{part}" + ("" if self.label is None else f" ({self.label})")
+
+
 @dataclass(frozen=True, slots=True)
 class TextRunSource:
     """Where a run's text was read from: its ``w:r`` and its ``w:p``."""
@@ -104,6 +174,8 @@ class TextRun:
     comment_id: str | None = None
     #: For an object: its ProgID (``o:OLEObject/@ProgID``), or None (an ActiveX control's is in its part).
     prog_id: str | None = None
+    #: For an object: what it is, its relationship, its part and, for an OLE 1.0 package, its names (REQ-512).
+    object: TextObject | None = field(default=None, repr=False)
     #: For an image: what the document says of it (REQ-514).
     image: TextImage | None = field(default=None, repr=False)
     #: For an image: the describer's description, with its provenance; None for none (a decorative picture's).
@@ -171,6 +243,8 @@ class TextRun:
             value = getattr(self, name)
             if value is not None:
                 out[name] = value
+        if self.object is not None:
+            out["object"] = self.object.to_dict()
         if self.note_type is not None:
             out["note_number"] = self.note_number
         if self.kind == "IMAGE":

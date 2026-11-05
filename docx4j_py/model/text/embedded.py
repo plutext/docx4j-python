@@ -14,7 +14,11 @@ docx4j's ``org.docx4j.model.text.AltChunks`` and ``Embedded`` at
   document through the text model, one level deep. A workbook, a
   presentation and an OLE 1.0 package are deferred (CR-011 Q7): they
   contribute nothing, and raise ``content.not_read`` with the part's name,
-  where docx4j reads them through xlsx4j, pptx4j and POI's OLE reader.
+  where docx4j reads them through xlsx4j, pptx4j and POI's OLE reader. An
+  ``embedded_filter`` is asked about each all the same (REQ-522, CR-027 Q4),
+  so that a host can take what this package does not read. An OLE 1.0
+  package's names (:func:`ole10_names`) are read whatever ``embedded`` says,
+  for its :class:`~docx4j_py.model.text.result.TextObject`.
 
 A package read one level down has the reading's options, but none of its own
 embedded packages or chunks expanded (its chunks raising
@@ -33,7 +37,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-__all__ = ["chunk_blocks", "content_type", "decode", "package_blocks"]
+from docx4j_py.model.text.ole import Names, package_names
+
+__all__ = ["chunk_blocks", "content_type", "decode", "ole10_names", "package_blocks"]
 
 _XML_PACKAGE = b"http://schemas.microsoft.com/office/2006/xmlPackage"
 _HTML_TYPES = ("text/html", "application/xhtml+xml", "message/rfc822")
@@ -120,6 +126,14 @@ def _document(x: Any, data: bytes, story: str, prefix: str, part: Any) -> list[A
     if getattr(package, "main_document_part", None) is None:
         return None
     return x.read_nested(package, prefix, story, part)
+
+
+def ole10_names(part: Any) -> Names | None:
+    """An OLE 1.0 package's label, file name and command (docx4j ``Embedded.ole10Names``); None where it has none."""
+    try:
+        return package_names(part.data)
+    except Exception:  # noqa: BLE001 - a part whose bytes will not read has no names
+        return None
 
 
 def package_blocks(x: Any, part: Any, prefix: str) -> list[Any]:

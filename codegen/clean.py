@@ -37,6 +37,7 @@ KEEP = {
     "model/dates.py",  # CR-025 Phase A: the package's time zone, where an instant meets a clock (inside "model" too)
     "model/customxml/store_items.py",  # CR-014 phase 1c: docx4j's StoreItemResolver (inside "model" too)
     "model/revisions/dates.py",  # CR-027 Phase B: RevisionDates, a stamp as the author's clock (inside "model" too)
+    "model/text/ole.py",  # CR-027 Phase C: an OLE compound file's one stream, an OLE 1.0 package's names (inside "model" too)
     "model/fields/instruction.py",  # CR-025 Phase B: FieldInstruction, docx4j's one parser (inside "model" too)
     "model/fields/context.py",  # CR-025 Phase B: FieldContext and FieldUser (inside "model" too)
     "model/fields/evaluators.py",  # CR-025 Phase B: the field evaluators by name (inside "model" too)
