@@ -6,7 +6,7 @@
 - **The WD** (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`): the change in section 3.1, sent to the docx4j-portfolio session on 2026-11-05.
 - **CR-027** (complete): `profile: word-text` and `_explicit`.
 
-**Counterpart:** docx4j `org.docx4j.model.text.TextOptions` and docx4j-core-ts `src/model/text/TextOptions.mts`, the same change in each, theirs to schedule. docx4j-mcp's `TextOptionsSupport` handles these options too.
+**Counterpart:** docx4j `org.docx4j.model.text.TextOptions` and docx4j-core-ts `src/model/text/TextOptions.mts`, the same change in each, theirs to schedule. core-ts has built it, as its CR-012 section 29 (`80a4707`, local), with one `log.warn` a process where this CR has a `DeprecationWarning`. docx4j-mcp's `TextOptionsSupport` handles these options too.
 
 ## 1. Why
 
@@ -53,9 +53,11 @@ The change sent to the portfolio session:
 
 Where one constructor call or one mapping says `comments` false and `include` naming `comments`, it contradicts itself, and is refused with `TextOptionError` (reason `invalid`, REQ-504). Sequential calls are not a contradiction: the last one stands, as for any option.
 
+This shape is also what a released `to_dict()` writes after `include=["comments"]` alone: `{"comments": false, "include": ["comments"]}`, which reads as comments on (measured 2026-11-06 here; core-ts found it in its own `toMap()`, its CR-012 section 29.2). So such a saved mapping is refused too, and the message names the fix (Q4).
+
 ### 3.4 The preset and the output (D3)
 
-`_WORD_TEXT` becomes `include: (headers, footers)`, `comments: true`. A plain `word-text` call reads the same. `to_dict()` then never lists `comments` under `include`, and its `comments` is the one setting, so options still round-trip by name. A saved mapping with the old form still loads, through 3.3.
+`_WORD_TEXT` becomes `include: (headers, footers)`, `comments: true`. A plain `word-text` call reads the same. `to_dict()` then never lists `comments` under `include`, and its `comments` is the one setting, so options still round-trip by name. A saved mapping with the old form loads through 3.3, but for the shape that section refuses.
 
 ### 3.5 Not here
 
@@ -69,7 +71,7 @@ Where one constructor call or one mapping says `comments` false and `include` na
 - The old spelling in every form: a keyword, a mapping, `set`, `of` and the fluent method, each setting `comments`, none leaving `comments` in `to_dict()["include"]`, each warning.
 - The contradiction refused, and sequential calls the last one standing, either order.
 - A preset under each: `comments=False` before and after `profile`.
-- `to_dict()` round-trips; a mapping in the old form loads.
+- `to_dict()` round-trips; a mapping in the old form loads; the mapping a released `to_dict()` writes after `include=["comments"]` alone is refused, the message naming the fix.
 - `test_comments_false_under_the_preset_is_docx4js_reading` is replaced, and the preset's table follows the WD. Tests that use the old spelling move to `comments=True`, but those holding the old spelling itself.
 - The suite, the agreement table and the goldens: no row should move, since no row names `include: comments` and the extractor reads the same value.
 - **Until the WD and docx4j change**, the preset's oracle is the WD's text, not docx4j's `WORD_TEXT_VALUES`, so a test comparing them states it.
@@ -84,7 +86,7 @@ Where one constructor call or one mapping says `comments` false and `include` na
 ## 6. Risks
 
 1. **Callers of the old spelling** get a warning where they had none, and an error where a test suite treats `DeprecationWarning` as one, as this repository's does. It is the point of the warning.
-2. **The ports could diverge for a while.** Python may build this before docx4j or core-ts, which is a difference to record while it lasts.
+2. **The ports differ for a while.** core-ts has built this, and docx4j and this package haven't, which is a difference to record while it lasts.
 3. **The order of work.** Building before the WD changes would put this package against REQ-1002's text, so Phase A waits on it (Q3).
 
 ## 7. Questions
@@ -94,4 +96,4 @@ Where one constructor call or one mapping says `comments` false and `include` na
 | Q1 | How is the old spelling flagged: `DeprecationWarning`, or a log line? | **`DeprecationWarning`.** It is the caller's code that has to change. `listnumbering/formats.py` logs instead because a document's content, not a caller, triggers it, and that reason doesn't apply. This would be the package's first `warnings.warn`. |
 | Q2 | How long does the old spelling stay? | **Until 1.0, or a later CR.** It is released, and removing it buys little. |
 | Q3 | Does Phase A wait for the WD? | **Yes.** It is one change, and the WD is the contract. It needn't wait for docx4j or core-ts. |
-| Q4 | A self-contradicting call: refuse, or let `comments=False` win? | **Refuse.** It can only be a mistake, and quietly picking one is the trap this CR removes. |
+| Q4 | A self-contradicting call: refuse, or let `comments=False` win? | **Refuse, the message naming the fix.** Quietly picking one is the trap this CR removes. Amended 2026-11-06: it isn't only a mistake, since a released `to_dict()` writes this shape (3.3). Letting `comments: false` win would turn comments off in such a mapping with no word, and reading it as on would let a real contradiction through. core-ts refuses it too. |

@@ -795,7 +795,9 @@ pass lists each element it takes out in `part.skipped` (and so `package.skipped`
 
 1. **From docx4j,** whose `split-text` template gives every element's text. Word's measurements decide, as they did for core-ts.
    docx4j CR-073 is unreleased (17.3.6), so it can still take the same rule.
-2. **From core-ts, for now:** it doesn't yet report these (its CR-025 D9, open), and its `insertOoxml` doesn't refuse them.
+2. **From core-ts, for now:** it doesn't yet report these, and its `insertOoxml` doesn't refuse them. Its CR-025 D9 is decided on this
+   section's reading (`80a4707`; the user, 2026-11-06: "CR-025 D9's wording: take python's narrower version"): its pass is to list only
+   what goes with its content, so `part.skipped` will agree. That is decided there, not built, and its fragment route isn't settled.
 
 ### 11.5 Tests and numbers
 
@@ -825,5 +827,8 @@ The docx4j-portfolio session ran it through the Word bridge, not by hand: Word 1
 ### 11.7 Not here
 
 - **`76t`:** a run inside an unknown `w:` element directly in a `w:p`. Word reads it, and here it is dropped and listed in
-  `part.skipped`. That's the parse, not rule 2. It waits for core-ts's third round (its CR-026 D7, open).
+  `part.skipped`. That's the parse, not rule 2. core-ts's check 76 has finished, and its CR-026 D7 is decided, "read as Word does"
+  (`80a4707`, its section 3.7, not built): Word reads what such an element holds in fifteen content hosts and drops it in `w:pPr`,
+  `w:rPr` and `w:t`. Here 23 of the 27 `76t` files read differently from Word's save in text (measured 2026-11-06), the words each
+  listed in `part.skipped`; the four that agree are the two controls and the two property hosts. Whether this package follows is the user's.
 - **CR-033 section 4.4's wording of `repair`,** which check 76 also bears on, is CR-033's, with the user.
