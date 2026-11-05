@@ -406,6 +406,14 @@ def test_a_known_element_in_the_wrong_place_is_left() -> None:
     assert names(pkg) == [("jc", "p")]
 
 
+def test_a_name_the_standard_defines_and_the_model_lacks_goes_as_it_did() -> None:
+    """``w:contentPart`` is the one such name a host can hold, and it holds nothing, so the drop and the pass agree."""
+    assert "contentPart" not in WML_ELEMENTS
+    got, pkg = body_tokens('<w:p><w:r><w:contentPart xmlns:r="urn:r" r:id="rId1"/><w:t>a</w:t></w:r></w:p>')
+    assert got == ["t:a", "¶"]
+    assert names(pkg) == [("contentPart", "r")]
+
+
 def test_a_madeup_in_a_known_element_in_the_wrong_place_is_not_taken() -> None:
     root = tree(f"<w:p><w:jc><w:madeUp>{A}</w:madeUp></w:jc></w:p>")
     assert read_through.repair(root) == 0

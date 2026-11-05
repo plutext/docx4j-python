@@ -117,7 +117,7 @@ The Word check: this package's save of each of the 23 and `76t27`, read beside W
 - **`fragments._repair_breaks`** runs both passes, so `insert_ooxml` refuses and `lenient` reads through (Q2). `wml()` runs neither, `lenient` or not.
 - **`canon.compare(..., repaired=True)`** runs `repair_bytes` and counts each element `read-through`, benign. **`scripts/roundtrip.py`** does both, and prints the parts repaired.
 - **Fixtures:** check 76's 29 `76t` sources and 28 saves copied unedited into `tests/fixtures/check76/`, 67 files with CR-030's ten.
-- **`tests/openpackaging/test_read_through.py`:** 233 tests.
+- **`tests/openpackaging/test_read_through.py`:** 234 tests.
 
 ### 8.2 What the build settled beyond the design
 
@@ -128,12 +128,13 @@ Each is in section 3, and was not in the proposal:
 3. **Either trigger runs both passes,** so a `w:br` the fork never reported, inside a skipped `w:madeUp`, is rule 1's, and `repaired=True` has one meaning.
 4. **A `w:pPr`'s element left holding something stands,** so its one entry is the fork's. The count `repair` returns includes it.
 5. **A branch's `w:p`** is typed, so the report names what it holds, and it reads through in `preserve`, `word` and `mce_preprocess` alike. In `preserve` the branch stays, without the tags. No Word run measures a branch.
+6. **"Unknown" here means the model doesn't hold it, where the WD's section 3.1 says the standard doesn't define it.** The names are docx4j's `wml.xsd`. Nine names in an ECMA-376 transitional schema (the copy in `safe-docx`, `5ec2be03`) aren't among them: `w:contentPart`, `w:header`, `w:headers`, `w:label`, `w:longDesc`, `w:objectEmbed`, `w:objectLink`, `w:tabIndex` and `w:title`. Eight stand only under `w:tcPr`, `w:sdtPr`, `w:ffData`, `w:frame`, `w:frameset` or `w:object`, none a host, so the pass leaves them. `w:contentPart` stands in a `w:r` and holds nothing, so reading it through gives what the drop gave: the element gone, and listed. So nothing reads differently, though the fork's loss of all nine is its own gap, reported by `part.skipped`, and no local file holds one. Found after `77b0202`, on the portfolio session's question.
 
 ### 8.3 Verified
 
 - **The fixtures:** each of the 29 `76t` sources' entries the same as `build.mjs`'s output at core-ts `1ffb120`, and the 33 saves here each matching its `manifest.json`.
 - **Against Word's saves:** the 23 and `76t27` in tokens and plain text, and the four unchanged. `76t28` read and reported.
-- **The names table:** equal to `wml.xsd`'s 605 declarations, a test. Of 1,902 local `.docx`, `.dotx` and `.docm` files (`samples/`, `tests/fixtures/`, docx4j's test resources and core-ts's `test/`, check 76's own left out) none holds a `w:` name outside it, so the pass can't take anything from any of them.
+- **The names table:** equal to `wml.xsd`'s 605 declarations, a test, and short of the standard by section 8.2's point 6. Of 1,902 local `.docx`, `.dotx` and `.docm` files (`samples/`, `tests/fixtures/`, docx4j's test resources and core-ts's `test/`, check 76's own left out) none holds a `w:` name outside it, so the pass can't take anything from any of them.
 - **Mutants:** 61, each host removed and eleven unmeasured ones added, each guard, the order of the passes and the seams. 60 were caught at first; the survivor showed text left in a `w:pPr`'s element untested, and the test added catches it.
 - **The suites:** fast 9,088 passed, 8 skipped; slow 1,996 passed, 1 skipped.
 - **`generate.sh --check`:** two generations byte identical.
