@@ -3,7 +3,8 @@
 The reader's oracle is POI's reading (docx4j's copy, ``Ole10Native`` and
 ``POIFSFileSystem``), through ``EmbeddedObjectsTest``: ``probe41.bin``, which POI
 wrote, and each rule below, which ``Ole10Native(byte[], int)`` holds. The bytes
-are ``ole_writer``'s, as section 5 recommends: no test here needs a Java run.
+are ``ole_writer``'s, as section 5 recommends: no test here needs a Java run. Two
+packages Word wrote are read from the sibling checkout, where it is there.
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ from docx4j_py.model.text.ole import OLE10_NATIVE, package_names, record_names, 
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROBE = ROOT / "tests" / "fixtures" / "text-extraction" / "phase0" / "extraction-probe.docx"
+
+DOCX4J_OLE = ROOT.parent / "docx4j" / "docx4j-core-tests" / "src" / "test" / "resources" / "OLE"
 
 NAMES = ("notes.txt", "C:\\docs\\notes.txt", "C:\\tmp\\notes.txt")
 
@@ -47,6 +50,36 @@ def test_the_file_poi_wrote():
     assert package_names(data) == ("probe.txt", "probe.txt", "probe.txt")
     assert root_stream(data, "\x01Ole") == OLE_MARKER
     assert b"OLE41_NATIVE_TEXT" in root_stream(data, OLE10_NATIVE)
+
+
+def _word_wrote(name: str) -> bytes:
+    with zipfile.ZipFile(DOCX4J_OLE / f"{name}.docx") as z:
+        return z.read("word/embeddings/oleObject1.bin")
+
+
+@pytest.mark.skipif(not DOCX4J_OLE.exists(), reason="needs the sibling checkout ../docx4j")
+def test_the_package_word_wrote():
+    """docx4j's ``OLE/dragged txt.docx``: a text file dragged into Word, its ``CompObj``, ``ObjInfo`` and UTF-16 names.
+
+    The expectation is POI's reading of the same bytes, measured through
+    docx4j's copy: ``parsed``, each name as here, ``label2`` and the others passed over.
+    """
+    assert package_names(_word_wrote("dragged txt")) == (
+        "simple.txt",
+        "X:\\ole_tests\\simple.txt",
+        (
+            "C:\\Users\\jharrop\\AppData\\Local\\Temp\\{0AC6109D-2421-4E57-8F7E-933AD9AFB804}"
+            "\\{BD445197-EDA4-4464-8E1E-5BFF2E14DB1C}\\simple.txt"
+        ),
+    )
+
+
+@pytest.mark.skipif(not DOCX4J_OLE.exists(), reason="needs the sibling checkout ../docx4j")
+def test_a_bitmap_word_wrote_has_no_names():
+    """docx4j's ``OLE/create new bitmap.docx``: an ``Ole10Native`` stream that is no package's, POI's ``unparsed``."""
+    data = _word_wrote("create new bitmap")
+    assert len(root_stream(data, OLE10_NATIVE)) == 167172
+    assert package_names(data) is None
 
 
 @pytest.mark.parametrize("shift", [9, 12])

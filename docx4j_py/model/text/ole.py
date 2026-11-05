@@ -17,10 +17,10 @@ then that stream's ``label``, ``fileName`` and ``command``, as
   read past and not kept: a record that fails in them gives no names either,
   and one that ends at its data's end fails there, as POI's ``readShort`` does.
 
-Nothing here raises: a part that is no compound file, holds no such stream or
-whose record fails at any point gives None, as ``ole10Names`` catches everything
-and returns null. So a host's filter meets ``notes.txt`` where the package has
-it and nothing where it does not. Every read is bounded by the part's size: a
+:func:`package_names` never raises: a part that is no compound file, holds no
+such stream or whose record fails at any point gives None, as ``ole10Names``
+catches everything and returns null. So a host's filter meets ``notes.txt`` where
+the package has it and nothing where it does not. Every read is bounded by the part's size: a
 chain that meets itself is refused, and a stream is read only as far as its
 size, itself limited to POI's 100,000,000 bytes.
 
@@ -60,7 +60,7 @@ Names = tuple[str | None, str | None, str | None]
 
 
 class _NotRead(Exception):
-    """A compound file or a record that gives no names; never leaves this module."""
+    """A compound file or a record that gives no names, which :func:`package_names` reads as none."""
 
 
 class _CompoundFile:

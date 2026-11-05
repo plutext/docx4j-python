@@ -153,6 +153,16 @@ def test_include_is_recorded():
     assert options.includes == {"glossary", "comments"}  # comments: true is the preset's
 
 
+def test_comments_false_under_the_preset_is_docx4js_reading():
+    """docx4j's ``isComments()`` is ``comments || include.contains(COMMENTS)``, and the preset's ``include`` names them.
+
+    So a caller's ``comments: false`` holds only with an ``include`` of its
+    own (section 13.8's open point).
+    """
+    assert TextOptions(comments=False, profile="word-text").comments
+    assert not TextOptions(comments=False, include=[], profile="word-text").comments
+
+
 def test_a_preset_value_is_not_the_callers():
     """A preset's value does not record: a second preset would fill it, and a caller's own still overrides it."""
     options = TextOptions(profile="word-text")
