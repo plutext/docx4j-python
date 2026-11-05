@@ -94,11 +94,12 @@ _HOSTS = frozenset(
         "footnote",
     )
 )
-#: Two of the hosts' names also stand for a thing that holds no content: ``w:ins`` marking a list number, a paragraph
-#: mark, a math control character, a table row or a math run, and ``w:footnote`` naming a separator in the settings
-#: part. No file measures those, so each stays unmeasured. By parent, from the schema's declarations of the two names.
-_NOT_CONTENT_UNDER = {
-    _w("ins"): frozenset((_w("numPr"), _w("rPr"), _w("trPr"), f"{{{_MATH}}}r")),
+#: Two of the hosts' names stand for another element under these parents, which no file measures: ``w:ins`` marking a
+#: list number, a paragraph mark, a table row or a math control character, or holding a math run's content, and
+#: ``w:footnote`` naming a separator in the settings part. Every parent the schema gives those declarations, by way of
+#: its groups and types, as ``test_the_other_elements_parents_are_the_schemas`` holds.
+_ANOTHER_ELEMENT_UNDER = {
+    _w("ins"): frozenset((_w("numPr"), _w("rPr"), _w("trPr"), f"{{{_MATH}}}ctrlPr", f"{{{_MATH}}}r")),
     _w("footnote"): frozenset((_w("footnotePr"),)),
 }
 #: ``normalize-space``'s whitespace, as CR-030's.
@@ -132,7 +133,7 @@ def _is_host(element: etree._Element) -> bool:
     if element.tag not in _HOSTS:
         return False
     parent = element.getparent()
-    return parent is None or parent.tag not in _NOT_CONTENT_UNDER.get(element.tag, ())
+    return parent is None or parent.tag not in _ANOTHER_ELEMENT_UNDER.get(element.tag, ())
 
 
 def _direct_runs(element: etree._Element, holder: etree._Element) -> list[etree._Element]:

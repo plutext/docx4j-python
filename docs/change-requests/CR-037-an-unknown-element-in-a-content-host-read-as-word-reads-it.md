@@ -43,7 +43,7 @@ A new `openpackaging/read_through.py`, over lxml, as `breaks.py` is.
 - **What it takes:** an element in the `w:` namespace whose name the model doesn't hold, standing in one of the fifteen hosts, or in such an element standing in one (so `76t7`'s nesting works). What it held takes its place, in order, with its text and tails.
 - **A run in a `w:pPr`'s unknown element (Q5):** the run goes to the head of the paragraph, and the tags are reported. Only a direct run, the shape measured, and only in a paragraph's own `w:pPr`. Where the element is left holding something else it stands, so the fork drops that and reports it, once.
 - **What it leaves:** every other skipped element, as today. That is a property in `w:pPr` or `w:rPr` and anything in `w:t`, measured; a run in `w:rPr`, which Word refuses; anything else such an element holds in `w:pPr`, unmeasured; and every host not measured: `w:ftr`, `w:endnote`, `w:del`, `w:sdtPr`, `w:trPr`, `w:tcPr`, `w:tblPr` and `w:sectPr`, as core-ts's list has it. Adding a host later is then the whole change.
-- **Two hosts' names that hold no content:** `w:ins` also marks a list number, a paragraph mark, a math control character, a table row and a math run, and `w:footnote` also names a separator in the settings part. No file measures those, so each stays unmeasured, told apart by its parent: `w:numPr`, `w:rPr`, `w:trPr` and `m:r`, and `w:footnotePr`, every other declaration of those two names in the schema.
+- **Two hosts' names that stand for another element:** `w:ins` also marks a list number, a paragraph mark, a table row and a math control character, and holds a math run's content, and `w:footnote` also names a separator in the settings part. No file measures those, so each stays unmeasured, told apart by its parent: `w:numPr`, `w:rPr`, `w:trPr`, `m:ctrlPr` and `m:r`, and `w:footnotePr`, every parent the schema gives those declarations.
 - **An element of another namespace** stops the walk upward. Word drops one with all it holds (`76k`), so a `w:madeUp` inside it isn't read through.
 - **What its host doesn't admit:** unmeasured. The pass doesn't look, so a `w:p` left in a `w:p` is skipped by the second parse and listed, as any misplaced element is.
 - **Text the element holds directly:** unmeasured. It lands as stray text in its host, which no parse keeps, as text standing in a `w:p` isn't kept today, so the element's entry is what says so.
@@ -117,13 +117,13 @@ The Word check: this package's save of each of the 23 and `76t27`, read beside W
 - **`fragments._repair_breaks`** runs both passes, so `insert_ooxml` refuses and `lenient` reads through (Q2). `wml()` runs neither, `lenient` or not.
 - **`canon.compare(..., repaired=True)`** runs `repair_bytes` and counts each element `read-through`, benign. **`scripts/roundtrip.py`** does both, and prints the parts repaired.
 - **Fixtures:** check 76's 29 `76t` sources and 28 saves copied unedited into `tests/fixtures/check76/`, 67 files with CR-030's ten.
-- **`tests/openpackaging/test_read_through.py`:** 234 tests.
+- **`tests/openpackaging/test_read_through.py`:** 236 tests.
 
 ### 8.2 What the build settled beyond the design
 
 Each is in section 3, and was not in the proposal:
 
-1. **Two hosts' names hold no content elsewhere.** The schema declares `w:ins` under `w:numPr`, `w:rPr`, `w:trPr` and `m:r`, and `w:footnote` under `w:footnotePr`. A test on the tag alone would have read through in five unmeasured places, so the host test reads the parent. core-ts's section 3.7 doesn't name this, so its build will want it.
+1. **Two hosts' names stand for another element elsewhere.** The schema gives `w:ins` other declarations under `w:numPr`, `w:rPr`, `w:trPr`, `m:ctrlPr` and `m:r`, and `w:footnote` one under `w:footnotePr`. A test on the tag alone would read through in six unmeasured places, so the host test reads the parent. core-ts's section 3.7 doesn't name this, so its build will want it. **Corrected after `77b0202`:** the list first had five, missing `m:ctrlPr`, and called all of them holding no content, though `m:r`'s `w:ins` holds math run content. docx4j's session found both, building its CR-076, and `<m:ctrlPr><w:ins><w:madeUp>` was indeed read through here. A test now derives the parents from the schema, through its groups and types, since the first list had read only where the names are declared.
 2. **Another namespace stops the walk.** "Nearest ancestor with a known name", as first written, would have reached through an `ext:opaque` to a `w:p`, against `76k`.
 3. **Either trigger runs both passes,** so a `w:br` the fork never reported, inside a skipped `w:madeUp`, is rule 1's, and `repaired=True` has one meaning.
 4. **A `w:pPr`'s element left holding something stands,** so its one entry is the fork's. The count `repair` returns includes it.
@@ -136,13 +136,13 @@ Each is in section 3, and was not in the proposal:
 - **Against Word's saves:** the 23 and `76t27` in tokens and plain text, and the four unchanged. `76t28` read and reported.
 - **The names table:** equal to `wml.xsd`'s 605 declarations, a test, and short of the standard by section 8.2's point 6. Of 1,902 local `.docx`, `.dotx` and `.docm` files (`samples/`, `tests/fixtures/`, docx4j's test resources and core-ts's `test/`, check 76's own left out) none holds a `w:` name outside it, so the pass can't take anything from any of them.
 - **Mutants:** 61, each host removed and eleven unmeasured ones added, each guard, the order of the passes and the seams. 60 were caught at first; the survivor showed text left in a `w:pPr`'s element untested, and the test added catches it.
-- **The suites:** fast 9,088 passed, 8 skipped; slow 1,996 passed, 1 skipped.
+- **The suites:** fast 9,091 passed, 8 skipped, with section 8.2's corrections; slow 1,996 passed, 1 skipped, at `77b0202`.
 - **`generate.sh --check`:** two generations byte identical.
 - **`scripts/roundtrip.py`,** by hand on the 29 sources: 23 parts repaired, 24 elements `read-through`, no failures. Its three `element-dropped` are `76t5`, `76t6` and `76t28`, where the element does go, so it exits non-zero, as it should. `76t25` isn't among the 23, as `roundtrip.py`'s table has no `word/footnotes.xml`, which was so before this CR: `test_a_save_is_its_repaired_source` holds that part.
 
 ### 8.4 The Word check
 
-Staged, not run. This package's save of each of the 23 and `76t27`, with a README, at `vbShares/Office 2016/__tmp/python-cr037/`. Each save's text is the same as Word's save of its source. **Only the user's report closes this.**
+Staged, not run. This package's save of each of the 23 and `76t27`, with a README, at `vbShares/Office 2016/__tmp/python-cr037/`, built over `77b0202`. Each save's text is the same as Word's save of its source. The two later corrections don't touch those saves, since none of the 24 sources holds an `m:ctrlPr` with a `w:ins` in it. **Only the user's report closes this.**
 
 ### 8.5 Left to others
 

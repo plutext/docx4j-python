@@ -451,14 +451,57 @@ def test_a_host_not_measured_is_left(xml: str) -> None:
         "<w:r><w:rPr><w:ins><w:madeUp/></w:ins></w:rPr></w:r>",
         "<w:tr><w:trPr><w:ins><w:madeUp/></w:ins></w:trPr></w:tr>",
         "<w:p><w:pPr><w:numPr><w:ins><w:madeUp/></w:ins></w:numPr></w:pPr></w:p>",
-        "<m:r><w:ins><w:madeUp/></w:ins></m:r>",
+        "<m:ctrlPr><w:ins><w:madeUp><w:rPr/></w:madeUp></w:ins></m:ctrlPr>",
+        "<m:r><w:ins><w:madeUp><m:t>a</m:t></w:madeUp></w:ins></m:r>",
         '<w:settings><w:footnotePr><w:footnote w:id="0"><w:madeUp/></w:footnote></w:footnotePr></w:settings>',
     ],
 )
-def test_a_hosts_name_holding_no_content_is_no_host(xml: str) -> None:
-    """``w:ins`` and ``w:footnote`` are also things that hold no content, which no file measures."""
+def test_a_hosts_name_standing_for_another_element_is_no_host(xml: str) -> None:
+    """``w:ins`` and ``w:footnote`` are other elements under these parents, which no file measures."""
     root = tree(xml)
     assert read_through.repair(root) == 0
+
+
+def test_the_other_elements_parents_are_the_schemas() -> None:
+    """Every declaration of the two names but the host's, followed through its groups and types to what holds it.
+
+    A declaration's own group isn't its parent: ``EG_RPrMath``, which reads like run
+    properties, stands directly in ``m:ctrlPr``. The first list missed that.
+    """
+    xs = "{http://www.w3.org/2001/XMLSchema}"
+    schemas = [etree.parse(ROOT / "schemas" / path).getroot() for path in ("wml/wml.xsd", "shared/shared-math-2ed.xsd")]
+
+    def local(name: str | None) -> str | None:
+        return name.rsplit(":", 1)[-1] if name else name
+
+    def named_owner(node: etree._Element) -> etree._Element:
+        return next(a for a in node.iterancestors() if a.get("name") and a.tag in (xs + "complexType", xs + "group", xs + "element"))
+
+    def holders(owner: etree._Element, seen: set[str]) -> set[str]:
+        """The elements `owner`, a named group, type or element, stands for."""
+        name = owner.get("name")
+        if owner.tag == xs + "element":
+            return {f"{{{owner.getroottree().getroot().get('targetNamespace')}}}{name}"}
+        if name in seen:
+            return set()
+        seen.add(name)
+        found: set[str] = set()
+        for schema in schemas:
+            for node in schema.iter(xs + "element", xs + "group", xs + "extension"):
+                if node.tag == xs + "element" and local(node.get("type")) == name and node.get("name"):
+                    found |= holders(node, seen)
+                elif local(node.get("ref") if node.tag == xs + "group" else node.get("base")) == name:
+                    found |= holders(named_owner(node), seen)
+        return found
+
+    for tag, host_type in ((W + "ins", None), (W + "footnote", "CT_FtnEdn")):
+        derived: set[str] = set()
+        for schema in schemas:
+            for node in schema.iter(xs + "element"):
+                other = node.get("type") not in (host_type, "CT_RunTrackChange") and node.getparent().tag != xs + "schema"
+                if node.get("name") == tag[len(W) :] and other:
+                    derived |= holders(named_owner(node), set())
+        assert derived == read_through._ANOTHER_ELEMENT_UNDER[tag]
 
 
 @pytest.mark.parametrize(
