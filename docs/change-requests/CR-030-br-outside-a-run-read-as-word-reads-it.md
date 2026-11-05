@@ -1,6 +1,6 @@
 # CR-030: A `w:br` outside a run, read as Word reads it (the port of docx4j CR-073)
 
-**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done; **the Word check passed 2026-11-03** (the user: "all opened cleanly and were identical to the word 365 saves"; section 10.10). **CR-030 is complete.** **Amended 2026-11-05** (the user: "fix rule 2"; section 11): after core-ts's Word check 76, an element Word doesn't know in a text element goes with all it holds and is listed in `part.skipped`. Built; its Word check is staged, not yet run.
+**Status:** Proposed 2026-11-03, at the user's request ("yes", to drafting CR-030 and CR-031). It ports docx4j CR-073's three rules, so that a `w:br` found directly in a paragraph, a hyperlink or the body, or inside a `w:t`, `w:instrText`, `w:delText` or `w:delInstrText`, is put where Word 365 reads it before the part is bound, wherever the fork's skipped report names one, with no break or text lost and nothing measurable paid by a normal part (seven questions, section 8; two phases, 1½ days). **Decided 2026-11-03**, Q1 to Q7 as recommended (the user: "CR-030 and CR-031 both decided as recommended"; section 8): docx4j's trigger, `part.warnings` and `package.warnings`, a strict load that repairs, `wml()` refusing while `insert_ooxml` repairs, `scripts/roundtrip.py` running the pass, `br2-3`'s bare `w:instrText` left out, and release with the next. **Phase A implemented 2026-11-03** (section 10: `fb07618`, `5cdb3fb`); Phase B's records done; **the Word check passed 2026-11-03** (the user: "all opened cleanly and were identical to the word 365 saves"; section 10.10). **CR-030 is complete.** **Amended 2026-11-05** (the user: "fix rule 2"; section 11): after core-ts's Word check 76, an element Word doesn't know in a text element goes with all it holds and is listed in `part.skipped`. Built; **its Word check passed**, through the Word bridge on 2026-11-05 (the user, 2026-11-06: "bridge run closes section 11"; section 11.6).
 
 *The number:* CR-029 is the latest CR here. CR-031 is being drafted beside this one.
 
@@ -810,9 +810,17 @@ pass lists each element it takes out in `part.skipped` (and so `package.skipped`
   `br-placement` files and `samples/`, 13 of those parts holding a shape, and report nothing dropped.
 - **The fast suite:** 8,830 passed, 8 skipped (8,793 before). `tests/test_roundtrip.py` and `tests/openpackaging/test_round_trip.py`, their slow cases included, pass.
 
-### 11.6 The Word check
+### 11.6 The Word check (2026-11-05): passed
 
-Staged 2026-11-05 at `vbShares/Office 2016/__tmp/python-cr030-rule2/`: this package's save of each of the five shapes. Not yet run.
+Staged 2026-11-05 at `vbShares/Office 2016/__tmp/python-cr030-rule2/`: this package's save of each of the five shapes.
+
+The docx4j-portfolio session ran it through the Word bridge, not by hand: Word 16.0.20326.20232, bridge copy `0dfdc31`, each file opened read-only, results in the share's `bridge/portfolio/cr030r2-<case>/`. The user accepted that run on 2026-11-06: "bridge run closes section 11".
+
+- **Inputs:** the five staged files, their hashes checked here.
+- **A repair prompt:** none. Each `result.json` says `opened: silent` with no dialogs, Word visible and its alerts on. This is the bridge's watchdog's reading, which a save can't show.
+- **What Word read**, from Word's own saves, read here: the second paragraph `TARGET TEXT` in `76m`, `76n`, `76u` and `76w` and `TARGETTEXT` in `76z`, with no hidden words, `w:br` or `w:tab` in it; the third `LAST LINE.` in all five.
+- **Against core-ts's Word saves of the sources:** `word/document.xml` the same in all five once the `rsid` attributes, `paraId` and `textId` are stripped, compared here. The PDFs have 0 differing pixels at 100 dpi, the portfolio session's reading, not repeated here.
+- **Other parts differ, none from this package's save:** `compatibilityMode` 15 against core-ts's 12, which is the hand macro's `CompatibilityMode:=12`; `DocSecurity` 4 against 0 in `app.xml`, probably the read-only open, not tested; and footnotes and endnotes parts in core-ts's saves of `76m`, `76n`, `76u` and `76w` that the bridge's lack, not explained, as in 26 of core-ts's 43 saves.
 
 ### 11.7 Not here
 

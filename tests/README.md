@@ -762,6 +762,14 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > lines kept as a bare `w:instrText` (Q6), which Word showed as text in the source. All thirteen opened with no repair prompt and looked the same as Word's saves, `br2-3`'s header
 > included: Word shows the bare `w:instrText` as text in our save too (CR-030 section 10.10).
 
+> **2026-11-05, CR-030 section 11 (the five saves in `out/cr030-rule2-word-check/`, for
+> `__tmp/python-cr030-rule2/`): passed**, through the Word bridge, not by hand (the docx4j-portfolio session's run on
+> Word 16.0.20326.20232, bridge copy `0dfdc31`; the user, 2026-11-06: "bridge run closes section 11"). Rule 2 now takes
+> an element Word doesn't know out of a `w:t` with all it holds, so a save no longer writes the words it hid. All five
+> opened silently with no dialogs, Word's saved second paragraph read as the README's table says (`TARGET TEXT`, and
+> `TARGETTEXT` for `76z`), and `word/document.xml` matched core-ts's Word save of each source once `rsid` attributes,
+> `paraId` and `textId` were stripped. Section 11.6 has what differs in the other parts, none of it from this package's save.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
