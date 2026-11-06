@@ -1,4 +1,4 @@
-# CR-040: An `mc:AlternateContent` that selects nothing, read as Word reads it (WD REQ-305 at 0.98)
+# CR-040: An `mc:AlternateContent` that selects nothing, read as Word reads it (WD REQ-305 and REQ-306)
 
 **Status:** Proposed 2026-11-07 (the user: "write CR-040"), on the user's ruling that day: "REQ-305 itself changes for all three engines". Nothing is built, and nothing can be until docx4j's list is committed (section 3.1).
 
@@ -26,14 +26,17 @@ Word shows `Case in body` and `LAST LINE` alone.
 - **What moves:** with both lines changed for one run, three tests failed across `tests/text`, `tests/openpackaging`, `tests/content` and `tests/test_child.py`, each pinning REQ-305 by name. The rest of the suite wasn't run.
 - **`rw-24`, at a root:** CR-039 already reads an empty document, with no `mce.nothing_selected`.
 - **How common:** of 133 `mc:AlternateContent` in the 719 local packages, one selects nothing, `rw-24`, under today's list and docx4j's new one.
-- **The list:** this package's has 118 URIs, docx4j's at `198d015a3`. docx4j's working copy has 127, uncommitted: nine added and none removed, as many as the namespaces Word was measured to understand beyond the old list (`wpi`, `oel`, `cx3`, `cx4`, `cx6`, `cx7`, `c16r2`, `ax`, `xsi`). `test_the_understood_list_is_docx4js_verbatim` fails today because of that working copy.
-- **The list moves one selection.** `phase0/extraction-probe-inspect.docx` holds a `Choice` requiring `wpi` with a `Fallback`. Today it reads the `Fallback`, and with the new list the `Choice`, as Word does. This is a docx4j fixture, so its expected output is docx4j's to re-baseline.
+- **The list:** this package's has 118 URIs, docx4j's at `198d015a3`. Word understands 105 of them, and the other 13 are mostly document-properties and encryption namespaces, there because readers traverse them in their own parts. So the user ruled for two sets ("two sets", through the portfolio), and WD 0.99's REQ-306 has an *understood set* for every markup compatibility question and a *traversal set* for what a reader can read. The understood set measured so far is 114 URIs: the 105 and `wpi`, `oel`, `cx3`, `cx4`, `cx6`, `cx7`, `c16r2`, `ax` and `xsi`. `test_the_understood_list_is_docx4js_verbatim` fails today because of docx4j's working copy.
+- **Every use here is the understood set:** `child.understands`, `mce.py`, `mc_load_mode.py`, `repeated._refused` and `breaks._gives_its_text`. Nothing in this package asks the traversal question of the list.
+- **The new set moves one selection.** `phase0/extraction-probe-inspect.docx` holds a `Choice` requiring `wpi` with a `Fallback`. Today it reads the `Fallback`, and with the understood set the `Choice`, as Word does. This is a docx4j fixture, so its expected output is docx4j's to re-baseline. Taking the 13 off moves nothing in the 719 packages.
 
 ## 3. Design
 
-### 3.1 The list (Phase A)
+### 3.1 The understood set (Phase A)
 
-Copy docx4j's published list once it's committed, to `resources/understood-namespaces.txt` and the suite's copy. Never ahead of it: REQ-306 has additions made to the published list first. `UNDERSTOOD`, the prefix table's own narrower list, doesn't change.
+A new resource, the understood set, in docx4j's published form once it's committed, read by `understood_namespaces()` in place of today's list. Never ahead of it: REQ-306 has additions made to the published lists first. Where the set is published and what the file is called are still open in the WD.
+
+Today's `understood-namespaces.txt` is then the traversal set. Nothing here reads it, so it stays only if REQ-306's "publish two sets" needs it in the package (Q1). `UNDERSTOOD`, the prefix table's own narrower list, doesn't change.
 
 ### 3.2 The rule (Phase B)
 
@@ -61,14 +64,14 @@ Copy docx4j's published list once it's committed, to `resources/understood-names
 - **Word's files:** `rw-25` joins `tests/fixtures/repeated/`, and the `req305` and `understood-choice` rounds' files with it (Q5). Each namespace Word understands shows the `Choice`, and each it doesn't shows neither.
 - **The rule:** the three tests that pin the old rule change, by each load mode.
 - **The warning:** selector, `detail`, one per element, at a root (`rw-24`), and none where a branch is selected.
-- **The list:** `test_the_understood_list_is_docx4js_verbatim` passes again, at 127 or whatever docx4j commits.
+- **The set:** the verbatim test held to docx4j's published understood set, with a row for each of the 13 taken off and the 9 added.
 - **`phase0/`:** the suite re-pinned at the docx4j commit that holds the list, with `extraction-probe-inspect.docx`'s row as docx4j re-baselines it.
 
 ## 5. Phases
 
 | Phase | Work | Cost |
 |---|---|---|
-| A | The list, the suite's copy, the `phase0/` re-pin | ¼ day, once docx4j commits |
+| A | The understood set, the suite's copy, the `phase0/` re-pin | ¼ day, once docx4j publishes it |
 | B | The rule, the warning, `rw-24`, the tests | ½ day |
 | C | The records and the Word check of a `word`-mode save | ¼ day |
 
@@ -85,7 +88,7 @@ A goes first, and B never ahead of it. A is right by Word on its own.
 
 | # | Question | Recommendation |
 |---|---|---|
-| Q1 | Take docx4j's list only once committed, or copy the working copy now? | **Once committed.** REQ-306 has the published list first, and a working copy can still change. |
+| Q1 | Take docx4j's understood set only once published, and keep the traversal list in the package? | **Once published,** since REQ-306 has the published lists first. **Keep the traversal list** as the published copy it is, with nothing reading it, until the WD settles what a Python package must publish. |
 | Q2 | One warning per element, or per part? | **Per element**, with its address, as `mce.branches_differ` is. The selector is the part's name either way, and a caller needs to find it. |
 | Q3 | Does `mce_preprocess` say anything? | **No.** It's the caller's opt-in to resolving at load. It could log, but no result carries it. |
 | Q4 | `detail`'s form: one string of URIs separated by spaces, or a list? | **One string,** as `Requires` is, so `detail` stays a scalar. To be agreed with docx4j and core-ts. |
