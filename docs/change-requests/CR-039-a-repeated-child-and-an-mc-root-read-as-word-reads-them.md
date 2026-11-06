@@ -114,7 +114,7 @@ core-ts built these and read Word's saves (its CR-028 sections 1.1 and 2.4), eac
 | Keep the last | `w:jc`, `w:b`, `w:sz` | One file each (Q5) |
 | Keep the later | `w:sectPr`, `w:tblPr` | Same properties in both copies |
 
-Joining two bodies drops the first body's final `w:sectPr`: Word's save holds one section, the second's. A `w:sectPr` in a paragraph's `w:pPr` stays. Only one section per body is measured.
+Joining bodies keeps the last final `w:sectPr` stated and drops the others, a body with none being passed over: in `rt-17` the third body has none and the second's stands. A `w:sectPr` in a paragraph's `w:pPr` stays (`rt-15`).
 
 Everything else stays as it is today: the first kept, the later listed. That covers a run-level or cell-level `w:sdtContent`, a DrawingML box, and a second `w:tcPr` or `w:trPr`. Phase 0's list covers most of those, and whether "the last" means the whole element or each attribute (`w:ind w:left` then `w:ind w:right`), since `rc-30` to `rc-33` hold one attribute each.
 
@@ -201,8 +201,8 @@ Each phase stands alone, and any of them can be left out.
 - **`XmlPart._read_root`:** one read of the start tag where a part sets `reads_root`, which only `MainDocumentPart` does. It runs before `_parse` from both `_unmarshal` and `source_tree`, so a save's check reads the source as the parse did. A root read this way resets the part's source declarations, or `mc:Ignorable`'s prefix would go.
 - **`read_through.repair_bytes`** runs `repeated.repair` first and returns a fifth value, `joined`.
 - **The refusal:** `RootRefused` becomes the part's `Docx4JException`, kept as `part.unreadable`. `misplaced()` reports `part.root_refused`, a new finding, since the XML is well formed.
-- **The rest:** `TextWarning.PART_UNEXPECTED_ROOT` with a `root` field, `extract` and `body_of` on a package with no main part, `canon.compare(..., main_part=True)` and its `read-as-word` category, `roundtrip.py`.
-- **`tests/fixtures/repeated/`:** 45 inputs, 34 of Word's saves and their text saves, 470 KB, `or-14-comments`' from its rerun.
+- **The rest:** `TextWarning.PART_UNEXPECTED_ROOT`, the root's name in `detail`, `extract` and `body_of` on a package with no main part, `canon.compare(..., main_part=True)` and its `read-as-word` category, `roundtrip.py`.
+- **`tests/fixtures/repeated/`:** 48 inputs, 37 of Word's saves and their text saves, about 0.5 MB, `or-14-comments`' from its rerun.
 
 ### 8.2 What the build settled beyond the design
 
@@ -210,12 +210,12 @@ Each phase stands alone, and any of them can be left out.
 - **A root read as Word reads it never needs a second `ReadAsWord`,** because `read_root` joins as it goes. Phase C will need one per part once a repeated `w:pPr` can stand under such a root.
 - **Any other root is now written as a `w:document` with no body,** so `foo` holding a `w:body` yields nothing, as REQ-320 says. It used to bind. What it held is listed with its real parent, `p` under `w:hdr`, not `w:document`.
 - **The clean cost is one start tag.** `etree.XMLPullParser` needs `close()` on a short part, whose start tag otherwise waits in the parser: a test on `<a/>` found that.
-- **A later `w:body` with no `w:sectPr`** leaves the first's, moved to the end. That's unmeasured, and REQ-322's sentence reads differently (section 8.4).
+- **A later `w:body` with no `w:sectPr`** leaves the last one stated, moved to the end. Built ahead of the measurement, and `rt-16` and `rt-17` then held it, with `rt-15` for a `w:sectPr` in a `w:pPr`. All three are in the fixtures.
 - **`rw-24`'s rule is one line,** `branch = branch_taken(root)` in `_taken`, for REQ-305's open ruling.
 
 ### 8.3 Verified
 
-- **The whole suite:** 11,775 passed, 8 skipped.
+- **The whole suite:** 11,775 passed, 8 skipped, at `6851323`. After `detail` and the `rt-*` fixtures, the fast suite: 9,676 passed, 8 skipped.
 - **`scripts/roundtrip.py`:** clean, 50 of 50 parts, 0 differences, 0 skipped.
 - **21 mutants** of `repeated.py`, `xml_part.py`, `read_through.py` and the extractor: every one caught. Four survived the first run and a test or a removal followed: a branch's second element, text after its document, a prefix only the branch declares, and an unused merge, now gone.
 - **Word's own files:** every file Word read matches its words and its section, a save reads again with nothing to say, and `Body` writes to each.
@@ -223,6 +223,8 @@ Each phase stands alone, and any of them can be left out.
 
 ### 8.4 Left to others
 
-- **The WD:** Phase B is built to 0.96's draft of REQ-317 to REQ-321. The points sent to the portfolio are `w:wordDocument`'s namespace, REQ-322's section sentence and `part.unexpected_root`'s selector.
+- **The WD:** Phase B is built to 0.96's draft of REQ-317 to REQ-321 and REQ-322's section rule. Its three review points were taken: `wordDocument`'s namespace, the section sentence, and the root's name in `detail`, which `TextWarning` now holds.
+- **A `w:body` in a `w:body`** (`nd-20` to `nd-24`): Word reads the words in place, and here they're lost, listed in `part.skipped`. The WD requires nothing of it yet, and this CR doesn't cover it.
+- **Q6:** `w:txbxContent` comes in reverse order with three and four copies (`rt-12`, `rt-13`), which meets one of its two conditions. A second shape is still missing.
 - **The codes:** `part.read_as_word`, `part.unexpected_root` and `part.root_refused` are proposals. Their names are one line each.
 - **CR-033:** the save after `.contents` of a root that yields nothing still writes an empty `w:document`.

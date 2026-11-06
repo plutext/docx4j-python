@@ -601,7 +601,7 @@ class TextWarning:
     #: entry's name as the first entry spells it, its :attr:`detail` the number of entries.
     PACKAGE_DUPLICATE_ENTRY = "package.duplicate_entry"
     #: A main part whose root isn't one it can read, so it yields no text (REQ-320, proposed; CR-039). Once a part, with
-    #: no address; its selector is the part's name, and :attr:`root` names the root.
+    #: no address; its selector is the part's name, and :attr:`detail` the root's qualified name.
     PART_UNEXPECTED_ROOT = "part.unexpected_root"
 
     kind: str
@@ -617,10 +617,8 @@ class TextWarning:
     #: entry's name as its first entry spells it (``word/document.xml``, ``[Content_Types].xml``).
     part_name: str | None = None
     #: A count, where the kind has one (CR-032 Q7): for ``package.duplicate_entry``, the number of
-    #: entries of the name. REQ-801's later counts go here too.
-    detail: int | None = None
-    #: For ``part.unexpected_root``: the root, ``w:hdr``.
-    root: str | None = None
+    #: entries of the name. REQ-801's later counts go here too. For ``part.unexpected_root``, the root, ``w:hdr``.
+    detail: int | str | None = None
 
     @property
     def selector(self) -> str | None:
@@ -628,12 +626,10 @@ class TextWarning:
         return self.branch or self.part_name or self.content_type
 
     def to_dict(self) -> dict[str, Any]:
-        """``kind``, ``address`` and ``selector``, and ``detail`` and ``root`` where set."""
+        """``kind``, ``address`` and ``selector``, and ``detail`` where it is set."""
         out: dict[str, Any] = {"kind": self.kind, "address": self.address, "selector": self.selector}
         if self.detail is not None:
             out["detail"] = self.detail
-        if self.root is not None:
-            out["root"] = self.root
         return out
 
     def __str__(self) -> str:
@@ -643,7 +639,7 @@ class TextWarning:
             + (f" at {self.address}" if self.address is not None else "")
             + "".join(
                 f" ({value})"
-                for value in (self.branch, self.content_type, self.part_name, self.detail, self.root)
+                for value in (self.branch, self.content_type, self.part_name, self.detail)
                 if value is not None
             )
         )

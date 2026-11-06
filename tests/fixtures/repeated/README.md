@@ -9,6 +9,7 @@ CR-039's oracle (`tests/openpackaging/test_repeated.py`).
 | `rc-*.docx` | A child given twice in `word/document.xml`, with three controls |
 | `rw-*.docx` | A root that isn't `w:document`, `rw-2*` `mc:AlternateContent`, with three controls |
 | `or-*.docx` | Another story's root, with a control |
+| `rt-15` to `rt-17` | Three `w:body`: which section stands. The objects session's, added 2026-11-07 |
 | `*-word365.docx` | Word's save of each. A file Word refused has none |
 | `*-word365.txt` | Word's text save. It leaves text boxes out, so a box's words are read from the save |
 

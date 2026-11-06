@@ -39,6 +39,9 @@ DOC = "/word/document.xml"
 #: Word read every word of these, with a section of its own.
 READ = [
     "rc-10-body",
+    "rt-15-body-section-break",
+    "rt-16-body-second-no-sectPr",
+    "rt-17-body-third-no-sectPr",
     "rw-20-mc-root-choice",
     "rw-21-mc-root-fallback",
     "rw-22-mc-root-fallback-only",
@@ -270,6 +273,23 @@ def _read(package: Any) -> Any:
     return package
 
 
+def test_the_last_section_stated_stands_where_the_last_body_has_none() -> None:
+    """``rt-17``: the third body has no ``w:sectPr``, and the second's stands, with the first's listed."""
+    name = "rt-17-body-third-no-sectPr"
+    package = load(source(name))
+    assert page_widths(part_of(saved(_read(package)))) == page_widths(word_save(name)) == ["15840"]
+    assert local_names(package.main_document_part.skipped) == ["sectPr"]
+
+
+def test_a_section_in_a_paragraph_stays_where_it_is() -> None:
+    """``rt-15``: the break's ``w:sectPr`` is the paragraph's, and only the bodies' final ones compete."""
+    name = "rt-15-body-section-break"
+    package = load(source(name))
+    root = etree.fromstring(part_of(saved(_read(package))))
+    assert [etree.QName(section.getparent()).localname for section in root.iter(f"{W}sectPr")] == ["pPr", "body"]
+    assert page_widths(etree.tostring(root)) == page_widths(word_save(name))
+
+
 def test_three_bodies_join_in_order() -> None:
     bodies = "".join(f"<w:body><w:p><w:r><w:t>{word}</w:t></w:r></w:p></w:body>" for word in "ABC")
     package = load(with_part(f'<w:document xmlns:w="{W_NS}">{bodies}</w:document>'.encode()))
@@ -350,8 +370,8 @@ def test_another_root_yields_no_text_and_says_so(name: str) -> None:
     [warning] = [w for w in result.warnings if w.kind == TextWarning.PART_UNEXPECTED_ROOT]
     assert warning.kind == "part.unexpected_root"
     assert warning.part_name == DOC
-    assert warning.root == root
-    assert warning.to_dict() == {"kind": "part.unexpected_root", "address": None, "selector": DOC, "root": root}
+    assert warning.detail == root
+    assert warning.to_dict() == {"kind": "part.unexpected_root", "address": None, "selector": DOC, "detail": root}
     part = package.main_document_part
     assert local_names(part.skipped) == held
     assert [(w.code, w.root) for w in part.warnings] == [("part.unexpected_root", root)]
@@ -370,7 +390,7 @@ def test_a_taken_branch_holding_another_root_reads_as_that_root() -> None:
     package = load(source(name))
     result = extract(package)
     assert plain_text(result).strip() == ""
-    assert [w.root for w in result.warnings if w.kind == TextWarning.PART_UNEXPECTED_ROOT] == ["w:hdr"]
+    assert [w.detail for w in result.warnings if w.kind == TextWarning.PART_UNEXPECTED_ROOT] == ["w:hdr"]
     assert sorted(local_names(package.main_document_part.skipped)) == ["Fallback", "p"]
 
 
@@ -390,7 +410,7 @@ def test_an_empty_root_still_says_so() -> None:
 
 def test_a_namespace_outside_the_model_is_named_in_full() -> None:
     package = load(with_part(b'<x:foo xmlns:x="urn:x"/>'))
-    assert [w.root for w in extract(package).warnings] == ["{urn:x}foo"]
+    assert [w.detail for w in extract(package).warnings] == ["{urn:x}foo"]
 
 
 # --- a package with no main part -------------------------------------------------

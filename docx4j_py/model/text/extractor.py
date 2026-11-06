@@ -733,7 +733,7 @@ class Extractor:
 
         for record in getattr(self.trees.package, "warnings", None) or ():
             if isinstance(record, UnexpectedRoot):
-                self.warn(TextWarning(TextWarning.PART_UNEXPECTED_ROOT, None, part_name=record.part_name, root=record.root))
+                self.warn(TextWarning(TextWarning.PART_UNEXPECTED_ROOT, None, part_name=record.part_name, detail=record.root))
 
     # -- fields: update (REQ-506) --------------------------------------------------------
 
