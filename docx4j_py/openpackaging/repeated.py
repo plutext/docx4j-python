@@ -31,8 +31,8 @@ the first and reports the second, so the skipped report triggers :func:`repair`,
 **The report** is core-ts CR-028 section 3.3's. A part read as Word reads it has lost
 nothing, so it gets one :class:`ReadAsWord` with a count. What goes whole goes in
 ``part.skipped`` beside it, an earlier ``w:sectPr`` or a branch not taken, so
-``strict=True`` refuses those and a part that only joined loads. Both codes are
-proposals, not yet agreed with core-ts and docx4j (their D8 and D11).
+``strict=True`` refuses those and a part that only joined loads. ``part.read_as_word``
+is a proposal for core-ts's D8.
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ def _taken(root: etree._Element, dropped: list[SkippedNode]) -> tuple[etree._Ele
     """What `root` comes to once an ``mc:AlternateContent`` is read: the element, and how many containers joined."""
     if root.tag != _ALTERNATE_CONTENT:
         return root, 0
-    # REQ-305's first mc:Choice, Word's nothing selected: the WD's open ruling is this line
+    # nothing selected is Word's reading at the root, not REQ-305's first mc:Choice (the user, 2026-11-07)
     branch = branch_taken(root)
     dropped.extend(breaks.skipped_node(child) for child in _elements(root) if child is not branch)
     held = [] if branch is None else _elements(branch)

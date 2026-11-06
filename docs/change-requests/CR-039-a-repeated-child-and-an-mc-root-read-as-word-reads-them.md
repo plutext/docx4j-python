@@ -122,7 +122,7 @@ Everything else stays as it is today: the first kept, the later listed. That cov
 
 One warning a part with a count, on `part.warnings` and `package.warnings`, as `BrOutsideRun` is, since a file read as Word reads it has lost nothing: `part.read_as_word`, naming the root where it wasn't `w:document` and counting the children joined. What goes whole goes in `part.skipped` beside it: a value a later one replaced, an earlier `w:sectPr`, a branch not taken. So `strict=True` refuses those, and a part that only joined loads under it, as CR-030's repaired part does.
 
-That's core-ts CR-028 section 3.3. It replaces this section's first draft, one `SkippedNode` for each element, under which a join that loses nothing would have been refused at a save. Both codes here are proposals, to be agreed with core-ts and docx4j (their D8 and D11), and a change of name is one line each.
+That's core-ts CR-028 section 3.3. It replaces this section's first draft, one `SkippedNode` for each element, under which a join that loses nothing would have been refused at a save. `part.unexpected_root` is decided here (the user, 2026-11-07), and `part.read_as_word` is a proposal for core-ts's D8.
 
 ### 3.5 The save and the round trip
 
@@ -211,7 +211,7 @@ Each phase stands alone, and any of them can be left out.
 - **Any other root is now written as a `w:document` with no body,** so `foo` holding a `w:body` yields nothing, as REQ-320 says. It used to bind. What it held is listed with its real parent, `p` under `w:hdr`, not `w:document`.
 - **The clean cost is one start tag.** `etree.XMLPullParser` needs `close()` on a short part, whose start tag otherwise waits in the parser: a test on `<a/>` found that.
 - **A later `w:body` with no `w:sectPr`** leaves the last one stated, moved to the end. Built ahead of the measurement, and `rt-16` and `rt-17` then held it, with `rt-15` for a `w:sectPr` in a `w:pPr`. All three are in the fixtures.
-- **`rw-24`'s rule is one line,** `branch = branch_taken(root)` in `_taken`, for REQ-305's open ruling.
+- **`rw-24` reads as Word does, an empty document,** by the user's ruling of 2026-11-07 ("rw-24 against REQ-305: as Word"). That's the root. Whether REQ-305 changes in a body (`rw-25`) isn't ruled.
 
 ### 8.3 Verified
 
@@ -226,5 +226,5 @@ Each phase stands alone, and any of them can be left out.
 - **The WD:** Phase B is built to 0.96's draft of REQ-317 to REQ-321 and REQ-322's section rule. Its three review points were taken: `wordDocument`'s namespace, the section sentence, and the root's name in `detail`, which `TextWarning` now holds.
 - **A `w:body` in a `w:body`** (`nd-20` to `nd-24`): Word reads the words in place, and here they're lost, listed in `part.skipped`. The WD requires nothing of it yet, and this CR doesn't cover it.
 - **Q6:** `w:txbxContent` comes in reverse order with three and four copies (`rt-12`, `rt-13`), which meets one of its two conditions. A second shape is still missing.
-- **The codes:** `part.read_as_word`, `part.unexpected_root` and `part.root_refused` are proposals. Their names are one line each.
+- **The codes:** `part.unexpected_root` is decided here (the user, 2026-11-07: "makes sense"). `part.read_as_word` is a proposal, and `part.root_refused` is the validator's.
 - **CR-033:** the save after `.contents` of a root that yields nothing still writes an empty `w:document`.
