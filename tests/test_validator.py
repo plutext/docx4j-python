@@ -50,6 +50,7 @@ from docx4j_py.validator import (
     Finding,
     MisplacedContent,
     PartNotWellFormed,
+    PartRootRefused,
     ValueOutOfRange,
     findings_in,
 )
@@ -787,13 +788,14 @@ INSPECT_PROBE = FIXTURES / "text-extraction" / "phase0" / "extraction-probe-insp
 #: docx4j CR-046 section 10's fixture (``3ad164bdf``, CR-031 Phase A): four of its files each hold a part that is not
 #: well formed on purpose, cut to two thirds.
 PART_NOT_READ = FIXTURES / "part-not-read"
+REPEATED = FIXTURES / "repeated"
 
 
 def test_the_corpus_holds_nothing_but_the_probes_values():
     """``samples/`` and every fixture: no misplaced content and no cell that does not end with a paragraph; the only
     findings are the out-of-range values of docx4j CR-066's probe files, in their case parts, and of the
-    text-extraction probe's cases 75 to 82 (CR-066 phase 4, in the suite since CR-027 Phase A), and the parts not
-    well formed of docx4j's part-not-read fixture (CR-031 Phase A)."""
+    text-extraction probe's cases 75 to 82 (CR-066 phase 4, in the suite since CR-027 Phase A), the parts not
+    well formed of docx4j's part-not-read fixture (CR-031 Phase A), and the roots Word refuses in CR-039's fixtures."""
     files = _corpus()
     assert len(files) > 380
     other = []
@@ -803,6 +805,8 @@ def test_the_corpus_holds_nothing_but_the_probes_values():
             if probe and isinstance(finding, ValueOutOfRange):
                 continue
             if path.parent == PART_NOT_READ and isinstance(finding, PartNotWellFormed):
+                continue
+            if path.parent == REPEATED and isinstance(finding, PartRootRefused):
                 continue
             other.append((path.name, finding))
     assert other == []

@@ -682,6 +682,8 @@ class Extractor:
                 raise not_readable(main, error) from error
             self.not_read(self.root.removesuffix("/"), main)
             return TextResult(out, comments, self.warnings, metadata, self.options)
+        if not self.nested:
+            self._unexpected_root()
         body = self.trees.body
         if body is None:
             return TextResult(out, comments, self.warnings, metadata, self.options)
@@ -724,6 +726,14 @@ class Extractor:
             if isinstance(record, DuplicateEntry):
                 kind = TextWarning.PACKAGE_DUPLICATE_ENTRY
                 self.warn(TextWarning(kind, None, part_name=record.entry, detail=record.count))
+
+    def _unexpected_root(self) -> None:
+        """``part.unexpected_root``, where the main part's root left it nothing to read (REQ-320, proposed; CR-039)."""
+        from docx4j_py.openpackaging.repeated import UnexpectedRoot
+
+        for record in getattr(self.trees.package, "warnings", None) or ():
+            if isinstance(record, UnexpectedRoot):
+                self.warn(TextWarning(TextWarning.PART_UNEXPECTED_ROOT, None, part_name=record.part_name, root=record.root))
 
     # -- fields: update (REQ-506) --------------------------------------------------------
 

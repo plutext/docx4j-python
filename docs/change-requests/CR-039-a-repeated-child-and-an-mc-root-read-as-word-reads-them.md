@@ -1,6 +1,6 @@
 # CR-039: A repeated child and an `mc:AlternateContent` root, read as Word reads them
 
-**Status:** Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
+**Status:** Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Phase B built 2026-11-07 (section 8), its Word check not run. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
 
 **Depends on:** nothing to build. The WD says nothing about either shape, and the portfolio drafts it (Q1). Phase B starts ahead of that at the user's word and is amended to it, as CR-037 was. **CR-033** is the save's half (section 2.3). Nothing here waits on phase 0 of the two counterparts (Word check 81), which isn't scheduled and has no date: core-ts's CR-028 may be deferred indefinitely too. Phase B rests on rounds already run, and Phase C builds what's measured. Phase 0 would only widen C.
 
@@ -97,10 +97,10 @@ core-ts built these and read Word's saves (its CR-028 sections 1.1 and 2.4), eac
 ### 3.2 The root (Phase B)
 
 - **`mc:AlternateContent`:** replaced by what `branch_taken` answers, and the rows below then apply to what the branch holds, as `or-50` needs. One `w:document` becomes the root; two are joined as two `w:body` are (section 3.3); `None` leaves an empty `w:document` holding an empty `w:body`, which the facade can read, as core-ts's D4 has it.
-- **The roots Word refuses:** `w:footnotes`, `w:endnotes`, `foo`, `z:foo` and `w:foo` holding a `w:document`, `w:wordDocument` and `pkg:package`. Refused as a part not well formed is (CR-031, and Q4): `Docx4JException` naming the part, kept as `part.unreadable`, the load lazy, an untouched save writing its bytes. They're listed by name and shape, never as "anything else", because `w:madeUp` holding a `w:p` opens and what decides isn't known.
+- **The roots Word refuses (WD REQ-318):** `w:footnotes`, `w:endnotes`, Word 2003's `w:wordDocument`, `pkg:package`, and an unknown `w:` root, or one in no namespace or a namespace not understood, holding a `w:document`. Refused as a part not well formed is (CR-031, and Q4): `Docx4JException` naming the part, kept as `part.unreadable`, the load lazy, an untouched save writing its bytes. They're listed by name and shape, never as "anything else", because `w:madeUp` holding a `w:p` opens and what decides isn't known.
 - **A bare `w:body`:** wrapped in a `w:document` (Q9).
 - **An unknown `w:` root, unless it holds a `w:document`:** wrapped in a `w:document` and a `w:body`, and CR-037's pass takes the tags off and lists them (Q9). Measured on `w:madeUp` holding one `w:p`. "Unknown" is CR-037's: a name not in `WML_ELEMENTS`.
-- **Every other root stays as it is today,** with section 3.6's warning: empty text, its children in `part.skipped`, `Body` refusing. That covers `w:hdr`, `w:ftr`, `w:styles` and `w:comments`, whose words aren't a reading to copy (core-ts CR-028 section 4), every other known `w:` name, and anything else unmeasured, among them `foo` holding a `w:body`, which binds as today.
+- **Every other root yields nothing (WD REQ-320),** with section 3.6's warning: no text, what it held in `part.skipped`, `Body` refusing. That covers `w:hdr`, `w:ftr`, `w:styles` and `w:comments`, whose words aren't a reading to copy (core-ts CR-028 section 4), every other known `w:` name, and anything else unmeasured. `foo` holding a `w:body` used to bind its body, and no longer does.
 - **Main part only.** Every measurement is `word/document.xml`. A header's or a note's root stays as it is unless a round measures it (core-ts's D5).
 - **The root's name is read once,** in this one part, since `<foo/>` leaves no report and `<foo><w:body>` an empty one.
 
@@ -192,3 +192,37 @@ Each phase stands alone, and any of them can be left out.
 | Q8 | Keep the Word files in this repository now, even if nothing is built? | **Yes.** Rebuilding the inputs is easy, but Word's saves need the bridge again. It's under 1 MB of fixtures, and a deferred CR can outlive a share. |
 | Q9 | Read a bare `w:body` and `w:madeUp` holding a `w:p` as Word does? | **Yes.** A scratch trial (2026-11-07) matched Word's text and saved body on `or-31` and `or-32`, and `Body` wrote to both. About 15 lines, and `w:madeUp` is CR-037's pass once wrapped. The rule rests on one file, and if it's wrong we read words from a file Word might refuse, which loses nothing. It goes ahead of core-ts's D11, which is undecided. |
 | Q10 | With Phase A left out, do its root warning and `extract`'s refusal move into Phase B? | **Yes, both, and the second-container warning goes.** Section 3.2's roots that stay as today would otherwise read empty with nothing said, and `or-40` and `or-41` still give `""`. After Phase C, the second-container warning has only unmeasured shapes left. About an hour, though the code isn't agreed yet with core-ts and docx4j. |
+
+## 8. Phase B: implementation notes (2026-11-07)
+
+### 8.1 What was built
+
+- **`openpackaging/repeated.py`:** `read_root`, `repair`, `triggers`, and the two records, `ReadAsWord` (`part.read_as_word`) and `UnexpectedRoot` (`part.unexpected_root`). 278 lines with its docstrings and the two records, over section 5's estimate of 60 for code alone.
+- **`XmlPart._read_root`:** one read of the start tag where a part sets `reads_root`, which only `MainDocumentPart` does. It runs before `_parse` from both `_unmarshal` and `source_tree`, so a save's check reads the source as the parse did. A root read this way resets the part's source declarations, or `mc:Ignorable`'s prefix would go.
+- **`read_through.repair_bytes`** runs `repeated.repair` first and returns a fifth value, `joined`.
+- **The refusal:** `RootRefused` becomes the part's `Docx4JException`, kept as `part.unreadable`. `misplaced()` reports `part.root_refused`, a new finding, since the XML is well formed.
+- **The rest:** `TextWarning.PART_UNEXPECTED_ROOT` with a `root` field, `extract` and `body_of` on a package with no main part, `canon.compare(..., main_part=True)` and its `read-as-word` category, `roundtrip.py`.
+- **`tests/fixtures/repeated/`:** 45 inputs, 34 of Word's saves and their text saves, 470 KB, `or-14-comments`' from its rerun.
+
+### 8.2 What the build settled beyond the design
+
+- **Two `w:body` are in Phase B,** since two `w:document` need the join. `rc-10` comes through the skipped report and `repair_bytes`, and a branch's documents through `read_root`.
+- **A root read as Word reads it never needs a second `ReadAsWord`,** because `read_root` joins as it goes. Phase C will need one per part once a repeated `w:pPr` can stand under such a root.
+- **Any other root is now written as a `w:document` with no body,** so `foo` holding a `w:body` yields nothing, as REQ-320 says. It used to bind. What it held is listed with its real parent, `p` under `w:hdr`, not `w:document`.
+- **The clean cost is one start tag.** `etree.XMLPullParser` needs `close()` on a short part, whose start tag otherwise waits in the parser: a test on `<a/>` found that.
+- **A later `w:body` with no `w:sectPr`** leaves the first's, moved to the end. That's unmeasured, and REQ-322's sentence reads differently (section 8.4).
+- **`rw-24`'s rule is one line,** `branch = branch_taken(root)` in `_taken`, for REQ-305's open ruling.
+
+### 8.3 Verified
+
+- **The whole suite:** 11,775 passed, 8 skipped.
+- **`scripts/roundtrip.py`:** clean, 50 of 50 parts, 0 differences, 0 skipped.
+- **21 mutants** of `repeated.py`, `xml_part.py`, `read_through.py` and the extractor: every one caught. Four survived the first run and a test or a removal followed: a branch's second element, text after its document, a prefix only the branch declares, and an unused merge, now gone.
+- **Word's own files:** every file Word read matches its words and its section, a save reads again with nothing to say, and `Body` writes to each.
+- **No Word check yet.** This changes what a save writes, so Phase D's is due, at the user's word.
+
+### 8.4 Left to others
+
+- **The WD:** Phase B is built to 0.96's draft of REQ-317 to REQ-321. The points sent to the portfolio are `w:wordDocument`'s namespace, REQ-322's section sentence and `part.unexpected_root`'s selector.
+- **The codes:** `part.read_as_word`, `part.unexpected_root` and `part.root_refused` are proposals. Their names are one line each.
+- **CR-033:** the save after `.contents` of a root that yields nothing still writes an empty `w:document`.

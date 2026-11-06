@@ -57,6 +57,9 @@ T = TypeVar("T")
 
 logger = logging.getLogger("docx4j_py.openpackaging")
 
+#: The root a main part should have (CR-039).
+_DOCUMENT_ROOT = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}document"
+
 #: What Word writes at the top of every XML part, CRLF and all.
 XML_DECLARATION = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
 
@@ -173,6 +176,9 @@ class XmlPart(Part, Generic[T]):
         self.warnings: list[Any] = []
 
     # -- the class to unmarshal as -----------------------------------------
+
+    #: Whether a parse asks what this part's root is (CR-039): the main part alone, the only one measured.
+    reads_root = False
 
     #: The dotted path of the model class this part's content is, as a
     #: **string**: ``"docx4j_py.wml.Document"``. A string rather than the class
@@ -377,10 +383,29 @@ class XmlPart(Part, Generic[T]):
         if data is None or self.model_class is None:
             return None
         try:
-            obj, _parser, _resolved, _warnings = self._parse(data, self._parse_settings())
+            read, _root, _dropped = self._read_root(data)
+            obj, _parser, _resolved, _warnings = self._parse(read, self._parse_settings())
         except Docx4JException:
             return None
         return obj
+
+    def _read_root(self, data: bytes) -> tuple[bytes, Any, list[Any]]:
+        """`data` with its root as Word reads it, for a part that asks (CR-039): the bytes, the warning, what went whole.
+
+        A part whose root is the one it should have pays the read of one start tag.
+
+        Raises:
+            Docx4JException: a root Word refuses, as a part not well formed is
+                refused, or XML that isn't well formed under a root not expected.
+        """
+        if not self.reads_root or _root_tag(data) in (None, _DOCUMENT_ROOT):
+            return data, None, []
+        from docx4j_py.openpackaging import repeated
+
+        try:
+            return repeated.read_root(data, str(self.part_name))
+        except (repeated.RootRefused, etree.XMLSyntaxError) as exc:
+            raise Docx4JException(f"Problem with part {self.part_name}: {_reason(exc)}") from exc
 
     def _parse(self, data: bytes, settings: _ParseSettings) -> tuple[Any, Any, list[Any], list[Any]]:
         """Parse `data` under `settings`: the tree, the parser (its skipped report), the ``mc`` content resolved, and the warnings.
@@ -425,13 +450,20 @@ class XmlPart(Part, Generic[T]):
         # CR-030 and CR-037: docx4j's parse, repair and parse again, keyed on the report rather than on a failure,
         # but for an unknown element in a kept branch, which a wildcard holds and no report names
         if items or b"AlternateContent" in data:
-            from docx4j_py.openpackaging import breaks, read_through
+            from docx4j_py.openpackaging import breaks, read_through, repeated
 
-            if read_through.triggers(items) or breaks.triggers(items) or read_through.in_a_branch(data):
+            if (
+                repeated.triggers(items)
+                or read_through.triggers(items)
+                or breaks.triggers(items)
+                or read_through.in_a_branch(data)
+            ):
                 dropped: list[Any] = []
-                repaired, _elements, found, texts = read_through.repair_bytes(data, dropped)
+                repaired, _elements, found, texts, joined = read_through.repair_bytes(data, dropped)
                 if found or texts:
                     warnings.append(breaks.BrOutsideRun(str(self.part_name), found, texts))
+                if joined:
+                    warnings.append(repeated.ReadAsWord(str(self.part_name), None, joined))
                 if repaired is not data:
                     xml_parser = parser(lenient=True, skipped_report=True)
                     try:
@@ -467,7 +499,10 @@ class XmlPart(Part, Generic[T]):
         self._empty_value = b'""' in data or b"''" in data
 
         try:
-            obj, xml_parser, resolved, warnings = self._parse(data, settings)
+            read, root_warning, root_dropped = self._read_root(data)
+            if read is not data:
+                self._source_ns_map = _root_ns_map(read)
+            obj, xml_parser, resolved, warnings = self._parse(read, settings)
         except Docx4JException as error:
             self._unreadable = error
             self._unreadable_settings = settings
@@ -476,11 +511,11 @@ class XmlPart(Part, Generic[T]):
         self._unreadable_settings = None
 
         report = xml_parser.skipped
-        self.skipped = list(getattr(report, "items", ()) or ())
+        self.skipped = [*root_dropped, *(getattr(report, "items", ()) or ())]
         self.kept = list(getattr(report, "kept", ()) or ())
         self.resolved_alternate_content = resolved
-        self.warnings = warnings
-        for warning in warnings:
+        self.warnings = warnings if root_warning is None else [root_warning, *warnings]
+        for warning in self.warnings:
             # once a part, as docx4j's WARN (its CR-073 D3)
             logger.warning("%s", warning.message)
         if self.skipped:
@@ -657,6 +692,25 @@ def _reason(error: BaseException) -> str:
     if syntax is not None and syntax.msg:
         return str(syntax.msg)
     return str(error)
+
+
+def _root_tag(data: bytes) -> str | None:
+    """The name of a part's root, or None where its start tag can't be read: a pull parser stopped at the tag.
+
+    Fed a little at a time, since ``iterparse`` reads 32 KB first and this runs on every main part (CR-039 section 5).
+    """
+    parser = etree.XMLPullParser(events=("start",), resolve_entities=False, no_network=True, huge_tree=True)
+    try:
+        for start in range(0, len(data), 2048):
+            parser.feed(data[start : start + 2048])
+            for _event, element in parser.read_events():
+                return element.tag
+        parser.close()  # a short part's start tag waits in the parser until it ends
+    except etree.XMLSyntaxError:
+        pass  # an error after the start tag leaves its event queued, and one before leaves none
+    for _event, element in parser.read_events():
+        return element.tag
+    return None
 
 
 def _root_ns_map(data: bytes) -> dict[str, str]:

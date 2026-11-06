@@ -132,7 +132,7 @@ class DiffReport:
     #: pass first, counting the warning's two counts. ``read-through`` (CR-037
     #: section 3.5) is an unknown ``w:`` element whose tags the same call takes
     #: away, what it held standing in its place
-    BENIGN = ("boolean-spelling", "word-normal-form", "br-outside-run", "read-through")
+    BENIGN = ("boolean-spelling", "word-normal-form", "br-outside-run", "read-through", "read-as-word")
 
     def add(self, category: str, path: str, detail: str, limit: int = 400) -> None:
         self.counts[category] = self.counts.get(category, 0) + 1
@@ -267,6 +267,7 @@ def compare(
     unordered_root: bool = False,
     normalise: bool = False,
     repaired: bool = False,
+    main_part: bool = False,
 ) -> DiffReport:
     """Diff two parts.
 
@@ -292,13 +293,22 @@ def compare(
             break and each text element they count counted as ``br-outside-run``
             and each element read through as ``read-through``, so that any other
             difference is still one. It comes before ``normalise``, as the parse
-            comes before the save.
+            comes before the save. A join (CR-039) counts as ``read-as-word``.
+        main_part: `orig` is a main part, so under `repaired` its root is read as
+            the parse reads it first (:func:`docx4j_py.openpackaging.repeated.read_root`).
     """
     rep = DiffReport()
     if repaired:
         from docx4j_py.openpackaging.read_through import repair_bytes
+        from docx4j_py.openpackaging.repeated import read_root
 
-        orig, elements, breaks, texts = repair_bytes(orig)
+        if main_part:
+            orig, warning, _dropped = read_root(orig, "/word/document.xml")
+            if warning is not None:
+                rep.add("read-as-word", "/", f"{warning.message}")
+        orig, elements, breaks, texts, joined = repair_bytes(orig)
+        for _ in range(joined):
+            rep.add("read-as-word", "/", "a w:body joined to the first, as Word reads it")
         for _ in range(elements):
             rep.add("read-through", "/", "an unknown w: element, read through as Word reads it")
         for _ in range(breaks):

@@ -411,7 +411,7 @@ def test_an_untouched_save_is_byte_for_byte(stem: str) -> None:
 
 def test_repair_bytes_returns_the_bytes_themselves_where_nothing_changes():
     data = document_xml("<w:p><w:r><w:t>a</w:t><w:br/></w:r></w:p>")
-    assert repair_bytes(data) == (data, 0, 0, 0)
+    assert repair_bytes(data) == (data, 0, 0, 0, 0)
     assert repair_bytes(data)[0] is data
 
 
@@ -500,7 +500,7 @@ def test_a_nested_text_element_holding_a_break_counts_twice():
 
 def test_a_piece_takes_the_nearest_xml_space():
     """Lines 886 to 897: the nearest ancestor's ``xml:space``, else none."""
-    data, _elements, _breaks, texts = repair_bytes(
+    data, _elements, _breaks, texts, _joined = repair_bytes(
         document_xml('<w:p><w:r><w:t xml:space="preserve"><w:t> a </w:t><w:br/></w:t><w:t>b<w:br/>c</w:t></w:r></w:p>')
     )
     assert texts == 2

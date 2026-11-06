@@ -69,7 +69,7 @@ from docx4j_xsdata.formats.dataclass.parsers.skipped import SkippedNode
 from lxml import etree
 
 from docx4j_py.el_index import WML_ELEMENTS
-from docx4j_py.openpackaging import breaks
+from docx4j_py.openpackaging import breaks, repeated
 from docx4j_py.openpackaging.mc_load_mode import branch_taken
 
 __all__ = ["in_a_branch", "repair", "repair_bytes", "triggers"]
@@ -342,8 +342,8 @@ def _to_head(runs: list[etree._Element], paragraph: etree._Element, placed: dict
     placed[paragraph] = at
 
 
-def repair_bytes(data: bytes, dropped: list[SkippedNode] | None = None) -> tuple[bytes, int, int, int]:
-    """A part's bytes as Word reads them: this pass and then CR-030's, on one tree.
+def repair_bytes(data: bytes, dropped: list[SkippedNode] | None = None) -> tuple[bytes, int, int, int, int]:
+    """A part's bytes as Word reads them: CR-039's pass, this one and then CR-030's, on one tree.
 
     Args:
         data: the part's bytes.
@@ -351,14 +351,15 @@ def repair_bytes(data: bytes, dropped: list[SkippedNode] | None = None) -> tuple
             pass took out, in the form the fork's report uses.
 
     Returns:
-        ``(bytes, elements, breaks, text_elements)``: `elements` is
-        :func:`repair`'s count and the last two are CR-030's. `data` itself where
-        neither pass changed anything, else the rewritten part
+        ``(bytes, elements, breaks, text_elements, joined)``: `elements` is
+        :func:`repair`'s count, the next two are CR-030's and `joined` is CR-039's.
+        `data` itself where no pass changed anything, else the rewritten part
         (:func:`~docx4j_py.openpackaging.breaks.write`).
     """
     root = breaks.parse(data)
+    joined = repeated.repair(root, dropped)
     elements = repair(root, dropped)
     found, texts, changed = breaks.repair(root, dropped)
-    if not elements and not changed:
-        return data, 0, found, texts
-    return breaks.write(root), elements, found, texts
+    if not joined and not elements and not changed:
+        return data, 0, found, texts, 0
+    return breaks.write(root), elements, found, texts, joined

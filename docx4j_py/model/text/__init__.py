@@ -219,6 +219,12 @@ def extract(
     opts = _options(options, more)
     if getattr(target, "main_document_part", None) is not None:
         return Extractor(PackageTrees(target), opts).extract()
+    from docx4j_py.openpackaging.exceptions import Docx4JException
+    from docx4j_py.openpackaging.packages.opc_package import OpcPackage
+
+    if isinstance(target, OpcPackage):
+        # REQ-321: a part under another content type makes no main part
+        raise Docx4JException("This package has no main document part, so it has no text")
     part = None
     content = target
     owner = package

@@ -164,6 +164,7 @@ class MainDocumentPart(DocumentPart):
     __slots__ = ("glossary_document_part", "key_map_customizations_part")
 
     model_class_path = "docx4j_py.wml.Document"
+    reads_root = True
 
     def __init__(
         self,

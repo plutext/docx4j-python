@@ -56,6 +56,7 @@ __all__ = [
     "Finding",
     "MisplacedContent",
     "PartNotWellFormed",
+    "PartRootRefused",
     "ValueOutOfRange",
     "check_for_save",
     "findings_in",
@@ -226,6 +227,17 @@ class PartNotWellFormed(Finding):
         """The finding for `part`, from lxml's ``XMLSyntaxError``."""
         line, column = getattr(syntax, "position", None) or (None, None)
         return cls(message=str(syntax.msg), part_name=str(part.part_name), line=line, column=column, node=part)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class PartRootRefused(Finding):
+    """A main part whose root Word refuses, so that nothing in it could be walked (CR-039): ``part.root_refused``.
+
+    The part's content is refused when read, as one not well formed is, and a
+    save writes its bytes as read.
+    """
+
+    code: ClassVar[str] = "part.root_refused"
 
 
 # ---------------------------------------------------------------------------
@@ -757,6 +769,7 @@ def part_findings(part: Any, tree: Any = None) -> list[Finding]:
     """
     from docx4j_py.openpackaging.exceptions import Docx4JException
     from docx4j_py.openpackaging.parts.xml_part import syntax_error_of
+    from docx4j_py.openpackaging.repeated import RootRefused
     from docx4j_py.traversal import element_name
 
     if tree is None:
@@ -764,9 +777,11 @@ def part_findings(part: Any, tree: Any = None) -> list[Finding]:
             root = _tree_of(part)
         except Docx4JException as error:
             syntax = syntax_error_of(error)
-            if syntax is None:
-                raise
-            return [PartNotWellFormed.of(part, syntax)]
+            if syntax is not None:
+                return [PartNotWellFormed.of(part, syntax)]
+            if isinstance(error.__cause__, RootRefused):
+                return [PartRootRefused(message=str(error.__cause__), part_name=str(part.part_name), node=part)]
+            raise
     else:
         root = tree
     if root is None:

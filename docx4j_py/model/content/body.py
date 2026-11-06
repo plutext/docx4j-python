@@ -1666,6 +1666,15 @@ def body_of(target: Any) -> Body:
             )
         return body_of(part)
 
+    from docx4j_py.openpackaging.packages.opc_package import OpcPackage
+
+    if isinstance(target, OpcPackage):
+        # a part under another content type makes no main part (CR-039): the package isn't WordprocessingML
+        raise ContentError(
+            "this package has no main document part",
+            code="body.no_part",
+            hint="load a .docx, or call create_package()",
+        )
     contents = target.contents
     container = getattr(contents, "body", None)
     if container is None:

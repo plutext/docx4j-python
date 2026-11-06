@@ -251,6 +251,7 @@ class PartResult:
     #: CR-030: ``(breaks, text_elements)`` where the parse read a w:br outside a w:r as Word reads it
     br_outside_run: tuple = ()
     read_through: int = 0
+    read_as_word: int = 0
 
 
 def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
@@ -284,12 +285,17 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     # tree and report are the part's (the timing stays the first parse's)
     report = getattr(parser, "skipped", None)
     if repair and report is not None:
-        from docx4j_py.openpackaging import breaks, read_through
+        from docx4j_py.openpackaging import breaks, read_through, repeated
 
-        if read_through.triggers(report) or breaks.triggers(report) or read_through.in_a_branch(data):
+        if (
+            repeated.triggers(report)
+            or read_through.triggers(report)
+            or breaks.triggers(report)
+            or read_through.in_a_branch(data)
+        ):
             try:
                 dropped: list = []
-                fixed, res.read_through, found, texts = read_through.repair_bytes(data, dropped)
+                fixed, res.read_through, found, texts, res.read_as_word = read_through.repair_bytes(data, dropped)
                 if found or texts:
                     res.br_outside_run = (found, texts)
                 if fixed is not data:
@@ -363,7 +369,7 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     except Exception:  # noqa: BLE001
         pass
 
-    rep = canon.compare(data, new, normalise=normalise, repaired=bool(res.br_outside_run or res.read_through))
+    rep = canon.compare(data, new, normalise=normalise, repaired=bool(res.br_outside_run or res.read_through or res.read_as_word))
     res.identical = rep.identical
     res.counts = dict(rep.counts)
     res.samples = [(d.category, d.path[-110:], d.detail[:160]) for d in rep.diffs[:60]]

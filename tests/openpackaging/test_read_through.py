@@ -916,14 +916,14 @@ def test_a_part_with_both_shapes_is_repaired_once(monkeypatch: pytest.MonkeyPatc
 
 def test_the_repair_counts_each_pass() -> None:
     data = f'<w:p {NS}><w:madeUp>{A}</w:madeUp><w:br/></w:p>'.encode()
-    repaired, elements, found, texts = read_through.repair_bytes(data)
+    repaired, elements, found, texts, _joined = read_through.repair_bytes(data)
     assert (elements, found, texts) == (1, 1, 0)
     assert repaired is not data and repaired.startswith(b"<?xml")
 
 
 def test_repair_bytes_returns_the_bytes_themselves_where_nothing_changes() -> None:
     data = f"<w:p {NS}>{A}</w:p>".encode()
-    assert read_through.repair_bytes(data) == (data, 0, 0, 0)
+    assert read_through.repair_bytes(data) == (data, 0, 0, 0, 0)
     assert read_through.repair_bytes(data)[0] is data
 
 

@@ -362,7 +362,7 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
-`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `read_through.py`, CR-037's
+`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `repeated.py`, CR-039's reading of a main part's root and of two `w:body`, run from `XmlPart._read_root` on the main part alone (`reads_root`) and inside `repair_bytes`; `read_through.py`, CR-037's
 reading of an unknown `w:` element, WD REQ-308 to REQ-316 (what it holds stays, in the twenty hosts core-ts's
 check 76 measures and the `mc:` branch Word takes; a direct run in a paragraph's `w:pPr`, the `w:pPr` under its
 `w:pPrChange` or its `w:sectPr` goes to the paragraph's head, and such a `w:sectPr` goes; a held `w:p` ends its host),
@@ -396,7 +396,7 @@ CR-002 section 12.3.
   source through the same pass first, counting it as `br-outside-run`, so every other category must
   still be zero (`scripts/roundtrip.py` does both). The third is a part whose parse read an unknown `w:`
   element through (CR-037 section 3.5; `part.skipped` lists it): it is saved in that shape, and the same
-  call counts it as `read-through`. Since CR-018 Phase A
+  call counts it as `read-through`. CR-039's root and two `w:body` are the same again, `repaired=True, main_part=True` counting `read-as-word`. Since CR-018 Phase A
   a second category is tolerated, `word-normal-form`: the parse is exact (`runtime.parser_config()`
   sets the fork's `exact_types={bool, Enum}`, so a value not exactly a lexical form is kept as its
   text and listed in `part.kept`), and a save normalises by default (`package.save(normalise=True)`,
