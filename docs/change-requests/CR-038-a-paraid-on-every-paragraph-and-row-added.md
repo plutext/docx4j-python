@@ -80,6 +80,8 @@ Ids go on at creation, not on save, as core-ts's do: a save reports and doesn't 
 
 The walker keeps an id that's free, and replaces one the part already holds. So `insert_copy_after` and a fragment copied through `get_xml` take fresh ids, and a fragment's own unique ids stay. This goes beyond core-ts, which fills only what's missing.
 
+**A repeat Word writes itself isn't a collision.** Word's own save gives a `mc:Choice`'s text box and its `mc:Fallback`'s copy the same ids (9 in `document.xml` of `extraction-probe.word-resave.docx`, and 1 in a header), so the walker treats the branches of one `mc:AlternateContent` as one, and a fragment holding such a pair keeps it. Found after this section was first written, building the mode round.
+
 The reason doesn't wait on Word: two paragraphs answering one `paragraph_at(para_id=...)` is this package's own bug, whatever Word does with the file. `taken` isn't reduced on a delete, so an id deleted and re-inserted through `get_xml` comes back as a new one. That loses nothing a caller could rely on, since the old paragraph had gone.
 
 ### 3.5 Parts other than the main document (Q2)
@@ -111,7 +113,7 @@ It uses the walker, so rows and text boxes get ids too, and after it the rule ho
 - **Every route of section 2,** the 80 and the copies: no paragraph or row without an id in the part it touched, none repeated, and every one of Word's ids still there, on the saved bytes.
 - **A census:** every public `insert_*` and `add_*` on the content classes and the facade is in the route table, or named as adding no block, so that a new route fails until it's listed. The gap came from routes nobody listed.
 - **The story:** a new cell's paragraph; a nested table; a table in a control; a text box in a fragment, in a kept branch.
-- **Ids already there (Q1):** a fragment's unique id kept, a colliding one replaced, a copy's replaced, the original's untouched.
+- **Ids already there (Q1):** a fragment's unique id kept, a colliding one replaced, a copy's replaced, the original's untouched, a `mc:Choice` and `mc:Fallback` pair left as Word wrote it.
 - **Other parts (Q2):** a comment's every paragraph; an existing header; a new footer and the glossary as decided.
 - **A document with no ids** gets none from any table route. `create_package` gets them from all.
 - **`ensure_para_ids`** leaves no row or text box without one, and returns them in document order.
