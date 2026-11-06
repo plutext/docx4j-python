@@ -35,10 +35,11 @@ MEMO = ROOT / "tests" / "fixtures" / "fields-fun-cr067" / "one-file-many-reading
 DOCX4J = ROOT.parent / "docx4j"
 
 #: The preset's values by the specification's names: docx4j's ``WORD_TEXT_VALUES`` less ``drop_caps`` and
-#: ``small_caps``, which come with their options in CR-029 (section 4.1).
+#: ``small_caps``, which come with their options in CR-029 (section 4.1). ``include`` is WD 0.91's (CR-035):
+#: docx4j still names comments there until it makes the same change, so the WD is the oracle for that value.
 WORD_TEXT = {
     "view": "accepted",
-    "include": ["headers", "footers", "comments"],
+    "include": ["headers", "footers"],
     "text_boxes": False,
     "notes": True,
     "note_references": True,
@@ -153,13 +154,9 @@ def test_include_is_recorded():
     assert options.includes == {"glossary", "comments"}  # comments: true is the preset's
 
 
-def test_comments_false_under_the_preset_is_docx4js_reading():
-    """docx4j's ``isComments()`` is ``comments || include.contains(COMMENTS)``, and the preset's ``include`` names them.
-
-    So a caller's ``comments: false`` holds only with an ``include`` of its
-    own (section 13.9's open point).
-    """
-    assert TextOptions(comments=False, profile="word-text").comments
+def test_comments_false_under_the_preset_holds():
+    """A caller's option wins, as REQ-1002 says: CR-035 closed CR-027 section 13.9's open point."""
+    assert not TextOptions(comments=False, profile="word-text").comments
     assert not TextOptions(comments=False, include=[], profile="word-text").comments
 
 

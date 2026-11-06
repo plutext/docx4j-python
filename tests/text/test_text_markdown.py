@@ -669,7 +669,7 @@ def test_markdown_changes_nothing(tmp_path):
         before = pkg.save()
         for view in ("accepted", "original", "markup"):
             export(
-                pkg, view=view, include="headers, footers, comments, glossary", hidden=True, field_codes=True,
+                pkg, view=view, include="headers, footers, glossary", comments=True, hidden=True, field_codes=True,
                 list_labels=True, metadata=True,
             )
         assert not [part for part in pkg.parts.values() if getattr(part, "is_unmarshalled", False)]

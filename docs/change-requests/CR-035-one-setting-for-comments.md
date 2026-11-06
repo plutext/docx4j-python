@@ -1,6 +1,6 @@
 # CR-035: One setting for comments --- `comments: true` alone turns a comment story on, and `comments` leaves `include`
 
-**Status:** Proposed 2026-11-05, at the user's word ("why do we have both `comments: true` and `include: comments`? could we have just a single setting?", then "yes" to the recommendation). It closes CR-027 section 13.9's open point 1: a caller's `comments=False` under `profile: word-text` does not hold. Two phases (section 5), about ½ day. No Word check: nothing saved changes. The WD's change is committed (0.91, portfolio `9bb9299`; section 3.1), so Phase A waits only on section 7's questions. Questions in section 7, each with a recommendation.
+**Status:** Complete 2026-11-06: Q1 to Q4 decided as recommended (the user: "CR-035's Q1 to Q4 as recommended, implement when ready"), Phases A and B built the same day (section 8). Proposed 2026-11-05, at the user's word ("why do we have both `comments: true` and `include: comments`? could we have just a single setting?", then "yes" to the recommendation). It closes CR-027 section 13.9's open point 1: a caller's `comments=False` under `profile: word-text` does not hold. No Word check: nothing saved changes. The WD's change is committed (0.91, portfolio `9bb9299`; section 3.1).
 
 **Depends on:**
 - **The WD** (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`): the change in section 3.1, sent to the docx4j-portfolio session on 2026-11-05 and committed as 0.91 at `9bb9299` on 2026-11-06, read against section 3.1.
@@ -97,3 +97,15 @@ This shape is also what a released `to_dict()` writes after `include=["comments"
 | Q2 | How long does the old spelling stay? | **Until 1.0, or a later CR.** It is released, and removing it buys little. |
 | Q3 | Does Phase A wait for the WD? | **Yes.** It is one change, and the WD is the contract. It needn't wait for docx4j or core-ts. |
 | Q4 | A self-contradicting call: refuse, or let `comments=False` win? | **Refuse, the message naming the fix.** Quietly picking one is the trap this CR removes. Amended 2026-11-06: it isn't only a mistake, since a released `to_dict()` writes this shape (3.3). Letting `comments: false` win would turn comments off in such a mapping with no word, and reading it as on would let a real contradiction through. core-ts refuses it too. |
+
+## 8. Phases A and B: implementation notes (2026-11-06)
+
+**Built as section 3.** `_comments` is the only state, `_WORD_TEXT` is the WD's, and `_refuse_contradiction` runs in the constructor and in `of`, over a mapping and its keywords together. The warning is the package's first `warnings.warn`, and looks past the text model to the caller's line (`skip_file_prefixes`).
+
+**One thing section 3.3 didn't say.** `include=["comments"]` stays an `include` of the caller's, as it was, as well as a `comments`. So `TextOptions(include=["comments"], profile="word-text")` holds no headers, since the call never asked for them, and a preset doesn't add them.
+
+**A second `include` doesn't turn comments off.** `set("include", ["headers"])` after the old spelling leaves comments on, where it used to clear them. That's section 1's third row: `include` no longer speaks for comments.
+
+**Verified.** `tests/text/test_text_options_comments.py`, 44: section 1's table, every form of the old spelling, the contradiction in six forms, sequential calls, presets, and `to_dict()`. `test_comments_false_under_the_preset_is_docx4js_reading` is replaced, the preset's table follows the WD and says so, and the tests that used the old spelling moved to `comments=True`. 17 mutants: 16 caught, one of those by a test added for it, and the 17th equivalent, since `_include` can no longer hold `comments`. No row of the suite, the agreement table or the goldens moved.
+
+The whole suite: 11,628 passed, 8 skipped.

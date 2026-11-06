@@ -254,7 +254,7 @@ As section 3, in `model/content/addresses.py`: `identified` (the walk), `assign_
 - **The route probe of section 2,** re-run: 84 routes clean, where 29 of the first 80 had gaps. The one left is `show_placeholder`'s glossary, as decided, and `_Cell.merge` isn't implemented.
 - **Tests:** `tests/content/test_para_ids.py`, 128, with a census of every public `insert_` and `add_` method.
 - **Mutants:** 30, the walker and every seam. 23 caught at first. All seven survivors were gaps in the tests, among them two control seams nothing had reached, and all are caught now, by tests that pass.
-- **The suite:** 11,583 passed, 8 skipped, with one test of this CR's failing on a wrong selection in the test itself, which was then fixed. No source changed after that run.
+- **The suite:** 11,628 passed, 8 skipped, with CR-035 built on top.
 - **The cost:** the whole-part walk takes 33 ms on `Symbols.docx`, once a part, where the old paragraph walk took under 1 ms.
 
 ### 9.4 Not here

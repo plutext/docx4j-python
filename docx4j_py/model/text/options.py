@@ -10,7 +10,9 @@ the suite's scenarios and an MCP tool's arguments pass through unchanged.
 from __future__ import annotations
 
 import re
+import warnings
 from collections.abc import Callable, Iterable, Mapping
+from pathlib import Path
 from typing import Any, Literal, get_args
 
 from docx4j_py.model.content.enums import TextView
@@ -28,7 +30,10 @@ __all__ = [
     "view_of",
 ]
 
-#: The stories ``include`` adds (REQ-501, REQ-502).
+#: This package's text model, which the old spelling's warning looks past to the caller's own line.
+_HERE = str(Path(__file__).parent)
+
+#: The stories ``include`` adds (REQ-501, REQ-502). ``comments`` is a deprecated spelling of ``comments: true`` (CR-035).
 TextInclude = Literal["headers", "footers", "comments", "glossary"]
 _INCLUDES: tuple[str, ...] = get_args(TextInclude)
 
@@ -110,7 +115,7 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
 #: their options in the CR-069 port (CR-029).
 _WORD_TEXT: tuple[tuple[str, Any], ...] = (
     ("view", "accepted"),
-    ("include", ("headers", "footers", "comments")),
+    ("include", ("headers", "footers")),
     ("text_boxes", False),
     ("notes", True),
     ("note_references", True),
@@ -185,6 +190,40 @@ def _bool(name: str, value: Any, statement: str) -> bool:
     if text == "false":
         return False
     raise TextOptionError(f"{name}: {value!r} is not true or false (WD REQ-1001)", name, statement, "invalid")
+
+
+def _include_names(value: Any) -> list[str]:
+    """What an ``include`` value names, each checked, once each, in order: a list, or a string of them."""
+    if value is None:
+        items: list[Any] = []
+    elif isinstance(value, str):
+        items = [item for item in re.split(r"[,\s]+", value) if item]
+    else:
+        items = list(value)
+    return list(dict.fromkeys(_choice("include", item, _INCLUDES, "REQ-501") for item in items))
+
+
+def _refuse_contradiction(options: Mapping[str, Any]) -> None:
+    """Refuse one call or mapping saying ``comments`` false and ``include`` naming comments (CR-035 Q4, REQ-504).
+
+    Quietly picking one is the trap CR-035 removes. It isn't only a mistake: a
+    ``to_dict()`` of 0.2.0 wrote this shape after ``include=["comments"]``, where
+    it meant comments on, so the message names the fix. Sequential calls aren't a
+    contradiction, and the last one stands.
+    """
+    given = {(name or "").strip(): value for name, value in options.items()}
+    comments, include = given.get("comments"), given.get("include")
+    if comments is None or include is None or _bool("comments", comments, "REQ-504"):
+        return
+    if "comments" in _include_names(include):
+        raise TextOptionError(
+            "comments is false and include names comments, which say opposite things (WD REQ-504): take comments out "
+            "of include and say comments: true or comments: false. A mapping saved by to_dict() in 0.2.0 holds this "
+            'shape after include=["comments"], where it meant comments: true',
+            "comments",
+            "REQ-504",
+            "invalid",
+        )
 
 
 def _choice(name: str, value: Any, values: Iterable[str], statement: str) -> str:
@@ -302,6 +341,7 @@ class TextOptions:
 
     def __init__(self, **options: Any) -> None:
         """The defaults, then each option given by its specification name."""
+        _refuse_contradiction(options)
         #: The options a caller has set, by every route: a profile leaves them (REQ-1002).
         object.__setattr__(self, "_explicit", set())
         self._profile: str | None = None
@@ -369,6 +409,7 @@ class TextOptions:
                 return options
             out = options.copy()
         else:
+            _refuse_contradiction({**(options or {}), **more})
             out = cls()
             for name, value in (options or {}).items():
                 if value is not None:
@@ -453,19 +494,28 @@ class TextOptions:
         self._apply_profile(value)
 
     def _set_include(self, value: Any) -> None:
-        if value is None:
-            items: list[Any] = []
-        elif isinstance(value, str):
-            items = [item for item in re.split(r"[,\s]+", value) if item]
-        else:
-            items = list(value)
-        self._include = list(dict.fromkeys(_choice("include", item, _INCLUDES, "REQ-501") for item in items))
+        names = _include_names(value)
+        self._include = [name for name in names if name != "comments"]
+        if "comments" in names:
+            self._comments_by_include()
+
+    def _comments_by_include(self) -> None:
+        """``include: comments``, the old spelling of ``comments: true``: the caller's, so it stands against a preset."""
+        warnings.warn(
+            'include naming comments is deprecated: say comments=True ("comments": true in a mapping) (CR-035, WD 0.91)',
+            DeprecationWarning,
+            skip_file_prefixes=(_HERE,),
+        )
+        object.__setattr__(self, "_comments", True)
+        self._explicit.add("comments")
 
     def include(self, *stories: str) -> TextOptions:
         """Add stories to ``include`` (docx4j's builder ``include(Include...)``)."""
         for story in stories:
             name = _choice("include", story, _INCLUDES, "REQ-501")
-            if name not in self._include:
+            if name == "comments":
+                self._comments_by_include()
+            elif name not in self._include:
                 self._include.append(name)
         self._explicit.add("include")
         return self
@@ -480,8 +530,8 @@ class TextOptions:
 
     @property
     def comments(self) -> bool:
-        """``comments: true`` or ``include: comments``."""
-        return self._comments or "comments" in self._include
+        """``comments: true``, the one setting since CR-035. ``include`` no longer speaks for comments."""
+        return self._comments
 
     @comments.setter
     def comments(self, value: bool) -> None:

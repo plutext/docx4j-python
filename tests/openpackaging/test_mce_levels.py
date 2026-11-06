@@ -1169,7 +1169,7 @@ def test_a_corrupt_part_still_raises_in_word_mode():
 def _branch_warnings(pkg: Any) -> list[tuple[str | None, str | None]]:
     from docx4j_py.model.text import TextOptions
 
-    options = TextOptions().include("headers", "footers", "comments", "glossary")
+    options = TextOptions(comments=True).include("headers", "footers", "glossary")
     result = extract(pkg, options)
     return sorted(
         (w.address, w.branch)
@@ -1297,7 +1297,7 @@ def test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_bran
 def _all_stories() -> Any:
     from docx4j_py.model.text import TextOptions
 
-    return TextOptions().include("headers", "footers", "comments", "glossary")
+    return TextOptions(comments=True).include("headers", "footers", "glossary")
 
 
 @pytest.mark.parametrize("stem", WITH_WORD_SAVE)
@@ -1440,7 +1440,7 @@ def _readers_probe() -> Probe:
 def _readers_warnings(pkg: Any) -> set[str]:
     from docx4j_py.model.text import TextOptions
 
-    result = extract(pkg, TextOptions().include("headers", "comments"))
+    result = extract(pkg, TextOptions(comments=True).include("headers"))
     return {f"{w.address} {w.branch}" for w in result.warnings if w.kind == "mce.branches_differ"}
 
 

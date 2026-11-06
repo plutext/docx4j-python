@@ -343,7 +343,7 @@ def read_fonts(pkg: Any) -> None:
 #: Every option of WD section 10 the adapter can turn on, at the value that
 #: reaches the most code, and the same with the other values of the choices.
 ALL_ON: dict[str, Any] = {
-    "include": ["headers", "footers", "comments", "glossary"],
+    "include": ["headers", "footers", "glossary"],
     "text_boxes": True,
     "notes": True,
     "note_references": True,

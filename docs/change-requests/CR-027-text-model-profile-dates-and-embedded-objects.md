@@ -1157,7 +1157,7 @@ the values bite, and they wait on CR-029.
 1. **A caller's `comments: false` does not hold under the preset**, unless the caller sets `include` too. `comments` is
    true where `include` names it, as docx4j's `isComments()` is, and the preset's `include` names it. That is docx4j's
    reading, so it is built and pinned (`test_comments_false_under_the_preset_is_docx4js_reading`), but WD REQ-1002 says a
-   caller's option overrides the preset's. For the user. **Taken up by [CR-035](CR-035-one-setting-for-comments.md)** (the user, 2026-11-05): one setting for comments.
+   caller's option overrides the preset's. For the user. **Closed by [CR-035](CR-035-one-setting-for-comments.md)** (built 2026-11-06): one setting for comments, and the test named here is replaced.
 2. **The Word-save comparison splits at a tab, not at a space.** WD 0.79 has it split at a space too and tolerate Word's
    space after a label. The harness is at the tag and `dpp/`'s 22 saves hold no list, so nothing shows. A later re-pin brings
    it.
