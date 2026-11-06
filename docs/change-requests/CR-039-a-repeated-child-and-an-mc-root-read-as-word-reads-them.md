@@ -43,7 +43,7 @@ In `40-sectPr` and `41-tblPr` both copies hold the same properties, so whether W
 
 ### 2.2 The root
 
-The parse is handed the class, so the root's name is never compared: any root binds as `Document`, its children are skipped and the tree is empty. The facade raises `ContentError` on all thirteen, since a document with no `w:body` has no body.
+The parse is handed the class, so the root's name is never compared: any root binds as `Document`. On these thirteen its children are skipped and the tree is empty, and the facade raises `ContentError`, since a document with no `w:body` has no body. A root with a `w:body` straight under it would read as a normal document: `<foo><w:body>` binds its body with an empty report (tried 2026-11-07; Word's reading of that file isn't measured).
 
 | File | Root of `word/document.xml` | Word | Text here | `part.skipped` |
 |---|---|---|---|---|
@@ -132,6 +132,13 @@ Each phase stands alone, and any of them can be left out.
 | D | The records and the Word check of B's and C's saves, through the bridge at the user's word | ¼ day |
 
 A is worth building only if B and C wait.
+
+**What B and C add.** Estimates, set against `read_through.py` (364 lines) and its 1,128 lines of tests:
+
+- **Code:** about 60 lines for B and 150 for C, in `repeated.py`, plus about 20 in `XmlPart._parse`, `canon.py` and `roundtrip.py`. Tests about 150 and 300 lines. No change to the model, the generator or the fork.
+- **A clean file, Phase C:** nothing. The trigger is the skipped report, which is already read, and the module is imported only when it fires.
+- **A clean file, Phase B:** one read of the main part's root name, the only cost every file pays, and only when the part is read. Timed at about 23 µs with a pull parser fed 2 KB at a time; `etree.iterparse` took 0.1 to 0.45 ms, since it reads 32 KB first. The skipped report can't replace this read, as section 2.2's `<foo><w:body>` shows.
+- **A file the pass repairs:** that part parses twice, the route CR-030 and CR-037 already take, and if they fire too it's still one reparse. About 2.1 times the part's parse, summed from its steps on `samples/` rather than run: `Symbols.docx` (772 KB) 200 ms to about 418 ms, of which the pass's own lxml parse, walk and write are 18 ms. The lxml tree is transient.
 
 ## 6. Risks
 
