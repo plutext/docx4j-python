@@ -1,6 +1,6 @@
 # CR-037: An unknown `w:` element in a content host, read as Word reads it (the port of core-ts's CR-026 D7)
 
-**Status:** Decided 2026-11-06 (the user: "CR-037 decisions as recommended, except Q4: this release"), on docx4j-core-ts `1ffb120`. It reads what an unknown `w:` element holds in the fifteen hosts Word 365 reads it in, where this package drops the element with all it holds. **Phases A and B built the same day (section 8), and amended to WD 0.94 the same day (section 9: "fix the 4 departures from the WD identified above, now please"); the Word check is the user's.** It goes in the coming release, and holds it (Q4). Proposed the same day ("yes, Python should follow D7"), and amended after check 76's round 6: in `w:pPr` and `w:rPr` what Word does depends on what the element holds (section 2), which added Q5.
+**Status:** Decided 2026-11-06 (the user: "CR-037 decisions as recommended, except Q4: this release"), on docx4j-core-ts `1ffb120`. It reads what an unknown `w:` element holds in the fifteen hosts Word 365 reads it in, where this package drops the element with all it holds. **Complete: Phases A and B built the same day (section 8), amended to WD 0.94 the same day (section 9: "fix the 4 departures from the WD identified above, now please"), and the Word check passed through the Word bridge (section 9.4).** For the coming release (Q4). Proposed the same day ("yes, Python should follow D7"), and amended after check 76's round 6: in `w:pPr` and `w:rPr` what Word does depends on what the element holds (section 2), which added Q5.
 
 **Depends on:**
 - **core-ts's check 76** (`1ffb120`, `test/check76/`, its CR-026 section 4.4): the oracle, round 6 (`76t27`, `76t28`) included.
@@ -144,7 +144,7 @@ Each is in section 3, and was not in the proposal:
 
 ### 8.4 The Word check
 
-Staged, not run. This package's save of each of the 23 and `76t27`, with a README, at `vbShares/Office 2016/__tmp/python-cr037/`, built over `77b0202`. Each save's text is the same as Word's save of its source. The two later corrections don't touch those saves, since none of the 24 sources holds an `m:ctrlPr` with a `w:ins` in it. **Only the user's report closes this.**
+Superseded by section 9.4: these saves predate the amendment, and were never run. This package's save of each of the 23 and `76t27`, with a README, at `vbShares/Office 2016/__tmp/python-cr037/`, built over `77b0202`. Each save's text is the same as Word's save of its source. The two later corrections don't touch those saves, since none of the 24 sources holds an `m:ctrlPr` with a `w:ins` in it. **Only the user's report closes this.**
 
 ### 8.5 Left to others
 
@@ -182,4 +182,12 @@ Check 76's rounds 7 to 10 measured what section 3 left unmeasured, and contradic
 - **Mutants:** 50 of the new code. 47 caught at first. Two survivors showed gaps, a `w:pPrChange` under a style's `w:pPr` and stray text after a moved run, and tests now catch them. The third showed a redundant condition, which went.
 - **The suite:** 11,306 passed, 8 skipped, slow tests included. `generate.sh --check`: two generations byte identical.
 - **`scripts/roundtrip.py`,** by hand on the 68 sources: 54 parts repaired, no failures. Its 13 `element-dropped` are `76t5`, `76t6`, `76t38` and the ten files Word refuses, where something does go, so it exits non-zero, as it should. `76t25` and `76t30` are outside its part table, and `test_a_save_is_its_repaired_source` holds them.
+
+### 9.4 The Word check: passed
+
+The user: "do the CR-037 word check via the bridge". This package's save of each of the 51 files, built over `e282ab3` (`out/cr037-word-check-2/`), each read and saved here, run by the portfolio session through the Word bridge on Word 16.0.20326.20232, twice each, 102 jobs. Results under `bridge/portfolio/w37-*/` on the share, compared by this session from the raw saves (`compare.py`).
+
+- **Opening:** all 102 opened silently, with no repair prompt and no job killed. `76t21` to `76t24`, the four holding a `w:customXml`, showed Word's one expected message, "This file has custom XML elements that are no longer supported in Word. Saving the file will remove these elements permanently", as in check 76, which the bridge pressed OK. Word then removed the `w:customXml`, as it does from the source.
+- **Reading:** all 51 of Word's saves of ours read as Word's save of the source, in tokens and plain text, with nothing skipped on reading them back, and the two runs agree on each.
+- **The XML:** the touched part is identical in 47, once `rsid`, `paraId` and `textId` are stripped. The other four differ harmlessly. `76t40` keeps `w:author="Check 76"` and its date where Word on the source writes `Unknown`, which is core-ts's D9. `76t43`, `76t56` and `76t58` hold the same words in one run where Word on the source keeps two.
 

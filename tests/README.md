@@ -772,6 +772,13 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `TARGETTEXT` for `76z`), and `word/document.xml` matched core-ts's Word save of each source once `rsid` attributes,
 > `paraId` and `textId` were stripped. Section 11.6 has what differs in the other parts, none of it from this package's save.
 
+> **2026-11-06, CR-037 (the 51 saves in `out/cr037-word-check-2/`, built over `e282ab3`, staged as `bridge/staging/cr037-word-check/`):
+> passed**, through the Word bridge, not by hand (the docx4j-portfolio session's run on Word 16.0.20326.20232, twice each, 102 jobs;
+> the user: "do the CR-037 word check via the bridge"). An unknown `w:` element is now read through, so a save writes what it held. All
+> 102 opened silently with no repair prompt, `76t21` to `76t24` showing only Word's message about custom XML, pressed OK by the bridge.
+> All 51 of Word's saves of ours read as its save of the source, in tokens and plain text, the runs agreeing, and the touched part is
+> identical in 47 once `rsid`, `paraId` and `textId` are stripped. CR-037 section 9.4 has the four that differ, harmlessly.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
