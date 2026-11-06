@@ -56,7 +56,7 @@ The parse is handed the class, so the root's name is never compared: any root bi
 
 `LoadOptions(mce_preprocess=True)` and `mc_load_mode="word"` give the same empty text (measured on `rw-20`, `21`, `23`, `24`): `resolve_alternate_content`'s root "is not itself replaced". `mc_load_mode.branch_taken`, called on the root, already answers Word's branch on all seven `mc` root files, and `None` on `rw-24`.
 
-`rw-25`, a `Choice` not understood with no `Fallback` in the body, is a different question. Here it reads the `Choice`, as REQ-305 requires, and Word shows neither. Section 7.15 leaves that to the user, and this CR doesn't touch it.
+`rw-25`, a `Choice` not understood with no `Fallback` in the body, is a different question. Here it reads the `Choice`, as REQ-305 requires, and Word shows neither. The user ruled on 2026-11-07 that REQ-305 itself changes for all three engines, and this CR doesn't carry that change.
 
 ### 2.3 What a caller sees, and the save
 
@@ -211,7 +211,7 @@ Each phase stands alone, and any of them can be left out.
 - **Any other root is now written as a `w:document` with no body,** so `foo` holding a `w:body` yields nothing, as REQ-320 says. It used to bind. What it held is listed with its real parent, `p` under `w:hdr`, not `w:document`.
 - **The clean cost is one start tag.** `etree.XMLPullParser` needs `close()` on a short part, whose start tag otherwise waits in the parser: a test on `<a/>` found that.
 - **A later `w:body` with no `w:sectPr`** leaves the last one stated, moved to the end. Built ahead of the measurement, and `rt-16` and `rt-17` then held it, with `rt-15` for a `w:sectPr` in a `w:pPr`. All three are in the fixtures.
-- **`rw-24` reads as Word does, an empty document,** by the user's ruling of 2026-11-07 ("rw-24 against REQ-305: as Word"). That's the root. Whether REQ-305 changes in a body (`rw-25`) isn't ruled.
+- **`rw-24` reads as Word does, an empty document,** by the user's ruling of 2026-11-07 ("rw-24 against REQ-305: as Word"). REQ-305 in a body (`rw-25`) was ruled after it, and that change isn't this CR's (section 2.2).
 
 ### 8.3 Verified
 
