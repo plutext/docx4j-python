@@ -1,6 +1,6 @@
 # CR-038: A `w14:paraId` on every paragraph and row added (the port of core-ts's CR-002 section 66)
 
-**Status:** Proposed 2026-11-06, at the user's word ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. Two phases, about ¾ day, and a Word check. Nothing built. Questions in section 7, each with a recommendation. **Two Word rounds are in section 8:** compatibility mode doesn't decide whether Word renumbers, the file does, and Q2's own case, on a file that renumbers, isn't measured yet. A third round is proposed there.
+**Status:** Proposed 2026-11-06, at the user's word ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. Two phases, about ¾ day, and a Word check. Nothing built. Questions in section 7, each with a recommendation. **Three Word rounds are in section 8,** and they settle Q2's case: a new footer with no ids renumbers a whole file, and what protects a file is a comment.
 
 **Depends on:** nothing here. The rule is core-ts's Word checks 79 and 80 (`4600413`, `test/check79/`, `test/check80/`).
 
@@ -19,7 +19,7 @@ Word 365 keeps a file's ids at open only if every paragraph and table row holds 
 | core-ts's output, every new paragraph and row with an id and no `w14:textId` | all, in all four files |
 | The same with one new row's id removed | 0 of 28 |
 
-So `w14:textId` isn't needed, and the row's id counts as the paragraph's does. All of this is `document.xml`. Section 8 shows the rule isn't general: some files keep their ids with one missing, at either compatibility mode, and what decides isn't known. The ones that renumber include a plain Word save, so it isn't a rare shape.
+So `w14:textId` isn't needed, and the row's id counts as the paragraph's does. Section 8 refines the rule, and every result so far fits it: **in a file with no comments, one missing id in any story makes Word renumber every id in the file. A file with comments keeps its ids and fills the gap.** Compatibility mode plays no part, and a new footer is enough, so most of this package's table and part routes are affected.
 
 Here a `w14:paraId` is the stable address (CR-003 section 3.4): `Paragraph.address`, `paragraph_at(para_id=...)`, `created_para_ids`. A caller who holds one expects it to last. Today it lasts until Word next opens a file this package added a table to. Nothing is corrupted, as far as these checks show: what goes is every id in the file, not just the new ones.
 
@@ -88,9 +88,9 @@ The reason doesn't wait on Word: two paragraphs answering one `paragraph_at(para
 
 ### 3.5 Parts other than the main document (Q2)
 
-An existing part that uses ids follows 3.2, comments included. The open case is a new part, where there's no tree to ask: a new footer, and the glossary. Whether Word's rule reaches past `document.xml` isn't settled (section 8), and core-ts leaves those parts out.
+An existing part that uses ids follows 3.2, comments included. The open case is a new part, where there's no tree to ask: a new footer, and the glossary. Word's rule does reach past `document.xml` (section 8), and core-ts's section 66 leaves those parts out.
 
-Recommended: a new header or footer takes the main part's answer. Ids there did no harm in section 8's run, and Word writes them itself, and `q2k` shows a gap outside `document.xml` can reach it. It would read the main part privately, as the text model does, so it marks nothing. **The glossary stays without,** since Word writes none there and drops one it's given.
+Recommended: a new header or footer takes the main part's answer. It has to: a new footer with no ids renumbered all 18 of a file's ids, and with ids kept them (section 8). It would read the main part privately, as the text model does, so it marks nothing. **The glossary stays without,** since Word writes none there and drops one it's given.
 
 ### 3.6 `ensure_para_ids`
 
@@ -137,15 +137,15 @@ The oracle is the rule of section 1, so the tests hold the count. Only Word can 
 
 1. **Ids shift for a seeded run.** The generator now draws for rows and cell paragraphs, so a later paragraph's id differs from today's for the same seed and calls. Nothing promises today's values, but a test that pins one will move, and `scripts/compare_acceptance.py` should be run.
 2. **An address changes form.** A new table's paragraphs answer with a `w14:` address where they had a positional one. That's the point, but a caller matching the old form sees it.
-3. **The rule is narrow, and not understood.** It holds for some files and not others, and what decides isn't known (section 8). The fix doesn't depend on the explanation: ids on everything is what Word's own save has, in every file measured. The Word check is a second run, on this package's output.
+3. **The rule is inferred.** It fits every result so far, but comments' part in it rests on two natural files and one comment added here, and why isn't known. The fix doesn't depend on the explanation: ids on everything is what Word's own save has, in every file measured. The Word check is a second run, on this package's output.
 4. **The ports differ for a while.** Q1 goes beyond core-ts, and docx4j has the gap. DI-026 records it.
 
 ## 7. Questions
 
 | # | Question | Recommendation |
 |---|---|---|
-| Q1 | Does the walker replace an id the part already holds, or only fill what's missing, as core-ts does? | **Replace.** Two paragraphs answering one address is a bug here, and Word does the same: measured on one file, it kept the first and gave the later one a new id, with no prompt (section 8). |
-| Q2 | Does a part made in this session (a new footer, the glossary) take ids, or stay as it is, as core-ts's do? | **A new header or footer takes them, the glossary doesn't.** Amended after section 8's run: ids in a new footer did no harm and Word writes them itself, while Word writes none in a glossary and drops one it's given. Whether a footer's ids are *needed* isn't known on a file that renumbers, so section 8's third round would settle that. The recommendation doesn't wait on it. |
+| Q1 | Does the walker replace an id the part already holds, or only fill what's missing, as core-ts does? | **Replace.** Two paragraphs answering one address is a bug here, and Word does the same: measured on two files, it kept the first and gave the later one a new id, with no prompt and no other id moved (section 8). |
+| Q2 | Does a part made in this session (a new footer, the glossary) take ids, or stay as it is, as core-ts's do? | **A new header or footer takes them, the glossary doesn't.** Measured (section 8): a new footer with no ids renumbered all 18 of a file's ids, and with ids kept them. Word writes none in a glossary and drops one it's given. A glossary with no ids on a file that renumbers isn't measured, but Word's own saves are that shape. |
 | Q3 | Which release? | **This one.** It's about ¾ day, tables are a common route, and its Word check can share a run with CR-037's. |
 
 ## 8. Q2's Word run (2026-11-06)
@@ -210,4 +210,26 @@ Ids of the source's that Word kept, in `document.xml`. Each cell is two saves an
 
 The probe keeps its ids, so these say what Word does with the id in question, not whether such a gap renumbers a file. That's unmeasured for a Choice, a Fallback and a nested row.
 
-**A third round, proposed, not built,** on `79c`, which renumbers: a new footer with no ids and with ids, which is Q2's case; a body gap with only a comment added, and with only a header added, which separates point 4; and a duplicate, which batch 2 measured only on a file that keeps its ids. About 6 inputs and 12 jobs, none needing a mode 12 save. It needs the user's word, and doesn't hold CR-038's design.
+### The third round (2026-11-06)
+
+The user: "tell the portfolio agent to use word-bridge to do the third round on 79c". Nine inputs in `out/cr038-r3-word-check/`, all on `79c-save-1.word.docx`, mode 15, each with two saves and a `check`, the three agreeing in every row. 27 jobs, all silent. A comment or header was added through this package's save, so `r-py-gap` is the positive control in that form.
+
+| Input | `document.xml` ids Word kept | The new part |
+|---|---|---|
+| `r-py-control`: read and saved here | 18 of 18 | |
+| `r-py-gap`: a body gap, the positive control | **0 of 17** | |
+| `r-footer-no-ids`: this package's new footer, no ids, no body gap | **0 of 18** | Word wrote ids on both paragraphs |
+| `r-footer-ids`: the same with ids | 18 of 18 | 2 of 2 kept |
+| `r-comment`: a comment added, no gap | 18 of 18 | 1 of 1 kept |
+| `r-comment-gap`: the same with a body gap | **17 of 17, the gap filled** | 1 of 1 kept |
+| `r-header`: a header added, ids on it, no gap | 18 of 18 | 2 of 2 kept |
+| `r-header-gap`: the same with a body gap | **0 of 17** | 0 of 2: renumbered too |
+| `r-duplicate`: two body paragraphs with one id | 17 of 17 | |
+
+**What it shows:**
+1. **Q2's case is settled.** A new footer with no ids costs every id in the body, at open. With ids, none.
+2. **Comments protect a file, and a header doesn't.** Adding one comment stopped the renumbering; adding a header didn't. That's the lead above, narrowed.
+3. **The rule reaches across parts:** a gap in the body renumbered the header too.
+4. **A duplicate doesn't renumber,** even here: the first kept its id, the later one took a new one, different in each save, and the other 16 stayed.
+
+**The rule, then:** in a file with no comments, one missing id in any story renumbers every id. A file with comments keeps its ids and fills the gap. It fits every result of the three rounds and of checks 79 and 80: `79c`, `79f`, `80e`, `76t26` (`q2k`) and `r-header-gap` have no comments and renumbered, and `76t18`, the probe and `r-comment-gap` have them and kept. It's inferred: one comment added, and two files that held them. Which of the three comment parts does it, and why, isn't known. `commentsExtended.xml` refers to paragraphs by id, which would be a reason.
