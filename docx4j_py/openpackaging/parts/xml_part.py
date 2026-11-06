@@ -514,8 +514,12 @@ class XmlPart(Part, Generic[T]):
         self.skipped = [*root_dropped, *(getattr(report, "items", ()) or ())]
         self.kept = list(getattr(report, "kept", ()) or ())
         self.resolved_alternate_content = resolved
-        self.warnings = warnings if root_warning is None else [root_warning, *warnings]
-        for warning in self.warnings:
+        if root_warning is not None:
+            from docx4j_py.openpackaging.repeated import with_root
+
+            warnings = with_root(root_warning, warnings)
+        self.warnings = warnings
+        for warning in warnings:
             # once a part, as docx4j's WARN (its CR-073 D3)
             logger.warning("%s", warning.message)
         if self.skipped:

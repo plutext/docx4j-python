@@ -10,6 +10,8 @@ CR-039's oracle (`tests/openpackaging/test_repeated.py`).
 | `rw-*.docx` | A root that isn't `w:document`, `rw-2*` `mc:AlternateContent`, with three controls |
 | `or-*.docx` | Another story's root, with a control |
 | `rt-15` to `rt-17` | Three `w:body`: which section stands. The objects session's, added 2026-11-07 |
+| `mr-*` | docx4j's `madeup-root` round: how far Word reads an unknown root |
+| `nd-20` to `nd-24` | A `w:body` in a `w:body`. The objects session's |
 | `*-word365.docx` | Word's save of each. A file Word refused has none |
 | `*-word365.txt` | Word's text save. It leaves text boxes out, so a box's words are read from the save |
 

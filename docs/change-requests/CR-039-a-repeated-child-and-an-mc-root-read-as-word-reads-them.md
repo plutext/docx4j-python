@@ -1,6 +1,6 @@
 # CR-039: A repeated child and an `mc:AlternateContent` root, read as Word reads them
 
-**Status:** Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Phase B built 2026-11-07 (section 8), its Word check not run. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
+**Status:** Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Phase B built 2026-11-07 (section 8), then amended to WD 0.98's REQ-318 to REQ-320, with Phase C and a `w:body` in a `w:body` (section 9, the user: "go"). The Word check is Phase D's. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
 
 **Depends on:** nothing to build. The WD says nothing about either shape, and the portfolio drafts it (Q1). Phase B starts ahead of that at the user's word and is amended to it, as CR-037 was. **CR-033** is the save's half (section 2.3). Nothing here waits on phase 0 of the two counterparts (Word check 81), which isn't scheduled and has no date: core-ts's CR-028 may be deferred indefinitely too. Phase B rests on rounds already run, and Phase C builds what's measured. Phase 0 would only widen C.
 
@@ -97,10 +97,9 @@ core-ts built these and read Word's saves (its CR-028 sections 1.1 and 2.4), eac
 ### 3.2 The root (Phase B)
 
 - **`mc:AlternateContent`:** replaced by what `branch_taken` answers, and the rows below then apply to what the branch holds, as `or-50` needs. One `w:document` becomes the root; two are joined as two `w:body` are (section 3.3); `None` leaves an empty `w:document` holding an empty `w:body`, which the facade can read, as core-ts's D4 has it.
-- **The roots Word refuses (WD REQ-318):** `w:footnotes`, `w:endnotes`, Word 2003's `w:wordDocument`, `pkg:package`, and an unknown `w:` root, or one in no namespace or a namespace not understood, holding a `w:document`. Refused as a part not well formed is (CR-031, and Q4): `Docx4JException` naming the part, kept as `part.unreadable`, the load lazy, an untouched save writing its bytes. They're listed by name and shape, never as "anything else", because `w:madeUp` holding a `w:p` opens and what decides isn't known.
-- **A bare `w:body`:** wrapped in a `w:document` (Q9).
-- **An unknown `w:` root, unless it holds a `w:document`:** wrapped in a `w:document` and a `w:body`, and CR-037's pass takes the tags off and lists them (Q9). Measured on `w:madeUp` holding one `w:p`. "Unknown" is CR-037's: a name not in `WML_ELEMENTS`.
-- **Every other root yields nothing (WD REQ-320),** with section 3.6's warning: no text, what it held in `part.skipped`, `Body` refusing. That covers `w:hdr`, `w:ftr`, `w:styles` and `w:comments`, whose words aren't a reading to copy (core-ts CR-028 section 4), every other known `w:` name, and anything else unmeasured. `foo` holding a `w:body` used to bind its body, and no longer does.
+- **The roots Word refuses (WD REQ-318):** `w:footnotes`, `w:endnotes`, `w:tc`, Word 2003's `wordDocument` and `pkg:package`; an unknown `w:` root holding a `w:document` or, directly, a `w:r`; and a root in no namespace, or in one neither understood nor in its `mc:Ignorable`, holding a `w:document` or a `w:p`. Refused as a part not well formed is (CR-031, and Q4): `Docx4JException` naming the part, kept as `part.unreadable`, the load lazy, an untouched save writing its bytes.
+- **The roots Word reads (REQ-319):** a `w:body`, wrapped in a `w:document`; a `w:p`, as a body's one paragraph; a `w:sdtContent`, as a body holding what it holds; and an unknown `w:` root holding `w:p`, `w:tbl`, a block `w:sdt` or a further unknown element, wrapped so that CR-037's pass takes its tags off. A `w:sectPr` directly in that root has no effect, a `w:body` in it is the body, and empty it is an empty document.
+- **Every other root yields nothing (REQ-320),** with section 3.6's warning: no text, what it held in `part.skipped`, `Body` refusing. That covers `w:hdr`, `w:ftr`, `w:styles` and `w:comments`, whose words aren't a reading to copy (core-ts CR-028 section 4), a root in a namespace its `mc:Ignorable` names, and anything unmeasured, among them `foo` holding a `w:body`.
 - **Main part only.** Every measurement is `word/document.xml`. A header's or a note's root stays as it is unless a round measures it (core-ts's D5).
 - **The root's name is read once,** in this one part, since `<foo/>` leaves no report and `<foo><w:body>` an empty one.
 
@@ -109,14 +108,15 @@ core-ts built these and read Word's saves (its CR-028 sections 1.1 and 2.4), eac
 | Rule | Elements | Measured |
 |---|---|---|
 | Join in order | `w:body`, `w:sdtContent` | A body in a `w:document`, a block `w:sdt` |
-| Join, the second first | `w:txbxContent` | A VML box only (Q6) |
 | Merge, the later value winning | `w:pPr`, `w:rPr` | One property each way, one level deep |
 | Keep the last | `w:jc`, `w:b`, `w:sz` | One file each (Q5) |
 | Keep the later | `w:sectPr`, `w:tblPr` | Same properties in both copies |
 
 Joining bodies keeps the last final `w:sectPr` stated and drops the others, a body with none being passed over: in `rt-17` the third body has none and the second's stands. A `w:sectPr` in a paragraph's `w:pPr` stays (`rt-15`).
 
-Everything else stays as it is today: the first kept, the later listed. That covers a run-level or cell-level `w:sdtContent`, a DrawingML box, and a second `w:tcPr` or `w:trPr`. Phase 0's list covers most of those, and whether "the last" means the whole element or each attribute (`w:ind w:left` then `w:ind w:right`), since `rc-30` to `rc-33` hold one attribute each.
+A `w:body` in a `w:body`, at any depth, gives way to what it holds in place, the same section rule applying (`nd-20` to `nd-24`). The WD doesn't require it.
+
+Everything else stays as it is today: the first kept, the later listed. That covers a second `w:txbxContent` (Q6), a run-level or cell-level `w:sdtContent`, and a second `w:tcPr` or `w:trPr`. Phase 0's list covers most of those, and whether "the last" means the whole element or each attribute (`w:ind w:left` then `w:ind w:right`), since `rc-30` to `rc-33` hold one attribute each.
 
 ### 3.4 The report (Q3)
 
@@ -229,7 +229,7 @@ Each phase stands alone, and any of them can be left out.
 - **The codes:** `part.unexpected_root` is decided here (the user, 2026-11-07: "makes sense"). `part.read_as_word` is a proposal, and `part.root_refused` is the validator's.
 - **CR-033:** the save after `.contents` of a root that yields nothing still writes an empty `w:document`.
 
-### 8.5 docx4j's `madeup-root` round (2026-11-07, not ruled)
+### 8.5 docx4j's `madeup-root` round (2026-11-07, resolved in section 9)
 
 docx4j's round tested how far Word reads an unknown root: 20 files, each run twice, in the share's `bridge/portfolio/` as `mr-*`, with the table in its CR-079 section 1.1. Compared here from the raw saves at `af1d577`, Phase B agrees with Word on 13 in words or refusal, and section 3.2's rules are too wide or too narrow on the rest.
 
@@ -245,3 +245,28 @@ docx4j's round tested how far Word reads an unknown root: 20 files, each run twi
 Two `w:p`, a `w:tbl`, a block `w:sdt`, a further unknown element, paragraph properties and a style all read as Word does (`mr-10`, `mr-12`, `mr-13`, `mr-17`, `mr-18`, `mr-50`). So do an empty `w:madeUp` (`mr-16`), `z:madeUp` with `z` in `mc:Ignorable` (`mr-22`), and a branch's `w:madeUp` (`mr-40`).
 
 Each rests on one file. WD 0.97's REQ-318 to REQ-320 don't have these yet: docx4j has proposed wording, and nothing is ruled, so the code stays as built. `mr-15` and section 8.4's `w:body` in a `w:body` are one fix.
+
+## 9. Phase B's amendment and Phase C: implementation notes (2026-11-07)
+
+### 9.1 What was built
+
+- **The roots, to WD 0.98's REQ-318 to REQ-320:** section 3.2. `_refused` takes `w:tc`, a bare `w:r` in an unknown root and a `w:p` in a foreign one, and honours the root's `mc:Ignorable`. `_read_through` is new: a `w:p`, a `w:sdtContent`, and what an unknown root may hold. Section 8.5's seven differences are gone: `mr-*` agrees with Word on all 20 files, in words and refusals.
+- **A `w:body` in a `w:body`:** `_flatten`. `nd-20` to `nd-24` match Word's words and section. It's what makes `mr-15`'s body the body, by another route, and the WD doesn't require it.
+- **Phase C, REQ-322:** `repeated.repair` joins `w:sdtContent` in a block `w:sdt`, merges `w:pPr` and `w:rPr`, and keeps the last `w:jc`, `w:b`, `w:sz`, `w:sectPr` and `w:tblPr`. `triggers` names the nine children measured.
+- **One warning a part:** `with_root`, gone in section 8, came back, since a repeated property can now stand under a root read.
+- **`canon`:** a merge appends the later `w:pPr`'s children and a save writes the schema's order, so under a join `compare` sorts the children of `w:pPr` and `w:rPr` on both sides.
+- **Fixtures:** `tests/fixtures/repeated/` adds `mr-*` and `nd-20` to `nd-24`.
+
+### 9.2 What the build settled beyond the design
+
+- **`w:sectPr` in a join is counted**, so `rc-10` reports 2 children read as one: a body and a section.
+- **A block `w:sdt` is one in a `w:body` or a `w:tc`.** Only the body is measured. A run-level one and one in a `w:tr` stay as they are.
+- **What a merge replaces is listed,** so `rc-20` is refused under `strict=True` and `rc-21` loads.
+- **`mce.nothing_selected` isn't here.** WD 0.98 has REQ-305 raise it, at a root too, so `rw-24` should. It belongs with REQ-305's change, which waits for docx4j's list.
+
+### 9.3 Verified
+
+- **The whole suite:** 11,966 passed, 8 skipped, 1 failed. The failure is `test_the_understood_list_is_docx4js_verbatim`, which compares this package's list with the sibling's working copy, and docx4j's has an uncommitted change (127 URIs). It's REQ-305's work, and the list here doesn't change in this CR.
+- **`scripts/roundtrip.py`:** clean, 50 of 50 parts, 0 differences, 0 skipped.
+- **28 mutants** of `repeated.py`: every one caught. Two survived the first run, and a test and a simpler join followed.
+- **Word's own files:** every file Word read matches its words, its section and its properties, and every file Word refused is refused.

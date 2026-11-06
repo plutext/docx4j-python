@@ -49,6 +49,9 @@ def _norm_elem(el, out, preserve: bool) -> None:
     out.append(el)
 
 
+WML = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+
 def normalize_tree(xml_bytes: bytes) -> etree._Element:
     """Return a prefix-free, whitespace-normalised copy of the tree."""
     root = parse(xml_bytes).getroot()
@@ -308,7 +311,7 @@ def compare(
                 rep.add("read-as-word", "/", f"{warning.message}")
         orig, elements, breaks, texts, joined = repair_bytes(orig)
         for _ in range(joined):
-            rep.add("read-as-word", "/", "a w:body joined to the first, as Word reads it")
+            rep.add("read-as-word", "/", "a child given more than once, read as Word reads it")
         for _ in range(elements):
             rep.add("read-through", "/", "an unknown w: element, read through as Word reads it")
         for _ in range(breaks):
@@ -316,6 +319,11 @@ def compare(
         for _ in range(texts):
             rep.add("br-outside-run", "/", "a text element holding elements, split as Word reads it")
     a, b = normalize_tree(orig), normalize_tree(new)
+    if repaired and joined:
+        # a merge appends the later w:pPr's children and a save writes the schema's order: no difference of content
+        for tree in (a, b):
+            for holder in tree.iter(f"{{{WML}}}pPr", f"{{{WML}}}rPr"):
+                holder[:] = sorted(holder, key=lambda child: str(child.tag))
     if normalise:
         from docx4j_py.openpackaging.normalise import normalise_tree
 

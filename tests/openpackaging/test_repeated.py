@@ -39,6 +39,24 @@ DOC = "/word/document.xml"
 #: Word read every word of these, with a section of its own.
 READ = [
     "rc-10-body",
+    "rc-11-sdtContent",
+    "mr-01-madeup-p",
+    "mr-10-two-p",
+    "mr-11-p-sectpr",
+    "mr-12-tbl",
+    "mr-13-sdt",
+    "mr-15-body",
+    "mr-17-nested",
+    "mr-18-p-properties",
+    "mr-30-sdtcontent-p",
+    "mr-32-p-root",
+    "mr-40-branch-madeup-p",
+    "mr-50-madeup-p-styles",
+    "nd-20-body-only-child",
+    "nd-21-body-middle-no-sectPr",
+    "nd-22-body-middle-with-sectPr",
+    "nd-23-body-last-with-sectPr",
+    "nd-24-body-three-deep",
     "rt-15-body-section-break",
     "rt-16-body-second-no-sectPr",
     "rt-17-body-third-no-sectPr",
@@ -61,6 +79,11 @@ REFUSED = [
     "or-12-footnotes",
     "or-13-endnotes",
     "or-15-footnotes-bare",
+    "mr-03-foo-document",
+    "mr-14-run",
+    "mr-20-other-namespace-p",
+    "mr-21-no-namespace-p",
+    "mr-31-tc-p",
 ]
 #: Each with the root left as it is, and what the root held.
 UNEXPECTED = {
@@ -68,7 +91,10 @@ UNEXPECTED = {
     "or-11-ftr": ("w:ftr", ["p"]),
     "or-14-comments": ("w:comments", ["comment"]),
     "or-30-styles": ("w:styles", ["style"]),
+    "mr-22-ignorable-p": ("{urn:docx4j:check79}madeUp", ["p"]),
 }
+#: A property given twice: where it stands, and what Word's save holds of the target paragraph's.
+PROPERTIES = ["rc-20-pPr-values", "rc-21-pPr-merge", "rc-22-rPr-values", "rc-23-rPr-merge", "rc-30-jc", "rc-33-sz"]
 NO_MAIN_PART = ["or-40-hdr-type-header", "or-41-document-type-header"]
 
 
@@ -149,10 +175,10 @@ def test_a_save_has_word_s_words_and_section(name: str) -> None:
 
     def words(xml: bytes) -> list[str]:
         body = etree.fromstring(xml).find(f"{W}body")
-        return ["".join(paragraph.itertext()) for paragraph in body.iter(f"{W}p")]
+        return [text for paragraph in body.iter(f"{W}p") if (text := "".join(paragraph.itertext()))]
 
     assert words(ours) == words(theirs)
-    if name != "or-31-madeup":  # the file states no section, and Word's save writes a default
+    if page_widths(ours):  # a file that states no section has none, where Word's save writes a default
         assert page_widths(ours) == page_widths(theirs)
 
 
@@ -253,7 +279,7 @@ def test_two_bodies_keep_one_section_and_list_the_earlier() -> None:
     assert len([item for item in body.content]) == 2
     assert body.sect_pr is not None
     assert local_names(part.skipped) == ["sectPr"]
-    assert [(w.root, w.children) for w in part.warnings] == [(None, 1)]
+    assert [(w.root, w.children) for w in part.warnings] == [(None, 2)]
 
 
 def test_a_later_body_with_no_section_leaves_the_first_s_at_the_end() -> None:
@@ -304,6 +330,174 @@ def test_what_a_later_document_holds_beside_its_body_is_listed() -> None:
     package = load(with_part(xml.encode()))
     assert plain_text(extract(package)).split() == ["A", "B"]
     assert local_names(package.main_document_part.skipped) == ["background"]
+
+
+# --- a child given more than once ------------------------------------------------
+
+
+def target_properties(xml: bytes) -> dict[str, dict[str, str]]:
+    """What the target paragraph's ``w:pPr`` and ``w:rPr`` hold: each child's attributes by local name."""
+    for paragraph in etree.fromstring(xml).iter(f"{W}p"):
+        if "TARGET TEXT" in "".join(paragraph.itertext()):
+            return {
+                etree.QName(child).localname: {etree.QName(key).localname: value for key, value in child.attrib.items()}
+                for properties in paragraph.iter(f"{W}pPr", f"{W}rPr")
+                for child in properties
+            }
+    raise AssertionError("no target paragraph")
+
+
+@pytest.mark.parametrize("name", PROPERTIES)
+def test_a_property_given_twice_is_what_word_s_save_holds(name: str) -> None:
+    package = load(source(name))
+    assert target_properties(part_of(saved(_read(package)))) == target_properties(word_save(name))
+
+
+@pytest.mark.parametrize(("name", "value"), [("rc-31-b-on-off", "0"), ("rc-32-b-off-on", None)])
+def test_the_last_w_b_stands(name: str, value: str | None) -> None:
+    """Word's save of off writes no ``w:b``, and of on a bare one: here the last as written, which reads the same."""
+    held = target_properties(part_of(saved(_read(load(source(name))))))
+    assert held["b"].get("val") == value
+
+
+def test_the_later_section_stands_in_one_body() -> None:
+    name = "rc-40-sectPr"
+    ours = part_of(saved(_read(load(source(name)))))
+    assert page_widths(ours) == page_widths(word_save(name)) == ["15840"]
+
+
+def test_the_later_table_properties_stand() -> None:
+    name = "rc-41-tblPr"
+    ours = etree.fromstring(part_of(saved(_read(load(source(name))))))
+    theirs = etree.fromstring(word_save(name))
+    [properties] = ours.iter(f"{W}tblPr")
+    assert properties.find(f"{W}jc").get(f"{W}val") == next(theirs.iter(f"{W}tblPr")).find(f"{W}jc").get(f"{W}val") == "right"
+
+
+def test_what_a_merge_replaced_is_listed_and_what_it_added_isn_t() -> None:
+    assert local_names(_read(load(source("rc-20-pPr-values"))).main_document_part.skipped) == ["jc"]
+    assert not _read(load(source("rc-21-pPr-merge"))).main_document_part.skipped
+
+
+def test_a_second_box_stays_as_it_was() -> None:
+    """Q6: ``w:txbxContent`` waits for a second shape, so the first stands and the second is listed."""
+    package = _read(load(source("rc-12-txbxContent")))
+    assert local_names(package.main_document_part.skipped) == ["txbxContent"]
+
+
+def repaired(xml: str) -> tuple[etree._Element, int]:
+    root = etree.fromstring(f'<w:document xmlns:w="{W_NS}"><w:body>{xml}</w:body></w:document>')
+    return root, repeated.repair(root)
+
+
+def test_a_run_level_control_is_left_as_it_is() -> None:
+    root, read_as_one = repaired("<w:p><w:sdt><w:sdtContent/><w:sdtContent/></w:sdt></w:p>")
+    assert read_as_one == 0
+    assert len(list(root.iter(f"{W}sdtContent"))) == 2
+
+
+def test_a_control_in_a_cell_is_a_block_one() -> None:
+    cell = "<w:tc><w:sdt><w:sdtContent><w:p/></w:sdtContent><w:sdtContent><w:p/></w:sdtContent></w:sdt></w:tc>"
+    root, read_as_one = repaired(f"<w:tbl><w:tr>{cell}</w:tr></w:tbl>")
+    assert read_as_one == 1
+    [content] = root.iter(f"{W}sdtContent")
+    assert len(content) == 2
+
+
+def test_a_later_value_of_any_property_wins_a_merge() -> None:
+    """Not only the names kept last: a merge replaces whatever the later ``w:pPr`` states."""
+    root, read_as_one = repaired('<w:p><w:pPr><w:ind w:left="1"/></w:pPr><w:pPr><w:ind w:left="2"/></w:pPr></w:p>')
+    assert read_as_one == 1
+    assert [ind.get(f"{W}left") for ind in root.iter(f"{W}ind")] == ["2"]
+
+
+def test_a_body_in_a_later_body_gives_way_too() -> None:
+    bodies = "<w:body><w:p/></w:body><w:body><w:body><w:p/></w:body></w:body>"
+    root = etree.fromstring(f'<w:document xmlns:w="{W_NS}">{bodies}</w:document>')
+    assert repeated.repair(root) == 2
+    assert len(list(root.iter(f"{W}body"))) == 1
+    assert len(list(root.iter(f"{W}p"))) == 2
+
+
+def test_three_copies_read_as_two_do() -> None:
+    root, read_as_one = repaired('<w:p><w:pPr><w:jc w:val="left"/><w:jc w:val="center"/><w:jc w:val="right"/></w:pPr></w:p>')
+    assert read_as_one == 2
+    assert [jc.get(f"{W}val") for jc in root.iter(f"{W}jc")] == ["right"]
+
+
+def test_a_property_in_a_part_not_the_main_one_is_left_as_it_is() -> None:
+    """Every measurement is the main part."""
+    root = etree.fromstring(f'<w:hdr xmlns:w="{W_NS}"><w:p><w:pPr><w:jc/><w:jc/></w:pPr></w:p></w:hdr>')
+    assert repeated.repair(root) == 0
+    assert len(list(root.iter(f"{W}jc"))) == 2
+
+
+def test_a_part_that_holds_each_child_once_changes_nothing() -> None:
+    data = f'<w:document xmlns:w="{W_NS}"><w:body><w:p><w:pPr><w:jc w:val="left"/></w:pPr></w:p></w:body></w:document>'.encode()
+    assert read_through.repair_bytes(data)[0] is data
+
+
+@pytest.mark.parametrize("name", ["jc", "b", "sz", "pPr", "rPr", "tblPr", "sectPr", "sdtContent", "body"])
+def test_the_report_triggers_on_each_child_measured(name: str) -> None:
+    class Item:
+        qname = f"{W}{name}"
+
+    assert repeated.triggers([Item()])
+
+
+def test_the_report_doesn_t_trigger_on_anything_else() -> None:
+    class Item:
+        qname = f"{W}txbxContent"
+
+    assert not repeated.triggers([Item()])
+
+
+def test_a_repeated_property_under_a_root_read_gives_one_warning() -> None:
+    held = '<w:document><w:body><w:p><w:pPr><w:jc w:val="left"/><w:jc w:val="right"/></w:pPr></w:p></w:body></w:document>'
+    xml = f'<mc:AlternateContent xmlns:mc="{MC_NS}" xmlns:w="{W_NS}"><mc:Fallback>{held}</mc:Fallback></mc:AlternateContent>'
+    package = _read(load(with_part(xml.encode())))
+    assert [(w.root, w.children) for w in package.main_document_part.warnings] == [("mc:AlternateContent", 1)]
+
+
+# --- an unknown root -------------------------------------------------------------
+
+
+def test_a_section_directly_in_an_unknown_root_has_no_effect() -> None:
+    package = _read(load(source("mr-11-p-sectpr")))
+    assert page_widths(part_of(saved(package))) == []
+    assert "sectPr" in local_names(package.main_document_part.skipped)
+
+
+def test_an_empty_unknown_root_is_an_empty_document() -> None:
+    package = load(source("mr-16-empty"))
+    assert plain_text(extract(package)).strip() == word_text("mr-16-empty") == ""
+    body_of(package).insert_paragraph("NEW WORDS")
+    assert b"NEW WORDS" in part_of(saved(package))
+
+
+def test_a_body_in_an_unknown_root_is_the_body_and_what_stands_beside_it_is_listed() -> None:
+    xml = f'<w:madeUp xmlns:w="{W_NS}"><w:p/><w:body><w:p><w:r><w:t>WORDS</w:t></w:r></w:p></w:body></w:madeUp>'.encode()
+    package = load(with_part(xml))
+    assert plain_text(extract(package)).strip() == "WORDS"
+    assert local_names(package.main_document_part.skipped) == ["p"]
+
+
+def test_two_bodies_in_an_unknown_root_join() -> None:
+    bodies = "".join(f"<w:body><w:p><w:r><w:t>{word}</w:t></w:r></w:p></w:body>" for word in "AB")
+    package = load(with_part(f'<w:madeUp xmlns:w="{W_NS}">{bodies}</w:madeUp>'.encode()))
+    assert plain_text(extract(package)).split() == ["A", "B"]
+
+
+def test_an_unknown_root_holding_nothing_it_reads_is_another_root() -> None:
+    package = load(with_part(f'<w:madeUp xmlns:w="{W_NS}"><w:jc/></w:madeUp>'.encode()))
+    assert [(w.kind, w.detail) for w in extract(package).warnings] == [("part.unexpected_root", "w:madeUp")]
+
+
+def test_a_root_understood_holding_a_paragraph_is_another_root() -> None:
+    """Unmeasured, so REQ-318's last row doesn't take it: REQ-320's."""
+    ns = "http://schemas.microsoft.com/office/word/2010/wordml"
+    package = load(with_part(f'<x:foo xmlns:x="{ns}" xmlns:w="{W_NS}"><w:p/></x:foo>'.encode()))
+    assert [w.kind for w in extract(package).warnings] == ["part.unexpected_root"]
 
 
 # --- the roots Word refuses ------------------------------------------------------
@@ -436,7 +630,7 @@ def test_body_of_refuses_a_package_with_no_main_part(name: str) -> None:
     ("name", "root", "children"),
     [
         ("rw-20-mc-root-choice", "mc:AlternateContent", 0),
-        ("rw-23-mc-root-two-documents", "mc:AlternateContent", 1),
+        ("rw-23-mc-root-two-documents", "mc:AlternateContent", 2),
         ("or-32-body", "w:body", 0),
         ("or-31-madeup", "w:madeUp", 0),
     ],
@@ -469,10 +663,20 @@ def test_the_warning_is_logged_once_a_part(caplog: pytest.LogCaptureFixture) -> 
 
 @pytest.mark.parametrize(
     ("name", "loads"),
-    [("or-32-body", True), ("rc-10-body", False), ("rw-20-mc-root-choice", False), ("or-31-madeup", False)],
+    [
+        ("or-32-body", True),
+        ("rc-11-sdtContent", True),
+        ("rc-21-pPr-merge", True),
+        ("rc-23-rPr-merge", True),
+        ("rc-10-body", False),
+        ("rc-20-pPr-values", False),
+        ("rc-30-jc", False),
+        ("rw-20-mc-root-choice", False),
+        ("or-31-madeup", False),
+    ],
 )
 def test_strict_loads_a_part_that_lost_nothing(name: str, loads: bool) -> None:
-    """A bare ``w:body`` lost nothing. An earlier section, a branch not taken and an unknown tag did."""
+    """A bare ``w:body``, a join and a merge lost nothing. An earlier section, a value, a branch and a tag did."""
     part = load(source(name), options=LoadOptions(strict=True)).main_document_part
     if loads:
         assert part.contents is not None
@@ -484,7 +688,7 @@ def test_strict_loads_a_part_that_lost_nothing(name: str, loads: bool) -> None:
 # --- the save and the round trip -------------------------------------------------
 
 
-@pytest.mark.parametrize("name", READ)
+@pytest.mark.parametrize("name", READ + PROPERTIES)
 def test_canon_counts_the_reading_and_nothing_else(name: str) -> None:
     data = source(name)
     package = load(data)
