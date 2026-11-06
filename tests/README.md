@@ -789,6 +789,12 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > each, 39 jobs; the user: "schedule with the portfolio agent CR-038's Word check through the bridge"). Every paragraph and row added now
 > holds a `w14:paraId`, on `79c-save-1.word.docx`, a file with no comments, so one that a missing id renumbers. All opened silently. The
 > control, with one new row's id off, kept 0 of 29. The other twelve kept every id, the new ones included, at open and through both saves.
+>
+> **2026-11-07, CR-039 (46 inputs in `out/cr039-word-check/`, built over `f7c5652`, staged as `bridge/staging/cr039-word-check/`):
+> passed**, through the Word bridge, not by hand (the docx4j-portfolio session's run on Word 16.0.20326.20232, twice each, 92 jobs;
+> the user: "go", after "with one Word check through the bridge at the end"). A main part with another root, or a child given more than once,
+> now saves as an ordinary document. All 92 opened silently, the two runs agree, and all 46 match Word's own reading of the source in words,
+> sections and properties, compared from the raw saves (CR-039 section 9.4).
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
