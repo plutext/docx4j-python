@@ -829,7 +829,7 @@ CHECK76_FILES = {
 def test_the_check_76_files_are_core_tss():
     listed = dict(reversed(line.split()) for line in (CHECK76 / "SHA1SUMS").read_text().splitlines())
     assert set(listed) == {path.name for path in CHECK76.glob("*.docx")}
-    assert len(listed) == 67
+    assert len(listed) == 136
     for name, digest in listed.items():
         assert hashlib.sha1((CHECK76 / name).read_bytes()).hexdigest() == digest, name
 

@@ -283,10 +283,10 @@ def run_part(docx: str, part: str, data: bytes, klass, out_dir: Path,
     # the report triggers the pass; the repaired bytes are parsed again, and that parse's
     # tree and report are the part's (the timing stays the first parse's)
     report = getattr(parser, "skipped", None)
-    if repair and report is not None and len(report):
+    if repair and report is not None:
         from docx4j_py.openpackaging import breaks, read_through
 
-        if read_through.triggers(report) or breaks.triggers(report):
+        if read_through.triggers(report) or breaks.triggers(report) or read_through.in_a_branch(data):
             try:
                 dropped: list = []
                 fixed, res.read_through, found, texts = read_through.repair_bytes(data, dropped)

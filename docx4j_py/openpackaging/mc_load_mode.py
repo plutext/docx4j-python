@@ -322,6 +322,17 @@ def _holder_level(holder: etree._Element) -> str | None:
     return _level(container) if container is not None else None
 
 
+def branch_taken(alternate_content: etree._Element) -> etree._Element | None:
+    """The branch of `alternate_content` Word reads: the first understood ``mc:Choice``, else the ``mc:Fallback``, else None."""
+    from docx4j_py.child import understood_namespaces
+
+    understood = understood_namespaces()
+    for choice in alternate_content.iterchildren(_CHOICE):
+        if _understood(choice, understood):
+            return choice
+    return alternate_content.find(_FALLBACK)
+
+
 def _understood(choice: etree._Element, understood: frozenset[str]) -> bool:
     """WD REQ-302 to REQ-304: a ``Requires`` naming at least one prefix, each bound in scope to an understood namespace."""
     requires = (choice.get("Requires") or "").split()

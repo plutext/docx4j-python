@@ -392,7 +392,7 @@ class XmlPart(Part, Generic[T]):
         :func:`~docx4j_py.openpackaging.read_through.repair_bytes`, and the fork
         parses the result, whose tree and report are the part's, with what the
         passes took out added to that report. A clean part pays the test of an
-        empty report.
+        empty report and a substring test.
 
         XML that is not well formed is refused by whichever parser meets it
         first, the ``mc`` passes' or the fork's, which never recovers (CR-031
@@ -421,12 +421,13 @@ class XmlPart(Part, Generic[T]):
         except Exception as exc:  # noqa: BLE001 - the part name is the useful half
             raise Docx4JException(f"Problem with part {self.part_name}: {_reason(exc)}") from exc
         warnings: list[Any] = []
-        items = getattr(xml_parser.skipped, "items", None)
-        if items:
-            # CR-030 and CR-037: docx4j's parse, repair and parse again, keyed on the report rather than on a failure
+        items = getattr(xml_parser.skipped, "items", None) or []
+        # CR-030 and CR-037: docx4j's parse, repair and parse again, keyed on the report rather than on a failure,
+        # but for an unknown element in a kept branch, which a wildcard holds and no report names
+        if items or b"AlternateContent" in data:
             from docx4j_py.openpackaging import breaks, read_through
 
-            if read_through.triggers(items) or breaks.triggers(items):
+            if read_through.triggers(items) or breaks.triggers(items) or read_through.in_a_branch(data):
                 dropped: list[Any] = []
                 repaired, _elements, found, texts = read_through.repair_bytes(data, dropped)
                 if found or texts:

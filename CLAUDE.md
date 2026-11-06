@@ -363,9 +363,11 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
 `load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `read_through.py`, CR-037's
-reading of an unknown `w:` element (what it holds stays, in the fifteen hosts core-ts's check 76 measures; a
-direct run in a paragraph's `w:pPr` goes to the paragraph's head), run before `breaks.py` on one tree, so one
-repair and one reparse serve both, and each element it takes listed in `part.skipped`; `breaks.py`, CR-030's
+reading of an unknown `w:` element, WD REQ-308 to REQ-316 (what it holds stays, in the twenty hosts core-ts's
+check 76 measures and the `mc:` branch Word takes; a direct run in a paragraph's `w:pPr`, the `w:pPr` under its
+`w:pPrChange` or its `w:sectPr` goes to the paragraph's head, and such a `w:sectPr` goes; a held `w:p` ends its host),
+run before `breaks.py` on one tree, so one repair and one reparse serve both, and each element it takes listed in
+`part.skipped`; `breaks.py`, CR-030's
 reading of a `w:br` outside a `w:r` (docx4j CR-073's three rules over lxml, rule 2 narrowed to Word's
 reading by core-ts's check 76, section 11; run by `XmlPart._parse`
 only where the fork's skipped report names one, so a clean part pays the test of an empty list; the

@@ -2,10 +2,10 @@
 
     .venv-fork/bin/python -m pytest tests/openpackaging/test_read_through.py -q
 
-The oracle is core-ts's Word check 76 (``tests/fixtures/check76/``): 29 sources, each
-beside Word 365's save but for ``76t28``, which Word refuses. ``76t27``'s save is a
-bridge run's, so only its body is compared, and these tests compare no more than the
-stories. A save changes here, so the save's own Word check is in ``tests/README.md``.
+The oracle is core-ts's Word check 76 (``tests/fixtures/check76/``): 68 sources, each
+beside Word 365's save but for the ten Word refuses. Rounds 6 to 8 are bridge saves,
+so only their stories are compared, and these tests compare no more than that. A save
+changes here, so the save's own Word check is in ``tests/README.md``.
 """
 
 from __future__ import annotations
@@ -33,7 +33,13 @@ from docx4j_py.fragments import FragmentError, wml
 from docx4j_py.model.text import TextOptions, extract, plain_text
 from docx4j_py.openpackaging import LoadOptions, breaks, read_through
 from docx4j_py.openpackaging.exceptions import Docx4JException
-from docx4j_py.openpackaging.parts.wml import CommentsPart, FootnotesPart, HeaderPart
+from docx4j_py.openpackaging.parts.wml import (
+    CommentsPart,
+    EndnotesPart,
+    FooterPart,
+    FootnotesPart,
+    HeaderPart,
+)
 from docx4j_py.traversal import text_of
 
 CHECK76 = ROOT / "tests" / "fixtures" / "check76"
@@ -41,6 +47,7 @@ SAMPLES = ROOT / "samples"
 W_URI = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{W_URI}}}"
 MADE_UP = W + "madeUp"
+MC = "{http://schemas.openxmlformats.org/markup-compatibility/2006}"
 DOCUMENT = "/word/document.xml"
 NS = (
     f'xmlns:w="{W_URI}" '
@@ -51,50 +58,107 @@ NS = (
 )
 STORIES = TextOptions(include=["headers", "footers"], comments=True, notes=True)
 
-#: Each file Word reads through: its part, and what held the element.
-THROUGH = {
-    "76t-madeup-holding-a-run": (DOCUMENT, "p"),
-    "76t1-madeup-holding-p-in-body": (DOCUMENT, "body"),
-    "76t2-madeup-holding-p-in-tc": (DOCUMENT, "tc"),
-    "76t3-madeup-holding-t-in-r": (DOCUMENT, "r"),
-    "76t4-madeup-holding-tr-in-tbl": (DOCUMENT, "tbl"),
-    "76t7-madeup-in-madeup": (DOCUMENT, "p"),
-    "76t8-madeup-with-no-ignorable": (DOCUMENT, "p"),
-    "76t9-madeup-holding-tc-in-tr": (DOCUMENT, "tr"),
-    "76t10-madeup-in-block-control": (DOCUMENT, "sdtContent"),
-    "76t11-madeup-in-run-control": (DOCUMENT, "sdtContent"),
-    "76t12-madeup-in-row-control": (DOCUMENT, "sdtContent"),
-    "76t13-madeup-in-cell-control": (DOCUMENT, "sdtContent"),
-    "76t14-madeup-in-hyperlink": (DOCUMENT, "hyperlink"),
-    "76t15-madeup-in-ins": (DOCUMENT, "ins"),
-    "76t16-madeup-in-hdr": ("/word/header1.xml", "hdr"),
-    "76t17-madeup-in-comment": ("/word/comments.xml", "comment"),
-    "76t19-madeup-in-fldSimple": (DOCUMENT, "fldSimple"),
-    "76t20-madeup-in-smartTag": (DOCUMENT, "smartTag"),
-    "76t21-madeup-in-block-customXml": (DOCUMENT, "customXml"),
-    "76t22-madeup-in-run-customXml": (DOCUMENT, "customXml"),
-    "76t23-madeup-in-row-customXml": (DOCUMENT, "customXml"),
-    "76t24-madeup-in-cell-customXml": (DOCUMENT, "customXml"),
-    "76t25-madeup-in-footnote": ("/word/footnotes.xml", "footnote"),
+#: Each file read as Word reads it: its part, and that part's report, each entry a name and what held it.
+def through(holder: str, part: str = DOCUMENT) -> tuple[str, list[tuple[str, str]]]:
+    return part, [(MADE_UP, W + holder)]
+
+
+def twice(holder: str) -> tuple[str, list[tuple[str, str]]]:
+    return DOCUMENT, [(MADE_UP, W + holder), (MADE_UP, MADE_UP)]
+
+
+AS_WORD = {
+    "76t-madeup-holding-a-run": through("p"),
+    "76t1-madeup-holding-p-in-body": through("body"),
+    "76t2-madeup-holding-p-in-tc": through("tc"),
+    "76t3-madeup-holding-t-in-r": through("r"),
+    "76t4-madeup-holding-tr-in-tbl": through("tbl"),
+    "76t7-madeup-in-madeup": twice("p"),
+    "76t8-madeup-with-no-ignorable": through("p"),
+    "76t9-madeup-holding-tc-in-tr": through("tr"),
+    "76t10-madeup-in-block-control": through("sdtContent"),
+    "76t11-madeup-in-run-control": through("sdtContent"),
+    "76t12-madeup-in-row-control": through("sdtContent"),
+    "76t13-madeup-in-cell-control": through("sdtContent"),
+    "76t14-madeup-in-hyperlink": through("hyperlink"),
+    "76t15-madeup-in-ins": through("ins"),
+    "76t16-madeup-in-hdr": through("hdr", "/word/header1.xml"),
+    "76t17-madeup-in-comment": through("comment", "/word/comments.xml"),
+    "76t19-madeup-in-fldSimple": through("fldSimple"),
+    "76t20-madeup-in-smartTag": through("smartTag"),
+    "76t21-madeup-in-block-customXml": through("customXml"),
+    "76t22-madeup-in-run-customXml": through("customXml"),
+    "76t23-madeup-in-row-customXml": through("customXml"),
+    "76t24-madeup-in-cell-customXml": through("customXml"),
+    "76t25-madeup-in-footnote": through("footnote", "/word/footnotes.xml"),
+    "76t27-madeup-holding-a-run-in-pPr": through("pPr"),
+    "76t29-madeup-in-ftr": through("ftr", "/word/footer1.xml"),
+    "76t30-madeup-in-endnote": through("endnote", "/word/endnotes.xml"),
+    "76t31-madeup-in-del": through("del"),
+    "76t32-madeup-in-moveFrom": through("moveFrom"),
+    "76t33-madeup-in-moveTo": through("moveTo"),
+    "76t35-madeup-in-madeup-in-tc": twice("tc"),
+    "76t36-madeup-in-madeup-in-hyperlink": twice("hyperlink"),
+    "76t37-two-runs-in-pPr": through("pPr"),
+    "76t38-run-and-property-in-pPr": (DOCUMENT, [(MADE_UP, W + "CT_PPr")]),  # the element stands, so the entry is the fork's
+    "76t39-run-in-pPr-no-other-run": through("pPr"),
+    "76t40-run-in-pPrChange": through("pPr"),
+    "76t41-text-in-madeup": through("p"),
+    "76t42-break-in-madeup": through("p"),
+    "76t43-paragraph-in-madeup-in-p": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
+    "76t56-two-held-paragraphs": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
+    "76t58-held-paragraph-centred": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
+    "76t61-text-in-madeup-in-body": through("body"),
+    "76t62-text-in-madeup-in-tc": through("tc"),
+    "76t63-text-in-madeup-in-r": through("r"),
+    "76t64-text-in-madeup-in-hyperlink": through("hyperlink"),
+    "76t65-text-in-madeup-in-ins": through("ins"),
+    "76t66-text-in-madeup-in-block-control": through("sdtContent"),
+    "76t67-text-and-a-run-in-madeup": through("p"),
+    "76t44-madeup-in-choice": (DOCUMENT, [(MADE_UP, MC + "Choice")]),
+    "76t45-madeup-in-fallback": (DOCUMENT, [(MADE_UP, MC + "Fallback")]),
+    "76t50-run-in-sectPr": (DOCUMENT, [(MADE_UP, W + "sectPr"), (W + "sectPr", W + "pPr")]),
+    "76t51-second-name-in-p": (DOCUMENT, [(W + "neverDeclared", W + "p")]),
 }
-RUN_IN_PPR = "76t27-madeup-holding-a-run-in-pPr"
-RUN_IN_RPR = "76t28-madeup-holding-a-run-in-rPr"
-#: The 23 and ``76t27``: every file where a read now holds words it didn't.
-AS_WORD = {**THROUGH, RUN_IN_PPR: (DOCUMENT, "pPr")}
+#: Where the words Word shows are ones a read here didn't have before.
+BREAK = "76t42-break-in-madeup"
+NO_WORDS = {"76t41-text-in-madeup", BREAK}
+#: Where a save still loses what the element held beside its run, as it does a property's.
+KEEPS_A_DROP = {"76t38-run-and-property-in-pPr"}
 #: Where nothing moves: each file, and the fork's report for it.
 UNMOVED = {
     "76t5-madeup-holding-jc-in-pPr": [("element", MADE_UP, W + "CT_PPr")],
     "76t6-madeup-holding-b-in-rPr": [("element", MADE_UP, W + "CT_RPr")],
     "76t18-hosts-control": [],
     "76t26-more-hosts-control": [],
+    "76t34-last-hosts-control": [],
+    "76t52-round-8-control": [],
+    "76t60-round-9-control": [],
 }
-#: What the fork's report names a holder, for the element Word doesn't know.
-PROPERTY_SKIP = {"pPr": "CT_PPr", "rPr": "CT_RPr"}
+#: Files Word refuses, so with no save: each, and what the fork's report calls the holder.
+REFUSED = {
+    "76t28-madeup-holding-a-run-in-rPr": "CT_RPr",
+    "76t46-run-in-sdtPr": "CT_SdtPr",
+    "76t47-run-in-trPr": "CT_TrPr",
+    "76t48-run-in-tcPr": "CT_TcPr",
+    "76t49-run-in-tblPr": "CT_TblPr",
+}
+#: Files Word refuses with a w:p held in a w:p: REQ-316's shape it doesn't read, so the second parse's to skip and list.
+HELD_REFUSED = {
+    "76t53-held-paragraph-then-a-run": 1,
+    "76t54-held-paragraph-first": 1,
+    "76t55-held-paragraph-alone": 1,
+    "76t57-two-held-paragraphs-then-a-run": 2,
+    "76t59-both-aligned-then-a-run": 1,
+}
+RUN_IN_PPR = "76t27-madeup-holding-a-run-in-pPr"
 
 STRUCTURE = {
     W + n
     for n in ("pPr", "rPr", "tblPr", "trPr", "tcPr", "sdtPr", "sdtEndPr", "sectPr", "tblGrid", "tblPrEx", "smartTagPr", "customXmlPr")
 }
+
+TRACKED = {W + "ins": "ins", W + "del": "del", W + "moveFrom": "from", W + "moveTo": "to"}
 
 
 # ---------------------------------------------------------------------------
@@ -102,8 +166,8 @@ STRUCTURE = {
 # ---------------------------------------------------------------------------
 
 
-def walk(obj: Any, out: list[str], inserted: bool = False) -> None:
-    """Text merged as Word merges runs, a tracked insertion's marked, with rows, cells and paragraph ends.
+def walk(obj: Any, out: list[str], mark: str = "t") -> None:
+    """Text merged as Word merges runs, a tracked run's marked as such, with rows, cells and paragraph ends.
 
     Field characters and instructions aren't tokens: Word saves a ``w:fldSimple`` as
     a complex field, with or without the element (``76t26``).
@@ -113,8 +177,8 @@ def walk(obj: Any, out: list[str], inserted: bool = False) -> None:
             continue
         if qname == W + "r":
             for name, item in iter_children(child):
-                if name == W + "t":
-                    head = "ins:" if inserted else "t:"
+                if name in (W + "t", W + "delText"):
+                    head = mark + ":"
                     if out and out[-1].startswith(head):
                         out[-1] += item.value or ""
                     else:
@@ -124,24 +188,30 @@ def walk(obj: Any, out: list[str], inserted: bool = False) -> None:
             continue
         if qname in (W + "tr", W + "tc"):
             out.append(qname[len(W) :])
-        walk(child, out, inserted or qname == W + "ins")
+        walk(child, out, TRACKED.get(qname, mark))
         if qname == W + "p":
             out.append("¶")
 
 
 def tokens(pkg: Any) -> dict[str, list[str]]:
-    """Each story's tokens: the body, the headers, the comments and the real footnotes."""
+    """Each story's tokens: the body, the headers, the footers, the comments and the real notes."""
     stories: dict[str, list[str]] = {"body": []}
     walk(pkg.main_document_part.contents.body, stories["body"])
     for part in pkg.parts.parts():
         if isinstance(part, HeaderPart):
             walk(part.contents, stories.setdefault("headers", []))
+        elif isinstance(part, FooterPart):
+            walk(part.contents, stories.setdefault("footers", []))
         elif isinstance(part, CommentsPart):
             walk(part.contents, stories.setdefault("comments", []))
         elif isinstance(part, FootnotesPart):
             for note in part.contents.footnote:
                 if note.type_value is None:
                     walk(note, stories.setdefault("notes", []))
+        elif isinstance(part, EndnotesPart):
+            for note in part.contents.endnote:
+                if note.type_value is None:
+                    walk(note, stories.setdefault("endnotes", []))
     return stories
 
 
@@ -189,6 +259,12 @@ def body_tokens(body_xml: str, **options: Any) -> tuple[list[str], Any]:
     return out, pkg
 
 
+def entry(item: Any) -> tuple[str, str]:
+    """A report's name and holder. The fork's type name takes whichever namespace its metadata met first, so it's read by its local name."""
+    local = item.parent_qname.rsplit("}", 1)[-1]
+    return item.qname, W + local if local.startswith("CT_") else item.parent_qname
+
+
 def names(pkg: Any) -> list[tuple[str, str]]:
     """The body's ``part.skipped``, each as its name and its holder's."""
     return [(item.qname[len(W) :], item.parent_qname.rsplit("}", 1)[-1]) for item in pkg.main_document_part.skipped]
@@ -220,13 +296,13 @@ A, B, C = R.format("a"), R.format("b"), R.format("c")
 def test_the_files_are_check_76s() -> None:
     listed = dict(reversed(line.split()) for line in (CHECK76 / "SHA1SUMS").read_text().splitlines())
     assert set(listed) == {path.name for path in CHECK76.glob("*.docx")}
-    assert len(listed) == 67
+    assert len(listed) == 136
     for name, digest in listed.items():
         assert hashlib.sha1((CHECK76 / name).read_bytes()).hexdigest() == digest, name
     sources = [path.stem for path in CHECK76.glob("76t*.docx") if not path.stem.endswith("-word365")]
-    assert set(sources) == {*AS_WORD, *UNMOVED, RUN_IN_RPR}
-    assert len(sources) == 29
-    assert not (CHECK76 / f"{RUN_IN_RPR}-word365.docx").exists()
+    assert set(sources) == {*AS_WORD, *UNMOVED, *REFUSED, *HELD_REFUSED}
+    assert len(sources) == 68
+    assert not any((CHECK76 / f"{stem}-word365.docx").exists() for stem in (*REFUSED, *HELD_REFUSED))
 
 
 @pytest.mark.parametrize("stem", AS_WORD)
@@ -234,25 +310,20 @@ def test_each_file_reads_as_words_save(stem: str) -> None:
     ours, saves = load(source(stem)), word(stem)
     assert tokens(ours) == tokens(saves)
     assert text(ours) == text(saves)
-    assert "HIDDEN WORDS" in text(ours)
     assert saves.skipped == [] and saves.warnings == []
 
 
 @pytest.mark.parametrize("stem", AS_WORD)
 def test_each_file_says_what_was_read_through(stem: str) -> None:
-    name, holder = AS_WORD[stem]
+    name, expected = AS_WORD[stem]
     pkg = load(source(stem))
     part = part_of(pkg, name)
     assert part.contents is not None
-    expected = [("element", MADE_UP, W + holder)]
-    if stem == "76t7-madeup-in-madeup":
-        expected.append(("element", MADE_UP, MADE_UP))
-    assert [(item.kind, item.qname, item.parent_qname) for item in part.skipped] == expected
-    assert part.skipped[0].path.endswith(f"{W}{holder}/{MADE_UP}")
-    assert part.warnings == []
+    assert [entry(item) for item in part.skipped] == expected
+    assert all(item.kind == "element" for item in part.skipped)
+    assert [(w.breaks, w.text_elements) for w in part.warnings] == ([(1, 0)] if stem == BREAK else [])
     text(pkg)  # every story read
     assert [(str(where), item) for where, item in pkg.skipped] == [(name, item) for item in part.skipped]
-    assert pkg.warnings == []
 
 
 @pytest.mark.parametrize("stem", UNMOVED)
@@ -260,7 +331,7 @@ def test_where_nothing_moves_the_file_reads_as_before(stem: str) -> None:
     ours, saves = load(source(stem)), word(stem)
     assert tokens(ours) == tokens(saves)
     assert text(ours) == text(saves)
-    assert [(item.kind, item.qname, item.parent_qname) for item in ours.main_document_part.skipped] == UNMOVED[stem]
+    assert [(item.kind, *entry(item)) for item in ours.main_document_part.skipped] == UNMOVED[stem]
 
 
 def test_a_run_in_a_w_ppr_goes_to_the_head_of_the_paragraph() -> None:
@@ -270,13 +341,12 @@ def test_a_run_in_a_w_ppr_goes_to_the_head_of_the_paragraph() -> None:
     assert word(RUN_IN_PPR).body.paragraphs[1].text == "HIDDEN WORDSTARGET TEXT"
 
 
-def test_a_run_in_a_w_rpr_stays_dropped_and_reported() -> None:
-    """``76t28`` is a file Word refuses: read here, as any is, the element listed."""
-    pkg = load(source(RUN_IN_RPR))
-    assert pkg.body.paragraphs[1].text == "TARGET TEXT"
-    part = pkg.main_document_part
-    assert [(item.qname, item.parent_qname) for item in part.skipped] == [(MADE_UP, W + "CT_RPr")]
-    assert b"HIDDEN WORDS</w:t>" not in entries(saved(pkg, check=False))["word/document.xml"].split(b"TARGET TEXT")[1]
+@pytest.mark.parametrize(("stem", "holder"), REFUSED.items())
+def test_a_file_word_refuses_stays_dropped_and_reported(stem: str, holder: str) -> None:
+    """``76t28`` and ``76t46`` to ``76t49``: read here, as any is, the words gone, the element listed."""
+    pkg = load(source(stem))
+    assert not any("HIDDEN WORDS" in token for token in tokens(pkg)["body"][2:])  # the first paragraph quotes them
+    assert [entry(item) for item in pkg.main_document_part.skipped] == [(MADE_UP, W + holder)]
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +360,7 @@ def test_a_save_writes_what_word_reads(stem: str) -> None:
     assert part_of(pkg, AS_WORD[stem][0]).contents is not None  # the text model reads privately, marking nothing
     data = saved(pkg)
     name = AS_WORD[stem][0].lstrip("/")
-    assert b"<w:madeUp" not in entries(data)[name]
+    assert b"<w:madeUp" not in entries(data)[name] and b"<w:neverDeclared" not in entries(data)[name]
     again = load(data)
     assert tokens(again) == tokens(word(stem))
     assert text(again) == text(word(stem))
@@ -298,7 +368,7 @@ def test_a_save_writes_what_word_reads(stem: str) -> None:
 
 
 @pytest.mark.parametrize("normalise", [True, False])
-@pytest.mark.parametrize("stem", AS_WORD)
+@pytest.mark.parametrize("stem", [stem for stem in AS_WORD if stem not in KEEPS_A_DROP])
 def test_a_save_is_its_repaired_source(stem: str, normalise: bool) -> None:
     """Section 3.5: the save holds nothing but the repair, the repair counted ``read-through``."""
     name = AS_WORD[stem][0].lstrip("/")
@@ -308,7 +378,7 @@ def test_a_save_is_its_repaired_source(stem: str, normalise: bool) -> None:
     original = entries(source(stem).read_bytes())[name]
     report = canon.compare(original, new, normalise=normalise, repaired=True)
     assert report.identical, report.differences
-    assert report.counts.get("read-through") == (2 if stem == "76t7-madeup-in-madeup" else 1)
+    assert report.counts.get("read-through") == sum(1 for entry, _holder in AS_WORD[stem][1] if entry in (MADE_UP, W + "neverDeclared"))
     assert not canon.compare(original, new, normalise=normalise).identical
 
 
@@ -341,10 +411,10 @@ def test_the_names_are_the_schemas_elements() -> None:
     assert "madeUp" not in WML_ELEMENTS
 
 
-def test_the_hosts_are_the_fifteen_measured() -> None:
+def test_the_hosts_are_the_twenty_measured() -> None:
     measured = (
-        "p", "body", "tc", "r", "tbl", "tr", "sdtContent", "hyperlink", "ins", "hdr", "comment", "fldSimple", "smartTag",
-        "customXml", "footnote",
+        "p", "body", "tc", "r", "tbl", "tr", "sdtContent", "hyperlink", "ins", "del", "moveFrom", "moveTo", "hdr", "ftr",
+        "comment", "fldSimple", "smartTag", "customXml", "footnote", "endnote",
     )  # fmt: skip
     assert read_through._HOSTS == {W + local for local in measured}
 
@@ -380,16 +450,17 @@ def test_an_empty_element_just_goes() -> None:
     assert names(pkg) == [("madeUp", "p")]
 
 
-def test_order_text_and_tails_are_kept() -> None:
+def test_order_is_kept_and_text_held_directly_goes() -> None:
+    """REQ-314. The host's own text is its, and goes with the parse as ever."""
     root = tree("<w:p>one<w:bookmarkStart/>two<w:madeUp>three<!--c--><w:r/>four<w:r/>five</w:madeUp>six<w:bookmarkEnd/>seven</w:p>")
     assert read_through.repair(root) == 1
-    assert inner(root) == "one<w:bookmarkStart/>twothree<!--c--><w:r/>four<w:r/>fivesix<w:bookmarkEnd/>seven"
+    assert inner(root) == "one<w:bookmarkStart/>two<!--c--><w:r/><w:r/>six<w:bookmarkEnd/>seven"
 
 
-def test_text_with_nothing_before_it_goes_to_the_host() -> None:
+def test_the_tail_after_an_element_is_kept_with_nothing_before_it() -> None:
     root = tree("<w:p><w:madeUp>one</w:madeUp>two</w:p>")
     assert read_through.repair(root) == 1
-    assert inner(root) == "onetwo"
+    assert inner(root) == "two"
 
 
 def test_the_path_is_as_read_for_nested_elements() -> None:
@@ -422,10 +493,6 @@ def test_a_madeup_in_a_known_element_in_the_wrong_place_is_not_taken() -> None:
 @pytest.mark.parametrize(
     "xml",
     [
-        f"<w:ftr><w:madeUp><w:p>{A}</w:p></w:madeUp></w:ftr>",
-        f"<w:endnote><w:madeUp><w:p>{A}</w:p></w:madeUp></w:endnote>",
-        f"<w:p><w:del><w:madeUp>{A}</w:madeUp></w:del></w:p>",
-        f"<w:p><w:moveFrom><w:madeUp>{A}</w:madeUp></w:moveFrom></w:p>",
         f"<w:sdt><w:sdtPr><w:madeUp>{A}</w:madeUp></w:sdtPr></w:sdt>",
         f"<w:tr><w:trPr><w:madeUp>{A}</w:madeUp></w:trPr></w:tr>",
         f"<w:tc><w:tcPr><w:madeUp>{A}</w:madeUp></w:tcPr></w:tc>",
@@ -454,10 +521,17 @@ def test_a_host_not_measured_is_left(xml: str) -> None:
         "<m:ctrlPr><w:ins><w:madeUp><w:rPr/></w:madeUp></w:ins></m:ctrlPr>",
         "<m:r><w:ins><w:madeUp><m:t>a</m:t></w:madeUp></w:ins></m:r>",
         '<w:settings><w:footnotePr><w:footnote w:id="0"><w:madeUp/></w:footnote></w:footnotePr></w:settings>',
+        '<w:settings><w:endnotePr><w:endnote w:id="0"><w:madeUp/></w:endnote></w:endnotePr></w:settings>',
+        "<w:r><w:rPr><w:del><w:madeUp/></w:del></w:rPr></w:r>",
+        "<w:tr><w:trPr><w:del><w:madeUp/></w:del></w:trPr></w:tr>",
+        "<m:ctrlPr><w:del><w:madeUp/></w:del></m:ctrlPr>",
+        "<m:r><w:del><w:madeUp/></w:del></m:r>",
+        "<w:r><w:rPr><w:moveFrom><w:madeUp/></w:moveFrom></w:rPr></w:r>",
+        "<w:r><w:rPr><w:moveTo><w:madeUp/></w:moveTo></w:rPr></w:r>",
     ],
 )
 def test_a_hosts_name_standing_for_another_element_is_no_host(xml: str) -> None:
-    """``w:ins`` and ``w:footnote`` are other elements under these parents, which no file measures."""
+    """Six of the hosts are other elements under these parents, which no file measures."""
     root = tree(xml)
     assert read_through.repair(root) == 0
 
@@ -494,7 +568,9 @@ def test_the_other_elements_parents_are_the_schemas() -> None:
                     found |= holders(named_owner(node), seen)
         return found
 
-    for tag, host_type in ((W + "ins", None), (W + "footnote", "CT_FtnEdn")):
+    hosts = {"ins": None, "del": None, "moveFrom": None, "moveTo": None, "footnote": "CT_FtnEdn", "endnote": "CT_FtnEdn"}
+    assert set(read_through._ANOTHER_ELEMENT_UNDER) == {W + local for local in hosts}
+    for tag, host_type in ((W + local, kind) for local, kind in hosts.items()):
         derived: set[str] = set()
         for schema in schemas:
             for node in schema.iter(xs + "element"):
@@ -509,6 +585,10 @@ def test_the_other_elements_parents_are_the_schemas() -> None:
     [
         (f"<w:body><w:ins><w:madeUp>{A}</w:madeUp></w:ins></w:body>", "<w:ins>"),
         (f"<w:footnotes><w:footnote><w:madeUp><w:p>{A}</w:p></w:madeUp></w:footnote></w:footnotes>", "<w:footnote>"),
+        (f"<w:endnotes><w:endnote><w:madeUp><w:p>{A}</w:p></w:madeUp></w:endnote></w:endnotes>", "<w:endnote>"),
+        (f"<w:p><w:del><w:madeUp>{A}</w:madeUp></w:del></w:p>", "<w:del>"),
+        (f"<w:p><w:moveFrom><w:madeUp>{A}</w:madeUp></w:moveFrom></w:p>", "<w:moveFrom>"),
+        (f"<w:p><w:moveTo><w:madeUp>{A}</w:madeUp></w:moveTo></w:p>", "<w:moveTo>"),
     ],
 )
 def test_the_same_names_holding_content_are_hosts(xml: str, kept: str) -> None:
@@ -536,10 +616,84 @@ def test_a_strict_documents_namespace_is_not_matched() -> None:
 
 
 def test_what_its_host_doesnt_admit_is_the_second_parses() -> None:
-    """Section 3.1: the pass doesn't look. A ``w:p`` left in a ``w:p`` is skipped and listed."""
-    got, pkg = body_tokens(f"<w:p>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp>{C}</w:p>")
+    """Beside REQ-316 the pass doesn't look. A ``w:tc`` left in a ``w:p`` is skipped and listed."""
+    got, pkg = body_tokens(f"<w:p>{A}<w:madeUp><w:tc><w:p>{B}</w:p></w:tc></w:madeUp>{C}</w:p>")
     assert got == ["t:ac", "¶"]
-    assert [item.qname for item in pkg.main_document_part.skipped] == [W + "p", MADE_UP]
+    assert [item.qname for item in pkg.main_document_part.skipped] == [W + "tc", MADE_UP]
+
+
+# ---------------------------------------------------------------------------
+# a w:p in such an element in a w:p (REQ-316, core-ts's D11 and round 9)
+# ---------------------------------------------------------------------------
+
+
+def test_a_held_paragraph_ends_the_host_and_an_empty_one_follows() -> None:
+    got, pkg = body_tokens(f"<w:p>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp></w:p><w:p>{C}</w:p>")
+    assert got == ["t:ab", "¶", "¶", "t:c", "¶"]
+    assert names(pkg) == [("madeUp", "p"), ("p", "madeUp")]
+
+
+def test_a_further_held_paragraph_stands_alone() -> None:
+    """``76t56``."""
+    root = tree(f"<w:body><w:p>{A}<w:madeUp><w:p>{B}</w:p><w:p>{C}</w:p></w:madeUp></w:p></w:body>")
+    dropped: list[Any] = []
+    assert read_through.repair(root, dropped) == 1
+    assert inner(root) == f"<w:p>{A}{B}</w:p><w:p>{C}</w:p><w:p/>"
+    assert [item.qname for item in dropped] == [MADE_UP, W + "p"]  # a further one keeps its tags
+
+
+def test_the_host_takes_a_held_paragraphs_properties() -> None:
+    """``76t58``: Word's first paragraph is centred."""
+    stem = "76t58-held-paragraph-centred"
+    jc = lambda pkg: pkg.main_document_part.contents.body.content[1].p_pr.jc.val
+    assert str(jc(load(source(stem)))) == str(jc(word(stem)))
+
+
+def test_a_held_paragraphs_properties_replace_the_hosts() -> None:
+    """Unmeasured, ``76t59`` being refused: this is the reading of a mark ending the host."""
+    root = tree(f'<w:body><w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}<w:madeUp><w:p><w:pPr><w:jc w:val="center"/></w:pPr>{B}</w:p></w:madeUp></w:p></w:body>')
+    assert read_through.repair(root) == 1
+    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr>{A}{B}</w:p><w:p/>'
+
+
+def test_a_host_keeps_its_properties_where_the_held_paragraph_has_none() -> None:
+    root = tree(f'<w:body><w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp></w:p></w:body>')
+    assert read_through.repair(root) == 1
+    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}{B}</w:p><w:p/>'
+
+
+def test_a_held_paragraph_at_depth_ends_the_host_too() -> None:
+    root = tree(f"<w:body><w:p>{A}<w:madeUp><w:madeUp><w:p>{B}</w:p></w:madeUp></w:madeUp></w:p></w:body>")
+    assert read_through.repair(root) == 2
+    assert inner(root) == f"<w:p>{A}{B}</w:p><w:p/>"
+
+
+@pytest.mark.parametrize(
+    "xml",
+    [
+        f"<w:p>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp>{C}</w:p>",  # a run after it: 76t53
+        f"<w:p><w:madeUp><w:p>{B}</w:p></w:madeUp>{C}</w:p>",  # first: 76t54
+        f"<w:p><w:madeUp><w:p>{B}</w:p></w:madeUp></w:p>",  # alone: 76t55
+        f"<w:p>{A}<w:madeUp><w:madeUp><w:p>{B}</w:p></w:madeUp>{C}</w:madeUp></w:p>",  # a run after it, a level down
+    ],
+)
+def test_a_shape_word_refuses_is_left_to_the_second_parse(xml: str) -> None:
+    root = tree(f"<w:body>{xml}</w:body>")
+    read_through.repair(root)
+    assert len(root) == 1 and root[0].find(W + "p") is not None  # the host stands alone, the w:p still in it
+
+
+@pytest.mark.parametrize(("stem", "held"), HELD_REFUSED.items())
+def test_a_held_paragraph_in_a_file_word_refuses_is_dropped_and_listed(stem: str, held: int) -> None:
+    pkg = load(source(stem))
+    assert pkg.main_document_part.contents is not None
+    assert sorted(entry(item) for item in pkg.main_document_part.skipped) == sorted([(W + "p", W + "p")] * held + [(MADE_UP, W + "p")])
+    assert not any("HIDDEN WORDS" in token for token in tokens(pkg)["body"][2:])  # the first paragraph quotes them
+
+
+def test_a_paragraph_held_in_another_host_is_only_read_through() -> None:
+    got, _pkg = body_tokens(f"<w:madeUp><w:p>{A}</w:p></w:madeUp>")
+    assert got == ["t:a", "¶"]
 
 
 def test_a_w_body_holding_an_element_reads_it_in_order() -> None:
@@ -566,12 +720,13 @@ def test_only_the_run_leaves_a_w_ppr_the_rest_goes_as_a_property_does() -> None:
     assert paragraph.p_pr.jc is None
 
 
-def test_text_left_behind_keeps_the_element_for_the_parse_to_report() -> None:
-    root = tree(f"<w:p><w:pPr><w:madeUp>stray{A}</w:madeUp></w:pPr></w:p>")
+def test_text_left_behind_is_absent_and_the_element_goes() -> None:
+    """REQ-314: text holds nothing up."""
+    root = tree(f"<w:p><w:pPr><w:madeUp>stray{A}more</w:madeUp></w:pPr></w:p>")
     dropped: list[Any] = []
     assert read_through.repair(root, dropped) == 1
-    assert inner(root) == f"<w:pPr><w:madeUp>stray</w:madeUp></w:pPr>{A}"
-    assert dropped == []
+    assert inner(root) == f"<w:pPr/>{A}"
+    assert len(dropped) == 1
 
 
 def test_runs_keep_their_order_at_the_head() -> None:
@@ -600,12 +755,68 @@ def test_a_w_ppr_with_only_a_property_is_untouched() -> None:
         f"<w:style><w:pPr><w:madeUp>{A}</w:madeUp></w:pPr></w:style>",
         f"<w:lvl><w:pPr><w:madeUp>{A}</w:madeUp></w:pPr></w:lvl>",
         f"<w:pPrChange><w:pPr><w:madeUp>{A}</w:madeUp></w:pPr></w:pPrChange>",
-        f"<w:p><w:pPr><w:pPrChange><w:pPr><w:madeUp>{A}</w:madeUp></w:pPr></w:pPrChange></w:pPr></w:p>",
+        f"<w:p><w:pPr><w:pPrChange><w:pPr><w:rPr><w:madeUp>{A}</w:madeUp></w:rPr></w:pPr></w:pPrChange></w:pPr></w:p>",
+        f"<w:p><w:pPr><w:pPrChange><w:pPr><w:madeUp><w:madeUp>{A}</w:madeUp></w:madeUp></w:pPr></w:pPrChange></w:pPr></w:p>",
+        f"<w:p><w:pPr><w:sectPr><w:madeUp><w:madeUp>{A}</w:madeUp></w:madeUp></w:sectPr></w:pPr></w:p>",
+        f"<w:body><w:sectPr><w:madeUp>{A}</w:madeUp></w:sectPr></w:body>",
+        f"<w:style><w:pPr><w:sectPr><w:madeUp>{A}</w:madeUp></w:sectPr></w:pPr></w:style>",
+        f"<w:style><w:pPr><w:pPrChange><w:pPr><w:madeUp>{A}</w:madeUp></w:pPr></w:pPrChange></w:pPr></w:style>",
     ],
 )
-def test_only_a_direct_run_in_a_paragraphs_own_w_ppr_moves(xml: str) -> None:
+def test_only_a_direct_run_in_one_of_a_paragraphs_three_places_moves(xml: str) -> None:
     root = tree(xml)
     assert read_through.repair(root) == 0
+
+
+def test_a_run_under_a_w_ppr_change_is_read_and_the_change_stays_as_held() -> None:
+    """``76t40``, core-ts's D9: Word writes "Unknown" over the author, which is no reading of the text."""
+    stem = "76t40-run-in-pPrChange"
+    pkg = load(source(stem))
+    assert pkg.body.paragraphs[1].text == "HIDDEN WORDSTARGET TEXT"
+    assert word(stem).body.paragraphs[1].text == "HIDDEN WORDSTARGET TEXT"
+    xml = entries(saved(pkg))["word/document.xml"]
+    assert b"<w:pPrChange" in xml and b'w:author="Check 76"' in xml
+
+
+def test_a_run_in_a_paragraphs_w_sect_pr_is_read_and_the_w_sect_pr_goes() -> None:
+    """``76t50``, core-ts's D10: Word's section break goes with it, and so does ours."""
+    stem = "76t50-run-in-sectPr"
+    pkg = load(source(stem))
+    assert pkg.main_document_part.contents is not None
+    xml = entries(saved(pkg))["word/document.xml"]
+    theirs = entries((CHECK76 / f"{stem}-word365.docx").read_bytes())["word/document.xml"]
+    assert xml.count(b"<w:sectPr") == theirs.count(b"<w:sectPr") == 1  # the body's alone
+    assert pkg.body.paragraphs[1].text == word(stem).body.paragraphs[1].text
+
+
+def test_a_w_sect_pr_goes_though_its_element_held_something_else() -> None:
+    root = tree(f"<w:body><w:p><w:pPr><w:sectPr><w:madeUp>{A}<w:jc/></w:madeUp></w:sectPr></w:pPr></w:p></w:body>")
+    dropped: list[Any] = []
+    assert read_through.repair(root, dropped) == 1
+    assert inner(root) == f"<w:p><w:pPr/>{A}</w:p>"
+    assert [item.qname for item in dropped] == [MADE_UP, W + "sectPr"]
+
+
+def test_a_w_sect_pr_with_only_a_property_stays() -> None:
+    root = tree("<w:p><w:pPr><w:sectPr><w:madeUp><w:jc/></w:madeUp></w:sectPr></w:pPr></w:p>")
+    assert read_through.repair(root) == 0
+
+
+def test_a_w_sect_pr_holding_two_elements_is_listed_once() -> None:
+    root = tree(f"<w:body><w:p><w:pPr><w:sectPr><w:madeUp>{A}</w:madeUp><w:madeUp>{B}</w:madeUp></w:sectPr></w:pPr></w:p></w:body>")
+    dropped: list[Any] = []
+    assert read_through.repair(root, dropped) == 2
+    assert [item.qname for item in dropped] == [MADE_UP, W + "sectPr", MADE_UP]
+    assert inner(root) == f"<w:p><w:pPr/>{A}{B}</w:p>"
+
+
+def test_runs_from_all_three_places_keep_document_order() -> None:
+    root = tree(
+        f"<w:body><w:p><w:pPr><w:madeUp>{A}</w:madeUp><w:sectPr><w:madeUp>{B}</w:madeUp></w:sectPr>"
+        f"<w:pPrChange><w:pPr><w:madeUp>{C}</w:madeUp></w:pPr></w:pPrChange></w:pPr></w:p></w:body>"
+    )
+    assert read_through.repair(root) == 3
+    assert inner(root) == f"<w:p><w:pPr><w:pPrChange><w:pPr/></w:pPrChange></w:pPr>{A}{B}{C}</w:p>"
 
 
 def test_both_rules_in_one_paragraph() -> None:
@@ -728,8 +939,74 @@ def test_a_branchs_paragraph_reads_as_any_paragraph(options: dict[str, Any]) -> 
     assert (b"<mc:Fallback>" in xml) is (not options)  # preserve keeps every branch
 
 
-def test_text_an_element_holds_directly_is_stray_in_its_host() -> None:
-    """Unmeasured. No parse keeps text standing in a ``w:p``, so the element's entry is what says so."""
+TAKEN = 'xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" Requires="w14"'
+NOT_TAKEN = 'Requires="ext"'
+
+
+def branch(choice: str, fallback: str, requires: str = TAKEN) -> str:
+    return f"<mc:AlternateContent><mc:Choice {requires}>{choice}</mc:Choice><mc:Fallback>{fallback}</mc:Fallback></mc:AlternateContent>"
+
+
+MADE = f"<w:madeUp>{A}</w:madeUp>"
+
+
+@pytest.mark.parametrize("options", [{}, {"mc_load_mode": "word"}, {"mce_preprocess": True}])
+def test_an_element_in_the_choice_word_takes_is_read_through(options: dict[str, Any]) -> None:
+    """REQ-313, ``76t44``. A wildcard holds it, so no report names it."""
+    pkg = package_of(f"<w:p>{B}{branch(MADE, C)}</w:p>", **options)
+    assert text(pkg).strip() == "ba"
+
+
+def test_an_element_in_the_fallback_word_takes_is_read_through() -> None:
+    """``76t45``: a Choice Word doesn't take."""
+    pkg = package_of(f"<w:p>{B}{branch(C, MADE, NOT_TAKEN)}</w:p>")
+    assert text(pkg).strip() == "ba"
+
+
+def test_only_the_branch_taken_is_read_through() -> None:
+    root = tree(f"<w:p>{branch(MADE, MADE)}</w:p>")
+    assert read_through.repair(root) == 1
+    assert f"<mc:Choice {TAKEN}>{A}</mc:Choice><mc:Fallback>{MADE}</mc:Fallback>" in inner(root)
+
+
+def test_the_choice_not_taken_keeps_its_element() -> None:
+    root = tree(f"<w:p>{branch(MADE, MADE, NOT_TAKEN)}</w:p>")
+    assert read_through.repair(root) == 1
+    assert f"<mc:Choice {NOT_TAKEN}>{MADE}</mc:Choice><mc:Fallback>{A}</mc:Fallback>" in inner(root)
+
+
+@pytest.mark.parametrize("xml", [f"<w:r>{branch(MADE, C)}</w:r>", f"<w:body>{branch(MADE, C)}</w:body>", f"<w:tc>{branch(MADE, C)}</w:tc>"])
+def test_a_branch_outside_a_w_p_isnt_measured(xml: str) -> None:
+    assert read_through.repair(tree(xml)) == 0
+
+
+@pytest.mark.parametrize(
+    ("xml", "may_hold"),
+    [
+        (f'<w:p xmlns:w="{W_URI}"><w:r/></w:p>', False),
+        (f'<w:p xmlns:w="{W_URI}"><w:madeUp/></w:p>', False),  # no AlternateContent: the report's business
+        (f'<w:p xmlns:w="{W_URI}" xmlns:mc="urn:mc"><mc:AlternateContent><w:r/></mc:AlternateContent></w:p>', False),
+        (f'<w:p xmlns:w="{W_URI}" xmlns:mc="urn:mc"><mc:AlternateContent><w:madeUp/></mc:AlternateContent></w:p>', True),
+        (f'<x:p xmlns:x="{W_URI}" xmlns:mc="urn:mc"><mc:AlternateContent><x:madeUp/></mc:AlternateContent></x:p>', True),
+        (f'<x:p xmlns:x="{W_URI}" xmlns:mc="urn:mc"><mc:AlternateContent><x:r/></mc:AlternateContent></x:p>', False),
+        ('<w:p xmlns:w="urn:not-it" xmlns:mc="urn:mc"><mc:AlternateContent><w:madeUp/></mc:AlternateContent></w:p>', False),
+    ],
+)
+def test_what_marks_a_part_for_the_branch_pass(xml: str, may_hold: bool) -> None:
+    assert read_through.in_a_branch(xml.encode()) is may_hold
+
+
+def test_a_part_with_branches_and_no_unknown_name_runs_no_pass(monkeypatch: pytest.MonkeyPatch) -> None:
+    def never(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("a pass ran on a clean part")
+
+    pkg = package_of(f"<w:p>{branch(A, B)}</w:p>")
+    monkeypatch.setattr(read_through, "repair_bytes", never)
+    assert pkg.main_document_part.contents is not None
+
+
+def test_text_an_element_holds_directly_is_absent() -> None:
+    """REQ-314, ``76t41``."""
     got, pkg = body_tokens(f"<w:p>{A}<w:madeUp>stray</w:madeUp>{B}</w:p>")
     assert got == ["t:ab", "¶"]
     assert names(pkg) == [("madeUp", "p")]
@@ -781,6 +1058,14 @@ def test_a_lenient_fragment_keeps_its_break_record() -> None:
 def test_wml_stays_strict() -> None:
     with pytest.raises(FragmentError):
         wml(f"<w:p><w:madeUp>{A}</w:madeUp></w:p>")
+
+
+def test_a_fragment_holding_a_paragraph_in_a_paragraph_is_refused_then_joined() -> None:
+    fragment = f"<w:p>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp></w:p>"
+    with pytest.raises(FragmentError, match="2 item"):
+        create_package().body.insert_ooxml(fragment)
+    first, second = wml.all(fragment, wrapper="body", lenient=True, _breaks=[])
+    assert (text_of(first), text_of(second)) == ("ab", "")
 
 
 def test_a_lenient_wml_runs_no_pass() -> None:
