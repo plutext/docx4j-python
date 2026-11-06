@@ -208,6 +208,7 @@ class Document(BlockItemContainer):
         """
         from docx4j_py.child import deep_copy, link_parents
         from docx4j_py.docx.section import Section
+        from docx4j_py.model.content.addresses import assign_para_ids
         from docx4j_py.wml import PPr
 
         body = self._container
@@ -221,6 +222,7 @@ class Document(BlockItemContainer):
             paragraph = P(p_pr=PPr(sect_pr=clone))
             link_parents(paragraph)
             self._body_story.body.content.append(paragraph)
+            assign_para_ids(self._body_story.body, paragraph)
             references = sentinel.header_reference_or_footer_reference
             while len(references):
                 del references[0]

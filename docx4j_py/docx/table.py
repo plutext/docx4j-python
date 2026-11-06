@@ -279,6 +279,7 @@ class Table:
                 grid.parent = self._tbl
             column = el.gridCol(w=twips)
             grid.grid_col.append(column)
+            added = []
             for tr in _rows_of(self._tbl):
                 tc = el.tc()
                 tc_pr = el.tcPr()
@@ -286,9 +287,13 @@ class Table:
                 tc.tc_pr = tc_pr
                 tc.content.append(el.p())
                 tr.content.append(tc)
+                added.append(tc)
             from docx4j_py.child import link_parents
+            from docx4j_py.model.content.addresses import assign_para_ids
 
             link_parents(self._tbl)
+            for tc in added:
+                assign_para_ids(self._story.body, tc)
             return _Column(column, self)
 
     def _set_column_widths(self, twips: list[int]) -> None:

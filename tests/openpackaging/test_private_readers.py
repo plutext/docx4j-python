@@ -451,7 +451,15 @@ def read_resolution_refused(pkg: Any) -> None:
         assert syntax_error_of(raised.value) is not None
 
 
+def read_para_id_answer(pkg: Any) -> None:
+    """What a new header or footer asks of the main part (CR-038 section 3.5)."""
+    from docx4j_py.model.content.addresses import _main_uses_ids
+
+    _main_uses_ids(pkg)
+
+
 READERS: dict[str, Callable[[Any], None]] = {
+    "para-ids": read_para_id_answer,
     "resolver": read_resolver,
     "numbering": read_numbering,
     "fonts": read_fonts,
@@ -617,6 +625,7 @@ CALLERS: frozenset[str] = frozenset(
         "model/text/metadata.py::_contents",
         "model/fields/resolvers.py::_contents",
         "model/fields/formatting.py::_decimal_symbol",
+        "model/content/addresses.py::_main_uses_ids",
         "model/content/placeholders.py::GlossaryEntries.load",
         "model/content/placeholders.py::has_placeholder_styles",
         "validator.py::_tree_of",

@@ -39,7 +39,7 @@ def test_a_paragraph_in_a_cell_is_addressed_edited_and_reported(new_package):
 
     # a server holds the address, not the object
     address = table.cell(1, 1).paragraphs[0].address
-    assert address == "body/1/1/1/0"
+    assert address.startswith("w14:")  # CR-038: a new table's paragraphs hold ids, so the address outlives an edit before it
 
     paragraph = new_package.paragraph_at(address)
     assert paragraph.text == "120"

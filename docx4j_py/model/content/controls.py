@@ -34,7 +34,7 @@ from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, is_alternate_content, link_parents
-from docx4j_py.model.content.addresses import ordinal_of
+from docx4j_py.model.content.addresses import ordinal_of, record_para_ids
 from docx4j_py.model.content.enums import RangeLocation, TextLocation
 from docx4j_py.model.content.errors import (
     BindingError,
@@ -42,7 +42,7 @@ from docx4j_py.model.content.errors import (
     InvalidTargetError,
     SpanError,
 )
-from docx4j_py.model.content.reports import recording
+from docx4j_py.model.content.reports import current_recorder, recording
 from docx4j_py.model.content.table import Table
 from docx4j_py.model.content.text_model import (
     PARAGRAPH_BREAKS,
@@ -855,7 +855,6 @@ class ContentControl:
         paragraph (CR-016 Phase A; check 52 case 95). A cell left ending in a
         table any other way is given docx4j's repair.
         """
-        from docx4j_py.model.content.addresses import assign_para_id
         from docx4j_py.model.content.table_rules import (
             end_with_paragraph,
             ends_with_paragraph,
@@ -886,7 +885,7 @@ class ContentControl:
                     if owner is not None:
                         end.element.parent = owner
                 else:
-                    change.created(assign_para_id(self.parent_body, end_with_paragraph(cell)))
+                    record_para_ids(change, self.parent_body, end_with_paragraph(cell))
 
     # -- writing into a control showing its placeholder (CR-019 Phase A) ----
 
@@ -1037,6 +1036,7 @@ class ContentControl:
                 content.insert(at, paragraph)
                 paragraph.parent = owner
                 at += 1
+                record_para_ids(change, self.parent_body, paragraph)
 
     @property
     def shows_placeholder_content(self) -> bool:
@@ -1131,6 +1131,7 @@ class ContentControl:
             content.append(first)
             link_parents(first)
             first.parent = getattr(content, "owner", None) or getattr(self.element, "sdt_content", None)
+            record_para_ids(current_recorder(self.parent_body.package), self.parent_body, first)
         return self.body().paragraph_for(first)
 
     def _take_placeholder_runs(self, form: str) -> _Taken:
@@ -1853,6 +1854,7 @@ class ContentControl:
             container = self.container
             container.insert(index + 1, copy)
             link_parents(copy)
+            record_para_ids(change, self.parent_body, copy)
             view = ContentControl(copy, container, self.parent_body)
             identifier = next_sdt_id(root if root is not None else self.parent_body.container)
             view.put_property(el.id_(val=identifier))
@@ -2175,7 +2177,6 @@ def refuse_second_block(
     if len(blocks) == 1 and isinstance(blocks[0], P):
         return
     if operation is None:
-        from docx4j_py.model.content.reports import current_recorder
 
         operation = getattr(current_recorder(getattr(body, "package", None)), "operation", None) or "this write"
     raise one_paragraph_error(operation, word_error)

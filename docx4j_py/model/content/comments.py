@@ -425,6 +425,13 @@ def _para_ids_taken(parts: CommentParts, body: Body) -> set[str]:
     return taken
 
 
+def _give_further_ids(paragraphs: list[P], parts: CommentParts, body: Body) -> None:
+    """Every paragraph of a comment after its first an id too, as Word's own hold (CR-038 section 3.3)."""
+    taken = _para_ids_taken(parts, body)
+    for paragraph in paragraphs[1:]:
+        paragraph.para_id = _hex_id(body.package, taken)
+
+
 def _hex_id(package: Any, taken: set[str], derive_from: Any = ()) -> str:
     """An eight-digit hexadecimal id, as Word writes ``w14:paraId``.
 
@@ -975,6 +982,7 @@ class Comment:
             paragraphs = _comment_paragraphs(text)
             if para_id:
                 paragraphs[0].para_id = para_id
+                _give_further_ids(paragraphs, self.parts, self.body)
             self.element.content = ChildList(paragraphs, owner=self.element, field="content")
             link_parents(self.element)
             self._body_view = None
@@ -1418,6 +1426,7 @@ def _add_comment(
     taken = _para_ids_taken(parts, body)
     para_id = _hex_id(body.package, taken)
     paragraphs[0].para_id = para_id
+    _give_further_ids(paragraphs, parts, body)
 
     comment = el.comment(
         id=identifier,

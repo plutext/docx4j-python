@@ -511,6 +511,8 @@ class _BaseHeaderFooter(BlockItemContainer):
 
     def _add_definition(self) -> Any:
         """Create the part, relate it and reference it from this ``w:sectPr``."""
+        from docx4j_py.model.content.addresses import record_para_ids
+        from docx4j_py.model.content.body import Body
         from docx4j_py.model.content.picture import note_added_part
         from docx4j_py.model.content.reports import recording_on
 
@@ -528,6 +530,7 @@ class _BaseHeaderFooter(BlockItemContainer):
             items = section.element.header_reference_or_footer_reference
             items.append(reference)
             change.part(part)
+            record_para_ids(change, Body(part, part.contents), part.contents)
             return part
 
     def _drop_definition(self) -> None:

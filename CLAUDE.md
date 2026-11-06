@@ -415,6 +415,10 @@ CR-002 section 12.3.
   on/off, enumeration and colour reader goes through `docx4j_py/model/values.py` (Word's rules: off
   for exactly `false`, `off` or `0`; an enumeration value outside it unset; a colour six hex digits,
   a classic HTML name, or exactly `auto`).
+- Every `w:p` and `w:tr` this package adds takes a `w14:paraId` where the part uses them (CR-038:
+  `addresses.assign_para_ids` and `record_para_ids`, the override `package.assigns_para_ids`; a new header or footer asks the main
+  part, the glossary takes none). In a file with no comments, one missing id makes Word renumber every id at its next open, so a new
+  route that builds a block goes through it, and `tests/content/test_para_ids.py` fails until the route is listed.
 - **Nothing may be dropped silently.** Loading is lenient, with a per-part report (`part.skipped`,
   `package.skipped`); `LoadOptions(strict=True)` and `wml(...)` (strict by default) raise. A part the
   CR-030 pass fully repaired is not skipped content, so it loads under `strict=True`; `wml(...)` still

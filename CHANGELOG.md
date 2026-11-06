@@ -294,6 +294,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **Every paragraph and table row this package adds holds a `w14:paraId`, where the document uses them**
+  ([CR-038](docs/change-requests/CR-038-a-paraid-on-every-paragraph-and-row-added.md), the port of docx4j-core-ts's CR-002 section 66):
+  in a file with no comments, one paragraph or row with no id makes Word renumber every id in the file at its next open, and 29 of 80
+  routes added one: every table route, anything nested in a fragment, a new header or footer. So a `w14:` address now outlasts Word.
+  New paragraphs in a table therefore answer with a `w14:` address, and `ChangeReport.created_para_ids` lists rows' ids too. An id a
+  copy or a fragment brings is replaced where the part already holds it, as Word gives the later of two a new id, and
+  `Body.ensure_para_ids` now reaches rows and text boxes. A glossary stays without, as Word writes it.
 - **An unknown `w:` element is read as Word 365 reads it**
   ([CR-037](docs/change-requests/CR-037-an-unknown-element-in-a-content-host-read-as-word-reads-it.md), the port of docx4j-core-ts's
   CR-026 D7 to D11, on its Word check 76; WD REQ-308 to REQ-316): where such an element, `w:madeUp` say, stood in a `w:p`, a

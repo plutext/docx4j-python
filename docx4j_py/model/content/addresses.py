@@ -34,12 +34,14 @@ resolves any of them; a body resolves its own and hands the rest to its package.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
+from docx4j_py.child import iter_children
 from docx4j_py.model.content.errors import AddressError, ContentError
 from docx4j_py.model.content.text_model import block_children_of
-from docx4j_py.wml import P
+from docx4j_py.wml import P, Tr
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.model.content.body import Body
@@ -48,16 +50,18 @@ if TYPE_CHECKING:  # pragma: no cover
 __all__ = [
     "PARA_ID_PREFIX",
     "address_of",
-    "assign_para_id",
+    "assign_para_ids",
     "body_for_prefix",
     "element_at",
     "ensure_para_ids",
+    "identified",
     "nearest_address",
     "ordinal_of",
     "package_bodies",
     "para_id_address",
     "paragraph_at",
     "path_of",
+    "record_para_ids",
     "resolve_path",
 ]
 
@@ -521,78 +525,145 @@ def _body_for_address(body: Body, address: str) -> Body | None:
 # ---------------------------------------------------------------------------
 
 
+def identified(root: Any) -> Iterator[Any]:
+    """Every ``w:p`` and ``w:tr`` at or under `root`, in document order, at any depth.
+
+    In the branch Word reads, so not a ``mc:Fallback``: Word reads a ``mc:Choice``'s
+    id and writes it over the Fallback's, and never reads the Fallback's own
+    (CR-038 section 8). A text box's paragraphs are reached, in a run as they are.
+    """
+    if isinstance(root, (P, Tr)):
+        yield root
+    for _name, child in iter_children(root):
+        yield from identified(child)
+
+
+def _story_of(body: Body) -> Any:
+    """The tree of the part `body` stands in: the whole story, since a cell's own body sees only that cell."""
+    contents = getattr(body.part, "contents", None) if body.part is not None else None
+    return contents if contents is not None else body.container
+
+
 def para_ids_of(body: Body) -> set[str]:
-    """Every ``w14:paraId`` in this body, upper-cased as Word writes them."""
-    return {p.para_id.upper() for p in body.iter_paragraphs() if p.para_id}
+    """Every ``w14:paraId`` in the part `body` stands in, rows' and text boxes' too, upper-cased as Word writes them."""
+    return {item.para_id.upper() for item in identified(_story_of(body)) if item.para_id}
 
 
 def _taken(package: Any, body: Body) -> set[str]:
-    """The ids already used in this body, computed once and then kept in step.
+    """The ids already used in this part, computed once and then kept in step.
 
-    A set on the package, keyed by the body's prefix, rather than a walk per
-    insert: assigning an id to each of two thousand new paragraphs would
-    otherwise be quadratic. Per **body** and not per package, because looking
-    at every part would unmarshal the headers, the footers and the notes of a
-    document that only ever had its body edited, and CR-002's promise is that
-    an untouched part is written back byte for byte. Two parts of one document
-    colliding on a 31-bit id is not a risk worth that.
+    A set on the package, keyed by the part, rather than a walk per insert:
+    assigning an id to each of two thousand new paragraphs would otherwise be
+    quadratic. Per **part** and not per package, because looking at every part
+    would unmarshal the headers, the footers and the notes of a document that
+    only ever had its body edited, and CR-002's promise is that an untouched part
+    is written back byte for byte. Two parts of one document colliding on a
+    31-bit id is not a risk worth that. It isn't reduced on a delete, so an id in
+    it may no longer be held: :func:`assign_para_ids` checks before replacing one.
     """
     cache = getattr(package, "_para_ids_taken", None)
     if not isinstance(cache, dict):
         cache = {}
         package._para_ids_taken = cache
-    taken = cache.get(body.prefix)
+    key = str(body.part.part_name) if body.part is not None else body.prefix
+    taken = cache.get(key)
     if taken is None:
         taken = para_ids_of(body)
-        cache[body.prefix] = taken
+        cache[key] = taken
     return taken
 
 
 def assigns_para_ids(package: Any, body: Body) -> bool:
-    """Whether a new paragraph in this body should be given a ``w14:paraId``.
+    """Whether new paragraphs and rows in this body should be given a ``w14:paraId``.
 
     CR-003 section 3.4: "new paragraphs get one when the document already uses
     them (and always in a created document)". ``package.assigns_para_ids`` is
     the override, set to True by ``create_package`` and settable by a caller who
-    wants stable handles on a document that has none.
+    wants stable handles on a document that has none. The whole part decides, not
+    the body (CR-038 section 3.2), and a header or footer made in this session
+    takes the main part's answer, since a new footer with no ids costs a file with
+    no comments every id it holds (section 8).
     """
     if package is None:
         return False
     choice = getattr(package, "assigns_para_ids", None)
     if choice is not None:
         return bool(choice)
-    return bool(_taken(package, body))
+    return bool(_taken(package, body)) or (_made_here(body.part) and _main_uses_ids(package))
 
 
-def assign_para_id(body: Body, element: P) -> str | None:
-    """Give a new paragraph a ``w14:paraId``; returns it, or None for none.
+def _made_here(part: Any) -> bool:
+    """Whether `part` is a header or footer this session made. The glossary isn't one: Word writes no ids there."""
+    from docx4j_py.openpackaging.parts.wml import FooterPart, HeaderPart
 
-    The value comes from the package's seedable generator
-    (:meth:`~docx4j_py.openpackaging.packages.opc_package.OpcPackage.id_generator`),
-    so the same document and the same calls give the same bytes.
-    """
-    if element.para_id:
-        return None
-    package = body.package
-    if not assigns_para_ids(package, body):
-        return None
-    taken = _taken(package, body)
+    return isinstance(part, (HeaderPart, FooterPart)) and part._source_bytes() is None
+
+
+def _main_uses_ids(package: Any) -> bool:
+    """Whether the main part holds an id, read privately, so that asking marks nothing."""
+    main = getattr(package, "main_document_part", None)
+    tree = main.read_contents() if main is not None else None
+    return tree is not None and any(item.para_id for item in identified(tree))
+
+
+def _fresh_id(package: Any, taken: set[str]) -> str | None:
+    """A new id from the package's seedable generator, so that the same seed and calls give the same bytes."""
     generator = package.id_generator(derive_from=taken)
     for _attempt in range(_MAX_ATTEMPTS):
         candidate = f"{generator.randrange(1, 0x7FFFFFFF):08X}"
         if candidate not in taken:
-            element.para_id = candidate
             taken.add(candidate)
             return candidate
     return None  # pragma: no cover - 64 collisions in a 2^31 space
 
 
+def assign_para_ids(body: Body, element: Any) -> list[str]:
+    """Give every ``w:p`` and ``w:tr`` at or under `element`, just added, the id it needs; returns the ids given.
+
+    Word renumbers a file's every id if one is missing (CR-038 section 8), so this
+    walks all of what was added. An id already there stays where it's free. One
+    the part holds elsewhere is replaced, as Word itself gives the later of two a
+    new id, so that a copy never answers its original's address: the set may be
+    stale, so the tree decides, and a paragraph put back in its place keeps its id.
+    """
+    package = body.package
+    if not assigns_para_ids(package, body):
+        return []
+    taken = _taken(package, body)
+    given: list[str] = []
+    held: Counter[str] | None = None
+    for item in identified(element):
+        if item.para_id:
+            key = item.para_id.upper()
+            if key not in taken:
+                taken.add(key)
+                continue
+            if held is None:
+                held = Counter(found.para_id.upper() for found in identified(_story_of(body)) if found.para_id)
+            if held[key] <= 1:
+                continue
+            held[key] -= 1
+        fresh = _fresh_id(package, taken)
+        if fresh is not None:
+            item.para_id = fresh
+            given.append(fresh)
+    return given
+
+
+def record_para_ids(change: Any, body: Body, element: Any) -> None:
+    """:func:`assign_para_ids`, each id recorded on `change`."""
+    for para_id in assign_para_ids(body, element):
+        change.created(para_id)
+
+
 def ensure_para_ids(body: Body) -> list[str]:
-    """Give every paragraph that lacks one a ``w14:paraId``. Extension.
+    """Give every paragraph and row that lacks one a ``w14:paraId``. Extension.
 
     For an agent that wants stable handles on a legacy document: after this,
     every paragraph's :attr:`~docx4j_py.model.content.paragraph.Paragraph.address`
-    is a paraId and survives every insert and delete before it.
+    is a paraId and survives every insert and delete before it, and Word keeps
+    the ids, since it renumbers them all if a paragraph or a row has none (CR-038
+    section 8). Text boxes are reached. A document's own repeated ids stay.
 
     **It re-marshals the part.** Writing an attribute on every paragraph means
     ``document.xml`` is rebuilt from the tree on save rather than copied byte
@@ -611,16 +682,11 @@ def ensure_para_ids(body: Body) -> list[str]:
             hint="call ensure_para_ids on a body reached from a package",
         )
     taken = _taken(package, body)
-    generator = package.id_generator(derive_from=taken)
     assigned: list[str] = []
-    for paragraph in body.iter_paragraphs():
-        if paragraph.para_id:
-            continue
-        for _attempt in range(_MAX_ATTEMPTS):
-            candidate = f"{generator.randrange(1, 0x7FFFFFFF):08X}"
-            if candidate not in taken:
-                paragraph.para_id = candidate
-                taken.add(candidate)
-                assigned.append(candidate)
-                break
+    for item in identified(body.container):
+        if not item.para_id:
+            fresh = _fresh_id(package, taken)
+            if fresh is not None:
+                item.para_id = fresh
+                assigned.append(fresh)
     return assigned

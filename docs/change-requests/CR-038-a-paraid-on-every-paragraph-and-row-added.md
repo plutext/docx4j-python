@@ -1,6 +1,6 @@
 # CR-038: A `w14:paraId` on every paragraph and row added (the port of core-ts's CR-002 section 66)
 
-**Status:** Proposed 2026-11-06, at the user's word ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. Two phases, about ¾ day, and a Word check. Nothing built. Questions in section 7, each with a recommendation. **Three Word rounds are in section 8,** and they settle Q2's case: a new footer with no ids renumbers a whole file, and what protects a file is a comment.
+**Status:** Decided 2026-11-06 (the user: "CR-038 as recommended, please implement"): Q1 replace, Q2 a new header or footer takes ids and the glossary doesn't, Q3 this release. Proposed the same day ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. **Phases A and B built the same day (section 9); the Word check is the user's.** Three Word rounds are in section 8, and they settle Q2's case: a new footer with no ids renumbers a whole file, and what protects a file is a comment.
 
 **Depends on:** nothing here. The rule is core-ts's Word checks 79 and 80 (`4600413`, `test/check79/`, `test/check80/`).
 
@@ -233,3 +233,31 @@ The user: "tell the portfolio agent to use word-bridge to do the third round on 
 4. **A duplicate doesn't renumber,** even here: the first kept its id, the later one took a new one, different in each save, and the other 16 stayed.
 
 **The rule, then:** in a file with no comments, one missing id in any story renumbers every id. A file with comments keeps its ids and fills the gap. It fits every result of the three rounds and of checks 79 and 80: `79c`, `79f`, `80e`, `76t26` (`q2k`) and `r-header-gap` have no comments and renumbered, and `76t18`, the probe and `r-comment-gap` have them and kept. It's inferred: one comment added, and two files that held them. Which of the three comment parts does it, and why, isn't known. `commentsExtended.xml` refers to paragraphs by id, which would be a reason.
+
+## 9. Phases A and B: implementation notes (2026-11-06)
+
+### 9.1 What was built
+
+As section 3, in `model/content/addresses.py`: `identified` (the walk), `assign_para_ids`, `record_para_ids`, `para_ids_of` and `_taken` per part, and `assigns_para_ids` asking the main part for a header or footer made here, through `read_contents`, so it marks nothing. `assign_para_id` is gone. The seams are section 3.3's, and the new header or footer's is `_add_definition`.
+
+**Section 3.4 needed one thing it didn't say.** The set isn't reduced on a delete, and is built after the first insert has landed, so an id in it is only a possible collision. The walker counts the part's ids before replacing one, and only then: a paragraph put back in its place keeps its id, and a fragment with no ids never pays for the walk.
+
+### 9.2 What moved
+
+- **A new table's paragraphs** answer with a `w14:` address. One test pinned `body/1/1/1/0`, and now holds the new form.
+- **`created_para_ids`** lists rows too.
+- **`test_private_readers.py`** lists `_main_uses_ids` as a private reader, and a reader there reaches it.
+- **Seeds:** rows are now in the set a seed derives from, so a document's generated ids differ from before for the same calls. No test pinned one.
+
+### 9.3 Verified
+
+- **The route probe of section 2,** re-run: 84 routes clean, where 29 of the first 80 had gaps. The one left is `show_placeholder`'s glossary, as decided, and `_Cell.merge` isn't implemented.
+- **Tests:** `tests/content/test_para_ids.py`, 128, with a census of every public `insert_` and `add_` method.
+- **Mutants:** 30, the walker and every seam. 23 caught at first. All seven survivors were gaps in the tests, among them two control seams nothing had reached, and all are caught now, by tests that pass.
+- **The suite:** 11,583 passed, 8 skipped, with one test of this CR's failing on a wrong selection in the test itself, which was then fixed. No source changed after that run.
+- **The cost:** the whole-part walk takes 33 ms on `Symbols.docx`, once a part, where the old paragraph walk took under 1 ms.
+
+### 9.4 Not here
+
+- **A load repair's new paragraph** has no id: CR-037's empty paragraph after a held `w:p`, and CR-030's. A repair isn't a route, and such a file already has a shape Word would read its own way.
+

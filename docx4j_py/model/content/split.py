@@ -557,7 +557,7 @@ def split_paragraph(
             field's instruction), ``range.cuts_equation``; nothing has changed.
         AddressError: ``address.read_only``; nothing has changed.
     """
-    from docx4j_py.model.content.addresses import assign_para_id
+    from docx4j_py.model.content.addresses import record_para_ids
     from docx4j_py.model.content.hyperlinks import _id_source
     from docx4j_py.model.content.reports import current_recorder, moved_by_insert
     from docx4j_py.wml import P
@@ -609,7 +609,7 @@ def split_paragraph(
     head.parent = getattr(element, "parent", None)
 
     change = current_recorder(getattr(body, "package", None))
-    change.created(assign_para_id(body, head))
+    record_para_ids(change, body, head)
     if getattr(change, "active", False):
         change.shifted(moved_by_insert(body, container, position, 1))
     tracker = paragraph.change_tracker

@@ -35,7 +35,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, link_parents
-from docx4j_py.model.content.addresses import ordinal_of
+from docx4j_py.model.content.addresses import ordinal_of, record_para_ids
 from docx4j_py.model.content.enums import (
     BodyLocation,
     ParagraphLocation,
@@ -629,6 +629,7 @@ class Table:
                 container.insert(index + offset, row)
                 link_parents(row)
                 row.parent = self.element
+                record_para_ids(change, self.parent_body, row)
             _mark_rows_inserted(self.change_tracker, added)
             change.touched(self.address)
             change.text(after="\n".join("\t".join(r) for r in (values or [])))
@@ -889,6 +890,7 @@ class TableRow:
                 self.container.insert(index + offset, row)
                 link_parents(row)
                 row.parent = owner
+                record_para_ids(change, self.parent_body, row)
             _mark_rows_inserted(self.parent_table.change_tracker, added)
             change.touched(self.parent_table.address)
             return [TableRow(row, self.container, self.parent_table) for row in added]

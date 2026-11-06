@@ -1037,7 +1037,7 @@ def keep_cell_mark_last(paragraph: Paragraph, cell_content: list) -> Paragraph:
     properties, which is ``insert_table``'s wherever it inserts and is not
     followed (CR-016 Q4). Returns the view of the paragraph after the table.
     """
-    from docx4j_py.model.content.addresses import assign_para_id
+    from docx4j_py.model.content.addresses import record_para_ids
     from docx4j_py.model.content.paragraph import Paragraph as ParagraphView
     from docx4j_py.model.content.reports import current_recorder
     from docx4j_py.model.content.split import _properties_for_head
@@ -1055,7 +1055,7 @@ def keep_cell_mark_last(paragraph: Paragraph, cell_content: list) -> Paragraph:
         p_pr.parent = element
     cell_content.append(mark)
     change = current_recorder(getattr(body, "package", None))
-    change.created(assign_para_id(body, mark))
+    record_para_ids(change, body, mark)
     tracker = paragraph.change_tracker
     if tracker is not None:
         tracker.mark_paragraph_inserted(element)

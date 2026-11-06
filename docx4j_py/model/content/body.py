@@ -27,12 +27,12 @@ from typing import TYPE_CHECKING, Any
 from docx4j_py.child import ChildList, is_alternate_content, link_parents
 from docx4j_py.model.content.addresses import (
     address_of,
-    assign_para_id,
     element_at,
     ensure_para_ids,
     para_id_address,
     paragraph_at,
     prefix_for_part,
+    record_para_ids,
 )
 from docx4j_py.model.content.controls import (
     ContentControl,
@@ -1053,8 +1053,7 @@ class Body(Sequence):
             container.insert(index + offset, item)
             link_parents(item)
             item.parent = owner
-            if isinstance(item, P):
-                change.created(assign_para_id(self, item))
+            record_para_ids(change, self, item)
         if tracker is not None:
             # a second pass, once every element is in place: the mark an
             # inserted paragraph carries depends on whether it ends up **last**
@@ -1099,7 +1098,7 @@ class Body(Sequence):
             return
         appended = end_with_paragraph(cell)
         if appended is not None:
-            change.created(assign_para_id(self, appended))
+            record_para_ids(change, self, appended)
 
     def _check(self, elements: list, owner: Any) -> None:
         """Refuse an element the owner's block list cannot hold."""
@@ -1246,7 +1245,7 @@ class Body(Sequence):
         return comments_of(self)
 
     def ensure_para_ids(self) -> list[str]:
-        """Give every paragraph that lacks a ``w14:paraId`` one. Extension.
+        """Give every paragraph and row that lacks a ``w14:paraId`` one. Extension.
 
         For an agent that wants addresses which survive every edit on a document
         Word has not stamped. **It re-marshals the part**: an attribute on every
@@ -1424,7 +1423,7 @@ class Body(Sequence):
                     else:
                         appended = end_with_paragraph(cell)
                         if appended is not None:
-                            change.created(assign_para_id(self, appended))
+                            record_para_ids(change, self, appended)
                 return
             from docx4j_py.model.content.tracking import mark_deleted, track_deleted_row
 
