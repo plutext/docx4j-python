@@ -1,8 +1,8 @@
 # CR-039: A repeated child and an `mc:AlternateContent` root, read as Word reads them
 
-**Status:** Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A isn't planned (Q10), and which release they go in isn't said. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
+**Status:** Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
 
-**Depends on:** nothing to build. Phases B and C want a WD requirement first (Q1), since the WD says nothing about either shape. **CR-033** is the save's half (section 2.3). Nothing here waits on phase 0 of the two counterparts (Word check 81), which isn't scheduled and has no date: core-ts's CR-028 may be deferred indefinitely too. Phase B rests on rounds already run, and Phase C builds what's measured. Phase 0 would only widen C.
+**Depends on:** nothing to build. The WD says nothing about either shape, and the portfolio drafts it (Q1). Phase B starts ahead of that at the user's word and is amended to it, as CR-037 was. **CR-033** is the save's half (section 2.3). Nothing here waits on phase 0 of the two counterparts (Word check 81), which isn't scheduled and has no date: core-ts's CR-028 may be deferred indefinitely too. Phase B rests on rounds already run, and Phase C builds what's measured. Phase 0 would only widen C.
 
 **Counterpart:** docx4j CR-079 and core-ts CR-028, both proposed with nothing built, the second keeping the first's case names and sharing its phase 0. This CR was written without having read them, and now follows core-ts's where it can, since the two engines stay one design. Today docx4j and core-ts keep the second of two bodies where this package keeps the first (section 7.15's table).
 
@@ -98,7 +98,9 @@ core-ts built these and read Word's saves (its CR-028 sections 1.1 and 2.4), eac
 
 - **`mc:AlternateContent`:** replaced by what `branch_taken` answers, and the rows below then apply to what the branch holds, as `or-50` needs. One `w:document` becomes the root; two are joined as two `w:body` are (section 3.3); `None` leaves an empty `w:document` holding an empty `w:body`, which the facade can read, as core-ts's D4 has it.
 - **The roots Word refuses:** `w:footnotes`, `w:endnotes`, `foo`, `z:foo` and `w:foo` holding a `w:document`, `w:wordDocument` and `pkg:package`. Refused as a part not well formed is (CR-031, and Q4): `Docx4JException` naming the part, kept as `part.unreadable`, the load lazy, an untouched save writing its bytes. They're listed by name and shape, never as "anything else", because `w:madeUp` holding a `w:p` opens and what decides isn't known.
-- **Every other root stays as it is today,** with section 3.6's warning: empty text, its children in `part.skipped`, `Body` refusing. That covers `w:hdr`, `w:ftr`, `w:styles` and `w:comments`, whose words aren't a reading to copy (core-ts CR-028 section 4), a bare `w:body` and `w:madeUp` (Q9), and anything unmeasured, among them `foo` holding a `w:body`.
+- **A bare `w:body`:** wrapped in a `w:document` (Q9).
+- **An unknown `w:` root, unless it holds a `w:document`:** wrapped in a `w:document` and a `w:body`, and CR-037's pass takes the tags off and lists them (Q9). Measured on `w:madeUp` holding one `w:p`. "Unknown" is CR-037's: a name not in `WML_ELEMENTS`.
+- **Every other root stays as it is today,** with section 3.6's warning: empty text, its children in `part.skipped`, `Body` refusing. That covers `w:hdr`, `w:ftr`, `w:styles` and `w:comments`, whose words aren't a reading to copy (core-ts CR-028 section 4), every other known `w:` name, and anything else unmeasured, among them `foo` holding a `w:body`, which binds as today.
 - **Main part only.** Every measurement is `word/document.xml`. A header's or a note's root stays as it is unless a round measures it (core-ts's D5).
 - **The root's name is read once,** in this one part, since `<foo/>` leaves no report and `<foo><w:body>` an empty one.
 
@@ -118,9 +120,9 @@ Everything else stays as it is today: the first kept, the later listed. That cov
 
 ### 3.4 The report (Q3)
 
-One warning a part with a count, on `part.warnings` and `package.warnings`, as `BrOutsideRun` is, since a file read as Word reads it has lost nothing. What goes whole goes in `part.skipped` beside it: a value a later one replaced, an earlier `w:sectPr`, a branch not taken. So `strict=True` refuses those, and a part that only joined loads under it, as CR-030's repaired part does.
+One warning a part with a count, on `part.warnings` and `package.warnings`, as `BrOutsideRun` is, since a file read as Word reads it has lost nothing: `part.read_as_word`, naming the root where it wasn't `w:document` and counting the children joined. What goes whole goes in `part.skipped` beside it: a value a later one replaced, an earlier `w:sectPr`, a branch not taken. So `strict=True` refuses those, and a part that only joined loads under it, as CR-030's repaired part does.
 
-That's core-ts CR-028 section 3.3. It replaces this section's first draft, one `SkippedNode` for each element, under which a join that loses nothing would have been refused at a save. The code is agreed with core-ts and docx4j first (their D8).
+That's core-ts CR-028 section 3.3. It replaces this section's first draft, one `SkippedNode` for each element, under which a join that loses nothing would have been refused at a save. Both codes here are proposals, to be agreed with core-ts and docx4j (their D8 and D11), and a change of name is one line each.
 
 ### 3.5 The save and the round trip
 
@@ -130,15 +132,13 @@ Once CR-033 is built, its gate refuses a re-marshalled part with `part.skipped` 
 
 `wml()` and the fragment route stay as they are: a fragment is the caller's code, and `wml()` refuses what it can't bind.
 
-### 3.6 A warning (Phase A, Q2)
+### 3.6 A root left as it is (Phase B, Q10)
 
-If the reading waits, the result can at least say so. Three small changes, none of which reads anything new:
+Phase A's two lasting pieces are in Phase B, and its third is dropped:
 
-- **A root that isn't `w:document`:** one warning on the part at the parse, on `part.warnings`, `package.warnings` and the text result, naming the root. This is core-ts's D11, and `part.unexpected_root` is the code proposed here, to be agreed with core-ts and docx4j. It needs section 3.2's read of the root's name, so that read comes with this phase.
-- **A second container:** `extract` raises `content.not_read`, selector the part's name, where `part.skipped` holds `w:body`, `w:sdtContent` or `w:txbxContent`, the names that carry words. It stays silent for the rest, which keeps the WD's note that what REQ-308's section drops carries no warning (CR-026 D4). That note is about content Word drops too, and these hold content Word shows.
+- **A root that isn't `w:document` and isn't read as Word reads it:** one warning on the part at the parse, on `part.warnings`, `package.warnings` and the text result, naming the root. This is core-ts's D11, under the code `part.unexpected_root`. REQ-801's list needs it added.
 - **A package with no main part:** `extract` refuses, as core-ts's `Texts.of` does, and `body_of` raises `ContentError`.
-
-REQ-801 needs a clause first: `content.not_read` is defined today for a chart, a SmartArt part and an embedded package, and the new code isn't in its list. Phases B and C remove most of what raises the first two.
+- **Dropped:** `content.not_read` for a second container. After Phase C only unmeasured shapes would raise it.
 
 ## 4. Tests and oracles
 
@@ -148,7 +148,7 @@ REQ-801 needs a clause first: `content.not_read` is defined today for a chart, a
 - **Refusal:** the nine roots Word refuses, each named, with an untouched save keeping its bytes.
 - **Roots Word opens:** each stays as it is today, with the warning.
 - **Nothing else moves:** the corpus round trip, `check76/`, `part.skipped` empty on `samples/`.
-- **Phase A:** each warning on its shapes, none on a skipped property or an unknown element, and `extract` refusing `or-40` and `or-41`.
+- **The warnings:** each on its shapes, none on a clean file, and `extract` refusing `or-40` and `or-41`.
 
 ## 5. Phases
 
@@ -156,18 +156,17 @@ Each phase stands alone, and any of them can be left out.
 
 | Phase | Work | Cost |
 |---|---|---|
-| A | The warnings, once REQ-801 allows them, and `extract` refusing a package with no main part | ¼ day |
-| B | The root: `mc:AlternateContent` read through `branch_taken`, the roots Word refuses refused | ½ day |
-| C | The repeated child: `repeated.py`, canon, `roundtrip.py`, the fixtures and tests | 1 day |
+| A | Folded into B, the rest dropped (Q10) | none |
+| B | The root: `mc:AlternateContent` read through `branch_taken`, a bare `w:body` and an unknown `w:` root read through, the roots Word refuses refused, the rest warned; two `w:body` joined, which two `w:document` need; `extract` and `body_of` on a package with no main part; canon; the fixtures | ¾ day |
+| C | The other repeated children, with their tests | ¾ day |
 | D | The records and the Word check of B's and C's saves, through the bridge at the user's word | ¼ day |
 
-A is worth building only if B and C wait, but two of its pieces outlast them (Q10).
 
 **What B and C add.** Estimates, set against `read_through.py` (364 lines) and its 1,128 lines of tests:
 
 - **Code:** about 60 lines for B and 150 for C, in `repeated.py`, plus about 20 in `XmlPart._parse`, `canon.py` and `roundtrip.py`. Tests about 150 and 300 lines. No change to the model, the generator or the fork.
 - **A clean file, Phase C:** nothing. The trigger is the skipped report, which is already read, and the module is imported only when it fires.
-- **A clean file, Phase A or B:** one read of the main part's root name, the only cost every file pays, and only when the part is read. Timed at about 23 µs with a pull parser fed 2 KB at a time; `etree.iterparse` took 0.1 to 0.45 ms, since it reads 32 KB first. The skipped report can't replace this read, as section 2.2's `<foo><w:body>` shows.
+- **A clean file, Phase B:** one read of the main part's root name, the only cost every file pays, and only when the part is read. Timed at about 23 µs with a pull parser fed 2 KB at a time; `etree.iterparse` took 0.1 to 0.45 ms, since it reads 32 KB first. The skipped report can't replace this read, as section 2.2's `<foo><w:body>` shows.
 - **A file the pass repairs:** that part parses twice, the route CR-030 and CR-037 already take, and if they fire too it's still one reparse. About 2.1 times the part's parse, summed from its steps on `samples/` rather than run: `Symbols.docx` (772 KB) 200 ms to about 418 ms, of which the pass's own lxml parse, walk and write are 18 ms. The lxml tree is transient.
 
 ## 6. Risks
@@ -179,17 +178,17 @@ A is worth building only if B and C wait, but two of its pieces outlast them (Q1
 - **A root refused where today gives empty text.** A caller who got `""` gets an exception. Word refuses the same files, so that's the honest answer, but it's a change.
 - **The evidence can go.** See Q8.
 
-## 7. Questions
+## 7. Questions (decided 2026-11-07: Q9 read as Word, the rest as recommended)
 
-| # | Question | Recommendation |
+| # | Question | Decision |
 |---|---|---|
-| Q1 | Does the WD take these rules first? | **Yes, before B and C.** It's the shared rule for three engines, and without it this package would depart from the other two alone, though towards Word. The portfolio would draft it from section 7.15. |
-| Q2 | If the reading waits, are the warnings worth having, and under which codes? | **Yes:** `part.unexpected_root` for a root and `content.not_read` for a second container, agreed with core-ts and docx4j first. It's the cheapest way to stop a silent empty text. |
+| Q1 | Does the WD take these rules first? | **Yes.** It's the shared rule for three engines, and the portfolio drafts it from section 7.15 and this CR. Phase B starts now at the user's word and is amended to the WD as it lands. Phase C waits for it. |
+| Q2 | Are the warnings worth having, and under which codes? | **Yes:** `part.unexpected_root` for a root left as it is, as Q10 has it, and no `content.not_read` for a second container. Agreed with core-ts and docx4j when they answer. |
 | Q3 | How is what a pass does reported? | **One warning a part with a count, and `part.skipped` for what goes whole**, as core-ts's section 3.3 has it. A strict caller then loads a file that only joined. |
 | Q4 | Are the roots Word refuses refused here, rather than read as an empty document? | **Yes, those measured, by name and shape.** Every other root stays as it is, with the warning, since Word opens several and what decides isn't known. |
 | Q5 | Does "keep the last" cover every property in `w:pPr` and `w:rPr`, or only the three measured? | **Those measured, and any phase 0 adds if it runs**, as core-ts's D6. `w:vanish` is on its list now, since it decides whether words show, so it stays unread until then. |
 | Q6 | Follow Word's second-first order in a VML box? | **Not without a second shape and three copies**, as core-ts's D7, which phase 0 would give. Until then a second box stays as it is, and Phase C goes without this row. |
 | Q7 | Does this stay proposed, or move to deferred now? | **Decided 2026-11-07:** neither, phases B and C are to be built shortly. |
 | Q8 | Keep the Word files in this repository now, even if nothing is built? | **Yes.** Rebuilding the inputs is easy, but Word's saves need the bridge again. It's under 1 MB of fixtures, and a deferred CR can outlive a share. |
-| Q9 | Read a bare `w:body` and `w:madeUp` holding a `w:p` as Word does? | **Not until a file holds one**, as core-ts's D11. They're the two roots Word opens silently with the words in the body, and the warning says this package shows none. |
+| Q9 | Read a bare `w:body` and `w:madeUp` holding a `w:p` as Word does? | **Yes.** A scratch trial (2026-11-07) matched Word's text and saved body on `or-31` and `or-32`, and `Body` wrote to both. About 15 lines, and `w:madeUp` is CR-037's pass once wrapped. The rule rests on one file, and if it's wrong we read words from a file Word might refuse, which loses nothing. It goes ahead of core-ts's D11, which is undecided. |
 | Q10 | With Phase A left out, do its root warning and `extract`'s refusal move into Phase B? | **Yes, both, and the second-container warning goes.** Section 3.2's roots that stay as today would otherwise read empty with nothing said, and `or-40` and `or-41` still give `""`. After Phase C, the second-container warning has only unmeasured shapes left. About an hour, though the code isn't agreed yet with core-ts and docx4j. |
