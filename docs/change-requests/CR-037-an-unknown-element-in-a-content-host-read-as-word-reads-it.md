@@ -194,5 +194,7 @@ The user: "do the CR-037 word check via the bridge". This package's save of each
 
 ### 9.5 Round 11
 
-Core-ts's round 11 (`76t68` to `76t71`) came after section 9.4's run. It bore out this CR's two readings of a host's properties, and added one: what's left of the host keeps the host's properties, so the empty paragraph isn't plain. That changed `_end_host`, and the fix reaches only a host with a `w:pPr` of its own. None of section 9.4's 51 files is one, and their saves rebuilt byte for byte the same, so that check stands. `76t68` to `76t70` are new, and go through the bridge on the same terms.
+Core-ts's round 11 (`76t68` to `76t71`) came after section 9.4's run. It bore out this CR's two readings of a host's properties, and added one: what's left of the host keeps the host's properties, so the empty paragraph isn't plain. That changed `_end_host`, and the fix reaches only a host with a `w:pPr` of its own. None of section 9.4's 51 files is one, and their saves rebuilt byte for byte the same, so that check stands.
+
+`76t68` to `76t70` are new, and went through the bridge on the same terms, built over `553ed05`, twice each: **passed.** All 6 opened silently with no dialog, Word's saves of ours read as its saves of the source, the runs agree, and Word kept the two paragraphs' `w:jc` as written: centred then right in `76t68`, right then right in `76t69`. The XML differs only as `76t43`'s does, one run where the source's save keeps two. So 54 of 54.
 

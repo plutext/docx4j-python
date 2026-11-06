@@ -777,7 +777,8 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > the user: "do the CR-037 word check via the bridge"). An unknown `w:` element is now read through, so a save writes what it held. All
 > 102 opened silently with no repair prompt, `76t21` to `76t24` showing only Word's message about custom XML, pressed OK by the bridge.
 > All 51 of Word's saves of ours read as its save of the source, in tokens and plain text, the runs agreeing, and the touched part is
-> identical in 47 once `rsid`, `paraId` and `textId` are stripped. CR-037 section 9.4 has the four that differ, harmlessly.
+> identical in 47 once `rsid`, `paraId` and `textId` are stripped. CR-037 section 9.4 has the four that differ, harmlessly. `76t68` to
+> `76t70`, from round 11, passed the same way at `553ed05` (section 9.5), so 54 of 54.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
