@@ -1,6 +1,6 @@
 # CR-038: A `w14:paraId` on every paragraph and row added (the port of core-ts's CR-002 section 66)
 
-**Status:** Proposed 2026-11-06, at the user's word ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. Two phases, about ¾ day, and a Word check. Nothing built. Questions in section 7, each with a recommendation.
+**Status:** Proposed 2026-11-06, at the user's word ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. Two phases, about ¾ day, and a Word check. Nothing built. Questions in section 7, each with a recommendation. **Q2's first Word run is in section 8:** its positive control didn't fire, so it doesn't settle Q2 for a mode 15 file, and a second round is proposed there.
 
 **Depends on:** nothing here. The rule is core-ts's Word checks 79 and 80 (`4600413`, `test/check79/`, `test/check80/`).
 
@@ -19,7 +19,7 @@ Word 365 keeps a file's ids at open only if every paragraph and table row holds 
 | core-ts's output, every new paragraph and row with an id and no `w14:textId` | all, in all four files |
 | The same with one new row's id removed | 0 of 28 |
 
-So `w14:textId` isn't needed, and the row's id counts as the paragraph's does. All of this is `document.xml`: no check covers a header, a note, a comment or a glossary part.
+So `w14:textId` isn't needed, and the row's id counts as the paragraph's does. All of this is `document.xml`, and in compatibility mode 15. Section 8 shows the rule isn't general: in a mode 12 file, a missing body id renumbered nothing. `create_package` writes mode 15, as Word does for a new document, so that's the mode that matters here.
 
 Here a `w14:paraId` is the stable address (CR-003 section 3.4): `Paragraph.address`, `paragraph_at(para_id=...)`, `created_para_ids`. A caller who holds one expects it to last. Today it lasts until Word next opens a file this package added a table to. Nothing is corrupted, as far as these checks show: what goes is every id in the file, not just the new ones.
 
@@ -84,9 +84,9 @@ The reason doesn't wait on Word: two paragraphs answering one `paragraph_at(para
 
 ### 3.5 Parts other than the main document (Q2)
 
-An existing part that uses ids follows 3.2, comments included. The open case is a new part, where there's no tree to ask: a new footer, and the glossary. Whether Word's rule reaches past `document.xml` isn't measured, and core-ts leaves those parts out.
+An existing part that uses ids follows 3.2, comments included. The open case is a new part, where there's no tree to ask: a new footer, and the glossary. Whether Word's rule reaches past `document.xml` isn't settled (section 8), and core-ts leaves those parts out.
 
-Recommended: a part made in this session takes the main part's answer. If Word's rule spans parts, these ids are needed. If it doesn't, they cost nothing, as check 80 shows new ids with no `w14:textId` are fine. It would read the main part privately, as the text model does, so it marks nothing.
+Recommended: a new header or footer takes the main part's answer. Ids there did no harm in section 8's run, and Word writes them itself, and `q2k` shows a gap outside `document.xml` can reach it. It would read the main part privately, as the text model does, so it marks nothing. **The glossary stays without,** since Word writes none there and drops one it's given.
 
 ### 3.6 `ensure_para_ids`
 
@@ -127,13 +127,13 @@ The oracle is the rule of section 1, so the tests hold the count. Only Word can 
 | A | 3.1 to 3.7 and the tests | ½ day |
 | B | The records: CHANGELOG, `tests/README.md`, the index, the registry, DI-026 through the portfolio; the Word check's files | ¼ day, then the Word run |
 
-**The Word check.** check 80's shape, on this package's saves of `76t18`'s Word save: rows added, a table added, columns through the facade, then all of them; the last through a save, and one with a new row's id taken off as the control. Each is read for how many ids Word kept. A new footer with and without ids can ride on the same run, which measures Q2's case. How it's run is the user's call.
+**The Word check.** check 80's shape, on this package's saves of a mode 15 Word save: rows added, a table added, columns through the facade, then all of them; the last through a save, and one with a new row's id taken off as the control. Each is read for how many ids Word kept. How it's run is the user's call.
 
 ## 6. Risks
 
 1. **Ids shift for a seeded run.** The generator now draws for rows and cell paragraphs, so a later paragraph's id differs from today's for the same seed and calls. Nothing promises today's values, but a test that pins one will move, and `scripts/compare_acceptance.py` should be run.
 2. **An address changes form.** A new table's paragraphs answer with a `w14:` address where they had a positional one. That's the point, but a caller matching the old form sees it.
-3. **The rule is narrow.** One run each, `document.xml` only, and core-ts's tables. The Word check is a second run of it, on this package's output.
+3. **The rule is narrow, and not understood.** It held in mode 15 and not in mode 12, and section 8's `q2k` isn't explained. The fix doesn't depend on the explanation: ids on everything is what Word's own save has, in either mode. The Word check is a second run, on this package's output.
 4. **The ports differ for a while.** Q1 goes beyond core-ts, and docx4j has the gap. DI-026 records it.
 
 ## 7. Questions
@@ -141,5 +141,38 @@ The oracle is the rule of section 1, so the tests hold the count. Only Word can 
 | # | Question | Recommendation |
 |---|---|---|
 | Q1 | Does the walker replace an id the part already holds, or only fill what's missing, as core-ts does? | **Replace.** Two paragraphs answering one address is a bug here whatever Word does, and it's a few lines in the walker. Word's reaction to a duplicate can be measured later without changing this. |
-| Q2 | Does a part made in this session (a new footer, the glossary) take ids, or stay as it is, as core-ts's do? | **Take them.** It's right if Word's rule spans parts and harmless if it doesn't, and the Word check can measure which. |
+| Q2 | Does a part made in this session (a new footer, the glossary) take ids, or stay as it is, as core-ts's do? | **A new header or footer takes them, the glossary doesn't.** Amended after section 8's run: ids in a new footer did no harm and Word writes them itself, while Word writes none in a glossary and drops one it's given. Whether a footer's ids are *needed* isn't known for a mode 15 file, so section 8's second round would settle that. The recommendation doesn't wait on it. |
 | Q3 | Which release? | **This one.** It's about ¾ day, tables are a common route, and its Word check can share a run with CR-037's. |
+
+## 8. Q2's Word run (2026-11-06)
+
+The user: "CR-038 Q2 confirm word behaviour via portfolio's word-bridge". 11 inputs and 27 jobs, built in `out/cr038-q2-word-check/` (`build.py`, `compare.py`), staged and run by the portfolio session through the Word bridge, on Word 16.0.20326.20232. Every input is a Word save with ids on everything, changed in one way, each checked before it went. Two `save` runs each, and a `check` on five. All opened silently. The results are under `bridge/portfolio/<job>/` on the share, and these counts are this session's, from the saved bytes.
+
+**All 11 sources turned out to be compatibility mode 12.** `76t18`'s and `76t26`'s Word saves are, where the checks of section 1 are mode 15. That wasn't looked at when they were chosen.
+
+| Input | `document.xml` ids kept | The part in question |
+|---|---|---|
+| `q2a` control | 24 of 24 | as read |
+| `q2b` a body paragraph's id off: the positive control | **23 of 23, the gap filled** | |
+| `q2c` a header's id off | 24 of 24 | its other id kept, the gap filled |
+| `q2d` a comment's second paragraph's id off | 24 of 24 | its other id kept, the gap filled |
+| `q2e` read and saved here, no edit | 24 of 24 | as read |
+| `q2f` this package's new footer, no ids | 24 of 24 | Word wrote ids on both paragraphs |
+| `q2g` the same with ids | 24 of 24 | 2 of 2 kept |
+| `q2h` this package's new glossary, no id | 24 of 24 | Word wrote none |
+| `q2i` the same with an id | 24 of 24 | 0 of 1: Word dropped it |
+| `q2j` control with a real footnote | 20 of 20 | the two real notes kept |
+| `q2k` a real footnote's last paragraph's id off | **0 of 20, in both runs** | run 1: no ids in any part. Run 2: a full new set in every part |
+
+Every save gave the separator paragraphs of `footnotes.xml` and `endnotes.xml` new ids, controls included, so they're left out of those counts. The five `check`s kept every body id at open, as the saves did.
+
+**What it shows:**
+1. **The positive control didn't fire.** `check` and `save` agree on `q2b`, so the instrument isn't the problem: the rule doesn't hold in this file. So "nothing moved" in `q2c` to `q2i` says nothing about a mode 15 file.
+2. **Mode is the best explanation, not a proven one.** Position isn't it: `79f`'s gap was a fifth paragraph and `q2b`'s a third. Every file on the renumbering side is mode 15, and every one here is mode 12, but nothing has varied the mode alone.
+3. **A gap outside `document.xml` can reach it.** `q2k` lost every body id, in a file where a gap in the body lost none. It's one file, the two runs disagree with each other, and it isn't understood. So the rule isn't simply per part.
+4. **Ids in a new footer did no harm,** and Word writes them itself when they're missing.
+5. **Word writes no ids in a glossary,** and drops one it's given, as docx4j's session counted.
+
+**What it settles for Q2:** the glossary, and that a footer's ids are harmless, in this mode. Whether they're needed in a mode 15 file stays open.
+
+**A second round, proposed, not built.** The same shape on a mode 15 Word save that holds every part (`tests/fixtures/text-extraction/extraction-probe.word-resave.docx`): a control; a body gap as the positive control, which must fire; gaps in a header, a comment and a footnote; a new footer with and without ids; and `q2b`'s input with only its mode changed to 15, which varies the mode alone. Two `save` runs each, and a `check` on the positive control. It needs the user's word, and doesn't hold CR-038's design, since ids on everything is right in either mode.
