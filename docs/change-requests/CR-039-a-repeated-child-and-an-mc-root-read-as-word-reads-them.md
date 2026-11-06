@@ -1,6 +1,6 @@
 # CR-039: A repeated child and an `mc:AlternateContent` root, read as Word reads them
 
-**Status:** Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built, nothing waits on it, and it isn't for the coming release. Whether it stays proposed or moves to deferred is Q7. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
+**Status:** Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A isn't planned (Q10), and which release they go in isn't said. Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
 
 **Depends on:** nothing to build. Phases B and C want a WD requirement first (Q1), since the WD says nothing about either shape. **CR-033** is the save's half (section 2.3). Nothing here waits on phase 0 of the two counterparts (Word check 81), which isn't scheduled and has no date: core-ts's CR-028 may be deferred indefinitely too. Phase B rests on rounds already run, and Phase C builds what's measured. Phase 0 would only widen C.
 
@@ -161,7 +161,7 @@ Each phase stands alone, and any of them can be left out.
 | C | The repeated child: `repeated.py`, canon, `roundtrip.py`, the fixtures and tests | 1 day |
 | D | The records and the Word check of B's and C's saves, through the bridge at the user's word | ¼ day |
 
-A is worth building only if B and C wait.
+A is worth building only if B and C wait, but two of its pieces outlast them (Q10).
 
 **What B and C add.** Estimates, set against `read_through.py` (364 lines) and its 1,128 lines of tests:
 
@@ -189,6 +189,7 @@ A is worth building only if B and C wait.
 | Q4 | Are the roots Word refuses refused here, rather than read as an empty document? | **Yes, those measured, by name and shape.** Every other root stays as it is, with the warning, since Word opens several and what decides isn't known. |
 | Q5 | Does "keep the last" cover every property in `w:pPr` and `w:rPr`, or only the three measured? | **Those measured, and any phase 0 adds if it runs**, as core-ts's D6. `w:vanish` is on its list now, since it decides whether words show, so it stays unread until then. |
 | Q6 | Follow Word's second-first order in a VML box? | **Not without a second shape and three copies**, as core-ts's D7, which phase 0 would give. Until then a second box stays as it is, and Phase C goes without this row. |
-| Q7 | Does this stay proposed, or move to deferred now? | **The user's.** The registry entry says proposed, with the note that it may wait indefinitely. |
+| Q7 | Does this stay proposed, or move to deferred now? | **Decided 2026-11-07:** neither, phases B and C are to be built shortly. |
 | Q8 | Keep the Word files in this repository now, even if nothing is built? | **Yes.** Rebuilding the inputs is easy, but Word's saves need the bridge again. It's under 1 MB of fixtures, and a deferred CR can outlive a share. |
 | Q9 | Read a bare `w:body` and `w:madeUp` holding a `w:p` as Word does? | **Not until a file holds one**, as core-ts's D11. They're the two roots Word opens silently with the words in the body, and the warning says this package shows none. |
+| Q10 | With Phase A left out, do its root warning and `extract`'s refusal move into Phase B? | **Yes, both, and the second-container warning goes.** Section 3.2's roots that stay as today would otherwise read empty with nothing said, and `or-40` and `or-41` still give `""`. After Phase C, the second-container warning has only unmeasured shapes left. About an hour, though the code isn't agreed yet with core-ts and docx4j. |
