@@ -54,7 +54,7 @@ The other 50 add none without an id, but for `ContentControl.insert_copy_after`,
 
 ### 3.1 One walker
 
-`assign_para_ids(body, element)` replaces `assign_para_id`: every `P` and `Tr` at or under `element`, at any depth and in every `mc` branch (`iter_children(..., mce="all")`), in document order, takes an id where it needs one. One generator and one `taken` set serve the walk. It returns the ids it gave.
+`assign_para_ids(body, element)` replaces `assign_para_id`: every `P` and `Tr` at or under `element`, at any depth, in the branch Word reads (`iter_children`'s default, `mce="resolve"`), in document order, takes an id where it needs one. A `mc:Fallback` isn't entered: Word reads the `mc:Choice`'s id and writes it over the `mc:Fallback`'s (section 8), so an id there is never read. One generator and one `taken` set serve the walk. It returns the ids it gave.
 
 ### 3.2 The story decides, not the `Body`
 
@@ -80,7 +80,9 @@ Ids go on at creation, not on save, as core-ts's do: a save reports and doesn't 
 
 The walker keeps an id that's free, and replaces one the part already holds. So `insert_copy_after` and a fragment copied through `get_xml` take fresh ids, and a fragment's own unique ids stay. This goes beyond core-ts, which fills only what's missing.
 
-**A repeat Word writes itself isn't a collision.** Word's own save gives a `mc:Choice`'s text box and its `mc:Fallback`'s copy the same ids (9 in `document.xml` of `extraction-probe.word-resave.docx`, and 1 in a header), so the walker treats the branches of one `mc:AlternateContent` as one, and a fragment holding such a pair keeps it. Found after this section was first written, building the mode round.
+**A repeat Word writes itself isn't a collision.** Word's own save gives a `mc:Choice`'s text box and its `mc:Fallback`'s copy the same ids (9 in `document.xml` of `extraction-probe.word-resave.docx`, and 1 in a header). The walker doesn't enter a `mc:Fallback` (3.1), so it never meets the repeat, and a fragment holding such a pair keeps it. Found after this section was first written, building the mode round.
+
+**Word does the same itself.** Given two paragraphs with one id, it kept the first and gave the later one a new id, with no prompt (section 8). Here the copy takes the new id wherever it lands, even before its original, since that's what keeps an address a caller already holds.
 
 The reason doesn't wait on Word: two paragraphs answering one `paragraph_at(para_id=...)` is this package's own bug, whatever Word does with the file. `taken` isn't reduced on a delete, so an id deleted and re-inserted through `get_xml` comes back as a new one. That loses nothing a caller could rely on, since the old paragraph had gone.
 
@@ -113,7 +115,7 @@ It uses the walker, so rows and text boxes get ids too, and after it the rule ho
 - **Every route of section 2,** the 80 and the copies: no paragraph or row without an id in the part it touched, none repeated, and every one of Word's ids still there, on the saved bytes.
 - **A census:** every public `insert_*` and `add_*` on the content classes and the facade is in the route table, or named as adding no block, so that a new route fails until it's listed. The gap came from routes nobody listed.
 - **The story:** a new cell's paragraph; a nested table; a table in a control; a text box in a fragment, in a kept branch.
-- **Ids already there (Q1):** a fragment's unique id kept, a colliding one replaced, a copy's replaced, the original's untouched, a `mc:Choice` and `mc:Fallback` pair left as Word wrote it.
+- **Ids already there (Q1):** a fragment's unique id kept, a colliding one replaced, a copy's replaced wherever it lands, the original's untouched, a `mc:Fallback` not entered, a pair left as Word wrote it.
 - **Other parts (Q2):** a comment's every paragraph; an existing header; a new footer and the glossary as decided.
 - **A document with no ids** gets none from any table route. `create_package` gets them from all.
 - **`ensure_para_ids`** leaves no row or text box without one, and returns them in document order.
@@ -142,7 +144,7 @@ The oracle is the rule of section 1, so the tests hold the count. Only Word can 
 
 | # | Question | Recommendation |
 |---|---|---|
-| Q1 | Does the walker replace an id the part already holds, or only fill what's missing, as core-ts does? | **Replace.** Two paragraphs answering one address is a bug here whatever Word does, and it's a few lines in the walker. Word's reaction to a duplicate can be measured later without changing this. |
+| Q1 | Does the walker replace an id the part already holds, or only fill what's missing, as core-ts does? | **Replace.** Two paragraphs answering one address is a bug here, and Word does the same: measured on one file, it kept the first and gave the later one a new id, with no prompt (section 8). |
 | Q2 | Does a part made in this session (a new footer, the glossary) take ids, or stay as it is, as core-ts's do? | **A new header or footer takes them, the glossary doesn't.** Amended after section 8's run: ids in a new footer did no harm and Word writes them itself, while Word writes none in a glossary and drops one it's given. Whether a footer's ids are *needed* isn't known on a file that renumbers, so section 8's third round would settle that. The recommendation doesn't wait on it. |
 | Q3 | Which release? | **This one.** It's about ¾ day, tables are a common route, and its Word check can share a run with CR-037's. |
 
@@ -200,4 +202,12 @@ Ids of the source's that Word kept, in `document.xml`. Each cell is two saves an
 5. **`q2k` is steady after all.** All five new saves wrote a full new set, and the `check`s kept 0 of 20 at open, at both modes. `q2`'s save with no ids at all is one of seven.
 6. **For Q2 this is less than it looks.** Every "nothing moved" for a part other than `document.xml` comes from a file that keeps its ids anyway, `q2k` aside, where a gap outside `document.xml` reached it.
 
-**A third round, proposed, not built,** on `79c`, which renumbers: a new footer with no ids and with ids, which is Q2's case; a body gap with only a comment added, and with only a header added, which separates point 4; and a duplicate. About 6 inputs and 12 jobs, none needing a mode 12 save. It needs the user's word, and doesn't hold CR-038's design.
+**Batch 2, at mode 15, on the probe** (8 jobs, all silent, on the bridge at `7a46241`; two saves each, agreeing), read by position in `positions.py`:
+- **Two paragraphs with one id:** no prompt. The first kept it, the later one took a new id, different in each save, and nothing else changed.
+- **A `mc:Choice` paragraph with no id:** Word gave it a new id and wrote the same over the `mc:Fallback`'s, so the Fallback's own id went.
+- **A `mc:Fallback` paragraph with no id:** the Choice kept its id and Word wrote it over the gap. All 9 pairs came out equal in all four saves. So Word reads the Choice's id and doesn't read the Fallback's.
+- **A nested row with no id:** filled, nothing else lost.
+
+The probe keeps its ids, so these say what Word does with the id in question, not whether such a gap renumbers a file. That's unmeasured for a Choice, a Fallback and a nested row.
+
+**A third round, proposed, not built,** on `79c`, which renumbers: a new footer with no ids and with ids, which is Q2's case; a body gap with only a comment added, and with only a header added, which separates point 4; and a duplicate, which batch 2 measured only on a file that keeps its ids. About 6 inputs and 12 jobs, none needing a mode 12 save. It needs the user's word, and doesn't hold CR-038's design.
