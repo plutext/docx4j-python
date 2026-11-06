@@ -1,6 +1,6 @@
 # CR-038: A `w14:paraId` on every paragraph and row added (the port of core-ts's CR-002 section 66)
 
-**Status:** Decided 2026-11-06 (the user: "CR-038 as recommended, please implement"): Q1 replace, Q2 a new header or footer takes ids and the glossary doesn't, Q3 this release. Proposed the same day ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. **Phases A and B built the same day (section 9); the Word check is the user's.** Three Word rounds are in section 8, and they settle Q2's case: a new footer with no ids renumbers a whole file, and what protects a file is a comment.
+**Status:** Decided 2026-11-06 (the user: "CR-038 as recommended, please implement"): Q1 replace, Q2 a new header or footer takes ids and the glossary doesn't, Q3 this release. Proposed the same day ("write the CR"), on docx4j-core-ts `1e02687` and the portfolio's DI-026. It gives every paragraph and table row this package adds a `w14:paraId` where the document uses them, since one missing makes Word renumber every id in the file. **Complete: Phases A and B built the same day (section 9), and the Word check passed through the Word bridge (section 9.5).** Three Word rounds are in section 8, and they settle Q2's case: a new footer with no ids renumbers a whole file, and what protects a file is a comment.
 
 **Depends on:** nothing here. The rule is core-ts's Word checks 79 and 80 (`4600413`, `test/check79/`, `test/check80/`).
 
@@ -260,4 +260,21 @@ As section 3, in `model/content/addresses.py`: `identified` (the walk), `assign_
 ### 9.4 Not here
 
 - **A load repair's new paragraph** has no id: CR-037's empty paragraph after a held `w:p`, and CR-030's. A repair isn't a route, and such a file already has a shape Word would read its own way.
+
+### 9.5 The Word check: passed
+
+The user: "schedule with the portfolio agent CR-038's Word check through the bridge". Section 5's check, built over `a2483a7` (`out/cr038-word-check/`): 13 inputs on `79c-save-1.word.docx`, a file with no comments, so one that a missing id renumbers, each a `check` and two saves, 39 jobs, run by the portfolio session on the Word bridge, on Word 16.0.20326.20232. All opened silently. Compared by this session from the raw saves.
+
+| Input | `document.xml` ids Word kept |
+|---|---|
+| `w38-control`: `w38-all` with one new row's id off | **0 of 29**, the footer's too: the control fired |
+| `w38-unchanged` | 18 of 18 |
+| `w38-rows`, `w38-row-before` | 24 of 24, 21 of 21 |
+| `w38-table`, `w38-fragment`, `w38-markdown` | 24 of 24, 22 of 22, 24 of 24 |
+| `w38-copy` | 19 of 19 |
+| `w38-columns`, `w38-section` | 19 of 19, 19 of 19 |
+| `w38-footer`, `w38-header` | 18 of 18, and the new part's 2 of 2 |
+| `w38-all` | 30 of 30, and the footer's 2 of 2 |
+
+The `check` at open and both saves agree in every row. So Word keeps every id in a file this package added to, the new ones included, on the kind of file that renumbers. `w38-footer` is the route that cost all 18 in section 8. Where a table or section ends the body, Word adds a paragraph of its own, with its own id, as check 80 found.
 

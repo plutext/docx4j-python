@@ -782,6 +782,12 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > identical in 47 once `rsid`, `paraId` and `textId` are stripped. CR-037 section 9.4 has the four that differ, harmlessly. `76t68` to
 > `76t70`, from round 11, passed the same way at `553ed05` (section 9.5), so 54 of 54.
 
+> **2026-11-06, CR-038 (13 inputs in `out/cr038-word-check/`, built over `a2483a7`, staged as `bridge/staging/cr038-word-check/`):
+> passed**, through the Word bridge, not by hand (the docx4j-portfolio session's run on Word 16.0.20326.20232, a `check` and two saves
+> each, 39 jobs; the user: "schedule with the portfolio agent CR-038's Word check through the bridge"). Every paragraph and row added now
+> holds a `w14:paraId`, on `79c-save-1.word.docx`, a file with no comments, so one that a missing id renumbers. All opened silently. The
+> control, with one new row's id off, kept 0 of 29. The other twelve kept every id, the new ones included, at open and through both saves.
+
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
 importer, the content API's inserts or the python-docx facade, regenerate the artefacts and
