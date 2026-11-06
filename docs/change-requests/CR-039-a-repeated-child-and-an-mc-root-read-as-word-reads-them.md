@@ -228,3 +228,20 @@ Each phase stands alone, and any of them can be left out.
 - **Q6:** `w:txbxContent` comes in reverse order with three and four copies (`rt-12`, `rt-13`), which meets one of its two conditions. A second shape is still missing.
 - **The codes:** `part.unexpected_root` is decided here (the user, 2026-11-07: "makes sense"). `part.read_as_word` is a proposal, and `part.root_refused` is the validator's.
 - **CR-033:** the save after `.contents` of a root that yields nothing still writes an empty `w:document`.
+
+### 8.5 docx4j's `madeup-root` round (2026-11-07, not ruled)
+
+docx4j's round tested how far Word reads an unknown root: 20 files, each run twice, in the share's `bridge/portfolio/` as `mr-*`, with the table in its CR-079 section 1.1. Compared here from the raw saves at `af1d577`, Phase B agrees with Word on 13 in words or refusal, and section 3.2's rules are too wide or too narrow on the rest.
+
+| File | Root | Word | Phase B |
+|---|---|---|---|
+| `mr-14` | `w:madeUp` holding a bare `w:r` | Refused | Empty, under `part.read_as_word`, which is false |
+| `mr-15` | `w:madeUp` holding a `w:body` | The words, and that body's section | **Empty**, under `part.read_as_word`, which is false: the wrap leaves a `w:body` in a `w:body` |
+| `mr-11` | `w:madeUp` with a `w:sectPr` directly in it | The words, the `w:sectPr` not read | The words, and it reads that `w:sectPr` |
+| `mr-20`, `mr-21` | `z:madeUp`, `madeUp`, each holding a `w:p` | Refused | Empty, `part.unexpected_root` |
+| `mr-31` | `w:tc` | Refused | Empty, `part.unexpected_root` |
+| `mr-30`, `mr-32` | `w:sdtContent`, `w:p` | The words | **Empty**, `part.unexpected_root` |
+
+Two `w:p`, a `w:tbl`, a block `w:sdt`, a further unknown element, paragraph properties and a style all read as Word does (`mr-10`, `mr-12`, `mr-13`, `mr-17`, `mr-18`, `mr-50`). So do an empty `w:madeUp` (`mr-16`), `z:madeUp` with `z` in `mc:Ignorable` (`mr-22`), and a branch's `w:madeUp` (`mr-40`).
+
+Each rests on one file. WD 0.97's REQ-318 to REQ-320 don't have these yet: docx4j has proposed wording, and nothing is ruled, so the code stays as built. `mr-15` and section 8.4's `w:body` in a `w:body` are one fix.
