@@ -24,9 +24,11 @@ The rules, each decided on the tree as read and then applied:
    stays in it, so the fork drops and reports that, as for a property (``76t5``);
 4. a ``w:p`` such an element holds, where the element comes last in a ``w:p`` and a
    run comes before it, ends the host: its runs are the host's, and the host takes
-   its properties. A further ``w:p`` the element holds is a paragraph of its own, and
-   an empty paragraph follows (REQ-316; ``76t43``, ``76t56``, ``76t58``). Word refuses
-   every other such shape, so those stay the second parse's to skip and list.
+   its properties if it has any, else keeps its own. A further ``w:p`` the element
+   holds is a paragraph of its own, and an empty paragraph follows, with the host's
+   properties (REQ-316; ``76t43``, ``76t56``, ``76t58``, ``76t68`` to ``76t70``). Word
+   refuses every other such shape in a ``w:p``, so those stay the second parse's to
+   skip and list.
 
 Everything else stays as the parse leaves it: a property in ``w:pPr`` or ``w:rPr``
 and anything in a ``w:t``, measured; a run in a ``w:rPr``, ``w:trPr``, ``w:tcPr``,
@@ -58,6 +60,7 @@ This module imports no model class (``tests/openpackaging/test_threads_and_impor
 
 from __future__ import annotations
 
+import copy
 import re
 from collections.abc import Iterable
 from typing import Any
@@ -299,25 +302,32 @@ def _can_end(element: etree._Element, host: etree._Element) -> bool:
 
 
 def _end_host(held: list[etree._Element], host: etree._Element) -> None:
-    """Rule 4: the first of `held` ends `host`, the rest stand after it, and an empty paragraph comes last.
+    """Rule 4: the first of `held` ends `host`, the rest stand after it, and what's left of `host` comes last.
 
-    A host's own ``w:pPr`` beside a held one isn't measured (``76t59``, refused).
-    Where the held ``w:p`` has none, the host keeps its own, so nothing goes.
+    What's left is an empty paragraph with the host's properties: the host's own
+    where a held ``w:pPr`` replaced them (``76t68``), and a copy where it kept them
+    (``76t69``), less any ``w:sectPr``, which would be a second section break.
     """
     first, *further = held
     properties = first.find(_PPR)
-    if properties is not None:
-        own = host.find(_PPR)
-        if own is not None:
-            host.replace(own, properties)
-        else:
-            host.insert(0, properties)
+    own = host.find(_PPR)
+    left = etree.Element(_P)
+    if own is not None and properties is not None:
+        host.replace(own, properties)
+        left.append(own)
+    elif own is not None:
+        kept = copy.deepcopy(own)
+        for section in kept.findall(_SECT_PR):
+            kept.remove(section)
+        left.append(kept)
+    elif properties is not None:
+        host.insert(0, properties)
     _give_way(first)
     last = host
     for paragraph in further:
         last.addnext(paragraph)
         last = paragraph
-    last.addnext(etree.Element(_P))
+    last.addnext(left)
 
 
 def _to_head(runs: list[etree._Element], paragraph: etree._Element, placed: dict[etree._Element, int]) -> None:

@@ -2,7 +2,7 @@
 
     .venv-fork/bin/python -m pytest tests/openpackaging/test_read_through.py -q
 
-The oracle is core-ts's Word check 76 (``tests/fixtures/check76/``): 68 sources, each
+The oracle is core-ts's Word check 76 (``tests/fixtures/check76/``): 72 sources, each
 beside Word 365's save but for the ten Word refuses. Rounds 6 to 8 are bridge saves,
 so only their stories are compared, and these tests compare no more than that. A save
 changes here, so the save's own Word check is in ``tests/README.md``.
@@ -108,6 +108,9 @@ AS_WORD = {
     "76t43-paragraph-in-madeup-in-p": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
     "76t56-two-held-paragraphs": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
     "76t58-held-paragraph-centred": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
+    "76t68-host-right-held-centred": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
+    "76t69-host-right-held-plain": (DOCUMENT, [(MADE_UP, W + "p"), (W + "p", MADE_UP)]),
+    "76t70-held-paragraph-two-deep": (DOCUMENT, [(MADE_UP, W + "p"), (MADE_UP, MADE_UP), (W + "p", MADE_UP)]),
     "76t61-text-in-madeup-in-body": through("body"),
     "76t62-text-in-madeup-in-tc": through("tc"),
     "76t63-text-in-madeup-in-r": through("r"),
@@ -151,6 +154,8 @@ HELD_REFUSED = {
     "76t57-two-held-paragraphs-then-a-run": 2,
     "76t59-both-aligned-then-a-run": 1,
 }
+#: Beyond the WD: REQ-316 reaches a w:p, and Word reads this in a w:hyperlink too. Pinned as it reads here, the words lost.
+IN_A_HYPERLINK = "76t71-held-paragraph-in-hyperlink"
 RUN_IN_PPR = "76t27-madeup-holding-a-run-in-pPr"
 
 STRUCTURE = {
@@ -296,12 +301,12 @@ A, B, C = R.format("a"), R.format("b"), R.format("c")
 def test_the_files_are_check_76s() -> None:
     listed = dict(reversed(line.split()) for line in (CHECK76 / "SHA1SUMS").read_text().splitlines())
     assert set(listed) == {path.name for path in CHECK76.glob("*.docx")}
-    assert len(listed) == 136
+    assert len(listed) == 144
     for name, digest in listed.items():
         assert hashlib.sha1((CHECK76 / name).read_bytes()).hexdigest() == digest, name
     sources = [path.stem for path in CHECK76.glob("76t*.docx") if not path.stem.endswith("-word365")]
-    assert set(sources) == {*AS_WORD, *UNMOVED, *REFUSED, *HELD_REFUSED}
-    assert len(sources) == 68
+    assert set(sources) == {*AS_WORD, *UNMOVED, *REFUSED, *HELD_REFUSED, IN_A_HYPERLINK}
+    assert len(sources) == 72
     assert not any((CHECK76 / f"{stem}-word365.docx").exists() for stem in (*REFUSED, *HELD_REFUSED))
 
 
@@ -642,24 +647,49 @@ def test_a_further_held_paragraph_stands_alone() -> None:
     assert [item.qname for item in dropped] == [MADE_UP, W + "p"]  # a further one keeps its tags
 
 
-def test_the_host_takes_a_held_paragraphs_properties() -> None:
-    """``76t58``: Word's first paragraph is centred."""
-    stem = "76t58-held-paragraph-centred"
-    jc = lambda pkg: pkg.main_document_part.contents.body.content[1].p_pr.jc.val
-    assert str(jc(load(source(stem)))) == str(jc(word(stem)))
+@pytest.mark.parametrize(
+    ("stem", "joined", "left"),
+    [
+        ("76t58-held-paragraph-centred", "center", None),
+        ("76t68-host-right-held-centred", "center", "right"),
+        ("76t69-host-right-held-plain", "right", "right"),
+    ],
+)
+def test_the_two_paragraphs_take_the_properties_word_gives_them(stem: str, joined: str, left: str | None) -> None:
+    """The mark ending the host carries the held ``w:p``'s, and what's left carries the host's."""
+
+    def jc(paragraph: Any) -> str | None:
+        found = paragraph.p_pr.jc if paragraph.p_pr is not None else None
+        return found.val.value if found is not None else None
+
+    for pkg in (load(source(stem)), word(stem)):
+        first, empty = pkg.main_document_part.contents.body.content[1:3]
+        assert (jc(first), jc(empty)) == (joined, left)
+        assert not text_of(empty)
 
 
 def test_a_held_paragraphs_properties_replace_the_hosts() -> None:
-    """Unmeasured, ``76t59`` being refused: this is the reading of a mark ending the host."""
     root = tree(f'<w:body><w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}<w:madeUp><w:p><w:pPr><w:jc w:val="center"/></w:pPr>{B}</w:p></w:madeUp></w:p></w:body>')
     assert read_through.repair(root) == 1
-    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr>{A}{B}</w:p><w:p/>'
+    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr>{A}{B}</w:p><w:p><w:pPr><w:jc w:val="right"/></w:pPr></w:p>'
 
 
 def test_a_host_keeps_its_properties_where_the_held_paragraph_has_none() -> None:
     root = tree(f'<w:body><w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp></w:p></w:body>')
     assert read_through.repair(root) == 1
-    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}{B}</w:p><w:p/>'
+    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="right"/></w:pPr>{A}{B}</w:p><w:p><w:pPr><w:jc w:val="right"/></w:pPr></w:p>'
+
+
+def test_what_is_left_of_the_host_doesnt_repeat_its_section_break() -> None:
+    root = tree(f'<w:body><w:p><w:pPr><w:jc w:val="right"/><w:sectPr/></w:pPr>{A}<w:madeUp><w:p>{B}</w:p></w:madeUp></w:p></w:body>')
+    assert read_through.repair(root) == 1
+    assert inner(root) == f'<w:p><w:pPr><w:jc w:val="right"/><w:sectPr/></w:pPr>{A}{B}</w:p><w:p><w:pPr><w:jc w:val="right"/></w:pPr></w:p>'
+
+
+def test_a_section_break_moves_with_the_properties_a_held_paragraph_replaces() -> None:
+    root = tree(f'<w:body><w:p><w:pPr><w:sectPr/></w:pPr>{A}<w:madeUp><w:p><w:pPr><w:jc/></w:pPr>{B}</w:p></w:madeUp></w:p></w:body>')
+    assert read_through.repair(root) == 1
+    assert inner(root) == f"<w:p><w:pPr><w:jc/></w:pPr>{A}{B}</w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p>"
 
 
 def test_a_held_paragraph_at_depth_ends_the_host_too() -> None:
@@ -681,6 +711,14 @@ def test_a_shape_word_refuses_is_left_to_the_second_parse(xml: str) -> None:
     root = tree(f"<w:body>{xml}</w:body>")
     read_through.repair(root)
     assert len(root) == 1 and root[0].find(W + "p") is not None  # the host stands alone, the w:p still in it
+
+
+def test_a_held_paragraph_in_a_hyperlink_is_beyond_the_wd_and_reads_as_a_gap() -> None:
+    """``76t71``: Word keeps the words, and makes the link a complex field across two paragraphs. REQ-316 stops at a ``w:p``."""
+    pkg = load(source(IN_A_HYPERLINK))
+    assert not any("HIDDEN WORDS" in token for token in tokens(pkg)["body"][2:])
+    assert any("HIDDEN WORDS" in token for token in tokens(word(IN_A_HYPERLINK))["body"][2:])
+    assert [item.qname for item in pkg.main_document_part.skipped] == [W + "p", MADE_UP]
 
 
 @pytest.mark.parametrize(("stem", "held"), HELD_REFUSED.items())

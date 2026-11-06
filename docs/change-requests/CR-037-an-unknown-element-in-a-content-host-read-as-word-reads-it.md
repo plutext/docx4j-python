@@ -153,7 +153,7 @@ Superseded by section 9.4: these saves predate the amendment, and were never run
 
 ## 9. Amended to WD 0.94 (2026-11-06)
 
-Check 76's rounds 7 to 10 measured what section 3 left unmeasured, and contradicted two choices this CR made beyond the measurements. WD 0.94 (uncommitted) states the result, and this package departed from it four ways. The user: "fix the 4 departures from the WD identified above, now please".
+Check 76's rounds 7 to 11 measured what section 3 left unmeasured, and contradicted two choices this CR made beyond the measurements. WD 0.94 (uncommitted) states the result, and this package departed from it four ways. The user: "fix the 4 departures from the WD identified above, now please".
 
 ### 9.1 What changed
 
@@ -162,7 +162,7 @@ Check 76's rounds 7 to 10 measured what section 3 left unmeasured, and contradic
 | REQ-308, five more hosts | `w:ftr`, `w:endnote`, and the run-level `w:del`, `w:moveFrom`, `w:moveTo` read through, tracking kept (`76t29` to `76t33`) | Left | Twenty hosts. `_ANOTHER_ELEMENT_UNDER` gains the other declarations of the new names, held by the schema-derived test: `w:del` under `w:rPr`, `w:trPr`, `m:ctrlPr`, `m:r`; `w:moveFrom`, `w:moveTo` under `w:rPr`; `w:endnote` under `w:endnotePr` |
 | REQ-311 | A run in the `w:pPr` under a `w:pPrChange`, or in a paragraph's `w:sectPr`, reads at the head; the `w:sectPr` goes (`76t40`, `76t50`) | Left | Three places, not one (`_paragraph_of`). The `w:pPrChange` stays as held, author and date kept, where Word writes "Unknown" (core-ts's D9). The `w:sectPr` goes, section break and all, listed (D10) |
 | REQ-313 | Read through directly in the `mc:Choice` or `mc:Fallback` taken (`76t44`, `76t45`) | The walk stopped there | A branch taken in a `w:p` counts as a host, through `mc_load_mode.branch_taken`, which the `word` load's selection shares. The branch not taken is left |
-| REQ-316 | A `w:p` in the element, the element last in a `w:p` with a run before it: the held `w:p` ends the host, the host taking its properties; a further one a paragraph of its own; an empty `w:p` after (`76t43`, `76t56`, `76t58`). Every other such shape Word refuses (`76t53` to `76t55`, `76t57`, `76t59`) | Skipped by the second parse, the words lost | `_can_end` and `_end_host` (core-ts's D11). The first held `w:p` is listed too. A refused shape stays the second parse's, dropped and listed |
+| REQ-316 | A `w:p` in the element, the element last in a `w:p` with a run before it: the held `w:p` ends the host, the host taking its properties if it has any, else keeping its own; a further one a paragraph of its own; an empty `w:p` after, with the host's properties (`76t43`, `76t56`, `76t58`, `76t68` to `76t70`). Every other such shape in a `w:p` Word refuses (`76t53` to `76t55`, `76t57`, `76t59`) | Skipped by the second parse, the words lost | `_can_end` and `_end_host` (core-ts's D11). The first held `w:p` is listed too. A refused shape stays the second parse's, dropped and listed |
 
 **Text the element holds directly** (REQ-314; round 10, `76t61` to `76t67`) now goes in the pass rather than being left stray for the parse, so it holds nothing up in a `w:pPr`'s element either.
 
@@ -170,18 +170,19 @@ Check 76's rounds 7 to 10 measured what section 3 left unmeasured, and contradic
 
 ### 9.2 What's unsettled
 
-- **A host's own `w:pPr` beside a held one** isn't measured, since `76t59` was refused. Here the held `w:p`'s replace the host's, which is the reading of its mark ending the host, and where the held one has none the host keeps its own, so nothing goes.
+- **`76t71`, the same shape in a `w:hyperlink`:** Word keeps the words, a paragraph follows, and it holds the link as a complex field across the two. REQ-316 stops at a `w:p` and "requires nothing of that", so here the held `w:p` is dropped and listed, the words lost. A test pins it, so that closing the gap shows.
+- **A host's `w:sectPr`** isn't measured beside a held `w:p`. What's left of the host takes it where a held `w:pPr` replaced the host's, and otherwise the host keeps it and the empty paragraph's copy goes without, since a copy would be a second section break.
 - **"A run before it"** rests on one file, `76t55`, as core-ts says. A run in a `w:hyperlink` before the element counts here, which isn't measured.
 - **The new empty paragraph has no `w14:paraId`.** It's a load repair, and CR-038 doesn't reach those. So in a file with no comments, reading such a part and saving it costs every id at Word's next open (CR-038 section 8), on a shape that rare.
 
 ### 9.3 Verified
 
-- **Fixtures:** 39 more sources, each entry the same as `build.mjs`'s output and as the input the bridge ran, and 30 more saves, all 63 here matching core-ts's `manifest.json`. 136 files.
-- **Against Word's saves:** all 51 files read as Word does, in tokens and plain text, the 27 from rounds 7 to 10 included. The seven controls and property files unchanged. The ten files Word refuses read and reported.
-- **Tests:** `test_read_through.py` holds 455, up from 236. Tests that pinned this CR's old choices now hold Word's reading.
-- **Mutants:** 50 of the new code. 47 caught at first. Two survivors showed gaps, a `w:pPrChange` under a style's `w:pPr` and stray text after a moved run, and tests now catch them. The third showed a redundant condition, which went.
-- **The suite:** 11,306 passed, 8 skipped, slow tests included. `generate.sh --check`: two generations byte identical.
-- **`scripts/roundtrip.py`,** by hand on the 68 sources: 54 parts repaired, no failures. Its 13 `element-dropped` are `76t5`, `76t6`, `76t38` and the ten files Word refuses, where something does go, so it exits non-zero, as it should. `76t25` and `76t30` are outside its part table, and `test_a_save_is_its_repaired_source` holds them.
+- **Fixtures:** 43 more sources, each entry the same as `build.mjs`'s output and as the input the bridge ran, and 34 more saves, all 67 here matching core-ts's `manifest.json`. 144 files.
+- **Against Word's saves:** all 54 files read as Word does, in tokens and plain text, the 30 from rounds 7 to 11 included, and the joined and empty paragraphs' properties too. The seven controls and property files unchanged. The ten files Word refuses read and reported.
+- **Tests:** `test_read_through.py` holds 478, up from 236. Tests that pinned this CR's old choices now hold Word's reading.
+- **Mutants:** 55 of the new code. 51 caught at first. Two survivors showed gaps, a `w:pPrChange` under a style's `w:pPr` and stray text after a moved run, and tests now catch them. A third showed a redundant condition, which went. The fourth is equivalent: the last `addnext` moves the paragraph to the same place.
+- **The suite:** 11,329 passed, 8 skipped, slow tests included. `generate.sh --check`: two generations byte identical.
+- **`scripts/roundtrip.py`,** by hand on the 72 sources: 58 parts repaired, no failures. Its 14 `element-dropped` are `76t5`, `76t6`, `76t38`, `76t71` and the ten files Word refuses, where something does go, so it exits non-zero, as it should. `76t25` and `76t30` are outside its part table, and `test_a_save_is_its_repaired_source` holds them.
 
 ### 9.4 The Word check: passed
 
@@ -190,4 +191,8 @@ The user: "do the CR-037 word check via the bridge". This package's save of each
 - **Opening:** all 102 opened silently, with no repair prompt and no job killed. `76t21` to `76t24`, the four holding a `w:customXml`, showed Word's one expected message, "This file has custom XML elements that are no longer supported in Word. Saving the file will remove these elements permanently", as in check 76, which the bridge pressed OK. Word then removed the `w:customXml`, as it does from the source.
 - **Reading:** all 51 of Word's saves of ours read as Word's save of the source, in tokens and plain text, with nothing skipped on reading them back, and the two runs agree on each.
 - **The XML:** the touched part is identical in 47, once `rsid`, `paraId` and `textId` are stripped. The other four differ harmlessly. `76t40` keeps `w:author="Check 76"` and its date where Word on the source writes `Unknown`, which is core-ts's D9. `76t43`, `76t56` and `76t58` hold the same words in one run where Word on the source keeps two.
+
+### 9.5 Round 11
+
+Core-ts's round 11 (`76t68` to `76t71`) came after section 9.4's run. It bore out this CR's two readings of a host's properties, and added one: what's left of the host keeps the host's properties, so the empty paragraph isn't plain. That changed `_end_host`, and the fix reaches only a host with a `w:pPr` of its own. None of section 9.4's 51 files is one, and their saves rebuilt byte for byte the same, so that check stands. `76t68` to `76t70` are new, and go through the bridge on the same terms.
 

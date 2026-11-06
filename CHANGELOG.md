@@ -301,7 +301,7 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   tags go and what it held stays, at any depth, in the `mc:` branch Word takes too, and tracked content stays tracked. A `w:r` it
   holds directly in a paragraph's `w:pPr`, the `w:pPr` under its `w:pPrChange` or its `w:sectPr` goes to the head of the paragraph,
   and such a `w:sectPr` goes, section break and all, as Word reads it. A `w:p` it holds, last in a `w:p` with a run before it, ends
-  that paragraph, as Word reads it. Each element is listed in `part.skipped`, though no words go, so `strict=True` still refuses and
+  that paragraph and an empty one with its properties follows, as Word reads it. Each element is listed in `part.skipped`, though no words go, so `strict=True` still refuses and
   `insert_ooxml` refuses such a fragment unless `lenient`. A part that was read saves in that shape, as Word's own save writes
   it; an unread part stays byte for byte. A property in `w:pPr` or `w:rPr`, anything in a `w:t` and every host not measured
   stay as they were. `canon.compare(..., repaired=True)` and `scripts/roundtrip.py` run the pass, counted as `read-through`.
