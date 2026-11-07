@@ -789,6 +789,7 @@ INSPECT_PROBE = FIXTURES / "text-extraction" / "phase0" / "extraction-probe-insp
 #: well formed on purpose, cut to two thirds.
 PART_NOT_READ = FIXTURES / "part-not-read"
 REPEATED = FIXTURES / "repeated"
+NOTHING_SELECTED = FIXTURES / "nothing-selected"
 
 
 def test_the_corpus_holds_nothing_but_the_probes_values():
@@ -807,6 +808,8 @@ def test_the_corpus_holds_nothing_but_the_probes_values():
             if path.parent == PART_NOT_READ and isinstance(finding, PartNotWellFormed):
                 continue
             if path.parent == REPEATED and isinstance(finding, PartRootRefused):
+                continue
+            if path.parent == NOTHING_SELECTED and path.name.startswith("te-0") and isinstance(finding, CellWithoutEndParagraph):
                 continue
             other.append((path.name, finding))
     assert other == []

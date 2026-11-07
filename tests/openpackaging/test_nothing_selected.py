@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from lxml import etree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_mce_levels as levels  # noqa: E402
@@ -24,14 +25,18 @@ from docx4j_py import load  # noqa: E402
 from docx4j_py.child import understood_namespaces  # noqa: E402
 from docx4j_py.model.text import TextOptions, TextWarning, extract, plain_text  # noqa: E402
 from docx4j_py.openpackaging import LoadOptions, repeated  # noqa: E402
+from docx4j_py.traversal import misplaced  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "nothing-selected"
 ROOTS = Path(__file__).resolve().parents[1] / "fixtures" / "repeated"
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W = f"{{{W_NS}}}"
 MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 DOC = "/word/document.xml"
 
-NAMES = sorted(path.stem for path in FIXTURES.glob("*.docx") if not path.stem.endswith("-word365"))
+NAMES = sorted(
+    path.stem for path in FIXTURES.glob("*.docx") if not path.stem.endswith("-word365") and not path.stem.startswith("te-")
+)
 #: Word showed neither branch of these.
 NOTHING = [
     "c305-10-unknown-urn-block",
@@ -179,6 +184,34 @@ PLACES = {
     "only child of a row": f'<w:tbl>{GRID}<w:tr><mc:AlternateContent><mc:Choice Requires="a"><w:tc><w:p/></w:tc></mc:Choice></mc:AlternateContent></w:tr></w:tbl><w:p/>',
     "only child of a table": f'<w:tbl>{GRID}<mc:AlternateContent><mc:Choice Requires="a"><w:tr><w:tc><w:p/></w:tc></w:tr></mc:Choice></mc:AlternateContent></w:tbl><w:p/>',
 }
+
+
+@pytest.mark.parametrize("name", ["te-01-tc-only", "te-02-tc-only-one-cell", "te-03-tc-no-branch"])
+def test_a_cell_left_with_no_block_keeps_a_paragraph_as_word_s_repair_gives_it(name: str) -> None:
+    """A cell with no block makes Word offer a repair, so word mode writes what the repair writes."""
+    package = load(source(name), options=LoadOptions(mc_load_mode="word"))
+    root = etree.fromstring(part_of(saved(_read(package))))
+
+    def cells(tree: Any) -> list[list[str]]:
+        return [["".join(p.itertext()) for p in cell.findall(f"{W}p")] for cell in tree.iter(f"{W}tc")]
+
+    theirs = etree.fromstring(part_of((FIXTURES / f"{name}-word365.docx").read_bytes()))
+    assert cells(root) == cells(theirs)
+    assert not [finding for finding in misplaced(package) if finding.code == "cell.no_end_paragraph"]
+
+
+def test_a_cell_keeps_only_the_paragraph_it_needs() -> None:
+    held = f"<w:tbl>{GRID}<w:tr><w:tc>{ELEMENT}{ELEMENT}<w:p/></w:tc></w:tr></w:tbl><w:p/>"
+    package = load(with_part(document(held)), options=LoadOptions(mc_load_mode="word"))
+    root = etree.fromstring(part_of(saved(_read(package))))
+    assert len(next(root.iter(f"{W}tc")).findall(f"{W}p")) == 1
+
+
+def test_a_cell_emptied_twice_gets_one_paragraph() -> None:
+    held = f"<w:tbl>{GRID}<w:tr><w:tc>{ELEMENT}{ELEMENT}</w:tc></w:tr></w:tbl><w:p/>"
+    package = load(with_part(document(held)), options=LoadOptions(mc_load_mode="word"))
+    root = etree.fromstring(part_of(saved(_read(package))))
+    assert len(next(root.iter(f"{W}tc")).findall(f"{W}p")) == 1
 
 
 @pytest.mark.parametrize("place", PLACES)

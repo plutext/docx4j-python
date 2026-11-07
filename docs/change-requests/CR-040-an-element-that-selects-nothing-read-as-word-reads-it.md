@@ -116,7 +116,13 @@ A goes first, and B never ahead of it. A is right by Word on its own.
 
 docx4j's session raised this, and it was a bug here. A word-mode removal at the end of a container, or of all it held, left no item for the walk to meet, so `mce.nothing_selected` didn't fire, though section 3.3 had it the same in both modes. Two removals at one index also overwrote each other in `_resolved_lists`. `Extractor._taken_out_past_the_end` and a list per index fix both, and the warning now carries the address the element has under `preserve`. The Word check isn't touched: this is the text result alone.
 
-**Open:** a `w:tc` whose only content was such an element is left with no block by `word` mode, and a save writes it so. What Word does with that isn't measured, for any engine. An element with no branch at all has done this since CR-012.
+**What a removal empties (measured 2026-11-07, `te-*`, the user: "please measure a w:tc left with no block"):**
+
+| Left empty | Word on the source | Word on this package's `word`-mode save | Now |
+|---|---|---|---|
+| A `w:tc`, with or without a cell beside it, and with no branch at all (`te-01` to `te-03`) | Offers a repair, and the cell holds an empty paragraph | The same | **Fixed:** `_keep_a_paragraph` writes that paragraph, so the save has what the repair gives. Its Word check isn't run |
+| A `w:tr` (`te-04`) | Refused | Refused | Left as it is: the source was already a file Word refuses |
+| A `w:tbl` (`te-05`) | Silent, the table gone | Silent, the table gone | Left as it is |
 
 ### 8.3 Verified
 

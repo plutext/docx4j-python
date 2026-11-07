@@ -97,6 +97,9 @@ _BLOCK = frozenset(
     )
 )
 _TBL = f"{{{_W}}}tbl"
+_TC = f"{{{_W}}}tc"
+_TC_PR = f"{{{_W}}}tcPr"
+_P = f"{{{_W}}}p"
 _TR = f"{{{_W}}}tr"
 _SDT = f"{{{_W}}}sdt"
 _SDT_CONTENT = f"{{{_W}}}sdtContent"
@@ -258,6 +261,7 @@ def _splice(root: etree._Element) -> tuple[list[_Taken], list[str]]:
                 _Taken(etree.tostring(ac), None, name, level, address, index, 0)
             )
             _remove(ac)
+            _keep_a_paragraph(container)
             continue
         branch = selected if selected is not None else fallback
         position = choices.index(selected) if selected is not None else len(choices)
@@ -269,6 +273,15 @@ def _splice(root: etree._Element) -> tuple[list[_Taken], list[str]]:
                 if prefix not in prefixes:
                     prefixes.append(prefix)
     return taken, prefixes
+
+
+def _keep_a_paragraph(container: etree._Element) -> None:
+    """An empty paragraph in a ``w:tc`` the removal left with no block, as Word's repair gives it (``te-01`` to ``te-03``).
+
+    A cell with no block makes Word offer a repair, so a save would prompt where this mode exists to write Word's own.
+    """
+    if container.tag == _TC and all(child.tag == _TC_PR for child in container.iterchildren(etree.Element)):
+        etree.SubElement(container, _P)
 
 
 def _attached(ac: etree._Element, root: etree._Element) -> bool:

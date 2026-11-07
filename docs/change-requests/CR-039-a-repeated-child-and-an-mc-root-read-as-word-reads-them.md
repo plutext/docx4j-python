@@ -281,3 +281,25 @@ Through the Word bridge on 16.0.20326.20232, built over `f7c5652`, `bridge/stagi
 - **All 46 match Word's own reading of the source,** compared from the raw saves: this package's save, opened by Word, gives what Word gave from the original file. The 4 edited files hold the new paragraph once, and are otherwise the same.
 
 So a save of each shape is an ordinary document Word reads as it read the source. The roots Word refuses aren't in the set, since a save writes their bytes as read.
+
+### 9.5 The `sectpr-merge` round: Word's real rule (2026-11-07, not built)
+
+The user: "order a Word round to identify the real merge rule". 40 files, each run twice, all silent, the runs agreeing, in the share's `bridge/portfolio/` as `sm-*`, built by `out/sectpr-merge/build.py` and read from the raw saves by `read.py` (git-ignored).
+
+**The rule:** Word applies each copy of a repeated element in order to one object. What a copy states wins, and what it doesn't state stays.
+
+| Shape | Word | Files |
+|---|---|---|
+| An attribute stated on an earlier copy only | Stays: `w:orient`, `w:code`, `w:gutter`, `w:h`, `w:w`, and `w:pgMar`'s others | `sm-01`, `03`, `04`, `05`, `06`, `10`, `11` |
+| An attribute stated again | The later wins, `w:orient="portrait"` over landscape, so it's a merge and landscape isn't sticky | `sm-07`, `sm-02`, `sm-21` |
+| A child stated on an earlier copy only | Stays: `w:cols`, `w:titlePg`, `w:pgBorders`, `w:lnNumType`, `w:pgNumType`, `w:vAlign`, `w:type`, `w:docGrid`, `w:bidi`, `w:pgSz`, `w:pgMar` | `sm-20` to `sm-32` |
+| Joined bodies, a branch's documents, two `w:sectPr` in a `w:pPr` | The same | `sm-50` to `sm-53` |
+| `w:tblPr` | The same for children: `w:jc` stays | `sm-60` |
+| `w:ind`, `w:spacing`, `w:rFonts` given twice, in one or two holders | The same: their attributes merge | `sm-70` to `sm-74` |
+| `w:vanish` | The last element decides, as `w:b`: an element with no `w:val` states on | `sm-80`, `sm-81` |
+
+**Two exceptions:**
+- **`w:headerReference`:** the first copy's stands. A reference on a later copy is ignored, whether or not an earlier one has one (`sm-41`, `sm-42`), so the header part goes.
+- **`w:tblW` (`sm-61`):** `w:w="4000" w:type="dxa"` then `w:type="auto"` saved as `w:w="0" w:type="dxa"` with a `w:tblInd` of 10. That fits neither reading, and it's one file.
+
+**Here today:** a repeated `w:sectPr` and `w:tblPr` keep the last whole, a merge replaces a child whole where it should merge attributes, and `w:ind`, `w:spacing`, `w:rFonts` and `w:vanish` in one holder keep the first. So section 3.3's rows are too narrow, and REQ-322 with them. `rc-*` and `rt-*` couldn't show this. Nothing is built.

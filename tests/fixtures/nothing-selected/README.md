@@ -9,6 +9,7 @@ CR-040's oracle (`tests/openpackaging/test_nothing_selected.py`).
 | `rw-25-*` | A `Choice` in a namespace Word doesn't know, with no `Fallback`, in a body |
 | `c305-*` | The `req305` check: three namespaces Word doesn't know, and namespaces it does, at block and run level |
 | `uc-*` | The `understood-choice` round: namespaces the old list lacked |
+| `te-01` to `te-05` | A cell, row or table holding only such an element. Word repairs the first three, refuses `te-04`, and drops the table of `te-05` |
 | `*-word365.docx`, `*-word365.txt` | Word's save and text save of each |
 
 `SHA1SUMS` holds every file here.
