@@ -365,4 +365,12 @@ The user: "Go to the five fixes". WD 0.101 (portfolio `7150868`) widened REQ-317
 - **`c79-22`:** two `w:document`, the first's `mc:Ignorable` naming what the second holds. Word refuses it, and here it's read.
 - **`c79-33`:** a second `w:txbxContent` in `wps:txbx`. Word keeps the second, and here the first stands and the second is listed (Q6). Word's text save leaves text boxes out, so that's from the portfolio's reading of the save.
 
-**Verified.** `tests/openpackaging/test_repeated.py` holds each of these to Word's save or text save. `c79-32`'s save differs in form: Word writes the row's two cells bare, and here they stay in the control, the text the same. Full suite 12,401 passed and 8 skipped, `scripts/roundtrip.py` clean at 50 of 50, `codegen/generate.sh --check` byte identical, acceptance from `02506c0` 0 of 246 entries different, and the corpus census of 422 documents unchanged in every reading, none refused. These saves aren't Word-checked yet.
+**Verified.** `tests/openpackaging/test_repeated.py` holds each of these to Word's save or text save. `c79-32`'s save differs in form: Word writes the row's two cells bare, and here they stay in the control, the text the same. Full suite 12,401 passed and 8 skipped, `scripts/roundtrip.py` clean at 50 of 50, `codegen/generate.sh --check` byte identical, acceptance from `02506c0` 0 of 246 entries different, and the corpus census of 422 documents unchanged in every reading, none refused. Section 9.9 is their Word check.
+
+### 9.9 The Word check of WD 0.101's fixes (2026-11-07)
+
+The user: "Run the follow-up Word check". Through the Word bridge, `bridge/staging/wd101-word-check/`, built over `6ed4b9a` by `out/wd101-word-check/build.py` and read from the raw saves by `compare.py` (git-ignored). 19 inputs, each run twice, 38 jobs.
+
+**The 15 `c79-*` saves passed.** Every part was read for real and marshalled, so each `mc` root was saved as its branch. All 30 runs opened silently, and each read as Word read the source: body, headers, footers, notes, comments, styles, settings, `w:numPr` and the text save. The one mechanical difference is `c79-41`'s `w:abstractNum` order, which Word writes either way, `w:numId` 2 reaching `TWO%1` in both.
+
+**The 4 `External` inputs are CR-032's**, section 11.4: all 8 runs refused.

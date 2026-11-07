@@ -811,6 +811,9 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > `85d345e`; the user: "Run the Word check"). 96 runs silent, and the other 10 each as Word treats its own source: a row left with no cell is refused either way, and four saves from before the cell fix
 > hold the bad shape already. All 40 `sm-*` saves read as Word read the source, words and text saves included, `w:tblLook`'s session default aside. A word-mode save of a cell left with no block went
 > from repaired to silent.
+>
+> **2026-11-07, WD 0.101's fixes: the 15 `c79-*` saves passed** (CR-039 section 9.9; Word 16.0.20326.20232, through the bridge, built over `6ed4b9a`; the user: "Run the follow-up Word check"). All 30 runs silent, each read as
+> Word read the source, with every part marshalled. The 4 `External` inputs, 8 runs, are refused by Word, source and save alike: not a defect of the save, and open (CR-032 section 11.4).
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown

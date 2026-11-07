@@ -464,3 +464,9 @@ Before this, `load_package` took the first relationship and said nothing, so it 
 ### 11.3 The oracle
 
 The tests build their zips (`tests/openpackaging/test_multiple_main_parts.py`). Word's saves of the `pw-two-main-rels-*` round aren't an oracle: in those runs Word read the first relationship, and the WD's `open-order` round shows why, its choice alternating with each repaired open in one Word session, the first open of a session reading the last. A refusal writes nothing, and the switch's save is an ordinary package. Word opened that save silently, both runs, and an orphan's save with its Override too (CR-039 section 9.7).
+
+### 11.4 An `External` relationship in Word (2026-11-07, open)
+
+`wd101-word-check` measured what section 11.2 assumed: a package holding an `External` `officeDocument` relationship beside its real one is **refused by Word**, whichever comes first. Repair is offered, accepted, and Word then errors, on the source and on this package's save, all 8 runs, in about 5 seconds, with no sign of a fetch.
+
+So section 11.2's reading, which docx4j and core-ts share, reads a package Word doesn't open, and a save keeps the relationship, so Word refuses the save too. `d734634`'s default refusal was nearer Word than the fix that undid it, though its switch was broken and it named the URL as a part. This waits on the user's ruling and the WD.
