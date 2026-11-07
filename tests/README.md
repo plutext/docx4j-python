@@ -819,6 +819,10 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > **2026-11-08, `repair: all`'s saves of an `External` relationship beside an internal one: passed** (CR-032 section 11.5; Word 16.0.20326.20232, through the bridge, bridge `4dcb436`, 3 inputs
 > run twice, 6 jobs and the control, built over `e05291b`; the user: "stage them for the bridge"). All 8 runs silent. The `x-ext-*` sources, first and last, saved untouched under `all`, read `DOCUMENT`,
 > and two internal ones beside it read `OTHER`, the last, both in Word's text save and in its own save, which holds one `officeDocument` relationship and no `External` one.
+>
+> **2026-11-08, WD 0.103's new saves: passed** (CR-039 section 9.10, CR-040 section 9; Word 16.0.20326.20232, through the bridge, bridge `4dcb436`, 12 saves run twice, 24 jobs and the
+> control, built over `5ca5371`; the user: "stage the Word round"). All 26 runs silent. `rq-10`'s default and word-mode saves read `CHOICE WORDS`, `rq-30`'s `BRANCH CONTROL WORDS`, and the
+> nine `ui-*` saves with the undeclared prefix dropped read as the control, header, footnote and styles included; no save, python's or Word's, lists an undeclared prefix.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
