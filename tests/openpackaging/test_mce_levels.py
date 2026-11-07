@@ -7,8 +7,8 @@ Word 365's saves of them), copied byte for byte into ``tests/fixtures/mc-fun/``
 (``tests/README.md`` has the provenance). Most carry ten Choices, newest first
 (``w16sdtfl`` to ``w14``), and a Fallback; Word 365 reads the first it
 understands. The built cases are docx4j's ``McLoadModeLoadTest``'s: an element
-of three branches (a Choice requiring ``wpi``, which docx4j's list does not
-understand, one requiring ``w14``, which it does, and a Fallback) in each
+of three branches (a Choice requiring ``w98``, which nothing understands, one
+requiring ``w14``, which docx4j's list does, and a Fallback) in each
 container the schema admits it in since the refresh.
 
 What is held (CR-012 section 5, Phase A):
@@ -104,7 +104,7 @@ NS = (
     f' xmlns:mc="{_MC}"'
     ' xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"'
     ' xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"'
-    ' xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"'
+    ' xmlns:w98="urn:example:also-not-understood"'
     ' xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"'
     ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'
     ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
@@ -218,11 +218,11 @@ def tbl(rows: str) -> str:
 
 
 def ac(kind: str, tag: str) -> str:
-    """docx4j's three-branch element: a ``wpi`` Choice (not understood), a ``w14`` Choice (understood), a Fallback."""
+    """docx4j's three-branch element: a ``w98`` Choice (not understood), a ``w14`` Choice (understood), a Fallback."""
     block = {"row": tr, "cell": tc}.get(kind, p)
     return (
         "<mc:AlternateContent>"
-        f'<mc:Choice Requires="wpi">{block(tag + "_WPI")}</mc:Choice>'
+        f'<mc:Choice Requires="w98">{block(tag + "_W98")}</mc:Choice>'
         f'<mc:Choice Requires="w14">{block(tag + "_W14")}</mc:Choice>'
         f"<mc:Fallback>{block(tag + '_FB')}</mc:Fallback>"
         "</mc:AlternateContent>"
@@ -731,21 +731,27 @@ def test_word_mode_leaves_run_and_paragraph_level_whole():
     assert pkg.main_document_part.resolved_alternate_content == []
 
 
-def test_req_305_an_element_with_no_understood_choice_and_no_fallback_stays_whole():
-    """REQ-305: kept whole in word mode too; a reader takes its first Choice."""
-    element = f'<mc:AlternateContent><mc:Choice Requires="wpi">{p("WPI")}</mc:Choice><mc:Choice Requires="w99">{p("W99")}</mc:Choice></mc:AlternateContent>'
+def test_req_305_an_element_with_no_understood_choice_and_no_fallback_selects_nothing():
+    """REQ-305: no reader shows it. Word mode takes it out, as Word's save does, and preserve keeps it in the tree."""
+    element = f'<mc:AlternateContent><mc:Choice Requires="w98">{p("W98")}</mc:Choice><mc:Choice Requires="w99">{p("W99")}</mc:Choice></mc:AlternateContent>'
     made = Probe(p("x") + element + p("y"))
     made.parts["word/document.xml"] = made.parts["word/document.xml"].replace(
         "<w:document ", '<w:document xmlns:w99="urn:example:w99" '
     )
-    for mode in MODES:
-        pkg = made.load(mode)
-        content = pkg.main_document_part.contents.body.content
-        assert len(content) == 3 and isinstance(content[1], AlternateContent), mode
-        assert pkg.main_document_part.resolved_alternate_content == []
-        saved = main_xml(pkg.save())
-        assert b'Requires="wpi"' in saved and b'Requires="w99"' in saved
-        assert "WPI" in text(pkg)
+    preserve = made.load("preserve")
+    content = preserve.main_document_part.contents.body.content
+    assert len(content) == 3 and isinstance(content[1], AlternateContent)
+    assert preserve.main_document_part.resolved_alternate_content == []
+    saved = main_xml(preserve.save())
+    assert b'Requires="w98"' in saved and b'Requires="w99"' in saved
+    assert "W98" not in text(preserve)
+    word = made.load("word")
+    assert len(word.main_document_part.contents.body.content) == 2
+    (record,) = word.main_document_part.resolved_alternate_content
+    assert record.branch is None and record.index == 1 and record.promoted == 0
+    saved = main_xml(word.save())
+    assert b"AlternateContent" not in saved
+    assert "W98" not in text(word)
 
 
 def test_an_element_with_no_branch_is_removed_in_word_mode_and_kept_in_preserve():
@@ -794,13 +800,12 @@ def test_nested_elements_resolve_outermost_first():
     )
 
 
-def test_an_element_kept_whole_keeps_the_elements_inside_it_whole():
+def test_an_element_selecting_nothing_takes_the_elements_inside_it_with_it():
     inner = f'<mc:AlternateContent><mc:Choice Requires="w14">{p("IN_W14")}</mc:Choice><mc:Fallback>{p("IN_FB")}</mc:Fallback></mc:AlternateContent>'
-    outer = f'<mc:AlternateContent><mc:Choice Requires="wpi">{p("WPI")}{inner}</mc:Choice></mc:AlternateContent>'
+    outer = f'<mc:AlternateContent><mc:Choice Requires="w98">{p("W98")}{inner}</mc:Choice></mc:AlternateContent>'
     pkg = Probe(outer).load("word")
-    assert isinstance(pkg.main_document_part.contents.body.content[0], AlternateContent)
-    assert pkg.main_document_part.resolved_alternate_content == []
-    assert count(main_xml(pkg.save()), "<mc:AlternateContent") == 2
+    assert not pkg.main_document_part.contents.body.content
+    assert count(main_xml(pkg.save()), "<mc:AlternateContent") == 0
 
 
 def test_the_selected_choices_prefixes_join_mc_ignorable():
@@ -1280,18 +1285,19 @@ def test_preserve_mode_keeps_every_container_and_the_text_model_reads_words_bran
     assert len(element.choice) == 2 and element.fallback is not None
     assert part.resolved_alternate_content == []
     saved = _saved_part(pkg, part).decode()
-    assert 'Requires="wpi"' in saved and 'Requires="w14"' in saved and "<mc:Fallback>" in saved
-    for suffix in ("_WPI", "_W14", "_FB"):
+    assert 'Requires="w98"' in saved and 'Requires="w14"' in saved and "<mc:Fallback>" in saved
+    for suffix in ("_W98", "_W14", "_FB"):
         assert tag + suffix in saved
     root = re.search(r"<w:[A-Za-z]+ [^>]*>", saved).group(0)
-    assert "xmlns:wpi=" in root and "xmlns:w14=" in root, root
+    assert "xmlns:w14=" in root, root
+    assert "xmlns:w98=" in saved  # a prefix the table doesn't know goes on its mc:Choice (docx4j CR-052)
     again = load(pkg.save(), options=LoadOptions(mc_load_mode="preserve"))
     assert isinstance(content_of(again)[1], AlternateContent)
     options = _all_stories()
     shown = plain_text(extract(pkg, options))
     assert shown == plain_text(extract(made().load("word"), options))
     assert f"{tag}_W14" in shown or name == "w:docPartBody", shown
-    assert f"{tag}_FB" not in shown and f"{tag}_WPI" not in shown
+    assert f"{tag}_FB" not in shown and f"{tag}_W98" not in shown
 
 
 def _all_stories() -> Any:

@@ -153,18 +153,15 @@ def test_mce_branch_picks_the_first_understood_choice():
     assert mce_branch(second) is second.fallback
 
 
-def test_a_choice_with_no_fallback_and_nothing_understood_is_read():
-    """WD REQ-305 (CR-011 section 3.2): Choices and no Fallback, none understood, give the first Choice.
-
-    Before CR-011 the resolved view read nothing of such an element.
-    """
+def test_a_choice_with_no_fallback_and_nothing_understood_selects_nothing():
+    """WD REQ-305 (CR-040): Choices and no Fallback, none understood, select nothing, as Word reads them."""
     run = wml(
         "<w:r><w:t>a</w:t><mc:AlternateContent>"
         '<mc:Choice Requires="zz99"><w:t>-x</w:t></mc:Choice>'
         '<mc:Choice Requires="zz98"><w:t>-y</w:t></mc:Choice>'
         "</mc:AlternateContent></w:r>"
     )
-    assert text_of(run, mce="resolve") == "a-x"
+    assert text_of(run, mce="resolve") == "a"
     assert text_of(run, mce="all") == "a-x-y"
     assert text_of(run, mce="none") == "a"
 

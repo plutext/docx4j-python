@@ -46,7 +46,7 @@ def probe():
 
 
 def test_the_understood_list_is_docx4js_verbatim():
-    """The package's copy is the suite's, which is docx4j's at 198d015a3, and the sibling's where it is checked out."""
+    """The package's copy is the suite's, which is docx4j's at 824565363, and the sibling's where it is checked out."""
     import docx4j_py
 
     # the package imported: the checkout's, or the installed wheel's under scripts/release_check.sh
@@ -56,8 +56,20 @@ def test_the_understood_list_is_docx4js_verbatim():
         assert resource.read_bytes() == SIBLING_LIST.read_bytes()
     from docx4j_py.child import understood_namespaces
 
-    assert len(understood_namespaces()) == 118
+    assert len(understood_namespaces()) == 114
     assert "urn:schemas-microsoft-com:vml" in understood_namespaces()
+
+
+def test_the_traversal_list_is_docx4js_verbatim_and_read_by_nothing():
+    """WD REQ-306's other set, kept as the published copy it is (CR-040 Q1)."""
+    import docx4j_py
+
+    resource = Path(docx4j_py.__file__).parent / "resources" / "traversal-namespaces.txt"
+    assert len(resource.read_text().split()) == 118
+    if SIBLING_LIST.is_file():
+        assert resource.read_bytes() == SIBLING_LIST.with_name("traversal-namespaces.txt").read_bytes()
+    readers = Path(docx4j_py.__file__).parent.rglob("*.py")
+    assert not [path for path in readers if '"traversal-namespaces' in path.read_text(encoding="utf-8")]
 
 
 # ---------------------------------------------------------------------------

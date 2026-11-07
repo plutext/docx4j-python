@@ -600,7 +600,11 @@ class TextWarning:
     #: ``duplicate_entries: first`` reads it (REQ-206; CR-032 D8). Once a name, with no address; its selector is the
     #: entry's name as the first entry spells it, its :attr:`detail` the number of entries.
     PACKAGE_DUPLICATE_ENTRY = "package.duplicate_entry"
-    #: A main part whose root isn't one it can read, so it yields no text (REQ-320, proposed; CR-039). Once a part, with
+    #: An ``mc:AlternateContent`` with Choices, none understood, and no Fallback: nothing selected, as Word reads it
+    #: (REQ-305; CR-040). Its selector is the part's name, and :attr:`detail` the namespaces the Choices require, as URIs
+    #: separated by spaces. It has an address, but for one at a main part's root.
+    MCE_NOTHING_SELECTED = "mce.nothing_selected"
+    #: A main part whose root isn't one it can read, so it yields no text (REQ-320; CR-039). Once a part, with
     #: no address; its selector is the part's name, and :attr:`detail` the root's qualified name.
     PART_UNEXPECTED_ROOT = "part.unexpected_root"
 
@@ -617,7 +621,8 @@ class TextWarning:
     #: entry's name as its first entry spells it (``word/document.xml``, ``[Content_Types].xml``).
     part_name: str | None = None
     #: A count, where the kind has one (CR-032 Q7): for ``package.duplicate_entry``, the number of
-    #: entries of the name. REQ-801's later counts go here too. For ``part.unexpected_root``, the root, ``w:hdr``.
+    #: entries of the name. REQ-801's later counts go here too. For ``part.unexpected_root``, the root, ``w:hdr``, and
+    #: for ``mce.nothing_selected`` the namespaces required.
     detail: int | str | None = None
 
     @property

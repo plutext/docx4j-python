@@ -719,14 +719,14 @@ _understood_namespaces: frozenset[str] | None = None
 
 
 def understood_namespaces() -> frozenset[str]:
-    """The namespaces a reader of text understands (WD REQ-306): docx4j's published list.
+    """The understood set (WD REQ-306): what decides every markup compatibility question, as Word was measured.
 
     ``docx4j_py/resources/understood-namespaces.txt``, copied verbatim from
-    docx4j's ``org/docx4j/jaxb/understood-namespaces.txt`` (118 URIs at
-    ``198d015a3``), the set docx4j's ``McSelection.understoodNamespaces``
+    docx4j's ``org/docx4j/jaxb/understood-namespaces.txt`` (114 URIs at
+    ``824565363``), the set docx4j's ``McSelection.understoodNamespaces``
     reads for its TEXT and READ purposes. Wider than
-    :func:`understood_prefixes`: a namespace whose content a reader of text
-    can reach, typed or not (VML's text box, chartex), is understood here.
+    :func:`understood_prefixes`. What a reader can traverse is the other set,
+    ``traversal-namespaces.txt`` beside it, which no selection reads.
     """
     global _understood_namespaces
     if _understood_namespaces is None:
@@ -955,22 +955,17 @@ def mce_branch(node: Any) -> Any | None:
     docx4j's TEXT purpose (``McSelection.selectedBranch(TEXT, ...)``), which
     is also its ``McMode.READ`` since 17.3.4: the **first** ``mc:Choice`` that
     :func:`understands`, by namespace URI over docx4j's published list (WD
-    REQ-302, 303, 304, 306); else the ``mc:Fallback``; else, for an element
-    with Choices and no Fallback, its first Choice (REQ-305: a reading rule).
-    None for an element with no branch at all.
+    REQ-302, 303, 304, 306); else the ``mc:Fallback``. None where neither
+    answers: nothing is selected, as Word reads it (REQ-305, CR-040).
 
     Both shapes are handled: the typed ``docx4j_py.mce.AlternateContent`` the
     parser builds where the schema declares the element, and the ``AnyElement``
     one it builds inside a wildcard.
     """
-    choices = mce_choices(node)
-    for choice in choices:
+    for choice in mce_choices(node):
         if understands(choice):
             return choice
-    fallback = mce_fallback(node)
-    if fallback is not None:
-        return fallback
-    return choices[0] if choices else None
+    return mce_fallback(node)
 
 
 def mce_branch_content(branch: Any) -> list[Any]:
@@ -1011,7 +1006,7 @@ def iter_children(
                 branch --- the first ``mc:Choice`` whose ``Requires``
                 namespaces are all in docx4j's published understood list
                 (matched by URI, CR-011 section 3.3), else ``mc:Fallback``,
-                else the first ``mc:Choice``.
+                else nothing (REQ-305).
             ``"all"``
                 every branch, ``mc:Choice`` and ``mc:Fallback`` nodes included.
                 This is what :func:`link_parents` and the serialiser need: the

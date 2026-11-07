@@ -51,7 +51,7 @@ from lxml import etree
 
 from docx4j_py.el_index import WML_ELEMENTS
 from docx4j_py.openpackaging import breaks
-from docx4j_py.openpackaging.mc_load_mode import branch_taken
+from docx4j_py.openpackaging.mc_load_mode import branch_taken, required_namespaces
 
 __all__ = ["ReadAsWord", "RootRefused", "UnexpectedRoot", "read_root", "repair", "triggers", "with_root"]
 
@@ -111,6 +111,9 @@ class ReadAsWord:
         part_name: the part, ``/word/document.xml``.
         root: the root as written, where it wasn't ``w:document``.
         children: the repeated children read as one.
+        nothing_selected: the namespaces an ``mc:AlternateContent`` root required, as URIs,
+            where it selected nothing (REQ-305), which the text model raises as
+            ``mce.nothing_selected``.
     """
 
     code: ClassVar[str] = "part.read_as_word"
@@ -118,6 +121,7 @@ class ReadAsWord:
     part_name: str
     root: str | None
     children: int
+    nothing_selected: str | None = None
 
     @property
     def message(self) -> str:
@@ -133,6 +137,7 @@ class ReadAsWord:
             "part_name": self.part_name,
             "root": self.root,
             "children": self.children,
+            "nothing_selected": self.nothing_selected,
             "message": self.message,
         }
 
@@ -256,13 +261,17 @@ def _empty_document() -> etree._Element:
     return document
 
 
-def _taken(root: etree._Element, dropped: list[SkippedNode]) -> tuple[etree._Element, int]:
-    """What `root` comes to once an ``mc:AlternateContent`` is read: the element, and how many read as one."""
+def _taken(root: etree._Element, dropped: list[SkippedNode], required: list[str]) -> tuple[etree._Element, int]:
+    """What `root` comes to once an ``mc:AlternateContent`` is read: the element, and how many read as one.
+
+    `required` gets the namespaces of one that selects nothing (REQ-305).
+    """
     if root.tag != _ALTERNATE_CONTENT:
         return root, 0
-    # nothing selected is Word's reading at the root, not REQ-305's first mc:Choice (the user, 2026-11-07)
     branch = branch_taken(root)
     dropped.extend(breaks.skipped_node(child) for child in _elements(root) if child is not branch)
+    if branch is None and _elements(root):
+        required.append(required_namespaces(root))
     held = [] if branch is None else _elements(branch)
     if not held:
         return _empty_document(), 0
@@ -270,7 +279,7 @@ def _taken(root: etree._Element, dropped: list[SkippedNode]) -> tuple[etree._Ele
     if documents:
         return _join_documents(documents, dropped)
     dropped.extend(breaks.skipped_node(child) for child in held[1:])
-    return _taken(held[0], dropped)
+    return _taken(held[0], dropped, required)
 
 
 def _wrapped(element: etree._Element) -> etree._Element:
@@ -334,7 +343,8 @@ def read_root(data: bytes, part_name: str) -> tuple[bytes, Any, list[SkippedNode
         return data, None, []
     dropped: list[SkippedNode] = []
     written = _name(root.tag)
-    element, read_as_one = _taken(root, dropped)
+    required: list[str] = []
+    element, read_as_one = _taken(root, dropped, required)
     if element.tag != _DOCUMENT:
         if _refused(element):
             raise RootRefused(f"its root is {_name(element.tag)}, which Word refuses to open")
@@ -344,7 +354,7 @@ def read_root(data: bytes, part_name: str) -> tuple[bytes, Any, list[SkippedNode
             empty = etree.Element(_DOCUMENT, nsmap={"w": _W})
             return breaks.write(empty), UnexpectedRoot(part_name, _name(element.tag)), dropped
         element, read_as_one = document, read_as_one + more
-    return _written(element), ReadAsWord(part_name, written, read_as_one), dropped
+    return _written(element), ReadAsWord(part_name, written, read_as_one, required[0] if required else None), dropped
 
 
 def _unknown(tag: Any) -> bool:

@@ -16,8 +16,8 @@ text from it::
 * **resolve**: each ``mc:AlternateContent`` is read from the first
   ``mc:Choice`` whose ``Requires`` namespaces are all in docx4j's published
   understood list, matched by URI (REQ-302 to 306), else its ``mc:Fallback``,
-  else its first Choice; ``mce.branches_differ`` where the branches' texts
-  differ (REQ-307).
+  else nothing, with ``mce.nothing_selected`` (REQ-305); ``mce.branches_differ``
+  where the branches' texts differ (REQ-307).
 * **view**: ``accepted`` (the default; ``current`` is a synonym), ``original``
   or ``markup`` (REQ-401). The first two are the text of the document that
   CR-010's ``accept_all`` or ``reject_all`` leaves, worked out without

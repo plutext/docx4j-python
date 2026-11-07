@@ -25,9 +25,9 @@ with such an element is the **mode**:
 In ``word`` mode, as docx4j's splice does:
 
 * the elements are taken **outermost first**; one inside a branch that was
-  discarded, or inside an element kept whole, stays whole in there;
-* an element with no understood Choice and no Fallback is **kept whole**
-  (WD REQ-305), and one with no branch at all is **removed**;
+  discarded stays whole in there;
+* an element with no understood Choice and no Fallback (WD REQ-305), or no
+  branch at all, is **removed**, as Word's save leaves it out;
 * the selected Choice's ``Requires`` prefixes are **added to the root's
   ``mc:Ignorable``** where it does not list them already, as the conventional
   prefix of each namespace (the writer declares it from the source or the
@@ -234,11 +234,10 @@ def _splice(root: etree._Element) -> tuple[list[_Taken], list[str]]:
     understood = understood_namespaces()
     taken: list[_Taken] = []
     prefixes: list[str] = []
-    kept: set[etree._Element] = set()
     # document order is outermost first: a nested element is met after the one holding it
     for ac in list(root.iter(_AC)):
-        if not _attached(ac, root, kept):
-            continue  # in a discarded branch, or in an element kept whole: it stays whole in there
+        if not _attached(ac, root):
+            continue  # in a discarded branch: it stays whole in there
         container = ac.getparent()
         if container is None or container.tag in _MC_WRAPPERS:
             continue  # straight in a branch of an element this splice does not govern
@@ -250,18 +249,15 @@ def _splice(root: etree._Element) -> tuple[list[_Taken], list[str]]:
         name = _prefixed(container.tag)
         address = _address(container)
         index = _content_index(container, ac)
-        if not choices and fallback is None:
-            # no branch at all: nothing shows in any reader, and Word's save leaves it out
-            taken.append(
-                _Taken(etree.tostring(ac), None, name, level, address, index, 0)
-            )
-            _remove(ac)
-            continue
         selected = next(
             (choice for choice in choices if _understood(choice, understood)), None
         )
         if selected is None and fallback is None:
-            kept.add(ac)  # REQ-305: no understood Choice and no Fallback, kept whole
+            # nothing selected (REQ-305), or no branch at all: no reader shows it, and Word's save leaves it out
+            taken.append(
+                _Taken(etree.tostring(ac), None, name, level, address, index, 0)
+            )
+            _remove(ac)
             continue
         branch = selected if selected is not None else fallback
         position = choices.index(selected) if selected is not None else len(choices)
@@ -275,15 +271,11 @@ def _splice(root: etree._Element) -> tuple[list[_Taken], list[str]]:
     return taken, prefixes
 
 
-def _attached(
-    ac: etree._Element, root: etree._Element, kept: set[etree._Element]
-) -> bool:
-    """Whether `ac` is still in the tree under `root`, and not inside an element kept whole."""
+def _attached(ac: etree._Element, root: etree._Element) -> bool:
+    """Whether `ac` is still in the tree under `root`."""
     node = ac.getparent()
     top = ac
     while node is not None:
-        if node in kept:
-            return False
         top = node
         node = node.getparent()
     return top is root
@@ -340,6 +332,17 @@ def _understood(choice: etree._Element, understood: frozenset[str]) -> bool:
         return False
     in_scope = choice.nsmap
     return all(in_scope.get(prefix) in understood for prefix in requires)
+
+
+def required_namespaces(alternate_content: etree._Element) -> str:
+    """The namespaces `alternate_content`'s ``mc:Choice`` children require, as URIs, each once: ``mce.nothing_selected``'s detail."""
+    uris: dict[str, None] = {}
+    for choice in alternate_content.iterchildren(_CHOICE):
+        for prefix in (choice.get("Requires") or "").split():
+            uri = choice.nsmap.get(prefix)
+            if uri is not None:
+                uris[uri] = None
+    return " ".join(uris)
 
 
 def _requires_prefixes(choice: etree._Element) -> list[str]:

@@ -1,0 +1,3 @@
+Case in body
+BEFORE  AFTER
+LAST LINE

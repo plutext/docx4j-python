@@ -86,6 +86,7 @@ from docx4j_py.child import (
     mce_branch_content,
     mce_choices,
     mce_fallback,
+    requires_namespaces,
     requires_of,
     wildcard_child_name,
 )
@@ -728,12 +729,15 @@ class Extractor:
                 self.warn(TextWarning(kind, None, part_name=record.entry, detail=record.count))
 
     def _unexpected_root(self) -> None:
-        """``part.unexpected_root``, where the main part's root left it nothing to read (REQ-320, proposed; CR-039)."""
-        from docx4j_py.openpackaging.repeated import UnexpectedRoot
+        """What the main part's root left to say: ``part.unexpected_root`` (REQ-320) and ``mce.nothing_selected`` (REQ-305)."""
+        from docx4j_py.openpackaging.repeated import ReadAsWord, UnexpectedRoot
 
         for record in getattr(self.trees.package, "warnings", None) or ():
             if isinstance(record, UnexpectedRoot):
                 self.warn(TextWarning(TextWarning.PART_UNEXPECTED_ROOT, None, part_name=record.part_name, detail=record.root))
+            elif isinstance(record, ReadAsWord) and record.nothing_selected is not None:
+                kind = TextWarning.MCE_NOTHING_SELECTED
+                self.warn(TextWarning(kind, None, part_name=record.part_name, detail=record.nothing_selected))
 
     # -- fields: update (REQ-506) --------------------------------------------------------
 
@@ -1008,7 +1012,7 @@ class Extractor:
             if resolved and i in resolved:
                 # a word-mode load took an element out here: its branches compared from the
                 # record, at the address the element has in preserve mode (CR-012 Phase A)
-                self._compare_branches(resolved[i], f"{prefix}/{i}")
+                self._compare_branches(resolved[i], f"{prefix}/{i}", story)
             if isinstance(item, str) or self.removes(item):
                 i += 1
                 continue
@@ -1052,7 +1056,7 @@ class Extractor:
                         del self._table_joins[key]
                         self._paragraph(chain, addresses, story, sink, state)
             elif is_alternate_content(item):
-                self._compare_branches(item, address)
+                self._compare_branches(item, address, story)
                 self.blocks(mce_branch_content(mce_branch(item)), address, story, sink, state)
             elif rtrees.revision_of(item) is not None:
                 self.blocks(rtrees.run_items(item), address, story, sink, self._holder_state(item, state))
@@ -1284,7 +1288,7 @@ class Extractor:
             if resolved and i in resolved:
                 # a word-mode load took a row-level element out here: compared from the record,
                 # at the address the element has in preserve mode (CR-012 Phase A2)
-                self._compare_branches(resolved[i], f"{prefix}/{i}")
+                self._compare_branches(resolved[i], f"{prefix}/{i}", story)
             if isinstance(item, str) or self.removes(item):
                 continue
             address = f"{prefix}/{i}"
@@ -1306,7 +1310,7 @@ class Extractor:
             elif is_alternate_content(item):
                 # a row-level element kept whole (CR-012 Phase A2, docx4j CR-051 phase 2): the
                 # branch Word reads, compared with the others; its rows are addressed under it
-                self._compare_branches(item, address)
+                self._compare_branches(item, address, story)
                 self._rows(mce_branch_content(mce_branch(item)), address, story, table, state)
             else:
                 inner = rtrees.block_items(item)
@@ -1321,7 +1325,7 @@ class Extractor:
         for i, item in enumerate(items):
             if resolved and i in resolved:
                 # a cell-level one taken out by a word-mode load, as in _rows
-                self._compare_branches(resolved[i], f"{prefix}/{i}")
+                self._compare_branches(resolved[i], f"{prefix}/{i}", story)
             if isinstance(item, str) or self.removes(item):
                 continue
             address = f"{prefix}/{i}"
@@ -1348,7 +1352,7 @@ class Extractor:
                 row.cells.append(cell)
             elif is_alternate_content(item):
                 # a cell-level element kept whole: the branch Word reads, as in _rows
-                self._compare_branches(item, address)
+                self._compare_branches(item, address, story)
                 self._cells(mce_branch_content(mce_branch(item)), address, story, row, state)
             else:
                 inner = rtrees.block_items(item)
@@ -1369,7 +1373,7 @@ class Extractor:
                 typed = self._typed_run_level(item)
                 if typed is None:
                     if is_alternate_content(item):
-                        self._compare_branches(item, para.block.address)
+                        self._compare_branches(item, para.block.address, para.story)
                         self.runs(mce_branch_content(mce_branch(item)), para, state)
                     continue
                 item = typed
@@ -1379,7 +1383,7 @@ class Extractor:
             elif isinstance(item, r_class):
                 self._run(item, para, state)
             elif is_alternate_content(item):
-                self._compare_branches(item, para.block.address)
+                self._compare_branches(item, para.block.address, para.story)
                 self.runs(mce_branch_content(mce_branch(item)), para, state)
             elif rtrees.is_holder(item) and self.unwraps(item):
                 self.runs(rtrees.children(item), para, state)
@@ -1586,7 +1590,7 @@ class Extractor:
             para.block.runs.append(run)
             return
         if name == "AlternateContent":
-            self._compare_branches(item, para.block.address)
+            self._compare_branches(item, para.block.address, para.story)
             for entry in mce_branch_content(mce_branch(item)):
                 if not isinstance(entry, str):
                     self._run_item(entry, r, hidden, para, state)
@@ -1803,7 +1807,7 @@ class Extractor:
             if isinstance(node, str) or node is None:
                 return
             if is_alternate_content(node):
-                self._compare_branches(node, para.block.address)
+                self._compare_branches(node, para.block.address, para.story)
                 branch = mce_branch(node)
                 if branch is None:
                     return
@@ -2137,7 +2141,15 @@ class Extractor:
         return found.get(id(items))
 
 
-    def _compare_branches(self, ac: Any, address: str) -> None:
+    def _nothing_selected(self, ac: Any, address: str, story: _Story) -> None:
+        """``mce.nothing_selected`` (REQ-305): Choices, none understood, and no Fallback. An element with no branch says nothing."""
+        choices = mce_choices(ac)
+        if choices:
+            uris = dict.fromkeys(uri for choice in choices for uri in requires_namespaces(choice) if uri is not None)
+            kind = TextWarning.MCE_NOTHING_SELECTED
+            self.warn(TextWarning(kind, address, part_name=_part_name(story.part), detail=" ".join(uris)))
+
+    def _compare_branches(self, ac: Any, address: str, story: _Story) -> None:
         """``mce.branches_differ`` (REQ-307): the selected branch and another both hold text, and they differ.
 
         A branch's text is every ``w:t``, ``m:t`` and ``a:t`` in it, in document
@@ -2148,6 +2160,7 @@ class Extractor:
             return
         selected = mce_branch(ac)
         if selected is None:
+            self._nothing_selected(ac, address, story)
             return
         mine = _branch_text(mce_branch_content(selected))
         if not mine:

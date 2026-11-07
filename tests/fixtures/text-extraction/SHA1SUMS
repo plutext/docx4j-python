@@ -61,7 +61,7 @@ c1e5838844dc5d7161ad0f0caf99f1c628fa5ad1  phase0/case-statements.tsv
 04975fdb6ce3b7da738200c18ab4864c5c8da235  phase0/expected-findings.tsv
 9395e1b890cc71caa2b787aede651ddb58e3db18  phase0/expected-inspection-html.tsv
 d1594bf58decbf51b3924d581975a2bcaaa8df2c  phase0/expected-inspection-status.tsv
-07cdd58f0bdecd55e8807956c60413199565502e  phase0/expected-inspection.tsv
+0b0bdd6362067e30fd59565be54d41d883e9a60e  phase0/expected-inspection.tsv
 65c4762f55a4f4ff5fcf9e7a9bc2465ef11e2e3c  phase0/expected-order.tsv
 2e220f4049aa46b96781a8684944a9254558eab2  phase0/expected-tokens.tsv
 05a321b6f28028943e5b89e9f8837d0830b41867  phase0/extraction-probe.accepted.txt

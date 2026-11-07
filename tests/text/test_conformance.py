@@ -317,9 +317,29 @@ def test_the_copy_is_every_file_sha1sums_lists():
     assert not (PHASE0 / "expected-inspection-html-status.tsv").exists()  # 4a37702eb deleted it
 
 
+#: Later than the tag, in rows only: the two of ``extraction-probe-inspect.docx`` the understood set moves (CR-040).
+AMENDED = "phase0/expected-inspection.tsv"
+AMENDED_AT = "824565363"
+
+
+@pytest.mark.skipif(not (DOCX4J / ".git").exists(), reason="needs the sibling checkout ../docx4j")
+def test_the_amended_file_differs_from_the_tag_in_the_rows_docx4j_changed():
+    def rows(commit: str) -> list[str]:
+        shown = ["git", "-C", str(DOCX4J), "show", f"{commit}:{SOURCE}/{AMENDED}"]
+        return subprocess.run(shown, capture_output=True, check=True).stdout.decode().splitlines()
+
+    ours = (SUITE / AMENDED).read_text(encoding="utf-8").splitlines()
+    at_tag, later = rows(TAG), rows(AMENDED_AT)
+    moved = [row for row in ours if row not in at_tag]
+    assert len(moved) == 2 and all(row in later for row in moved)
+    assert len([row for row in at_tag if row not in ours]) == 2
+
+
 @pytest.mark.skipif(not (DOCX4J / ".git").exists(), reason="needs the sibling checkout ../docx4j")
 def test_each_file_is_docx4js_at_the_tag():
     for name, digest in _sums().items():
+        if name == AMENDED:
+            continue
         blob = subprocess.run(
             ["git", "-C", str(DOCX4J), "show", f"{TAG}:{SOURCE}/{name}"], capture_output=True, check=True
         ).stdout

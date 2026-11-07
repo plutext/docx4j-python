@@ -2,7 +2,8 @@
 
 The suite is copied from docx4j at its release tag ``docx4j-17.3.5`` into
 ``tests/fixtures/text-extraction/`` (``tests/README.md`` has the provenance,
-``SHA1SUMS`` the files; CR-011 copied it at ``198d015a3``, CR-027 Phase A again);
+``SHA1SUMS`` the files; CR-011 copied it at ``198d015a3``, CR-027 Phase A again;
+CR-040 took the understood set and two rows of ``expected-inspection.tsv`` at ``824565363``);
 ``conformance.py`` is the port of docx4j's harness and ``adapter.py`` its
 engine over this package's readers. docx4j's own revisions and text-extraction
 fixtures are read from the sibling checkout, and the tests that need them skip

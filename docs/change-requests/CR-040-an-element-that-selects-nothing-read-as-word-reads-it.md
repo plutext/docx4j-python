@@ -1,6 +1,6 @@
 # CR-040: An `mc:AlternateContent` that selects nothing, read as Word reads it (WD REQ-305 and REQ-306)
 
-**Status:** Proposed 2026-11-07 (the user: "write CR-040"), on the user's ruling that day: "REQ-305 itself changes for all three engines". Nothing is built, and nothing can be until docx4j's list is committed (section 3.1).
+**Status:** Decided 2026-11-07 (the user: "CR-040 as recommended, Q6 this release"). Proposed the same day ("write CR-040"), on the ruling "REQ-305 itself changes for all three engines". docx4j published the two sets at `824565363`. Phases A and B built 2026-11-07 (section 8). The Word check is Phase C's.
 
 **Depends on:** `portfolio/wd-req-305-follows-word`, for docx4j's published list. WD 0.98 (`d24ab36`) sets the order: the WD, then docx4j's list, then each engine. **CR-039** is built, and its `rw-24` path gets the warning here.
 
@@ -84,13 +84,36 @@ A goes first, and B never ahead of it. A is right by Word on its own.
 - **`phase0/` depends on docx4j's re-baseline.** If that's late, Phase A waits or pins one row.
 - **The code's name** is the WD's draft, not yet agreed with the engines.
 
-## 7. Questions
+## 7. Questions (decided 2026-11-07, as recommended, Q6 this release)
 
-| # | Question | Recommendation |
+| # | Question | Decision |
 |---|---|---|
 | Q1 | Take docx4j's understood set only once published, and keep the traversal list in the package? | **Once published,** since REQ-306 has the published lists first. **Keep the traversal list** as the published copy it is, with nothing reading it, until the WD settles what a Python package must publish. |
 | Q2 | One warning per element, or per part? | **Per element**, with its address, as `mce.branches_differ` is. The selector is the part's name either way, and a caller needs to find it. |
 | Q3 | Does `mce_preprocess` say anything? | **No.** It's the caller's opt-in to resolving at load. It could log, but no result carries it. |
 | Q4 | `detail`'s form: one string of URIs separated by spaces, or a list? | **One string,** as `Requires` is, so `detail` stays a scalar. To be agreed with docx4j and core-ts. |
 | Q5 | Which Word files join the fixtures? | **`rw-25`, and the `req305` and `understood-choice` rounds.** Each is small, and they're this rule's only evidence. |
-| Q6 | Which release? | **The user's.** With CR-039 if docx4j's list is in time. It shouldn't hold anything else. |
+| Q6 | Which release? | **This one.** |
+
+## 8. Phases A and B: implementation notes (2026-11-07)
+
+### 8.1 What was built
+
+- **The two sets:** `resources/understood-namespaces.txt` is docx4j's at `824565363`, 114 URIs, and `traversal-namespaces.txt` beside it is the old 118, which nothing reads. docx4j kept the file's name for the understood set, so no reader's path changed.
+- **The rule:** `child.mce_branch` ends at the `mc:Fallback`. `mc_load_mode._splice` takes such an element out, which leaves `kept` with nothing to do, so it went.
+- **The warning:** `TextWarning.MCE_NOTHING_SELECTED`, from `Extractor._nothing_selected`, reached from `_compare_branches`, which already stood at every site and takes a word-mode record too. `_compare_branches` now takes the story, for the part's name. At a root, `ReadAsWord.nothing_selected`.
+- **`tests/fixtures/nothing-selected/`:** 23 inputs with Word's saves and text saves, 306 KB.
+
+### 8.2 What the build settled beyond the design
+
+- **Only two rows of the suite moved.** docx4j's `expected-inspection.tsv` at `824565363` also holds three rows for a later fixture, so the copy here takes the two `wpi` rows alone, and `test_conformance.py` holds it to both commits.
+- **`wpi` was the old tests' example of a namespace not understood.** It's understood now, so `test_mce_levels.py` uses `w98`, as docx4j's `McProbeDocx` does. A prefix the table doesn't know goes on its `mc:Choice`, by docx4j CR-052's rule.
+- **`repeated._refused` and `breaks._gives_its_text`** follow the understood set too, as REQ-306's "every markup compatibility question" and REQ-318 have it.
+- **`detail` can be empty,** where the `Requires` prefixes bind to nothing.
+
+### 8.3 Verified
+
+- **The whole suite:** 12,074 passed, 8 skipped, none failing.
+- **`scripts/roundtrip.py`:** clean, 50 of 50 parts, 0 differences, 0 skipped.
+- **13 mutants:** every one caught, one only after a test for an unbound prefix.
+- **Word's own files:** all 23 read as Word shows them, and the warning is raised on the ten where Word shows neither branch and on none of the rest.

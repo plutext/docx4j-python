@@ -124,6 +124,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Changed
 
+- **An `mc:AlternateContent` with no `mc:Choice` understood and no `mc:Fallback` selects nothing, as Word reads it**
+  ([CR-040](docs/change-requests/CR-040-an-element-that-selects-nothing-read-as-word-reads-it.md), WD REQ-305): it used to read the first `mc:Choice`. Such words
+  are gone from every reader, with `mce.nothing_selected` on the text result naming the namespaces required. `mc_load_mode="word"` takes the element out
+  where it used to keep it whole. The default load still keeps it in the tree and in a save.
+- **The understood list is now what Word was measured to understand** (WD REQ-306, docx4j `824565363`): 114 URIs, nine new and thirteen gone, the old list
+  kept beside it as `traversal-namespaces.txt`, which no selection reads. A `Choice` in a namespace new to the list is now read where its `Fallback` was.
+
 - **`TextRevision.date` and `TextComment.date` are in WD REQ-702's form** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase B, Q2; docx4j
   `fc71f12e6`), in every view, where they were `w:date` as stored: the author's local time with its offset where
   `dateUtc` gives it (`2026-10-31T11:00:00+11:00`), with no designator where it does not (`2026-10-31T11:00:00`), `dateUtc`
