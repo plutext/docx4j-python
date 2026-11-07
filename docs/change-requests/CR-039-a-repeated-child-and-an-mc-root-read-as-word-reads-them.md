@@ -262,6 +262,7 @@ Each rests on one file. WD 0.97's REQ-318 to REQ-320 don't have these yet: docx4
 - **`w:sectPr` in a join is counted**, so `rc-10` reports 2 children read as one: a body and a section.
 - **A block `w:sdt` is one in a `w:body` or a `w:tc`.** Only the body is measured. A run-level one and one in a `w:tr` stay as they are.
 - **What a merge replaces is listed,** so `rc-20` is refused under `strict=True` and `rc-21` loads.
+- **`w:orient` differs from Word on three files.** On `rt-10`, `rt-40` and `rt-50`, Word's save has the last `w:pgSz`'s size with `w:orient="landscape"` from an earlier copy, which the last copy doesn't state. Here the earlier section goes whole, so that attribute goes too. Text is the same, and REQ-322 stands. It hints that Word merges `w:sectPr`, which section 3.3 left open. Left as it is unless a round says more.
 - **`mce.nothing_selected` isn't here.** WD 0.98 has REQ-305 raise it, at a root too, so `rw-24` should. It belongs with REQ-305's change, which waits for docx4j's list.
 
 ### 9.3 Verified
