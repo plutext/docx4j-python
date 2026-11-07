@@ -197,6 +197,26 @@ def test_a_save_has_word_s_words_and_section(name: str) -> None:
         assert page_widths(ours) == page_widths(theirs)
 
 
+def whole_sections(xml: bytes) -> list[tuple[dict[str, str], dict[str, str]]]:
+    """Each section's ``w:pgSz`` and ``w:pgMar``, every attribute: a width alone can't see a surviving ``w:orient``."""
+    out = []
+    for section in etree.fromstring(xml).iter(f"{W}sectPr"):
+        size, margins = section.find(f"{W}pgSz"), section.find(f"{W}pgMar")
+        out.append(tuple({etree.QName(k).localname: v for k, v in (e.attrib.items() if e is not None else ())} for e in (size, margins)))
+    return out
+
+
+@pytest.mark.parametrize("name", [f"nd-2{i}-{rest}" for i, rest in enumerate(
+    ["body-only-child", "body-middle-no-sectPr", "body-middle-with-sectPr", "body-last-with-sectPr", "body-three-deep"])])
+def test_a_body_in_a_body_keeps_word_s_whole_section(name: str) -> None:
+    """``nd-22``, ``nd-24``: the nested body's section and the later one's, read as one (REQ-322), as Word's save holds
+    them: the later size and margins, the nested one's ``w:orient="landscape"`` outliving them (docx4j's correction,
+    2026-11-08)."""
+    package = load(source(name))
+    package.main_document_part.contents
+    assert whole_sections(part_of(saved(package))) == whole_sections(word_save(name))
+
+
 def test_an_unknown_root_holding_mc_alternate_content_saves_as_word_s_under_word_mode() -> None:
     """``rq-10``: the branch read where it stands; ``mc_load_mode="word"`` writes it as Word's save does."""
     package = load(source("rq-10-madeup-ac"), options=LoadOptions(mc_load_mode="word"))
