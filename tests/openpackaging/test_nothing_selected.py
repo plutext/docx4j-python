@@ -167,6 +167,30 @@ def _read(package: Any) -> Any:
     return package
 
 
+ELEMENT = f'<mc:AlternateContent>{CHOICE.format("a")}</mc:AlternateContent>'
+GRID = '<w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid>'
+PLACES = {
+    "only child of the body": ELEMENT,
+    "last in the body": f"<w:p/>{ELEMENT}",
+    "two in a row": f"<w:p/>{ELEMENT}{ELEMENT}<w:p/>",
+    "two at the end": f"<w:p/>{ELEMENT}{ELEMENT}",
+    "only child of a cell": f"<w:tbl>{GRID}<w:tr><w:tc>{ELEMENT}</w:tc></w:tr></w:tbl><w:p/>",
+    "last in a cell": f"<w:tbl>{GRID}<w:tr><w:tc><w:p/>{ELEMENT}</w:tc></w:tr></w:tbl><w:p/>",
+    "only child of a row": f'<w:tbl>{GRID}<w:tr><mc:AlternateContent><mc:Choice Requires="a"><w:tc><w:p/></w:tc></mc:Choice></mc:AlternateContent></w:tr></w:tbl><w:p/>',
+    "only child of a table": f'<w:tbl>{GRID}<mc:AlternateContent><mc:Choice Requires="a"><w:tr><w:tc><w:p/></w:tc></w:tr></mc:Choice></mc:AlternateContent></w:tbl><w:p/>',
+}
+
+
+@pytest.mark.parametrize("place", PLACES)
+def test_word_mode_says_what_preserve_says_wherever_the_element_stood(place: str) -> None:
+    """Taken out at a container's end, or as all it held, no item stands after it for the walk to meet."""
+    data = with_part(document(PLACES[place]))
+    kept = nothing(extract(load(data)))
+    taken = nothing(extract(load(data, options=LoadOptions(mc_load_mode="word"))))
+    assert kept
+    assert [(w.address, w.part_name, w.detail) for w in taken] == [(w.address, w.part_name, w.detail) for w in kept]
+
+
 @pytest.mark.parametrize("name", NOTHING)
 def test_a_default_load_keeps_the_element_in_a_save(name: str) -> None:
     assert b"AlternateContent" in part_of(saved(_read(load(source(name)))))

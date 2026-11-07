@@ -112,6 +112,12 @@ A goes first, and B never ahead of it. A is right by Word on its own.
 - **`detail` can be empty,** where the `Requires` prefixes bind to nothing.
 - **`word` mode takes the element out, where docx4j's `06628f550` keeps it whole in both modes.** The user, 2026-11-07: "keeping ours as built, suggest to docx4j that in word mode, it behaves as we do". Word's save leaves it out, and `preserve` is there for a caller who wants it kept. Whether docx4j follows is its own.
 
+### 8.2a Word mode at a container's end (2026-11-07)
+
+docx4j's session raised this, and it was a bug here. A word-mode removal at the end of a container, or of all it held, left no item for the walk to meet, so `mce.nothing_selected` didn't fire, though section 3.3 had it the same in both modes. Two removals at one index also overwrote each other in `_resolved_lists`. `Extractor._taken_out_past_the_end` and a list per index fix both, and the warning now carries the address the element has under `preserve`. The Word check isn't touched: this is the text result alone.
+
+**Open:** a `w:tc` whose only content was such an element is left with no block by `word` mode, and a save writes it so. What Word does with that isn't measured, for any engine. An element with no branch at all has done this since CR-012.
+
 ### 8.3 Verified
 
 - **The whole suite:** 12,074 passed, 8 skipped, none failing.

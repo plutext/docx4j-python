@@ -643,7 +643,7 @@ class Extractor:
         self._typed: dict[int, Any] = {}
         #: CR-012 Phase A: by part, the elements a ``word``-mode load took out, by the
         #: ``id`` of the content list they stood in and their index there.
-        self._resolved: dict[int, dict[int, dict[int, Any]]] = {}
+        self._resolved: dict[int, dict[int, dict[int, list]]] = {}
         #: What every address this reading makes starts with: empty, or an
         #: embedded package's or a chunk's address and a slash.
         self.root = ""
@@ -1001,6 +1001,7 @@ class Extractor:
         self, items: list | None, prefix: str, story: _Story, sink: list[TextBlock], state: _RunState = _PLAIN
     ) -> None:
         """Block-level content into `sink`: paragraphs (joined in a view), tables, and what is transparent."""
+        self._taken_out_past_the_end(story, items, prefix)
         if not items:
             return
         p_class, tbl_class = rtrees.cls("P"), rtrees.cls("Tbl")
@@ -1012,7 +1013,7 @@ class Extractor:
             if resolved and i in resolved:
                 # a word-mode load took an element out here: its branches compared from the
                 # record, at the address the element has in preserve mode (CR-012 Phase A)
-                self._compare_branches(resolved[i], f"{prefix}/{i}", story)
+                self._compare_taken_out(resolved[i], prefix, i, story)
             if isinstance(item, str) or self.removes(item):
                 i += 1
                 continue
@@ -1280,6 +1281,7 @@ class Extractor:
         self._flush_outside_table(story, sink)
 
     def _rows(self, items: list | None, prefix: str, story: _Story, table: TextBlock, state: _RunState) -> None:
+        self._taken_out_past_the_end(story, items, prefix)
         if not items:
             return
         tr_class = rtrees.cls("Tr")
@@ -1288,7 +1290,7 @@ class Extractor:
             if resolved and i in resolved:
                 # a word-mode load took a row-level element out here: compared from the record,
                 # at the address the element has in preserve mode (CR-012 Phase A2)
-                self._compare_branches(resolved[i], f"{prefix}/{i}", story)
+                self._compare_taken_out(resolved[i], prefix, i, story)
             if isinstance(item, str) or self.removes(item):
                 continue
             address = f"{prefix}/{i}"
@@ -1318,6 +1320,7 @@ class Extractor:
                     self._rows(inner, address, story, table, state)
 
     def _cells(self, items: list | None, prefix: str, story: _Story, row: TextRow, state: _RunState) -> None:
+        self._taken_out_past_the_end(story, items, prefix)
         if not items:
             return
         tc_class = rtrees.cls("Tc")
@@ -1325,7 +1328,7 @@ class Extractor:
         for i, item in enumerate(items):
             if resolved and i in resolved:
                 # a cell-level one taken out by a word-mode load, as in _rows
-                self._compare_branches(resolved[i], f"{prefix}/{i}", story)
+                self._compare_taken_out(resolved[i], prefix, i, story)
             if isinstance(item, str) or self.removes(item):
                 continue
             address = f"{prefix}/{i}"
@@ -2140,6 +2143,20 @@ class Extractor:
             found = self._resolved[id(part)] = _resolved_lists(part, records)
         return found.get(id(items))
 
+
+    def _compare_taken_out(self, elements: list, prefix: str, index: int, story: _Story) -> None:
+        """Each element a word-mode load took out at `index`, compared as it would be in preserve mode, at the address it has there."""
+        for offset, element in enumerate(elements):
+            self._compare_branches(element, f"{prefix}/{index + offset}", story)
+
+    def _taken_out_past_the_end(self, story: _Story, items: list | None, prefix: str) -> None:
+        """What a word-mode load took out at the end of `items`, or all it held: no item stands after it (CR-040)."""
+        if items is None:
+            return
+        resolved = self._resolved_in(story, items)
+        for index in sorted(resolved or ()):
+            if index >= len(items):
+                self._compare_taken_out(resolved[index], prefix, index, story)
 
     def _nothing_selected(self, ac: Any, address: str, story: _Story) -> None:
         """``mce.nothing_selected`` (REQ-305): Choices, none understood, and no Fallback. An element with no branch says nothing."""
@@ -3037,8 +3054,8 @@ _PROPERTY_NAMES = frozenset(
 )
 
 
-def _resolved_lists(part: Any, records: list) -> dict[int, dict[int, Any]]:
-    """``id`` of the content list each record's element stood in -> its index there -> the element."""
+def _resolved_lists(part: Any, records: list) -> dict[int, dict[int, list]]:
+    """``id`` of the content list each record's element stood in -> its index there -> the elements, two removals sharing one."""
     from docx4j_py.model.text.trees import _read
     from docx4j_py.namespaces import NAMESPACE_TO_PREFIX
 
@@ -3050,7 +3067,7 @@ def _resolved_lists(part: Any, records: list) -> dict[int, dict[int, Any]]:
         node = _at_address(root, record.address, NAMESPACE_TO_PREFIX)
         items = getattr(node, "content", None) if node is not None else None
         if isinstance(items, list):
-            out.setdefault(id(items), {})[record.index] = record.element
+            out.setdefault(id(items), {}).setdefault(record.index, []).append(record.element)
     return out
 
 
