@@ -814,6 +814,10 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 >
 > **2026-11-07, WD 0.101's fixes: the 15 `c79-*` saves passed** (CR-039 section 9.9; Word 16.0.20326.20232, through the bridge, built over `6ed4b9a`; the user: "Run the follow-up Word check"). All 30 runs silent, each read as
 > Word read the source, with every part marshalled. The 4 `External` inputs, 8 runs, are refused by Word, source and save alike: not a defect of the save, and open (CR-032 section 11.4).
+>
+> **2026-11-08, `repair: all`'s saves of an `External` relationship beside an internal one: passed** (CR-032 section 11.5; Word 16.0.20326.20232, through the bridge, bridge `4dcb436`, 3 inputs
+> run twice, 6 jobs and the control, built over `e05291b`; the user: "stage them for the bridge"). All 8 runs silent. The `x-ext-*` sources, first and last, saved untouched under `all`, read `DOCUMENT`,
+> and two internal ones beside it read `OTHER`, the last, both in Word's text save and in its own save, which holds one `officeDocument` relationship and no `External` one.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown
