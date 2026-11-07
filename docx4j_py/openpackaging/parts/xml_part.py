@@ -59,6 +59,7 @@ logger = logging.getLogger("docx4j_py.openpackaging")
 
 #: The root a main part should have (CR-039).
 _DOCUMENT_ROOT = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}document"
+_MC_ROOT = "{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent"
 
 #: What Word writes at the top of every XML part, CRLF and all.
 XML_DECLARATION = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
@@ -179,6 +180,9 @@ class XmlPart(Part, Generic[T]):
 
     #: Whether a parse asks what this part's root is (CR-039): the main part alone, the only one measured.
     reads_root = False
+    #: Whether a parse reads an ``mc:AlternateContent`` root as the branch Word takes (WD REQ-317): the header, footer,
+    #: notes, comments, styles, numbering and settings parts. The main part's is :attr:`reads_root`'s.
+    reads_mc_root = False
 
     #: The dotted path of the model class this part's content is, as a
     #: **string**: ``"docx4j_py.wml.Document"``. A string rather than the class
@@ -398,11 +402,16 @@ class XmlPart(Part, Generic[T]):
             Docx4JException: a root Word refuses, as a part not well formed is
                 refused, or XML that isn't well formed under a root not expected.
         """
-        if not self.reads_root or _root_tag(data) in (None, _DOCUMENT_ROOT):
+        if not (self.reads_root or self.reads_mc_root):
+            return data, None, []
+        root = _root_tag(data)
+        if root in (None, _DOCUMENT_ROOT) or (self.reads_mc_root and root != _MC_ROOT):
             return data, None, []
         from docx4j_py.openpackaging import repeated
 
         try:
+            if self.reads_mc_root:
+                return repeated.read_part_root(data, str(self.part_name), str(self.root_name))
             return repeated.read_root(data, str(self.part_name))
         except (repeated.RootRefused, etree.XMLSyntaxError) as exc:
             raise Docx4JException(f"Problem with part {self.part_name}: {_reason(exc)}") from exc
@@ -579,6 +588,17 @@ class XmlPart(Part, Generic[T]):
     def bytes_for_save(self) -> bytes:
         """:attr:`xml`."""
         return self.xml
+
+    def read_xml(self) -> bytes:
+        """:attr:`xml` with its root as Word reads it, for a reader that parses the bytes itself.
+
+        What a save writes stays :attr:`xml`. Such a reader, the numbering emulator's say, leaves the part unmarshalled,
+        and would otherwise see an ``mc:AlternateContent`` root and neither branch's content (WD REQ-317).
+
+        Raises:
+            Docx4JException: a root Word refuses.
+        """
+        return self._read_root(self.xml)[0]
 
     def get_xml(self) -> str:
         """:attr:`xml` decoded, for reading and for tests."""

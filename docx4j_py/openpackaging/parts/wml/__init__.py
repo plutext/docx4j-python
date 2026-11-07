@@ -309,6 +309,7 @@ class StyleDefinitionsPart(XmlPart["Styles"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Styles"
+    reads_mc_root = True
 
     def __init__(
         self,
@@ -335,6 +336,7 @@ class NumberingDefinitionsPart(XmlPart["Numbering"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Numbering"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/numbering.xml") -> None:
         """Build the numbering part."""
@@ -420,6 +422,7 @@ class DocumentSettingsPart(XmlPart["Settings"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Settings"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/settings.xml") -> None:
         """Build the settings part."""
@@ -486,6 +489,7 @@ class HeaderPart(XmlPart["Hdr"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Hdr"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/header1.xml") -> None:
         """Build a header part."""
@@ -502,6 +506,7 @@ class FooterPart(XmlPart["Ftr"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Ftr"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/footer1.xml") -> None:
         """Build a footer part."""
@@ -518,6 +523,7 @@ class FootnotesPart(XmlPart["Footnotes"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Footnotes"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/footnotes.xml") -> None:
         """Build the footnotes part."""
@@ -534,6 +540,7 @@ class EndnotesPart(XmlPart["Endnotes"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Endnotes"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/endnotes.xml") -> None:
         """Build the endnotes part."""
@@ -550,6 +557,7 @@ class CommentsPart(XmlPart["Comments"]):
 
     __slots__ = ()
     model_class_path = "docx4j_py.wml.Comments"
+    reads_mc_root = True
 
     def __init__(self, part_name: PartName | str = "/word/comments.xml") -> None:
         """Build the comments part."""

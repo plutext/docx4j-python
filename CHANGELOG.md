@@ -325,13 +325,15 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 - **A package with more than one `officeDocument` relationship is refused** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
   [11](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#11-two-main-parts-wd-0100s-amendment-implementation-notes-2026-11-07); WD REQ-206): the load took the first and said nothing, a different part from a fresh Word's.
   `MultipleMainPartsException` (`package.multiple_main_parts`) names the targets. Under `LoadOptions(duplicate_entries="first")` the **last** relationship's target is read, as a fresh Word reads it, a
-  `MultipleMainParts` is recorded and the text model raises the warning once, and a save holds one main part.
+  `MultipleMainParts` is recorded and the text model raises the warning once, and a save holds one main part. An `External` relationship is no main part and isn't counted.
+- **A relationships part in a wrong namespace is refused** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 13): a part's `.rels` read as no relationships with nothing said, and a save lost every part it named.
+- **An `mc:AlternateContent` root in a header, footer, footnotes, endnotes, comments, styles, numbering or settings part is the branch Word takes** ([CR-039](docs/change-requests/CR-039-a-repeated-child-and-an-mc-root-read-as-word-reads-them.md) section 9.8; WD REQ-317): such a part read as nothing, so its words went unread. Each gets one `part.read_as_word`, and an untouched one is saved byte for byte.
 - **A main part with another root, or a child given more than once, is read as Word reads it**
   ([CR-039](docs/change-requests/CR-039-a-repeated-child-and-an-mc-root-read-as-word-reads-them.md), after the Word bridge's measurements):
   an `mc:AlternateContent` root takes Word's branch, a `w:body`, `w:p`, `w:sdtContent` or unknown `w:` root is read through, and two `w:document` or `w:body`
-  are joined, as is a `w:body` in a `w:body`. `w:sdtContent` in a block control joins. Copies of `w:pPr`, `w:rPr`, `w:sectPr` and `w:tblPr`, and of `w:ind`, `w:spacing`,
-  `w:rFonts`, `w:pgSz`, `w:pgMar`, `w:cols`, `w:jc` and `w:sz` in them, are applied in order to one object, what a copy states winning and what it doesn't state staying, joined
-  bodies' final sections included; of `w:b` and `w:vanish` the last element decides, and a later copy's `w:headerReference` is ignored (WD REQ-322). The roots Word refuses are refused when read, as a part not well formed is, and `misplaced()` reports `part.root_refused`.
+  are joined, as is a `w:body` in a `w:body`. `w:sdtContent` joins in a control at any level. Copies of `w:pPr`, `w:rPr`, `w:sectPr` and `w:tblPr`, and of `w:ind`, `w:spacing`,
+  `w:rFonts`, `w:pgSz`, `w:pgMar`, `w:cols`, `w:numPr`, `w:jc` and `w:sz` in them, are applied in order to one object, what a copy states winning and what it doesn't state staying, joined
+  bodies' final sections included; of `w:b` and `w:vanish` the last element decides, and a later copy's `w:headerReference` or `w:footerReference` is ignored (WD REQ-322). The roots Word refuses are refused when read, as a part not well formed is, and `misplaced()` reports `part.root_refused`.
   Any other root yields no text and raises `part.unexpected_root`, on `part.warnings` and the text result. `extract` and `body_of` refuse a package with no main part.
   A part read this way is saved in that shape, with one `part.read_as_word` warning.
 

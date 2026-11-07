@@ -29,6 +29,7 @@ from docx4j_py.openpackaging.parts.parts_map import Parts
 from docx4j_py.openpackaging.parts.relationships_part import (
     AddPartBehaviour,
     RelationshipsPart,
+    is_external,
 )
 from docx4j_py.openpackaging.parts.xml_part import XmlPart
 from docx4j_py.openpackaging.save import check_before_save, save_package
@@ -401,9 +402,9 @@ class OpcPackage:
         """The part the ``officeDocument`` relationship targets."""
         rels = self.relationships_part
         for relationship_type in (Namespaces.DOCUMENT, Namespaces.DOCUMENT_STRICT):
-            rel = rels.get_relationship_by_type(relationship_type)
-            if rel is not None:
-                return rels.get_part(rel)
+            for rel in rels.get_relationships_by_type(relationship_type):
+                if not is_external(rel):
+                    return rels.get_part(rel)
         return None
 
     def unmarshal_all(self) -> None:

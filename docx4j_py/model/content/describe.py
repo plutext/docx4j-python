@@ -218,7 +218,7 @@ def _root(part: Any) -> Any:
     from lxml import etree
 
     try:
-        return etree.fromstring(part.xml)
+        return etree.fromstring(part.read_xml())
     except Exception:  # noqa: BLE001 - a part that will not parse describes nothing
         return None
 

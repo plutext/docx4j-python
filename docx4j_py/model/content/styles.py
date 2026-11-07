@@ -519,7 +519,7 @@ def style_ids_of(part: Any) -> set[str]:
 
         w = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
         try:
-            root = etree.fromstring(part.xml)
+            root = etree.fromstring(part.read_xml())
         except Exception:  # noqa: BLE001 - a styles part that will not parse defines none
             root = None
         if root is not None:

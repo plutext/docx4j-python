@@ -390,10 +390,10 @@ def repaired(xml: str) -> tuple[etree._Element, int]:
     return root, repeated.repair(root)
 
 
-def test_a_run_level_control_is_left_as_it_is() -> None:
+def test_a_run_level_control_joins_too() -> None:
     root, read_as_one = repaired("<w:p><w:sdt><w:sdtContent/><w:sdtContent/></w:sdt></w:p>")
-    assert read_as_one == 0
-    assert len(list(root.iter(f"{W}sdtContent"))) == 2
+    assert read_as_one == 1
+    assert len(list(root.iter(f"{W}sdtContent"))) == 1
 
 
 def test_a_control_in_a_cell_is_a_block_one() -> None:
@@ -441,7 +441,7 @@ def test_a_part_that_holds_each_child_once_changes_nothing() -> None:
     "name",
     [
         "jc", "b", "sz", "pPr", "rPr", "tblPr", "sectPr", "sdtContent", "body",
-        "ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "vanish",
+        "ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "vanish", "numPr",
     ],
 )
 def test_the_report_triggers_on_each_child_measured(name: str) -> None:
@@ -618,6 +618,141 @@ def test_only_the_first_copy_s_references_stand(name: str) -> None:
     """Of any ``w:type``, across joined bodies too, and a first copy with none leaves none."""
     word = (FIXTURES / f"{name}-word365.docx").read_bytes()
     assert _references(saved(_read(load(source(name))))) == _references(word)
+
+
+# --- WD 0.101: w:numPr, w:sdtContent at every level, an mc root in other parts ---------
+
+
+def test_a_num_pr_is_applied_to_one_object() -> None:
+    """``c79-41``: the first's ``w:ilvl`` with the second's ``w:numId``, and the label that gives."""
+    name = "c79-41-ppr-numpr"
+    package = _read(load(source(name)))
+    ours, theirs = (
+        [{etree.QName(child).localname: child.get(f"{W}val") for child in held} for held in etree.fromstring(xml).iter(f"{W}numPr")]
+        for xml in (part_of(saved(package)), word_save(name))
+    )
+    assert ours == theirs == [{"ilvl": "0", "numId": "2"}]
+    assert plain_text(extract(load(source(name)), list_labels=True)).split() == word_text(name).split()
+
+
+@pytest.mark.parametrize(
+    ("name", "words"),
+    [
+        ("c79-30-sdtcontent-run", ["FIRST RUNSECOND RUN"]),
+        ("c79-31-sdtcontent-row", ["FIRST ROW", "SECOND ROW", "AFTER"]),
+        ("c79-32-sdtcontent-cell", ["FIRST CELL", "SECOND CELL", "AFTER"]),
+    ],
+)
+def test_sdt_content_joins_at_every_level(name: str, words: list[str]) -> None:
+    package = load(source(name))
+    text = plain_text(extract(package))
+    assert [line for part in text.split("\n") for line in part.split("\t") if line] == words
+    assert [line for line in word_text(name).replace("\r", "\n").split("\n") if line.strip()] == words
+    assert not package.main_document_part.skipped
+
+
+@pytest.mark.parametrize("name", ["c79-40-ppr-nested-rpr", "c79-42-ppr-pprchange"])
+def test_what_an_earlier_copy_alone_states_stays(name: str) -> None:
+    def named(xml: bytes) -> list[list[str]]:
+        return [[etree.QName(child).localname for child in held] for held in etree.fromstring(xml).iter(f"{W}pPr")][:1]
+
+    assert named(part_of(saved(_read(load(source(name)))))) == named(word_save(name))
+
+
+#: ``c79-10`` to ``c79-14`` and ``c79-18``: the words Word's branch holds, and what's asked to show them.
+ROOTS = {
+    "c79-10-hdr-root": ("CHOICE HEADER", {"include": ["headers"]}),
+    "c79-11-ftr-root": ("CHOICE FOOTER", {"include": ["footers"]}),
+    "c79-12-footnotes-root": ("CHOICE NOTE", {}),
+    "c79-13-endnotes-root": ("CHOICE NOTE", {}),
+    "c79-14-comments-root": ("CHOICE COMMENT", {"comments": True}),
+    "c79-18-hdr-root-unknown-choice": ("FALLBACK HEADER", {"include": ["headers"]}),
+}
+
+
+@pytest.mark.parametrize(("name", "held"), ROOTS.items(), ids=ROOTS)
+def test_an_mc_root_in_another_part_is_the_branch_word_takes(name: str, held: tuple[str, dict[str, Any]]) -> None:
+    words, options = held
+    assert words in word_text(name)
+    text = plain_text(extract(load(source(name)), **options))
+    assert words in text and "FALLBACK" not in text.replace(words, "")
+
+
+def test_a_numbering_root_reaches_the_emulator() -> None:
+    """It reads the part's bytes itself, so it's the case ``XmlPart.read_xml`` is for."""
+    name = "c79-16-numbering-root"
+    assert plain_text(extract(load(source(name)), list_labels=True)).split() == word_text(name).split()
+
+
+def test_a_styles_root_is_read() -> None:
+    package = load(source("c79-15-styles-root"))
+    assert "Probe" in {style.style_id for style in package.main_document_part.style_definitions_part.contents.style}
+
+
+def test_a_settings_root_is_read() -> None:
+    name = "c79-17-settings-root"
+    package = load(source(name))
+    theirs = zipfile.ZipFile(FIXTURES / f"{name}-word365.docx").read("word/settings.xml")
+    tab = etree.fromstring(theirs).find(f"{W}defaultTabStop").get(f"{W}val")
+    assert str(package.main_document_part.document_settings_part.contents.default_tab_stop.val) == tab == "1000"
+
+
+def test_an_mc_root_read_is_said_and_what_went_listed() -> None:
+    package = load(source("c79-10-hdr-root"))
+    [part] = package.main_document_part.header_parts()
+    part.contents
+    assert [(w.root, w.children) for w in part.warnings] == [("mc:AlternateContent", 0)]
+    assert local_names(part.skipped) == ["Fallback"]
+
+
+def test_an_untouched_mc_root_is_saved_byte_for_byte() -> None:
+    package = load(source("c79-10-hdr-root"))
+    plain_text(extract(package, include=["headers"]))
+    name = "word/header1.xml"
+    assert zipfile.ZipFile(io.BytesIO(saved(package))).read(name) == zipfile.ZipFile(io.BytesIO(source("c79-10-hdr-root"))).read(name)
+
+
+def test_a_header_read_for_real_is_saved_as_its_branch() -> None:
+    package = load(source("c79-10-hdr-root"))
+    [part] = package.main_document_part.header_parts()
+    part.contents
+    root = etree.fromstring(zipfile.ZipFile(io.BytesIO(saved(package))).read("word/header1.xml"))
+    assert root.tag == f"{W}hdr" and "".join(root.itertext()) == "CHOICE HEADER"
+
+
+def _header_root(held: str) -> bytes:
+    """``c79-10`` with its header's root `held`."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(source("c79-10-hdr-root"))) as zin, zipfile.ZipFile(out, "w") as zout:
+        for info in zin.infolist():
+            zout.writestr(info, held.encode() if info.filename == "word/header1.xml" else zin.read(info.filename))
+    return out.getvalue()
+
+
+def test_a_part_selecting_nothing_is_empty_and_says_so() -> None:
+    xml = (
+        f'<mc:AlternateContent xmlns:mc="{MC_NS}" xmlns:w="{W_NS}" xmlns:x="urn:not-understood">'
+        '<mc:Choice Requires="x"><w:hdr><w:p><w:r><w:t>GONE</w:t></w:r></w:p></w:hdr></mc:Choice></mc:AlternateContent>'
+    )
+    result = extract(load(_header_root(xml)), include=["headers"])
+    assert "GONE" not in plain_text(result)
+    assert [(w.kind, w.selector, w.detail) for w in result.warnings] == [("mce.nothing_selected", "/word/header1.xml", "urn:not-understood")]
+
+
+def test_a_branch_holding_something_else_stays_as_it_was() -> None:
+    """Unmeasured, so nothing is read, and the parse lists the root's children as it always has."""
+    xml = f'<mc:AlternateContent xmlns:mc="{MC_NS}" xmlns:w="{W_NS}"><mc:Fallback><w:p/></mc:Fallback></mc:AlternateContent>'
+    package = load(_header_root(xml))
+    [part] = package.main_document_part.header_parts()
+    part.contents
+    assert not part.warnings and local_names(part.skipped) == ["Fallback"]
+
+
+def test_a_nested_mc_root_is_read_through_each_level_in_another_part() -> None:
+    held = '<w:hdr><w:p><w:r><w:t>DEEP</w:t></w:r></w:p></w:hdr>'
+    inner = f"<mc:AlternateContent><mc:Fallback>{held}</mc:Fallback></mc:AlternateContent>"
+    xml = f'<mc:AlternateContent xmlns:mc="{MC_NS}" xmlns:w="{W_NS}"><mc:Fallback>{inner}</mc:Fallback></mc:AlternateContent>'
+    assert "DEEP" in plain_text(extract(load(_header_root(xml)), include=["headers"]))
 
 
 # --- an unknown root -------------------------------------------------------------

@@ -820,3 +820,29 @@ def test_the_python_docx_facade_refuses_too():
 
     with pytest.raises(Docx4JException, match="^Problem with part /word/document.xml: Premature end of data"):
         _ = [p.text for p in Document(io.BytesIO(broken(1)[0])).paragraphs]
+
+
+# --- a relationships part in a wrong namespace -------------------------------------------
+
+
+@pytest.mark.parametrize("entry", ["word/_rels/document.xml.rels", "_rels/.rels"])
+def test_a_relationships_part_in_a_wrong_namespace_is_refused(entry: str) -> None:
+    """It would parse as no relationships with nothing said, and a save would lose every part it named."""
+    entries = _base()
+    entries[entry] = entries[entry].replace(b"http://schemas.openxmlformats.org/package/2006/relationships", b"urn:wrong")
+    with pytest.raises(Docx4JException, match="not {http://schemas.openxmlformats.org/package/2006/relationships}Relationships"):
+        load(_zip(entries))
+
+
+def test_a_relationships_part_with_another_root_is_refused() -> None:
+    entries = _base()
+    entries["word/_rels/document.xml.rels"] = b'<Other xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
+    with pytest.raises(Docx4JException, match="/word/_rels/document.xml.rels: its root is"):
+        load(_zip(entries))
+
+
+def test_an_empty_relationships_part_in_the_right_namespace_loads() -> None:
+    """Nothing is lost where it names nothing."""
+    entries = _base()
+    entries["word/_rels/document.xml.rels"] = b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
+    assert load(_zip(entries)).main_document_part is not None

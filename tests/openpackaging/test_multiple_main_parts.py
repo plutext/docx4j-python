@@ -170,6 +170,52 @@ def test_two_relationships_to_one_target_are_still_two() -> None:
     assert b"/word/document.xml" in _saved(pkg).read("[Content_Types].xml")
 
 
+def _with_external(*, first: bool, targets: tuple[str, ...] = ("word/document.xml",)) -> bytes:
+    """A package whose relationships also hold an ``External`` ``officeDocument`` one, first or last."""
+    data = _package(*targets)
+    external = f'<Relationship Id="rIdOut" Type="{RELATIONSHIP}" Target="http://example.org/x.docx" TargetMode="External"/>'.encode()
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as zin, zipfile.ZipFile(out, "w") as zout:
+        for name in zin.namelist():
+            held = zin.read(name)
+            if name == "_rels/.rels":
+                at = held.index(b"<Relationship ") if first else held.index(b"</Relationships>")
+                held = held[:at] + external + held[at:]
+            zout.writestr(name, held)
+    return out.getvalue()
+
+
+@pytest.mark.parametrize("first", [True, False], ids=["first", "last"])
+@pytest.mark.parametrize("options", [None, FIRST], ids=["default", "switch"])
+def test_an_external_relationship_is_no_main_part(first: bool, options: Any) -> None:
+    pkg = load(_with_external(first=first), options=options)
+    assert plain_text(extract(pkg)).strip() == "DOCUMENT" and not pkg.warnings
+    assert pkg.get_main_part() is pkg.main_document_part
+
+
+def test_only_an_external_relationship_is_no_main_part_at_all() -> None:
+    data = _with_external(first=True)
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as zin, zipfile.ZipFile(out, "w") as zout:
+        for name in zin.namelist():
+            zout.writestr(name, zin.read(name).replace(b'Id="rIdMain0" Type="' + RELATIONSHIP.encode() + b'"', b'Id="rIdMain0" Type="urn:other"'))
+    with pytest.raises(InvalidFormatException, match="No relationship of type officeDocument"):
+        load(out.getvalue())
+
+
+def test_an_external_one_doesn_t_count_towards_two() -> None:
+    with pytest.raises(MultipleMainPartsException) as caught:
+        load(_with_external(first=False, targets=TWO))
+    assert caught.value.targets == ("/word/document.xml", "/word/other.xml")
+    pkg = load(_with_external(first=False, targets=TWO), options=FIRST)
+    assert pkg.warnings == [MultipleMainParts("/word/other.xml", 2)]
+
+
+def test_an_external_one_stays_on_a_save() -> None:
+    saved = _saved(load(_with_external(first=False)))
+    assert b"http://example.org/x.docx" in saved.read("_rels/.rels")
+
+
 def test_one_relationship_says_nothing() -> None:
     pkg = load(_package("word/document.xml"))
     assert plain_text(extract(pkg)).strip() == "DOCUMENT" and not pkg.warnings

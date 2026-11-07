@@ -771,7 +771,7 @@ def comments_in(package: Any) -> int:
     from lxml import etree
 
     try:
-        root = etree.fromstring(part.xml)
+        root = etree.fromstring(part.read_xml())
     except Exception:  # noqa: BLE001 - an unreadable comments part has no comments
         return 0
     return len(root.findall(f"{{{_W}}}comment"))

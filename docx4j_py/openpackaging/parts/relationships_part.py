@@ -17,13 +17,14 @@ from typing import TYPE_CHECKING, Any
 
 from docx4j_py.openpackaging.content_types import ContentTypes
 from docx4j_py.openpackaging.exceptions import (
+    Docx4JException,
     InvalidFormatException,
     InvalidOperationException,
 )
 from docx4j_py.openpackaging.part_name import PACKAGE_RELS_NAME, PartName
 from docx4j_py.openpackaging.parts.namespaces import Namespaces
 from docx4j_py.openpackaging.parts.part import Part, _set_relationships_part_factory
-from docx4j_py.openpackaging.parts.xml_part import XmlPart
+from docx4j_py.openpackaging.parts.xml_part import XmlPart, _root_tag
 
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.relationships import Relationship, Relationships
@@ -99,6 +100,18 @@ class RelationshipsPart(XmlPart["Relationships"]):
 
     model_class_path = "docx4j_py.relationships.Relationships"
     default_namespace = Namespaces.RELATIONSHIPS
+
+    def _read_root(self, data: bytes) -> tuple[bytes, Any, list[Any]]:
+        """`data`, refused where its root isn't ``Relationships`` in the package relationships namespace.
+
+        It would parse as no relationships with nothing said, and a save would then lose every part it named, so it's
+        refused as one not well formed is (CR-031). docx4j raises ``part.not_read`` and refuses a default save, which
+        waits here for CR-033's gate.
+        """
+        root = _root_tag(data)
+        if root not in (None, RELATIONSHIPS_ROOT):
+            raise Docx4JException(f"Problem with part {self.part_name}: its root is {root}, not {RELATIONSHIPS_ROOT}")
+        return data, None, []
 
     @property
     def is_relationships_part(self) -> bool:

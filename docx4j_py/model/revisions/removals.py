@@ -725,7 +725,7 @@ def _raw_root(part: Any) -> Any:
     :meth:`Removals.refuse_unreadable` checks one: the two parse alike.
     """
     try:
-        return etree.fromstring(part._raw_bytes())
+        return etree.fromstring(part.read_xml())
     except Exception:  # noqa: BLE001 - not well formed, or no bytes: unknown
         return None
 

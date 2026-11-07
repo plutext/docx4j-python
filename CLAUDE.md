@@ -363,7 +363,7 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
-`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `repeated.py`, CR-039's reading of a main part's root and of a child given more than once (WD REQ-322, Word's merge rule: each copy applied in order to one object, `_read_as_one_in`), run from `XmlPart._read_root` on the main part alone (`reads_root`) and inside `repair_bytes`; `read_through.py`, CR-037's
+`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `repeated.py`, CR-039's reading of a main part's root and of a child given more than once (WD REQ-322, Word's merge rule: each copy applied in order to one object, `_read_as_one_in`), run from `XmlPart._read_root` on the main part alone (`reads_root`) and inside `repair_bytes`, and an `mc:AlternateContent` root in eight other parts (`reads_mc_root`, `read_part_root`, WD REQ-317), which a reader that parses a part's bytes itself reaches through `XmlPart.read_xml()`; `read_through.py`, CR-037's
 reading of an unknown `w:` element, WD REQ-308 to REQ-316 (what it holds stays, in the twenty hosts core-ts's
 check 76 measures and the `mc:` branch Word takes; a direct run in a paragraph's `w:pPr`, the `w:pPr` under its
 `w:pPrChange` or its `w:sectPr` goes to the paragraph's head, and such a `w:sectPr` goes; a held `w:p` ends its host),
@@ -375,7 +375,7 @@ only where the fork's skipped report names one, so a clean part pays the test of
 record is `BrOutsideRun`, `br.outside_run`, on `part.warnings` and `package.warnings`); `api.py`,
 `load()` and `create_package()`. Every store keeps the first entry of a name, compared without case
 as its lookup is, and counts the rest (`duplicates()`), which `load_package` refuses before reading
-anything (CR-032), as it refuses more than one `officeDocument` relationship, the same switch reading the last (WD REQ-206). Everything is synchronous. Departures from docx4j are listed in
+anything (CR-032), as it refuses more than one `officeDocument` relationship, an `External` one not counted, the same switch reading the last (WD REQ-206). Everything is synchronous. Departures from docx4j are listed in
 CR-002 section 12.3.
 
 ## Round-trip and fidelity rules
@@ -430,7 +430,7 @@ CR-002 section 12.3.
   pass. A part whose XML is
   not well formed is refused when its content is read (CR-031): `Docx4JException` naming it and lxml's
   reason, never mended (`runtime.RECOVER`, the fork's `recover=False`), kept as `part.unreadable`. The
-  load stays lazy and an untouched save writes its bytes; a relationships part not well formed refuses
+  load stays lazy and an untouched save writes its bytes; a relationships part not well formed, or in a wrong namespace, refuses
   the load. The text model reads around such a styles, numbering or settings part with `part.not_read`;
   the content API's resolver and list readers raise; `misplaced()` reports it as `part.not_well_formed`. A
   container holding two entries of one name is refused (`DuplicateEntryException`, WD REQ-206), unless

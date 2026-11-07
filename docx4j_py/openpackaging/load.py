@@ -277,7 +277,8 @@ def load_package(
         raise InvalidFormatException("_rels/.rels appears to be missing from this package")
     package_rels.set_bytes(store.load("_rels/.rels"))
 
-    main_rels = [r for r in package_rels.list if r.type_value in MAIN_PART_RELATIONSHIP_TYPES]
+    # an external target is no part, so it's no main part, and docx4j counts it as none
+    main_rels = [r for r in package_rels.list if r.type_value in MAIN_PART_RELATIONSHIP_TYPES and not is_external(r)]
     if not main_rels:
         raise InvalidFormatException("No relationship of type officeDocument")
     *other_rels, main_rel = main_rels

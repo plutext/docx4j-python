@@ -113,7 +113,7 @@ def _root_of(part: Any) -> Any:
 
     if syntax_error_of(getattr(part, "unreadable", None)) is None:
         try:
-            return etree.fromstring(part.get_xml().encode("utf-8"))
+            return etree.fromstring(part.read_xml())
         except Exception:  # noqa: BLE001, S110 - not well formed, or not read here: the part's own read says which
             pass
     if not hasattr(part, "read_contents"):

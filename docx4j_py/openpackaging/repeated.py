@@ -22,15 +22,16 @@ a parse does, with no one rule for it. Measured through the Word bridge on
   held in ``part.skipped``, and :class:`UnexpectedRoot` to say so. A header's words in
   a footnote's separator aren't a reading to copy.
 
-Only the main part is measured, so only it asks (``XmlPart.reads_root``).
+Only the main part is measured, so only it asks (``XmlPart.reads_root``). Eight other parts read an
+``mc:AlternateContent`` root (:func:`read_part_root`, REQ-317), the part's own root in the branch Word takes.
 
 **A child given more than once** (REQ-322). The fork keeps the first and reports the
 rest, so the skipped report triggers :func:`repair`, inside
 :func:`~docx4j_py.openpackaging.read_through.repair_bytes`'s one repair and one reparse.
-``w:body``, and ``w:sdtContent`` in a block ``w:sdt``, are joined in order; a ``w:body`` in a
+``w:body``, and ``w:sdtContent`` in a control at any level, are joined in order; a ``w:body`` in a
 ``w:body`` gives way to what it holds. Word applies each copy of ``w:pPr``, ``w:rPr``,
 ``w:sectPr``, ``w:tblPr``, and within them of ``w:ind``, ``w:spacing``, ``w:rFonts``,
-``w:pgSz``, ``w:pgMar``, ``w:cols``, ``w:jc`` and ``w:sz``, in order to one object: what a copy
+``w:pgSz``, ``w:pgMar``, ``w:cols``, ``w:numPr``, ``w:jc`` and ``w:sz``, in order to one object: what a copy
 states wins, for attributes and child elements alike, and what it doesn't state stays
 (``sm-*``, 40 files), so ``w:orient`` outlives a later ``w:pgSz`` that leaves it out, and
 joined bodies' final sections are read the same way. Of ``w:b`` and ``w:vanish`` the last
@@ -61,7 +62,7 @@ from docx4j_py.el_index import WML_ELEMENTS
 from docx4j_py.openpackaging import breaks
 from docx4j_py.openpackaging.mc_load_mode import branch_taken, required_namespaces
 
-__all__ = ["ReadAsWord", "RootRefused", "UnexpectedRoot", "read_root", "repair", "triggers", "with_root"]
+__all__ = ["ReadAsWord", "RootRefused", "UnexpectedRoot", "read_part_root", "read_root", "repair", "triggers", "with_root"]
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -89,22 +90,20 @@ _IGNORABLE = f"{{{_MC}}}Ignorable"
 
 #: What an unknown ``w:`` root reads through to, with a further unknown element (REQ-319).
 _READ_IN_AN_UNKNOWN_ROOT = frozenset({_P, _TBL, _SDT})
-#: Where a ``w:sdt`` is a block one, as far as joining its content goes.
-_BLOCK_HOSTS = frozenset({_BODY, _TC})
 #: Who may hold which child more than once, and have it read as one (REQ-322's table).
 _READ_AS_ONE: dict[str, frozenset[str]] = {
     _BODY: frozenset({_SECT_PR}),
     _P: frozenset({_PPR}),
     _R: frozenset({_RPR}),
     _TBL: frozenset({_TBL_PR}),
-    _PPR: frozenset({_JC, _w("ind"), _w("spacing"), _RPR, _SECT_PR}),
+    _PPR: frozenset({_JC, _w("ind"), _w("spacing"), _w("numPr"), _RPR, _SECT_PR}),
     _RPR: frozenset({_w("b"), _w("sz"), _w("vanish"), _w("rFonts")}),
     _SECT_PR: frozenset({_w("pgSz"), _w("pgMar"), _w("cols")}),
     _TBL_PR: frozenset({_JC}),
 }
 #: Of those, wherever they stand, each applied to one object. ``w:b`` and ``w:vanish`` aren't: the last element decides.
 _APPLIED = frozenset(
-    {_PPR, _RPR, _SECT_PR, _TBL_PR, _JC, *(_w(local) for local in ("ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "sz"))}
+    {_PPR, _RPR, _SECT_PR, _TBL_PR, _JC, *(_w(local) for local in ("ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "numPr", "sz"))}
 )
 #: A later copy of a ``w:sectPr`` states none of these (``sm-41``, ``sm-42``, ``ft-*``).
 _REFERENCES = frozenset({_w("headerReference"), _w("footerReference")})
@@ -410,6 +409,44 @@ def read_root(data: bytes, part_name: str) -> tuple[bytes, Any, list[SkippedNode
     return _written(element), ReadAsWord(part_name, written, read_as_one, required[0] if required else None), dropped
 
 
+def read_part_root(data: bytes, part_name: str, expected: str) -> tuple[bytes, Any, list[SkippedNode]]:
+    """A header, footer, notes, comments, styles, numbering or settings part's ``mc:AlternateContent`` root (REQ-317).
+
+    `data` as what Word's branch holds, the `expected` root (``c79-10`` to ``c79-18``). What a selected branch holds
+    beyond that is listed, and where nothing is selected, or an empty branch is, the part is empty, as a main part is.
+    A branch holding anything else is unmeasured, so `data` stays as it is, its root's children listed by the parse.
+
+    Args:
+        data: the part's bytes.
+        part_name: the part, for the warning.
+        expected: the root the part should have, as a Clark name.
+
+    Returns:
+        ``(bytes, warning, dropped)``, as :func:`read_root`.
+
+    Raises:
+        etree.XMLSyntaxError: `data` isn't well formed.
+    """
+    element = breaks.parse(data)
+    written = _name(element.tag)
+    dropped: list[SkippedNode] = []
+    required: list[str] = []
+    while element.tag == _ALTERNATE_CONTENT:
+        branch = branch_taken(element)
+        dropped.extend(breaks.skipped_node(child) for child in _elements(element) if child is not branch)
+        if branch is None and _elements(element):
+            required.append(required_namespaces(element))
+        held = [] if branch is None else _elements(branch)
+        if not held:
+            empty = etree.Element(expected, nsmap=element.nsmap)
+            return breaks.write(empty), ReadAsWord(part_name, written, 0, required[0] if required else None), dropped
+        dropped.extend(breaks.skipped_node(child) for child in held[1:])
+        element = held[0]
+    if element.tag != expected:
+        return data, None, []
+    return _written(element), ReadAsWord(part_name, written, 0), dropped
+
+
 def _unknown(tag: Any) -> bool:
     """Whether `tag` is a ``w:`` name the model doesn't hold, CR-037's meaning."""
     return isinstance(tag, str) and tag.startswith(f"{{{_W}}}") and etree.QName(tag).localname not in WML_ELEMENTS
@@ -441,8 +478,7 @@ def repair(root: etree._Element, dropped: list[SkippedNode] | None = None) -> in
         return 0
     read_as_one = _join_bodies(root, dropped)
     for sdt in list(root.iter(_SDT)):
-        if sdt.getparent().tag in _BLOCK_HOSTS:
-            read_as_one += _join_contents(sdt)
+        read_as_one += _join_contents(sdt)
     for parent in list(root.iter(_P, _R, _TBL, _PPR, _RPR, _SECT_PR, _TBL_PR)):
         if parent.getparent() is not None:
             read_as_one += _read_as_one_in(parent, dropped)

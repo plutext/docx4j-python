@@ -191,6 +191,10 @@ class TrialPart:
             return (XML_DECLARATION + etree.tostring(self._tree, encoding="utf-8")).decode("utf-8")
         return self._wrapped._marshal(self._contents).decode("utf-8")
 
+    def read_xml(self) -> bytes:
+        """The copy's bytes, whose root was read when it was made: the real part's are not what this trial holds."""
+        return self.get_xml().encode("utf-8")
+
     def __getattr__(self, name: str) -> Any:
         """Anything else --- the part name, the relationships --- is the real part's."""
         return getattr(self._wrapped, name)
