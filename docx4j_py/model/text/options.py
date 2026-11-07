@@ -282,8 +282,8 @@ class TextOptions:
     option, accepted here as REQ-1001 requires (CR-032 Q5): a reading is of a
     package already loaded, so it does not decide again. Pass it to the load,
     ``LoadOptions(duplicate_entries=...)``; the load's setting holds, and
-    under ``first`` the result's ``package.duplicate_entry`` warnings say what
-    was read.
+    under ``first`` the result's ``package.duplicate_entry`` and
+    ``package.multiple_main_parts`` warnings say what was read.
 
     Beyond section 10, ``image_describer`` (REQ-514): what gives an image its
     description, the author's alt text by default; and ``field_user``

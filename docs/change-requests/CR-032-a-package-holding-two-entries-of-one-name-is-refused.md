@@ -14,7 +14,7 @@ entry of a name and counts the rest, the zip store reading and sizing by the fir
 duplicate before reading anything, `DuplicateEntryException` naming each; `duplicate_entries="first"` reads the first,
 `DuplicateEntry` first on `package.warnings`, and saves only the copy read; the text model's `package.duplicate_entry`
 with `TextWarning.detail`, and `duplicate_entries` by name in `TextOptions`; 67 tests, full suite 9,900 passed.
-**Phase B done 2026-11-04** (section 10: the records). **Complete** (no Word check, Q8).
+**Phase B done 2026-11-04** (section 10: the records). **Complete** (no Word check, Q8). **Amended 2026-11-07** for WD 0.100: more than one `officeDocument` relationship is refused too, the same switch reading the last (section 11).
 
 **Depends on:** nothing in another repository. The statement is the WD's REQ-206 at 0.77
 (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`). docx4j and core-ts each build their own, and since
@@ -219,8 +219,8 @@ model already reads a chunk or an embedded package that will not load as not exp
 ### 4.10 Not here
 
 - **Several main parts.** `package.multiple_main_parts`, a package whose package relationships hold more than one
-  `officeDocument` relationship, is a recommended WD statement still open. If the user rules it, it fits this CR's
-  option as a Phase A2.
+  `officeDocument` relationship, was a recommended WD statement still open. The user ruled it on 7 November, and section
+  11 builds it on this CR's option.
 - **R1's save gate and the `repair` switch** are CR-033's. If the WD's `repair: word` later absorbs
   `duplicate_entries: first` (repair policy P4), this option stays as its alias.
 
@@ -437,5 +437,29 @@ test was skipped or loosened.
    REQ-206's, and recorded for the WD; nothing here changes.
 3. **`insert_ooxml`'s message names an option its caller cannot pass** (10.3 item 4). A host pasting a flat OPC
    fragment with a duplicate has no `"first"`; whether it should is the WD's question, not this CR's.
-4. **`package.multiple_main_parts`** (section 4.10) stays open with the user; it would fit this option as Phase A2.
+4. **`package.multiple_main_parts`** (section 4.10): ruled and built, section 11.
 5. **The registry**, through the docx4j-portfolio session: `python/CR-032` complete.
+
+## 11. Two main parts: WD 0.100's amendment (implementation notes, 2026-11-07)
+
+The user: "fix the 2 gaps identified in connection with WD 0.100". REQ-206's statement, ruled by the user on 7 November in the docx4j session and written into WD 0.100 (portfolio `9034ad0`): a package whose package relationships hold more than one `officeDocument` relationship is refused, naming the targets; under the same switch an implementation reads the last relationship's target, as a fresh Word does, and raises `package.multiple_main_parts` once, the selector that part's name and `detail` the number of relationships. An unreferenced part is no case: an orphan, never read, dropped on save.
+
+Before this, `load_package` took the first relationship and said nothing, so it read a different part from a fresh Word's.
+
+### 11.1 What landed
+
+- **`MultipleMainPartsException`**, an `InvalidFormatException`, with `code` and `targets`, each target as a part name in the relationships' order. Raised by `load_package` under `duplicate_entries="refuse"`, the default.
+- **`MultipleMainParts`** in `load.py`, `part_name` and `count`, the record under `duplicate_entries="first"`, first on `package.warnings` after any `DuplicateEntry`, and logged.
+- **`TextWarning.PACKAGE_MULTIPLE_MAIN_PARTS`**, carried by `Extractor._load_warnings`, renamed from `_duplicate_entries`, as `package._duplicate_entries` is now `package._load_warnings`: each holds both records.
+
+### 11.2 What the build settled beyond the statement
+
+- **The other relationships go at load**, with the Override of each part they named. `get_main_part`, `main_document_part`, the loader and the save then see one main part, and nothing else needs to know. So a save holds one main part, as Word's repaired save does, and reloads under the default with nothing said.
+- **The count is of relationships**, so a transitional and a strict one are two, and two to the same target are two. The second is refused as the statement reads. Under the switch its part is read and keeps its content type.
+- **The switch's name reads oddly here:** `duplicate_entries="first"` reads the **last** relationship. It's the WD's switch and the WD's value, so the name stays, and the docstring and the refusal's message say which.
+- **`strict=True`** refuses nothing more under the switch, as for a duplicated entry (Q4).
+- **An orphan's Override stays.** `ContentTypeManager.to_bytes` writes the source's Overrides as parsed, so a save drops an orphan part but keeps its Override, as it always has. That's what a save writes, CR-033's question, and unmeasured in Word.
+
+### 11.3 The oracle
+
+The tests build their zips (`tests/openpackaging/test_multiple_main_parts.py`). Word's saves of the `pw-two-main-rels-*` round aren't an oracle: in those runs Word read the first relationship, and the WD's `open-order` round shows why, its choice alternating with each repaired open in one Word session, the first open of a session reading the last. A refusal writes nothing, and the switch's save is an ordinary package.

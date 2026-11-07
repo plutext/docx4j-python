@@ -1,14 +1,14 @@
 """The engine's exceptions, as ``org.docx4j.openpackaging.exceptions``.
 
-Six, and the hierarchy is docx4j's: everything the engine raises deliberately
+Seven, and the hierarchy is docx4j's: everything the engine raises deliberately
 is a :class:`Docx4JException`, so ``except Docx4JException`` catches the lot.
 :class:`DuplicateEntryException` is docx4j-core-ts's (its CR-024 D4), which
-docx4j does not have yet.
+docx4j does not have yet, and :class:`MultipleMainPartsException` is WD REQ-206's.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import ClassVar
 
 __all__ = [
@@ -17,6 +17,7 @@ __all__ = [
     "DuplicateEntryException",
     "InvalidFormatException",
     "InvalidOperationException",
+    "MultipleMainPartsException",
     "PartUnrecognisedException",
 ]
 
@@ -65,6 +66,29 @@ def _duplicate_message(entries: Mapping[str, int]) -> str:
         return f"Duplicate entry {name} in this package: {count} entries (REQ-206). {option}"
     listed = "; ".join(f"{name}, {count} entries" for name, count in entries.items())
     return f"Duplicate entries in this package: {listed} (REQ-206). {option} of each"
+
+
+class MultipleMainPartsException(InvalidFormatException):
+    """A package whose package relationships hold more than one ``officeDocument`` relationship, refused (WD REQ-206).
+
+    Word reads such a package only through a repair, and which target it reads then alternates with each repaired open
+    in a Word session, so there is no one reading to copy. Raised under ``LoadOptions(duplicate_entries="refuse")``, the
+    default.
+
+    Attributes:
+        code: ``package.multiple_main_parts``, the WD's code.
+        targets: each relationship's target as a part name (``/word/document.xml``), in the relationships' order.
+    """
+
+    code: ClassVar[str] = "package.multiple_main_parts"
+
+    def __init__(self, targets: Iterable[str]) -> None:
+        """The refusal, naming every target."""
+        self.targets: tuple[str, ...] = tuple(targets)
+        super().__init__(
+            f"{len(self.targets)} officeDocument relationships in this package: {', '.join(self.targets)} (REQ-206). "
+            'LoadOptions(duplicate_entries="first") reads the last'
+        )
 
 
 class InvalidOperationException(Docx4JException):

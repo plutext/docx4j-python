@@ -45,6 +45,7 @@ from docx4j_py.openpackaging.content_types import ContentTypeManager
 from docx4j_py.openpackaging.exceptions import (
     Docx4JException,
     DuplicateEntryException,
+    MultipleMainPartsException,
     InvalidFormatException,
 )
 from docx4j_py.openpackaging.part_name import CONTENT_TYPES_NAME, PartName
@@ -68,7 +69,7 @@ from docx4j_py.openpackaging.stores import PartStore
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
-__all__ = ["DUPLICATE_ENTRIES", "DuplicateEntry", "LoadOptions", "load_package"]
+__all__ = ["DUPLICATE_ENTRIES", "DuplicateEntry", "LoadOptions", "MultipleMainParts", "load_package"]
 
 logger = logging.getLogger("docx4j_py.openpackaging")
 
@@ -120,6 +121,37 @@ class DuplicateEntry:
         return self.message
 
 
+@dataclass(frozen=True, slots=True)
+class MultipleMainParts:
+    """A package with more than one ``officeDocument`` relationship, the last's target read: ``package.multiple_main_parts``.
+
+    WD REQ-206. Recorded under ``LoadOptions(duplicate_entries="first")`` only, since the default refuses the package.
+    Once a package. Not skipped content: a save writes the one main part read, as Word's repaired save does.
+
+    Attributes:
+        part_name: the part read, ``/word/document.xml``: the WD's selector.
+        count: the number of relationships: the WD's ``detail``.
+    """
+
+    code: ClassVar[str] = MultipleMainPartsException.code
+
+    part_name: str
+    count: int
+
+    @property
+    def message(self) -> str:
+        """``2 officeDocument relationships in this package (REQ-206); the last's target read, /word/document.xml``."""
+        return f"{self.count} officeDocument relationships in this package (REQ-206); the last's target read, {self.part_name}"
+
+    def to_dict(self) -> dict[str, Any]:
+        """The JSON-ready view, for the MCP server: ``code``, the two fields and ``message``."""
+        return {"code": self.code, "part_name": self.part_name, "count": self.count, "message": self.message}
+
+    def __str__(self) -> str:
+        """:attr:`message`."""
+        return self.message
+
+
 @dataclass(slots=True)
 class LoadOptions:
     """How to load a package. CR-002 section 5.5.
@@ -161,7 +193,13 @@ class LoadOptions:
             directory), as Word reads it after its repair, records a
             :class:`DuplicateEntry` per name on ``package.warnings``, and a save
             writes only the copy read. ``strict`` does not refuse under
-            ``"first"``: the option is the caller's choice (CR-032 Q4).
+            ``"first"``: the option is the caller's choice (CR-032 Q4). The same
+            switch decides a package with more than one ``officeDocument``
+            relationship: ``"refuse"`` raises
+            :class:`~docx4j_py.openpackaging.exceptions.MultipleMainPartsException`
+            naming the targets, and ``"first"`` reads the **last** relationship's
+            target, as a fresh Word does, records one :class:`MultipleMainParts`
+            and drops the other relationships, so a save holds one main part.
     """
 
     strict: bool = False
@@ -208,6 +246,9 @@ def load_package(
         DuplicateEntryException: the container holds two entries of one name,
             under ``duplicate_entries="refuse"``, the default (CR-032 D4); an
             :class:`InvalidFormatException`.
+        MultipleMainPartsException: the package relationships hold more than one
+            ``officeDocument`` relationship, under ``duplicate_entries="refuse"``,
+            the default (WD REQ-206); an :class:`InvalidFormatException`.
         InvalidFormatException: ``[Content_Types].xml`` is missing or not well
             formed ("Bad [Content_Types].xml: ..."), ``_rels/.rels`` is
             missing, or no relationship names the main part.
@@ -223,7 +264,7 @@ def load_package(
     found = duplicates() if callable(duplicates) else {}
     if found and options.duplicate_entries != "first":
         raise DuplicateEntryException(found)
-    records = [DuplicateEntry(name, count) for name, count in found.items()]
+    records: list[Any] = [DuplicateEntry(name, count) for name, count in found.items()]
     for record in records:
         logger.warning("%s", record.message)
 
@@ -236,19 +277,27 @@ def load_package(
         raise InvalidFormatException("_rels/.rels appears to be missing from this package")
     package_rels.set_bytes(store.load("_rels/.rels"))
 
-    main_rel = next(
-        (r for r in package_rels.list if r.type_value in MAIN_PART_RELATIONSHIP_TYPES),
-        None,
-    )
-    if main_rel is None:
+    main_rels = [r for r in package_rels.list if r.type_value in MAIN_PART_RELATIONSHIP_TYPES]
+    if not main_rels:
         raise InvalidFormatException("No relationship of type officeDocument")
+    *other_rels, main_rel = main_rels
     main_part_name = PartName.resolve(PartName.ROOT, main_rel.target or "")
+    if other_rels:
+        if options.duplicate_entries != "first":
+            raise MultipleMainPartsException(str(PartName.resolve(PartName.ROOT, r.target or "")) for r in main_rels)
+        records.append(MultipleMainParts(str(main_part_name), len(main_rels)))
+        logger.warning("%s", records[-1].message)
+        for rel in other_rels:
+            package_rels.list.remove(rel)
+            other_part_name = PartName.resolve(PartName.ROOT, rel.target or "")
+            if other_part_name != main_part_name:
+                ctm.remove_override_content_type(other_part_name)
 
     package = create_package(ctm.get_content_type(main_part_name))
     package.content_type_manager = ctm
     package.source_part_store = store
     package.load_options = options
-    package._duplicate_entries = records
+    package._load_warnings = records
     package.relationships_part = package_rels
     package_rels.source_p = package
     package_rels.package = package

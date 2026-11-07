@@ -375,7 +375,7 @@ only where the fork's skipped report names one, so a clean part pays the test of
 record is `BrOutsideRun`, `br.outside_run`, on `part.warnings` and `package.warnings`); `api.py`,
 `load()` and `create_package()`. Every store keeps the first entry of a name, compared without case
 as its lookup is, and counts the rest (`duplicates()`), which `load_package` refuses before reading
-anything (CR-032). Everything is synchronous. Departures from docx4j are listed in
+anything (CR-032), as it refuses more than one `officeDocument` relationship, the same switch reading the last (WD REQ-206). Everything is synchronous. Departures from docx4j are listed in
 CR-002 section 12.3.
 
 ## Round-trip and fidelity rules

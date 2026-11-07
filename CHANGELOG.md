@@ -306,6 +306,10 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ### Fixed
 
+- **A package with more than one `officeDocument` relationship is refused** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
+  [11](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#11-two-main-parts-wd-0100s-amendment-implementation-notes-2026-11-07); WD REQ-206): the load took the first and said nothing, a different part from a fresh Word's.
+  `MultipleMainPartsException` (`package.multiple_main_parts`) names the targets. Under `LoadOptions(duplicate_entries="first")` the **last** relationship's target is read, as a fresh Word reads it, a
+  `MultipleMainParts` is recorded and the text model raises the warning once, and a save holds one main part.
 - **A main part with another root, or a child given more than once, is read as Word reads it**
   ([CR-039](docs/change-requests/CR-039-a-repeated-child-and-an-mc-root-read-as-word-reads-them.md), after the Word bridge's measurements):
   an `mc:AlternateContent` root takes Word's branch, a `w:body`, `w:p`, `w:sdtContent` or unknown `w:` root is read through, and two `w:document` or `w:body`

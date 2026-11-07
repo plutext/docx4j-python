@@ -669,7 +669,7 @@ class Extractor:
         # one level down the settings' updateFields is not the result's, nor are the settings needed for it
         metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: not self.nested and self._fields_update_on_open()}
         if not self.nested:
-            self._duplicate_entries()
+            self._load_warnings()
             from docx4j_py.model.text import metadata as properties
 
             properties.read(self.trees.package, metadata)
@@ -711,22 +711,25 @@ class Extractor:
             self._comments(comments)
         return TextResult(out, comments, self.warnings, metadata, self.options)
 
-    def _duplicate_entries(self) -> None:
-        """``package.duplicate_entry``, once a name, where the load read the first of several entries (REQ-206).
+    def _load_warnings(self) -> None:
+        """``package.duplicate_entry``, once a name, and ``package.multiple_main_parts``, once (REQ-206).
 
         CR-032 D8: the load's ``duplicate_entries: first`` decided what was
         read, and its records (``package.warnings``) are carried here, first, the
-        selector the entry's name and ``detail`` the number of entries. A
-        package loaded under the default holding one was refused, so a reading
-        never decides again. One level down there are none: a nested load is
-        refused by its own default.
+        selector the entry's or the part's name and ``detail`` the number of entries
+        or relationships. A package loaded under the default holding either was
+        refused, so a reading never decides again. One level down there are none: a
+        nested load is refused by its own default.
         """
-        from docx4j_py.openpackaging.load import DuplicateEntry
+        from docx4j_py.openpackaging.load import DuplicateEntry, MultipleMainParts
 
         for record in getattr(self.trees.package, "warnings", None) or ():
             if isinstance(record, DuplicateEntry):
                 kind = TextWarning.PACKAGE_DUPLICATE_ENTRY
                 self.warn(TextWarning(kind, None, part_name=record.entry, detail=record.count))
+            elif isinstance(record, MultipleMainParts):
+                kind = TextWarning.PACKAGE_MULTIPLE_MAIN_PARTS
+                self.warn(TextWarning(kind, None, part_name=record.part_name, detail=record.count))
 
     def _unexpected_root(self) -> None:
         """What the main part's root left to say: ``part.unexpected_root`` (REQ-320) and ``mce.nothing_selected`` (REQ-305)."""
