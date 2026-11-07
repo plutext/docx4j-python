@@ -637,7 +637,7 @@ The draft is of 2026-10-23. Read again on 2026-11-07, at `02506c0`:
 - **Measured again at `02506c0`**, on `create_package()`: `Range.hyperlink = "javascript:alert(1)"` gives `click [here](<javascript:alert(1)>)` from `body.to_markdown()`, and a paragraph holding `<img src=x onerror=alert(3)>` gives `- <img src=x onerror=alert(3)> text` from `outline().to_markdown()`.
 - **Line numbers have moved.** `md.Link` is at `markdown.py` line 904, `_runs`' marker at 886 and `_comment` at 957. The code at each is as section 2 describes it.
 - **The oracles haven't moved.** `LinkTargets.java`'s last commit is `525d1ccb3`, and `LinkTargets.mts`'s is `f544b8f`, so section 3 stands with Q3's rule. Section 6.3's byte check runs at `525d1ccb3` or later, not `30fb41024`.
-- **Q11 stands.** WD 0.34 took the two readings into the inspector's kinds, and a NOTE there says what docx4j's writer refuses, but REQ-703's links bullet still says nothing of a target's scheme at WD 0.100. It went to the portfolio on 2026-11-07, and the user rules on it there.
+- **Q11 is ruled.** At WD 0.100 REQ-703's links bullet still said nothing of a target's scheme, so it went to the portfolio on 2026-11-07. The user ruled the same day ("add the scheme rule to REQ-703 as recommended"), and WD 0.101 (portfolio `7150868`) has it in that bullet and section 11, with a NOTE on CriticMarkup marks. Its wording fits what was built: the allowed set, the two readings and a per-call option. Its HTML clause doesn't apply here.
 
 ## 9. Effort
 
@@ -665,7 +665,7 @@ The user: "fix the 2 gaps identified in connection with WD 0.100, then implement
 - **Phase A, the links.** `model/text/link_targets.py`, docx4j's `LinkTargets` at `525d1ccb3`, Q3's decoded reading included. `_WmlToMarkdown._linked` writes a refused target's runs as text, and `refuse` logs the first of an export at WARNING and the rest at DEBUG. `link_schemes` is on `MarkdownExportOptions`, `markdown()`, `markdown_blocks()`, `Body.to_markdown`, `Body.markdown_budget`, `Paragraph.to_markdown`, `Table.to_markdown`, `pkg.to_markdown`, `pkg.markdown_budget` and a trial's two, through the module functions under them.
 - **Phase B, the markers.** `_runs` and `_comment` write the braces raw and the detail through `_detail_text`. `_open` stays for `_code_text`.
 - **Phase C, the sinks.** Q8: `addressable_para_id` and `address_comment`'s guard. Q9: `Outline.to_markdown()` escapes each entry. Q10: `check_image_destination`.
-- **Phase D, the records.** This section, the README and PyPI readme, the CHANGELOG (`### Security`, naming what 0.1.0 and 0.2.0 write, as Q6 left it), CR-006 section 3.1's line (Q7), `tests/README.md`, CLAUDE.md. Q11 went to the portfolio.
+- **Phase D, the records.** This section, the README and PyPI readme, the CHANGELOG (`### Security`, naming what 0.1.0 and 0.2.0 write, as Q6 left it), CR-006 section 3.1's line (Q7), `tests/README.md`, CLAUDE.md. Q11 is WD 0.101's (section 8.1).
 
 Section 5 planned A and B as separate commits. They landed as one: the keyword and the refusal share every reader's lines.
 
