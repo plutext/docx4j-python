@@ -35,8 +35,8 @@ states wins, for attributes and child elements alike, and what it doesn't state 
 (``sm-*``, 40 files), so ``w:orient`` outlives a later ``w:pgSz`` that leaves it out, and
 joined bodies' final sections are read the same way. Of ``w:b`` and ``w:vanish`` the last
 element decides, since an on/off element with no ``w:val`` states on (``sm-81``). A later
-copy's ``w:headerReference`` is ignored, the first copy's standing (``sm-41``, ``sm-42``), and a
-``w:footerReference`` is taken to be the same, unmeasured. Any other child two copies
+copy's ``w:headerReference`` or ``w:footerReference`` is ignored, whatever its ``w:type``, the first
+copy's standing, and a first copy with none leaves none (``sm-41``, ``sm-42``, ``ft-*``). Any other child two copies
 both state is the later's, whole, ``w:tblW`` among them (``sm-61`` fits neither reading). Nothing else
 is measured, so a second ``w:txbxContent`` or ``w:tcPr`` stays as it was, the first kept
 and the rest listed.
@@ -106,7 +106,7 @@ _READ_AS_ONE: dict[str, frozenset[str]] = {
 _APPLIED = frozenset(
     {_PPR, _RPR, _SECT_PR, _TBL_PR, _JC, *(_w(local) for local in ("ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "sz"))}
 )
-#: A later copy of a ``w:sectPr`` states none of these (``sm-41``, ``sm-42``; the footer's unmeasured).
+#: A later copy of a ``w:sectPr`` states none of these (``sm-41``, ``sm-42``, ``ft-*``).
 _REFERENCES = frozenset({_w("headerReference"), _w("footerReference")})
 #: The children REQ-322 reads, the ones the skipped report triggers on.
 _MEASURED = frozenset({_BODY, _SDT_CONTENT}).union(*_READ_AS_ONE.values())

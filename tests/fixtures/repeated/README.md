@@ -13,6 +13,7 @@ CR-039's oracle (`tests/openpackaging/test_repeated.py`).
 | `mr-*` | docx4j's `madeup-root` round: how far Word reads an unknown root |
 | `nd-20` to `nd-24` | A `w:body` in a `w:body`. The objects session's |
 | `sm-*` | The `sectpr-merge` round: what Word's rule for a repeated child is, one difference a file (CR-039 section 9.5). Saves only, no text saves |
+| `ft-*` | The `footer-refs` round: a `w:footerReference` or `w:headerReference` on a later copy of a `w:sectPr`. Saves only |
 | `*-word365.docx` | Word's save of each. A file Word refused has none |
 | `*-word365.txt` | Word's text save. It leaves text boxes out, so a box's words are read from the save |
 

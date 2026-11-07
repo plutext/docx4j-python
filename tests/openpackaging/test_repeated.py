@@ -584,8 +584,8 @@ def test_only_the_first_copy_s_header_stands(name: str, words: str) -> None:
     assert ("headerReference" in local_names(package.main_document_part.skipped)) is (name != "sm-40-header-first")
 
 
-def test_a_later_footer_reference_is_read_as_a_header_s() -> None:
-    """Unmeasured: the same object, so the same reading, until a round says otherwise."""
+def test_a_later_footer_reference_is_listed() -> None:
+    """Word's ``ft-*``: the first copy's stands, and what a later one named is listed."""
     def section(rid: str) -> str:
         return f'<w:sectPr><w:footerReference w:type="default" r:id="{rid}"/></w:sectPr>'
 
@@ -595,6 +595,29 @@ def test_a_later_footer_reference_is_read_as_a_header_s() -> None:
     root = etree.fromstring(part_of(saved(package, check=False)))
     assert [ref.get(f"{{{r_ns}}}id") for ref in root.iter(f"{W}footerReference")] == ["rId1"]
     assert local_names(package.main_document_part.skipped) == ["footerReference"]
+
+
+def _references(data: bytes) -> list[list[tuple[str, str, str]]]:
+    """Each section's header and footer references: their kind, type and part's words, as a save's relationships say."""
+    package = zipfile.ZipFile(io.BytesIO(data))
+    targets = {rel.get("Id"): rel.get("Target") for rel in etree.fromstring(package.read("word/_rels/document.xml.rels"))}
+    r_id = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+    found = []
+    for section in etree.fromstring(package.read("word/document.xml")).iter(f"{W}sectPr"):
+        held = [ref for ref in section if etree.QName(ref).localname in ("headerReference", "footerReference")]
+        words = ["".join(etree.fromstring(package.read(f"word/{targets[ref.get(r_id)]}")).itertext()).strip() for ref in held]
+        found.append(sorted((etree.QName(ref).localname, ref.get(f"{W}type"), said) for ref, said in zip(held, words, strict=True)))
+    return found
+
+
+FOOTERS = sorted(path.stem for path in FIXTURES.glob("ft-*.docx") if not path.stem.endswith("-word365"))
+
+
+@pytest.mark.parametrize("name", FOOTERS)
+def test_only_the_first_copy_s_references_stand(name: str) -> None:
+    """Of any ``w:type``, across joined bodies too, and a first copy with none leaves none."""
+    word = (FIXTURES / f"{name}-word365.docx").read_bytes()
+    assert _references(saved(_read(load(source(name))))) == _references(word)
 
 
 # --- an unknown root -------------------------------------------------------------
