@@ -301,12 +301,14 @@ def compare(
             the parse reads it first (:func:`docx4j_py.openpackaging.repeated.read_root`).
     """
     rep = DiffReport()
+    joined_at_root = joined = 0
     if repaired:
         from docx4j_py.openpackaging.read_through import repair_bytes
         from docx4j_py.openpackaging.repeated import read_root
 
         if main_part:
             orig, warning, _dropped = read_root(orig, "/word/document.xml")
+            joined_at_root = getattr(warning, "children", 0)
             if warning is not None:
                 rep.add("read-as-word", "/", f"{warning.message}")
         orig, elements, breaks, texts, joined = repair_bytes(orig)
@@ -319,10 +321,10 @@ def compare(
         for _ in range(texts):
             rep.add("br-outside-run", "/", "a text element holding elements, split as Word reads it")
     a, b = normalize_tree(orig), normalize_tree(new)
-    if repaired and joined:
-        # a merge appends the later w:pPr's children and a save writes the schema's order: no difference of content
+    if joined or joined_at_root:
+        # a merge appends a later copy's children and a save writes the schema's order: no difference of content
         for tree in (a, b):
-            for holder in tree.iter(f"{{{WML}}}pPr", f"{{{WML}}}rPr"):
+            for holder in tree.iter(*(f"{{{WML}}}{name}" for name in ("pPr", "rPr", "sectPr", "tblPr"))):
                 holder[:] = sorted(holder, key=lambda child: str(child.tag))
     if normalise:
         from docx4j_py.openpackaging.normalise import normalise_tree

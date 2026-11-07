@@ -1,6 +1,6 @@
 # CR-039: A repeated child and an `mc:AlternateContent` root, read as Word reads them
 
-**Status:** Complete 2026-11-07: Phases B and C built, Phase A folded into B, and the Word check passed through the bridge at the user's word (section 9.4). Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Phase B built 2026-11-07 (section 8), then amended to WD 0.98's REQ-318 to REQ-320, with Phase C and a `w:body` in a `w:body` (section 9, the user: "go"). Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
+**Status:** Complete 2026-11-07: Phases B and C built, Phase A folded into B, and the Word check passed through the bridge at the user's word (section 9.4). Amended the same day for WD 0.100's REQ-322, Word's merge rule (section 9.6), at the user's word. Decided 2026-11-07 (the user: "yes update Q9 then take decisions as recommended, commit then start phase b"): Q9 changed to read both roots as Word does, every other question as recommended. Proposed 2026-11-06 (the user: "write the CR - we may defer implementation of it indefinitely..."), on the objects session's message of that day and section 7.15 of the portfolio's `text_extraction_behaviour_model.md` (uncommitted when read). Nothing is built and nothing waits on it. Phases B and C are planned (the user, 2026-11-07: "CR-039: we'll implement phases B and C shortly"), with D after them, which answers Q7. Phase A is folded into B and the rest dropped (Q10). Which release they go in isn't said. Phase B built 2026-11-07 (section 8), then amended to WD 0.98's REQ-318 to REQ-320, with Phase C and a `w:body` in a `w:body` (section 9, the user: "go"). Amended 2026-11-07 on core-ts's message of that day, which relays the user's word that this repository consider its CRs: section 2.4 is new, and sections 3.2, 3.4, 3.5 and 3.6 and Q2 to Q6 changed, with Q9 new. As first written, Phase B refused every root but `w:document`, and Word opens several of them.
 
 **Depends on:** nothing to build. The WD says nothing about either shape, and the portfolio drafts it (Q1). Phase B starts ahead of that at the user's word and is amended to it, as CR-037 was. **CR-033** is the save's half (section 2.3). Nothing here waits on phase 0 of the two counterparts (Word check 81), which isn't scheduled and has no date: core-ts's CR-028 may be deferred indefinitely too. Phase B rests on rounds already run, and Phase C builds what's measured. Phase 0 would only widen C.
 
@@ -104,6 +104,8 @@ core-ts built these and read Word's saves (its CR-028 sections 1.1 and 2.4), eac
 - **The root's name is read once,** in this one part, since `<foo/>` leaves no report and `<foo><w:body>` an empty one.
 
 ### 3.3 The repeated child (Phase C)
+
+Section 9.6 replaces this table's merge, keep-the-last and keep-the-later rows with Word's merge rule.
 
 | Rule | Elements | Measured |
 |---|---|---|
@@ -282,7 +284,7 @@ Through the Word bridge on 16.0.20326.20232, built over `f7c5652`, `bridge/stagi
 
 So a save of each shape is an ordinary document Word reads as it read the source. The roots Word refuses aren't in the set, since a save writes their bytes as read.
 
-### 9.5 The `sectpr-merge` round: Word's real rule (2026-11-07, not built)
+### 9.5 The `sectpr-merge` round: Word's real rule (2026-11-07, built in section 9.6)
 
 The user: "order a Word round to identify the real merge rule". 40 files, each run twice, all silent, the runs agreeing, in the share's `bridge/portfolio/` as `sm-*`, built by `out/sectpr-merge/build.py` and read from the raw saves by `read.py` (git-ignored).
 
@@ -302,4 +304,25 @@ The user: "order a Word round to identify the real merge rule". 40 files, each r
 - **`w:headerReference`:** the first copy's stands. A reference on a later copy is ignored, whether or not an earlier one has one (`sm-41`, `sm-42`), so the header part goes.
 - **`w:tblW` (`sm-61`):** `w:w="4000" w:type="dxa"` then `w:type="auto"` saved as `w:w="0" w:type="dxa"` with a `w:tblInd` of 10. That fits neither reading, and it's one file.
 
-**Here today:** a repeated `w:sectPr` and `w:tblPr` keep the last whole, a merge replaces a child whole where it should merge attributes, and `w:ind`, `w:spacing`, `w:rFonts` and `w:vanish` in one holder keep the first. So section 3.3's rows are too narrow, and REQ-322 with them. `rc-*` and `rt-*` couldn't show this. Nothing is built.
+**Here today:** a repeated `w:sectPr` and `w:tblPr` keep the last whole, a merge replaces a child whole where it should merge attributes, and `w:ind`, `w:spacing`, `w:rFonts` and `w:vanish` in one holder keep the first. So section 3.3's rows are too narrow, and REQ-322 with them. `rc-*` and `rt-*` couldn't show this.
+
+### 9.6 Word's merge rule, built (2026-11-07)
+
+The user: "fix the 2 gaps identified in connection with WD 0.100". WD 0.100 rewrote REQ-322 on section 9.5's rule (portfolio `9034ad0`).
+
+**What was built.** In `repeated.py`, `_keep_last`, `_merge` and `_LAST_KEPT` give way to one table and three functions:
+- `_READ_AS_ONE` says who may hold which child more than once, REQ-322's table by holder. `_MEASURED`, which decides whether the skipped report triggers the repair, is read from it, so `w:ind`, `w:spacing`, `w:rFonts`, `w:pgSz`, `w:pgMar`, `w:cols` and `w:vanish` now trigger it.
+- `_read_as_one_in` applies a holder's copies in order, each copy's own copies first, so `<w:ind 1/><w:ind 2/>` in a first `w:pPr` comes before a `w:ind` in a second.
+- `_apply` applies a later copy to the first: its attributes win, and each child goes through `_state`.
+- `_state` adds a child the first copy doesn't state, applies one in `_APPLIED`, and otherwise replaces what stands.
+
+Joined bodies go through the same call, so `w:sectPr` at the end of a joined body is applied in order.
+
+**What the build settled beyond the design:**
+- **What's listed.** `part.skipped` now names what was replaced, not a whole earlier copy: `pgSz` and `pgMar` where a whole `sectPr` stood before. An attribute replaced lists its element, an attribute added lists nothing, and a copy saying the same thing as the first lists nothing, so CR-033's gate won't refuse a merge that lost nothing.
+- **A child REQ-322 doesn't name.** Two copies stating `w:shd`, say, leave the later's whole, with the earlier listed. REQ-322 names what was measured, and `w:tabs` holds a list that an attribute merge would get wrong. `w:tblW` falls under this, so `sm-61` differs from Word, and REQ-322 says nothing of it.
+- **`w:footerReference` is read as `w:headerReference` is**, the first copy's standing and a later one listed. It's unmeasured and REQ-322 doesn't name it. Two references of one type can't be told apart by the merge, and a footer is the same kind of object, so this is the likelier reading. The Word check should settle it.
+- **A later header's part stays in the package.** The reference goes, so nothing reads it, and its relationship and part are saved as read. Word's save drops the part. Nothing refers to it, so it's harmless, and dropping a part is CR-033's question.
+- **`canon.compare`** sorts `w:sectPr` and `w:tblPr` children too under a join, and counts a join at the root as one.
+
+**Verified.** Every `sm-*` file but `sm-61` saves what Word's save holds: every section, table, paragraph and run property (`test_a_save_holds_what_word_s_save_holds`, 39 files), allowing two spellings of the same value, `w:orient="portrait"` that Word's save leaves out (`sm-07`) and a default `w:space` it writes (`sm-32`). All 57 files of `tests/fixtures/repeated/` with a Word save now agree with it on `w:pgSz`, so the `w:orient` difference on `rt-10`, `rt-40` and `rt-50` (section 9.4) is gone. The 40 inputs and Word's saves are copied into `tests/fixtures/repeated/`.

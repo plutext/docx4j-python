@@ -272,13 +272,13 @@ def test_a_nested_mc_root_is_read_through_each_level() -> None:
 # --- two bodies ------------------------------------------------------------------
 
 
-def test_two_bodies_keep_one_section_and_list_the_earlier() -> None:
+def test_two_bodies_keep_one_section_and_list_what_it_replaced() -> None:
     package = load(source("rc-10-body"))
     part = package.main_document_part
     body = part.contents.body
     assert len([item for item in body.content]) == 2
     assert body.sect_pr is not None
-    assert local_names(part.skipped) == ["sectPr"]
+    assert local_names(part.skipped) == ["pgSz", "pgMar"]
     assert [(w.root, w.children) for w in part.warnings] == [(None, 2)]
 
 
@@ -299,12 +299,12 @@ def _read(package: Any) -> Any:
     return package
 
 
-def test_the_last_section_stated_stands_where_the_last_body_has_none() -> None:
-    """``rt-17``: the third body has no ``w:sectPr``, and the second's stands, with the first's listed."""
+def test_a_body_with_no_section_is_passed_over() -> None:
+    """``rt-17``: the third body has no ``w:sectPr``, so the second's is the last applied, and what it replaced is listed."""
     name = "rt-17-body-third-no-sectPr"
     package = load(source(name))
     assert page_widths(part_of(saved(_read(package)))) == page_widths(word_save(name)) == ["15840"]
-    assert local_names(package.main_document_part.skipped) == ["sectPr"]
+    assert local_names(package.main_document_part.skipped) == ["pgSz", "pgMar"]
 
 
 def test_a_section_in_a_paragraph_stays_where_it_is() -> None:
@@ -360,13 +360,13 @@ def test_the_last_w_b_stands(name: str, value: str | None) -> None:
     assert held["b"].get("val") == value
 
 
-def test_the_later_section_stands_in_one_body() -> None:
+def test_a_later_section_is_applied_in_one_body() -> None:
     name = "rc-40-sectPr"
     ours = part_of(saved(_read(load(source(name)))))
     assert page_widths(ours) == page_widths(word_save(name)) == ["15840"]
 
 
-def test_the_later_table_properties_stand() -> None:
+def test_later_table_properties_are_applied() -> None:
     name = "rc-41-tblPr"
     ours = etree.fromstring(part_of(saved(_read(load(source(name))))))
     theirs = etree.fromstring(word_save(name))
@@ -437,7 +437,13 @@ def test_a_part_that_holds_each_child_once_changes_nothing() -> None:
     assert read_through.repair_bytes(data)[0] is data
 
 
-@pytest.mark.parametrize("name", ["jc", "b", "sz", "pPr", "rPr", "tblPr", "sectPr", "sdtContent", "body"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "jc", "b", "sz", "pPr", "rPr", "tblPr", "sectPr", "sdtContent", "body",
+        "ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "vanish",
+    ],
+)
 def test_the_report_triggers_on_each_child_measured(name: str) -> None:
     class Item:
         qname = f"{W}{name}"
@@ -457,6 +463,138 @@ def test_a_repeated_property_under_a_root_read_gives_one_warning() -> None:
     xml = f'<mc:AlternateContent xmlns:mc="{MC_NS}" xmlns:w="{W_NS}"><mc:Fallback>{held}</mc:Fallback></mc:AlternateContent>'
     package = _read(load(with_part(xml.encode())))
     assert [(w.root, w.children) for w in package.main_document_part.warnings] == [("mc:AlternateContent", 1)]
+
+
+# --- Word's merge rule, REQ-322 ----------------------------------------------------
+
+#: Word's own defaults, written where a file states nothing: no reading of it.
+WORD_ADDS = {"tblPr": {"tblCellMar", "tblLook"}}
+#: REQ-322 says nothing of ``w:tblW``: ``w:w="4000"`` then ``w:type="auto"`` saves as ``w:w="0" w:type="dxa"``, one file.
+MERGED = sorted(path.stem for path in FIXTURES.glob("sm-*.docx") if not path.stem.endswith("-word365") and "-61-" not in path.stem)
+
+
+def _stated(element: etree._Element) -> dict[str, dict[str, str]]:
+    """`element`'s children by name, each with its attributes, as a save says them whoever wrote it."""
+    facts: dict[str, dict[str, str]] = {}
+    for child in element:
+        name = etree.QName(child).localname
+        if name in WORD_ADDS.get(etree.QName(element).localname, ()) or name == "headerReference":
+            continue
+        said = {etree.QName(key).localname: value for key, value in child.attrib.items()}
+        said = {key: value for key, value in said.items() if not key.startswith("rsid")}
+        if said.get("orient") == "portrait":
+            del said["orient"]  # the default, which Word's save leaves out (sm-07)
+        if name == "cols":
+            said.setdefault("space", "720")  # likewise the other way (sm-32)
+        facts[name] = said
+    if etree.QName(element).localname == "sectPr":
+        facts.setdefault("cols", {"space": "720"})
+        facts["headerReference"] = {"count": str(len(element.findall(f"{W}headerReference")))}
+    return facts
+
+
+def _merged(xml: bytes) -> dict[str, Any]:
+    """What the ``sm-*`` round asks of a save: every section, every table's properties, the target's properties."""
+    root = etree.fromstring(xml)
+    target = next(p for p in root.iter(f"{W}p") if "TARGET TEXT" in "".join(p.itertext()))
+    runs = [properties for run in target.findall(f"{W}r") for properties in run.findall(f"{W}rPr")]
+    return {
+        "sections": [_stated(section) for section in root.iter(f"{W}sectPr")],
+        "tables": [_stated(properties) for properties in root.iter(f"{W}tblPr")],
+        "paragraph": [_stated(properties) for properties in target.findall(f"{W}pPr") if len(properties)],
+        "runs": [_stated(properties) for properties in runs if len(properties)],
+    }
+
+
+def _hidden_off(facts: dict[str, Any]) -> dict[str, Any]:
+    """``sm-80``: Word's save of off writes no ``w:vanish``, and here it's the last as written, which reads the same."""
+    facts["runs"] = [run for run in facts["runs"] if run != {"vanish": {"val": "0"}}]
+    return facts
+
+
+@pytest.mark.parametrize("name", MERGED)
+def test_a_save_holds_what_word_s_save_holds(name: str) -> None:
+    ours = part_of(saved(_read(load(source(name)))))
+    assert _hidden_off(_merged(ours)) == _merged(word_save(name))
+
+
+@pytest.mark.parametrize("name", MERGED)
+def test_a_merge_is_all_a_save_changes(name: str) -> None:
+    report = canon.compare(part_of(source(name)), part_of(saved(_read(load(source(name))))), repaired=True, main_part=True)
+    assert report.identical, report.diffs[:5]
+
+
+def _properties(xml: str) -> dict[str, dict[str, str]]:
+    """The first paragraph's ``w:pPr`` as a save holds it, of a body holding `xml`."""
+    data = f'<w:document xmlns:w="{W_NS}"><w:body>{xml}</w:body></w:document>'.encode()
+    root = etree.fromstring(part_of(saved(_read(load(with_part(data))))))
+    return _stated(next(root.iter(f"{W}pPr")))
+
+
+def test_copies_apply_in_order_each_holder_s_own_first() -> None:
+    """Holders in order and copies in a holder in order, so the third ``w:ind`` wins over the second."""
+    xml = (
+        '<w:p><w:pPr><w:ind w:left="1"/><w:ind w:left="2" w:right="2"/></w:pPr><w:pPr><w:ind w:left="3"/></w:pPr>'
+        "<w:r><w:t>A</w:t></w:r></w:p>"
+    )
+    assert _properties(xml)["ind"] == {"left": "3", "right": "2"}
+
+
+def test_a_copy_that_states_the_same_loses_nothing() -> None:
+    xml = (
+        '<w:document xmlns:w="{}"><w:body><w:p><w:pPr><w:jc w:val="left"/><w:ind w:left="1"/></w:pPr><w:pPr><w:jc w:val="left"/>'
+        '<w:ind w:left="1"/></w:pPr></w:p></w:body></w:document>'
+    ).format(W_NS)
+    package = _read(load(with_part(xml.encode())))
+    assert not package.main_document_part.skipped
+
+
+def test_an_attribute_replaced_is_listed_and_one_added_isn_t() -> None:
+    assert local_names(_read(load(source("sm-02-pgsz-orient-last"))).main_document_part.skipped) == ["pgSz"]
+    assert not _read(load(source("sm-71-ind-across-ppr"))).main_document_part.skipped
+
+
+@pytest.mark.parametrize(("first", "last", "on"), [('w:val="0"', "", True), ("", 'w:val="0"', False)])
+def test_the_last_on_off_element_decides_across_holders_too(first: str, last: str, on: bool) -> None:
+    """An element with no ``w:val`` states on, so no attribute of an earlier one stays (``sm-81``)."""
+    run = f"<w:r><w:rPr><w:vanish {first}/></w:rPr><w:rPr><w:vanish {last}/></w:rPr><w:t>A</w:t></w:r>"
+    data = f'<w:document xmlns:w="{W_NS}"><w:body><w:p>{run}</w:p></w:body></w:document>'.encode()
+    [vanish] = etree.fromstring(part_of(saved(_read(load(with_part(data)))))).iter(f"{W}vanish")
+    assert (vanish.get(f"{W}val") is None) is on
+
+
+def test_a_child_the_table_doesn_t_name_is_the_later_s_whole() -> None:
+    """Unmeasured, so ``w:shd`` doesn't merge: the later stands and the earlier is listed."""
+    xml = (
+        f'<w:document xmlns:w="{W_NS}"><w:body><w:p><w:pPr><w:shd w:val="clear" w:fill="FF0000"/></w:pPr>'
+        '<w:pPr><w:shd w:val="clear"/></w:pPr></w:p></w:body></w:document>'
+    )
+    package = _read(load(with_part(xml.encode())))
+    root = etree.fromstring(part_of(saved(package)))
+    assert _stated(next(root.iter(f"{W}pPr")))["shd"] == {"val": "clear"}
+    assert local_names(package.main_document_part.skipped) == ["shd"]
+
+
+@pytest.mark.parametrize(("name", "words"), [("sm-40-header-first", "HEADER ONE"), ("sm-42-header-both", "HEADER ONE"), ("sm-41-header-last", "")])
+def test_only_the_first_copy_s_header_stands(name: str, words: str) -> None:
+    """A later copy's reference is ignored, with its header's words, and listed."""
+    package = load(source(name))
+    text = plain_text(extract(package, include=["headers"]))
+    assert ("HEADER" in text) is bool(words) and "HEADER TWO" not in text
+    assert ("headerReference" in local_names(package.main_document_part.skipped)) is (name != "sm-40-header-first")
+
+
+def test_a_later_footer_reference_is_read_as_a_header_s() -> None:
+    """Unmeasured: the same object, so the same reading, until a round says otherwise."""
+    def section(rid: str) -> str:
+        return f'<w:sectPr><w:footerReference w:type="default" r:id="{rid}"/></w:sectPr>'
+
+    r_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    xml = f'<w:document xmlns:w="{W_NS}" xmlns:r="{r_ns}"><w:body><w:p/>{section("rId1")}{section("rId2")}</w:body></w:document>'
+    package = _read(load(with_part(xml.encode())))
+    root = etree.fromstring(part_of(saved(package, check=False)))
+    assert [ref.get(f"{{{r_ns}}}id") for ref in root.iter(f"{W}footerReference")] == ["rId1"]
+    assert local_names(package.main_document_part.skipped) == ["footerReference"]
 
 
 # --- an unknown root -------------------------------------------------------------

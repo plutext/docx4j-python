@@ -363,7 +363,7 @@ Change the output by changing the inputs below, regenerate, and run `generate.sh
 `RelationshipsPart`, `PartRegistry` mapping content type to part class, the typed WML, DML and
 docProps parts --- `parts/wml/` is a package, whose `comments.py` is the part half of CR-003
 Phase G); `packages/` (`OpcPackage`, `WordprocessingMLPackage`, `create_package`);
-`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `repeated.py`, CR-039's reading of a main part's root and of a child given more than once, run from `XmlPart._read_root` on the main part alone (`reads_root`) and inside `repair_bytes`; `read_through.py`, CR-037's
+`load.py` (Load3) and `save.py` (Save); `mce.py`, the optional preprocessor; `repeated.py`, CR-039's reading of a main part's root and of a child given more than once (WD REQ-322, Word's merge rule: each copy applied in order to one object, `_read_as_one_in`), run from `XmlPart._read_root` on the main part alone (`reads_root`) and inside `repair_bytes`; `read_through.py`, CR-037's
 reading of an unknown `w:` element, WD REQ-308 to REQ-316 (what it holds stays, in the twenty hosts core-ts's
 check 76 measures and the `mc:` branch Word takes; a direct run in a paragraph's `w:pPr`, the `w:pPr` under its
 `w:pPrChange` or its `w:sectPr` goes to the paragraph's head, and such a `w:sectPr` goes; a held `w:p` ends its host),

@@ -27,15 +27,23 @@ Only the main part is measured, so only it asks (``XmlPart.reads_root``).
 **A child given more than once** (REQ-322). The fork keeps the first and reports the
 rest, so the skipped report triggers :func:`repair`, inside
 :func:`~docx4j_py.openpackaging.read_through.repair_bytes`'s one repair and one reparse.
-``w:body``, and ``w:sdtContent`` in a block ``w:sdt``, are joined in order, one section
-the last stated; a ``w:body`` in a ``w:body`` gives way to what it holds. ``w:pPr`` and
-``w:rPr`` merge, the later value winning. Of ``w:jc``, ``w:b``, ``w:sz`` and ``w:tblPr`` the
-last stands. Nothing else is measured, so a second ``w:txbxContent`` or ``w:tcPr`` stays
-as it was, the first kept and the rest listed.
+``w:body``, and ``w:sdtContent`` in a block ``w:sdt``, are joined in order; a ``w:body`` in a
+``w:body`` gives way to what it holds. Word applies each copy of ``w:pPr``, ``w:rPr``,
+``w:sectPr``, ``w:tblPr``, and within them of ``w:ind``, ``w:spacing``, ``w:rFonts``,
+``w:pgSz``, ``w:pgMar``, ``w:cols``, ``w:jc`` and ``w:sz``, in order to one object: what a copy
+states wins, for attributes and child elements alike, and what it doesn't state stays
+(``sm-*``, 40 files), so ``w:orient`` outlives a later ``w:pgSz`` that leaves it out, and
+joined bodies' final sections are read the same way. Of ``w:b`` and ``w:vanish`` the last
+element decides, since an on/off element with no ``w:val`` states on (``sm-81``). A later
+copy's ``w:headerReference`` is ignored, the first copy's standing (``sm-41``, ``sm-42``), and a
+``w:footerReference`` is taken to be the same, unmeasured. Any other child two copies
+both state is the later's, whole, ``w:tblW`` among them (``sm-61`` fits neither reading). Nothing else
+is measured, so a second ``w:txbxContent`` or ``w:tcPr`` stays as it was, the first kept
+and the rest listed.
 
 **The report** is core-ts CR-028 section 3.3's. A part read as Word reads it has lost
-nothing, so it gets one :class:`ReadAsWord` with a count. What goes whole goes in
-``part.skipped`` beside it, a value replaced, an earlier ``w:sectPr`` or a branch not
+nothing, so it gets one :class:`ReadAsWord` with a count. What goes goes in
+``part.skipped`` beside it, a value replaced, a later header reference or a branch not
 taken, so ``strict=True`` refuses those and a part that only joined loads.
 ``part.read_as_word`` is a proposal for core-ts's D8.
 """
@@ -75,6 +83,7 @@ _SDT_CONTENT = _w("sdtContent")
 _PPR = _w("pPr")
 _RPR = _w("rPr")
 _TBL_PR = _w("tblPr")
+_JC = _w("jc")
 _ALTERNATE_CONTENT = f"{{{_MC}}}AlternateContent"
 _IGNORABLE = f"{{{_MC}}}Ignorable"
 
@@ -82,10 +91,25 @@ _IGNORABLE = f"{{{_MC}}}Ignorable"
 _READ_IN_AN_UNKNOWN_ROOT = frozenset({_P, _TBL, _SDT})
 #: Where a ``w:sdt`` is a block one, as far as joining its content goes.
 _BLOCK_HOSTS = frozenset({_BODY, _TC})
+#: Who may hold which child more than once, and have it read as one (REQ-322's table).
+_READ_AS_ONE: dict[str, frozenset[str]] = {
+    _BODY: frozenset({_SECT_PR}),
+    _P: frozenset({_PPR}),
+    _R: frozenset({_RPR}),
+    _TBL: frozenset({_TBL_PR}),
+    _PPR: frozenset({_JC, _w("ind"), _w("spacing"), _RPR, _SECT_PR}),
+    _RPR: frozenset({_w("b"), _w("sz"), _w("vanish"), _w("rFonts")}),
+    _SECT_PR: frozenset({_w("pgSz"), _w("pgMar"), _w("cols")}),
+    _TBL_PR: frozenset({_JC}),
+}
+#: Of those, wherever they stand, each applied to one object. ``w:b`` and ``w:vanish`` aren't: the last element decides.
+_APPLIED = frozenset(
+    {_PPR, _RPR, _SECT_PR, _TBL_PR, _JC, *(_w(local) for local in ("ind", "spacing", "rFonts", "pgSz", "pgMar", "cols", "sz"))}
+)
+#: A later copy of a ``w:sectPr`` states none of these (``sm-41``, ``sm-42``; the footer's unmeasured).
+_REFERENCES = frozenset({_w("headerReference"), _w("footerReference")})
 #: The children REQ-322 reads, the ones the skipped report triggers on.
-_MEASURED = frozenset(_w(local) for local in ("body", "sdtContent", "pPr", "rPr", "jc", "b", "sz", "sectPr", "tblPr"))
-#: Of these, by the properties that hold them, the last stands.
-_LAST_KEPT = ((_PPR, (_w("jc"),)), (_RPR, (_w("b"), _w("sz"))), (_TBL, (_TBL_PR,)))
+_MEASURED = frozenset({_BODY, _SDT_CONTENT}).union(*_READ_AS_ONE.values())
 
 #: Refused by name (``or-12``, ``or-13``, ``or-15``, ``mr-31``, ``rw-30``, ``rw-31``). What a root holds is the other rows.
 _REFUSED = frozenset(
@@ -187,12 +211,53 @@ def _drop(parent: etree._Element, element: etree._Element, dropped: list[Skipped
     parent.remove(element)
 
 
-def _keep_last(parent: etree._Element, tag: str, dropped: list[SkippedNode] | None) -> int:
-    """Only the last `tag` left in `parent`: how many went."""
-    *earlier, _last = parent.findall(tag) or [None]
-    for element in earlier:
-        _drop(parent, element, dropped)
-    return len(earlier)
+def _same(one: etree._Element, other: etree._Element) -> bool:
+    """Whether a copy says what `one` says, so that replacing it loses nothing."""
+    return etree.tostring(one, method="c14n") == etree.tostring(other, method="c14n")
+
+
+def _apply(first: etree._Element, later: etree._Element, dropped: list[SkippedNode] | None) -> None:
+    """`later` applied to `first`: what it states wins and what it doesn't stays, attributes and children alike."""
+    if dropped is not None and any(first.get(name, value) != value for name, value in later.attrib.items()):
+        dropped.append(breaks.skipped_node(first))
+    first.attrib.update(later.attrib)
+    for child in _elements(later):
+        if later.tag == _SECT_PR and child.tag in _REFERENCES:
+            _drop(later, child, dropped)
+        else:
+            _state(first, child, dropped)
+
+
+def _state(holder: etree._Element, child: etree._Element, dropped: list[SkippedNode] | None) -> None:
+    """`child`, from a later copy, stated in `holder`: new, applied to what stands, or in its place."""
+    earlier = holder.find(child.tag)
+    if earlier is not None and child.tag in _APPLIED:
+        _apply(earlier, child, dropped)
+        return
+    if earlier is not None:
+        if _same(earlier, child):
+            holder.remove(earlier)
+        else:
+            _drop(holder, earlier, dropped)
+    holder.append(child)
+
+
+def _read_as_one_in(parent: etree._Element, dropped: list[SkippedNode] | None) -> int:
+    """Each child of `parent` REQ-322 reads as one, its copies applied in order, their own first: how many."""
+    tags = _READ_AS_ONE[parent.tag]
+    seen: set[str] = set()
+    read_as_one = 0
+    for child in _elements(parent):
+        if child.tag not in tags:
+            continue
+        if child.tag in _READ_AS_ONE:
+            read_as_one += _read_as_one_in(child, dropped)
+        if child.tag in seen:
+            parent.remove(child)
+            _state(parent, child, dropped)
+            read_as_one += 1
+        seen.add(child.tag)
+    return read_as_one
 
 
 def _flatten(body: etree._Element) -> int:
@@ -206,7 +271,7 @@ def _flatten(body: etree._Element) -> int:
 
 
 def _join_bodies(document: etree._Element, dropped: list[SkippedNode] | None) -> int:
-    """Each ``w:body`` of `document` joined to its first, one section the last stated, at the end: how many read as one."""
+    """Each ``w:body`` of `document` joined to its first, their final sections read as one, at the end: how many read as one."""
     bodies = document.findall(_BODY)
     if not bodies:
         return 0
@@ -214,7 +279,7 @@ def _join_bodies(document: etree._Element, dropped: list[SkippedNode] | None) ->
     for body in later:
         first.extend(_elements(body))
         document.remove(body)
-    read_as_one = len(later) + _flatten(first) + _keep_last(first, _SECT_PR, dropped)
+    read_as_one = len(later) + _flatten(first) + _read_as_one_in(first, dropped)
     section = first.find(_SECT_PR)
     if section is not None:
         first.append(section)
@@ -227,18 +292,6 @@ def _join_contents(sdt: etree._Element) -> int:
     for content in later:
         first.extend(_elements(content))
         sdt.remove(content)
-    return len(later)
-
-
-def _merge(parent: etree._Element, tag: str, dropped: list[SkippedNode] | None) -> int:
-    """Each `tag` of `parent` merged into its first, the later value winning: how many merged."""
-    first, *later = parent.findall(tag) or [None]
-    for properties in later:
-        for child in _elements(properties):
-            for replaced in first.findall(child.tag):
-                _drop(first, replaced, dropped)
-            first.append(child)
-        parent.remove(properties)
     return len(later)
 
 
@@ -390,13 +443,9 @@ def repair(root: etree._Element, dropped: list[SkippedNode] | None = None) -> in
     for sdt in list(root.iter(_SDT)):
         if sdt.getparent().tag in _BLOCK_HOSTS:
             read_as_one += _join_contents(sdt)
-    for host, tag in ((_P, _PPR), (_R, _RPR)):
-        for parent in list(root.iter(host)):
-            read_as_one += _merge(parent, tag, dropped)
-    for host, tags in _LAST_KEPT:
-        for parent in list(root.iter(host)):
-            for tag in tags:
-                read_as_one += _keep_last(parent, tag, dropped)
+    for parent in list(root.iter(_P, _R, _TBL, _PPR, _RPR, _SECT_PR, _TBL_PR)):
+        if parent.getparent() is not None:
+            read_as_one += _read_as_one_in(parent, dropped)
     return read_as_one
 
 

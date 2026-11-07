@@ -309,8 +309,9 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 - **A main part with another root, or a child given more than once, is read as Word reads it**
   ([CR-039](docs/change-requests/CR-039-a-repeated-child-and-an-mc-root-read-as-word-reads-them.md), after the Word bridge's measurements):
   an `mc:AlternateContent` root takes Word's branch, a `w:body`, `w:p`, `w:sdtContent` or unknown `w:` root is read through, and two `w:document` or `w:body`
-  are joined with the last section stated, as is a `w:body` in a `w:body`. `w:sdtContent` in a block control joins, `w:pPr` and `w:rPr` merge, and the last `w:jc`, `w:b`,
-  `w:sz`, `w:sectPr` and `w:tblPr` stand. The roots Word refuses are refused when read, as a part not well formed is, and `misplaced()` reports `part.root_refused`.
+  are joined, as is a `w:body` in a `w:body`. `w:sdtContent` in a block control joins. Copies of `w:pPr`, `w:rPr`, `w:sectPr` and `w:tblPr`, and of `w:ind`, `w:spacing`,
+  `w:rFonts`, `w:pgSz`, `w:pgMar`, `w:cols`, `w:jc` and `w:sz` in them, are applied in order to one object, what a copy states winning and what it doesn't state staying, joined
+  bodies' final sections included; of `w:b` and `w:vanish` the last element decides, and a later copy's `w:headerReference` is ignored (WD REQ-322). The roots Word refuses are refused when read, as a part not well formed is, and `misplaced()` reports `part.root_refused`.
   Any other root yields no text and raises `part.unexpected_root`, on `part.warnings` and the text result. `extract` and `body_of` refuse a package with no main part.
   A part read this way is saved in that shape, with one `part.read_as_word` warning.
 
