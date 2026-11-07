@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import iter_children
 from docx4j_py.model.content.errors import AddressError, ContentError
-from docx4j_py.model.content.text_model import block_children_of
+from docx4j_py.model.content.text_model import addressable_para_id, block_children_of
 from docx4j_py.wml import P, Tr
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -138,7 +138,7 @@ def address_of(body: Body, target: Any) -> str:
         AddressError: the block is not in this body.
     """
     element = getattr(target, "element", target)
-    para_id = getattr(element, "para_id", None)
+    para_id = addressable_para_id(getattr(element, "para_id", None))
     if para_id:
         return para_id_address(para_id)
     ordinal = ordinal_of(body, element)
@@ -201,7 +201,7 @@ def _parse_ordinal(body: Body, address: str) -> list[int] | None:
 def _paragraph_by_para_id(body: Body, para_id: str) -> Paragraph | None:
     wanted = para_id.lower()
     for paragraph in body.iter_paragraphs():
-        current = paragraph.para_id
+        current = addressable_para_id(paragraph.para_id)
         if current and current.lower() == wanted:
             return paragraph
     return None

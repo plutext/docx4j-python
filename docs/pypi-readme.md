@@ -123,7 +123,10 @@ pkg.save("out.docx")
 
 Markdown goes both ways: `pkg.to_markdown(addresses=True)` puts each block's address in an HTML
 comment before it, and `body.insert_markdown(text)` writes CommonMark plus GFM tables through the
-document's own styles, creating the numbering part when there is none.
+document's own styles, creating the numbering part when there is none. Markdown out treats the
+document's values as text: a link to `javascript:` or any scheme outside `http`, `https`, `ftp`,
+`mailto`, `file`, `news` and `tel` is written as its text, and `to_markdown(link_schemes=[...])` adds
+a scheme.
 
 The text an agent reads is one text model, the port of docx4j's (`docx4j_py.model.text`): text
 boxes after their anchors, notes, hidden text left out, the views by resolution, and with

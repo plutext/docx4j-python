@@ -52,6 +52,7 @@ reads every other part with ``read_contents`` (REQ-204).
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -120,9 +121,26 @@ MONOSPACE_FONTS: frozenset[str] = frozenset(
 )
 
 
+#: What a link may use beyond the defaults: an iterable of schemes, or one comma-separated string (CR-015 Q2).
+LinkSchemes = str | Iterable[str]
+
+#: What an address holds as it stands. Any other character, and the second ``-`` of two, could close the comment.
+_UNSAFE_IN_AN_ADDRESS = re.compile(r"[^0-9A-Za-z:/._-]")
+_SECOND_HYPHEN = re.compile(r"(?<=-)-")
+
+
+def _percent_encoded(found: re.Match[str]) -> str:
+    return "".join(f"%{octet:02X}" for octet in found[0].encode("utf-8", "surrogatepass"))
+
+
 def address_comment(address: str, indent: str = "") -> str:
-    """One address comment line, exactly as :data:`ADDRESS_COMMENT` matches it."""
-    return f"{indent}<!-- {address} -->"
+    """One address comment line, exactly as :data:`ADDRESS_COMMENT` matches it.
+
+    An address can hold a document's value, a note's id, a header's relationship id, so what could end the comment is
+    written ``%XX`` (CR-015 Q8), which no block's address holds, so ``element_at`` answers ``address.not_found``.
+    """
+    guarded = _SECOND_HYPHEN.sub("%2D", _UNSAFE_IN_AN_ADDRESS.sub(_percent_encoded, address))
+    return f"{indent}<!-- {guarded} -->"
 
 
 #: The characters that would otherwise be read as markup inside a line.
@@ -162,22 +180,29 @@ def _word_relative(image: Any) -> str:
     return name[len("/word/") :] if name.startswith("/word/") else name.lstrip("/")
 
 
-def _blocks(body: Any, view: str, *, footnotes: bool = True) -> tuple[Any, Any]:
+def _exporter(link_schemes: LinkSchemes) -> Any:
+    """The readers' writer: each picture at its part's name, the document's own value, so held to the link rule (CR-015 Q10)."""
+    from docx4j_py.model.text.markdown import MarkdownExporter, MarkdownExportOptions
+
+    return MarkdownExporter(
+        MarkdownExportOptions(image_destination=_word_relative, link_schemes=link_schemes, check_image_destination=True)
+    )
+
+
+def _blocks(body: Any, view: str, *, footnotes: bool = True, link_schemes: LinkSchemes = ()) -> tuple[Any, Any]:
     """The body's reading and its Markdown block by block."""
     from docx4j_py.model.content.text_model import reading_of
 
-    return _written(reading_of(body, view=_view_of(view), notes=footnotes))
+    return _written(reading_of(body, view=_view_of(view), notes=footnotes), link_schemes)
 
 
-def _written(reading: Any) -> tuple[Any, Any]:
-    from docx4j_py.model.text import markdown_blocks
-
-    return reading, markdown_blocks(reading.result, reading.package, image_destination=_word_relative)
+def _written(reading: Any, link_schemes: LinkSchemes = ()) -> tuple[Any, Any]:
+    return reading, _exporter(link_schemes).blocks(reading.result, reading.package)
 
 
-def _pieces(body: Any, view: str, addresses: bool, footnotes: bool) -> list[str]:
+def _pieces(body: Any, view: str, addresses: bool, footnotes: bool, link_schemes: LinkSchemes) -> list[str]:
     """The body's Markdown, a piece a block: each block's lines, its address comment before them where asked."""
-    reading, blocks = _blocks(body, view, footnotes=footnotes)
+    reading, blocks = _blocks(body, view, footnotes=footnotes, link_schemes=link_schemes)
     return _pieces_of(reading, blocks, body.prefix, addresses)
 
 
@@ -204,13 +229,13 @@ def _pieces_of(reading: Any, blocks: Any, prefix: str, addresses: bool) -> list[
     return pieces
 
 
-def _package_pieces(package: Any, view: str, addresses: bool, footnotes: bool) -> list[str]:
+def _package_pieces(package: Any, view: str, addresses: bool, footnotes: bool, link_schemes: LinkSchemes) -> list[str]:
     """The package's Markdown, read from the package itself, so that no part is unmarshalled."""
     from docx4j_py.model.content.text_model import Reading
     from docx4j_py.model.text import extract
 
     reading = Reading(extract(package, view=_view_of(view), notes=footnotes), "body", package)
-    _reading, blocks = _written(reading)
+    _reading, blocks = _written(reading, link_schemes)
     return _pieces_of(reading, blocks, "body", addresses)
 
 
@@ -238,6 +263,7 @@ def body_markdown(
     view: str = "accepted",
     max_chars: int | None = None,
     footnotes: bool = True,
+    link_schemes: LinkSchemes = (),
 ) -> str:
     """A body as Markdown: what ``Body.to_markdown`` is.
 
@@ -245,9 +271,9 @@ def body_markdown(
     package's: its story, text boxes and notes) written by
     :func:`docx4j_py.model.text.markdown`; with `footnotes` off, no note is
     read (``notes: false``), so neither the references nor the definitions
-    are written.
+    are written. `link_schemes` adds to the schemes a link may use (CR-015).
     """
-    text, _chars, _cut = _joined(_pieces(body, view, addresses, footnotes), max_chars)
+    text, _chars, _cut = _joined(_pieces(body, view, addresses, footnotes, link_schemes), max_chars)
     return text
 
 
@@ -258,9 +284,10 @@ def markdown_budget_of(
     addresses: bool = False,
     view: str = "accepted",
     footnotes: bool = True,
+    link_schemes: LinkSchemes = (),
 ) -> TextExcerpt:
     """:func:`body_markdown` with the flag: ``TextExcerpt(text, chars, truncated)``."""
-    text, chars, truncated = _joined(_pieces(body, view, addresses, footnotes), max_chars)
+    text, chars, truncated = _joined(_pieces(body, view, addresses, footnotes, link_schemes), max_chars)
     return TextExcerpt(text, chars, truncated)
 
 
@@ -271,6 +298,7 @@ def package_markdown(
     view: str = "accepted",
     max_chars: int | None = None,
     footnotes: bool = True,
+    link_schemes: LinkSchemes = (),
 ) -> str:
     """A package as Markdown: what ``pkg.to_markdown`` is.
 
@@ -279,7 +307,7 @@ def package_markdown(
     package: no part is unmarshalled, so a save afterwards writes every part
     the caller has not touched byte for byte (CR-011 section 14).
     """
-    text, _chars, _cut = _joined(_package_pieces(package, view, addresses, footnotes), max_chars)
+    text, _chars, _cut = _joined(_package_pieces(package, view, addresses, footnotes, link_schemes), max_chars)
     return text
 
 
@@ -290,9 +318,10 @@ def package_markdown_budget(
     addresses: bool = False,
     view: str = "accepted",
     footnotes: bool = True,
+    link_schemes: LinkSchemes = (),
 ) -> TextExcerpt:
     """:func:`package_markdown` with the flag: ``TextExcerpt(text, chars, truncated)``."""
-    text, chars, truncated = _joined(_package_pieces(package, view, addresses, footnotes), max_chars)
+    text, chars, truncated = _joined(_package_pieces(package, view, addresses, footnotes, link_schemes), max_chars)
     return TextExcerpt(text, chars, truncated)
 
 
@@ -347,21 +376,20 @@ def _find(blocks: Any, element: Any) -> tuple[Any, bool]:
     return found, False
 
 
-def _alone(block: Any, reading: Any) -> str:
+def _alone(block: Any, reading: Any, link_schemes: LinkSchemes) -> str:
     """One block written on its own: a nested block's, or a code paragraph's merged into a fence."""
-    from docx4j_py.model.text import markdown
     from docx4j_py.model.text.result import TextResult
 
     alone = TextResult([block], reading.result.comments, [], {}, reading.result.options)
-    return markdown(alone, reading.package, image_destination=_word_relative)
+    return str(_exporter(link_schemes).export(alone, reading.package))
 
 
 def _block_markdown(
-    body: Any, element: Any, *, addresses: bool, view: str, address: str | None
+    body: Any, element: Any, *, addresses: bool, view: str, address: str | None, link_schemes: LinkSchemes = ()
 ) -> str:
     """The Markdown of one block of a body: its lines in the whole reading, or the block written alone."""
     story = _story_body(body)
-    reading, blocks = _blocks(story, view)
+    reading, blocks = _blocks(story, view, link_schemes=link_schemes)
     item, top = _find(blocks, element)
     if item is None:
         text = ""
@@ -369,7 +397,7 @@ def _block_markdown(
         text = item.markdown
     else:
         block = item.block if top else item
-        text = _alone(block, reading)
+        text = _alone(block, reading, link_schemes)
     text = text.rstrip()
     if not addresses:
         return text
@@ -388,6 +416,7 @@ def paragraph_markdown(
     *,
     addresses: bool = False,
     view: str = "accepted",
+    link_schemes: LinkSchemes = (),
 ) -> str:
     """One paragraph as Markdown: its lines in its story's Markdown, without the footnote definitions.
 
@@ -401,9 +430,8 @@ def paragraph_markdown(
     body = getattr(paragraph, "parent_body", None)
     if body is None:
         return ""
-    return _block_markdown(
-        body, paragraph.element, addresses=addresses, view=view, address=getattr(paragraph, "address", None)
-    )
+    address = getattr(paragraph, "address", None)
+    return _block_markdown(body, paragraph.element, addresses=addresses, view=view, address=address, link_schemes=link_schemes)
 
 
 def table_markdown(element: Any, context: Any = None, **options: Any) -> str:
@@ -418,13 +446,14 @@ def table_markdown(element: Any, context: Any = None, **options: Any) -> str:
         element: the ``w:tbl``.
         context: the :class:`~docx4j_py.model.content.body.Body` it is in, or
             None for an element alone (read with no styles).
-        **options: ``view`` and ``addresses``.
+        **options: ``view``, ``addresses`` and ``link_schemes``.
     """
     view = str(options.get("view", "accepted"))
     addresses = bool(options.get("addresses", False))
+    link_schemes = options.get("link_schemes", ())
     if context is None or not hasattr(context, "container"):
-        from docx4j_py.model.text import extract, markdown
+        from docx4j_py.model.text import extract
 
         result = extract(element, view=_view_of(view))
-        return markdown(result, None, image_destination=_word_relative).rstrip()
-    return _block_markdown(context, element, addresses=addresses, view=view, address=None)
+        return str(_exporter(link_schemes).export(result, None)).rstrip()
+    return _block_markdown(context, element, addresses=addresses, view=view, address=None, link_schemes=link_schemes)

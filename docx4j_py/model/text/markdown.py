@@ -47,11 +47,13 @@ The package is never changed (REQ-204). Imported on first use.
 from __future__ import annotations
 
 import base64
-from collections.abc import Callable
+import logging
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
 from docx4j_py.model.text import commonmark as md
+from docx4j_py.model.text.link_targets import is_safe, refused_message
 from docx4j_py.model.text.options import TextOptions, TextView
 from docx4j_py.model.text.result import (
     TextBlock,
@@ -63,6 +65,8 @@ from docx4j_py.model.text.result import (
     TextRow,
     TextRun,
 )
+
+logger = logging.getLogger(__name__)
 from docx4j_py.model.values import integer
 
 __all__ = [
@@ -130,6 +134,12 @@ class MarkdownExportOptions:
     text_options: TextOptions = field(default_factory=TextOptions)
     #: Where each picture points; a data URI (``data:image/png;base64,...``) where None.
     image_destination: MarkdownImageDestination | None = None
+    #: Schemes a link may use beyond :data:`~docx4j_py.model.text.link_targets.DEFAULT_SCHEMES`: an iterable, or one
+    #: comma-separated string. It can only add, and it isn't a text option, so a tool's arguments can't reach it (CR-015 Q2).
+    link_schemes: str | Iterable[str] = ()
+    #: Whether what :attr:`image_destination` answers is the document's own value, a part's name as the readers' is, and
+    #: so held to the link rule, a refused one being empty (CR-015 Q10). A host's answer is the host's.
+    check_image_destination: bool = False
 
     @property
     def view(self) -> str:
@@ -198,7 +208,7 @@ class MarkdownExporter:
             from docx4j_py.model.text import extract
 
             result, styles = extract(source, self.options.text_options), source
-        writer = _WmlToMarkdown(result, _resolver_of(styles))
+        writer = _WmlToMarkdown(result, _resolver_of(styles), self.options.link_schemes)
         document = writer.convert()
         index = 0
 
@@ -208,13 +218,13 @@ class MarkdownExporter:
             return index
 
         for node, run in writer.images:
-            node.destination = self._destination(run, next_index)
+            node.destination = self._destination(run, next_index, writer)
         starts: dict[int, int] = {}
         body = md.render(document, starts)
         front = front_matter(result) if result.options.metadata else ""
         return MarkdownBlocks(front, _sliced(result.blocks, starts, body, writer.merged), front + body)
 
-    def _destination(self, run: TextRun, next_index: Callable[[], int]) -> str:
+    def _destination(self, run: TextRun, next_index: Callable[[], int], writer: _WmlToMarkdown) -> str:
         """A picture's destination: its image part's bytes as a data URI or as ``image_destination`` says.
 
         Empty where its image cannot be had, so that its alt text is kept.
@@ -233,10 +243,20 @@ class MarkdownExporter:
             return f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}"
         n = next_index()
         image = MarkdownImage(run, part, data, content_type, n, f"image{n}.{_extension_for(content_type, part)}")
-        return self.options.image_destination(image)
+        destination = self.options.image_destination(image)
+        if self.options.check_image_destination and not is_safe(destination, self.options.link_schemes):
+            writer.refuse(destination)
+            return ""
+        return destination
 
 
-def markdown(result: TextResult, package: Any = None, *, image_destination: MarkdownImageDestination | None = None) -> str:
+def markdown(
+    result: TextResult,
+    package: Any = None,
+    *,
+    image_destination: MarkdownImageDestination | None = None,
+    link_schemes: str | Iterable[str] = (),
+) -> str:
     """A result as Markdown (WD section 7.3, REQ-703, REQ-704). docx4j ``new MarkdownExporter().export(result, pkg)``.
 
     Args:
@@ -246,12 +266,17 @@ def markdown(result: TextResult, package: Any = None, *, image_destination: Mark
         package: the package it was read from, for the quote style's indent
             (a block quote's depth); without it the depth is the indent alone.
         image_destination: where each picture points; a data URI where None.
+        link_schemes: schemes a link may use beyond the defaults. A link to any other is written as its text, and logged.
     """
-    return markdown_blocks(result, package, image_destination=image_destination).markdown
+    return markdown_blocks(result, package, image_destination=image_destination, link_schemes=link_schemes).markdown
 
 
 def markdown_blocks(
-    result: TextResult, package: Any = None, *, image_destination: MarkdownImageDestination | None = None
+    result: TextResult,
+    package: Any = None,
+    *,
+    image_destination: MarkdownImageDestination | None = None,
+    link_schemes: str | Iterable[str] = (),
 ) -> MarkdownBlocks:
     """:func:`markdown` block by block: the front matter apart, each block of the result with its Markdown.
 
@@ -259,7 +284,7 @@ def markdown_blocks(
     each block (an address), or stops after some (a budget), has the pieces
     :func:`markdown` joins.
     """
-    exporter = MarkdownExporter(MarkdownExportOptions(image_destination=image_destination))
+    exporter = MarkdownExporter(MarkdownExportOptions(image_destination=image_destination, link_schemes=link_schemes))
     return exporter.blocks(result, package)
 
 
@@ -400,9 +425,13 @@ class _WmlToMarkdown:
     :func:`markdown_blocks` can say where each block's Markdown begins.
     """
 
-    def __init__(self, result: TextResult, resolver: Any) -> None:
+    def __init__(self, result: TextResult, resolver: Any, link_schemes: str | Iterable[str] = ()) -> None:
         self.result = result
         self.text_options = result.options
+        #: What a link may use beyond the defaults (CR-015 Q2).
+        self.link_schemes = link_schemes
+        #: Whether this export has logged a refusal (:meth:`refuse`).
+        self.refused_one = False
         #: For a style's own indent (a block quote's depth); None where there are no styles to ask.
         self.resolver = resolver
         #: The open lists, the deepest last.
@@ -883,7 +912,8 @@ class _WmlToMarkdown:
             while j < len(runs) and self._same_marker(revision, runs[j].revision):
                 j += 1
             if revision is not None:
-                sink.node(md.HtmlInline(self._open(revision)))
+                sink.node(md.HtmlInline("{++" if revision.type == "INSERTION" else "{--"))
+                self._detail_text(revision.author, revision.date, sink)
             self._linked(runs[i:j], sink)
             if revision is not None:
                 sink.node(md.HtmlInline(_close(revision)))
@@ -897,6 +927,9 @@ class _WmlToMarkdown:
             j = i
             while j < len(runs) and runs[j].link == target:
                 j += 1
+            if target is not None and not is_safe(target, self.link_schemes):
+                self.refuse(target)
+                target = None  # its runs, each as it would be outside any link
             if target is None:
                 for k in range(i, j):
                     self._run(runs[k], sink)
@@ -908,6 +941,11 @@ class _WmlToMarkdown:
                 link_sink.flush()
                 sink.node(link)
             i = j
+
+    def refuse(self, target: str) -> None:
+        """A refused target logged: a WARNING for the first of an export, DEBUG after. docx4j ``WmlToMarkdown.linked``."""
+        logger.log(logging.DEBUG if self.refused_one else logging.WARNING, "%s", refused_message(target))
+        self.refused_one = True
 
     def _run(self, run: TextRun, sink: _InlineSink) -> None:
         kind = run.kind
@@ -954,7 +992,8 @@ class _WmlToMarkdown:
                 sink.text(line, bold, run.italic, run.strike)
 
     def _comment(self, comment: TextComment, sink: _InlineSink) -> None:
-        sink.node(md.HtmlInline("{>>" + self._detail(comment.author, comment.date)))
+        sink.node(md.HtmlInline("{>>"))
+        self._detail_text(comment.author, comment.date, sink)
         sink.text(comment.text, False, False, False)
         sink.node(md.HtmlInline("<<}"))
 
@@ -972,7 +1011,14 @@ class _WmlToMarkdown:
         return True
 
     def _open(self, revision: TextRevision) -> str:
+        """A marker as a string, for a code block, where nothing is markup."""
         return ("{++" if revision.type == "INSERTION" else "{--") + self._detail(revision.author, revision.date)
+
+    def _detail_text(self, author: str | None, date: str | None, sink: _InlineSink) -> None:
+        """A marker's author and date as text, escaped as any document text is (REQ-703). docx4j ``detail(author, date, sink)``."""
+        detail = self._detail(author, date)
+        if detail:
+            sink.text(detail, False, False, False)
 
     def _detail(self, author: str | None, date: str | None) -> str:
         detail = self.text_options.markup_detail

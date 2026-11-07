@@ -316,7 +316,7 @@ def _package_to_markdown(self: object, **options: object) -> str:
 
     Args:
         **options: ``addresses``, ``view`` (``"accepted"``, ``"original"`` or
-            ``"markup"``) and ``max_chars``, as
+            ``"markup"``), ``max_chars`` and ``link_schemes``, as
             :meth:`docx4j_py.model.content.Body.to_markdown`.
     """
     from docx4j_py.model.markdown.export import package_markdown

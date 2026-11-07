@@ -75,6 +75,8 @@ sniffs) unless noted. Results are JSON from the library's `to_dict()`s.
 | `get_comments`, `get_tracked_changes` | `path` | the threads / the changes, with addresses |
 | `reveal` | `path`, `address` | `to_api_script` for the block, slide or range: the calls that would make it |
 
+`read`'s Markdown, and `docx_to_markdown`'s, refuse script-scheme links and write a marker's detail as text (CR-015). `link_schemes` is the deployment's configuration, never a tool's argument.
+
 **The text the reading tools give** is the library's one text model,
 [CR-011](CR-011-one-text-model.md) (`docx4j_py.model.text`, docx4j's CR-046, the portfolio's
 specification at WD 0.28), the same as docx4j-mcp's since docx4j CR-046 phase 3:

@@ -290,15 +290,17 @@ class Outline:
         return json.dumps(self.to_dict(), indent=indent, separators=separators, ensure_ascii=False)
 
     def to_markdown(self) -> str:
-        """A nested list, headings as headings: the cheapest thing to show a model."""
+        """A nested list, headings as headings: the cheapest thing to show a model. Each entry's text is escaped (CR-015 Q9)."""
+        from docx4j_py.model.markdown.export import address_comment, escape
+
         lines: list[str] = []
 
         def render(entries: tuple[OutlineEntry, ...], depth: int) -> None:
             for entry in entries:
                 if entry.level is not None and depth == 0:
-                    lines.append(f"{'#' * min(entry.level, 6)} {entry.text}".rstrip())
+                    lines.append(f"{'#' * min(entry.level, 6)} {escape(entry.text)}".rstrip())
                 else:
-                    label = entry.text
+                    label = escape(entry.text)
                     if entry.kind == "table":
                         size = f"table {entry.rows}x{entry.cols}"
                         label = f"{size}: {label}" if label else size
@@ -311,7 +313,7 @@ class Outline:
         for section in (*self.headers, *self.footers):
             if not section.entries:
                 continue
-            lines.append(f"<!-- {section.prefix} -->")
+            lines.append(address_comment(section.prefix))
             render(section.entries, 0)
         if self.truncated:
             lines.append("- …")

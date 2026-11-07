@@ -64,7 +64,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   reads `PlainText`, and a `w:richText` one is bound as text); a bound date is formatted through the field code's
   converter (`h` 1 to 12), in `resources/date-names.json`'s names (`scripts/generate_date_names.py`, Babel, no runtime
   dependency), `pkg.bound_dates_converted_as_word` off by default; a stale `w:storeItemID` is resolved as Word repairs it
-  (`customxml/store_items.py`, `XmlMapping.resolved_part`; `custom_xml_part` stays strict). **CR-015** (Markdown output safety): decided 2026-11-07 (Q1 to Q11 as recommended), for the next release; not built.
+  (`customxml/store_items.py`, `XmlMapping.resolved_part`; `custom_xml_part` stays strict). **CR-015** (Markdown output safety, the port of docx4j CR-056's Markdown half): complete 2026-11-07, for the next release; 0.2.0 has its defects. A link outside docx4j's allowlist is its text (`model/text/link_targets.py`, `link_schemes` on every reader, never a text option), a marker's detail is text, and an address comment, `Outline.to_markdown()` and a reader's picture destination write no document value raw.
   **CR-016** (core-ts's cell, font, placeholder and wildcard
   changes): decided 2026-10-24. Phase A (a table cell ends with a paragraph, as Word reads it:
   `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B implemented
@@ -253,7 +253,7 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   CR-010's `model/revisions/` (the tracked-changes engine: `tracked_changes`, `accept_all`,
   `reject_all`, `report`) and CR-011's text model:
   `model/text/` (`extract`, `TextOptions`, `TextResult`, `plain_text`, `markdown`, the
-  commonmark-java renderer port), with Phase C's `model/chart/` (a chart as a table and a
+  commonmark-java renderer port, `link_targets.py`, docx4j's link allowlist), with Phase C's `model/chart/` (a chart as a table and a
   description), `model/math/` (OMML to LaTeX), `model/fields/` (field formatting switches; since CR-025
   docx4j's `FieldInstruction`, `FieldContext` and the evaluators by name) and
   `model/java_text.py` (Java's `DecimalFormat` and `SimpleDateFormat`, for those two); CR-009's

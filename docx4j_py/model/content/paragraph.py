@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, deep_copy, link_parents
@@ -53,6 +53,7 @@ from docx4j_py.model.content.styles import (
 from docx4j_py.model.content.text_model import (
     LINE_CHARACTERS,
     PARAGRAPH_BREAKS,
+    addressable_para_id,
     canonical_view,
     drop_unwritable,
     explode_mapped,
@@ -1067,7 +1068,7 @@ class Paragraph:
         :class:`~docx4j_py.model.content.reports.ChangeReport` says when one
         moved.
         """
-        para_id = self.element.para_id
+        para_id = addressable_para_id(self.element.para_id)
         return para_id_address(para_id) if para_id else self.ordinal
 
     @property
@@ -1471,7 +1472,9 @@ class Paragraph:
             self.parent_body.insert_element(elements, location=where, target=self)
             return [self.parent_body.view_for(element) for element in elements]
 
-    def to_markdown(self, *, addresses: bool = False, view: str = "accepted") -> str:
+    def to_markdown(
+        self, *, addresses: bool = False, view: str = "accepted", link_schemes: str | Iterable[str] = ()
+    ) -> str:
         """This paragraph as Markdown: its lines in its story's, the text model's (CR-011 Phase D).
 
         Its block form as :meth:`Body.to_markdown` writes it: a heading is
@@ -1485,10 +1488,12 @@ class Paragraph:
             addresses: put :attr:`address` in an HTML comment on its own line
                 before the paragraph.
             view: ``"accepted"``, ``"original"`` or ``"markup"`` (CriticMarkup).
+            link_schemes: schemes a link may use beyond the defaults, as
+                :meth:`Body.to_markdown` takes them.
         """
         from docx4j_py.model.markdown import paragraph_markdown
 
-        return paragraph_markdown(self, addresses=addresses, view=view)
+        return paragraph_markdown(self, addresses=addresses, view=view, link_schemes=link_schemes)
 
     def search(self, text: str, **options: Any) -> list[Range]:
         """Every match of `text` in this paragraph, as ranges.

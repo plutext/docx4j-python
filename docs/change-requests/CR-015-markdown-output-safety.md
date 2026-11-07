@@ -1,6 +1,6 @@
 # CR-015: Markdown output made safe --- the port of docx4j CR-056's Markdown half
 
-**Status:** Proposed 2026-10-23, at the user's request ("Markdown-safety CR: draft it, covering both fixes above"), to port the Markdown half of docx4j CR-056, which docx4j decided and built the same day (`84ee9741c`, `30fb41024`), with its two fixes: a link whose target's scheme is not on docx4j's allowlist is written as its text, with no link; and under `markup_detail` `author` or `author_date` a CriticMarkup marker's author and date are written as text, escaped as any document text is, as REQ-703 of the text extraction WD 0.33 now requires (docx4j-portfolio `da07eab`). Both defects were measured here first (section 2): every link destination the Markdown writer writes is the document's target as it is, so a `javascript:` target is a live link, and a marker's detail goes out as raw HTML. The measuring found four more (section 2.5): character references such as `&#58;` carry a script scheme past docx4j's allowlist (Q3), and an address comment, `Outline.to_markdown()` and the readers' picture destination write document values unescaped (Q8 to Q10). docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). Four phases: A, the links; B, the markers; C, the sinks found while measuring, as Q8 to Q10 decide; D, the records. **Decided 2026-11-07**, Q1 to Q11 as recommended (section 8), Phase C taken whole. 0.2.0 was released without it, so where this CR says 0.2.0 it means the next release (section 8.1). Nothing is implemented; it waits on a go.
+**Status:** Complete 2026-11-07: Phases A to D built, for the next release (section 10). No Word check, since no phase changes a saved part. Proposed 2026-10-23, at the user's request ("Markdown-safety CR: draft it, covering both fixes above"), to port the Markdown half of docx4j CR-056, which docx4j decided and built the same day (`84ee9741c`, `30fb41024`), with its two fixes: a link whose target's scheme is not on docx4j's allowlist is written as its text, with no link; and under `markup_detail` `author` or `author_date` a CriticMarkup marker's author and date are written as text, escaped as any document text is, as REQ-703 of the text extraction WD 0.33 now requires (docx4j-portfolio `da07eab`). Both defects were measured here first (section 2): every link destination the Markdown writer writes is the document's target as it is, so a `javascript:` target is a live link, and a marker's detail goes out as raw HTML. The measuring found four more (section 2.5): character references such as `&#58;` carry a script scheme past docx4j's allowlist (Q3), and an address comment, `Outline.to_markdown()` and the readers' picture destination write document values unescaped (Q8 to Q10). docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). Four phases: A, the links; B, the markers; C, the sinks found while measuring, as Q8 to Q10 decide; D, the records. **Decided 2026-11-07**, Q1 to Q11 as recommended (section 8), Phase C taken whole. 0.2.0 was released without it, so where this CR says 0.2.0 it means the next release (section 8.1). 
 
 **Depends on:**
 - **docx4j**, cited by commit only (its working tree was not read):
@@ -637,7 +637,7 @@ The draft is of 2026-10-23. Read again on 2026-11-07, at `02506c0`:
 - **Measured again at `02506c0`**, on `create_package()`: `Range.hyperlink = "javascript:alert(1)"` gives `click [here](<javascript:alert(1)>)` from `body.to_markdown()`, and a paragraph holding `<img src=x onerror=alert(3)>` gives `- <img src=x onerror=alert(3)> text` from `outline().to_markdown()`.
 - **Line numbers have moved.** `md.Link` is at `markdown.py` line 904, `_runs`' marker at 886 and `_comment` at 957. The code at each is as section 2 describes it.
 - **The oracles haven't moved.** `LinkTargets.java`'s last commit is `525d1ccb3`, and `LinkTargets.mts`'s is `f544b8f`, so section 3 stands with Q3's rule. Section 6.3's byte check runs at `525d1ccb3` or later, not `30fb41024`.
-- **Q11 stands.** WD 0.34 took the two readings into the inspector's kinds, and a NOTE there says what docx4j's writer refuses, but REQ-703's links bullet still says nothing of a target's scheme at WD 0.100.
+- **Q11 stands.** WD 0.34 took the two readings into the inspector's kinds, and a NOTE there says what docx4j's writer refuses, but REQ-703's links bullet still says nothing of a target's scheme at WD 0.100. It went to the portfolio on 2026-11-07, and the user rules on it there.
 
 ## 9. Effort
 
@@ -655,3 +655,35 @@ That agrees with the caller's guess of a day for the two fixes. The larger part 
 - the census and the byte check against docx4j at `30fb41024`, which this draft didn't run.
 
 The code is small: `link_targets.py`, about 100 lines; `_linked`, 10 lines; `_runs` and `_comment`, 15 lines; the keyword through eight call sites.
+
+## 10. Implementation notes (2026-11-07)
+
+The user: "fix the 2 gaps identified in connection with WD 0.100, then implement CR-015".
+
+### 10.1 What landed
+
+- **Phase A, the links.** `model/text/link_targets.py`, docx4j's `LinkTargets` at `525d1ccb3`, Q3's decoded reading included. `_WmlToMarkdown._linked` writes a refused target's runs as text, and `refuse` logs the first of an export at WARNING and the rest at DEBUG. `link_schemes` is on `MarkdownExportOptions`, `markdown()`, `markdown_blocks()`, `Body.to_markdown`, `Body.markdown_budget`, `Paragraph.to_markdown`, `Table.to_markdown`, `pkg.to_markdown`, `pkg.markdown_budget` and a trial's two, through the module functions under them.
+- **Phase B, the markers.** `_runs` and `_comment` write the braces raw and the detail through `_detail_text`. `_open` stays for `_code_text`.
+- **Phase C, the sinks.** Q8: `addressable_para_id` and `address_comment`'s guard. Q9: `Outline.to_markdown()` escapes each entry. Q10: `check_image_destination`.
+- **Phase D, the records.** This section, the README and PyPI readme, the CHANGELOG (`### Security`, naming what 0.1.0 and 0.2.0 write, as Q6 left it), CR-006 section 3.1's line (Q7), `tests/README.md`, CLAUDE.md. Q11 went to the portfolio.
+
+Section 5 planned A and B as separate commits. They landed as one: the keyword and the refusal share every reader's lines.
+
+### 10.2 What the build settled beyond the design
+
+- **A sixth sink.** `Outline.to_markdown()` also wrote `<!-- header:rId8 -->` as a string, and a section's prefix holds a relationship's id, a document value. Section 7's census named the address comments and the outline's lines, but not this. It now goes through `address_comment`.
+- **A note's guarded address answers `address.read_only`,** not `address.not_found` as section 4.7 says. A `footnote:` address is read only whatever it holds, which is right, so the test holds both: `w14:%2D%3E` is `address.not_found`, and `footnote:-%2D%3E/0` `address.read_only`.
+- **`check_image_destination`.** Section 4.7 asked for the picture's refusal under the links' one WARNING, and for a host's destination to stay the host's (section 4.9). So `_word_relative` stays as it was and the readers' `MarkdownExportOptions` set this field, through one `_exporter`. It isn't a keyword on `markdown()`.
+- **`addressable_para_id` is in `text_model.py`,** since `addresses.py` imports that module and `Reading.address_of` needs it. Five places use it: `address_of`, `_paragraph_by_para_id`, `Paragraph.address`, `Reading.address_of` and the address a body's insert reports. `Paragraph.para_id` still reads the value as written, which is data.
+- **A departure, section 4.8's list gaining one.** `decode_references` takes ASCII digits, as CommonMark does. Java's `Character.digit` takes any Unicode digit, so `&#٣;` decodes in docx4j and not here. No renderer decodes it, so nothing is lost.
+
+### 10.3 Verified
+
+- **The oracle's tests**, string for string at `525d1ccb3`, are `tests/text/test_link_targets.py` and `tests/text/test_markdown_hostile.py`, and the readers and Phase C are `tests/content/test_markdown_safety.py`.
+- **The census of section 2.4**, on `out/cr012-b-corpus/`, before and after: 0 of 422 documents move in the accepted view, 0 in `markup` under `author_date` with comments, and 0 under `to_markdown(addresses=True)`, so no paraId moved. The outline moves in 125 of 418 documents, 1,961 lines with `limit=None`, each by backslashes alone, checked by taking them out again. `tests/agent/test_outline.py` moved one assertion, `CHOICE_ALPHA_123` now `CHOICE\_ALPHA\_123`.
+- **The byte check of section 6.3**, against docx4j's tag `docx4j-17.3.5`, which holds `525d1ccb3` with `LinkTargets` unchanged since. It was built offline from `git archive` in the scratch directory, nothing installed. 849 documents from `samples/`, `tests/fixtures/` and two hostile files saved here, in CR-011's five readings: 4,080 exports compared.
+  - **This change moved 6 exports, all on the two hostile files, and each now equals docx4j's byte for byte.** All 10 of those files' exports are identical, Q3's forms included.
+  - 3,414 are identical, from 3,408 before. The other 666 differ alike before and after, so they aren't this CR's: they're work docx4j's tag doesn't have (`check76`, `repeated`, `nothing-selected`, `br-placement`), or work it has and this package doesn't yet, CR-029's capitals and `<sup>`.
+  - Section 6.3's "1,385 of 1,385" was at docx4j `198d015a3` and can't be repeated as such, both sides having moved. What this change moved is the test.
+- **The suite and the rest of section 6.3:** 12,356 passed and 8 skipped in the full suite, `tests/text/conformance.tsv` unchanged, `scripts/roundtrip.py` clean at 50 of 50, `codegen/generate.sh --check` byte identical, and `scripts/acceptance.py` from `02506c0` against this tree 0 of 246 entries different.
+- **No browser or second renderer was measured.** Section 7's risk 2 stands.

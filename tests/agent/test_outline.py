@@ -180,7 +180,7 @@ def test_a_text_box_is_listed_after_its_anchor_at_its_textbox_address():
     assert "textbox" not in entries[at["body/3"]].to_dict()
     # a box anchored in a table cell comes after the table, as the text model reads it
     assert at["body/68/0/0/0/textbox:0/0"] == at["body/68"] + 1
-    assert "CHOICE_ALPHA_123" in outline.to_markdown()
+    assert r"CHOICE\_ALPHA\_123" in outline.to_markdown()
 
 
 def test_the_entries_text_is_the_text_models():

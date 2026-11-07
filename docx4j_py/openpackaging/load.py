@@ -45,8 +45,8 @@ from docx4j_py.openpackaging.content_types import ContentTypeManager
 from docx4j_py.openpackaging.exceptions import (
     Docx4JException,
     DuplicateEntryException,
-    MultipleMainPartsException,
     InvalidFormatException,
+    MultipleMainPartsException,
 )
 from docx4j_py.openpackaging.part_name import CONTENT_TYPES_NAME, PartName
 from docx4j_py.openpackaging.parts.default_xml_part import CustomXmlDataStoragePart

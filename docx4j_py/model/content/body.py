@@ -21,7 +21,7 @@ and the parts layer never imports this one.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from docx4j_py.child import ChildList, is_alternate_content, link_parents
@@ -71,6 +71,7 @@ from docx4j_py.model.content.table_rules import (
 )
 from docx4j_py.model.content.text_model import (
     PARAGRAPH_BREAKS,
+    addressable_para_id,
     block_children_of,
     block_list_of,
     canonical_view,
@@ -860,6 +861,7 @@ class Body(Sequence):
         addresses: bool = False,
         view: str = "accepted",
         max_chars: int | None = None,
+        link_schemes: str | Iterable[str] = (),
     ) -> str:
         """This body as Markdown: the text model's (CR-011 Phase D, REQ-202, REQ-703).
 
@@ -888,10 +890,14 @@ class Body(Sequence):
                 when the first block is already over budget. It truncates and
                 does not say so, as ``get_text`` does; :meth:`markdown_budget`
                 is the call that returns the flag.
+            link_schemes: schemes a link may use beyond ``http``, ``https``,
+                ``ftp``, ``mailto``, ``file``, ``news`` and ``tel``: an iterable, or
+                one comma-separated string. A link to any other scheme is written
+                as its text, and the first of a call logged (CR-015).
         """
         from docx4j_py.model.markdown import body_markdown
 
-        return body_markdown(self, addresses=addresses, view=view, max_chars=max_chars)
+        return body_markdown(self, addresses=addresses, view=view, max_chars=max_chars, link_schemes=link_schemes)
 
     def markdown_budget(
         self,
@@ -899,6 +905,7 @@ class Body(Sequence):
         *,
         addresses: bool = False,
         view: str = "accepted",
+        link_schemes: str | Iterable[str] = (),
     ) -> Any:
         """:meth:`to_markdown` with the flag: ``TextExcerpt(text, chars, truncated)``.
 
@@ -908,7 +915,7 @@ class Body(Sequence):
         """
         from docx4j_py.model.markdown import markdown_budget_of
 
-        return markdown_budget_of(self, max_chars, addresses=addresses, view=view)
+        return markdown_budget_of(self, max_chars, addresses=addresses, view=view, link_schemes=link_schemes)
 
     def insert_content_control(self, kind: str = "RichText") -> Any:
         """Wrap everything this body holds in one content control.
@@ -1070,7 +1077,7 @@ class Body(Sequence):
             # what makes a loop of inserts quadratic.
             prefix = container_prefix(self, container)
             for offset, item in enumerate(elements):
-                para_id = getattr(item, "para_id", None)
+                para_id = addressable_para_id(getattr(item, "para_id", None))
                 change.touched(
                     para_id_address(para_id)
                     if para_id

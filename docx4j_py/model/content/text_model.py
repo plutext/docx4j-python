@@ -119,6 +119,7 @@ __all__ = [
     "MarkedSegments",
     "Reading",
     "Segment",
+    "addressable_para_id",
     "block_children_of",
     "block_list_of",
     "branch_extents",
@@ -164,6 +165,18 @@ __all__ = [
     "unwritable",
     "wildcard_matches_across",
 ]
+
+#: A ``w14:paraId`` as ``ST_LongHexNumber`` holds it: four octets, written as eight hex digits.
+_PARA_ID = re.compile(r"[0-9A-Fa-f]{8}")
+
+
+def addressable_para_id(para_id: str | None) -> str | None:
+    """`para_id` where an address may hold it, else None, so that the block goes by its ordinal (CR-015 Q8).
+
+    A ``w14:paraId`` is the document's value, and a file can hold anything there. Addressing and an address comment agree
+    on this reading, so a malformed one neither closes the comment nor loses the block.
+    """
+    return para_id if para_id and _PARA_ID.fullmatch(para_id) else None
 
 
 def _w(local: str) -> str:
@@ -1101,8 +1114,9 @@ class Reading:
         address = block.address
         prefix = self.prefix
         if address.startswith(prefix + "/") and address[len(prefix) + 1 :].replace("/", "").isdigit():
-            if block.para_id:
-                return f"w14:{block.para_id}"
+            para_id = addressable_para_id(block.para_id)
+            if para_id:
+                return f"w14:{para_id}"
             return body_prefix + address[len(prefix) :]
         return address
 

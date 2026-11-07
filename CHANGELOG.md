@@ -9,7 +9,23 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 
 ## [Unreleased]
 
+### Security
+
+- **A document's values can no longer write markup into the Markdown** ([CR-015](docs/change-requests/CR-015-markdown-output-safety.md), the port of docx4j CR-056's
+  Markdown half; WD REQ-703). A renderer with no URL check made a `javascript:` target a script link, and one that passes HTML through ran an author's `<script>` (CWE-79). 0.1.0 and 0.2.0
+  write these: upgrade if you show this package's Markdown as HTML.
+  - **Links.** A target whose scheme isn't `http`, `https`, `ftp`, `mailto`, `file`, `news` or `tel`, no scheme or a drive path, read as a browser reads it and again with its character references
+    decoded (`javascript&#58;alert(1)`), is written as its text with no link, its formatting and pictures kept. One WARNING an export on `docx4j_py.model.text.markdown`, the rest DEBUG.
+    In 0.1.0 a target's `)` also ended the destination, so the rest ran as raw HTML with no click.
+  - **Markers.** Under `markup_detail` `author` or `author_date`, a CriticMarkup marker's author and date are text, escaped as any document text is. In a code block they stay as written.
+  - **Address comments.** A `w14:paraId` is an address only as eight hex digits, or the block goes by its ordinal, and whatever could end the comment is written `%XX`, a note's id and a header's relationship id included.
+  - **`Outline.to_markdown()`** escapes each entry, as `to_markdown` does. So an entry holding `` \ ` * _ [ ] < > `` gains backslashes.
+  - **A picture's destination** in the readers is a part's name, held to the same rule, and refused it's `![alt]()`.
+
 ### Added
+
+- **`link_schemes`** ([CR-015](docs/change-requests/CR-015-markdown-output-safety.md)): `to_markdown`, `markdown_budget`, `markdown()`, `markdown_blocks()` and `MarkdownExportOptions` take schemes a
+  link may use beyond the defaults, an iterable or one comma-separated string. It only adds. It isn't a text option, so a tool's arguments can't reach it unless a server wires them to it.
 
 - **`profile: word-text`** ([CR-027](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md) Phase D, section
   [13](docs/change-requests/CR-027-text-model-profile-dates-and-embedded-objects.md#13-phase-d-implementation-notes-2026-11-05); WD REQ-1002, docx4j `TextOptions.Profile`): `TextOptions` gains

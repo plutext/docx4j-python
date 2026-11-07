@@ -195,6 +195,7 @@ LISTED: dict[str, str] = {
     "model/text/drawings.py::smart_art::int(c.src_ord or 0)": OUTSIDE,
     "model/text/extractor.py::Extractor._run_item::int(code, 16)": HEX,
     "model/text/extractor.py::_at_address::int(rest.rstrip(']'))": TEXT,
+    "model/text/link_targets.py::_reference::int(digits, 16 if hexadecimal else 10)": TEXT,
     # the reader itself
     "model/values.py::integer::int(digits)": OWN,
     # CR-022's check: a caller's measurement converted as its setter always converted it, and shown

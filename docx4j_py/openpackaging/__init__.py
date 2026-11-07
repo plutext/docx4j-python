@@ -37,12 +37,17 @@ from docx4j_py.openpackaging.content_types import (
 from docx4j_py.openpackaging.exceptions import (
     Docx4JException,
     DuplicateEntryException,
-    MultipleMainPartsException,
     InvalidFormatException,
     InvalidOperationException,
+    MultipleMainPartsException,
     PartUnrecognisedException,
 )
-from docx4j_py.openpackaging.load import DuplicateEntry, LoadOptions, MultipleMainParts, load_package
+from docx4j_py.openpackaging.load import (
+    DuplicateEntry,
+    LoadOptions,
+    MultipleMainParts,
+    load_package,
+)
 from docx4j_py.openpackaging.mce import mce_preprocess, resolve_alternate_content
 from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 from docx4j_py.openpackaging.packages.wordprocessingml_package import (

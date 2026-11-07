@@ -894,6 +894,15 @@ a list creates the numbering part when there is none, and a link gets an externa
 An image is **never fetched**: it becomes a link to its destination, and the report's `warnings`
 say so, as they do for an HTML block, which is skipped. Nothing is dropped quietly.
 
+**A document can't write markup into what you show.** Every `to_markdown`, `markdown()` and
+`Outline.to_markdown()` treats the document's values as text. A link whose scheme isn't `http`,
+`https`, `ftp`, `mailto`, `file`, `news` or `tel`, read as a browser reads it and again with its
+character references decoded, is written as its text with no link, so `javascript:alert(1)` is
+never a destination, and the first of a call is logged on `docx4j_py.model.text.markdown`. A
+document with `onenote:` links passes `to_markdown(link_schemes=["onenote"])`. It can only add, and
+it isn't a text option, so a tool's arguments can't reach it unless a server wires them to it. A
+change's author and date are text too, as are an address comment's value and an outline's entries.
+
 **Fine: read with addresses, then edit by one.** Nothing outside the blocks the agent names
 changes, and every untouched part is still written back byte for byte.
 
