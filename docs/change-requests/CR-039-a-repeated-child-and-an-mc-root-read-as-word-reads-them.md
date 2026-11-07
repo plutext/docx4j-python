@@ -326,3 +326,22 @@ Joined bodies go through the same call, so `w:sectPr` at the end of a joined bod
 - **`canon.compare`** sorts `w:sectPr` and `w:tblPr` children too under a join, and counts a join at the root as one.
 
 **Verified.** Every `sm-*` file but `sm-61` saves what Word's save holds: every section, table, paragraph and run property (`test_a_save_holds_what_word_s_save_holds`, 39 files), allowing two spellings of the same value, `w:orient="portrait"` that Word's save leaves out (`sm-07`) and a default `w:space` it writes (`sm-32`). All 57 files of `tests/fixtures/repeated/` with a Word save now agree with it on `w:pgSz`, so the `w:orient` difference on `rt-10`, `rt-40` and `rt-50` (section 9.4) is gone. The 40 inputs and Word's saves are copied into `tests/fixtures/repeated/`, with the 12 `ft-*`.
+
+### 9.7 The Word check of the merge rule: passed (2026-11-07)
+
+The user: "Run the Word check". Through the Word bridge, `bridge/staging/merge-word-check/`, built over `85d345e` by `out/merge-word-check/build.py` and read from the raw saves by `compare.py` (git-ignored). 53 inputs, each run twice, 106 jobs. It also carries CR-040's cell fix and CR-032 section 11's two saves.
+
+| Inputs | Word on the source | Word on this package's save |
+|---|---|---|
+| 40 `sm-*` | Silent | Silent, both runs. Each reads as Word read the source: sections, tables, properties, words and headers, and all 40 text saves are identical |
+| `te-00`, `te-05`, `te-15` | Silent | Silent |
+| `te-01`, `te-02`, `te-03`, a cell left with no block | **Repaired** | **Silent**: CR-040's `_keep_a_paragraph` works |
+| `te-04`, a row left with no cell | Refused | Refused |
+| `te-11` to `te-14`, saves from before that fix | Repaired, or refused for `te-14` | The same |
+| `main-two-relationships`, `main-orphan-override` | Not applicable | Silent, reading `OTHER` and `DOCUMENT` |
+
+So 96 of 106 runs are silent, and the other 10 are `te-04` and `te-11` to `te-14`, each as Word treats its own source. `te-11` to `te-14` already hold the bad shape, and a file that does is never repaired on load or save, so they test nothing new and shouldn't have been in the set. `te-04` is a save Word refuses, but its source is refused too, so there's no reading to follow.
+
+- **`w:tblLook` differs between runs** of `sm-60`, `te-03` and `te-13`, `04A0` in one and `0000` in the other. No input states it and each pair of inputs is byte identical, so it's Word's session and not the file. Everything else in those saves agrees, and it's the only difference from the source on `sm-60`.
+- **`sm-61` agrees.** Word reads this package's save, the later `<w:tblW w:type="auto"/>` alone, as `w:w="0" w:type="dxa"`, just as it read the source. So taking the later copy whole gets Word's reading, and section 9.5's exception looks like how Word reads that element on its own.
+- **An orphan's Override does no harm:** `main-orphan-override` names a part the file doesn't hold, and Word opens it silently.

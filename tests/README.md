@@ -806,6 +806,11 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > passed**, through the Word bridge, not by hand (the docx4j-portfolio session's run on Word 16.0.20326.20232, twice each, 50 jobs;
 > the user: "CR-040 as recommended, Q6 this release"). `mc_load_mode="word"` saves of the `nothing-selected/` fixtures. All 50 opened silently,
 > the two runs agree, and all 25 match Word's own reading of the source, compared from the raw saves (CR-040 section 8.4).
+>
+> **2026-11-07, the merge rule, a cell left with no block and two main parts: passed** (CR-039 section 9.7; Word 16.0.20326.20232, through the bridge, 53 inputs run twice, 106 jobs, built over
+> `85d345e`; the user: "Run the Word check"). 96 runs silent, and the other 10 each as Word treats its own source: a row left with no cell is refused either way, and four saves from before the cell fix
+> hold the bad shape already. All 40 `sm-*` saves read as Word read the source, words and text saves included, `w:tblLook`'s session default aside. A word-mode save of a cell left with no block went
+> from repaired to silent.
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown

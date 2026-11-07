@@ -462,4 +462,4 @@ Before this, `load_package` took the first relationship and said nothing, so it 
 
 ### 11.3 The oracle
 
-The tests build their zips (`tests/openpackaging/test_multiple_main_parts.py`). Word's saves of the `pw-two-main-rels-*` round aren't an oracle: in those runs Word read the first relationship, and the WD's `open-order` round shows why, its choice alternating with each repaired open in one Word session, the first open of a session reading the last. A refusal writes nothing, and the switch's save is an ordinary package.
+The tests build their zips (`tests/openpackaging/test_multiple_main_parts.py`). Word's saves of the `pw-two-main-rels-*` round aren't an oracle: in those runs Word read the first relationship, and the WD's `open-order` round shows why, its choice alternating with each repaired open in one Word session, the first open of a session reading the last. A refusal writes nothing, and the switch's save is an ordinary package. Word opened that save silently, both runs, and an orphan's save with its Override too (CR-039 section 9.7).

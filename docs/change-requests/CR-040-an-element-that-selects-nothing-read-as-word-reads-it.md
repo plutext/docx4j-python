@@ -120,7 +120,7 @@ docx4j's session raised this, and it was a bug here. A word-mode removal at the 
 
 | Left empty | Word on the source | Word on this package's `word`-mode save | Now |
 |---|---|---|---|
-| A `w:tc`, with or without a cell beside it, and with no branch at all (`te-01` to `te-03`) | Offers a repair, and the cell holds an empty paragraph | The same | **Fixed:** `_keep_a_paragraph` writes that paragraph, so the save has what the repair gives. Its Word check isn't run |
+| A `w:tc`, with or without a cell beside it, and with no branch at all (`te-01` to `te-03`) | Offers a repair, and the cell holds an empty paragraph | The same | **Fixed:** `_keep_a_paragraph` writes that paragraph, so the save has what the repair gives. Word opens that save silently, where it repairs the source (CR-039 section 9.7) |
 | A `w:tr` (`te-04`) | Refused | Refused | Left as it is: the source was already a file Word refuses |
 | A `w:tbl` (`te-05`) | Silent, the table gone | Silent, the table gone | Left as it is |
 
