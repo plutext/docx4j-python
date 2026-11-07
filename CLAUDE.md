@@ -265,7 +265,8 @@ hand-written files are exactly those in `codegen/clean.py`'s `KEEP`, listed by p
   `model/revisions/dates.py` (a stamp as the author's clock, docx4j's `RevisionDates`) and `model/text/ole.py` (an OLE
   compound file's one stream, an OLE 1.0 package's names)
 - `resources/`: the parts `warm_up()` parses, docx4j's default styles, numbering and fontTable,
-  `understood-namespaces.txt` (docx4j's published understood list, copied at `198d015a3`; CR-011),
+  `understood-namespaces.txt` (docx4j's published understood set, what Word was measured to understand, copied at `824565363`; CR-040) and
+  `traversal-namespaces.txt` (the old list, which nothing reads),
   and `resources/fonts/` — docx4j's substitution tables as committed JSON with the three Office
   theme parts, written by `scripts/generate_fonts.py` and never hand-edited
 - `docx/`: CR-003 Phase J's python-docx facade (`Document`, `Paragraph`, `Run`, `Font`, `Table`,
@@ -452,9 +453,9 @@ CR-002 section 12.3.
   wildcard (`AnyElement`) tree. Since Phase C VML (`v:`, `o:`, `w10:`, in `docx4j_py.vml.*`) is in
   the model, typed wherever it stands: under `w:pict` and `w:object`, in a branch or not, and in
   `settings.xml`'s shape defaults. A vmlDrawing part (`VMLPart`) stays an lxml tree.
-  `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. Since
+  `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. An element with no `mc:Choice` understood and no `mc:Fallback` selects nothing (CR-040, WD REQ-305), and the text model raises `mce.nothing_selected`. Since
   CR-012 Phase A (Q8),
-  it and `mc_load_mode="word"` select over docx4j's published understood list
+  it and `mc_load_mode="word"` select over docx4j's published understood set
   (`resources/understood-namespaces.txt`), matched by namespace URI, so they take the branch Word
   365 takes. `UNDERSTOOD` is generated, deliberately narrower than the prefix table, and stays
   the prefix table's own list.
