@@ -485,7 +485,7 @@ The user, 8 November: "External beside an internal target: refused at refuse and
 
 **What the build settled beyond the statement:**
 - **Two internal ones beside it** (unmeasured in Word): the `External` rule is asked first, as docx4j's `Load3.oneMainPart` asks it, so the default refuses with `ExternalMainPartException` naming every internal target. Under `all` both repairs apply, `ExternalMainPart` then `MultipleMainParts`, the last internal target read, and `repaired` is `own`.
-- **Several `External` ones** (unmeasured): each is named and dropped, and `detail` lists them separated by spaces, as REQ-801's lists are.
+- **Several `External` ones** (unmeasured): each is named in the refusal and dropped under `all`, and `ExternalMainPart.urls` holds them all; `detail` is the first, as docx4j's is (`880d7a3bb`), the WD naming "the URL". As first built (`e05291b`) `detail` listed them separated by spaces.
 - **An `External` one alone** is no main part, refused at every setting as before ("No relationship of type officeDocument"; REQ-321).
 - **`strict=True`** refuses as the default does, and refuses nothing more under `all`, as for `duplicate_entries="first"` (Q4).
 - **`repair="word"` lacks one of the WD's three Word repairs.** A relationships part in a wrong namespace is still refused at every setting (CR-031 section 13), where REQ-207 has `word` read it by local name with `package.relationships_namespace`. That is CR-033's, with the save gate, which this doesn't build: `repair` decides what a load reads, and nothing a save writes depends on it beyond what the load dropped.

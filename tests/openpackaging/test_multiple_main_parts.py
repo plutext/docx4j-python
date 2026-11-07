@@ -275,6 +275,26 @@ def test_a_save_under_repair_all_holds_no_external_relationship_and_loads_with_n
     assert plain_text(extract(again)).strip() == "DOCUMENT" and not again.warnings
 
 
+def test_every_external_one_goes_and_the_detail_is_the_first_as_docx4j_s_is() -> None:
+    second = f'<Relationship Id="rIdOut2" Type="{RELATIONSHIP}" Target="https://example.org/y.docx" TargetMode="External"/>'
+    data = _with_external(first=True)
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as zin, zipfile.ZipFile(out, "w") as zout:
+        for name in zin.namelist():
+            held = zin.read(name)
+            if name == "_rels/.rels":
+                held = held.replace(b"</Relationships>", second.encode() + b"</Relationships>")
+            zout.writestr(name, held)
+    with pytest.raises(ExternalMainPartException) as caught:
+        load(out.getvalue())
+    assert caught.value.urls == (URL, "https://example.org/y.docx")
+    pkg = load(out.getvalue(), options=ALL)
+    [record] = pkg.warnings
+    assert record.urls == (URL, "https://example.org/y.docx") and record.detail == URL
+    assert extract(pkg).warnings[0].detail == URL
+    assert b"External" not in _saved(pkg).read("_rels/.rels")
+
+
 def test_two_internal_ones_beside_it_are_refused_for_the_external_one_first() -> None:
     """Unmeasured in Word; the External rule is asked first, as docx4j's ``Load3.oneMainPart`` asks it."""
     for options in (None, FIRST, LoadOptions(repair="word")):

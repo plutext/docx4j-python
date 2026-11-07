@@ -181,8 +181,8 @@ class ExternalMainPart:
 
     Attributes:
         part_name: the part read, ``/word/document.xml``: the WD's selector.
-        urls: each ``External`` relationship's target as written, in the relationships' order. The WD's ``detail`` is
-            the URL; where there are several, they are separated by spaces, as REQ-801's lists are.
+        urls: each ``External`` relationship's target as written, in the relationships' order. Each is dropped; the
+            WD's ``detail`` is the first, as docx4j's is (``880d7a3bb``).
     """
 
     code: ClassVar[str] = ExternalMainPartException.code
@@ -192,8 +192,8 @@ class ExternalMainPart:
 
     @property
     def detail(self) -> str:
-        """The WD's ``detail``: the URL as written, or the URLs separated by spaces."""
-        return " ".join(self.urls)
+        """The WD's ``detail``: the (first) URL as written."""
+        return self.urls[0]
 
     @property
     def message(self) -> str:
