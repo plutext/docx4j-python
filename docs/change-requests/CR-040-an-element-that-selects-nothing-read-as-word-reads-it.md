@@ -110,6 +110,7 @@ A goes first, and B never ahead of it. A is right by Word on its own.
 - **`wpi` was the old tests' example of a namespace not understood.** It's understood now, so `test_mce_levels.py` uses `w98`, as docx4j's `McProbeDocx` does. A prefix the table doesn't know goes on its `mc:Choice`, by docx4j CR-052's rule.
 - **`repeated._refused` and `breaks._gives_its_text`** follow the understood set too, as REQ-306's "every markup compatibility question" and REQ-318 have it.
 - **`detail` can be empty,** where the `Requires` prefixes bind to nothing.
+- **`word` mode takes the element out, where docx4j's `06628f550` keeps it whole in both modes.** The user, 2026-11-07: "keeping ours as built, suggest to docx4j that in word mode, it behaves as we do". Word's save leaves it out, and `preserve` is there for a caller who wants it kept. Whether docx4j follows is its own.
 
 ### 8.3 Verified
 
