@@ -841,6 +841,24 @@ def test_a_relationships_part_with_another_root_is_refused() -> None:
         load(_zip(entries))
 
 
+@pytest.mark.parametrize("entry", ["word/_rels/document.xml.rels", "_rels/.rels"])
+@pytest.mark.parametrize("count", [1, -1], ids=["one", "every"])
+def test_a_relationship_in_a_wrong_namespace_is_refused(entry: str, count: int) -> None:
+    """``rn-06``, ``rn-07``: the root is right, so only the children say, and a save would lose what each named."""
+    entries = _base()
+    held = entries[entry].replace(b"<Relationships ", b'<Relationships xmlns:x="urn:wrong" ', 1)
+    entries[entry] = held.replace(b"<Relationship ", b"<x:Relationship ", count)
+    with pytest.raises(Docx4JException, match="it holds {urn:wrong}Relationship, in a wrong namespace"):
+        load(_zip(entries))
+
+
+def test_a_foreign_element_beside_the_relationships_is_ignored() -> None:
+    """It names no part, so nothing is lost, as docx4j reads it."""
+    entries = _base()
+    entries["_rels/.rels"] = entries["_rels/.rels"].replace(b"</Relationships>", b'<Other xmlns="urn:x"/></Relationships>')
+    assert load(_zip(entries)).main_document_part is not None
+
+
 def test_an_empty_relationships_part_in_the_right_namespace_loads() -> None:
     """Nothing is lost where it names nothing."""
     entries = _base()

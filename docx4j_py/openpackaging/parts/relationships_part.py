@@ -113,6 +113,18 @@ class RelationshipsPart(XmlPart["Relationships"]):
             raise Docx4JException(f"Problem with part {self.part_name}: its root is {root}, not {RELATIONSHIPS_ROOT}")
         return data, None, []
 
+    def _parse(self, data: bytes, settings: Any) -> tuple[Any, Any, list[Any], list[Any]]:
+        """The parse, refused where a ``Relationship`` stands in a wrong namespace, the same loss one child at a time.
+
+        Word reads such a part only through a repair (``rn-06``, ``rn-07``). Any other element beside the relationships
+        names no part, and is ignored, as docx4j ignores it.
+        """
+        parsed = super()._parse(data, settings)
+        for item in getattr(parsed[1].skipped, "items", ()) or ():
+            if str(getattr(item, "qname", "")).rpartition("}")[2] == "Relationship":
+                raise Docx4JException(f"Problem with part {self.part_name}: it holds {item.qname}, in a wrong namespace")
+        return parsed
+
     @property
     def is_relationships_part(self) -> bool:
         """True. A ``.rels`` never has relationships of its own."""
