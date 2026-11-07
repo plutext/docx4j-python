@@ -1,6 +1,6 @@
 # CR-015: Markdown output made safe --- the port of docx4j CR-056's Markdown half
 
-**Status:** Proposed 2026-10-23, at the user's request ("Markdown-safety CR: draft it, covering both fixes above"), to port the Markdown half of docx4j CR-056, which docx4j decided and built the same day (`84ee9741c`, `30fb41024`), with its two fixes: a link whose target's scheme is not on docx4j's allowlist is written as its text, with no link; and under `markup_detail` `author` or `author_date` a CriticMarkup marker's author and date are written as text, escaped as any document text is, as REQ-703 of the text extraction WD 0.33 now requires (docx4j-portfolio `da07eab`). Both defects were measured here first (section 2): every link destination the Markdown writer writes is the document's target as it is, so a `javascript:` target is a live link, and a marker's detail goes out as raw HTML. The measuring found four more (section 2.5): character references such as `&#58;` carry a script scheme past docx4j's allowlist (Q3), and an address comment, `Outline.to_markdown()` and the readers' picture destination write document values unescaped (Q8 to Q10). docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). Four phases: A, the links; B, the markers; C, the sinks found while measuring, as Q8 to Q10 decide; D, the records. Nothing is implemented; it waits on the user's answers to section 8 and a go.
+**Status:** Proposed 2026-10-23, at the user's request ("Markdown-safety CR: draft it, covering both fixes above"), to port the Markdown half of docx4j CR-056, which docx4j decided and built the same day (`84ee9741c`, `30fb41024`), with its two fixes: a link whose target's scheme is not on docx4j's allowlist is written as its text, with no link; and under `markup_detail` `author` or `author_date` a CriticMarkup marker's author and date are written as text, escaped as any document text is, as REQ-703 of the text extraction WD 0.33 now requires (docx4j-portfolio `da07eab`). Both defects were measured here first (section 2): every link destination the Markdown writer writes is the document's target as it is, so a `javascript:` target is a live link, and a marker's detail goes out as raw HTML. The measuring found four more (section 2.5): character references such as `&#58;` carry a script scheme past docx4j's allowlist (Q3), and an address comment, `Outline.to_markdown()` and the readers' picture destination write document values unescaped (Q8 to Q10). docx4j-core-ts ported both fixes the same day (`57b2f98`, `86e2e9d`). Four phases: A, the links; B, the markers; C, the sinks found while measuring, as Q8 to Q10 decide; D, the records. **Decided 2026-11-07**, Q1 to Q11 as recommended (section 8), Phase C taken whole. 0.2.0 was released without it, so where this CR says 0.2.0 it means the next release (section 8.1). Nothing is implemented; it waits on a go.
 
 **Depends on:**
 - **docx4j**, cited by commit only (its working tree was not read):
@@ -545,7 +545,9 @@ A and B are independent, and each is committed on its own. C waits for the user'
 
    A new writer that builds Markdown as a string, or makes a `Link`, should go through the commonmark port and `is_safe`. The tests can't enforce that, as CR-056 says of its own.
 
-## 8. Questions
+## 8. Questions (decided 2026-11-07)
+
+The user, 2026-11-07: "CR-015 questions answered as recommended". Every question below is decided as recommended; section 8.1 says what that means where a question has aged.
 
 1. **Q1. The rule as docx4j's?**
    - The seven schemes (`http`, `https`, `ftp`, `mailto`, `file`, `news`, `tel`), plus no scheme and a drive path.
@@ -624,6 +626,18 @@ A and B are independent, and each is committed on its own. C waits for the user'
     - REQ-703 already keeps a document-supplied target out of an image's destination.
     - The check is a line.
 11. **Q11. The WD.** REQ-703's links bullet says `[text](target)` and nothing of a target's scheme. docx4j and core-ts refuse with no WD item, where 0.33 did write the marker rule down. Should the portfolio's session be asked for a WD item? It would be REQ-703's links bullet and section 11: a link whose target's scheme isn't allowed is its text, the scheme read as a browser reads it, with Q3's decoding if taken. Section 2.5 item 7, braces in text, could go to it as a note. *Recommended: yes, sent by the user. This CR doesn't wait for it.* No conformance row moves: no fixture holds a refused link (section 2.4).
+
+### 8.1 What has changed since the questions were written
+
+The draft is of 2026-10-23. Read again on 2026-11-07, at `02506c0`:
+
+- **0.2.0 was released without this CR** (2026-10-25). `v0.2.0` holds no `link_targets.py`, and its writer makes `md.Link(target, None)` as main does. So 0.2.0 has every defect section 2 measured on main, and PyPI's latest release writes a script link.
+- **Q5** said "before 0.2.0 is released". That can't be done, so its intent stands for the next release: A, B and C go in before it. Where this CR says "the CHANGELOG's 0.2.0 entry" (section 5, risk 5), read `[Unreleased]`, and in Q9 read the next release.
+- **Q6** had no recommendation on whether to make a 0.1.x. It said that if none is made, 0.2.0 supersedes 0.1.0 and its entry names what 0.1.0 writes. 0.2.0 can't do that now, so no fix release is made unless the user asks for one, and the next release's CHANGELOG entry names what 0.1.0 and 0.2.0 write. A 0.2.x is a new question, and the user's.
+- **Measured again at `02506c0`**, on `create_package()`: `Range.hyperlink = "javascript:alert(1)"` gives `click [here](<javascript:alert(1)>)` from `body.to_markdown()`, and a paragraph holding `<img src=x onerror=alert(3)>` gives `- <img src=x onerror=alert(3)> text` from `outline().to_markdown()`.
+- **Line numbers have moved.** `md.Link` is at `markdown.py` line 904, `_runs`' marker at 886 and `_comment` at 957. The code at each is as section 2 describes it.
+- **The oracles haven't moved.** `LinkTargets.java`'s last commit is `525d1ccb3`, and `LinkTargets.mts`'s is `f544b8f`, so section 3 stands with Q3's rule. Section 6.3's byte check runs at `525d1ccb3` or later, not `30fb41024`.
+- **Q11 stands.** WD 0.34 took the two readings into the inspector's kinds, and a NOTE there says what docx4j's writer refuses, but REQ-703's links bullet still says nothing of a target's scheme at WD 0.100.
 
 ## 9. Effort
 

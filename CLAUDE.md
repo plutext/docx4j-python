@@ -64,7 +64,7 @@ departure; read them before changing the area they cover. Status, 2026-10-25:
   reads `PlainText`, and a `w:richText` one is bound as text); a bound date is formatted through the field code's
   converter (`h` 1 to 12), in `resources/date-names.json`'s names (`scripts/generate_date_names.py`, Babel, no runtime
   dependency), `pkg.bound_dates_converted_as_word` off by default; a stale `w:storeItemID` is resolved as Word repairs it
-  (`customxml/store_items.py`, `XmlMapping.resolved_part`; `custom_xml_part` stays strict). **CR-015** (Markdown output safety): proposed.
+  (`customxml/store_items.py`, `XmlMapping.resolved_part`; `custom_xml_part` stays strict). **CR-015** (Markdown output safety): decided 2026-11-07 (Q1 to Q11 as recommended), for the next release; not built.
   **CR-016** (core-ts's cell, font, placeholder and wildcard
   changes): decided 2026-10-24. Phase A (a table cell ends with a paragraph, as Word reads it:
   `model/content/table_rules.py`, docx4j's `TableRules`) implemented 2026-10-24; B implemented
