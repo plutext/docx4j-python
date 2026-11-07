@@ -797,6 +797,11 @@ markup that makes Word **hang** or quietly refuse an operation, also add an entr
 > the user: "go", after "with one Word check through the bridge at the end"). A main part with another root, or a child given more than once,
 > now saves as an ordinary document. All 92 opened silently, the two runs agree, and all 46 match Word's own reading of the source in words,
 > sections and properties, compared from the raw saves (CR-039 section 9.4).
+>
+> **2026-11-07, CR-040 (25 inputs in `out/cr040-word-check/`, built over `c991788`, staged as `bridge/staging/cr040-word-check/`):
+> passed**, through the Word bridge, not by hand (the docx4j-portfolio session's run on Word 16.0.20326.20232, twice each, 50 jobs;
+> the user: "CR-040 as recommended, Q6 this release"). `mc_load_mode="word"` saves of the `nothing-selected/` fixtures. All 50 opened silently,
+> the two runs agree, and all 25 match Word's own reading of the source, compared from the raw saves (CR-040 section 8.4).
 
 Saved output must open in Word **without a repair prompt**. After any change to
 marshalling, the prefix table, content types, the zip writer, `create_package`, the markdown

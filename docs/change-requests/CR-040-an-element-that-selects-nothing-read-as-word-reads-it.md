@@ -1,6 +1,6 @@
 # CR-040: An `mc:AlternateContent` that selects nothing, read as Word reads it (WD REQ-305 and REQ-306)
 
-**Status:** Decided 2026-11-07 (the user: "CR-040 as recommended, Q6 this release"). Proposed the same day ("write CR-040"), on the ruling "REQ-305 itself changes for all three engines". docx4j published the two sets at `824565363`. Phases A and B built 2026-11-07 (section 8). The Word check is Phase C's.
+**Status:** Complete 2026-11-07: Phases A to C done, the Word check passed through the bridge at the user's word (section 8.4), for this release. Decided 2026-11-07 (the user: "CR-040 as recommended, Q6 this release"). Proposed the same day ("write CR-040"), on the ruling "REQ-305 itself changes for all three engines". docx4j published the two sets at `824565363`.
 
 **Depends on:** `portfolio/wd-req-305-follows-word`, for docx4j's published list. WD 0.98 (`d24ab36`) sets the order: the WD, then docx4j's list, then each engine. **CR-039** is built, and its `rw-24` path gets the warning here.
 
@@ -117,3 +117,11 @@ A goes first, and B never ahead of it. A is right by Word on its own.
 - **`scripts/roundtrip.py`:** clean, 50 of 50 parts, 0 differences, 0 skipped.
 - **13 mutants:** every one caught, one only after a test for an unbound prefix.
 - **Word's own files:** all 23 read as Word shows them, and the warning is raised on the ten where Word shows neither branch and on none of the rest.
+
+### 8.4 The Word check: passed
+
+Through the Word bridge on 16.0.20326.20232, built over `c991788`, `bridge/staging/cr040-word-check/`, with `out/cr040-word-check/build.py` and `compare.py` (git-ignored). 25 inputs, each run twice: `mc_load_mode="word"` saves of the 23 fixtures, and 2 with a paragraph added through `Body`.
+
+- **Word opened all 50 silently,** with no dialog.
+- **The two runs agree** on all 25, in words, sections and properties, leaving rsids aside.
+- **All 25 match Word's own reading of the source,** compared from the raw saves. That covers the elements a word-mode save takes out, and the `Choice` content a namespace new to the set promotes, with its prefix in `mc:Ignorable`. The 2 edited files hold the new paragraph once.
