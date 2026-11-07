@@ -14,7 +14,7 @@ entry of a name and counts the rest, the zip store reading and sizing by the fir
 duplicate before reading anything, `DuplicateEntryException` naming each; `duplicate_entries="first"` reads the first,
 `DuplicateEntry` first on `package.warnings`, and saves only the copy read; the text model's `package.duplicate_entry`
 with `TextWarning.detail`, and `duplicate_entries` by name in `TextOptions`; 67 tests, full suite 9,900 passed.
-**Phase B done 2026-11-04** (section 10: the records). **Complete** (no Word check, Q8). **Amended 2026-11-07** for WD 0.100: more than one `officeDocument` relationship is refused too, the same switch reading the last (section 11).
+**Phase B done 2026-11-04** (section 10: the records). **Complete** (no Word check, Q8). **Amended 2026-11-07** for WD 0.100: more than one `officeDocument` relationship is refused too, the same switch reading the last (section 11). **Amended 2026-11-08** for WD 0.102: an `External` one beside an internal one is refused, as Word refuses it, at every `repair` but `all`, which reads the internal target (section 11.5, with `LoadOptions(repair=)`).
 
 **Depends on:** nothing in another repository. The statement is the WD's REQ-206 at 0.77
 (`../docx4j-portfolio/docs/text_extraction_specification_wd.md`). docx4j and core-ts each build their own, and since
@@ -456,7 +456,7 @@ Before this, `load_package` took the first relationship and said nothing, so it 
 
 - **The other relationships go at load**, with the Override of each part they named. `get_main_part`, `main_document_part`, the loader and the save then see one main part, and nothing else needs to know. So a save holds one main part, as Word's repaired save does, and reloads under the default with nothing said.
 - **The count is of relationships**, so a transitional and a strict one are two, and two to the same target are two. The second is refused as the statement reads, and the portfolio's `one-target` round (`ot-*`, four files twice) measured it: Word repairs two or three relationships to one part, however spelled, so it isn't an ordinary package. Under the switch its part is read and keeps its content type.
-- **An `External` relationship is no main part.** `d734634` counted it, which departed from what went before: the default refused a package with one beside its real main part, naming the URL as a target, and with it last the switch read no main part at all. Fixed the same day at the user's word ("Go to the five fixes"). It isn't counted and stays on a save, and `get_main_part` passes over it. docx4j (`e2d51d1e2`) and core-ts (`9459d1e`) read it the same way.
+- **An `External` relationship is no main part** (superseded by section 11.5, where Word refuses the package). `d734634` counted it, which departed from what went before: the default refused a package with one beside its real main part, naming the URL as a target, and with it last the switch read no main part at all. Fixed the same day at the user's word ("Go to the five fixes"). It isn't counted and stays on a save, and `get_main_part` passes over it. docx4j (`e2d51d1e2`) and core-ts (`9459d1e`) read it the same way.
 - **The switch's name reads oddly here:** `duplicate_entries="first"` reads the **last** relationship. It's the WD's switch and the WD's value, so the name stays, and the docstring and the refusal's message say which.
 - **`strict=True`** refuses nothing more under the switch, as for a duplicated entry (Q4).
 - **An orphan's Override stays.** `ContentTypeManager.to_bytes` writes the source's Overrides as parsed, so a save drops an orphan part but keeps its Override, as it always has. That's what a save writes, CR-033's question, and unmeasured in Word.
@@ -465,8 +465,32 @@ Before this, `load_package` took the first relationship and said nothing, so it 
 
 The tests build their zips (`tests/openpackaging/test_multiple_main_parts.py`). Word's saves of the `pw-two-main-rels-*` round aren't an oracle: in those runs Word read the first relationship, and the WD's `open-order` round shows why, its choice alternating with each repaired open in one Word session, the first open of a session reading the last. A refusal writes nothing, and the switch's save is an ordinary package. Word opened that save silently, both runs, and an orphan's save with its Override too (CR-039 section 9.7).
 
-### 11.4 An `External` relationship in Word (2026-11-07, open)
+### 11.4 An `External` relationship in Word (2026-11-07; ruled 2026-11-08, section 11.5)
 
 `wd101-word-check` measured what section 11.2 assumed: a package holding an `External` `officeDocument` relationship beside its real one is **refused by Word**, whichever comes first. Repair is offered, accepted, and Word then errors, on the source and on this package's save, all 8 runs, in about 5 seconds, with no sign of a fetch.
 
-So section 11.2's reading, which docx4j and core-ts share, reads a package Word doesn't open, and a save keeps the relationship, so Word refuses the save too. `d734634`'s default refusal was nearer Word than the fix that undid it, though its switch was broken and it named the URL as a part. This waits on the user's ruling and the WD.
+So section 11.2's reading, which docx4j and core-ts share, reads a package Word doesn't open, and a save keeps the relationship, so Word refuses the save too. `d734634`'s default refusal was nearer Word than the fix that undid it, though its switch was broken and it named the URL as a part. Ruled and built in section 11.5.
+
+### 11.5 An `External` relationship beside an internal one, and `repair` (implementation notes, 2026-11-08)
+
+The user, 8 November: "External beside an internal target: refused at refuse and word. At all, read the internal target, drop the External relationship, never fetch the URL, and warn. build this now please." That is WD 0.102's statement (portfolio `4c81f10`, REQ-206's NOTE), in the WD's option `repair` (REQ-207: `refuse`, `word`, `all`, a load option), after Jason's ruling in the docx4j session ("External beside an internal relationship: refuse in both modes"). docx4j's refusal is `6025529d9`, its `RepairMode.ALL` being built.
+
+**What landed:**
+- **`LoadOptions(repair="refuse" | "word" | "all")`**, default `"refuse"`, checked in `__post_init__` (`REPAIR`), acting at the load. `word` implies `duplicate_entries="first"`, so its two readings, the first copy and the last relationship, follow either (`LoadOptions.follows_word_repairs`); `all` is `word` and this package's own repairs, one so far.
+- **`ExternalMainPartException`**, an `InvalidFormatException`, `code` `package.external_main_part`, `urls` as written and `targets` as part names, its message naming both and what `repair="all"` would read. Raised at `refuse` and `word`, first or last alike, and under `duplicate_entries="first"`, which `word` implies.
+- **Under `all`**, the `External` relationships are removed from the package relationships at load, the last internal target is read, and one **`ExternalMainPart`** (`part_name`, `urls`, `detail`, `message`, `to_dict()`) is recorded on `package.warnings` and logged. A save writes the relationships as left, so it holds no `External` one and reloads under the default with nothing said. Nothing here opens a socket: the URL is never fetched, and a test patches `socket` to prove it at both settings.
+- **The text model** raises `package.external_main_part` once, no address, the selector the part read and `detail` the URL as written.
+- **`TextResult.metadata["repaired"]`** (REQ-207, REQ-801), on the top-level result: `own` where this package's own repair was followed, else `word` where one of Word's was (a `DuplicateEntry` or `MultipleMainParts` record), else `none`.
+- **`TextOptions(repair=...)`** by name, as `duplicate_entries` is (REQ-1001): the load's option, accepted and not acted on by a reading. `OPTION_NAMES` has 29, `repair` after `duplicate_entries`, in section 10's order. The adapter passes it to the load.
+
+**What the build settled beyond the statement:**
+- **Two internal ones beside it** (unmeasured in Word): the `External` rule is asked first, as docx4j's `Load3.oneMainPart` asks it, so the default refuses with `ExternalMainPartException` naming every internal target. Under `all` both repairs apply, `ExternalMainPart` then `MultipleMainParts`, the last internal target read, and `repaired` is `own`.
+- **Several `External` ones** (unmeasured): each is named and dropped, and `detail` lists them separated by spaces, as REQ-801's lists are.
+- **An `External` one alone** is no main part, refused at every setting as before ("No relationship of type officeDocument"; REQ-321).
+- **`strict=True`** refuses as the default does, and refuses nothing more under `all`, as for `duplicate_entries="first"` (Q4).
+- **`repair="word"` lacks one of the WD's three Word repairs.** A relationships part in a wrong namespace is still refused at every setting (CR-031 section 13), where REQ-207 has `word` read it by local name with `package.relationships_namespace`. That is CR-033's, with the save gate, which this doesn't build: `repair` decides what a load reads, and nothing a save writes depends on it beyond what the load dropped.
+- **0.2.0** took the first `officeDocument` relationship, `External` or not, and said nothing.
+
+**The oracle.** Word's 8 `x-ext-*` runs for the refusal (section 11.4). `all`'s save is an ordinary package with one internal `officeDocument` relationship, as the switch's save of two internal ones is, which Word opened silently (section 11.3). It is unmeasured in Word.
+
+**Numbers.** 21 tests more; the fast suite 10,308 passed, 8 skipped. None of the 1,910 local sample and test documents holds an `External` `officeDocument` relationship, so no corpus reading moves.

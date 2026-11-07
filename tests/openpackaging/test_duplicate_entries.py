@@ -202,6 +202,16 @@ def test_under_first_the_main_parts_first_copy_is_read_and_saved(spellings, coun
     assert b"FIRST" in _saved_entry(saved, DOC) and b"SECOND" not in _saved_entry(saved, DOC)
 
 
+@pytest.mark.parametrize("repair", ["word", "all"])
+def test_repair_word_and_all_read_the_first_copy_as_first_does(repair):
+    """WD REQ-207: ``repair: word`` implies ``duplicate_entries: first``, and ``all`` is ``word`` and more."""
+    pkg = load(_doubled(DOC), options=LoadOptions(repair=repair))
+    assert _text(pkg) == "FIRST"
+    assert pkg.warnings == [DuplicateEntry(DOC, 2)]
+    with pytest.raises(DuplicateEntryException):
+        load(_doubled(DOC), options=LoadOptions(repair="refuse"))
+
+
 def test_an_untouched_save_under_first_writes_the_first_copys_bytes():
     pkg = load(_doubled(DOC, "Word/Document.xml"), options=FIRST)
     saved = _saved(pkg)

@@ -37,6 +37,7 @@ from docx4j_py.openpackaging.content_types import (
 from docx4j_py.openpackaging.exceptions import (
     Docx4JException,
     DuplicateEntryException,
+    ExternalMainPartException,
     InvalidFormatException,
     InvalidOperationException,
     MultipleMainPartsException,
@@ -44,6 +45,7 @@ from docx4j_py.openpackaging.exceptions import (
 )
 from docx4j_py.openpackaging.load import (
     DuplicateEntry,
+    ExternalMainPart,
     LoadOptions,
     MultipleMainParts,
     load_package,
@@ -178,6 +180,8 @@ __all__ = [
     "DrawingPart",
     "DuplicateEntry",
     "DuplicateEntryException",
+    "ExternalMainPart",
+    "ExternalMainPartException",
     "MultipleMainParts",
     "MultipleMainPartsException",
     "EmbeddedPackagePart",

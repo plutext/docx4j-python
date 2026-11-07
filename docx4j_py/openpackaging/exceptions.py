@@ -15,6 +15,7 @@ __all__ = [
     "CyclicStylesException",
     "Docx4JException",
     "DuplicateEntryException",
+    "ExternalMainPartException",
     "InvalidFormatException",
     "InvalidOperationException",
     "MultipleMainPartsException",
@@ -88,6 +89,35 @@ class MultipleMainPartsException(InvalidFormatException):
         super().__init__(
             f"{len(self.targets)} officeDocument relationships in this package: {', '.join(self.targets)} (REQ-206). "
             'LoadOptions(duplicate_entries="first") reads the last'
+        )
+
+
+class ExternalMainPartException(InvalidFormatException):
+    """An ``External`` ``officeDocument`` relationship beside an internal one, refused (WD REQ-206's NOTE, 0.102).
+
+    Word refuses such a package, first or last alike: it offers a repair and then fails (the ``x-ext-*`` runs), so there
+    is no reading of Word's to follow. Raised under ``LoadOptions(repair="refuse")``, the default, and ``"word"``, and
+    under ``duplicate_entries="first"``; ``repair="all"`` reads the internal target instead, this package's own repair.
+    The URL is never fetched.
+
+    Attributes:
+        code: ``package.external_main_part``, the WD's code.
+        urls: each ``External`` relationship's target as written, in the relationships' order.
+        targets: each internal relationship's target as a part name (``/word/document.xml``), in the same order.
+    """
+
+    code: ClassVar[str] = "package.external_main_part"
+
+    def __init__(self, urls: Iterable[str], targets: Iterable[str]) -> None:
+        """The refusal, naming each URL as written and each internal target."""
+        self.urls: tuple[str, ...] = tuple(urls)
+        self.targets: tuple[str, ...] = tuple(targets)
+        external = "An External officeDocument relationship" if len(self.urls) == 1 else f"{len(self.urls)} External officeDocument relationships"
+        internal = "the internal one" if len(self.targets) == 1 else f"{len(self.targets)} internal ones"
+        super().__init__(
+            f"{external} in this package, to {', '.join(self.urls)}, beside {internal}, to {', '.join(self.targets)} "
+            f'(REQ-206). Word refuses such a package, even through its repair. LoadOptions(repair="all") reads '
+            f"{self.targets[-1]} and drops the External relationship, a repair of this package's own"
         )
 
 

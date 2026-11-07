@@ -69,6 +69,7 @@ OPTION_NAMES: tuple[str, ...] = (
     "layout",
     "warnings",
     "duplicate_entries",
+    "repair",
     "profile",
 )
 
@@ -106,6 +107,7 @@ _CHOICES: dict[str, tuple[tuple[str, ...], str]] = {
     "markup_detail": (("type", "author", "author_date"), "REQ-702"),
     "layout": (("none", "indent"), "REQ-709"),
     "duplicate_entries": (("refuse", "first"), "REQ-206"),
+    "repair": (("refuse", "word", "all"), "REQ-207"),
 }
 
 #: ``word-text`` (REQ-1002, WD 0.41): Word's Save As plain text as the options reach it, by the specification's
@@ -283,7 +285,10 @@ class TextOptions:
     package already loaded, so it does not decide again. Pass it to the load,
     ``LoadOptions(duplicate_entries=...)``; the load's setting holds, and
     under ``first`` the result's ``package.duplicate_entry`` and
-    ``package.multiple_main_parts`` warnings say what was read.
+    ``package.multiple_main_parts`` warnings say what was read. ``repair``
+    (``refuse``, ``word``, ``all``; REQ-207) is the load's too, accepted here
+    the same way: ``LoadOptions(repair=...)`` decides, and the result's
+    ``repaired`` metadata and its ``package.*`` warnings say what was read.
 
     Beyond section 10, ``image_describer`` (REQ-514): what gives an image its
     description, the author's alt text by default; and ``field_user``
@@ -330,6 +335,7 @@ class TextOptions:
         "notes",
         "page_markers",
         "placeholders",
+        "repair",
         "smartart",
         "symbols",
         "tables",
@@ -379,6 +385,9 @@ class TextOptions:
         #: loads the package (``LoadOptions(duplicate_entries=...)``); a reading
         #: of a package loaded already does not act on it.
         self.duplicate_entries = "refuse"
+        #: The load's option too (REQ-207): accepted, and read by whoever loads
+        #: the package (``LoadOptions(repair=...)``).
+        self.repair = "refuse"
         #: What gives an image its description (REQ-514): beyond section 10, a
         #: host's hook, as docx4j's ``TextOptions.imageDescriber``. The
         #: author's alt text by default (:func:`~docx4j_py.model.text.images.alt_text_describer`).

@@ -125,8 +125,8 @@ def test_the_option_is_accepted_by_name_with_its_two_values():
     assert TextOptions().duplicate_entries == "refuse"
     assert TextOptions(duplicate_entries="first").duplicate_entries == "first"
     assert TextOptions.of({"duplicate_entries": "FIRST"}).duplicate_entries == "first"
-    assert OPTION_NAMES[-2] == "duplicate_entries"  # profile (CR-027) after it, as in section 10's table
-    assert list(TextOptions().to_dict())[-2] == "duplicate_entries"
+    assert OPTION_NAMES[-3] == "duplicate_entries"  # repair (WD 0.102) and profile (CR-027) after it, as in section 10
+    assert list(TextOptions().to_dict())[-3] == "duplicate_entries"
     assert TextOptions().to_dict()["duplicate_entries"] == "refuse"
     assert repr(TextOptions(duplicate_entries="first")) == "TextOptions(duplicate_entries='first')"
     assert TextOptions(duplicate_entries="first").copy().duplicate_entries == "first"
@@ -141,6 +141,20 @@ def test_another_value_is_refused(value):
         "REQ-206",
         "invalid",
     )
+
+
+def test_repair_is_accepted_by_name_with_its_three_values(tmp_path):
+    """WD REQ-207 (0.102): the load's option too, accepted here as REQ-1001 requires; the adapter passes it on."""
+    assert TextOptions().repair == "refuse"
+    assert TextOptions(repair="all").repair == "all"
+    assert TextOptions.of({"repair": "WORD"}).repair == "word"
+    assert TextOptions().to_dict()["repair"] == "refuse"
+    with pytest.raises(TextOptionError) as raised:
+        TextOptions(repair="first")
+    assert (raised.value.option, raised.value.statement, raised.value.reason) == ("repair", "REQ-207", "invalid")
+    fixture = tmp_path / "dup.docx"
+    fixture.write_bytes(_doubled())
+    assert TextsAdapter().extract(fixture, "accepted", "repair: word", "txt").text == "BODY FIRST\n"
 
 
 def test_the_adapter_passes_the_option_to_the_load(tmp_path):

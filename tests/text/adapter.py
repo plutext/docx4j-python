@@ -146,9 +146,9 @@ def options(view: str, scenario: str) -> TextOptions:
 class TextsAdapter(Engine):
     """The harness's engine over the text model, in plain text and Markdown.
 
-    Each fixture is loaded once per ``duplicate_entries`` and read as often as
-    the harness asks, as docx4j's adapter caches its packages. That option is
-    the load's (REQ-206, CR-032 Q5), so a scenario's value is passed to
+    Each fixture is loaded once per ``duplicate_entries`` and ``repair`` and read as
+    often as the harness asks, as docx4j's adapter caches its packages. Those options
+    are the load's (REQ-206, REQ-207, CR-032 Q5), so a scenario's values are passed to
     :class:`~docx4j_py.openpackaging.load.LoadOptions`.
     """
 
@@ -172,10 +172,11 @@ class TextsAdapter(Engine):
         if format not in ("txt", "md"):
             raise NotImplementedError(f"format {format}")
         opts = options(view, scenario)
-        key = (fixture, opts.duplicate_entries)
+        key = (fixture, opts.duplicate_entries, opts.repair)
         package = self._packages.get(key)
         if package is None:
-            package = self._packages[key] = load(fixture, options=LoadOptions(duplicate_entries=opts.duplicate_entries))
+            load_options = LoadOptions(duplicate_entries=opts.duplicate_entries, repair=opts.repair)
+            package = self._packages[key] = load(fixture, options=load_options)
         result = extract(package, opts)
         findings: dict[str, str] = {}
         for warning in result.warnings:

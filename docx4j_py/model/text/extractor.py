@@ -669,7 +669,7 @@ class Extractor:
         # one level down the settings' updateFields is not the result's, nor are the settings needed for it
         metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: not self.nested and self._fields_update_on_open()}
         if not self.nested:
-            self._load_warnings()
+            metadata[TextResult.REPAIRED] = self._load_warnings()
             from docx4j_py.model.text import metadata as properties
 
             properties.read(self.trees.package, metadata)
@@ -711,25 +711,42 @@ class Extractor:
             self._comments(comments)
         return TextResult(out, comments, self.warnings, metadata, self.options)
 
-    def _load_warnings(self) -> None:
-        """``package.duplicate_entry``, once a name, and ``package.multiple_main_parts``, once (REQ-206).
+    def _load_warnings(self) -> str:
+        """``package.duplicate_entry``, once a name, ``package.external_main_part`` and ``package.multiple_main_parts``, once.
 
-        CR-032 D8: the load's ``duplicate_entries: first`` decided what was
-        read, and its records (``package.warnings``) are carried here, first, the
-        selector the entry's or the part's name and ``detail`` the number of entries
-        or relationships. A package loaded under the default holding either was
-        refused, so a reading never decides again. One level down there are none: a
-        nested load is refused by its own default.
+        CR-032 D8 (REQ-206): the load's ``duplicate_entries: first`` or
+        ``repair`` decided what was read, and its records (``package.warnings``)
+        are carried here, first, the selector the entry's or the part's name and
+        ``detail`` the number of entries or relationships, or the URL. A package
+        loaded under the default holding any was refused, so a reading never
+        decides again. One level down there are none: a nested load is refused by
+        its own default.
+
+        Returns:
+            The result's ``repaired`` (REQ-207): ``"own"`` where a repair of this
+            package's own was followed, else ``"word"`` where one of Word's was,
+            else ``"none"``.
         """
-        from docx4j_py.openpackaging.load import DuplicateEntry, MultipleMainParts
+        from docx4j_py.openpackaging.load import DuplicateEntry, ExternalMainPart, MultipleMainParts
 
+        repaired = "none"
         for record in getattr(self.trees.package, "warnings", None) or ():
             if isinstance(record, DuplicateEntry):
                 kind = TextWarning.PACKAGE_DUPLICATE_ENTRY
                 self.warn(TextWarning(kind, None, part_name=record.entry, detail=record.count))
+            elif isinstance(record, ExternalMainPart):
+                kind = TextWarning.PACKAGE_EXTERNAL_MAIN_PART
+                self.warn(TextWarning(kind, None, part_name=record.part_name, detail=record.detail))
+                repaired = "own"
+                continue
             elif isinstance(record, MultipleMainParts):
                 kind = TextWarning.PACKAGE_MULTIPLE_MAIN_PARTS
                 self.warn(TextWarning(kind, None, part_name=record.part_name, detail=record.count))
+            else:
+                continue
+            if repaired == "none":
+                repaired = "word"
+        return repaired
 
     def _unexpected_root(self) -> None:
         """What the main part's root left to say: ``part.unexpected_root`` (REQ-320) and ``mce.nothing_selected`` (REQ-305)."""

@@ -1,5 +1,8 @@
 """A package with more than one ``officeDocument`` relationship. WD REQ-206's statement, ruled 2026-11-07; CR-032 section 11.
 
+And an ``External`` one beside an internal one (REQ-206's NOTE, WD 0.102; CR-032 section 11.5), refused at every
+``repair`` but ``all``, which reads the internal target and drops the ``External`` one; with ``LoadOptions(repair=)``.
+
 Refused by default, naming the targets, as a duplicated entry is and for the same reason: Word reads such a package only
 through a repair. Under the same switch, ``LoadOptions(duplicate_entries="first")``, the **last** relationship's target is
 read, as a fresh Word reads it, and ``package.multiple_main_parts`` raised once.
@@ -19,7 +22,13 @@ import pytest
 
 from docx4j_py import create_package, load
 from docx4j_py.model.text import TextWarning, extract, plain_text
-from docx4j_py.openpackaging import LoadOptions, MultipleMainParts, MultipleMainPartsException
+from docx4j_py.openpackaging import (
+    ExternalMainPart,
+    ExternalMainPartException,
+    LoadOptions,
+    MultipleMainParts,
+    MultipleMainPartsException,
+)
 from docx4j_py.openpackaging.exceptions import InvalidFormatException
 
 MAIN = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
@@ -185,35 +194,133 @@ def _with_external(*, first: bool, targets: tuple[str, ...] = ("word/document.xm
     return out.getvalue()
 
 
+URL = "http://example.org/x.docx"
+ALL = LoadOptions(repair="all")
+
+
 @pytest.mark.parametrize("first", [True, False], ids=["first", "last"])
-@pytest.mark.parametrize("options", [None, FIRST], ids=["default", "switch"])
-def test_an_external_relationship_is_no_main_part(first: bool, options: Any) -> None:
-    pkg = load(_with_external(first=first), options=options)
-    assert plain_text(extract(pkg)).strip() == "DOCUMENT" and not pkg.warnings
+@pytest.mark.parametrize(
+    "options",
+    [None, FIRST, LoadOptions(repair="word"), LoadOptions(strict=True)],
+    ids=["default", "duplicate_entries=first", "repair=word", "strict"],
+)
+def test_an_external_relationship_beside_an_internal_one_is_refused_naming_the_url(first: bool, options: Any) -> None:
+    """Word refuses it, offering a repair and then failing (x-ext-*, 8 of 8): REQ-206's NOTE, WD 0.102."""
+    with pytest.raises(ExternalMainPartException) as caught:
+        load(_with_external(first=first), options=options)
+    assert caught.value.code == "package.external_main_part"
+    assert (caught.value.urls, caught.value.targets) == ((URL,), ("/word/document.xml",))
+    assert URL in str(caught.value) and 'LoadOptions(repair="all")' in str(caught.value)
+    assert isinstance(caught.value, InvalidFormatException)
+
+
+@pytest.mark.parametrize("first", [True, False], ids=["first", "last"])
+def test_under_repair_all_the_internal_target_is_read_and_the_external_one_dropped(first: bool) -> None:
+    pkg = load(_with_external(first=first), options=ALL)
+    assert plain_text(extract(pkg)).strip() == "DOCUMENT"
+    assert pkg.warnings == [ExternalMainPart("/word/document.xml", (URL,))]
     assert pkg.get_main_part() is pkg.main_document_part
+    assert [r.target for r in pkg.relationships_part.list if r.type_value == RELATIONSHIP] == ["word/document.xml"]
 
 
-def test_only_an_external_relationship_is_no_main_part_at_all() -> None:
+def test_strict_doesn_t_refuse_under_repair_all() -> None:
+    """The option is the caller's choice, as for ``duplicate_entries="first"`` (CR-032 Q4)."""
+    assert load(_with_external(first=True), options=LoadOptions(strict=True, repair="all")).warnings
+
+
+def test_the_record_comes_once_and_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger="docx4j_py.openpackaging"):
+        pkg = load(_with_external(first=True), options=ALL)
+    [record] = pkg.warnings
+    assert record.code == "package.external_main_part" and record.detail == URL
+    assert record.to_dict() == {"code": record.code, "part_name": "/word/document.xml", "urls": [URL], "message": record.message}
+    assert [item.getMessage() for item in caplog.records if "External" in item.getMessage()] == [record.message]
+
+
+def test_the_text_model_raises_it_once_and_the_result_says_the_repair_is_its_own() -> None:
+    result = extract(load(_with_external(first=False), options=ALL))
+    [warning] = result.warnings
+    assert warning.kind == TextWarning.PACKAGE_EXTERNAL_MAIN_PART == "package.external_main_part"
+    assert (warning.address, warning.selector, warning.detail) == (None, "/word/document.xml", URL)
+    assert result.metadata["repaired"] == "own"
+
+
+def test_the_url_is_never_fetched(monkeypatch: pytest.MonkeyPatch) -> None:
+    """REQ-206's NOTE: MUST NOT fetch the URL. No socket is opened, at any setting."""
+    import socket
+
+    def refuse(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("a socket was opened")
+
+    monkeypatch.setattr(socket, "socket", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+    monkeypatch.setattr(socket, "getaddrinfo", refuse)
+    with pytest.raises(ExternalMainPartException):
+        load(_with_external(first=True))
+    pkg = load(_with_external(first=True), options=ALL)
+    assert plain_text(extract(pkg)).strip() == "DOCUMENT"
+    _saved(pkg)
+
+
+@pytest.mark.parametrize("first", [True, False], ids=["first", "last"])
+def test_a_save_under_repair_all_holds_no_external_relationship_and_loads_with_nothing_said(first: bool) -> None:
+    saved = _saved(load(_with_external(first=first), options=ALL))
+    rels = saved.read("_rels/.rels")
+    assert URL.encode() not in rels and b"External" not in rels
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as zout:
+        for name in saved.namelist():
+            zout.writestr(name, saved.read(name))
+    again = load(out.getvalue())
+    assert plain_text(extract(again)).strip() == "DOCUMENT" and not again.warnings
+
+
+def test_two_internal_ones_beside_it_are_refused_for_the_external_one_first() -> None:
+    """Unmeasured in Word; the External rule is asked first, as docx4j's ``Load3.oneMainPart`` asks it."""
+    for options in (None, FIRST, LoadOptions(repair="word")):
+        with pytest.raises(ExternalMainPartException) as caught:
+            load(_with_external(first=False, targets=TWO), options=options)
+        assert caught.value.targets == ("/word/document.xml", "/word/other.xml")
+    pkg = load(_with_external(first=False, targets=TWO), options=ALL)
+    assert pkg.warnings == [ExternalMainPart("/word/other.xml", (URL,)), MultipleMainParts("/word/other.xml", 2)]
+    assert plain_text(extract(pkg)).strip() == "OTHER"
+    assert extract(pkg).metadata["repaired"] == "own"
+
+
+@pytest.mark.parametrize("options", [None, ALL], ids=["default", "repair=all"])
+def test_only_an_external_relationship_is_no_main_part_at_all(options: Any) -> None:
+    """With no internal one there is no main part, which REQ-321 refuses at every setting."""
     data = _with_external(first=True)
     out = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(data)) as zin, zipfile.ZipFile(out, "w") as zout:
         for name in zin.namelist():
             zout.writestr(name, zin.read(name).replace(b'Id="rIdMain0" Type="' + RELATIONSHIP.encode() + b'"', b'Id="rIdMain0" Type="urn:other"'))
     with pytest.raises(InvalidFormatException, match="No relationship of type officeDocument"):
-        load(out.getvalue())
+        load(out.getvalue(), options=options)
 
 
-def test_an_external_one_doesn_t_count_towards_two() -> None:
-    with pytest.raises(MultipleMainPartsException) as caught:
-        load(_with_external(first=False, targets=TWO))
-    assert caught.value.targets == ("/word/document.xml", "/word/other.xml")
-    pkg = load(_with_external(first=False, targets=TWO), options=FIRST)
+# ---------------------------------------------------------------------------
+# repair (WD REQ-207, 0.102)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("repair", ["word", "all"])
+def test_repair_word_and_all_imply_duplicate_entries_first(repair: str) -> None:
+    pkg = load(_package(*TWO), options=LoadOptions(repair=repair))
     assert pkg.warnings == [MultipleMainParts("/word/other.xml", 2)]
+    result = extract(pkg)
+    assert plain_text(result).strip() == "OTHER" and result.metadata["repaired"] == "word"
 
 
-def test_an_external_one_stays_on_a_save() -> None:
-    saved = _saved(load(_with_external(first=False)))
-    assert b"http://example.org/x.docx" in saved.read("_rels/.rels")
+def test_nothing_repaired_says_none() -> None:
+    assert extract(load(_package("word/document.xml"))).metadata["repaired"] == "none"
+    assert extract(load(_package("word/document.xml"), options=ALL)).metadata["repaired"] == "none"
+
+
+@pytest.mark.parametrize("value", ["none", "first", "", "ALL"])
+def test_another_repair_value_is_refused(value: str) -> None:
+    with pytest.raises(ValueError, match="REQ-207"):
+        LoadOptions(repair=value)
 
 
 def test_one_relationship_says_nothing() -> None:

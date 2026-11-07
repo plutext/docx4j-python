@@ -97,7 +97,7 @@ def test_the_preset_is_docx4js_24_values():
     defaults = TextOptions().to_dict()
     others = set(OPTION_NAMES) - WORD_TEXT.keys() - {"profile"}
     assert {name: got[name] for name in others} == {name: defaults[name] for name in others}
-    assert others == {"markup_detail", "warnings", "duplicate_entries"}
+    assert others == {"markup_detail", "warnings", "duplicate_entries", "repair"}
 
 
 def test_the_callers_option_overrides_the_profile_whichever_came_first():

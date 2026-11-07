@@ -604,6 +604,10 @@ class TextWarning:
     #: ``duplicate_entries: first`` reads it (REQ-206). Once a package, with no address; its selector is that part's
     #: name, its :attr:`detail` the number of relationships.
     PACKAGE_MULTIPLE_MAIN_PARTS = "package.multiple_main_parts"
+    #: An ``External`` ``officeDocument`` relationship beside an internal one, dropped and the internal target read, as
+    #: the load's ``repair: all`` reads it, a repair of this package's own (REQ-206's NOTE, REQ-207). Once a package,
+    #: with no address; its selector is the part read, its :attr:`detail` the URL as written.
+    PACKAGE_EXTERNAL_MAIN_PART = "package.external_main_part"
     #: An ``mc:AlternateContent`` with Choices, none understood, and no Fallback: nothing selected, as Word reads it
     #: (REQ-305; CR-040). Its selector is the part's name, and :attr:`detail` the namespaces the Choices require, as URIs
     #: separated by spaces. It has an address, but for one at a main part's root.
@@ -664,6 +668,9 @@ class TextResult:
 
     #: The metadata's key for the settings' ``w:updateFields`` (REQ-506, REQ-801).
     FIELDS_UPDATE_ON_OPEN = "fields_update_on_open"
+    #: The metadata's key for what the load repaired (REQ-207, REQ-801): ``"none"``, ``"word"`` where a repair of
+    #: Word's was followed (a duplicated entry, more than one main part), ``"own"`` where one of this package's own was.
+    REPAIRED = "repaired"
     #: The metadata's key for the core properties (REQ-515): each property's element name to its value.
     CORE = "core"
     #: The metadata's key for the application properties (REQ-515), the statistics left out.
@@ -677,7 +684,7 @@ class TextResult:
     comments: dict[str, TextComment]
     #: The warnings raised (REQ-801), each once.
     warnings: list[TextWarning]
-    #: Whatever the options (REQ-801, REQ-515): ``fields_update_on_open``, and
+    #: Whatever the options (REQ-801, REQ-515): ``fields_update_on_open``, ``repaired``, and
     #: the document properties under :attr:`CORE`, :attr:`APP` and :attr:`CUSTOM`,
     #: each a map, where the package has that part. Property values are document
     #: text, in the text stream only under ``metadata: true``.

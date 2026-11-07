@@ -44,7 +44,10 @@ def load(
     relationships part that is not well formed refuses the load, naming it, and
     so does a container holding two entries of one name, compared without case
     (``DuplicateEntryException``, CR-032), unless
-    ``LoadOptions(duplicate_entries="first")`` reads the first of each.
+    ``LoadOptions(duplicate_entries="first")`` reads the first of each. An
+    ``External`` ``officeDocument`` relationship beside an internal one is
+    refused as Word refuses it (``ExternalMainPartException``), unless
+    ``LoadOptions(repair="all")`` reads the internal target (WD REQ-207).
     """
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 

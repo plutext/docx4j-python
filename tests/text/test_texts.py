@@ -78,8 +78,9 @@ def test_the_traversal_list_is_docx4js_verbatim_and_read_by_nothing():
 
 
 def test_the_options_are_section_10s_names():
-    assert len(OPTION_NAMES) == 28  # CR-032: duplicate_entries, after warnings; CR-027: profile, in section 10's order
-    assert OPTION_NAMES[-3:] == ("warnings", "duplicate_entries", "profile")
+    # CR-032: duplicate_entries, after warnings; WD 0.102: repair; CR-027: profile, in section 10's order
+    assert len(OPTION_NAMES) == 29
+    assert OPTION_NAMES[-4:] == ("warnings", "duplicate_entries", "repair", "profile")
     assert list(TextOptions().to_dict()) == list(OPTION_NAMES)
     defaults = TextOptions().to_dict()
     assert defaults["view"] == "accepted" and defaults["text_boxes"] and defaults["notes"]

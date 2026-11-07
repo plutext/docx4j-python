@@ -15,6 +15,16 @@ Four phases (section 6); C is optional. About 1⅛ days without C, 1⅝ with it 
 Q1 yes, Q5 as recommended, and two new ones after core-ts's CR-025 (`5c75758`), Q8 and Q9; Q2 to Q4, Q6 and Q7 are still open,
 with P4's name. A part read and not changed is copied (section 4.3), and `part.skipped` is the shared code.
 
+**WD 0.102 (2026-11-08) changes the switch; this CR is not yet rewritten for it.** REQ-207's `repair` takes
+`refuse`, `word` and `all` and acts at the load, `word` implying `duplicate_entries: first` and `all` adding an
+engine's own repairs, so P4 is answered and section 4.4's `none | word`, read only by the save, is superseded.
+`LoadOptions(repair=)` exists since CR-032 section 11.5, for the load's readings alone: the `External` repair under
+`all`, and `word`'s two readings through `duplicate_entries`. Still this CR's: `word`'s third reading (a relationships
+part in a wrong namespace by local name, `package.relationships_namespace`), the save gate, and two new questions,
+which value opens the gate for skipped content (`all` recommended: Q1 calls the drop the engine's own repair) and
+whether an element `mc:Ignorable` properly covers is a loss (not recommended: `ui-06` is silent in Word, which drops it
+too). The estimate sent to the portfolio was about 1⅞ days without Phase C, 2⅜ with it; with `repair` and the `External` repair built, about 1¾ and 2¼.
+
 **Depends on:**
 - **CR-032**, for `TextWarning.detail` (Phase C's count kept) and for the repair policy's carve-out: a duplicate entry is
   refused in every operation, so this gate never sees one.

@@ -32,6 +32,12 @@ package holding any is refused, :class:`DuplicateEntryException` naming each.
 instead, which is Word's reading after its repair, and records a
 :class:`DuplicateEntry` per name on ``package.warnings``. A store that does not
 answer ``duplicates()`` (one written elsewhere) is not checked.
+
+**``LoadOptions(repair=...)``** (WD REQ-207, 0.102) says how a load treats a package Word reads only through a
+repair, or won't open: ``"refuse"`` (the default), ``"word"`` (Word's repair where the WD states one, implying
+``duplicate_entries="first"``), ``"all"`` (``"word"``, and this package's own repairs: so far one, an ``External``
+``officeDocument`` relationship beside an internal one, which Word refuses, read as the internal target and dropped,
+:class:`ExternalMainPart`). Nothing here fetches a URL.
 """
 
 from __future__ import annotations
@@ -45,6 +51,7 @@ from docx4j_py.openpackaging.content_types import ContentTypeManager
 from docx4j_py.openpackaging.exceptions import (
     Docx4JException,
     DuplicateEntryException,
+    ExternalMainPartException,
     InvalidFormatException,
     MultipleMainPartsException,
 )
@@ -69,7 +76,15 @@ from docx4j_py.openpackaging.stores import PartStore
 if TYPE_CHECKING:  # pragma: no cover
     from docx4j_py.openpackaging.packages.opc_package import OpcPackage
 
-__all__ = ["DUPLICATE_ENTRIES", "DuplicateEntry", "LoadOptions", "MultipleMainParts", "load_package"]
+__all__ = [
+    "DUPLICATE_ENTRIES",
+    "REPAIR",
+    "DuplicateEntry",
+    "ExternalMainPart",
+    "LoadOptions",
+    "MultipleMainParts",
+    "load_package",
+]
 
 logger = logging.getLogger("docx4j_py.openpackaging")
 
@@ -83,6 +98,9 @@ def _looks_absolute(target: str | None) -> bool:
 
 #: ``LoadOptions.duplicate_entries``' values, the WD's (section 10's row, REQ-206).
 DUPLICATE_ENTRIES = ("refuse", "first")
+
+#: ``LoadOptions.repair``'s values, the WD's (section 10's row, REQ-207).
+REPAIR = ("refuse", "word", "all")
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +170,48 @@ class MultipleMainParts:
         return self.message
 
 
+@dataclass(frozen=True, slots=True)
+class ExternalMainPart:
+    """An ``External`` ``officeDocument`` relationship beside an internal one, dropped: ``package.external_main_part``.
+
+    WD REQ-206's NOTE (0.102). Recorded under ``LoadOptions(repair="all")`` only, since every other setting refuses the
+    package, as Word does. Once a package. The repair is this package's own, not Word's: Word offers a repair and then
+    fails. The internal target is read, the ``External`` relationship goes, so a save holds none, and the URL is
+    never fetched.
+
+    Attributes:
+        part_name: the part read, ``/word/document.xml``: the WD's selector.
+        urls: each ``External`` relationship's target as written, in the relationships' order. The WD's ``detail`` is
+            the URL; where there are several, they are separated by spaces, as REQ-801's lists are.
+    """
+
+    code: ClassVar[str] = ExternalMainPartException.code
+
+    part_name: str
+    urls: tuple[str, ...]
+
+    @property
+    def detail(self) -> str:
+        """The WD's ``detail``: the URL as written, or the URLs separated by spaces."""
+        return " ".join(self.urls)
+
+    @property
+    def message(self) -> str:
+        """``An External officeDocument relationship, to http://example.org/x.docx, dropped (REQ-206); ...``."""
+        return (
+            f"An External officeDocument relationship, to {', '.join(self.urls)}, dropped (REQ-206); {self.part_name} "
+            "read, a repair of this package's own, since Word refuses such a package"
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """The JSON-ready view, for the MCP server: ``code``, the two fields and ``message``."""
+        return {"code": self.code, "part_name": self.part_name, "urls": list(self.urls), "message": self.message}
+
+    def __str__(self) -> str:
+        """:attr:`message`."""
+        return self.message
+
+
 @dataclass(slots=True)
 class LoadOptions:
     """How to load a package. CR-002 section 5.5.
@@ -200,6 +260,22 @@ class LoadOptions:
             naming the targets, and ``"first"`` reads the **last** relationship's
             target, as a fresh Word does, records one :class:`MultipleMainParts`
             and drops the other relationships, so a save holds one main part.
+        repair: how the load treats a package Word reads only through a
+            repair, or won't open (WD REQ-207, 0.102). It acts at the load, for
+            every operation on the package. ``"refuse"`` (the default): every
+            refusal stands. ``"word"``: Word's repair where the WD states one,
+            which here means ``duplicate_entries="first"``'s two readings
+            (``"word"`` implies it). ``"all"``: as ``"word"``, and this
+            package's own repairs of a shape Word won't open, each recorded on
+            ``package.warnings`` and read by the text model as ``repaired:
+            own``. There is one so far: an ``External`` ``officeDocument``
+            relationship beside an internal one, which every other setting
+            refuses (:class:`~docx4j_py.openpackaging.exceptions.ExternalMainPartException`),
+            read as the internal target with the ``External`` relationship
+            dropped (:class:`ExternalMainPart`); the URL is never fetched. Not
+            yet here: the WD's third Word repair, a relationships part in a
+            wrong namespace read by local name, which is refused at every
+            setting (CR-033). Nothing a save writes depends on it yet.
     """
 
     strict: bool = False
@@ -208,9 +284,10 @@ class LoadOptions:
     mc_load_mode: str = "preserve"
     normalise_on_save: bool = True
     duplicate_entries: str = "refuse"
+    repair: str = "refuse"
 
     def __post_init__(self) -> None:
-        """Refuse a mode that is neither ``"preserve"`` nor ``"word"``, and a ``duplicate_entries`` the WD lacks."""
+        """Refuse a mode that is neither ``"preserve"`` nor ``"word"``, and a ``duplicate_entries`` or ``repair`` the WD lacks."""
         from docx4j_py.openpackaging.mc_load_mode import check_mode
 
         check_mode(self.mc_load_mode)
@@ -218,6 +295,16 @@ class LoadOptions:
             raise ValueError(
                 f"duplicate_entries must be one of {DUPLICATE_ENTRIES!r}, not {self.duplicate_entries!r} (WD REQ-206)"
             )
+        if self.repair not in REPAIR:
+            raise ValueError(f"repair must be one of {REPAIR!r}, not {self.repair!r} (WD REQ-207)")
+
+    @property
+    def follows_word_repairs(self) -> bool:
+        """Whether a duplicated entry and more than one main part are read as Word's repair reads them.
+
+        ``duplicate_entries="first"``, or ``repair`` ``"word"`` or ``"all"``, which imply it (WD REQ-207).
+        """
+        return self.duplicate_entries == "first" or self.repair != "refuse"
 
     @property
     def part_registry(self) -> PartRegistry:
@@ -249,6 +336,9 @@ def load_package(
         MultipleMainPartsException: the package relationships hold more than one
             ``officeDocument`` relationship, under ``duplicate_entries="refuse"``,
             the default (WD REQ-206); an :class:`InvalidFormatException`.
+        ExternalMainPartException: they hold an ``External`` one beside an
+            internal one, under every ``repair`` but ``"all"`` (WD REQ-206's
+            NOTE); an :class:`InvalidFormatException`.
         InvalidFormatException: ``[Content_Types].xml`` is missing or not well
             formed ("Bad [Content_Types].xml: ..."), ``_rels/.rels`` is
             missing, or no relationship names the main part.
@@ -262,7 +352,7 @@ def load_package(
     # CR-032 D4: before anything is read; a store with no duplicates() is not checked (D2)
     duplicates = getattr(store, "duplicates", None)
     found = duplicates() if callable(duplicates) else {}
-    if found and options.duplicate_entries != "first":
+    if found and not options.follows_word_repairs:
         raise DuplicateEntryException(found)
     records: list[Any] = [DuplicateEntry(name, count) for name, count in found.items()]
     for record in records:
@@ -277,14 +367,23 @@ def load_package(
         raise InvalidFormatException("_rels/.rels appears to be missing from this package")
     package_rels.set_bytes(store.load("_rels/.rels"))
 
-    # an external target is no part, so it's no main part, and docx4j counts it as none
+    # an external target is no part, so it's no main part; beside an internal one Word refuses the package (x-ext-*)
     main_rels = [r for r in package_rels.list if r.type_value in MAIN_PART_RELATIONSHIP_TYPES and not is_external(r)]
     if not main_rels:
         raise InvalidFormatException("No relationship of type officeDocument")
     *other_rels, main_rel = main_rels
     main_part_name = PartName.resolve(PartName.ROOT, main_rel.target or "")
+    externals = [r for r in package_rels.list if r.type_value in MAIN_PART_RELATIONSHIP_TYPES and is_external(r)]
+    if externals:
+        urls = [r.target or "" for r in externals]
+        if options.repair != "all":
+            raise ExternalMainPartException(urls, (str(PartName.resolve(PartName.ROOT, r.target or "")) for r in main_rels))
+        records.append(ExternalMainPart(str(main_part_name), tuple(urls)))
+        logger.warning("%s", records[-1].message)
+        for rel in externals:
+            package_rels.list.remove(rel)
     if other_rels:
-        if options.duplicate_entries != "first":
+        if not options.follows_word_repairs:
             raise MultipleMainPartsException(str(PartName.resolve(PartName.ROOT, r.target or "")) for r in main_rels)
         records.append(MultipleMainParts(str(main_part_name), len(main_rels)))
         logger.warning("%s", records[-1].message)

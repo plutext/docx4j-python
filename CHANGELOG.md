@@ -75,6 +75,16 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   accepts `duplicate_entries` (`refuse`, `first`) by name, as REQ-1001 requires: it is the load's option, which a
   reading does not decide again. Every store answers `duplicates()`.
 
+- **`LoadOptions(repair="refuse" | "word" | "all")`** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md) section 11.5; WD REQ-207): how a load
+  treats a package Word reads only through a repair, or won't open. `"refuse"`, the default, keeps every refusal;
+  `"word"` follows Word's repair and implies `duplicate_entries="first"`; `"all"` adds this package's own repairs, one
+  so far: an `External` `officeDocument` relationship beside an internal one, which Word refuses, read as the internal
+  target with the `External` relationship dropped and the URL never fetched, recorded as **`ExternalMainPart`**
+  (`package.external_main_part`: `part_name`, `urls`, `message`, `to_dict()`) and carried by the text model as
+  **`TextWarning.PACKAGE_EXTERNAL_MAIN_PART`**, its `detail` the URL as written. **`TextResult.metadata["repaired"]`**
+  says what was followed: `"none"`, `"word"` or `"own"`. `TextOptions` accepts `repair` by name, as REQ-1001
+  requires. A relationships part in a wrong namespace is still refused at every setting.
+
 - **`TextWarning.PART_NOT_READ`** (`part.not_read`; [CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 4.6, WD 0.66 REQ-801, docx4j CR-046
   section 10): a styles, numbering or settings part the text model needed and could not read, its XML not well
   formed. The reading goes on as for a package without the part, and says so once a part, where it first needs it,
@@ -325,7 +335,8 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
 - **A package with more than one `officeDocument` relationship is refused** ([CR-032](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md), section
   [11](docs/change-requests/CR-032-a-package-holding-two-entries-of-one-name-is-refused.md#11-two-main-parts-wd-0100s-amendment-implementation-notes-2026-11-07); WD REQ-206): the load took the first and said nothing, a different part from a fresh Word's.
   `MultipleMainPartsException` (`package.multiple_main_parts`) names the targets. Under `LoadOptions(duplicate_entries="first")` the **last** relationship's target is read, as a fresh Word reads it, a
-  `MultipleMainParts` is recorded and the text model raises the warning once, and a save holds one main part. An `External` relationship is no main part and isn't counted.
+  `MultipleMainParts` is recorded and the text model raises the warning once, and a save holds one main part. An `External` relationship isn't counted as one,
+  and beside an internal one it refuses the package, `ExternalMainPartException` naming the URL, as Word refuses it, unless `LoadOptions(repair="all")` (above).
 - **A relationships part in a wrong namespace is refused** ([CR-031](docs/change-requests/CR-031-a-part-not-well-formed-is-refused.md) section 13): a part's `.rels` read as no relationships with nothing said, and a save lost every part it named.
 - **An `mc:AlternateContent` root in a header, footer, footnotes, endnotes, comments, styles, numbering or settings part is the branch Word takes** ([CR-039](docs/change-requests/CR-039-a-repeated-child-and-an-mc-root-read-as-word-reads-them.md) section 9.8; WD REQ-317): such a part read as nothing, so its words went unread. Each gets one `part.read_as_word`, and an untouched one is saved byte for byte.
 - **A main part with another root, or a child given more than once, is read as Word reads it**
