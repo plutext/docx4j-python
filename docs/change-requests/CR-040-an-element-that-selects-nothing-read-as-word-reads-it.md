@@ -1,6 +1,6 @@
 # CR-040: An `mc:AlternateContent` that selects nothing, read as Word reads it (WD REQ-305 and REQ-306)
 
-**Status:** Complete 2026-11-07: Phases A to C done, the Word check passed through the bridge at the user's word (section 8.4), for this release. Decided 2026-11-07 (the user: "CR-040 as recommended, Q6 this release"). Proposed the same day ("write CR-040"), on the ruling "REQ-305 itself changes for all three engines". docx4j published the two sets at `824565363`.
+**Status:** Complete 2026-11-07: Phases A to C done, the Word check passed through the bridge at the user's word (section 8.4), for this release. **Amended 2026-11-08** for WD 0.103's REQ-323: a prefix `mc:Ignorable` names with no declaration on the part's root, `mce.undeclared_prefix`, dropped from the list by a save that writes the part anew (section 9). Decided 2026-11-07 (the user: "CR-040 as recommended, Q6 this release"). Proposed the same day ("write CR-040"), on the ruling "REQ-305 itself changes for all three engines". docx4j published the two sets at `824565363`.
 
 **Depends on:** `portfolio/wd-req-305-follows-word`, for docx4j's published list. WD 0.98 (`d24ab36`) sets the order: the WD, then docx4j's list, then each engine. **CR-039** is built, and its `rw-24` path gets the warning here.
 
@@ -138,3 +138,24 @@ Through the Word bridge on 16.0.20326.20232, built over `c991788`, `bridge/stagi
 - **Word opened all 50 silently,** with no dialog.
 - **The two runs agree** on all 25, in words, sections and properties, leaving rsids aside.
 - **All 25 match Word's own reading of the source,** compared from the raw saves. That covers the elements a word-mode save takes out, and the `Choice` content a namespace new to the set promotes, with its prefix in `mc:Ignorable`. The 2 edited files hold the new paragraph once.
+
+## 9. An undeclared prefix in `mc:Ignorable` (WD 0.103 REQ-323, implementation notes, 2026-11-08)
+
+The user: "REQ-318 to REQ-320 and REQ-323 as recommended", the recommendation being python first. REQ-323, from the portfolio's `undeclared-ignorable` round (13 files twice, the runs agreeing, Word 16.0.20326.20232): a prefix in `mc:Ignorable` with no declaration in scope on the element carrying it names no namespace; it MUST be read as though the list didn't hold it, at every `repair`, and raise `mce.undeclared_prefix` once a part, selector the part and `detail` the prefixes separated by spaces. On a save, a part written anew holds no such prefix, dropped or declared where the engine knows its namespace; one written from its source bytes keeps it (the repair policy's section 5, from this package's measurement; WD 0.103 at `eceabd6`). Word repairs every such file, one prompt an open, and loses nothing, on a main part, a header, footnotes, styles or settings, with a prefix it knows or not, one or several, and on all at once; it refuses `ui-05`, where an element declares the prefix for itself.
+
+**What this package read before.** Every file Word opened, as Word's text save has it, with nothing said. A save that wrote the part anew declared a prefix the prefix table knows (`w14`, `w15`, `wp14`) and so wrote a clean file, but left an unknown one (`zz9`) undeclared, the shape Word repairs, with a log line.
+
+**What landed:**
+- **`UndeclaredPrefix`** (`mce.py`: `part_name`, `prefixes`, `detail`, `message`, `to_dict()`), on `part.warnings` from the part's parse, once a part, and so on `package.warnings`.
+- **`XmlPart.undeclared_ignorable`**, the prefixes, read from the root's start tag in the bytes the part holds, once, so that the numbering part, which the emulator reads with lxml and never unmarshals, has it too. `set_bytes` asks again.
+- **The text model** raises `mce.undeclared_prefix` once for each part it reads: the main part, the styles, numbering and settings, the notes and comments, each header and footer.
+- **The save.** `XmlPart._marshal` drops from the root's `mc:Ignorable` each prefix the source root listed undeclared, unless what the part holds now declares it, as `ui-04`'s paragraph using `w14` does; a list left empty goes. A known prefix is dropped too, no longer declared from the table, since nothing in the part was in it. A part saved from its source bytes keeps it.
+
+**What the build settled beyond the statement:**
+- **Dropped, not declared.** The rule allows either. This package drops a known prefix too, as REQ-323's "as though the list didn't hold it" reads, where core-ts declares one from the objects package's table and drops an unknown one: the two saves differ in form, both conforming, and Word's own save writes its own list.
+- **The root only.** The statement is of any element carrying the attribute, and the round measured roots alone. An `mc:Ignorable` lower down (on an `mc:Choice`, say) is read and written as before.
+- **A part the reading didn't read** isn't warned of by the text model; it is on `package.warnings` where it was parsed.
+- **`ui-05`** is read, as REQ-208 allows a shape it doesn't name: the warning raised, and the element declaring `zz9` for itself listed in `part.skipped`, its text not read.
+- **The glossary**, read under `include: glossary`, isn't asked yet.
+
+**The oracle.** The round's 13 files and the control are in `tests/fixtures/undeclared-ignorable/`, copied unedited from the `-a` runs with Word's saves and text saves, held by `tests/openpackaging/test_undeclared_ignorable.py`. Of the 1,951 local sample and test documents only those hold the shape, so no corpus reading moves. A save that writes such a part anew is new output, unmeasured in Word.

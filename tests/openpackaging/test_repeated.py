@@ -68,6 +68,10 @@ READ = [
     "rw-27-mc-root-two-in-choice-sizes",
     "or-31-madeup",
     "or-32-body",
+    "rq-10-madeup-ac",
+    "rq-30-branch-sdt",
+    "rq-32-branch-document-then-hdr",
+    "rq-33-branch-hdr-then-document",
 ]
 REFUSED = [
     "rw-10-foo-two-documents",
@@ -84,6 +88,10 @@ REFUSED = [
     "mr-20-other-namespace-p",
     "mr-21-no-namespace-p",
     "mr-31-tc-p",
+    "rq-11-madeup-sdt-runs",
+    "rq-21-sdtcontent-rows",
+    "rq-22-sdtcontent-row-sdt",
+    "rq-31-branch-txbxcontent",
 ]
 #: Each with the root left as it is, and what the root held.
 UNEXPECTED = {
@@ -148,7 +156,7 @@ def test_every_fixture_is_the_file_word_read() -> None:
         assert hashlib.sha1((FIXTURES / name).read_bytes()).hexdigest() == digest, name
 
 
-@pytest.mark.parametrize("name", ["rc-00-control", "rw-00-control", "rw-01-control-mc-choice", "or-00-control"])
+@pytest.mark.parametrize("name", ["rc-00-control", "rw-00-control", "rw-01-control-mc-choice", "or-00-control", "rq-00-control"])
 def test_a_control_is_read_as_it_was_and_warned_of_by_nothing(name: str) -> None:
     package = load(source(name))
     part = package.main_document_part
@@ -174,12 +182,59 @@ def test_a_save_has_word_s_words_and_section(name: str) -> None:
     assert etree.fromstring(ours).tag == f"{W}document"
 
     def words(xml: bytes) -> list[str]:
+        """Each paragraph's words, but a block-level ``mc:Fallback``'s: preserve keeps every branch (CR-012), ``rq-10``'s."""
         body = etree.fromstring(xml).find(f"{W}body")
-        return [text for paragraph in body.iter(f"{W}p") if (text := "".join(paragraph.itertext()))]
+        fallback = f"{{{MC_NS}}}Fallback"
+        return [
+            text
+            for paragraph in body.iter(f"{W}p")
+            if not any(up.tag == fallback for up in paragraph.iterancestors())
+            if (text := "".join(paragraph.itertext()))
+        ]
 
     assert words(ours) == words(theirs)
     if page_widths(ours):  # a file that states no section has none, where Word's save writes a default
         assert page_widths(ours) == page_widths(theirs)
+
+
+def test_an_unknown_root_holding_mc_alternate_content_saves_as_word_s_under_word_mode() -> None:
+    """``rq-10``: the branch read where it stands; ``mc_load_mode="word"`` writes it as Word's save does."""
+    package = load(source("rq-10-madeup-ac"), options=LoadOptions(mc_load_mode="word"))
+    assert plain_text(extract(package)).strip() == word_text("rq-10-madeup-ac") == "CHOICE WORDS"
+    package.main_document_part.contents  # a reading is private; this marks the part for writing
+    ours = etree.fromstring(part_of(saved(package)))
+    assert ["".join(p.itertext()) for p in ours.iter(f"{W}p")] == ["CHOICE WORDS"]
+    assert ours.find(f".//{{{MC_NS}}}AlternateContent") is None
+
+
+def test_word_mode_takes_a_branch_an_unknown_element_held_in_a_document_too() -> None:
+    """The same order of passes as ``rq-10``'s, below a ``w:document`` root: read through, then spliced."""
+    branch = (
+        f'<mc:AlternateContent xmlns:mc="{MC_NS}"><mc:Choice Requires="w14"><w:p><w:r><w:t>CHOICE</w:t></w:r></w:p></mc:Choice>'
+        "<mc:Fallback><w:p><w:r><w:t>FALLBACK</w:t></w:r></w:p></mc:Fallback></mc:AlternateContent>"
+    )
+    xml = f'<w:document xmlns:w="{W_NS}" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w:body><w:madeUp>{branch}</w:madeUp></w:body></w:document>'
+    package = load(with_part(xml.encode()), options=LoadOptions(mc_load_mode="word"))
+    assert plain_text(extract(package)).strip() == "CHOICE"
+    package.main_document_part.contents  # a reading is private; this marks the part for writing
+    assert len(package.main_document_part.resolved_alternate_content) == 1
+    assert b"FALLBACK" not in part_of(saved(package)) and b"madeUp" not in part_of(saved(package))
+    kept = load(with_part(xml.encode()))
+    kept.main_document_part.contents
+    assert plain_text(extract(kept)).strip() == "CHOICE"
+    assert b"FALLBACK" in part_of(saved(kept)) and b"madeUp" not in part_of(saved(kept))
+
+
+def test_a_control_s_level_is_what_its_content_holds() -> None:
+    """A run-level control in an unknown root is refused (``rq-11``); one in a ``w:sdtContent`` root that holds a row too
+    (``rq-22``); a block one as the root is read (``rq-30``). A run-level one as the root is unmeasured: REQ-320's."""
+    sdt = '<w:sdt><w:sdtContent><w:r><w:t>RUN</w:t></w:r></w:sdtContent></w:sdt>'
+    package = load(with_part(f'<w:sdt xmlns:w="{W_NS}"><w:sdtContent><w:r><w:t>RUN</w:t></w:r></w:sdtContent></w:sdt>'.encode()))
+    assert [(w.kind, w.detail) for w in extract(package).warnings] == [("part.unexpected_root", "w:sdt")]
+    block = load(with_part(f'<w:sdt xmlns:w="{W_NS}"><w:sdtContent><w:p><w:r><w:t>BLOCK</w:t></w:r></w:p></w:sdtContent></w:sdt>'.encode()))
+    assert plain_text(extract(block)).strip() == "BLOCK"
+    with pytest.raises(Docx4JException):
+        load(with_part(f'<w:madeUp xmlns:w="{W_NS}"><w:p/>{sdt}</w:madeUp>'.encode())).main_document_part.contents
 
 
 @pytest.mark.parametrize("name", READ)

@@ -612,6 +612,10 @@ class TextWarning:
     #: (REQ-305; CR-040). Its selector is the part's name, and :attr:`detail` the namespaces the Choices require, as URIs
     #: separated by spaces. It has an address, but for one at a main part's root.
     MCE_NOTHING_SELECTED = "mce.nothing_selected"
+    #: A part the reading read whose root's ``mc:Ignorable`` names a prefix with no declaration on that root, read as
+    #: though the list didn't hold it (REQ-323). Once a part, with no address; its selector is the part's name, and
+    #: :attr:`detail` the prefixes, separated by spaces.
+    MCE_UNDECLARED_PREFIX = "mce.undeclared_prefix"
     #: A main part whose root isn't one it can read, so it yields no text (REQ-320; CR-039). Once a part, with
     #: no address; its selector is the part's name, and :attr:`detail` the root's qualified name.
     PART_UNEXPECTED_ROOT = "part.unexpected_root"

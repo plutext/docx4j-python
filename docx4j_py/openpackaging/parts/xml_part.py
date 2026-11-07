@@ -48,6 +48,7 @@ from lxml import etree
 
 from docx4j_py.namespaces import PREFIXES
 from docx4j_py.openpackaging.exceptions import Docx4JException
+from docx4j_py.openpackaging.mce import UndeclaredPrefix, undeclared_prefixes
 from docx4j_py.openpackaging.part_name import PartName
 from docx4j_py.openpackaging.parts.part import Part
 
@@ -119,6 +120,7 @@ class XmlPart(Part, Generic[T]):
         "_private_contents",
         "_private_settings",
         "_source_ns_map",
+        "_undeclared_ignorable",
         "_unreadable",
         "_unreadable_settings",
         "kept",
@@ -148,6 +150,9 @@ class XmlPart(Part, Generic[T]):
         #: ``{namespace}localName`` of the root, when the class alone does not say.
         self.root_name = root_name
         self._source_ns_map: dict[str, str] = {}
+        #: The prefixes the source root's ``mc:Ignorable`` names with no declaration on it (WD REQ-323), or None
+        #: until read: :attr:`undeclared_ignorable`.
+        self._undeclared_ignorable: tuple[str, ...] | None = None
         #: Whether the last parse's source holds an empty attribute value (``=""``): an empty
         #: rsid binds without a record, so this, as well as :attr:`kept`, sends the part through
         #: the save's typed rows (CR-021 D6, :mod:`~docx4j_py.openpackaging.normalise`).
@@ -355,6 +360,7 @@ class XmlPart(Part, Generic[T]):
         self._empty_value = False
         self.resolved_alternate_content = []
         self.warnings = []
+        self._undeclared_ignorable = None
         self._unreadable = None
         self._unreadable_settings = None
 
@@ -474,6 +480,12 @@ class XmlPart(Part, Generic[T]):
                 if joined:
                     warnings.append(repeated.ReadAsWord(str(self.part_name), None, joined))
                 if repaired is not data:
+                    if settings.mc_load_mode == "word" and b"AlternateContent" in repaired:
+                        # one an unknown element held reaches block level only now (rq-10)
+                        from docx4j_py.openpackaging.mc_load_mode import splice_word
+
+                        repaired, more = splice_word(repaired)
+                        resolved.extend(more)
                     xml_parser = parser(lenient=True, skipped_report=True)
                     try:
                         obj = xml_parser.from_bytes(repaired, clazz)
@@ -503,7 +515,8 @@ class XmlPart(Part, Generic[T]):
             # docx4j's unreadable: the read that failed, raised again without a second parse (CR-031 D8)
             raise self._unreadable.with_traceback(None)
         data = self._raw_bytes()
-        self._source_ns_map = _root_ns_map(data)
+        self._source_ns_map, ignorable = _root_declarations(data)
+        self._undeclared_ignorable = undeclared_prefixes(self._source_ns_map, ignorable)
         # an empty attribute value, either quote and any spacing round "=": two substring tests
         self._empty_value = b'""' in data or b"''" in data
 
@@ -527,6 +540,8 @@ class XmlPart(Part, Generic[T]):
             from docx4j_py.openpackaging.repeated import with_root
 
             warnings = with_root(root_warning, warnings)
+        if self._undeclared_ignorable:
+            warnings = [*warnings, UndeclaredPrefix(str(self.part_name), self._undeclared_ignorable)]
         self.warnings = warnings
         for warning in warnings:
             # once a part, as docx4j's WARN (its CR-073 D3)
@@ -600,6 +615,21 @@ class XmlPart(Part, Generic[T]):
         """
         return self._read_root(self.xml)[0]
 
+    @property
+    def undeclared_ignorable(self) -> tuple[str, ...]:
+        """The prefixes the source root's ``mc:Ignorable`` names with no declaration on that root (WD REQ-323).
+
+        Read from the bytes the part holds, the root's start tag alone, once, so a reader that never unmarshals the
+        part (the numbering emulator's) has it too. Empty for a part with nothing to read and for the usual part.
+        """
+        if self._undeclared_ignorable is None:
+            data = self._bytes if self._bytes is not None else self._source_bytes()
+            if data is None:
+                return ()
+            ns_map, ignorable = _root_declarations(data)
+            self._undeclared_ignorable = undeclared_prefixes(ns_map, ignorable)
+        return self._undeclared_ignorable
+
     def get_xml(self) -> str:
         """:attr:`xml` decoded, for reading and for tests."""
         return self.xml.decode("utf-8")
@@ -640,6 +670,16 @@ class XmlPart(Part, Generic[T]):
         # the tree is in them, or Word rejects the file.
         etree.cleanup_namespaces(root)
         declared = root.nsmap
+        # WD REQ-323: a prefix the source root listed with no declaration names no namespace; written anew, the list
+        # goes without it, unless what the part holds now declares it. A save of the source bytes keeps it.
+        listed = root.get(_MC_IGNORABLE)
+        if listed is not None and self._undeclared_ignorable:
+            gone = {prefix for prefix in self._undeclared_ignorable if prefix not in declared}
+            kept = " ".join(prefix for prefix in listed.split() if prefix not in gone)
+            if kept:
+                root.set(_MC_IGNORABLE, kept)
+            elif gone:
+                del root.attrib[_MC_IGNORABLE]
         missing: dict[str, str] = {}
         for prefix in sorted(_ignorable_prefixes(root)):
             if prefix in declared:
@@ -735,6 +775,23 @@ def _root_tag(data: bytes) -> str | None:
     for _event, element in parser.read_events():
         return element.tag
     return None
+
+
+def _root_declarations(data: bytes) -> tuple[dict[str, str], str | None]:
+    """The namespace declarations on a part's root element and its ``mc:Ignorable``, as :func:`_root_ns_map` reads them."""
+    import io
+
+    try:
+        for _event, element in etree.iterparse(
+            io.BytesIO(data),
+            events=("start",),
+            resolve_entities=False,
+            huge_tree=True,
+        ):
+            return {p: u for p, u in element.nsmap.items() if p is not None}, element.get(_MC_IGNORABLE)
+    except etree.XMLSyntaxError:
+        return {}, None
+    return {}, None
 
 
 def _root_ns_map(data: bytes) -> dict[str, str]:

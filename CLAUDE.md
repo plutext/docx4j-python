@@ -453,7 +453,7 @@ CR-002 section 12.3.
   wildcard (`AnyElement`) tree. Since Phase C VML (`v:`, `o:`, `w10:`, in `docx4j_py.vml.*`) is in
   the model, typed wherever it stands: under `w:pict` and `w:object`, in a branch or not, and in
   `settings.xml`'s shape defaults. A vmlDrawing part (`VMLPart`) stays an lxml tree.
-  `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. An element with no `mc:Choice` understood and no `mc:Fallback` selects nothing (CR-040, WD REQ-305), and the text model raises `mce.nothing_selected`. Since
+  `LoadOptions(mce_preprocess=True)` replaces each element with the branch Word would take. An element with no `mc:Choice` understood and no `mc:Fallback` selects nothing (CR-040, WD REQ-305), and the text model raises `mce.nothing_selected`. A prefix a part root's `mc:Ignorable` names with no declaration there is read as not listed, `mce.undeclared_prefix` (`UndeclaredPrefix`, `XmlPart.undeclared_ignorable`), and a save writing the part anew drops it from the list (CR-040 section 9, WD REQ-323). Since
   CR-012 Phase A (Q8),
   it and `mc_load_mode="word"` select over docx4j's published understood set
   (`resources/understood-namespaces.txt`), matched by namespace URI, so they take the branch Word

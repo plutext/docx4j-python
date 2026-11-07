@@ -347,6 +347,13 @@ CRs are under [`docs/change-requests/`](docs/change-requests/README.md).
   bodies' final sections included; of `w:b` and `w:vanish` the last element decides, and a later copy's `w:headerReference` or `w:footerReference` is ignored (WD REQ-322). The roots Word refuses are refused when read, as a part not well formed is, and `misplaced()` reports `part.root_refused`.
   Any other root yields no text and raises `part.unexpected_root`, on `part.warnings` and the text result. `extract` and `body_of` refuse a package with no main part.
   A part read this way is saved in that shape, with one `part.read_as_word` warning.
+  Since WD 0.103 (CR-039 section 9.10, docx4j's `cr079-root-questions`): a `w:txbxContent` root, a `w:sdtContent` one holding a row, and an unknown one holding a run-level
+  `w:sdt` are refused, where three of them read as empty with nothing said; a block `w:sdt` root, and an unknown root holding `mc:AlternateContent`, are read as Word reads them,
+  where each gave no text. Under `mc_load_mode="word"` an `mc:AlternateContent` an unknown element held is now Word's branch too, where it was kept whole.
+- **A prefix `mc:Ignorable` names with no declaration on a part's root** ([CR-040](docs/change-requests/CR-040-an-element-that-selects-nothing-read-as-word-reads-it.md) section 9; WD REQ-323):
+  read as not listed, as before, and now said: **`UndeclaredPrefix`** (`mce.undeclared_prefix`) on `part.warnings`, **`TextWarning.MCE_UNDECLARED_PREFIX`** once a part the
+  text model reads, its `detail` the prefixes, and **`XmlPart.undeclared_ignorable`**. A save that writes the part anew drops the prefix from the list, unless the part now
+  declares it, where an unknown one was left undeclared, the shape Word repairs; one that writes the source bytes keeps it.
 
 - **A caller's `comments=False` holds under `profile: word-text`** ([CR-035](docs/change-requests/CR-035-one-setting-for-comments.md),
   WD 0.91; docx4j-core-ts's CR-012 section 29): comments had two switches, `comments` and `include`, and the preset set both, so

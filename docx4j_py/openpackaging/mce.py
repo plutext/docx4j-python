@@ -40,16 +40,23 @@ malformed-nesting repairs for Google Docs, pandoc and SSRS output --- is not
 markup compatibility and is not here. The Strict import is
 ``RelationshipsPart.import_strict`` at the relationship level; the rest is a
 later CR.
+
+**A prefix ``mc:Ignorable`` names with no declaration** on the part's root (WD REQ-323, 0.103) names no namespace:
+it is read as though the list didn't hold it, and :class:`UndeclaredPrefix` says so, once a part. A save that writes
+the part anew drops such a prefix from the list (``XmlPart._marshal``); one that writes the source bytes keeps it.
 """
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Iterable
+from typing import Any, ClassVar
 
 from lxml import etree
 
 __all__ = [
     "MCE_NS",
+    "UndeclaredPrefix",
     "mce_preprocess",
     "mce_preprocess_bytes",
     "resolve_alternate_content",
@@ -62,6 +69,51 @@ _CHOICE = f"{{{MCE_NS}}}Choice"
 _FALLBACK = f"{{{MCE_NS}}}Fallback"
 
 _PARSER = etree.XMLParser(remove_blank_text=False, resolve_entities=False, huge_tree=True)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class UndeclaredPrefix:
+    """A part whose root's ``mc:Ignorable`` names a prefix with no declaration on it: ``mce.undeclared_prefix``.
+
+    WD REQ-323 (0.103): such a prefix names no namespace, so it is read as though the list didn't hold it. Word repairs
+    such a file and loses nothing (the ``undeclared-ignorable`` round, ``ui-01`` to ``ui-14``). A declaration on a
+    descendant doesn't put it in scope. On ``part.warnings`` from the part's parse, once a part; the text model raises
+    it for each part it reads. Measured on a part's root only, which is all this reads.
+
+    Attributes:
+        part_name: the part, the WD's selector.
+        prefixes: each prefix, in the list's order, once.
+    """
+
+    code: ClassVar[str] = "mce.undeclared_prefix"
+
+    part_name: str
+    prefixes: tuple[str, ...]
+
+    @property
+    def detail(self) -> str:
+        """The WD's ``detail``: the prefixes, separated by spaces."""
+        return " ".join(self.prefixes)
+
+    @property
+    def message(self) -> str:
+        """``/word/document.xml: mc:Ignorable names zz9, declared nowhere on its root; read as not listed (REQ-323)``."""
+        return f"{self.part_name}: mc:Ignorable names {self.detail}, declared nowhere on its root; read as not listed (REQ-323)"
+
+    def to_dict(self) -> dict[str, Any]:
+        """The JSON-ready view: ``code``, the two fields and ``message``."""
+        return {"code": self.code, "part_name": self.part_name, "prefixes": list(self.prefixes), "message": self.message}
+
+    def __str__(self) -> str:
+        """:attr:`message`."""
+        return self.message
+
+
+def undeclared_prefixes(ns_map: dict[str, str], ignorable: str | None) -> tuple[str, ...]:
+    """The prefixes `ignorable`, an ``mc:Ignorable`` value, names that `ns_map` doesn't declare: each once, in order."""
+    if not ignorable:
+        return ()
+    return tuple(dict.fromkeys(prefix for prefix in ignorable.split() if prefix not in ns_map))
 
 
 def _understood() -> frozenset[str]:

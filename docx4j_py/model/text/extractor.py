@@ -670,6 +670,7 @@ class Extractor:
         metadata: dict[str, Any] = {TextResult.FIELDS_UPDATE_ON_OPEN: not self.nested and self._fields_update_on_open()}
         if not self.nested:
             metadata[TextResult.REPAIRED] = self._load_warnings()
+            self._undeclared_prefixes()
             from docx4j_py.model.text import metadata as properties
 
             properties.read(self.trees.package, metadata)
@@ -747,6 +748,28 @@ class Extractor:
             if repaired == "none":
                 repaired = "word"
         return repaired
+
+    def _undeclared_prefixes(self) -> None:
+        """``mce.undeclared_prefix`` once for each part the reading reads whose root lists one (REQ-323).
+
+        The parts :class:`~docx4j_py.model.text.trees.PackageTrees` reads: the main part, the styles, numbering and
+        settings, the notes and comments, and each header and footer. Each is asked from its bytes, so the numbering
+        part, which the emulator reads with lxml, is asked too.
+        """
+        trees = self.trees
+        parts = [trees.main, trees.styles_part, trees.numbering_part, trees.settings_part]
+        parts += [held[0] for held in (trees.footnotes, trees.endnotes, trees.comments) if held is not None]
+        parts += [part for part, _tree in trees.headers_footers.values()]
+        seen: set[int] = set()
+        for part in parts:
+            real = getattr(part, "_wrapped", part)
+            if real is None or id(real) in seen:
+                continue
+            seen.add(id(real))
+            prefixes = getattr(real, "undeclared_ignorable", ())
+            if prefixes:
+                kind = TextWarning.MCE_UNDECLARED_PREFIX
+                self.warn(TextWarning(kind, None, part_name=str(real.part_name), detail=" ".join(prefixes)))
 
     def _unexpected_root(self) -> None:
         """What the main part's root left to say: ``part.unexpected_root`` (REQ-320) and ``mce.nothing_selected`` (REQ-305)."""

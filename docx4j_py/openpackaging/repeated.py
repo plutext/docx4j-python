@@ -9,15 +9,20 @@ a parse does, with no one rule for it. Measured through the Word bridge on
   holds becomes the root, and two are joined as two ``w:body`` are. Nothing selected
   is an empty document. What else it holds is read by the rows below, as it would be
   at the root.
-* The roots Word refuses (REQ-318): ``w:footnotes``, ``w:endnotes``, ``w:tc``, Word 2003's
-  ``wordDocument``, Flat OPC's ``pkg:package``; an unknown ``w:`` root holding a
-  ``w:document`` or, directly, a ``w:r``; a root in no namespace, or one neither
-  understood nor in its ``mc:Ignorable``, holding a ``w:document`` or a ``w:p``.
-  :class:`RootRefused`, so the part is refused as one that isn't well formed is (CR-031).
-* The roots Word reads (REQ-319): a ``w:body``, a ``w:p``, a ``w:sdtContent``, and an
-  unknown ``w:`` root holding ``w:p``, ``w:tbl``, a block ``w:sdt`` or a further unknown
-  element, wrapped so that CR-037's pass takes its tags off. A ``w:sectPr`` directly in
-  it has no effect, a ``w:body`` in it is the body, and empty it is an empty document.
+* The roots Word refuses (REQ-318): ``w:footnotes``, ``w:endnotes``, ``w:tc``, ``w:txbxContent``,
+  Word 2003's ``wordDocument``, Flat OPC's ``pkg:package``; an unknown ``w:`` root holding a
+  ``w:document`` or, directly, a ``w:r`` or a run-level ``w:sdt``; a ``w:sdtContent`` holding
+  a ``w:tr`` or a row-level ``w:sdt``; a root in no namespace, or one neither understood nor
+  in its ``mc:Ignorable``, holding a ``w:document`` or a ``w:p``. :class:`RootRefused`, so
+  the part is refused as one that isn't well formed is (CR-031).
+* The roots Word reads (REQ-319): a ``w:body``, a ``w:p``, a ``w:sdtContent``, a block
+  ``w:sdt``, and an unknown ``w:`` root holding ``w:p``, ``w:tbl``, a block ``w:sdt``, an
+  ``mc:AlternateContent`` or a further unknown element, wrapped so that CR-037's pass takes
+  its tags off, an ``mc:AlternateContent`` then read where it stands as every block-level
+  one is. A ``w:sectPr`` directly in it has no effect, a ``w:body`` in it is the body, and
+  empty it is an empty document. A ``w:sdt``'s level is what its ``w:sdtContent`` holds
+  directly: a ``w:r`` makes it run-level, a ``w:tr`` row-level, a ``w:tc`` cell-level, and
+  anything else block-level (``rq-*``, WD 0.103).
 * Any other root yields nothing (REQ-320): a ``w:document`` with no body, what the root
   held in ``part.skipped``, and :class:`UnexpectedRoot` to say so. A header's words in
   a footnote's separator aren't a reading to copy.
@@ -79,6 +84,7 @@ _P = _w("p")
 _R = _w("r")
 _TBL = _w("tbl")
 _TC = _w("tc")
+_TR = _w("tr")
 _SDT = _w("sdt")
 _SDT_CONTENT = _w("sdtContent")
 _PPR = _w("pPr")
@@ -88,8 +94,8 @@ _JC = _w("jc")
 _ALTERNATE_CONTENT = f"{{{_MC}}}AlternateContent"
 _IGNORABLE = f"{{{_MC}}}Ignorable"
 
-#: What an unknown ``w:`` root reads through to, with a further unknown element (REQ-319).
-_READ_IN_AN_UNKNOWN_ROOT = frozenset({_P, _TBL, _SDT})
+#: What an unknown ``w:`` root reads through to, with a further unknown element (REQ-319; ``rq-10``).
+_READ_IN_AN_UNKNOWN_ROOT = frozenset({_P, _TBL, _SDT, _ALTERNATE_CONTENT})
 #: Who may hold which child more than once, and have it read as one (REQ-322's table).
 _READ_AS_ONE: dict[str, frozenset[str]] = {
     _BODY: frozenset({_SECT_PR}),
@@ -110,12 +116,14 @@ _REFERENCES = frozenset({_w("headerReference"), _w("footerReference")})
 #: The children REQ-322 reads, the ones the skipped report triggers on.
 _MEASURED = frozenset({_BODY, _SDT_CONTENT}).union(*_READ_AS_ONE.values())
 
-#: Refused by name (``or-12``, ``or-13``, ``or-15``, ``mr-31``, ``rw-30``, ``rw-31``). What a root holds is the other rows.
+#: Refused by name (``or-12``, ``or-13``, ``or-15``, ``mr-31``, ``rw-30``, ``rw-31``, ``rq-31``). What a root holds is
+#: the other rows.
 _REFUSED = frozenset(
     {
         _w("footnotes"),
         _w("endnotes"),
         _TC,
+        _w("txbxContent"),
         "{http://schemas.microsoft.com/office/word/2003/wordml}wordDocument",
         "{http://schemas.microsoft.com/office/2006/xmlPackage}package",
     }
@@ -341,9 +349,19 @@ def _wrapped(element: etree._Element) -> etree._Element:
     return document
 
 
+def _level(sdt: etree._Element) -> str:
+    """A ``w:sdt``'s level, by what its ``w:sdtContent`` holds directly: ``run``, ``row``, ``cell`` or ``block``."""
+    content = sdt.find(_SDT_CONTENT)
+    if content is not None:
+        for tag, level in ((_R, "run"), (_TR, "row"), (_TC, "cell")):
+            if content.find(tag) is not None:
+                return level
+    return "block"
+
+
 def _read_through(element: etree._Element, dropped: list[SkippedNode]) -> tuple[etree._Element | None, int]:
     """`element` as the ``w:document`` Word reads it as (REQ-319), or None, and how many read as one."""
-    if element.tag in (_BODY, _P):
+    if element.tag in (_BODY, _P) or (element.tag == _SDT and _level(element) == "block"):
         return _wrapped(element), 0
     if element.tag == _SDT_CONTENT:
         element.tag = _BODY
@@ -458,9 +476,11 @@ def _refused(root: etree._Element) -> bool:
 
     if root.tag in _REFUSED:
         return True
+    if root.tag == _SDT_CONTENT:  # rq-21, rq-22
+        return root.find(_TR) is not None or any(_level(sdt) == "row" for sdt in root.findall(_SDT))
     holds_a_document = root.find(_DOCUMENT) is not None
-    if _unknown(root.tag):
-        return holds_a_document or root.find(_R) is not None
+    if _unknown(root.tag):  # rq-11: a run-level control as a run
+        return holds_a_document or root.find(_R) is not None or any(_level(sdt) == "run" for sdt in root.findall(_SDT))
     namespace = etree.QName(root).namespace
     ignorable = {root.nsmap.get(prefix) for prefix in root.get(_IGNORABLE, "").split()}
     foreign = namespace is None or (namespace not in understood_namespaces() and namespace not in ignorable)

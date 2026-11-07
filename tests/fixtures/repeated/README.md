@@ -15,6 +15,7 @@ CR-039's oracle (`tests/openpackaging/test_repeated.py`).
 | `sm-*` | The `sectpr-merge` round: what Word's rule for a repeated child is, one difference a file (CR-039 section 9.5). Saves only, no text saves |
 | `c79-*` | docx4j's `cr079-phase0` round: an `mc:AlternateContent` root in other parts, and `w:sdtContent`, `w:numPr`, a `w:pPr`'s `w:rPr` and `w:pPrChange` given twice |
 | `ft-*` | The `footer-refs` round: a `w:footerReference` or `w:headerReference` on a later copy of a `w:sectPr`. Saves only |
+| `rq-*` | docx4j's `cr079-root-questions` round, added 2026-11-08 from its `-a` runs (each ran twice, agreeing): an unknown root holding `mc:AlternateContent` or a run-level `w:sdt`, a `w:sdtContent` root empty or holding a row, an `mc` root whose branch is a block `w:sdt`, a `w:txbxContent`, or a `w:document` beside a `w:hdr` (WD 0.103's REQ-318 and REQ-319) |
 | `*-word365.docx` | Word's save of each. A file Word refused has none |
 | `*-word365.txt` | Word's text save. It leaves text boxes out, so a box's words are read from the save |
 
